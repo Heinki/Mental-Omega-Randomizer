@@ -10,16 +10,16 @@ The launcher does not modify the in-game UI. It prepares launch files and starts
 Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 ```
 
-The selected mission is written to `spawn.ini` as `Scenario=<map>.MAP`. The launcher also writes difficulty and speed settings into `spawn.ini` and the regular option INIs where possible:
+The selected mission is written to `spawn.ini` as `Scenario=<map>.MAP`. The launcher writes game speed and difficulty into `spawn.ini` and the regular option INIs where possible:
 
 - `GameSpeed`
 - `Difficulty`
 - `CampDifficulty`
 - `DifficultyModeHuman`
 
-`RA2MD.INI` can become extremely large on some installs. When it is above the safety limit, the launcher skips it instead of trying to rewrite a broken file. `spawn.ini` is still written.
+`RA2MD.INI` can become extremely large on some installs. When it is above the safety limit, the launcher patches the small speed/difficulty values in place instead of rewriting the whole file.
 
-Recent debug logs show the engine reading launcher-written startup values, for example `GameSpeed = 5` and `Difficulty = 0`. If the visible in-game speed later differs, the likely cause is Mental Omega/client/map control after startup.
+`-SPEEDCONTROL` is required for the in-game speed slider to appear during spawned missions. The launcher currently writes the normal in-game speed value directly (`0` slowest through `6` fastest) instead of the CnCNet lobby dropdown index.
 
 ## State And Config
 
@@ -145,8 +145,7 @@ Starting units can be harder than newly built units because some buffs are appli
 ## Known Limits
 
 - The UI does not yet show unit cameo images.
-- Game speed may still be overridden after startup by Mental Omega map/client logic.
+- Game-speed behavior still needs validation across more campaign maps.
 - Some maps do not expose hookable objective/victory triggers cleanly.
 - Some allied-helper detection cases need more map data before buffs can safely include every friendly house.
 - Player-only copied unit variants remain the likely long-term answer for perfectly isolated per-unit buffs.
-

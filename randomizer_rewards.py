@@ -4,6 +4,13 @@
 # launcher makes future Archipelago item/location work much easier.
 
 ALLIED_BUILD_HOUSES = 'UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER'
+SOVIET_BUILD_HOUSES = 'USSR,Latin,Chinese,MORPLAYER'
+EPSILON_BUILD_HOUSES = 'PsiCorps,Headquaters,ScorpionCell,MORPLAYER'
+FOEHN_BUILD_HOUSES = 'Guild1,Guild2,Guild3,MORPLAYER'
+ALL_BUILD_HOUSES = (
+    ALLIED_BUILD_HOUSES + ',' + SOVIET_BUILD_HOUSES + ','
+    + EPSILON_BUILD_HOUSES + ',' + FOEHN_BUILD_HOUSES
+)
 DEFAULT_REWARDS_PER_CHECK = 1
 MAX_REWARDS_PER_CHECK = 5
 
@@ -53,8 +60,8 @@ UNIT_UNLOCK_REWARDS = [
     {
         'name': 'Engineer Corps',
         'description': 'Allows Engineers where the map tech tree permits them.',
-        'rules': build_unlock('ENGINEER', 1, 'GAPILE'),
-        'factions': ['Allies'],
+        'rules': build_unlock('ENGINEER', 1, 'ALLRAX,SOVRAX,YURRAX,FOERAX', ALL_BUILD_HOUSES),
+        'factions': ['Allies', 'Soviets', 'Epsilon', 'Foehn'],
     },
     {
         'name': 'Humvee Access',
@@ -81,6 +88,30 @@ UNIT_UNLOCK_REWARDS = [
         'factions': ['Allies'],
     },
     {
+        'name': 'Conscript Access',
+        'description': 'Allows Conscripts where the map tech tree permits them.',
+        'rules': build_unlock('E2', 1, 'NAHAND', SOVIET_BUILD_HOUSES),
+        'factions': ['Soviets'],
+    },
+    {
+        'name': 'Flak Trooper Access',
+        'description': 'Allows Flak Troopers where the map tech tree permits them.',
+        'rules': build_unlock('FLAKT', 1, 'NAHAND', SOVIET_BUILD_HOUSES),
+        'factions': ['Soviets'],
+    },
+    {
+        'name': 'Soviet Attack Dog Access',
+        'description': 'Allows Soviet Attack Dogs where the map tech tree permits them.',
+        'rules': build_unlock('DOG', 1, 'NAHAND', SOVIET_BUILD_HOUSES),
+        'factions': ['Soviets'],
+    },
+    {
+        'name': 'Tesla Trooper Access',
+        'description': 'Allows Tesla Troopers where the map tech tree permits them.',
+        'rules': build_unlock('SHK', 2, 'NAHAND', SOVIET_BUILD_HOUSES),
+        'factions': ['Soviets'],
+    },
+    {
         'name': 'Heavy Tank Access',
         'description': 'Allows Soviet Heavy Tanks where the map tech tree permits them.',
         'rules': {'HTNK': {'TechLevel': '2'}},
@@ -89,7 +120,7 @@ UNIT_UNLOCK_REWARDS = [
     {
         'name': 'Flak Track Access',
         'description': 'Allows Flak Tracks where the map tech tree permits them.',
-        'rules': {'FLAKT': {'TechLevel': '2'}},
+        'rules': {'HTK': {'TechLevel': '2'}},
         'factions': ['Soviets'],
     },
     {
@@ -267,6 +298,10 @@ BUFF_TARGETS = {
     'GGI': {'label': 'Guardian GI', 'plural': 'Guardian GIs', 'category': 'infantry', 'factions': ['Allies'], 'cost': 150, 'speed': 6, 'strength': 150, 'sight': 6, 'guard_range': 6},
     'AMEDIC': {'label': 'Field Medic', 'plural': 'Field Medics', 'category': 'infantry', 'factions': ['Allies'], 'cost': 500, 'speed': 6, 'strength': 125, 'sight': 5, 'guard_range': 5},
     'JUMPJET': {'label': 'Rocketeer', 'plural': 'Rocketeers', 'category': 'infantry', 'factions': ['Allies'], 'cost': 650, 'speed': 8, 'strength': 150, 'sight': 7, 'guard_range': 7},
+    'E2': {'label': 'Conscript', 'plural': 'Conscripts', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 100, 'speed': 5, 'strength': 125, 'sight': 5, 'guard_range': 5},
+    'FLAKT': {'label': 'Flak Trooper', 'plural': 'Flak Troopers', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 300, 'speed': 5, 'strength': 125, 'sight': 6, 'guard_range': 6},
+    'DOG': {'label': 'Soviet Attack Dog', 'plural': 'Soviet Attack Dogs', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 200, 'speed': 8, 'strength': 100, 'sight': 5, 'guard_range': 5},
+    'SHK': {'label': 'Tesla Trooper', 'plural': 'Tesla Troopers', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 500, 'speed': 4, 'strength': 200, 'sight': 6, 'guard_range': 6},
     'AHMV': {
         'label': 'Humvee',
         'plural': 'Humvees',
@@ -284,7 +319,7 @@ BUFF_TARGETS = {
     },
     'FV': {'label': 'IFV', 'plural': 'IFVs', 'category': 'units', 'factions': ['Allies'], 'cost': 800, 'speed': 10, 'strength': 300, 'sight': 8, 'guard_range': 8},
     'HTNK': {'label': 'Heavy Tank', 'plural': 'Heavy Tanks', 'category': 'units', 'factions': ['Soviets'], 'cost': 900, 'speed': 7, 'strength': 500, 'sight': 6, 'guard_range': 6},
-    'FLAKT': {'label': 'Flak Track', 'plural': 'Flak Tracks', 'category': 'units', 'factions': ['Soviets'], 'cost': 500, 'speed': 8, 'strength': 250, 'sight': 5, 'guard_range': 5},
+    'HTK': {'label': 'Flak Track', 'plural': 'Flak Tracks', 'category': 'units', 'factions': ['Soviets'], 'cost': 500, 'speed': 8, 'strength': 250, 'sight': 5, 'guard_range': 5},
     'TTNK': {'label': 'Tesla Tank', 'plural': 'Tesla Tanks', 'category': 'units', 'factions': ['Soviets'], 'cost': 1200, 'speed': 6, 'strength': 400, 'sight': 7, 'guard_range': 7},
     'AKULA': {'label': 'Akula', 'plural': 'Akulas', 'category': 'units', 'factions': ['Soviets'], 'cost': 1200, 'speed': 5, 'strength': 600, 'sight': 8, 'guard_range': 8},
     'DRED': {'label': 'Dreadnought', 'plural': 'Dreadnoughts', 'category': 'units', 'factions': ['Soviets'], 'cost': 2000, 'speed': 4, 'strength': 800, 'sight': 8, 'guard_range': 8},
@@ -314,6 +349,8 @@ UNIT_LABELS = {
     'DEST': 'Destroyer',
     'DLPH': 'Dolphin',
     'E1': 'GI',
+    'E2': 'Conscript',
+    'DOG': 'Soviet Attack Dog',
     'ENGINEER': 'Engineer',
     'FORTRESS': 'Battle Fortress',
     'FV': 'IFV',
@@ -324,9 +361,11 @@ UNIT_LABELS = {
     'AKULA': 'Akula',
     'DBOAT': 'Sea Scorpion',
     'DRED': 'Dreadnought',
-    'FLAKT': 'Flak Track',
+    'FLAKT': 'Flak Trooper',
+    'HTK': 'Flak Track',
     'HTNK': 'Heavy Tank',
     'SAPC': 'Soviet Transport',
+    'SHK': 'Tesla Trooper',
     'SQD': 'Giant Squid',
     'SUB': 'Typhoon Sub',
     'TTNK': 'Tesla Tank',
@@ -354,38 +393,45 @@ BUFF_TYPES = [
     {
         'id': 'production',
         'name': 'Drill',
+        'setting_label': 'Production / construction speed',
         'description': '{plural} build/train 15% faster in future launched missions.',
     },
     {
         'id': 'cost',
         'name': 'Logistics',
+        'setting_label': 'Cost reduction',
         'description': '{plural} cost 20% less in future launched missions.',
     },
     {
         'id': 'speed',
         'name': 'Mobility',
+        'setting_label': 'Movement speed',
         'description': '{plural} move faster in future launched missions.',
     },
     {
         'id': 'armor',
         'name': 'Armor Plating',
+        'setting_label': 'Armor',
         'description': '{plural} take less incoming damage in future launched missions.',
     },
     {
         'id': 'health',
         'name': 'Reinforced Frames',
+        'setting_label': 'Health',
         'description': '{plural} gain more health in future launched missions.',
         'requires_stat': 'strength',
     },
     {
         'id': 'sight',
         'name': 'Recon Package',
+        'setting_label': 'Vision',
         'description': '{plural} gain more vision in future launched missions.',
         'requires_stat': 'sight',
     },
     {
         'id': 'damage',
         'name': 'Firepower',
+        'setting_label': 'Damage',
         'description': '{plural} deal more weapon damage in future launched missions.',
         'requires_weapons': True,
         'requires_clone': True,
@@ -393,6 +439,7 @@ BUFF_TYPES = [
     {
         'id': 'reload',
         'name': 'Weapon Tuning',
+        'setting_label': 'Weapon reload',
         'description': '{plural} reload their weapons faster in future launched missions.',
         'requires_weapons': True,
         'requires_clone': True,
@@ -400,12 +447,14 @@ BUFF_TYPES = [
     {
         'id': 'rof',
         'name': 'Rapid Fire',
+        'setting_label': 'Attack speed',
         'description': '{plural} improve the player house attack-speed multiplier in future launched missions.',
         'requires_weapons': True,
     },
     {
         'id': 'range',
         'name': 'Optics',
+        'setting_label': 'Attack range',
         'description': '{plural} gain more weapon range in future launched missions.',
         'requires_weapons': True,
         'requires_clone': True,
@@ -413,6 +462,7 @@ BUFF_TYPES = [
     {
         'id': 'ammo',
         'name': 'Ammo Reserves',
+        'setting_label': 'Ammo',
         'description': '{plural} gain more ammunition before reloading in future launched missions.',
         'requires_stat': 'ammo',
         'requires_clone': True,
@@ -420,24 +470,28 @@ BUFF_TYPES = [
     {
         'id': 'self_healing',
         'name': 'Repair Systems',
+        'setting_label': 'Self-healing',
         'description': '{plural} gain self-healing in future launched missions.',
         'requires_clone': True,
     },
     {
         'id': 'cloak',
         'name': 'Stealth Systems',
+        'setting_label': 'Cloaking',
         'description': '{plural} gain cloaking in future launched missions.',
         'requires_clone': True,
     },
     {
         'id': 'sensors',
         'name': 'Sensor Suite',
+        'setting_label': 'Sensors',
         'description': '{plural} gain sensors in future launched missions.',
         'requires_clone': True,
     },
     {
         'id': 'guard_range',
         'name': 'Targeting Package',
+        'setting_label': 'Target acquisition range',
         'description': '{plural} acquire targets from farther away in future launched missions.',
         'requires_stat': 'guard_range',
         'requires_clone': True,
@@ -445,6 +499,7 @@ BUFF_TYPES = [
     {
         'id': 'veteran',
         'name': 'Veteran Training',
+        'setting_label': 'Veteran start',
         'description': '{plural} start as veterans for the player house in future launched missions.',
     },
 ]
@@ -585,7 +640,7 @@ def stack_label(count):
     return f'Stacked {count} time' + ('s' if count != 1 else '')
 
 
-def buff_effect_lines(reward, count=1):
+def buff_effect_lines(reward, count=1, include_label=True):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return []
@@ -593,64 +648,65 @@ def buff_effect_lines(reward, count=1):
     target = BUFF_TARGETS.get(reward.get('unit'), {})
     buff_type = reward.get('buff_type')
     label = target.get('label', reward.get('unit', 'Unit'))
+    prefix = f'{label}: ' if include_label else ''
     count = effective_buff_count(reward, count)
     if buff_type == 'production':
         multiplier = max(0.35, 0.85 ** count)
         faster = int(round((1.0 - multiplier) * 100))
         effect = 'Construction' if target.get('category') == 'buildings' else 'Production'
-        return [f'{label}: {effect} {faster}% faster ({stack_label(count)})']
+        return [f'{prefix}{effect} {faster}% faster ({stack_label(count)})']
     if buff_type == 'cost':
         multiplier = max(0.30, 0.80 ** count)
         cheaper = int(round((1.0 - multiplier) * 100))
-        return [f'{label}: Cost {cheaper}% cheaper ({stack_label(count)})']
+        return [f'{prefix}Cost {cheaper}% cheaper ({stack_label(count)})']
     if buff_type == 'speed':
         multiplier = min(1.75, 1.10 ** count)
         faster = int(round((multiplier - 1.0) * 100))
-        return [f'{label}: Speed {faster}% faster ({stack_label(count)})']
+        return [f'{prefix}Speed {faster}% faster ({stack_label(count)})']
     if buff_type == 'armor':
         multiplier = max(0.50, 0.90 ** count)
         tougher = int(round((1.0 - multiplier) * 100))
-        return [f'{label}: Armor {tougher}% stronger ({stack_label(count)})']
+        return [f'{prefix}Armor {tougher}% stronger ({stack_label(count)})']
     if buff_type == 'health':
         multiplier = min(2.0, 1.15 ** count)
         stronger = int(round((multiplier - 1.0) * 100))
-        return [f'{label}: Health {stronger}% higher ({stack_label(count)})']
+        return [f'{prefix}Health {stronger}% higher ({stack_label(count)})']
     if buff_type == 'sight':
         increase = min(4, count)
-        return [f'{label}: Vision +{increase} ({stack_label(count)})']
+        return [f'{prefix}Vision +{increase} ({stack_label(count)})']
     if buff_type == 'rof':
         multiplier = max(0.40, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'{label}: Attack speed {faster}% faster ({stack_label(count)})']
+        return [f'{prefix}Attack speed {faster}% faster ({stack_label(count)})']
     if buff_type == 'veteran':
-        return [f'{label}: Veteran start ({stack_label(count)})']
+        return [f'{prefix}Veteran start ({stack_label(count)})']
     if buff_type == 'damage':
         multiplier = min(2.0, 1.15 ** count)
         stronger = int(round((multiplier - 1.0) * 100))
-        return [f'{label}: Damage {stronger}% higher ({stack_label(count)})']
+        return [f'{prefix}Damage {stronger}% higher ({stack_label(count)})']
     if buff_type == 'reload':
         multiplier = max(0.45, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'{label}: Weapon reload {faster}% faster ({stack_label(count)})']
+        return [f'{prefix}Weapon reload {faster}% faster ({stack_label(count)})']
     if buff_type == 'range':
         increase = min(3.0, 0.5 * count)
         if increase.is_integer():
             increase_text = str(int(increase))
         else:
             increase_text = f'{increase:.1f}'
-        return [f'{label}: Range +{increase_text} ({stack_label(count)})']
+        return [f'{prefix}Range +{increase_text} ({stack_label(count)})']
     if buff_type == 'ammo':
         increase = min(5, count)
-        return [f'{label}: Ammo +{increase} ({stack_label(count)})']
+        return [f'{prefix}Ammo +{increase} ({stack_label(count)})']
     if buff_type == 'self_healing':
-        return [f'{label}: Self-healing enabled ({stack_label(count)})']
+        return [f'{prefix}Self-healing enabled ({stack_label(count)})']
     if buff_type == 'cloak':
-        return [f'{label}: Cloaking enabled ({stack_label(count)})']
+        return [f'{prefix}Cloaking enabled ({stack_label(count)})']
     if buff_type == 'sensors':
-        return [f'{label}: Sensors enabled ({stack_label(count)})']
+        return [f'{prefix}Sensors enabled ({stack_label(count)})']
     if buff_type == 'guard_range':
         increase = min(5, count)
-        return [f'{label}: Targeting range +{increase} ({stack_label(count)})']
+        return [f'{prefix}Targeting range +{increase} ({stack_label(count)})']
     return []
 
 
@@ -692,12 +748,12 @@ def reward_rule_summary(reward):
 
 def reward_display_lines(reward, indent='  '):
     reward = canonical_reward(reward)
+    if reward.get('kind') != 'buff':
+        return []
+
     lines = []
-    description = reward.get('description')
-    if description:
-        lines.append(f'{indent}{description}')
     for summary in reward_rule_summary(reward):
-        lines.append(f'{indent}Effect: {summary}')
+        lines.append(f'{indent}{summary}')
     return lines
 
 

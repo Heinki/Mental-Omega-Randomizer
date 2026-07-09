@@ -6,13 +6,23 @@ The launcher starts campaign missions from outside the normal client, generates 
 
 ## Quick Start
 
-Run `MentalOmegaRandomizer.exe` from the game folder, or run:
+For normal players:
+
+1. Download the latest release zip.
+2. Put `MentalOmegaRandomizer.exe` in the Mental Omega game folder, next to `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
+3. Run `MentalOmegaRandomizer.exe`.
+4. Generate a seed, select an open mission, and launch it from the randomizer.
+5. After objectives or mission victory, return to the launcher. Objective/victory rewards should usually be detected automatically; use `Mark Complete` only if the victory reward was missed.
+
+The launcher starts missions with speed control enabled and writes the selected game speed before launch. The in-game speed slider should remain available during the mission.
+
+For development, run:
 
 ```powershell
 python RandomizerLauncher\launcher_gui.py
 ```
 
-Use the launcher from the Mental Omega game folder. The current EXE is a small bootstrap and still needs a local Python install.
+Use the launcher from the Mental Omega game folder.
 
 ## Build the EXE Bootstrap
 
@@ -26,21 +36,6 @@ powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 
 That compiles `RandomizerLauncher\MentalOmegaRandomizerLauncher.cs` into `MentalOmegaRandomizer.exe` in the game folder.
 
-## GitHub Setup
-
-The Git repository lives in `RandomizerLauncher`, not in the full game folder. The full game folder contains large Mental Omega files and should not be pushed.
-
-From the game folder:
-
-```powershell
-cd RandomizerLauncher
-git status
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git push -u origin master
-```
-
-If Fork still only pushes locally, check `Repository Settings > Remotes` and add the same GitHub URL as `origin`. If Git reports an `index.lock` file, close Fork and any terminal Git command first; only remove `.git\index.lock` when no Git process is running.
-
 ## Project Layout
 
 - `randomizer_app.py` is the active Tk launcher and game-launch orchestration.
@@ -48,6 +43,7 @@ If Fork still only pushes locally, check `Repository Settings > Remotes` and add
 - `randomizer_paths.py` contains shared launcher/game filesystem paths.
 - `randomizer_rewards.py` contains the reward catalogue, reward normalization, and reward display helpers.
 - `randomizer_config.py` contains the small YAML-compatible config loader/writer.
+- `audit_reward_catalog.py` is a developer validation script for checking reward tags, buff targets, and No Bases tech locks.
 - `launcher_gui.py` is only a compatibility entry point that starts `randomizer_app.py`.
 - `MentalOmegaRandomizerLauncher.cs` is the small Windows exe bootstrap source. Keep it for building `MentalOmegaRandomizer.exe`; it is not a second launcher implementation.
 - `config\mental_omega_randomizer.yaml` is the standalone setup file. It uses Archipelago-style option names where practical, but does not connect to Archipelago yet.
@@ -74,7 +70,7 @@ Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 - Has a `Generate New Seed` button for explicitly starting over while still auto-loading the saved seed after a crash/restart.
 - Clears the old launcher log when a new seed is generated, so the visible log belongs to the current seed attempt.
 - Shows only currently open missions and completed missions after a seed is generated. Open missions are sorted above completed missions.
-- Lets you set campaign difficulty and game speed from the launcher before launching a mission. The launcher writes `GameSpeed`, `Difficulty`, `CampDifficulty`, and `DifficultyModeHuman` into the launch files it can safely edit. If an option INI is suspiciously large or corrupt, it is skipped and the launch values are still written to `spawn.ini`.
+- Lets you set campaign difficulty and game speed from the launcher before launching a mission. The launcher writes `GameSpeed`, `Difficulty`, `CampDifficulty`, and `DifficultyModeHuman` into the launch files it can safely edit.
 - Opens the first 3 missions in the seed, then unlocks 1 more mission whenever you mark a mission complete.
 - Tracks reward checks per mission based on the objectives listed in `INI\BattleClient.ini` mission briefings, plus a `Mission Victory` reward for winning the map. Each check can grant a bundle of rewards depending on the `Rewards per objective` setting. Missions with incomplete briefing data fall back to placeholder objective checks until map trigger analysis improves them.
 - Shows per-mission reward progress like `3/15` in the mission list. The count is total rewards earned for that mission, not just total objective checks. Hovering an incomplete mission shows only missing rewards and their current hints.
@@ -106,7 +102,7 @@ Most house-supported buff rewards now apply as generated-map country flags when 
 
 Guarded per-unit/per-weapon buffs are also generated for units whose use can be isolated safely. These cover values that do not exist as house-level flags, such as damage/range-style weapon tuning, health, sight, sensors, cloaking, and self-healing. When unsafe enemy houses use the same unit, the launcher skips those guarded buffs for that map.
 
-Difficulty and game speed are written to all known launch files, and recent debug logs show the engine reading those startup values. If the visible in-game speed slider later changes, that appears to be Mental Omega/client/map control after startup rather than the launcher failing to write the value.
+Difficulty and game speed are written to the known launch files. The launcher also uses `-SPEEDCONTROL`, which is required for the in-game speed slider to appear during spawned missions. Game-speed behavior still needs validation across more campaign maps.
 
 Crate-style firepower/armor/veterancy effects may be a fallback path for in-mission buffs if the engine lets triggers or spawned crates apply them to the player's units only. This is a backup idea, not the preferred implementation, because direct INI-based rewards are easier to display, persist, and balance once they can be made player-only.
 

@@ -8,6 +8,7 @@ import traceback
 from randomizer_config import CONFIG_PATH, load_config, save_config
 from randomizer_rewards import (
     BUFF_TARGETS,
+    BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
     effective_buff_count,
     buff_stack_limit,
@@ -91,8 +92,9 @@ from randomizer_map import (
     unique_in_order,
     unit_weapon_buff_rules,
 )
-DIFFICULTIES = [('Casual', 2), ('Normal', 1), ('Mental', 0)]
+DIFFICULTIES = [('Casual', 0), ('Normal', 1), ('Mental', 2)]
 GAME_SPEEDS = [
+    # Direct spawned missions use the normal in-game speed value.
     ('6 - Fastest', 6),
     ('5 - Faster', 5),
     ('4 - Fast', 4),
@@ -163,6 +165,7 @@ class LauncherApp(tk.Tk):
         self.state = self.load_state()
         self.migrate_state()
         self._reward_factions_cache = {}
+        self._reward_settings_override = None
         self.active_game_process = None
         self.active_hook = None
         self.selected_index = tk.IntVar(value=0)
@@ -195,10 +198,31 @@ class LauncherApp(tk.Tk):
         )
         self.rewards_per_check_var = tk.IntVar(value=default_rewards_per_check)
         generation_config = self.config.get('generation', {})
+        enabled_reward_types = generation_config.get('enabled_reward_types', ['access', 'buff'])
+        enabled_buff_types = generation_config.get('enabled_buff_types')
+        if not isinstance(enabled_buff_types, list):
+            enabled_buff_types = [buff_type['id'] for buff_type in BUFF_TYPES]
+        enabled_buff_types = {
+            str(buff_type)
+            for buff_type in enabled_buff_types
+            if str(buff_type) in {item['id'] for item in BUFF_TYPES}
+        }
         self.buff_allied_helpers_var = tk.BooleanVar(
             value=bool(generation_config.get('buff_allied_helpers', False))
         )
+        self.randomize_unit_access_var = tk.BooleanVar(
+            value=bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
+        )
+        self.include_buff_rewards_var = tk.BooleanVar(
+            value=bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
+        )
+        self.buff_type_vars = {
+            buff_type['id']: tk.BooleanVar(value=buff_type['id'] in enabled_buff_types)
+            for buff_type in BUFF_TYPES
+        }
         self.log_visible_var = tk.BooleanVar(value=False)
+        self.unlock_search_var = tk.StringVar(value='')
+        self.unlock_search_current = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
@@ -215,7 +239,7 @@ class LauncherApp(tk.Tk):
 
         style = ttk.Style(self)
         style.configure('Randomizer.TNotebook', tabposition='n')
-        style.configure('Randomizer.TNotebook.Tab', padding=(14, 6), font=('Segoe UI', 9, 'bold'))
+        style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
 
         header = ttk.Label(main_frame, text='Mental Omega Randomizer Launcher', font=('Segoe UI', 14, 'bold'))
         header.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 8))
@@ -233,12 +257,12 @@ class LauncherApp(tk.Tk):
         self.missions_tree.heading('faction', text='Faction')
         self.missions_tree.heading('code', text='Code')
         self.missions_tree.heading('title', text='Mission Title')
-        self.missions_tree.column('order', width=54, anchor='center', stretch=False)
-        self.missions_tree.column('state', width=72, anchor='center', stretch=False)
-        self.missions_tree.column('checks', width=72, anchor='center', stretch=False)
-        self.missions_tree.column('faction', width=90, anchor='w', stretch=False)
-        self.missions_tree.column('code', width=105, anchor='w', stretch=False)
-        self.missions_tree.column('title', width=360, anchor='w', stretch=True)
+        self.missions_tree.column('order', width=48, anchor='center', stretch=False)
+        self.missions_tree.column('state', width=64, anchor='center', stretch=False)
+        self.missions_tree.column('checks', width=70, anchor='center', stretch=False)
+        self.missions_tree.column('faction', width=78, anchor='w', stretch=False)
+        self.missions_tree.column('code', width=86, anchor='w', stretch=False)
+        self.missions_tree.column('title', width=300, anchor='w', stretch=True)
         self.missions_tree.grid(row=1, column=0, rowspan=5, sticky='nsew', padx=(0, 8))
         self.missions_tree.bind('<<TreeviewSelect>>', self.on_mission_select, add='+')
         self.mission_tooltip = TreeTooltip(self.missions_tree, self.mission_tooltip_text)
@@ -278,7 +302,7 @@ class LauncherApp(tk.Tk):
             state='readonly',
             textvariable=self.game_speed_var,
             values=[name for name, _ in GAME_SPEEDS],
-            width=8,
+            width=10,
         )
         self.game_speed_combo.grid(row=0, column=3, sticky='ew')
 
@@ -326,6 +350,7 @@ class LauncherApp(tk.Tk):
         ttk.Button(button_row, text='Mark Complete', command=self.on_mark_complete).grid(row=0, column=1, sticky='ew', pady=(0, 4))
 
         info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
+        self.info_tabs = info_tabs
         info_tabs.grid(row=4, column=0, sticky='nsew')
         info_tabs.enable_traversal()
 
@@ -337,15 +362,86 @@ class LauncherApp(tk.Tk):
         self.progress_label = ttk.Label(progress_frame, text='No seed generated yet.', anchor='w', justify='left')
         self.progress_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
 
-        self.rewards_text = scrolledtext.ScrolledText(progress_frame, height=16, wrap='word', state='disabled')
+        self.rewards_text = scrolledtext.ScrolledText(
+            progress_frame,
+            height=16,
+            wrap='word',
+            state='disabled',
+            font=('Segoe UI', 9),
+        )
         self.rewards_text.grid(row=1, column=0, sticky='nsew')
 
         unlocks_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
+        self.unlocks_tab = unlocks_frame
         unlocks_frame.columnconfigure(0, weight=1)
-        unlocks_frame.rowconfigure(0, weight=1)
+        unlocks_frame.rowconfigure(1, weight=1)
         info_tabs.add(unlocks_frame, text='Current Unlocks')
-        self.unlocks_text = scrolledtext.ScrolledText(unlocks_frame, height=16, wrap='word', state='disabled')
-        self.unlocks_text.grid(row=0, column=0, sticky='nsew')
+
+        search_row = ttk.Frame(unlocks_frame)
+        search_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+        search_row.columnconfigure(0, weight=1)
+        self.unlock_search_entry = ttk.Entry(search_row, textvariable=self.unlock_search_var)
+        self.unlock_search_entry.grid(row=0, column=0, sticky='ew', padx=(0, 4))
+        ttk.Button(search_row, text='Prev', command=self.find_unlock_previous, width=8).grid(row=0, column=1, padx=(0, 4))
+        ttk.Button(search_row, text='Next', command=self.find_unlock_next, width=8).grid(row=0, column=2, padx=(0, 4))
+        ttk.Button(search_row, text='Clear', command=self.clear_unlock_search, width=8).grid(row=0, column=3)
+        self.unlock_search_status = ttk.Label(search_row, text='', width=9, anchor='e')
+        self.unlock_search_status.grid(row=0, column=4, padx=(6, 0))
+
+        self.unlocks_text = scrolledtext.ScrolledText(
+            unlocks_frame,
+            height=16,
+            wrap='word',
+            state='disabled',
+            font=('Segoe UI', 9),
+        )
+        self.unlocks_text.grid(row=1, column=0, sticky='nsew')
+        self.unlocks_text.tag_configure('search_match', background='#fff0a6')
+        self.unlocks_text.tag_configure('search_current', background='#ffbf69')
+        self.unlock_search_var.trace_add('write', self.refresh_unlock_search)
+        self.unlock_search_entry.bind('<Return>', self.find_unlock_next)
+        self.unlock_search_entry.bind('<Shift-Return>', self.find_unlock_previous)
+        self.unlock_search_entry.bind('<Escape>', self.clear_unlock_search)
+        self.bind_all('<Control-f>', self.focus_unlock_search, add='+')
+        self.bind_all('<F3>', self.find_unlock_next, add='+')
+        self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
+
+        settings_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
+        settings_frame.columnconfigure(0, weight=1)
+        info_tabs.add(settings_frame, text='Settings')
+
+        ttk.Label(
+            settings_frame,
+            text='Settings are saved for the next generated seed. Existing runs keep the settings they were generated with.',
+            wraplength=520,
+            foreground='#555555',
+        ).grid(row=0, column=0, sticky='ew', pady=(0, 8))
+
+        reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
+        reward_frame.grid(row=1, column=0, sticky='ew')
+        reward_frame.columnconfigure(0, weight=1)
+        ttk.Checkbutton(
+            reward_frame,
+            text='Randomize unit access and lock unearned tech',
+            variable=self.randomize_unit_access_var,
+        ).grid(row=0, column=0, sticky='w')
+        ttk.Checkbutton(
+            reward_frame,
+            text='Include buff rewards',
+            variable=self.include_buff_rewards_var,
+        ).grid(row=1, column=0, sticky='w', pady=(4, 0))
+
+        buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
+        buff_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+        for column in range(3):
+            buff_frame.columnconfigure(column, weight=1)
+        for index, buff_type in enumerate(BUFF_TYPES):
+            row, column = divmod(index, 3)
+            ttk.Checkbutton(
+                buff_frame,
+                text=buff_type.get('setting_label', buff_type['name']),
+                variable=self.buff_type_vars[buff_type['id']],
+            ).grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
 
         self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
         self.status_label.grid(row=6, column=0, columnspan=3, sticky='ew', pady=(8, 0))
@@ -380,8 +476,93 @@ class LauncherApp(tk.Tk):
 
         main_frame.rowconfigure(1, weight=1)
         main_frame.rowconfigure(8, weight=0)
-        main_frame.columnconfigure(0, weight=3)
-        main_frame.columnconfigure(2, weight=2)
+        main_frame.columnconfigure(0, weight=4)
+        main_frame.columnconfigure(2, weight=3)
+
+    def focus_unlock_search(self, event=None):
+        if hasattr(self, 'info_tabs') and hasattr(self, 'unlocks_tab'):
+            self.info_tabs.select(self.unlocks_tab)
+        if hasattr(self, 'unlock_search_entry'):
+            self.unlock_search_entry.focus_set()
+            self.unlock_search_entry.select_range(0, 'end')
+        self.refresh_unlock_search()
+        return 'break'
+
+    def clear_unlock_search(self, event=None):
+        self.unlock_search_var.set('')
+        if hasattr(self, 'unlock_search_entry'):
+            self.unlock_search_entry.focus_set()
+        return 'break'
+
+    def refresh_unlock_search(self, *args):
+        if not hasattr(self, 'unlocks_text'):
+            return
+
+        term = self.unlock_search_var.get().strip()
+        self.unlocks_text.tag_remove('search_match', '1.0', 'end')
+        self.unlocks_text.tag_remove('search_current', '1.0', 'end')
+        self.unlock_search_current = None
+        if not term:
+            if hasattr(self, 'unlock_search_status'):
+                self.unlock_search_status.config(text='')
+            return
+
+        count = tk.IntVar(value=0)
+        start = '1.0'
+        first_match = None
+        matches = 0
+        while True:
+            pos = self.unlocks_text.search(term, start, stopindex='end', nocase=True, count=count)
+            if not pos or count.get() <= 0:
+                break
+            end = f'{pos}+{count.get()}c'
+            if first_match is None:
+                first_match = pos
+            self.unlocks_text.tag_add('search_match', pos, end)
+            matches += 1
+            start = end
+
+        if hasattr(self, 'unlock_search_status'):
+            self.unlock_search_status.config(text=f'{matches} found' if matches else 'No match')
+        if first_match:
+            self.set_unlock_search_current(first_match, len(term))
+
+    def set_unlock_search_current(self, pos, length):
+        self.unlocks_text.tag_remove('search_current', '1.0', 'end')
+        self.unlock_search_current = pos
+        self.unlocks_text.tag_add('search_current', pos, f'{pos}+{length}c')
+        self.unlocks_text.see(pos)
+
+    def find_unlock_next(self, event=None):
+        return self.find_unlock_match(forward=True)
+
+    def find_unlock_previous(self, event=None):
+        return self.find_unlock_match(forward=False)
+
+    def find_unlock_match(self, forward=True):
+        if not hasattr(self, 'unlocks_text'):
+            return 'break'
+
+        term = self.unlock_search_var.get().strip()
+        if not term:
+            self.focus_unlock_search()
+            return 'break'
+
+        count = tk.IntVar(value=0)
+        if forward:
+            start = f'{self.unlock_search_current}+1c' if self.unlock_search_current else '1.0'
+            pos = self.unlocks_text.search(term, start, stopindex='end', nocase=True, count=count)
+            if not pos:
+                pos = self.unlocks_text.search(term, '1.0', stopindex='end', nocase=True, count=count)
+        else:
+            start = self.unlock_search_current if self.unlock_search_current else 'end'
+            pos = self.unlocks_text.search(term, start, stopindex='1.0', backwards=True, nocase=True, count=count)
+            if not pos:
+                pos = self.unlocks_text.search(term, 'end', stopindex='1.0', backwards=True, nocase=True, count=count)
+
+        if pos and count.get() > 0:
+            self.set_unlock_search_current(pos, count.get())
+        return 'break'
 
     def toggle_log(self):
         if self.log_visible_var.get():
@@ -482,6 +663,71 @@ class LauncherApp(tk.Tk):
     def save_state(self):
         STATE_PATH.write_text(json.dumps(self.state, indent=2), encoding='utf-8')
 
+    def config_reward_settings(self):
+        generation_config = self.config.get('generation', {})
+        enabled_reward_types = generation_config.get('enabled_reward_types', ['access', 'buff'])
+        enabled_buff_types = generation_config.get('enabled_buff_types')
+        if not isinstance(enabled_buff_types, list):
+            enabled_buff_types = [buff_type['id'] for buff_type in BUFF_TYPES]
+        enabled_buff_types = [
+            str(buff_type)
+            for buff_type in enabled_buff_types
+            if str(buff_type) in {item['id'] for item in BUFF_TYPES}
+        ]
+        randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
+        include_buffs = bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
+        return {
+            'randomize_unit_access': randomize_access,
+            'include_buff_rewards': include_buffs,
+            'enabled_reward_types': [
+                reward_type
+                for reward_type, enabled in (('access', randomize_access), ('buff', include_buffs))
+                if enabled
+            ],
+            'enabled_buff_types': enabled_buff_types,
+        }
+
+    def current_reward_settings(self):
+        if 'randomize_unit_access_var' not in self.__dict__:
+            return self.config_reward_settings()
+        randomize_access = bool(self.randomize_unit_access_var.get())
+        include_buffs = bool(self.include_buff_rewards_var.get())
+        enabled_buff_types = [
+            buff_type['id']
+            for buff_type in BUFF_TYPES
+            if self.buff_type_vars[buff_type['id']].get()
+        ]
+        return {
+            'randomize_unit_access': randomize_access,
+            'include_buff_rewards': include_buffs,
+            'enabled_reward_types': [
+                reward_type
+                for reward_type, enabled in (('access', randomize_access), ('buff', include_buffs))
+                if enabled
+            ],
+            'enabled_buff_types': enabled_buff_types,
+        }
+
+    def active_reward_settings(self):
+        override = self.__dict__.get('_reward_settings_override')
+        if override is not None:
+            settings = dict(override)
+        elif self.state and isinstance(self.state.get('reward_settings'), dict):
+            settings = dict(self.state.get('reward_settings', {}))
+        else:
+            settings = self.current_reward_settings()
+        settings.setdefault('randomize_unit_access', True)
+        settings.setdefault('include_buff_rewards', True)
+        if not isinstance(settings.get('enabled_buff_types'), list):
+            settings['enabled_buff_types'] = [buff_type['id'] for buff_type in BUFF_TYPES]
+        return settings
+
+    def randomize_unit_access_enabled(self):
+        return bool(self.active_reward_settings().get('randomize_unit_access', True))
+
+    def buff_rewards_enabled(self):
+        return bool(self.active_reward_settings().get('include_buff_rewards', True))
+
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
         self.config['seed'] = seed
         self.config['campaign_filter'] = self.campaign_var.get()
@@ -489,8 +735,13 @@ class LauncherApp(tk.Tk):
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['difficulty'] = self.difficulty_var.get()
         self.config['game_speed'] = self.game_speed_var.get()
+        reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
+        self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
+        self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
+        self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
+        self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
         self.config.setdefault('archipelago', {}).setdefault('enabled', False)
         self.config['archipelago'].setdefault('slot_name', self.config.get('player_name', 'Commander'))
         save_config(self.config)
@@ -551,7 +802,24 @@ class LauncherApp(tk.Tk):
             for reward in REWARD_POOL
             if not reward.get('factions') or factions.intersection(reward.get('factions', []))
         ]
-        return pool or list(REWARD_POOL)
+        return self.filter_reward_pool(pool)
+
+    def configured_reward_pool(self):
+        return self.filter_reward_pool(REWARD_POOL)
+
+    def filter_reward_pool(self, pool):
+        reward_settings = self.active_reward_settings()
+        randomize_access = bool(reward_settings.get('randomize_unit_access', True))
+        include_buffs = bool(reward_settings.get('include_buff_rewards', True))
+        enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
+        return [
+            reward
+            for reward in pool
+            if (
+                (reward.get('kind') == 'buff' and include_buffs and reward.get('buff_type') in enabled_buff_types)
+                or (reward.get('kind') != 'buff' and randomize_access)
+            )
+        ]
 
     def reward_factions_for_code(self, code):
         if not hasattr(self, '_reward_factions_cache'):
@@ -698,6 +966,7 @@ class LauncherApp(tk.Tk):
 
     def generate_seed_reward_plan(self, mission_codes, seed, slots_by_code):
         rng = random.Random(f'{seed}:seed-rewards')
+        require_access_for_unit_buffs = self.randomize_unit_access_enabled()
         access_by_code = {}
         buffs_by_code = {}
         for code in mission_codes:
@@ -743,7 +1012,7 @@ class LauncherApp(tk.Tk):
                     count = global_buff_counts.get(reward.get('name'), 0)
                     if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
                         global_candidates.append(reward)
-                elif unit in seed_unlocked_tech_ids:
+                elif not require_access_for_unit_buffs or unit in seed_unlocked_tech_ids:
                     unit_candidates.append(reward)
 
             candidates = unit_candidates or global_candidates
@@ -767,9 +1036,28 @@ class LauncherApp(tk.Tk):
                 name = reward.get('name')
                 if limit is not None and buff_counts.get(name, 0) >= limit:
                     continue
+                if reward.get('kind') == 'buff':
+                    unit = reward.get('unit')
+                    if (
+                        require_access_for_unit_buffs
+                        and unit
+                        and not reward.get('global_buff')
+                        and unit not in seed_unlocked_tech_ids
+                    ):
+                        continue
                 candidates.append(reward)
             if not candidates:
-                candidates = [dict(reward) for reward in REWARD_POOL if reward.get('kind') == 'buff']
+                candidates = [
+                    dict(reward)
+                    for reward in self.configured_reward_pool()
+                    if reward.get('kind') == 'buff'
+                    and (
+                        not require_access_for_unit_buffs
+                        or reward.get('global_buff')
+                        or not reward.get('unit')
+                        or reward.get('unit') in seed_unlocked_tech_ids
+                    )
+                ]
             if not candidates:
                 return None
             reward = dict(rng.choice(candidates))
@@ -976,10 +1264,20 @@ class LauncherApp(tk.Tk):
         rng = random.Random(seed)
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
+        reward_settings = self.current_reward_settings()
+        if not reward_settings['randomize_unit_access'] and not reward_settings['include_buff_rewards']:
+            self.append_log('Cannot generate seed: enable unit access rewards, buff rewards, or both.', error=True)
+            return
+        if reward_settings['include_buff_rewards'] and not reward_settings['enabled_buff_types']:
+            self.append_log('Cannot generate seed: buff rewards are enabled but no buff types are selected.', error=True)
+            return
 
-        mission_codes = [mission['code'] for mission in seed_missions]
-        rng.shuffle(mission_codes)
-        mission_codes = mission_codes[:mission_goal]
+        self._reward_settings_override = reward_settings
+        mission_codes = self.seed_mission_order(seed_missions, rng, mission_goal)
+        if not any(self.reward_pool_for_code(code) for code in mission_codes):
+            self._reward_settings_override = None
+            self.append_log('Cannot generate seed: the selected reward settings produce no available rewards.', error=True)
+            return
 
         mission_checks = self.build_mission_checks(
             mission_codes,
@@ -1008,8 +1306,10 @@ class LauncherApp(tk.Tk):
             'reward_queue': rewards,
             'mission_checks': mission_checks,
             'mission_objectives': mission_objectives,
+            'reward_settings': reward_settings,
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
+        self._reward_settings_override = None
         self.seed_var.set(seed)
         self.save_state()
         self.save_launcher_config(seed, mission_goal, rewards_per_check)
@@ -1022,6 +1322,93 @@ class LauncherApp(tk.Tk):
             f'First {self.state["starting_unlocked_missions"]} missions are open. '
             f'Setup saved to {CONFIG_PATH}.'
         )
+
+    def mission_stage_score(self, mission):
+        title = mission.get('title', '') or ''
+        code = mission.get('code', '') or ''
+        match = re.search(r'\b(?:Allied|Soviet|Epsilon|Foehn)\s+(\d{1,2})\b', title, flags=re.IGNORECASE)
+        if match:
+            score = int(match.group(1))
+        elif re.search(r'\bOp\b', title, flags=re.IGNORECASE):
+            score = 9
+        else:
+            score = int(mission.get('index') or 12)
+
+        if re.search(r'\b(finale|final)\b', title, flags=re.IGNORECASE):
+            score = max(score, 24)
+        if code.upper() in {'SHAND'}:
+            score = max(score, 24)
+        return score
+
+    def seed_mission_order(self, missions, rng, mission_goal):
+        missions = list(missions)
+        mission_goal = max(1, min(mission_goal, len(missions)))
+        if not missions:
+            return []
+
+        def bucket(mission):
+            score = self.mission_stage_score(mission)
+            if score <= 6:
+                return 0
+            if score <= 16:
+                return 1
+            if score < 24:
+                return 2
+            return 3
+
+        def shuffled(items):
+            items = list(items)
+            rng.shuffle(items)
+            return items
+
+        early_mid = [mission for mission in missions if bucket(mission) <= 1]
+        non_finale = [mission for mission in missions if bucket(mission) <= 2]
+        if mission_goal <= 5 and len(early_mid) >= mission_goal:
+            candidates = early_mid
+        elif len(non_finale) >= mission_goal:
+            candidates = non_finale
+        else:
+            candidates = missions
+
+        start_count = min(STARTING_UNLOCKED_MISSIONS, mission_goal)
+        starting_pool = shuffled([mission for mission in candidates if bucket(mission) == 0])
+        if len(starting_pool) < start_count:
+            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 1]))
+        if len(starting_pool) < start_count:
+            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 2]))
+        if len(starting_pool) < start_count:
+            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 3]))
+
+        picked_codes = set()
+        ordered = []
+        for mission in starting_pool:
+            if mission['code'] in picked_codes:
+                continue
+            ordered.append(mission)
+            picked_codes.add(mission['code'])
+            if len(ordered) >= start_count:
+                break
+
+        if len(ordered) >= mission_goal:
+            return [item['code'] for item in ordered]
+
+        for bucket_index in range(4):
+            for mission in shuffled([mission for mission in candidates if bucket(mission) == bucket_index]):
+                if mission['code'] in picked_codes:
+                    continue
+                ordered.append(mission)
+                picked_codes.add(mission['code'])
+                if len(ordered) >= mission_goal:
+                    return [item['code'] for item in ordered]
+
+        for mission in shuffled(missions):
+            if mission['code'] in picked_codes:
+                continue
+            ordered.append(mission)
+            picked_codes.add(mission['code'])
+            if len(ordered) >= mission_goal:
+                break
+        return [item['code'] for item in ordered]
 
     def generate_rewards_for_count(self, count, seed, reward_pool=None):
         rng = random.Random(f'{seed}:rewards')
@@ -1298,11 +1685,11 @@ class LauncherApp(tk.Tk):
         return 'Normal'
 
     def read_spawn_game_speed(self):
-        for path in (OPTIONS_INI, YR_OPTIONS_INI, SPAWN_INI):
+        for path in (SPAWN_INI, OPTIONS_INI, YR_OPTIONS_INI):
             label = self.read_game_speed_from_ini(path)
             if label:
                 return label
-        return next(label for label, code in GAME_SPEEDS if code == 3)
+        return '3 - Medium'
 
     def read_game_speed_from_ini(self, path):
         if not path.exists():
@@ -1409,16 +1796,18 @@ throw "Map $name was not found in expandmo*.mix"
 
     def map_rules_for_launch(self, extra_rules=None):
         rule_sections = {}
-        reward_unlocks = reward_unlock_tech_ids()
-        for section in sorted(controlled_tech_ids()):
-            section_upper = section.upper()
-            values = rule_sections.setdefault(section, {})
-            if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS or section_upper not in reward_unlocks:
-                values['PrerequisiteOverride'] = LOCKED_PREREQUISITE
-            if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS:
-                values['BuildLimit'] = SCRIPTED_TECH_BUILD_LIMIT
-            else:
-                values['TechLevel'] = LOCKED_TECH_LEVEL
+        randomize_access = self.randomize_unit_access_enabled()
+        if randomize_access:
+            reward_unlocks = reward_unlock_tech_ids()
+            for section in sorted(controlled_tech_ids()):
+                section_upper = section.upper()
+                values = rule_sections.setdefault(section, {})
+                if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS or section_upper not in reward_unlocks:
+                    values['PrerequisiteOverride'] = LOCKED_PREREQUISITE
+                if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS:
+                    values['BuildLimit'] = SCRIPTED_TECH_BUILD_LIMIT
+                else:
+                    values['TechLevel'] = LOCKED_TECH_LEVEL
 
         if self.state:
             earned_rewards = self.earned_rewards_from_checks()
@@ -1426,6 +1815,8 @@ throw "Map $name was not found in expandmo*.mix"
             for reward in earned_rewards:
                 reward = canonical_reward(reward)
                 if reward.get('kind') == 'buff' and reward.get('buff_type'):
+                    continue
+                if not randomize_access:
                     continue
                 for section, values in launch_rules_for_reward(reward).items():
                     rule_sections.setdefault(section, {}).update(values)
@@ -1455,8 +1846,13 @@ throw "Map $name was not found in expandmo*.mix"
         allow_shared_country_buffs = bool(generation_config.get('allow_shared_country_buffs', False))
         transient_rulesmo_buffs = bool(generation_config.get('transient_rulesmo_buffs', False))
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
+        require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
         if self.state and experimental_house_buffs:
-            player_house, house_buffs = clone_player_country_for_house_buffs(lines, self.earned_rewards_from_checks())
+            player_house, house_buffs = clone_player_country_for_house_buffs(
+                lines,
+                self.earned_rewards_from_checks(),
+                require_unlocked_access=require_unlocked_access_for_buffs,
+            )
             if house_buffs:
                 buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
                 self.append_log(f'Applied player-house buffs to {player_house} via MORPLAYER: {buff_summary}')
@@ -1466,6 +1862,7 @@ throw "Map $name was not found in expandmo*.mix"
                 self.earned_rewards_from_checks(),
                 allow_shared_country=allow_shared_country_buffs,
                 buff_allied_helpers=buff_allied_helpers,
+                require_unlocked_access=require_unlocked_access_for_buffs,
             )
             if house_rule_sections:
                 merge_ini_section_values(lines, house_rule_sections)
@@ -1486,7 +1883,10 @@ throw "Map $name was not found in expandmo*.mix"
                     f'non-player house(s) share that country ({", ".join(shared_houses)}).'
                 )
         elif self.state:
-            pending_house_buffs = stacked_house_buff_values(self.earned_rewards_from_checks())
+            pending_house_buffs = stacked_house_buff_values(
+                self.earned_rewards_from_checks(),
+                require_unlocked_access=require_unlocked_access_for_buffs,
+            )
             if pending_house_buffs:
                 self.append_log(
                     'Experimental player-house buffs are disabled for mission stability; '
@@ -1498,6 +1898,7 @@ throw "Map $name was not found in expandmo*.mix"
                 lines,
                 self.earned_rewards_from_checks(),
                 buff_allied_helpers=buff_allied_helpers,
+                require_unlocked_access=require_unlocked_access_for_buffs,
             )
             if weapon_rule_sections:
                 merge_ini_section_values(lines, weapon_rule_sections)
@@ -1518,7 +1919,6 @@ throw "Map $name was not found in expandmo*.mix"
         removed_techlevel_actions = remove_locked_techlevel_actions(lines, unlocked_tech_ids)
         if removed_techlevel_actions:
             self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
-
         objective_action_ids = action_line_ids(
             lines,
             lambda groups: action_has_objective_complete(groups) and not action_has_code(groups, 1) and not action_has_code(groups, 67),
@@ -1597,7 +1997,7 @@ throw "Map $name was not found in expandmo*.mix"
                 'Side=0',
                 'BuildOffAlly=True',
                 f'DifficultyModeHuman={difficulty_value}',
-                'DifficultyModeComputer=0',
+                f'DifficultyModeComputer={difficulty_value}',
             ]
             for key, value in sorted(self.spawn_reward_options().items()):
                 content.append(f'{key}={value}')
@@ -1618,7 +2018,18 @@ throw "Map $name was not found in expandmo*.mix"
             skipped = []
             for path in (OPTIONS_INI, YR_OPTIONS_INI):
                 if path.exists() and path.stat().st_size > MAX_OPTION_INI_BYTES:
-                    skipped.append(f'{path.name} ({path.stat().st_size} bytes)')
+                    patched = self.patch_large_options_ini(
+                        path,
+                        {
+                            'GameSpeed': game_speed_value,
+                            'Difficulty': difficulty_value,
+                            'CampDifficulty': difficulty_value,
+                        },
+                    )
+                    if patched:
+                        written.append(f'{path.name} (in-place)')
+                    else:
+                        skipped.append(f'{path.name} ({path.stat().st_size} bytes)')
                     continue
                 backup_file_once(path, 'original')
                 text = read_text(path) if path.exists() else ''
@@ -1637,12 +2048,80 @@ throw "Map $name was not found in expandmo*.mix"
                 self.append_log(
                     'Skipped oversized option file(s): '
                     + ', '.join(skipped)
-                    + '. GameSpeed and difficulty are still written to spawn.ini.'
+                    + '. GameSpeed and difficulty are still written to spawn.ini and other option files.'
                 )
         except Exception:
             self.append_log('Failed to write launch options:', error=True)
             self.append_log(traceback.format_exc(), error=True)
             raise
+
+    def patch_large_options_ini(self, path, values):
+        """Patch one-digit option values in oversized/corrupt INIs without rewriting them."""
+        try:
+            backup_file_once(path, 'original')
+            patched = []
+            with path.open('r+b') as handle:
+                for key, value in values.items():
+                    if self.patch_large_ini_key(handle, key, str(value)):
+                        patched.append(key)
+            missing = sorted(set(values) - set(patched))
+            if missing:
+                self.append_log(
+                    f'{path.name}: could not in-place patch {", ".join(missing)} in oversized option file.',
+                    error=True,
+                )
+            return len(patched) == len(values)
+        except Exception:
+            self.append_log(f'Failed to patch oversized option file {path.name}:', error=True)
+            self.append_log(traceback.format_exc(), error=True)
+            return False
+
+    def patch_large_ini_key(self, handle, key, value):
+        pattern = f'{key}='.encode('ascii')
+        pattern_lower = pattern.lower()
+        replacement = value.encode('ascii')
+        chunk_size = 1024 * 1024
+        overlap_size = len(pattern) + 32
+        carry = b''
+        offset = 0
+        handle.seek(0)
+
+        while True:
+            chunk = handle.read(chunk_size)
+            if not chunk:
+                return False
+            data = carry + chunk
+            search = data.lower()
+            base_offset = offset - len(carry)
+            position = 0
+
+            while True:
+                index = search.find(pattern_lower, position)
+                if index < 0:
+                    break
+                if index > 0 and data[index - 1] not in (10, 13):
+                    position = index + len(pattern)
+                    continue
+                absolute_index = base_offset + index
+                value_start = absolute_index + len(pattern)
+                handle.seek(value_start)
+                existing = handle.read(32)
+                old_length = 0
+                for byte in existing:
+                    if byte in (10, 13):
+                        break
+                    old_length += 1
+                if old_length >= len(replacement):
+                    handle.seek(value_start)
+                    handle.write(replacement + (b' ' * (old_length - len(replacement))))
+                    return True
+                position = index + len(pattern)
+
+            if len(data) > overlap_size:
+                carry = data[-overlap_size:]
+            else:
+                carry = data
+            offset += len(chunk)
 
     def write_transient_rulesmo_ini(self, rule_sections):
         if not rule_sections:
@@ -1835,16 +2314,13 @@ throw "Map $name was not found in expandmo*.mix"
 
             if group['access']:
                 for reward in sorted(group['access'].values(), key=lambda item: item.get('name', '')):
-                    lines.append(f'Access: {reward_display_name(reward)}')
-                    for summary in reward_rule_summary(reward):
-                        lines.append(f'  {summary}')
+                    lines.append(reward_display_name(reward))
 
             if group['buffs']:
                 for entry in sorted(group['buffs'].values(), key=lambda item: item['reward'].get('name', '')):
                     reward = entry['reward']
                     count = effective_buff_count(reward, entry['count'])
-                    lines.append(f'Buff x{count}: {reward_display_name(reward)}')
-                    for summary in buff_effect_lines(reward, count=count):
+                    for summary in buff_effect_lines(reward, count=count, include_label=False):
                         lines.append(f'  {summary}')
 
             for reward in group['other']:
@@ -1928,6 +2404,7 @@ throw "Map $name was not found in expandmo*.mix"
         self.unlocks_text.delete('1.0', 'end')
         self.unlocks_text.insert('end', text)
         self.unlocks_text.configure(state='disabled')
+        self.refresh_unlock_search()
 
 
 def main():
