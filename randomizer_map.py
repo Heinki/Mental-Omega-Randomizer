@@ -790,6 +790,17 @@ def country_family(record):
         record.get('parent_country') or '',
     ]).lower()
 
+    if 'fourthside' in text:
+        return 'foehn'
+    if any(token in country_text for token in (
+        'foehn', 'coronia', 'haiheadquarters', 'hai_headquarters', 'lastbastion'
+    )):
+        return 'foehn'
+    if (
+        any(token in country_text for token in ('guild1', 'guild2', 'guild3'))
+        and 'europeans' not in country_text
+    ):
+        return 'foehn'
     if any(token in country_text for token in (
         'psicorps', 'psi_corps', 'scorpion', 'epsilon', 'yuri', 'headquaters'
     )):
@@ -798,10 +809,6 @@ def country_family(record):
         'ussr', 'soviet', 'russia', 'latin', 'chinese', 'iraq', 'cuba', 'libya'
     )):
         return 'soviets'
-    if any(token in country_text for token in (
-        'foehn', 'coronia', 'haiheadquarters', 'hai_headquarters', 'lastbastion'
-    )):
-        return 'foehn'
     if any(token in country_text for token in (
         'unitedstates', 'europeans', 'euro_alliance', 'pacific', 'guild'
     )):
@@ -820,6 +827,13 @@ def same_helper_family(player_record, helper_record):
     helper_family = country_family(helper_record)
     if not player_family or not helper_family:
         return False
+    if player_family == 'foehn' and helper_family in {'allies', 'soviets', 'foehn'}:
+        player_allies = {name.lower() for name in player_record.get('allies', [])}
+        helper_allies = {name.lower() for name in helper_record.get('allies', [])}
+        return (
+            helper_record.get('name', '').lower() in player_allies
+            and player_record.get('name', '').lower() in helper_allies
+        )
     return player_family == helper_family
 
 
