@@ -106,10 +106,11 @@ CAMPAIGN_FILTERS = ['All Campaigns', 'Allies', 'Soviets', 'Epsilon', 'Foehn']
 STARTING_UNLOCKED_MISSIONS = 3
 DEFAULT_MISSION_GOAL = 15
 FALLBACK_OBJECTIVE_COUNT = 3
-CHECK_SCHEMA_VERSION = 15
+CHECK_SCHEMA_VERSION = 16
 HOOK_POLL_MS = 1500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
+MIXED_REWARD_MISSION_CODES = {'FREMNANT'}
 
 class TreeTooltip:
     def __init__(self, tree, text_callback):
@@ -161,6 +162,7 @@ class LauncherApp(tk.Tk):
         self.config = load_config()
         self.state = self.load_state()
         self.migrate_state()
+        self._reward_factions_cache = {}
         self.active_game_process = None
         self.active_hook = None
         self.selected_index = tk.IntVar(value=0)
@@ -196,6 +198,7 @@ class LauncherApp(tk.Tk):
         self.buff_allied_helpers_var = tk.BooleanVar(
             value=bool(generation_config.get('buff_allied_helpers', False))
         )
+        self.log_visible_var = tk.BooleanVar(value=False)
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
@@ -205,16 +208,21 @@ class LauncherApp(tk.Tk):
 
     def create_widgets(self):
         main_frame = ttk.Frame(self, padding=(12, 12, 12, 12))
+        self.main_frame = main_frame
         main_frame.grid(row=0, column=0, sticky='nsew')
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
+
+        style = ttk.Style(self)
+        style.configure('Randomizer.TNotebook', tabposition='n')
+        style.configure('Randomizer.TNotebook.Tab', padding=(14, 6), font=('Segoe UI', 9, 'bold'))
 
         header = ttk.Label(main_frame, text='Mental Omega Randomizer Launcher', font=('Segoe UI', 14, 'bold'))
         header.grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 8))
 
         self.missions_tree = ttk.Treeview(
             main_frame,
-            columns=('order', 'state', 'checks', 'faction', 'title', 'code'),
+            columns=('order', 'state', 'checks', 'faction', 'code', 'title'),
             show='headings',
             selectmode='browse',
             height=17,
@@ -223,14 +231,14 @@ class LauncherApp(tk.Tk):
         self.missions_tree.heading('state', text='State')
         self.missions_tree.heading('checks', text='Rewards')
         self.missions_tree.heading('faction', text='Faction')
-        self.missions_tree.heading('title', text='Mission Title')
         self.missions_tree.heading('code', text='Code')
+        self.missions_tree.heading('title', text='Mission Title')
         self.missions_tree.column('order', width=54, anchor='center', stretch=False)
         self.missions_tree.column('state', width=72, anchor='center', stretch=False)
         self.missions_tree.column('checks', width=72, anchor='center', stretch=False)
         self.missions_tree.column('faction', width=90, anchor='w', stretch=False)
-        self.missions_tree.column('title', width=390, anchor='w')
-        self.missions_tree.column('code', width=82, anchor='w', stretch=False)
+        self.missions_tree.column('code', width=105, anchor='w', stretch=False)
+        self.missions_tree.column('title', width=360, anchor='w', stretch=True)
         self.missions_tree.grid(row=1, column=0, rowspan=5, sticky='nsew', padx=(0, 8))
         self.missions_tree.bind('<<TreeviewSelect>>', self.on_mission_select, add='+')
         self.mission_tooltip = TreeTooltip(self.missions_tree, self.mission_tooltip_text)
@@ -317,8 +325,9 @@ class LauncherApp(tk.Tk):
         ttk.Button(button_row, text='Launch Mission', command=self.on_launch_selected).grid(row=0, column=0, sticky='ew', padx=(0, 4), pady=(0, 4))
         ttk.Button(button_row, text='Mark Complete', command=self.on_mark_complete).grid(row=0, column=1, sticky='ew', pady=(0, 4))
 
-        info_tabs = ttk.Notebook(right_frame)
+        info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
         info_tabs.grid(row=4, column=0, sticky='nsew')
+        info_tabs.enable_traversal()
 
         progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
         progress_frame.columnconfigure(0, weight=1)
@@ -341,8 +350,22 @@ class LauncherApp(tk.Tk):
         self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
         self.status_label.grid(row=6, column=0, columnspan=3, sticky='ew', pady=(8, 0))
 
-        log_label = ttk.Label(main_frame, text='Launcher log')
-        log_label.grid(row=7, column=0, columnspan=3, sticky='w', pady=(12, 4))
+        log_header = ttk.Frame(main_frame)
+        log_header.grid(row=7, column=0, columnspan=3, sticky='ew', pady=(12, 4))
+        log_header.columnconfigure(1, weight=1)
+        self.log_toggle_button = ttk.Button(
+            log_header,
+            text='Show Launcher Log',
+            command=self.toggle_log,
+            width=18,
+        )
+        self.log_toggle_button.grid(row=0, column=0, sticky='w')
+        ttk.Label(log_header, text='Detailed launch/debug output is still written here.').grid(
+            row=0,
+            column=1,
+            sticky='w',
+            padx=(8, 0),
+        )
 
         self.log_text = scrolledtext.ScrolledText(
             main_frame,
@@ -353,11 +376,24 @@ class LauncherApp(tk.Tk):
             foreground='white',
         )
         self.log_text.grid(row=8, column=0, columnspan=3, sticky='nsew')
+        self.log_text.grid_remove()
 
         main_frame.rowconfigure(1, weight=1)
-        main_frame.rowconfigure(8, weight=1)
-        main_frame.columnconfigure(0, weight=2)
-        main_frame.columnconfigure(2, weight=3)
+        main_frame.rowconfigure(8, weight=0)
+        main_frame.columnconfigure(0, weight=3)
+        main_frame.columnconfigure(2, weight=2)
+
+    def toggle_log(self):
+        if self.log_visible_var.get():
+            self.log_text.grid_remove()
+            self.main_frame.rowconfigure(8, weight=0)
+            self.log_toggle_button.configure(text='Show Launcher Log')
+            self.log_visible_var.set(False)
+        else:
+            self.log_text.grid()
+            self.main_frame.rowconfigure(8, weight=1)
+            self.log_toggle_button.configure(text='Hide Launcher Log')
+            self.log_visible_var.set(True)
 
     def append_log(self, message, error=False):
         self.log_text.configure(state='normal')
@@ -518,14 +554,26 @@ class LauncherApp(tk.Tk):
         return pool or list(REWARD_POOL)
 
     def reward_factions_for_code(self, code):
+        if not hasattr(self, '_reward_factions_cache'):
+            self._reward_factions_cache = {}
+        cached = self._reward_factions_cache.get(code)
+        if cached:
+            return set(cached)
+
         mission = self.mission_lookup().get(code, {})
-        factions = {self.normalize_faction(mission.get('side', ''))}
-        factions.discard('')
+        base_faction = self.normalize_faction(mission.get('side', ''))
+        factions = {base_faction} if base_faction else set()
+        if code not in MIXED_REWARD_MISSION_CODES:
+            result = factions or {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+            self._reward_factions_cache[code] = tuple(sorted(result))
+            return result
 
         try:
             scenario = mission.get('scenario')
             if not scenario:
-                return factions or {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+                result = factions or {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+                self._reward_factions_cache[code] = tuple(sorted(result))
+                return result
             lines = read_text(self.extract_campaign_map(scenario)).splitlines()
             player_house = player_house_from_map(lines)
             records = map_house_records(lines)
@@ -547,7 +595,9 @@ class LauncherApp(tk.Tk):
         except Exception:
             pass
 
-        return factions or {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+        result = factions or {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+        self._reward_factions_cache[code] = tuple(sorted(result))
+        return result
 
     def state_objective_summary(self, mission_codes):
         return {
@@ -759,6 +809,8 @@ class LauncherApp(tk.Tk):
     def refresh_missions(self):
         self.append_log('Refreshing mission list...')
         self.missions = self.parse_missions()
+        if hasattr(self, '_reward_factions_cache'):
+            self._reward_factions_cache.clear()
         self.mission_goal_spinbox.configure(to=max(1, len(self.missions)))
         if self.missions and self.mission_goal_var.get() > len(self.missions):
             self.mission_goal_var.set(len(self.missions))
@@ -809,7 +861,7 @@ class LauncherApp(tk.Tk):
                 state = 'Locked'
             checks_label = '' if not self.state else f'{checks_done}/{checks_total}'
             order = order_map.get(code, idx + 1)
-            self.missions_tree.insert('', 'end', iid=str(idx), values=(f'{order:03}', state, checks_label, side, title, code))
+            self.missions_tree.insert('', 'end', iid=str(idx), values=(f'{order:03}', state, checks_label, side, code, title))
 
         children = self.missions_tree.get_children()
         if children and str(self.selected_index.get()) not in children:
@@ -1537,6 +1589,8 @@ throw "Map $name was not found in expandmo*.mix"
                 '[Settings]',
                 f'Scenario={scenario}',
                 f'GameSpeed={game_speed_value}',
+                f'Difficulty={difficulty_value}',
+                f'CampDifficulty={difficulty_value}',
                 'Firestorm=False',
                 'IsSinglePlayer=Yes',
                 'SidebarHack=False',
@@ -1550,14 +1604,15 @@ throw "Map $name was not found in expandmo*.mix"
 
             SPAWN_INI.write_text('\r\n'.join(content) + '\r\n', encoding='utf-8')
             self.append_log(
-                f'Written spawn.ini: Scenario={scenario}, DifficultyModeHuman={difficulty_value}, GameSpeed={game_speed_value}'
+                f'Written spawn.ini: Scenario={scenario}, DifficultyModeHuman={difficulty_value}, '
+                f'Difficulty={difficulty_value}, GameSpeed={game_speed_value}'
             )
         except Exception:
             self.append_log('Failed to write spawn.ini:', error=True)
             self.append_log(traceback.format_exc(), error=True)
             raise
 
-    def write_options_game_speed(self, game_speed_value):
+    def write_launch_options(self, difficulty_value, game_speed_value):
         try:
             written = []
             skipped = []
@@ -1567,19 +1622,25 @@ throw "Map $name was not found in expandmo*.mix"
                     continue
                 backup_file_once(path, 'original')
                 text = read_text(path) if path.exists() else ''
-                path.write_text(set_ini_value_lines(text, 'Options', 'GameSpeed', game_speed_value), encoding='utf-8')
+                text = set_ini_value_lines(text, 'Options', 'GameSpeed', game_speed_value)
+                text = set_ini_value_lines(text, 'Options', 'Difficulty', difficulty_value)
+                text = set_ini_value_lines(text, 'Options', 'CampDifficulty', difficulty_value)
+                path.write_text(text, encoding='utf-8')
                 written.append(path.name)
 
             if written:
-                self.append_log(f'Written {", ".join(written)}: GameSpeed={game_speed_value}')
+                self.append_log(
+                    f'Written {", ".join(written)}: GameSpeed={game_speed_value}, '
+                    f'Difficulty={difficulty_value}, CampDifficulty={difficulty_value}'
+                )
             if skipped:
                 self.append_log(
                     'Skipped oversized option file(s): '
                     + ', '.join(skipped)
-                    + '. GameSpeed is still written to spawn.ini.'
+                    + '. GameSpeed and difficulty are still written to spawn.ini.'
                 )
         except Exception:
-            self.append_log('Failed to write game speed options:', error=True)
+            self.append_log('Failed to write launch options:', error=True)
             self.append_log(traceback.format_exc(), error=True)
             raise
 
@@ -1692,7 +1753,7 @@ throw "Map $name was not found in expandmo*.mix"
                 self.append_log(traceback.format_exc(), error=True)
                 self.cleanup_generated_root_maps()
             self.write_spawn_ini(scenario, difficulty_value, game_speed_value)
-            self.write_options_game_speed(game_speed_value)
+            self.write_launch_options(difficulty_value, game_speed_value)
             self.write_transient_rulesmo_ini((hook or {}).get('rulesmo_sections', {}))
         except Exception:
             self.cleanup_generated_root_maps()
