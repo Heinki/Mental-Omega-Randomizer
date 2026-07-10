@@ -166,8 +166,8 @@ UNIT_UNLOCK_REWARDS = [
         'factions': ['Epsilon'],
     },
     {
-        'name': 'Mind Control Access',
-        'description': 'Allows Mind Control units where the map tech tree permits them.',
+        'name': 'Mastermind Access',
+        'description': 'Allows Masterminds where the map tech tree permits them.',
         'rules': {'MIND': {'TechLevel': '4'}},
         'factions': ['Epsilon'],
     },
@@ -331,7 +331,7 @@ BUFF_TARGETS = {
     'LTNK': {'label': 'Lasher Tank', 'plural': 'Lasher Tanks', 'category': 'units', 'factions': ['Epsilon'], 'cost': 700, 'speed': 8, 'strength': 350, 'sight': 6, 'guard_range': 6},
     'YTNK': {'label': 'Gatling Tank', 'plural': 'Gatling Tanks', 'category': 'units', 'factions': ['Epsilon'], 'cost': 600, 'speed': 8, 'strength': 300, 'sight': 6, 'guard_range': 6},
     'VIRUS': {'label': 'Virus', 'plural': 'Viruses', 'category': 'infantry', 'factions': ['Epsilon'], 'cost': 700, 'speed': 5, 'strength': 100, 'sight': 8, 'guard_range': 8},
-    'MIND': {'label': 'Mind Control Unit', 'plural': 'Mind Control units', 'category': 'units', 'factions': ['Epsilon'], 'cost': 1500, 'speed': 5, 'strength': 300, 'sight': 8, 'guard_range': 8},
+    'MIND': {'label': 'Mastermind', 'plural': 'Masterminds', 'category': 'units', 'factions': ['Epsilon'], 'cost': 1500, 'speed': 5, 'strength': 300, 'sight': 8, 'guard_range': 8},
     'KNIGHT': {'label': 'Knightframe', 'plural': 'Knightframes', 'category': 'units', 'factions': ['Foehn'], 'cost': 500, 'speed': 9, 'strength': 250, 'sight': 6, 'guard_range': 6},
     'JACKAL': {'label': 'Jackal Racer', 'plural': 'Jackal Racers', 'category': 'units', 'factions': ['Foehn'], 'cost': 600, 'speed': 10, 'strength': 250, 'sight': 7, 'guard_range': 7},
     'CYCL': {'label': 'Cyclops Walker', 'plural': 'Cyclops Walkers', 'category': 'units', 'factions': ['Foehn'], 'cost': 900, 'speed': 7, 'strength': 450, 'sight': 7, 'guard_range': 7},
@@ -371,7 +371,7 @@ UNIT_LABELS = {
     'TTNK': 'Tesla Tank',
     'INIT': 'Initiate',
     'LTNK': 'Lasher Tank',
-    'MIND': 'Mind Control Unit',
+    'MIND': 'Mastermind',
     'VIRUS': 'Virus',
     'YTNK': 'Gatling Tank',
     'CYCL': 'Cyclops Walker',
@@ -540,7 +540,11 @@ REWARD_ALIASES = {
     'Humvee Assembly I': 'Humvee Drill I',
     'IFV Assembly I': 'IFV Drill I',
     'Chrono Legionnaires': 'Cryo Legionnaires',
+    'Mind Control Access': 'Mastermind Access',
 }
+
+for buff_type in BUFF_TYPES:
+    REWARD_ALIASES[f'Mind Control Unit {buff_type["name"]} I'] = f'Mastermind {buff_type["name"]} I'
 
 
 def canonical_reward(reward):

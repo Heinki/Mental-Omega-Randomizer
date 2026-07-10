@@ -19,7 +19,7 @@ The selected mission is written to `spawn.ini` as `Scenario=<map>.MAP`. The laun
 
 `RA2MD.INI` can become extremely large on some installs. When it is above the safety limit, the launcher patches the small speed/difficulty values in place instead of rewriting the whole file.
 
-`-SPEEDCONTROL` is required for the in-game speed slider to appear during spawned missions. The launcher currently writes the normal in-game speed value directly (`0` slowest through `6` fastest) instead of the CnCNet lobby dropdown index.
+`-SPEEDCONTROL` is required for the in-game speed slider to appear during spawned missions. The launcher keeps the flag enabled and writes the selected engine speed value (`0` slowest through `6` fastest) to `spawn.ini` and the option INIs. A previous reversed mapping made `0 - Slowest` write the high end of the range, which could normalize to a fast live speed in spawned campaign launches.
 
 ## State And Config
 
@@ -80,6 +80,10 @@ This prevents campaign maps from handing out units early through normal mission 
 Script-critical units such as Tanya, spies, and special heroes avoid the hard `TechLevel=11` lock because missions can break if those units are required for scripted events. They still receive safer build restrictions so they do not normally leak into the sidebar.
 
 Earned access rewards are forced to `TechLevel=1` in generated maps. That means a late-game unit can be available in an early mission if the player has already earned it and the mission provides the necessary production structure/prerequisites.
+
+At launch time the launcher scans the extracted mission map for placed conyards, barracks, factories, air commands, and shipyards, then adds only the matching off-faction basic units for that extra production. Normal Allied/Soviet/Epsilon campaign missions do not receive their own faction's basic units for free. Foehn missions are the exception: their maps can unlock Allied, Soviet, and Foehn basics when that production is actually present, because the campaign integrates those factions. `ESHIP` / Epsilon 04, for example, starts as Epsilon but gets basic Allied infantry, Rocketeers, Humvees, IFVs, and early naval access because the map contains Allied production.
+
+The Epsilon `MIND` reward target is labeled as Mastermind. Yuri Adept / PsiCorps Trooper mission units use the separate `YURI` section in maps such as `EHUMAN`, so Mastermind buffs do not affect those scripted infantry.
 
 ## Reward Generation
 

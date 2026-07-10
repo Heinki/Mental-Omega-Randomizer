@@ -92,16 +92,19 @@ from randomizer_map import (
     unique_in_order,
     unit_weapon_buff_rules,
 )
+from randomizer_mission_safety import mission_basic_unit_rules, summarize_basic_unit_rules
 DIFFICULTIES = [('Casual', 0), ('Normal', 1), ('Mental', 2)]
 GAME_SPEEDS = [
-    # Direct spawned missions use the normal in-game speed value.
-    ('6 - Fastest', 6),
-    ('5 - Faster', 5),
-    ('4 - Fast', 4),
-    ('3 - Medium', 3),
-    ('2 - Slow', 2),
-    ('1 - Slower', 1),
+    # Keep the launcher labels aligned with the engine's option value. The
+    # -SPEEDCONTROL runtime path still needs this value in spawn.ini, but high
+    # values can normalize to the fast end during spawned campaign launches.
     ('0 - Slowest', 0),
+    ('1 - Slower', 1),
+    ('2 - Slow', 2),
+    ('3 - Medium', 3),
+    ('4 - Fast', 4),
+    ('5 - Faster', 5),
+    ('6 - Fastest', 6),
 ]
 CAMPAIGN_FILTERS = ['All Campaigns', 'Allies', 'Soviets', 'Epsilon', 'Foehn']
 
@@ -1712,6 +1715,13 @@ class LauncherApp(tk.Tk):
     def spawn_reward_options(self):
         return {}
 
+    def mission_required_launch_rules(self, mission):
+        scenario = mission.get('scenario')
+        if not scenario:
+            return {}
+        source_path = self.extract_campaign_map(scenario)
+        return mission_basic_unit_rules(read_text(source_path).splitlines())
+
     def cleanup_generated_root_maps(self):
         for path in list(GAME_ROOT.glob('*.MAP')) + list(GAME_ROOT.glob('*.map')):
             if is_generated_hooked_map(path):
@@ -2224,9 +2234,23 @@ throw "Map $name was not found in expandmo*.mix"
             # until we have a safe map-specific injection path.
             self.disable_generated_rules_for_client()
             self.cleanup_generated_root_maps()
+            launch_rules = {}
+            for section, values in (extra_rules or {}).items():
+                launch_rules.setdefault(section, {}).update(values)
+            mission_required_rules = self.mission_required_launch_rules(mission)
+            if mission_required_rules:
+                for section, values in mission_required_rules.items():
+                    launch_rules.setdefault(section, {}).update(values)
+                self.append_log(
+                    'Applied mission basic-unit safety unlocks for '
+                    + mission['code']
+                    + ': '
+                    + summarize_basic_unit_rules(mission_required_rules)
+                    + '.'
+                )
             hook = None
             try:
-                hook = self.prepare_hooked_map(mission, extra_rules=extra_rules)
+                hook = self.prepare_hooked_map(mission, extra_rules=launch_rules)
             except Exception:
                 self.append_log('Objective hook preparation failed; launching without automatic objective detection.', error=True)
                 self.append_log(traceback.format_exc(), error=True)
