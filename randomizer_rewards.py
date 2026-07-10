@@ -457,8 +457,11 @@ UNIT_UNLOCK_REWARDS = [
         'factions': ['Allies'],
     },
     {
-        'name': 'Cryo Legionnaires',
-        'description': 'Allows Cryo Legionnaires where the map tech tree permits them.',
+        'name': 'Chrono Legionnaire Access',
+        'description': (
+            'Allows Chrono Legionnaire training from any Allied Barracks, '
+            'including in low-tech missions.'
+        ),
         'rules': build_unlock('CLEG', 3, 'GAPILE'),
         'factions': ['Allies'],
     },
@@ -1117,7 +1120,8 @@ REWARD_ALIASES = {
     'Medic Drill I': 'Field Medic Drill I',
     'Humvee Assembly I': 'Humvee Drill I',
     'IFV Assembly I': 'IFV Drill I',
-    'Chrono Legionnaires': 'Cryo Legionnaires',
+    'Cryo Legionnaires': 'Chrono Legionnaire Access',
+    'Chrono Legionnaires': 'Chrono Legionnaire Access',
     'Mind Control Access': 'Mastermind Access',
     'Base Construction Drill I': 'Faction Production Drill I',
 }

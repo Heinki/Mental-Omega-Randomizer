@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parent
 GAME_ROOT = APP_DIR.parent
 sys.path.insert(0, str(APP_DIR))
 
-from randomizer_map import EXTRA_TECH_LOCKS, controlled_tech_ids
+from randomizer_map import EXTRA_TECH_LOCKS, controlled_tech_ids, launch_rules_for_reward
 from randomizer_rewards import (
     ALWAYS_AVAILABLE_TECH_IDS,
     ALWAYS_AVAILABLE_UNIT_IDS,
@@ -174,6 +174,26 @@ def main():
     essential_locks = sorted({tag.upper() for tag in ALWAYS_AVAILABLE_TECH_IDS} & controlled)
     if essential_locks:
         failures.append('Always-available essentials are controlled/locked: ' + ', '.join(essential_locks))
+
+    chrono_reward = next(
+        (reward for reward in REWARD_POOL if reward.get('name') == 'Chrono Legionnaire Access'),
+        None,
+    )
+    chrono_rules = launch_rules_for_reward(chrono_reward or {}).get('CLEG', {})
+    expected_chrono_rules = {
+        'TechLevel': '1',
+        'PrerequisiteOverride': 'GAPILE',
+        'ForbiddenHouses': 'none',
+    }
+    for key, expected in expected_chrono_rules.items():
+        if chrono_rules.get(key) != expected:
+            failures.append(
+                f'Chrono Legionnaire Access expected {key}={expected}, '
+                f'got {chrono_rules.get(key)!r}'
+            )
+    print('Early Chrono Legionnaire access:', ', '.join(
+        f'{key}={chrono_rules.get(key)}' for key in expected_chrono_rules
+    ))
 
     start_sections, error = no_bases_start_sections()
     if error:

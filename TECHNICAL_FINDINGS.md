@@ -95,6 +95,8 @@ Normal access coverage excludes only economy/base essentials: the four MCVs, fou
 
 Access rewards are unique per seed. A unit is unlocked once for the whole seed. Later rewards for that unit become repeatable buffs.
 
+Every access item's faction ownership and basic production `PrerequisiteOverride` are injected at map load even while its `TechLevel` remains locked. This is necessary because an in-mission reward trigger can change TechLevel but cannot rewrite INI prerequisites. For example, `CLEG` is prepared with `PrerequisiteOverride=GAPILE`; receiving Chrono Legionnaire Access during an early mission changes its TechLevel to 1 and makes it trainable without `GACLAB`.
+
 Current reward categories include:
 
 - unit access

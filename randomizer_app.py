@@ -53,7 +53,6 @@ from randomizer_paths import (
 )
 from randomizer_map import (
     HOOKED_MAP_MARKER,
-    LOCKED_PREREQUISITE,
     LOCKED_TECH_LEVEL,
     RANDOMIZER_RULES_MARKER,
     SCRIPTED_TECH_BUILD_LIMIT,
@@ -81,7 +80,6 @@ from randomizer_map import (
     player_house_from_map,
     read_text,
     remove_locked_techlevel_actions,
-    reward_unlock_tech_ids,
     section_lines,
     section_value_map,
     set_ini_value_lines,
@@ -1831,16 +1829,29 @@ throw "Map $name was not found in expandmo*.mix"
         rule_sections = {}
         randomize_access = self.randomize_unit_access_enabled()
         if randomize_access:
-            reward_unlocks = reward_unlock_tech_ids()
             for section in sorted(controlled_tech_ids()):
                 section_upper = section.upper()
                 values = rule_sections.setdefault(section, {})
-                if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS or section_upper not in reward_unlocks:
-                    values['PrerequisiteOverride'] = LOCKED_PREREQUISITE
                 if section_upper in SCRIPTED_TECH_LOCK_EXCLUSIONS:
                     values['BuildLimit'] = SCRIPTED_TECH_BUILD_LIMIT
                 else:
                     values['TechLevel'] = LOCKED_TECH_LEVEL
+
+            # Prepare the basic production facility, ownership, and house
+            # metadata for every access item before the mission starts. The
+            # unit remains unavailable through TechLevel/BuildLimit until its
+            # check fires, but a regular TechLevel unlock action can then make
+            # high-tier units immediately buildable even on an early map.
+            for reward in REWARD_POOL:
+                if reward.get('kind') == 'buff':
+                    continue
+                for section, values in launch_rules_for_reward(reward).items():
+                    prepared_values = {
+                        key: value
+                        for key, value in values.items()
+                        if key.lower() not in {'techlevel', 'buildlimit'}
+                    }
+                    rule_sections.setdefault(section, {}).update(prepared_values)
 
         if self.state:
             earned_rewards = self.earned_rewards_from_checks()
