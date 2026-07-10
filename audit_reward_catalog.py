@@ -14,31 +14,17 @@ GAME_ROOT = APP_DIR.parent
 sys.path.insert(0, str(APP_DIR))
 
 from randomizer_map import EXTRA_TECH_LOCKS, controlled_tech_ids
-from randomizer_rewards import BUFF_TARGETS, REWARD_POOL, unit_display_label
-
-
-EXPECTED_LABELS = {
-    'ADOG': 'Attack Dog',
-    'AHMV': 'Humvee',
-    'AMEDIC': 'Field Medic',
-    'CLEG': 'Cryo Legionnaire',
-    'DBOAT': 'Sea Scorpion',
-    'DOG': 'Soviet Attack Dog',
-    'E1': 'GI',
-    'E2': 'Conscript',
-    'ENGINEER': 'Engineer',
-    'FLAKT': 'Flak Trooper',
-    'FV': 'IFV',
-    'GGI': 'Guardian GI',
-    'HTK': 'Flak Track',
-    'HTNK': 'Heavy Tank',
-    'JUMPJET': 'Rocketeer',
-    'SAPC': 'Soviet Transport',
-    'SHK': 'Tesla Trooper',
-    'SQD': 'Giant Squid',
-    'SUB': 'Typhoon Sub',
-    'TTNK': 'Tesla Tank',
-}
+from randomizer_rewards import (
+    ALWAYS_AVAILABLE_TECH_IDS,
+    ALWAYS_AVAILABLE_UNIT_IDS,
+    BUFF_TARGETS,
+    FACTION_DEFENSE_ROSTERS,
+    FACTION_UNIT_ROSTERS,
+    REWARD_POOL,
+    TRAINABLE_DEFENSE_IDS,
+    UNIT_BUFF_REWARDS,
+    unit_display_label,
+)
 
 
 def read_text(path):
@@ -117,10 +103,77 @@ def main():
     print('Reward rule tags:', ', '.join(sorted(reward_tags)))
     print('Buff target tags:', ', '.join(sorted(buff_tags)))
 
-    for tag, expected in sorted(EXPECTED_LABELS.items()):
-        actual = unit_display_label(tag)
-        if actual != expected:
-            failures.append(f'{tag}: expected label "{expected}", got "{actual}"')
+    buff_reward_units = {
+        reward.get('unit', '').upper()
+        for reward in UNIT_BUFF_REWARDS
+        if reward.get('unit')
+    }
+    for faction, categories in FACTION_UNIT_ROSTERS.items():
+        roster = {
+            unit_id.upper(): label
+            for units in categories.values()
+            for unit_id, label in units.items()
+        }
+        missing_targets = sorted(set(roster) - buff_tags)
+        if missing_targets:
+            failures.append(f'{faction} roster missing buff targets: ' + ', '.join(missing_targets))
+        missing_rewards = sorted(set(roster) - buff_reward_units)
+        if missing_rewards:
+            failures.append(f'{faction} roster missing generated buff rewards: ' + ', '.join(missing_rewards))
+        for tag, expected in sorted(roster.items()):
+            actual = unit_display_label(tag)
+            if actual != expected:
+                failures.append(f'{tag}: expected label "{expected}", got "{actual}"')
+        print(f'{faction} buff coverage: {len(set(roster) & buff_reward_units)}/{len(roster)}')
+
+        expected_access = set(roster) - {tag.upper() for tag in ALWAYS_AVAILABLE_UNIT_IDS}
+        missing_access = sorted(expected_access - reward_tags)
+        if missing_access:
+            failures.append(f'{faction} roster missing access rewards: ' + ', '.join(missing_access))
+        print(f'{faction} access coverage: {len(expected_access & reward_tags)}/{len(expected_access)}')
+
+        defenses = {tag.upper(): label for tag, label in FACTION_DEFENSE_ROSTERS[faction].items()}
+        missing_defense_access = sorted(set(defenses) - reward_tags)
+        missing_defense_buffs = sorted(set(defenses) - buff_reward_units)
+        if missing_defense_access:
+            failures.append(f'{faction} defenses missing access rewards: ' + ', '.join(missing_defense_access))
+        if missing_defense_buffs:
+            failures.append(f'{faction} defenses missing buff rewards: ' + ', '.join(missing_defense_buffs))
+        print(
+            f'{faction} defense access/buff coverage: '
+            f'{len(set(defenses) & reward_tags)}/{len(defenses)}, '
+            f'{len(set(defenses) & buff_reward_units)}/{len(defenses)}'
+        )
+
+    defense_veteran_ids = {
+        reward.get('unit', '').upper()
+        for reward in UNIT_BUFF_REWARDS
+        if reward.get('buff_type') == 'veteran'
+        and BUFF_TARGETS.get(reward.get('unit'), {}).get('category') == 'defenses'
+    }
+    unexpected_defense_veterans = sorted(defense_veteran_ids - TRAINABLE_DEFENSE_IDS)
+    missing_defense_veterans = sorted(TRAINABLE_DEFENSE_IDS - defense_veteran_ids)
+    if unexpected_defense_veterans:
+        failures.append(
+            'Non-trainable defenses have veteran rewards: '
+            + ', '.join(unexpected_defense_veterans)
+        )
+    if missing_defense_veterans:
+        failures.append(
+            'Trainable defenses are missing veteran rewards: '
+            + ', '.join(missing_defense_veterans)
+        )
+    print(
+        f'Trainable defense veteran coverage: '
+        f'{len(TRAINABLE_DEFENSE_IDS & defense_veteran_ids)}/{len(TRAINABLE_DEFENSE_IDS)}'
+    )
+
+    essential_access = sorted({tag.upper() for tag in ALWAYS_AVAILABLE_TECH_IDS} & reward_tags)
+    if essential_access:
+        failures.append('Always-available essentials incorrectly have access rewards: ' + ', '.join(essential_access))
+    essential_locks = sorted({tag.upper() for tag in ALWAYS_AVAILABLE_TECH_IDS} & controlled)
+    if essential_locks:
+        failures.append('Always-available essentials are controlled/locked: ' + ', '.join(essential_locks))
 
     start_sections, error = no_bases_start_sections()
     if error:
@@ -132,13 +185,6 @@ def main():
                 'No Bases start/build sections are not controlled or extra-locked: '
                 + ', '.join(unguarded)
             )
-
-    missing_buff_rules = sorted(buff_tags - controlled - {'MOR_BUILDINGS'})
-    if missing_buff_rules:
-        failures.append(
-            'Buff targets without matching controlled tech IDs: '
-            + ', '.join(missing_buff_rules)
-        )
 
     presence = section_presence(reward_tags | buff_tags)
     missing_sections = sorted(tag for tag, paths in presence.items() if not paths)

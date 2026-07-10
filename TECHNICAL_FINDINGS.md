@@ -89,6 +89,10 @@ The Epsilon `MIND` reward target is labeled as Mastermind. Yuri Adept / PsiCorps
 
 Rewards are positive only. Access unlocks have higher priority than buffs so the player is less likely to get stuck without required units.
 
+The buff catalogue is audited against the full installed 3.3.6 faction roster rather than inferred from access rewards. Coverage is currently 52 Allied, 52 Soviet, 47 Epsilon, and 46 Foehn unit sections. Public names do not always match rules IDs (for example Cavalier=`MTNK`, Mirage=`MGTK`, Zephyr=`HOWI`, Catastrophe=`APOC`, SODAR=`MSA`), so the explicit roster mapping is intentional.
+
+Normal access coverage excludes only economy/base essentials: the four MCVs, four miners, and four Engineer sections. These have no access rewards and are removed from `controlled_tech_ids`, so access randomization cannot lock them. Every remaining roster section is an access item, with faction-wide ownership and a basic production `PrerequisiteOverride`. Defense access/buff coverage is 11 Allied, 11 Soviet, 9 Epsilon, and 12 Foehn structures; power plants, refineries, Construction Yards, production structures, walls, and gates remain outside access randomization.
+
 Access rewards are unique per seed. A unit is unlocked once for the whole seed. Later rewards for that unit become repeatable buffs.
 
 Current reward categories include:
@@ -127,14 +131,17 @@ Mental Omega/RA2 has house and country fields that can apply broad multipliers:
 - `VeteranInfantry`
 - `VeteranUnits`
 - `VeteranAircraft`
+- `VeteranBuildings` (the Ares key used for trainable defenses; `VeteranDefenses` is not valid)
 
 These are powerful because they can affect only a country/house, but they are dangerous if the player shares that country with enemies. The launcher checks map houses before applying them. If the player's country is shared with unsafe enemy houses, the buff is skipped instead of making enemies stronger.
 
-When `Buff allied helpers` is enabled, the launcher attempts to apply safe global helper buffs to allied AI houses too. This is map-dependent because missions can contain several allied, neutral, scripted, or enemy houses using overlapping countries.
+The faction-production reward applies all five build-time country multipliers (`Infantry`, `Units`, `Aircraft`, `Buildings`, and `Defenses`). Seed generation reserves every tenth reward for this global upgrade until its three-stack cap, so the much larger complete unit roster cannot crowd it out.
+
+When `Buff allied helpers` is enabled, the launcher attempts to apply safe global helper buffs to allied AI houses too. The safety check follows `ParentCountry` inheritance: an enemy on `UnitedStates2`, for example, is treated as a consumer of `UnitedStates` defaults. If an allied helper needs that shared parent, the launcher assigns the helper a private map-local `MORALLY*` country clone and buffs the clone instead of the parent.
 
 ## Guarded Unit And Weapon Buffs
 
-Some desired upgrades cannot be expressed as house flags, especially true per-unit damage/range style changes. The launcher can apply guarded map-local unit/weapon changes when it can prove that unsafe enemy houses do not use that same unit in the selected map.
+Some desired upgrades cannot be expressed as house flags, especially true per-unit damage/range style changes. The launcher can apply guarded map-local unit/weapon changes when it can prove that unsafe enemy houses do not use that same unit in the selected map. The safety check also follows Mental Omega weapon sharing, so an enemy using a different unit with the same weapon prevents that shared weapon section from being changed.
 
 If unsafe houses use the unit, the launcher logs a skip such as:
 

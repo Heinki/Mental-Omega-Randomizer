@@ -115,6 +115,7 @@ CHECK_SCHEMA_VERSION = 16
 HOOK_POLL_MS = 1500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
+GLOBAL_BUFF_REWARD_INTERVAL = 10
 MIXED_REWARD_MISSION_CODES = {'FREMNANT'}
 
 class TreeTooltip:
@@ -983,6 +984,7 @@ class LauncherApp(tk.Tk):
         used_access_names = set()
         seed_unlocked_tech_ids = set()
         buff_counts = {}
+        unit_buff_counts = {}
         global_buff_counts = {}
         plan = {}
         global_index = 0
@@ -998,7 +1000,7 @@ class LauncherApp(tk.Tk):
                 return reward
             return None
 
-        def draw_buff(code):
+        def draw_buff(code, prefer_global=False):
             buffs = buffs_by_code.get(code, [])
             if not buffs:
                 return None
@@ -1018,7 +1020,21 @@ class LauncherApp(tk.Tk):
                 elif not require_access_for_unit_buffs or unit in seed_unlocked_tech_ids:
                     unit_candidates.append(reward)
 
-            candidates = unit_candidates or global_candidates
+            if prefer_global and global_candidates:
+                candidates = global_candidates
+            elif unit_candidates:
+                # Spread positive rewards across the faction roster before
+                # stacking more upgrades on units that already received one.
+                # This is especially important for buffs-only seeds, where a
+                # large reward count should visibly cover the whole army.
+                least_buffs = min(unit_buff_counts.get(reward.get('unit'), 0) for reward in unit_candidates)
+                candidates = [
+                    reward
+                    for reward in unit_candidates
+                    if unit_buff_counts.get(reward.get('unit'), 0) == least_buffs
+                ]
+            else:
+                candidates = global_candidates
             if not candidates:
                 return None
 
@@ -1028,6 +1044,9 @@ class LauncherApp(tk.Tk):
                 global_buff_counts[name] = global_buff_counts.get(name, 0) + 1
             name = reward.get('name')
             buff_counts[name] = buff_counts.get(name, 0) + 1
+            unit = reward.get('unit')
+            if unit:
+                unit_buff_counts[unit] = unit_buff_counts.get(unit, 0) + 1
             return reward
 
         def draw_repeatable_fallback(code):
@@ -1067,18 +1086,22 @@ class LauncherApp(tk.Tk):
             name = reward.get('name')
             if reward.get('kind') == 'buff':
                 buff_counts[name] = buff_counts.get(name, 0) + 1
+                unit = reward.get('unit')
+                if unit:
+                    unit_buff_counts[unit] = unit_buff_counts.get(unit, 0) + 1
             return reward
 
         for code in mission_codes:
             rewards = []
             for _ in range(slots_by_code.get(code, 0)):
                 reward = None
-                if global_index % 5 == 4:
-                    reward = draw_buff(code)
+                prefer_global = (global_index + 1) % GLOBAL_BUFF_REWARD_INTERVAL == 0
+                if global_index % 5 == 4 or prefer_global:
+                    reward = draw_buff(code, prefer_global=prefer_global)
                 if reward is None:
                     reward = draw_access(code)
                 if reward is None:
-                    reward = draw_buff(code)
+                    reward = draw_buff(code, prefer_global=prefer_global)
                 if reward is None:
                     reward = draw_repeatable_fallback(code)
                 if reward is not None:
@@ -1829,7 +1852,13 @@ throw "Map $name was not found in expandmo*.mix"
                 if not randomize_access:
                     continue
                 for section, values in launch_rules_for_reward(reward).items():
-                    rule_sections.setdefault(section, {}).update(values)
+                    section_rules = rule_sections.setdefault(section, {})
+                    # Remove launcher-injected safety locks before applying an
+                    # earned access reward. If the reward carries its own
+                    # prerequisite override it is restored by the update.
+                    section_rules.pop('BuildLimit', None)
+                    section_rules.pop('PrerequisiteOverride', None)
+                    section_rules.update(values)
 
         for section, values in (extra_rules or {}).items():
             rule_sections.setdefault(section, {}).update(values)
@@ -1919,7 +1948,8 @@ throw "Map $name was not found in expandmo*.mix"
                 )
             if weapon_skipped_units:
                 self.append_log(
-                    'Skipped guarded unit/weapon buffs because unsafe houses use those units: '
+                    'Skipped guarded unit/weapon buffs because unsafe houses use the affected '
+                    'unit or a shared weapon: '
                     + '; '.join(weapon_skipped_units)
                     + '.',
                     error=True,

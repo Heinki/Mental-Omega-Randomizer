@@ -5,6 +5,7 @@ from datetime import datetime
 
 from randomizer_paths import BACKUP_DIR
 from randomizer_rewards import (
+    ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
     CLONE_REQUIRED_BUFF_TYPES,
     HOUSE_SCOPED_BUFF_TYPES,
@@ -448,11 +449,22 @@ def stacked_house_buff_values(rewards, base_values=None, require_unlocked_access
         target = BUFF_TARGETS.get(reward.get('unit'))
         if not target:
             continue
+        if buff_type == 'production' and target.get('global_production'):
+            for global_suffix in ('Infantry', 'Units', 'Aircraft', 'Buildings', 'Defenses'):
+                key = (buff_type, global_suffix)
+                category_counts[key] = category_counts.get(key, 0) + 1
+            continue
         suffix = house_category_suffix(target)
         if buff_type == 'rof':
             rof_count += 1
             continue
         if buff_type == 'veteran':
+            # Ares calls the country flag VeteranBuildings, including for
+            # defenses. VeteranDefenses is not an engine key.
+            if target.get('category') == 'defenses':
+                if not target.get('trainable'):
+                    continue
+                suffix = 'Buildings'
             veteran_units.setdefault(suffix, []).append(reward['unit'])
             continue
         category_counts[(buff_type, suffix)] = category_counts.get((buff_type, suffix), 0) + 1
@@ -511,7 +523,7 @@ def taskforce_unit_usage_houses(lines, unit_id):
 def placed_unit_usage_houses(lines, unit_id):
     unit_upper = (unit_id or '').upper()
     usage_houses = set()
-    for section in ('Infantry', 'Units', 'Aircraft'):
+    for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
         for line in section_lines(lines, section):
             if '=' not in line:
                 continue
@@ -524,6 +536,21 @@ def placed_unit_usage_houses(lines, unit_id):
 
 def unit_usage_houses(lines, unit_id):
     return placed_unit_usage_houses(lines, unit_id) | taskforce_unit_usage_houses(lines, unit_id)
+
+
+# Installed Mental Omega 3.3.6 weapon-sharing relationships for buffable
+# weapons. Weapon rules are global, so an enemy using a different TechnoType
+# with the same weapon has to participate in the same safety check.
+SHARED_WEAPON_USER_IDS = {
+    'AGGATTLING': {'YAGGUN', 'YTNK'},
+    'AGGATTLING2': {'YAGGUN', 'YTNK'},
+    'ANTARESBEAM': {'YAHADE', 'YAHADEAI'},
+    'ANTARESBEAMBLUE': {'YAHADE', 'YAHADEAI'},
+    'HOWITZER': {'HOWI', 'AIHOWI'},
+    'HOWITZERE': {'HOWI', 'AIHOWI'},
+    'NEUTRALIZERCUTTER': {'FACOMP', 'FACOMPAI'},
+    'REDEYE2': {'NASAM', 'NASAMT'},
+}
 
 
 def unit_weapon_buff_rules(lines, rewards, buff_allied_helpers=False, require_unlocked_access=True):
@@ -577,6 +604,7 @@ def unit_weapon_buff_rules(lines, rewards, buff_allied_helpers=False, require_un
             skipped_units.append(f'{target.get("label", unit_id)} ({", ".join(unsafe_houses)})')
             continue
 
+        applied = False
         if buff_type in UNIT_STAT_BUFF_TYPES:
             values = rule_sections.setdefault(unit_id, {})
             if buff_type == 'health':
@@ -598,19 +626,37 @@ def unit_weapon_buff_rules(lines, rewards, buff_allied_helpers=False, require_un
                 values['SensorsSight'] = str(int(round(target.get('sight', 5) + 2)))
             elif buff_type == 'guard_range':
                 values['GuardRange'] = format_multiplier(target['guard_range'] + min(5, count))
+            applied = True
 
         if buff_type in WEAPON_STAT_BUFF_TYPES:
             for weapon, base_stats in target.get('weapons', {}).items():
+                weapon_users = SHARED_WEAPON_USER_IDS.get(weapon.upper(), {unit_id})
+                weapon_usage = set()
+                for weapon_user in weapon_users:
+                    weapon_usage.update(unit_usage_houses(lines, weapon_user))
+                unsafe_weapon_houses = sorted(
+                    house for house in weapon_usage if house.lower() not in allowed_houses
+                )
+                if unsafe_weapon_houses:
+                    skipped_units.append(
+                        f'{target.get("label", unit_id)} / {weapon} '
+                        f'({", ".join(unsafe_weapon_houses)})'
+                    )
+                    continue
                 values = rule_sections.setdefault(weapon, {})
                 if buff_type == 'damage' and 'damage' in base_stats:
                     multiplier = min(2.0, 1.15 ** count)
                     values['Damage'] = str(max(1, int(round(base_stats['damage'] * multiplier))))
+                    applied = True
                 elif buff_type == 'range' and 'range' in base_stats:
                     values['Range'] = format_multiplier(base_stats['range'] + min(3.0, 0.5 * count))
+                    applied = True
                 elif buff_type == 'reload' and 'rof' in base_stats:
                     multiplier = max(0.45, 0.90 ** count)
                     values['ROF'] = str(max(1, int(round(base_stats['rof'] * multiplier))))
-        applied_units.append(target.get('label', unit_id))
+                    applied = True
+        if applied:
+            applied_units.append(target.get('label', unit_id))
 
     return (rule_sections, unique_in_order(applied_units), unique_in_order(skipped_units))
 
@@ -619,7 +665,7 @@ def controlled_tech_ids():
     tech_ids = set(EXTRA_TECH_LOCKS)
     for reward in REWARD_POOL:
         tech_ids.update(techlevel_rules_for_reward(reward))
-    return tech_ids
+    return tech_ids - {tech_id.upper() for tech_id in ALWAYS_AVAILABLE_TECH_IDS}
 
 
 def reward_unlock_tech_ids():
@@ -782,6 +828,23 @@ def houses_for_country(lines, country):
     return matches
 
 
+def country_inherits_from(lines, country, ancestor):
+    wanted = (ancestor or '').strip().lower()
+    current = (country or '').strip()
+    visited = set()
+    while current and current.lower() not in visited:
+        current_lower = current.lower()
+        if current_lower == wanted:
+            return True
+        visited.add(current_lower)
+        values = section_value_map(lines, current)
+        parent = values.get('parentcountry', '').strip()
+        if not parent or parent.lower() == current_lower:
+            break
+        current = parent
+    return False
+
+
 def house_names(lines):
     names = []
     for house_name in section_lines(lines, 'Houses'):
@@ -904,9 +967,11 @@ def allied_helper_houses(lines, player_house):
 def unsafe_country_houses(lines, country, allowed_house_names):
     allowed = {name.lower() for name in allowed_house_names}
     unsafe = []
-    for entry in houses_for_country(lines, country):
-        if entry['name'].lower() not in allowed:
-            unsafe.append(entry['name'])
+    for name, record in map_house_records(lines).items():
+        if not country_inherits_from(lines, record.get('country'), country):
+            continue
+        if name.lower() not in allowed:
+            unsafe.append(name)
     return unsafe
 
 
@@ -943,6 +1008,7 @@ def player_country_buff_rules(
 
     if buff_allied_helpers:
         records = map_house_records(lines)
+        helper_clones = {}
         for helper in helper_houses:
             helper_country = records.get(helper, {}).get('country') or helper.replace(' House', '')
             if helper_country.lower() == player_country.lower():
@@ -954,7 +1020,38 @@ def player_country_buff_rules(
 
             unsafe_houses = unsafe_country_houses(lines, helper_country, allowed_houses)
             if unsafe_houses and not allow_shared_country:
-                skipped_helpers.append(helper)
+                cloned_country = helper_clones.get(helper_country.lower())
+                if not cloned_country:
+                    clone_index = len(helper_clones) + 1
+                    cloned_country = f'MORALLY{clone_index}'
+                    existing_countries = {
+                        line.split('=', 1)[1].strip().lower()
+                        for line in section_lines(lines, 'Countries')
+                        if '=' in line
+                    }
+                    while cloned_country.lower() in existing_countries:
+                        clone_index += 1
+                        cloned_country = f'MORALLY{clone_index}'
+                    original_values = section_value_map_preserve(lines, helper_country)
+                    helper_buff_values = stacked_house_buff_values(
+                        rewards,
+                        original_values,
+                        require_unlocked_access=require_unlocked_access,
+                    )
+                    if not helper_buff_values:
+                        skipped_helpers.append(helper)
+                        continue
+                    clone_values = dict(original_values)
+                    clone_values.update({
+                        'Name': cloned_country,
+                        'ParentCountry': helper_country,
+                    })
+                    clone_values.update(helper_buff_values)
+                    append_section_list_entry(lines, 'Countries', cloned_country)
+                    rule_sections[cloned_country] = clone_values
+                    helper_clones[helper_country.lower()] = cloned_country
+                rule_sections[helper] = {'Country': cloned_country}
+                buffed_helpers.append(helper)
                 continue
 
             original_values = section_value_map_preserve(lines, helper_country)
