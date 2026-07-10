@@ -12,7 +12,7 @@ ALL_BUILD_HOUSES = (
     + EPSILON_BUILD_HOUSES + ',' + FOEHN_BUILD_HOUSES
 )
 DEFAULT_REWARDS_PER_CHECK = 1
-MAX_REWARDS_PER_CHECK = 5
+MAX_REWARDS_PER_CHECK = 10
 
 # Complete playable 3.3.6 faction rosters.  These use the real rulesmo.ini
 # section IDs, which frequently differ from the public-facing unit names.
