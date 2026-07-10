@@ -257,6 +257,16 @@ def append_section_list_entry(lines, section, value):
     lines.insert(end, f'{index}={value}')
 
 
+def append_section_entry(lines, section, key, value):
+    start, end = find_section_bounds(lines, section)
+    if start is None:
+        if lines and lines[-1].strip():
+            lines.append('')
+        lines.extend([f'[{section}]', f'{key}={value}'])
+        return
+    lines.insert(end, f'{key}={value}')
+
+
 def parse_action_groups(value):
     tokens = [token.strip() for token in value.split(',')]
     if not tokens:
@@ -381,6 +391,23 @@ def techlevel_actions_for_rewards(rewards):
     actions = []
     for reward in canonical_rewards(rewards):
         actions.extend(techlevel_actions_for_reward(reward))
+    return actions
+
+
+def superweapon_actions_for_rewards(rewards):
+    actions = []
+    seen = set()
+    for reward in canonical_rewards(rewards):
+        if reward.get('kind') != 'superweapon':
+            continue
+        try:
+            index = int(reward.get('superweapon_index'))
+        except (TypeError, ValueError):
+            continue
+        if index < 0 or index in seen:
+            continue
+        seen.add(index)
+        actions.append(['34', '0', str(index), '0', '0', '0', '0', 'A'])
     return actions
 
 
@@ -1089,6 +1116,53 @@ def append_action_to_action_id(lines, action_id, action_tokens):
     return False
 
 
+def insert_actions_before_codes(lines, action_id, action_tokens_list, before_codes):
+    """Insert trigger actions before the first matching terminal action.
+
+    Winner/announce-win actions can end the scenario before later actions in
+    the same action list run.  Victory markers therefore need to be inserted
+    before those actions instead of appended to the list.
+    """
+    actions = [list(tokens) for tokens in action_tokens_list]
+    if not actions or any(len(tokens) != 8 for tokens in actions):
+        return False
+
+    wanted_codes = {str(code) for code in before_codes}
+    start, end = find_section_bounds(lines, 'Actions')
+    if start is None:
+        return False
+
+    for index in range(start + 1, end):
+        line = lines[index]
+        if '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        if key.strip().lower() != action_id.lower():
+            continue
+
+        tokens = [token.strip() for token in value.split(',')]
+        try:
+            declared_count = int(tokens[0])
+        except (ValueError, IndexError):
+            return False
+
+        insert_group = None
+        for group_index in range(min(declared_count, (len(tokens) - 1) // 8)):
+            if tokens[1 + group_index * 8] in wanted_codes:
+                insert_group = group_index
+                break
+        if insert_group is None:
+            return False
+
+        insert_at = 1 + insert_group * 8
+        inserted_tokens = [token for action in actions for token in action]
+        tokens[insert_at:insert_at] = inserted_tokens
+        tokens[0] = str(declared_count + len(actions))
+        lines[index] = f'{key}={",".join(tokens)}'
+        return True
+    return False
+
+
 def merge_ini_section_values(lines, section_values):
     for section, values in section_values.items():
         start, end = find_section_bounds(lines, section)
@@ -1117,6 +1191,35 @@ def merge_ini_section_values(lines, section_values):
             else:
                 lines.insert(insert_at + inserted, f'{key}={value}')
                 inserted += 1
+
+
+def unique_section_key(lines, sections, prefix):
+    existing = set()
+    for section in sections:
+        for line in section_lines(lines, section):
+            if '=' in line:
+                existing.add(line.split('=', 1)[0].strip().lower())
+    for index in range(1, 1000):
+        candidate = f'{prefix}{index:03d}'
+        if candidate.lower() not in existing:
+            return candidate
+    raise RuntimeError(f'Could not allocate a unique {prefix} map key.')
+
+
+def append_superweapon_grant_trigger(lines, house, action_groups):
+    actions = [list(group) for group in action_groups]
+    if not actions or any(len(group) != 8 for group in actions):
+        return ''
+
+    trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGSW')
+    tag_id = unique_section_key(lines, ('Tags',), 'RNGST')
+    action_tokens = ','.join(action_group_tokens(actions))
+    name = 'MOR Earned Superweapons'
+    append_section_entry(lines, 'Events', trigger_id, '1,13,0,1')
+    append_section_entry(lines, 'Actions', trigger_id, f'{len(actions)},{action_tokens}')
+    append_section_entry(lines, 'Triggers', trigger_id, f'{house},<none>,{name},0,1,1,1,0')
+    append_section_entry(lines, 'Tags', tag_id, f'0,{name} 1,{trigger_id}')
+    return trigger_id
 
 
 def append_hook_team(lines, team_id, taskforce_id, script_id, marker_name, house):

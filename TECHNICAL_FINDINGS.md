@@ -71,6 +71,10 @@ The launcher stores completed check IDs in state, so restarting a mission should
 
 Victory is treated as its own reward check. If a victory marker fires, the launcher can mark the mission complete and grant any missed objective rewards for that mission.
 
+Victory markers are inserted before the existing `Winner is`/`Announce Win` action. Appending after those actions is unreliable because the engine may end the scenario before a later marker action runs. The launcher prefers a true `Winner is` action when a map also contains an earlier `Announce Win` action. It does not change `[Basic] EndOfGame`, because forcing that field caused immediate mission completion in earlier experiments.
+
+After the watcher sees the victory marker, it closes the spawned Syringe/gamemd process tree after a short delay. This prevents the player from continuing into the normal campaign flow. The behavior is enabled by default and can be disabled in the launcher.
+
 ## Tech Locking
 
 The randomizer first locks all randomizer-controlled combat tech in the generated map, then reopens only earned units.
@@ -91,6 +95,8 @@ Rewards are positive only. Access unlocks have higher priority than buffs so the
 
 The buff catalogue is audited against the full installed 3.3.6 faction roster rather than inferred from access rewards. Coverage is currently 52 Allied, 52 Soviet, 47 Epsilon, and 46 Foehn unit sections. Public names do not always match rules IDs (for example Cavalier=`MTNK`, Mirage=`MGTK`, Zephyr=`HOWI`, Catastrophe=`APOC`, SODAR=`MSA`), so the explicit roster mapping is intentional.
 
+`BFRT` and `FORTRESS` are distinct Allied units despite the similar historical naming: `BFRT` is the ground Battle Tortoise, while `FORTRESS` is the Barracuda aircraft. Old saved rewards named `Battle Fortress Access` are canonicalized to `Barracuda Access` and use the Allied airfield prerequisite.
+
 Normal access coverage excludes only economy/base essentials: the four MCVs, four miners, and four Engineer sections. These have no access rewards and are removed from `controlled_tech_ids`, so access randomization cannot lock them. Every remaining roster section is an access item, with faction-wide ownership and a basic production `PrerequisiteOverride`. Defense access/buff coverage is 11 Allied, 11 Soviet, 9 Epsilon, and 12 Foehn structures; power plants, refineries, Construction Yards, production structures, walls, and gates remain outside access randomization.
 
 Access rewards are unique per seed. A unit is unlocked once for the whole seed. Later rewards for that unit become repeatable buffs.
@@ -100,21 +106,28 @@ Every access item's faction ownership and basic production `PrerequisiteOverride
 Current reward categories include:
 
 - unit access
+- building-free faction superweapons
 - production speed
 - cost reduction
 - movement speed
-- attack speed/ROF
+- per-unit weapon fire rate
+- army-wide fire rate
 - building construction speed
 - veteran start
 - armor/health
 - vision
-- targeting range
+- attack range
+- automatic engagement range (`GuardRange`)
 - guarded weapon tuning
 - self-healing
 - cloaking
 - sensors
 
 Veteran start is capped at one effective stack per unit because the available house flag starts units as veteran, not elite.
+
+The superweapon family uses trigger action `34` (`Add repeating Superweapon`) rather than action `129`, which only changes the charge of a building-backed power. The installed 3.3.6 indices are Lightning Storm `2`, Tactical Nuke `0`, Psychic Dominator `7`, and Great Tempest `48`. Earned powers are granted from a one-second player-owned map trigger at the start of each future mission. Attaching the action directly to objective triggers would be unsafe because most objective triggers are owned by a different house.
+
+This proves building-free access, but not two independent copies of the same power. A matching constructed building may consolidate with the directly granted house instance. Guaranteed duplicate cameos would require cloned superweapon types and mission-local type registration.
 
 ## House And Country Buffs
 
@@ -155,10 +168,13 @@ This protects the player from accidentally powering up enemies.
 
 Starting units can be harder than newly built units because some buffs are applied through ownership, production, or map rules at load time. If a starting unit misses a buff while newly built copies receive it, that unit type likely needs a cloned player-only variant or a deeper runtime hook.
 
+## Cameo Images
+
+The Current Unlocks view reads each unit's `Image` and `CameoPCX` mapping from the installed `rulesmo.ini` and `artmo.ini` inside the Mental Omega MIX archives. The launcher extracts only needed PCX files, decodes the indexed PCX data to PNG with the Python standard library, and caches the results locally. No Pillow installation or generated replacement artwork is required.
+
 ## Known Limits
 
-- The UI does not yet show unit cameo images.
 - Game-speed behavior still needs validation across more campaign maps.
-- Some maps do not expose hookable objective/victory triggers cleanly.
+- Victory actions are recognized in all 97 extracted campaign maps. Objective matching remains incomplete: 58 maps have different briefing-objective and hook-action counts, while `SROAD` and `EGODSEND` expose no standard objective-complete action.
 - Some allied-helper detection cases need more map data before buffs can safely include every friendly house.
 - Player-only copied unit variants remain the likely long-term answer for perfectly isolated per-unit buffs.

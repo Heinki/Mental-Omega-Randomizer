@@ -466,9 +466,9 @@ UNIT_UNLOCK_REWARDS = [
         'factions': ['Allies'],
     },
     {
-        'name': 'Battle Fortress Access',
-        'description': 'Allows Battle Fortresses where the map tech tree permits them.',
-        'rules': build_unlock('FORTRESS', 4, 'GAWEAP'),
+        'name': 'Barracuda Access',
+        'description': 'Allows Barracuda production from an Allied airfield.',
+        'rules': build_unlock('FORTRESS', 4, 'GAAIRC'),
         'factions': ['Allies'],
     },
     {
@@ -920,7 +920,7 @@ UNIT_LABELS = {
     'E2': 'Conscript',
     'DOG': 'Soviet Attack Dog',
     'ENGINEER': 'Engineer',
-    'FORTRESS': 'Battle Fortress',
+    'FORTRESS': 'Barracuda',
     'FV': 'IFV',
     'GGI': 'Guardian GI',
     'HCRUIS': 'Battlecruiser',
@@ -1013,16 +1013,16 @@ BUFF_TYPES = [
     {
         'id': 'reload',
         'name': 'Weapon Tuning',
-        'setting_label': 'Weapon reload',
-        'description': '{plural} reload their weapons faster in future launched missions.',
+        'setting_label': 'Unit fire rate',
+        'description': '{plural} fire their weapons faster in future launched missions.',
         'requires_weapons': True,
         'requires_clone': True,
     },
     {
         'id': 'rof',
         'name': 'Rapid Fire',
-        'setting_label': 'Attack speed',
-        'description': '{plural} improve the player house attack-speed multiplier in future launched missions.',
+        'setting_label': 'Army-wide fire rate',
+        'description': 'All player weapons fire faster in future launched missions.',
         'requires_weapons': True,
     },
     {
@@ -1037,7 +1037,7 @@ BUFF_TYPES = [
         'id': 'ammo',
         'name': 'Ammo Reserves',
         'setting_label': 'Ammo',
-        'description': '{plural} gain more ammunition before reloading in future launched missions.',
+        'description': '{plural} gain +1 ammo capacity per stack, allowing more ammo-consuming attacks before reloading or rearming in future launched missions.',
         'requires_stat': 'ammo',
         'requires_clone': True,
     },
@@ -1065,8 +1065,8 @@ BUFF_TYPES = [
     {
         'id': 'guard_range',
         'name': 'Targeting Package',
-        'setting_label': 'Target acquisition range',
-        'description': '{plural} acquire targets from farther away in future launched missions.',
+        'setting_label': 'Auto-engagement range',
+        'description': '{plural} automatically notice and engage enemies from farther away without increasing weapon range.',
         'requires_stat': 'guard_range',
         'requires_clone': True,
     },
@@ -1108,11 +1108,51 @@ def build_buff_rewards():
 
 UNIT_BUFF_REWARDS = build_buff_rewards()
 
+SUPERWEAPON_UNLOCK_REWARDS = [
+    {
+        'name': 'Lightning Storm Power',
+        'description': 'Grants a building-free, repeating Lightning Storm in future launched missions.',
+        'rules': {},
+        'factions': ['Allies'],
+        'kind': 'superweapon',
+        'superweapon': 'LightningStormSpecial',
+        'superweapon_index': 2,
+    },
+    {
+        'name': 'Nuclear Missile Power',
+        'description': 'Grants a building-free, repeating Tactical Nuke in future launched missions.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'superweapon',
+        'superweapon': 'NukeSpecial',
+        'superweapon_index': 0,
+    },
+    {
+        'name': 'Psychic Dominator Power',
+        'description': 'Grants a building-free, repeating Psychic Dominator in future launched missions.',
+        'rules': {},
+        'factions': ['Epsilon'],
+        'kind': 'superweapon',
+        'superweapon': 'PsychicDominatorSpecial',
+        'superweapon_index': 7,
+    },
+    {
+        'name': 'Great Tempest Power',
+        'description': 'Grants a building-free, repeating Great Tempest in future launched missions.',
+        'rules': {},
+        'factions': ['Foehn'],
+        'kind': 'superweapon',
+        'superweapon': 'GreatTempestSpecial',
+        'superweapon_index': 48,
+    },
+]
+
 REWARD_POOL = (
     UNIT_UNLOCK_REWARDS
     + EXTRA_UNIT_UNLOCK_REWARDS
     + ROSTER_UNIT_UNLOCK_REWARDS
     + DEFENSE_UNLOCK_REWARDS
+    + SUPERWEAPON_UNLOCK_REWARDS
     + UNIT_BUFF_REWARDS
 )
 REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
@@ -1122,6 +1162,7 @@ REWARD_ALIASES = {
     'IFV Assembly I': 'IFV Drill I',
     'Cryo Legionnaires': 'Chrono Legionnaire Access',
     'Chrono Legionnaires': 'Chrono Legionnaire Access',
+    'Battle Fortress Access': 'Barracuda Access',
     'Mind Control Access': 'Mastermind Access',
     'Base Construction Drill I': 'Faction Production Drill I',
 }
@@ -1266,7 +1307,7 @@ def buff_effect_lines(reward, count=1, include_label=True):
     if buff_type == 'rof':
         multiplier = max(0.40, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'{prefix}Attack speed {faster}% faster ({stack_label(count)})']
+        return [f'Army-wide fire rate {faster}% faster ({stack_label(count)})']
     if buff_type == 'veteran':
         return [f'{prefix}Veteran start ({stack_label(count)})']
     if buff_type == 'damage':
@@ -1276,7 +1317,7 @@ def buff_effect_lines(reward, count=1, include_label=True):
     if buff_type == 'reload':
         multiplier = max(0.45, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'{prefix}Weapon reload {faster}% faster ({stack_label(count)})']
+        return [f'{prefix}Fire rate {faster}% faster ({stack_label(count)})']
     if buff_type == 'range':
         increase = min(3.0, 0.5 * count)
         if increase.is_integer():
@@ -1286,16 +1327,26 @@ def buff_effect_lines(reward, count=1, include_label=True):
         return [f'{prefix}Range +{increase_text} ({stack_label(count)})']
     if buff_type == 'ammo':
         increase = min(5, count)
-        return [f'{prefix}Ammo +{increase} ({stack_label(count)})']
+        base_ammo = int(target.get('ammo', 0))
+        total_ammo = base_ammo + increase
+        if reward.get('unit') == 'ABRM':
+            return [
+                f'{prefix}Main-cannon ammo {base_ammo} -> {total_ammo} '
+                f'({stack_label(count)})'
+            ]
+        return [
+            f'{prefix}Ammo {base_ammo} -> {total_ammo} ({stack_label(count)})'
+        ]
     if buff_type == 'self_healing':
         return [f'{prefix}Self-healing enabled ({stack_label(count)})']
     if buff_type == 'cloak':
         return [f'{prefix}Cloaking enabled ({stack_label(count)})']
     if buff_type == 'sensors':
-        return [f'{prefix}Sensors enabled ({stack_label(count)})']
+        sensor_range = int(round(target.get('sight', 5) + 2))
+        return [f'{prefix}Sensors enabled ({sensor_range}-cell range; {stack_label(count)})']
     if buff_type == 'guard_range':
         increase = min(5, count)
-        return [f'{prefix}Targeting range +{increase} ({stack_label(count)})']
+        return [f'{prefix}Auto-engagement range +{increase} ({stack_label(count)})']
     return []
 
 
@@ -1303,6 +1354,8 @@ def reward_rule_summary(reward):
     reward = canonical_reward(reward)
     if reward.get('kind') == 'buff' and reward.get('buff_type'):
         return buff_effect_lines(reward)
+    if reward.get('kind') == 'superweapon':
+        return ['Building-free repeating power; restored at the start of future missions.']
 
     summaries = []
     rules = reward.get('rules', {})
@@ -1337,12 +1390,10 @@ def reward_rule_summary(reward):
 
 def reward_display_lines(reward, indent='  '):
     reward = canonical_reward(reward)
-    if reward.get('kind') != 'buff':
+    if reward.get('kind') not in {'buff', 'superweapon'}:
         return []
 
     lines = []
     for summary in reward_rule_summary(reward):
         lines.append(f'{indent}{summary}')
     return lines
-
-

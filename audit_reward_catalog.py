@@ -23,6 +23,7 @@ from randomizer_rewards import (
     REWARD_POOL,
     TRAINABLE_DEFENSE_IDS,
     UNIT_BUFF_REWARDS,
+    canonical_reward,
     unit_display_label,
 )
 
@@ -194,6 +195,21 @@ def main():
     print('Early Chrono Legionnaire access:', ', '.join(
         f'{key}={chrono_rules.get(key)}' for key in expected_chrono_rules
     ))
+
+    barracuda_reward = canonical_reward({'name': 'Battle Fortress Access'})
+    barracuda_rules = barracuda_reward.get('rules', {}).get('FORTRESS', {})
+    if barracuda_reward.get('name') != 'Barracuda Access':
+        failures.append('Legacy Battle Fortress Access does not migrate to Barracuda Access.')
+    if barracuda_rules.get('PrerequisiteOverride') != 'GAAIRC':
+        failures.append(
+            'Barracuda Access expected PrerequisiteOverride=GAAIRC, '
+            f'got {barracuda_rules.get("PrerequisiteOverride")!r}'
+        )
+    if unit_display_label('BFRT') != 'Battle Tortoise':
+        failures.append(f'BFRT expected Battle Tortoise label, got {unit_display_label("BFRT")!r}')
+    if unit_display_label('FORTRESS') != 'Barracuda':
+        failures.append(f'FORTRESS expected Barracuda label, got {unit_display_label("FORTRESS")!r}')
+    print('Allied fortress IDs: BFRT=Battle Tortoise, FORTRESS=Barracuda')
 
     start_sections, error = no_bases_start_sections()
     if error:

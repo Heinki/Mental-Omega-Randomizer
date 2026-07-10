@@ -27,6 +27,8 @@ For `ABADAPPLE.MAP`, the analyzer found objective-complete action IDs `01000016`
 
 Validation result: an in-game objective marker was confirmed working by playtest. The launcher now only patches still-locked checks, and the active watcher ignores markers already seen during the current process. Restarting a mission should therefore not grant the same objective reward twice.
 
+Victory-exit result: changing `[Basic] EndOfGame` is not a safe way to stop campaign continuation because it can complete a mission immediately. The launcher now leaves all mission ending fields intact, inserts its marker before the existing terminal win action, grants the victory check from the log signal, and then closes the spawned process tree after a short delay. A static audit found a recognized victory action in all 97 extracted campaign maps.
+
 Reward application result: already-earned reward rules are now merged into the generated map before launch. This replaces the unsafe loose `rulesmo.ini` approach for spawned campaign missions.
 
 Randomizer tech control result: generated maps now force every unit controlled by the reward pool to locked `TechLevel=11`, then apply earned unlocks over that. This prevents campaign maps from handing out randomizer units before the player has earned them.
@@ -66,11 +68,10 @@ The normal "mission objective complete" UI message is not enough by itself. It a
 
 ## Next Experiments
 
-1. Launch a mission through the randomizer and confirm `debug.log` contains `[LAUNCH] MOR_...` after completing the corresponding objective.
-2. If no marker appears, confirm whether the generated loose `.MAP` was loaded at all. If loose campaign maps are ignored, the launcher needs a different launch scenario name or a MIX override strategy.
-3. If the generated map loads but `Create Team` is not logged, switch the marker action to `Reinforcement Team` and use a deliberately harmless/empty marker team.
-4. Once marker logging is confirmed, use extracted map objective-complete trigger counts to generate the reward count instead of relying only on `BattleClient.ini` briefing objectives.
-5. If no map action can create a durable external signal, use a small companion DLL/memory hook only for trigger-marker reporting.
+1. Build mission-specific objective-to-trigger mappings instead of pairing briefing objectives with raw objective-complete actions by position. The counts differ on 58 of 97 maps.
+2. Investigate `SROAD` and `EGODSEND`, which do not expose the standard objective-complete action patterns.
+3. Runtime-playtest victory auto-close on one `Winner is` map and one `Announce Win`-only map to confirm the 2.5-second delay preserves the desired victory presentation.
+4. If a map action cannot create a durable external signal, use a small companion DLL/memory hook only for trigger-marker reporting.
 
 ## Caution
 

@@ -22,9 +22,10 @@ DEFAULT_CONFIG = {
     },
     'generation': {
         'starting_unlocked_missions': 3,
-        'enabled_reward_types': ['access', 'buff'],
+        'enabled_reward_types': ['access', 'buff', 'superweapon'],
         'randomize_unit_access': True,
         'include_buff_rewards': True,
+        'include_superweapon_rewards': True,
         'enabled_buff_types': [
             'production',
             'cost',
@@ -46,6 +47,7 @@ DEFAULT_CONFIG = {
         'safe_player_country_buffs': True,
         'allow_shared_country_buffs': False,
         'buff_allied_helpers': False,
+        'close_game_on_victory': True,
         'transient_rulesmo_buffs': False,
         'experimental_house_buffs': False,
     },
