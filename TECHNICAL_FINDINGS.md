@@ -40,7 +40,7 @@ Missions are read from `INI/BattleClient.ini`. The launcher records:
 - campaign/faction
 - briefing objective lines
 
-The seed can include all campaigns or a single campaign. Reward pools are selected from the campaign side so a Soviet-only seed does not hand out Allied tech unless the selected mission set explicitly needs mixed rewards.
+The seed can include all campaigns or a single campaign. `All Campaigns` draws from the combined Allied, Soviet, Epsilon, and Foehn reward pool regardless of the current mission side. A selected faction remains strictly faction-only; mixed-mission playability is handled by mission-local safety fallbacks rather than cross-faction rewards.
 
 Some missions, especially special cases, do not expose clean objective text. Those fall back to generated objective placeholders until map trigger analysis supplies better checks.
 
@@ -81,11 +81,19 @@ The randomizer first locks all randomizer-controlled combat tech in the generate
 
 This prevents campaign maps from handing out units early through normal mission tech. Refineries and basic base operation tech are intentionally not treated as randomizer combat rewards.
 
-Script-critical units such as Tanya, spies, and special heroes avoid the hard `TechLevel=11` lock because missions can break if those units are required for scripted events. They still receive safer build restrictions so they do not normally leak into the sidebar.
+Every unearned controlled TechnoType receives `BuildLimit=0` in addition to the normal TechLevel sentinel. This blocks player production even in campaign contexts that expose high TechLevels, while scripted and preplaced mission units can still exist. Script-critical units avoid a hard TechLevel override and rely on the safer build limit.
 
 Earned access rewards are forced to `TechLevel=1` in generated maps. That means a late-game unit can be available in an early mission if the player has already earned it and the mission provides the necessary production structure/prerequisites.
 
-At launch time the launcher scans the extracted mission map for placed conyards, barracks, factories, air commands, and shipyards, then adds only the matching off-faction basic units for that extra production. Normal Allied/Soviet/Epsilon campaign missions do not receive their own faction's basic units for free. Foehn missions are the exception: their maps can unlock Allied, Soviet, and Foehn basics when that production is actually present, because the campaign integrates those factions. `ESHIP` / Epsilon 04, for example, starts as Epsilon but gets basic Allied infantry, Rocketeers, Humvees, IFVs, and early naval access because the map contains Allied production.
+At launch time the launcher scans the extracted mission map for placed conyards, barracks, factories, air commands, and shipyards. In a selected-faction campaign it translates earned access roles into equivalents supported by off-faction production: an earned Initiate role can enable a GI or Conscript, an earned Lasher role can enable the corresponding Allied/Soviet/Foehn tank, and the same rule applies to air and naval roles. Always-available matching Engineers remain available, but no combat unit is granted without an earned equivalent. Foehn missions can translate earned Foehn roles into both Allied and Soviet technology when those factories are present. `All Campaigns` keeps the unconditional basic safety net because its reward pool already spans all factions.
+
+Single-faction campaigns use explicit cross-faction role groups for mixed-mission buffs. The mapping covers comparable infantry, scouts, specialists, tanks, APCs, artillery, support vehicles, transports, aircraft, naval units, capital ships, and defenses. Once a role peer has earned or fallback access, compatible buffs propagate using each target's own installed stats and weapons. Unique units without a credible counterpart remain independent. `All Campaigns` disables all role sharing because its combined reward pool can provide independent access and buffs across the complete roster.
+
+Maps with multiple player-controlled houses apply country-level buffs to every player house, including mixed-faction combinations such as a primary Allied house and a secondary Soviet house. Unit/weapon safety checks likewise treat all player-controlled houses as allowed users. The `Buff allied helpers` option extends the same treatment to AI-controlled allied houses; it is not required for additional human/player-controlled houses.
+
+Standard mode excludes every Foehn unit, defense, buff target, and Foehn superpower. The Foehn campaign draws Allied and Soviet rewards because those are its normal production factions; Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. The full Foehn catalogue is exclusive to Chaos.
+
+`Chaos (Experimental)` is orthogonal to mission campaign selection. Its reward pool spans every faction and disables role sharing. At map generation, every faction production structure is made available from the player Construction Yard, and each earned access item receives all player-controlled countries plus a valid factory prerequisite. Foreign access is routed to the current player faction's physical barracks, War Factory, shipyard, or Construction Yard so the earned object appears on the production sidebar the player actually builds. Aircraft use that faction's air command when one exists and otherwise retain their real aircraft factory, which Chaos also makes constructible. Unit cost and speed buffs become direct TechnoType values, armor becomes unit-specific effective durability through Strength, and unsupported per-unit production-speed rewards are removed from the Chaos pool. Explicitly global production and army-wide ROF rewards keep their advertised global behavior.
 
 The Epsilon `MIND` reward target is labeled as Mastermind. Yuri Adept / PsiCorps Trooper mission units use the separate `YURI` section in maps such as `EHUMAN`, so Mastermind buffs do not affect those scripted infantry.
 
@@ -101,7 +109,7 @@ Normal access coverage excludes only economy/base essentials: the four MCVs, fou
 
 Access rewards are unique per seed. A unit is unlocked once for the whole seed. Later rewards for that unit become repeatable buffs.
 
-Every access item's faction ownership and basic production `PrerequisiteOverride` are injected at map load even while its `TechLevel` remains locked. This is necessary because an in-mission reward trigger can change TechLevel but cannot rewrite INI prerequisites. For example, `CLEG` is prepared with `PrerequisiteOverride=GAPILE`; receiving Chrono Legionnaire Access during an early mission changes its TechLevel to 1 and makes it trainable without `GACLAB`.
+Every access item's faction ownership and basic production `PrerequisiteOverride` are prepared at map load. Unearned access retains its production limit; an earned reward removes that limit and applies TechLevel 1 on the next mission launch. Applying access between missions prevents campaign-native TechLevel actions from bypassing randomizer state.
 
 Current reward categories include:
 

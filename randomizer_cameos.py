@@ -7,6 +7,7 @@ import subprocess
 import zlib
 from pathlib import Path
 
+from randomizer_diagnostics import event as log_event
 from randomizer_paths import CAMEO_CACHE_DIR, GAME_ROOT, MAP_RENDERER_DIR
 
 
@@ -39,6 +40,11 @@ def extract_mix_files(requests):
     shared_dll = MAP_RENDERER_DIR / 'CNCMaps.Shared.dll'
     formats_dll = MAP_RENDERER_DIR / 'CNCMaps.FileFormats.dll'
     if not shared_dll.exists() or not formats_dll.exists():
+        log_event(
+            'cameo_extraction_unavailable',
+            shared_dll_exists=shared_dll.exists(),
+            formats_dll_exists=formats_dll.exists(),
+        )
         return False
 
     CAMEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,6 +105,13 @@ if($pending.Count -gt 0) {{
         capture_output=True,
         text=True,
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+    log_event(
+        'cameo_extraction_finished',
+        requested=[item['name'] for item in pending],
+        returncode=result.returncode,
+        stdout=result.stdout.strip(),
+        stderr=result.stderr.strip(),
     )
     return result.returncode == 0
 

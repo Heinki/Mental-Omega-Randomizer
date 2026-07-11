@@ -270,6 +270,67 @@ ALWAYS_AVAILABLE_BUILDING_IDS = {
 }
 ALWAYS_AVAILABLE_TECH_IDS = ALWAYS_AVAILABLE_UNIT_IDS | ALWAYS_AVAILABLE_BUILDING_IDS
 
+# Explicit cross-faction gameplay roles used only for single-campaign buff
+# sharing. Unique units remain independent; they are never forced into a weak
+# equivalence merely because their broad sidebar category matches.
+UNIT_ROLE_EQUIVALENCE_GROUPS = (
+    # Infantry roles.
+    frozenset({'E1', 'E2', 'INIT', 'KNIGHT'}),
+    frozenset({'GGI', 'FLAKT', 'HARP', 'COVE'}),
+    frozenset({'ADOG', 'DOG', 'YDOG'}),
+    frozenset({'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER'}),
+    frozenset({'JUMPJET', 'GYRO', 'KAOS', 'WASP'}),
+    frozenset({'RIOT', 'SHK', 'BRUTE', 'BANE'}),
+    frozenset({'GHOST', 'VOLKOV', 'ASSN', 'EUREKA'}),
+    frozenset({'SPY', 'SBTR', 'INTRUDER', 'SYNC'}),
+    frozenset({'SNIPE', 'MORALES', 'VIRUS', 'HUNTR'}),
+    frozenset({'AMEDIC', 'MOTOR', 'REPU', 'CLAIR'}),
+    frozenset({'SUPR', 'DESO', 'SCRG', 'ZORB'}),
+    frozenset({'TANY', 'YUNRU', 'LIBRA', 'SICALI'}),
+    # Economy, vehicle, armor, artillery, support, and transport roles.
+    frozenset({'CMIN', 'HARV', 'YMIN', 'NMIN'}),
+    frozenset({'AMCV', 'SMCV', 'PCV', 'FMCV'}),
+    frozenset({'AHMV', 'HTK', 'YTNK', 'JACKAL'}),
+    frozenset({'FV', 'SCAR', 'DRIL', 'RACC'}),
+    frozenset({'ETNK', 'HTNK', 'LTNK', 'DRACO'}),
+    frozenset({'MTNK', 'JTNK', 'QTNK', 'CYCL'}),
+    frozenset({'MGTK', 'CTNK', 'STNK', 'ROACH'}),
+    frozenset({'HOWI', 'V3', 'YAHCR', 'TARCHIA'}),
+    frozenset({'ABRM', 'APOC', 'DEVO', 'GHTNK'}),
+    frozenset({'BFRT', 'CNTR', 'GOTTER', 'BOID'}),
+    frozenset({'AMC', 'BURA', 'PLAG', 'SHRAY'}),
+    frozenset({'SREF', 'EMPR', 'TELE', 'MSA'}),
+    frozenset({'ROBO', 'DRON', 'MARA', 'TERA'}),
+    frozenset({'SHAD', 'BOREK', 'LCRF', 'SAPC', 'YHVR', 'SEAT'}),
+    # Aircraft and airborne combat roles.
+    frozenset({'STORM', 'FOX', 'BLIGHT', 'QUETZ'}),
+    frozenset({'ORCA', 'DUST', 'VENOM', 'HARB'}),
+    frozenset({'THOR', 'SCHP', 'DISK', 'DIVER'}),
+    frozenset({'FORTRESS', 'ZEP', 'BASIL', 'HURR'}),
+    # Naval roles.
+    frozenset({'DEST', 'SWLF', 'SLED', 'SWORD'}),
+    frozenset({'SIREN', 'SUB', 'NAUT', 'SHARK'}),
+    frozenset({'DLPH', 'DBOAT', 'SQD', 'MANTA'}),
+    frozenset({'HCRUIS', 'DRED', 'BSUB', 'LEVI'}),
+    frozenset({'AEGIS', 'REAP', 'ORCIN'}),
+    # Comparable defensive roles.
+    frozenset({'GAPILL', 'NALASR', 'NATBNK', 'FASONI'}),
+    frozenset({'NASAM', 'NAFLAK', 'YAGGUN', 'FAGUAR'}),
+    frozenset({'ATESLA', 'TESLA', 'YARAIL', 'FARAIL'}),
+    frozenset({'GTGCAN', 'NAHAMM', 'YAHADE', 'FACOMP'}),
+    frozenset({'GACRYO', 'NATRAP', 'YAVNMM', 'FAMMIN'}),
+    frozenset({'GAGAP', 'NASCOM', 'YAMPSI', 'FAINHI'}),
+)
+
+
+def unit_role_equivalents(unit_id):
+    unit_id = str(unit_id or '').upper()
+    equivalents = {unit_id} if unit_id else set()
+    for group in UNIT_ROLE_EQUIVALENCE_GROUPS:
+        if unit_id in group:
+            equivalents.update(group)
+    return frozenset(equivalents)
+
 FACTION_DEFENSE_ROSTERS = {
     'Allies': {
         'GAPILL': 'Allied Pillbox',
@@ -793,7 +854,15 @@ BUFF_TARGETS = {
     'GGI': {'label': 'Guardian GI', 'plural': 'Guardian GIs', 'category': 'infantry', 'factions': ['Allies'], 'cost': 150, 'speed': 6, 'strength': 150, 'sight': 6, 'guard_range': 6},
     'AMEDIC': {'label': 'Field Medic', 'plural': 'Field Medics', 'category': 'infantry', 'factions': ['Allies'], 'cost': 500, 'speed': 6, 'strength': 125, 'sight': 5, 'guard_range': 5},
     'JUMPJET': {'label': 'Rocketeer', 'plural': 'Rocketeers', 'category': 'infantry', 'factions': ['Allies'], 'cost': 650, 'speed': 8, 'strength': 150, 'sight': 7, 'guard_range': 7},
-    'E2': {'label': 'Conscript', 'plural': 'Conscripts', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 100, 'speed': 5, 'strength': 125, 'sight': 5, 'guard_range': 5},
+    'E2': {
+        'label': 'Conscript', 'plural': 'Conscripts', 'category': 'infantry',
+        'factions': ['Soviets'], 'cost': 100, 'speed': 7, 'strength': 125,
+        'sight': 7, 'guard_range': 7,
+        'weapons': {
+            'M1Carbine': {'damage': 16, 'rof': 20, 'range': 5},
+            'M1CarbineE': {'damage': 16, 'rof': 20, 'range': 5},
+        },
+    },
     'FLAKT': {'label': 'Flak Trooper', 'plural': 'Flak Troopers', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 300, 'speed': 5, 'strength': 125, 'sight': 6, 'guard_range': 6},
     'DOG': {'label': 'Soviet Attack Dog', 'plural': 'Soviet Attack Dogs', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 200, 'speed': 8, 'strength': 100, 'sight': 5, 'guard_range': 5},
     'SHK': {'label': 'Tesla Trooper', 'plural': 'Tesla Troopers', 'category': 'infantry', 'factions': ['Soviets'], 'cost': 500, 'speed': 4, 'strength': 200, 'sight': 6, 'guard_range': 6},
@@ -822,12 +891,30 @@ BUFF_TARGETS = {
     'SQD': {'label': 'Giant Squid', 'plural': 'Giant Squids', 'category': 'units', 'factions': ['Soviets'], 'cost': 1000, 'speed': 8, 'strength': 300, 'sight': 5, 'guard_range': 5},
     'DBOAT': {'label': 'Sea Scorpion', 'plural': 'Sea Scorpions', 'category': 'units', 'factions': ['Soviets'], 'cost': 600, 'speed': 8, 'strength': 400, 'sight': 7, 'guard_range': 7},
     'SAPC': {'label': 'Soviet Transport', 'plural': 'Soviet Transports', 'category': 'units', 'factions': ['Soviets'], 'cost': 900, 'speed': 6, 'strength': 300, 'sight': 6, 'guard_range': 6},
-    'INIT': {'label': 'Initiate', 'plural': 'Initiates', 'category': 'infantry', 'factions': ['Epsilon'], 'cost': 150, 'speed': 5, 'strength': 100, 'sight': 5, 'guard_range': 5},
+    'INIT': {
+        'label': 'Initiate', 'plural': 'Initiates', 'category': 'infantry',
+        'factions': ['Epsilon'], 'cost': 150, 'speed': 6, 'strength': 150,
+        'sight': 7, 'guard_range': 7,
+        'weapons': {
+            'PsychicJab': {'damage': 27, 'rof': 18, 'range': 5.5},
+            'PsychicJabE': {'damage': 27, 'rof': 18, 'range': 5.5},
+        },
+    },
     'LTNK': {'label': 'Lasher Tank', 'plural': 'Lasher Tanks', 'category': 'units', 'factions': ['Epsilon'], 'cost': 700, 'speed': 8, 'strength': 350, 'sight': 6, 'guard_range': 6},
     'YTNK': {'label': 'Gatling Tank', 'plural': 'Gatling Tanks', 'category': 'units', 'factions': ['Epsilon'], 'cost': 600, 'speed': 8, 'strength': 300, 'sight': 6, 'guard_range': 6},
     'VIRUS': {'label': 'Virus', 'plural': 'Viruses', 'category': 'infantry', 'factions': ['Epsilon'], 'cost': 700, 'speed': 5, 'strength': 100, 'sight': 8, 'guard_range': 8},
     'MIND': {'label': 'Mastermind', 'plural': 'Masterminds', 'category': 'units', 'factions': ['Epsilon'], 'cost': 1500, 'speed': 5, 'strength': 300, 'sight': 8, 'guard_range': 8},
-    'KNIGHT': {'label': 'Knightframe', 'plural': 'Knightframes', 'category': 'units', 'factions': ['Foehn'], 'cost': 500, 'speed': 9, 'strength': 250, 'sight': 6, 'guard_range': 6},
+    'KNIGHT': {
+        'label': 'Knightframe', 'plural': 'Knightframes', 'category': 'infantry',
+        'factions': ['Foehn'], 'cost': 500, 'speed': 6, 'strength': 270,
+        'sight': 7, 'guard_range': 7,
+        'weapons': {
+            'KnightGun': {'damage': 50, 'rof': 55, 'range': 6},
+            'KnightGunAA': {'damage': 50, 'rof': 55, 'range': 7},
+            'KnightGunE': {'damage': 50, 'rof': 55, 'range': 6},
+            'KnightGunAAE': {'damage': 50, 'rof': 55, 'range': 7},
+        },
+    },
     'JACKAL': {'label': 'Jackal Racer', 'plural': 'Jackal Racers', 'category': 'units', 'factions': ['Foehn'], 'cost': 600, 'speed': 10, 'strength': 250, 'sight': 7, 'guard_range': 7},
     'CYCL': {'label': 'Cyclops Walker', 'plural': 'Cyclops Walkers', 'category': 'units', 'factions': ['Foehn'], 'cost': 900, 'speed': 7, 'strength': 450, 'sight': 7, 'guard_range': 7},
     'DRACO': {'label': 'Draco Tank', 'plural': 'Draco Tanks', 'category': 'units', 'factions': ['Foehn'], 'cost': 1200, 'speed': 7, 'strength': 450, 'sight': 7, 'guard_range': 7},

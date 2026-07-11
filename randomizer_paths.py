@@ -1,8 +1,19 @@
 ﻿"""Shared filesystem paths for the Mental Omega randomizer launcher."""
+import sys
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parent
-GAME_ROOT = APP_DIR.parent
+FROZEN = bool(getattr(sys, 'frozen', False))
+SOURCE_DIR = Path(__file__).resolve().parent
+
+# A one-file build is placed directly in the Mental Omega folder. PyInstaller
+# expands bundled modules to a temporary directory, so __file__ cannot locate
+# the game or persistent state in frozen builds.
+if FROZEN:
+    GAME_ROOT = Path(sys.executable).resolve().parent
+    APP_DIR = GAME_ROOT / 'RandomizerLauncherData'
+else:
+    APP_DIR = SOURCE_DIR
+    GAME_ROOT = SOURCE_DIR.parent
 CLIENT_EXE = GAME_ROOT / 'MentalOmegaClient.exe'
 GAME_LAUNCHER_EXE = GAME_ROOT / 'Syringe.exe'
 GAME_EXE = GAME_ROOT / 'gamemd.exe'
@@ -19,4 +30,7 @@ BACKUP_DIR = APP_DIR / 'backups'
 EXTRACTED_MAP_DIR = APP_DIR / 'extracted_maps'
 GENERATED_MAP_DIR = APP_DIR / 'generated_maps'
 CAMEO_CACHE_DIR = APP_DIR / 'cameo_cache'
+CONFIG_DIR = APP_DIR / 'config'
+LOG_DIR = APP_DIR / 'logs'
+LAUNCHER_LOG = LOG_DIR / 'launcher.log'
 MAP_RENDERER_DIR = GAME_ROOT / 'Map Renderer'

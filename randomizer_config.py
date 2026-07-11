@@ -1,7 +1,6 @@
-from pathlib import Path
+from randomizer_paths import CONFIG_DIR
 
 
-CONFIG_DIR = Path(__file__).resolve().parent / 'config'
 CONFIG_PATH = CONFIG_DIR / 'mental_omega_randomizer.yaml'
 
 DEFAULT_CONFIG = {
@@ -21,6 +20,7 @@ DEFAULT_CONFIG = {
         'future_world_name': 'Mental Omega',
     },
     'generation': {
+        'reward_mode': 'Standard',
         'starting_unlocked_missions': 3,
         'enabled_reward_types': ['access', 'buff', 'superweapon'],
         'randomize_unit_access': True,
@@ -47,7 +47,6 @@ DEFAULT_CONFIG = {
         'safe_player_country_buffs': True,
         'allow_shared_country_buffs': False,
         'buff_allied_helpers': False,
-        'close_game_on_victory': True,
         'transient_rulesmo_buffs': False,
         'experimental_house_buffs': False,
     },

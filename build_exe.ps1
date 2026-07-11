@@ -4,18 +4,28 @@ param(
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$source = Join-Path $scriptDir "MentalOmegaRandomizerLauncher.cs"
-$outputPath = Join-Path $scriptDir $Output
+$outputPath = [IO.Path]::GetFullPath((Join-Path $scriptDir $Output))
+$distDir = Join-Path $scriptDir "dist"
+$workDir = Join-Path $scriptDir "build"
 
-$candidates = @(
-    "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
-    "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
-)
-
-$csc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $csc) {
-    throw "Could not find csc.exe. Install .NET Framework Developer Pack or Visual Studio Build Tools."
+if (-not (python -m PyInstaller --version 2>$null)) {
+    throw "PyInstaller is required. Install it with: python -m pip install pyinstaller"
 }
 
-& $csc /nologo /target:winexe /out:$outputPath /reference:System.Windows.Forms.dll $source
+python -m PyInstaller `
+    --noconfirm `
+    --clean `
+    --onefile `
+    --windowed `
+    --name MentalOmegaRandomizer `
+    --distpath $distDir `
+    --workpath $workDir `
+    --specpath $workDir `
+    (Join-Path $scriptDir "launcher_gui.py")
+
+if ($LASTEXITCODE -ne 0) {
+    throw "PyInstaller build failed with exit code $LASTEXITCODE."
+}
+
+Copy-Item -Force (Join-Path $distDir "MentalOmegaRandomizer.exe") $outputPath
 Write-Host "Built $outputPath"

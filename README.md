@@ -10,9 +10,12 @@ This project is currently a non-Archipelago base. It can generate a seed, launch
 2. Extract `MentalOmegaRandomizer.exe` into your Mental Omega game folder, next to `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
 3. Start `MentalOmegaRandomizer.exe`.
 4. Choose campaign, difficulty, game speed, mission goal, rewards per objective, and reward settings.
+   `Standard` uses campaign-aware rewards and role translation. `Chaos (Experimental)` allows independently unlocked units from every faction and makes all faction production structures available to the player.
 5. Press `Generate New Seed`.
 6. Select an open mission and press `Launch Mission`.
-7. Finish objectives and win the mission. The launcher should detect most rewards automatically and, by default, close the spawned game after detecting victory. Use `Mark Complete` only if the victory reward was missed.
+7. Finish objectives and win the mission. The launcher detects rewards automatically and, by default, closes the spawned game after detecting victory.
+
+For debugging, expand `Show Launcher Log` to reveal the `Debug: Mark Complete` override. It is intentionally hidden during normal play and every use is written to persistent diagnostics.
 
 The launcher starts missions with speed control enabled. If you change speed in the launcher, it writes the selected speed before launch and the in-game speed slider should remain available.
 
@@ -24,14 +27,16 @@ Run from the Mental Omega game folder:
 python RandomizerLauncher\launcher_gui.py
 ```
 
-Or build and run the small Windows bootstrap:
+Or build and run the standalone one-file executable:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 .\MentalOmegaRandomizer.exe
 ```
 
-The developer bootstrap does not bundle Python. A local Python install with Tkinter is required when running from source.
+The build requires PyInstaller (`python -m pip install pyinstaller`). The resulting EXE bundles Python and Tkinter; players do not need Python or the source folder.
+
+For an installation/resource check without opening the UI, run `MentalOmegaRandomizer.exe --self-check`. Results are written to `RandomizerLauncherData\self_check.json`.
 
 ## Important Files
 
@@ -41,12 +46,10 @@ The developer bootstrap does not bundle Python. A local Python install with Tkin
 - `randomizer_cameos.py` extracts and decodes installed in-game cameo art for the unlock UI.
 - `randomizer_rewards.py` contains the reward catalogue and display helpers.
 - `randomizer_config.py` reads/writes the YAML-style setup file.
-- `audit_reward_catalog.py` is a developer validation script for checking reward/unit references.
 - `README_RANDOMIZER.md` is the longer user guide.
 - `TECHNICAL_FINDINGS.md` explains the implementation details and discoveries.
-- `TRIGGER_INVESTIGATION.md` tracks the objective/victory hook investigation.
 
-Runtime files such as generated maps, backups, Python cache, and `randomizer_state.json` are ignored by Git.
+When running the packaged EXE, writable state, configuration, diagnostics, generated maps, backups, and extracted cameo images are stored under `RandomizerLauncherData`. Cameos are extracted on demand from the installed Mental Omega MIX archives, so no image bundle is required.
 
 ## Current Status
 

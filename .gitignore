@@ -7,6 +7,11 @@ extracted_maps/
 generated_maps/
 cameo_cache/
 randomizer_state.json
+RandomizerLauncherData/
+logs/
+build/
+dist/
+*.spec
 
 # Local player setup. Keep templates/docs in source, not personal seeds.
 config/mental_omega_randomizer.yaml
