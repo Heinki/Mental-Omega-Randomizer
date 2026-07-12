@@ -24,6 +24,8 @@ DEFAULT_CONFIG = {
         'starting_unlocked_missions': 3,
         'enabled_reward_types': ['access', 'buff', 'superweapon'],
         'randomize_unit_access': True,
+        'include_defensive_buildings': True,
+        'share_chaos_role_buffs': False,
         'include_buff_rewards': True,
         'include_superweapon_rewards': True,
         'enabled_buff_types': [

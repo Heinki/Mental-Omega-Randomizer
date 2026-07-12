@@ -26,6 +26,7 @@ from randomizer_rewards import (
     reward_names,
     reward_rule_summary,
     unit_display_label,
+    unit_role_equivalents,
     valid_choice,
 )
 
@@ -126,6 +127,40 @@ VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
 GLOBAL_BUFF_REWARD_INTERVAL = 10
+FACTION_ORDER = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
+
+
+class WidgetTooltip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip = None
+        widget.bind('<Enter>', self.show, add='+')
+        widget.bind('<Leave>', self.hide, add='+')
+        widget.bind('<ButtonPress>', self.hide, add='+')
+
+    def show(self, event=None):
+        if self.tip is not None or not self.text:
+            return
+        self.tip = tk.Toplevel(self.widget)
+        self.tip.wm_overrideredirect(True)
+        label = ttk.Label(
+            self.tip,
+            text=self.text,
+            justify='left',
+            padding=(8, 6, 8, 6),
+            relief='solid',
+            wraplength=380,
+        )
+        label.grid(row=0, column=0)
+        x = self.widget.winfo_rootx() + 18
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+        self.tip.wm_geometry(f'+{x}+{y}')
+
+    def hide(self, event=None):
+        if self.tip is not None:
+            self.tip.destroy()
+            self.tip = None
 
 class TreeTooltip:
     def __init__(self, tree, text_callback):
@@ -225,6 +260,12 @@ class LauncherApp(tk.Tk):
         )
         self.randomize_unit_access_var = tk.BooleanVar(
             value=reward_settings['randomize_unit_access']
+        )
+        self.include_defensive_buildings_var = tk.BooleanVar(
+            value=reward_settings['include_defensive_buildings']
+        )
+        self.share_chaos_role_buffs_var = tk.BooleanVar(
+            value=reward_settings['share_chaos_role_buffs']
         )
         self.include_buff_rewards_var = tk.BooleanVar(
             value=reward_settings['include_buff_rewards']
@@ -389,11 +430,17 @@ class LauncherApp(tk.Tk):
             width=6,
         )
         self.rewards_per_check_spinbox.grid(row=2, column=1, sticky='w', pady=(6, 0))
-        ttk.Checkbutton(
+        self.buff_allied_helpers_check = ttk.Checkbutton(
             options_row,
             text='Buff allied helpers',
             variable=self.buff_allied_helpers_var,
-        ).grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
+        )
+        self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
+        WidgetTooltip(
+            self.buff_allied_helpers_check,
+            'Also applies earned buffs to AI-controlled allied helper houses. '
+            'Player-controlled allied houses are always included.',
+        )
         ttk.Label(options_row, text='Reward mode').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
         self.reward_mode_combo = ttk.Combobox(
             options_row,
@@ -403,6 +450,13 @@ class LauncherApp(tk.Tk):
             width=20,
         )
         self.reward_mode_combo.grid(row=3, column=1, columnspan=3, sticky='ew', pady=(6, 0))
+        self.reward_mode_combo.bind('<<ComboboxSelected>>', self.on_reward_mode_changed, add='+')
+        WidgetTooltip(
+            self.reward_mode_combo,
+            'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
+            'Chaos draws units from all four factions, forces randomized access/tech locking, and makes '
+            'all faction production structures available.',
+        )
         button_row = ttk.Frame(right_frame)
         button_row.grid(row=3, column=0, sticky='ew', pady=(0, 6))
         button_row.columnconfigure(0, weight=1)
@@ -484,33 +538,80 @@ class LauncherApp(tk.Tk):
         reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
         reward_frame.grid(row=1, column=0, sticky='ew')
         reward_frame.columnconfigure(0, weight=1)
-        ttk.Checkbutton(
+        self.randomize_unit_access_check = ttk.Checkbutton(
             reward_frame,
             text='Randomize unit access and lock unearned tech',
             variable=self.randomize_unit_access_var,
-        ).grid(row=0, column=0, sticky='w')
-        ttk.Checkbutton(
+            command=self.refresh_setting_states,
+        )
+        self.randomize_unit_access_check.grid(row=0, column=0, sticky='w')
+        WidgetTooltip(
+            self.randomize_unit_access_check,
+            'Turns combat units into access rewards. Units not yet earned are removed from production. '
+            'Chaos always requires this option.',
+        )
+        self.include_defensive_buildings_check = ttk.Checkbutton(
+            reward_frame,
+            text='Include defensive building rewards',
+            variable=self.include_defensive_buildings_var,
+        )
+        self.include_defensive_buildings_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.include_defensive_buildings_check,
+            'Includes faction defenses such as Pillboxes, Tesla Coils, mines, and support defenses. '
+            'With access randomization they can be locked/unlocked; with buffs enabled they can receive upgrades.',
+        )
+        self.include_buff_rewards_check = ttk.Checkbutton(
             reward_frame,
             text='Include buff rewards',
             variable=self.include_buff_rewards_var,
-        ).grid(row=1, column=0, sticky='w', pady=(4, 0))
-        ttk.Checkbutton(
+            command=self.refresh_setting_states,
+        )
+        self.include_buff_rewards_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.include_buff_rewards_check,
+            'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
+        )
+        self.share_chaos_role_buffs_check = ttk.Checkbutton(
+            reward_frame,
+            text='Share buffs with same-tier equivalent units (Chaos only)',
+            variable=self.share_chaos_role_buffs_var,
+        )
+        self.share_chaos_role_buffs_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.share_chaos_role_buffs_check,
+            'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
+            'Initiate, and Knightframe. Shared groups are displayed together in Unlocks.',
+        )
+        self.include_superweapon_rewards_check = ttk.Checkbutton(
             reward_frame,
             text='Include building-free superweapon rewards',
             variable=self.include_superweapon_rewards_var,
-        ).grid(row=2, column=0, sticky='w', pady=(4, 0))
+        )
+        self.include_superweapon_rewards_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.include_superweapon_rewards_check,
+            'Adds faction superweapons as rewards without requiring their normal superweapon building.',
+        )
 
         buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
         buff_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
         for column in range(3):
             buff_frame.columnconfigure(column, weight=1)
+        self.buff_type_checks = []
         for index, buff_type in enumerate(BUFF_TYPES):
             row, column = divmod(index, 3)
-            ttk.Checkbutton(
+            check = ttk.Checkbutton(
                 buff_frame,
                 text=buff_type.get('setting_label', buff_type['name']),
                 variable=self.buff_type_vars[buff_type['id']],
-            ).grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
+            )
+            check.grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
+            self.buff_type_checks.append(check)
+            description = buff_type.get('description', '').format(plural='Affected units')
+            WidgetTooltip(check, description)
+
+        self.refresh_setting_states()
 
         self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
         self.status_label.grid(row=7, column=0, columnspan=3, sticky='ew', pady=(8, 0))
@@ -761,8 +862,16 @@ class LauncherApp(tk.Tk):
         randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
         include_buffs = bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
         include_superweapons = bool(generation_config.get('include_superweapon_rewards', True))
+        include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
+        share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
+        buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
+        if generation_config.get('reward_mode') == 'Chaos (Experimental)':
+            randomize_access = True
         return {
             'randomize_unit_access': randomize_access,
+            'include_defensive_buildings': include_defensive_buildings,
+            'share_chaos_role_buffs': share_chaos_role_buffs,
+            'buff_allied_helpers': buff_allied_helpers,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
             'enabled_reward_types': [
@@ -780,7 +889,11 @@ class LauncherApp(tk.Tk):
     def current_reward_settings(self):
         if 'randomize_unit_access_var' not in self.__dict__:
             return self.config_reward_settings()
-        randomize_access = bool(self.randomize_unit_access_var.get())
+        chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
+        randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
+        include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
+        share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
+        buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
         include_buffs = bool(self.include_buff_rewards_var.get())
         include_superweapons = bool(self.include_superweapon_rewards_var.get())
         enabled_buff_types = [
@@ -790,6 +903,9 @@ class LauncherApp(tk.Tk):
         ]
         return {
             'randomize_unit_access': randomize_access,
+            'include_defensive_buildings': include_defensive_buildings,
+            'share_chaos_role_buffs': share_chaos_role_buffs,
+            'buff_allied_helpers': buff_allied_helpers,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
             'enabled_reward_types': [
@@ -813,6 +929,14 @@ class LauncherApp(tk.Tk):
         else:
             settings = self.current_reward_settings()
         settings.setdefault('randomize_unit_access', True)
+        settings.setdefault('include_defensive_buildings', True)
+        settings.setdefault('share_chaos_role_buffs', False)
+        settings.setdefault(
+            'buff_allied_helpers',
+            bool(self.config.get('generation', {}).get('buff_allied_helpers', False)),
+        )
+        if self.active_reward_mode() == 'Chaos (Experimental)':
+            settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
         settings.setdefault('include_superweapon_rewards', False)
         if not isinstance(settings.get('enabled_buff_types'), list):
@@ -822,10 +946,18 @@ class LauncherApp(tk.Tk):
     def randomize_unit_access_enabled(self):
         return bool(self.active_reward_settings().get('randomize_unit_access', True))
 
+    def share_chaos_role_buffs_enabled(self):
+        return bool(
+            self.active_reward_mode() == 'Chaos (Experimental)'
+            and self.active_reward_settings().get('share_chaos_role_buffs', False)
+        )
+
     def buff_rewards_enabled(self):
         return bool(self.active_reward_settings().get('include_buff_rewards', True))
 
     def active_reward_mode(self):
+        if self.__dict__.get('_reward_settings_override') is not None and hasattr(self, 'reward_mode_var'):
+            return self.reward_mode_var.get()
         if self.state:
             return self.state.get('reward_mode', REWARD_MODES[0])
         if hasattr(self, 'reward_mode_var'):
@@ -844,6 +976,8 @@ class LauncherApp(tk.Tk):
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
+        self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
+        self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
@@ -917,11 +1051,18 @@ class LauncherApp(tk.Tk):
     def configured_reward_pool(self):
         return self.filter_reward_pool(REWARD_POOL)
 
+    def reward_is_defensive_building(self, reward):
+        if reward.get('access_category') == 'defense':
+            return True
+        unit_id = reward.get('unit')
+        return bool(unit_id and BUFF_TARGETS.get(unit_id, {}).get('category') == 'defenses')
+
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
+        include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
         chaos_mode = (
             hasattr(self, 'reward_mode_var')
@@ -934,6 +1075,7 @@ class LauncherApp(tk.Tk):
                 (
                     reward.get('kind') == 'buff'
                     and include_buffs
+                    and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                     and reward.get('buff_type') in enabled_buff_types
                     and not (
                         chaos_mode
@@ -942,7 +1084,11 @@ class LauncherApp(tk.Tk):
                     )
                 )
                 or (reward.get('kind') == 'superweapon' and include_superweapons)
-                or (reward.get('kind') not in {'buff', 'superweapon'} and randomize_access)
+                or (
+                    reward.get('kind') not in {'buff', 'superweapon'}
+                    and randomize_access
+                    and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                )
             )
         ]
 
@@ -1054,6 +1200,7 @@ class LauncherApp(tk.Tk):
     def generate_seed_reward_plan(self, mission_codes, seed, slots_by_code):
         rng = random.Random(f'{seed}:seed-rewards')
         require_access_for_unit_buffs = self.randomize_unit_access_enabled()
+        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         access_by_code = {}
         buffs_by_code = {}
         for code in mission_codes:
@@ -1071,6 +1218,26 @@ class LauncherApp(tk.Tk):
         global_buff_counts = {}
         plan = {}
         global_index = 0
+
+        def unit_access_earned(unit):
+            return (
+                unit in seed_unlocked_tech_ids
+                or (
+                    share_chaos_role_buffs
+                    and bool(unit_role_equivalents(unit).intersection(seed_unlocked_tech_ids))
+                )
+            )
+
+        def buff_count_key(reward):
+            unit = reward.get('unit')
+            if share_chaos_role_buffs and unit and not reward.get('global_buff'):
+                return (reward.get('buff_type'), tuple(sorted(unit_role_equivalents(unit))))
+            return reward.get('name')
+
+        def record_unit_buff(unit):
+            units = unit_role_equivalents(unit) if share_chaos_role_buffs else {unit}
+            for affected_unit in units:
+                unit_buff_counts[affected_unit] = unit_buff_counts.get(affected_unit, 0) + 1
 
         def draw_access(code):
             access = access_by_code.get(code, [])
@@ -1091,16 +1258,16 @@ class LauncherApp(tk.Tk):
             unit_candidates = []
             global_candidates = []
             for reward in buffs:
-                name = reward.get('name')
                 limit = buff_stack_limit(reward)
-                if limit is not None and buff_counts.get(name, 0) >= limit:
+                count_key = buff_count_key(reward)
+                if limit is not None and buff_counts.get(count_key, 0) >= limit:
                     continue
                 unit = reward.get('unit')
                 if reward.get('global_buff') or not unit:
                     count = global_buff_counts.get(reward.get('name'), 0)
                     if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
                         global_candidates.append(reward)
-                elif not require_access_for_unit_buffs or unit in seed_unlocked_tech_ids:
+                elif not require_access_for_unit_buffs or unit_access_earned(unit):
                     unit_candidates.append(reward)
 
             if prefer_global and global_candidates:
@@ -1125,11 +1292,11 @@ class LauncherApp(tk.Tk):
             if reward.get('global_buff') or not reward.get('unit'):
                 name = reward.get('name')
                 global_buff_counts[name] = global_buff_counts.get(name, 0) + 1
-            name = reward.get('name')
-            buff_counts[name] = buff_counts.get(name, 0) + 1
+            count_key = buff_count_key(reward)
+            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
             unit = reward.get('unit')
             if unit:
-                unit_buff_counts[unit] = unit_buff_counts.get(unit, 0) + 1
+                record_unit_buff(unit)
             return reward
 
         def draw_repeatable_fallback(code):
@@ -1141,7 +1308,8 @@ class LauncherApp(tk.Tk):
                 name = reward.get('name')
                 if reward.get('kind') == 'superweapon' and name in used_access_names:
                     continue
-                if limit is not None and buff_counts.get(name, 0) >= limit:
+                count_key = buff_count_key(reward)
+                if limit is not None and buff_counts.get(count_key, 0) >= limit:
                     continue
                 if reward.get('kind') == 'buff':
                     unit = reward.get('unit')
@@ -1149,7 +1317,7 @@ class LauncherApp(tk.Tk):
                         require_access_for_unit_buffs
                         and unit
                         and not reward.get('global_buff')
-                        and unit not in seed_unlocked_tech_ids
+                        and not unit_access_earned(unit)
                     ):
                         continue
                 candidates.append(reward)
@@ -1162,7 +1330,7 @@ class LauncherApp(tk.Tk):
                         not require_access_for_unit_buffs
                         or reward.get('global_buff')
                         or not reward.get('unit')
-                        or reward.get('unit') in seed_unlocked_tech_ids
+                        or unit_access_earned(reward.get('unit'))
                     )
                 ]
             if not candidates:
@@ -1170,10 +1338,11 @@ class LauncherApp(tk.Tk):
             reward = dict(rng.choice(candidates))
             name = reward.get('name')
             if reward.get('kind') == 'buff':
-                buff_counts[name] = buff_counts.get(name, 0) + 1
+                count_key = buff_count_key(reward)
+                buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
                 unit = reward.get('unit')
                 if unit:
-                    unit_buff_counts[unit] = unit_buff_counts.get(unit, 0) + 1
+                    record_unit_buff(unit)
             return reward
 
         for code in mission_codes:
@@ -1227,6 +1396,30 @@ class LauncherApp(tk.Tk):
 
     def on_campaign_filter_changed(self, event=None):
         self.update_mission_goal_limit()
+
+    def on_reward_mode_changed(self, event=None):
+        self.refresh_setting_states()
+
+    def refresh_setting_states(self):
+        if not hasattr(self, 'randomize_unit_access_check'):
+            return
+        chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
+        buffs_enabled = bool(self.include_buff_rewards_var.get())
+        if chaos_mode:
+            self.randomize_unit_access_var.set(True)
+            self.randomize_unit_access_check.configure(state='disabled')
+            self.share_chaos_role_buffs_check.grid()
+        else:
+            self.randomize_unit_access_check.configure(state='normal')
+            self.share_chaos_role_buffs_check.grid_remove()
+        self.share_chaos_role_buffs_check.configure(state='normal' if buffs_enabled else 'disabled')
+        self.buff_allied_helpers_check.configure(state='normal' if buffs_enabled else 'disabled')
+        for check in getattr(self, 'buff_type_checks', []):
+            check.configure(state='normal' if buffs_enabled else 'disabled')
+        reward_source_enabled = bool(self.randomize_unit_access_var.get()) or buffs_enabled
+        self.include_defensive_buildings_check.configure(
+            state='normal' if reward_source_enabled else 'disabled'
+        )
 
     def update_mission_goal_limit(self):
         if not self.missions:
@@ -1986,11 +2179,23 @@ throw "Map $name was not found in expandmo*.mix"
             raise RuntimeError((result.stderr or result.stdout or 'Map extraction failed.').strip())
         return output_path
 
+    def randomized_tech_ids(self):
+        if not self.randomize_unit_access_enabled():
+            return set()
+        include_defenses = bool(
+            self.active_reward_settings().get('include_defensive_buildings', True)
+        )
+        return {
+            section.upper()
+            for section in controlled_tech_ids()
+            if include_defenses or BUFF_TARGETS.get(section.upper(), {}).get('category') != 'defenses'
+        }
+
     def map_rules_for_launch(self, extra_rules=None):
         rule_sections = {}
-        randomize_access = self.randomize_unit_access_enabled()
-        if randomize_access:
-            for section in sorted(controlled_tech_ids()):
+        randomized_tech_ids = self.randomized_tech_ids()
+        if randomized_tech_ids:
+            for section in sorted(randomized_tech_ids):
                 section_upper = section.upper()
                 values = rule_sections.setdefault(section, {})
                 values['BuildLimit'] = SCRIPTED_TECH_BUILD_LIMIT
@@ -2005,6 +2210,8 @@ throw "Map $name was not found in expandmo*.mix"
                 if reward.get('kind') == 'buff':
                     continue
                 for section, values in launch_rules_for_reward(reward).items():
+                    if section.upper() not in randomized_tech_ids:
+                        continue
                     prepared_values = {
                         key: value
                         for key, value in values.items()
@@ -2019,9 +2226,9 @@ throw "Map $name was not found in expandmo*.mix"
                 reward = canonical_reward(reward)
                 if reward.get('kind') == 'buff' and reward.get('buff_type'):
                     continue
-                if not randomize_access:
-                    continue
                 for section, values in launch_rules_for_reward(reward).items():
+                    if section.upper() not in randomized_tech_ids:
+                        continue
                     section_rules = rule_sections.setdefault(section, {})
                     # Remove launcher-injected safety locks before applying an
                     # earned access reward. If the reward carries its own
@@ -2046,9 +2253,12 @@ throw "Map $name was not found in expandmo*.mix"
             if any(key.lower() == 'techlevel' for key in values)
         }
         share_basic_equivalent_buffs = bool(
-            self.state
-            and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-            and self.active_reward_mode() != 'Chaos (Experimental)'
+            (
+                self.state
+                and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+                and self.active_reward_mode() != 'Chaos (Experimental)'
+            )
+            or self.share_chaos_role_buffs_enabled()
         )
         chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos (Experimental)'
 
@@ -2068,7 +2278,7 @@ throw "Map $name was not found in expandmo*.mix"
         safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
         allow_shared_country_buffs = bool(generation_config.get('allow_shared_country_buffs', False))
         transient_rulesmo_buffs = bool(generation_config.get('transient_rulesmo_buffs', False))
-        buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
+        buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
         require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
         if self.state and experimental_house_buffs:
             player_house, house_buffs = clone_player_country_for_house_buffs(
@@ -2168,7 +2378,12 @@ throw "Map $name was not found in expandmo*.mix"
             )
 
         unlocked_tech_ids = tech_ids_for_rewards(earned_rewards)
-        removed_techlevel_actions = remove_locked_techlevel_actions(lines, unlocked_tech_ids)
+        randomized_tech_ids = self.randomized_tech_ids()
+        removed_techlevel_actions = remove_locked_techlevel_actions(
+            lines,
+            unlocked_tech_ids,
+            randomized_tech_ids=randomized_tech_ids,
+        )
         if removed_techlevel_actions:
             self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
         objective_action_ids = action_line_ids(
@@ -2232,7 +2447,11 @@ throw "Map $name was not found in expandmo*.mix"
         # Hook insertion can expose or rewrite action groups in unusual
         # campaign action lists. Run the native unlock filter again so a map
         # cannot restore access that is still locked by launcher state.
-        removed_after_patching = remove_locked_techlevel_actions(lines, unlocked_tech_ids)
+        removed_after_patching = remove_locked_techlevel_actions(
+            lines,
+            unlocked_tech_ids,
+            randomized_tech_ids=randomized_tech_ids,
+        )
         if removed_after_patching:
             self.append_log(
                 f'Removed {removed_after_patching} additional native tech unlock action(s) after hook patching.'
@@ -2624,6 +2843,17 @@ throw "Map $name was not found in expandmo*.mix"
     def reward_group_label(self, tech_id):
         return unit_display_label(tech_id)
 
+    def unit_faction(self, tech_id):
+        factions = BUFF_TARGETS.get(tech_id, {}).get('factions') or []
+        if len(factions) == 1:
+            return factions[0]
+        return 'Global' if factions else 'Other'
+
+    def unit_faction_sort_key(self, tech_id):
+        faction = self.unit_faction(tech_id)
+        rank = FACTION_ORDER.index(faction) if faction in FACTION_ORDER else len(FACTION_ORDER)
+        return (rank, unit_display_label(tech_id).lower())
+
     def current_unlocks_text(self):
         if not self.state:
             return 'No randomizer seed generated yet.'
@@ -2633,6 +2863,8 @@ throw "Map $name was not found in expandmo*.mix"
             return 'No unlocks or buffs earned yet.'
 
         groups = {}
+        shared_buff_groups = {}
+        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
 
         def group_for(tech_id):
             group = groups.setdefault(tech_id, {
@@ -2645,10 +2877,28 @@ throw "Map $name was not found in expandmo*.mix"
 
         for reward in earned:
             if reward.get('kind') == 'buff' and reward.get('unit'):
-                group = group_for(reward['unit'])
-                key = reward.get('buff_type', reward.get('name', 'buff'))
-                entry = group['buffs'].setdefault(key, {'reward': reward, 'count': 0})
-                entry['count'] += 1
+                source_unit = reward['unit']
+                equivalent_units = unit_role_equivalents(source_unit)
+                if (
+                    share_chaos_role_buffs
+                    and not reward.get('global_buff')
+                    and len(equivalent_units) > 1
+                ):
+                    unit_ids = tuple(sorted(equivalent_units, key=self.unit_faction_sort_key))
+                    shared_group = shared_buff_groups.setdefault(unit_ids, {'buffs': {}})
+                    key = reward.get('buff_type', reward.get('name', 'buff'))
+                    display_reward = dict(reward)
+                    display_reward.pop('name', None)
+                    entry = shared_group['buffs'].setdefault(
+                        key,
+                        {'reward': display_reward, 'count': 0},
+                    )
+                    entry['count'] += 1
+                else:
+                    group = group_for(source_unit)
+                    key = reward.get('buff_type', reward.get('name', 'buff'))
+                    entry = group['buffs'].setdefault(key, {'reward': reward, 'count': 0})
+                    entry['count'] += 1
                 continue
 
             tech_ids = sorted(tech_ids_for_rewards([reward]))
@@ -2664,8 +2914,40 @@ throw "Map $name was not found in expandmo*.mix"
                 })['other'].append(reward)
 
         lines = []
-        for tech_id in sorted(groups, key=lambda item: groups[item]['label']):
+        if shared_buff_groups:
+            lines.append('Shared Unit Buffs')
+            lines.append('=================')
+            lines.append('Every pictured unit receives the bonuses listed beneath its group.')
+            lines.append('')
+            for unit_ids, shared_group in sorted(
+                shared_buff_groups.items(),
+                key=lambda item: tuple(unit_display_label(unit_id) for unit_id in item[0]),
+            ):
+                lines.append(f'[[MOR_SHARED:{",".join(unit_ids)}]]')
+                lines.append('  •  '.join(unit_display_label(unit_id) for unit_id in unit_ids))
+                for _, entry in sorted(shared_group['buffs'].items()):
+                    reward = entry['reward']
+                    count = effective_buff_count(reward, entry['count'])
+                    for summary in buff_effect_lines(reward, count=count, include_label=False):
+                        lines.append(f'  {summary}')
+                lines.append('')
+
+        current_faction = None
+        for tech_id in sorted(groups, key=self.unit_faction_sort_key):
             group = groups[tech_id]
+            faction = self.unit_faction(tech_id)
+            if faction != current_faction:
+                if lines and lines[-1] != '':
+                    lines.append('')
+                heading = (
+                    f'{faction} Units'
+                    if faction in FACTION_ORDER
+                    else f'{faction} Rewards'
+                )
+                lines.append(heading)
+                lines.append('=' * len(heading))
+                lines.append('')
+                current_faction = faction
             lines.append(group['label'])
             lines.append('-' * len(group['label']))
 
@@ -2674,7 +2956,7 @@ throw "Map $name was not found in expandmo*.mix"
                     lines.append(reward_display_name(reward))
 
             if group['buffs']:
-                for entry in sorted(group['buffs'].values(), key=lambda item: item['reward'].get('name', '')):
+                for _, entry in sorted(group['buffs'].items()):
                     reward = entry['reward']
                     count = effective_buff_count(reward, entry['count'])
                     for summary in buff_effect_lines(reward, count=count, include_label=False):
@@ -2693,14 +2975,18 @@ throw "Map $name was not found in expandmo*.mix"
         if not self.state:
             return []
         unit_ids = set()
+        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         for reward in self.earned_rewards_from_checks():
             reward = canonical_reward(reward)
             if reward.get('kind') == 'buff' and reward.get('unit'):
                 if reward['unit'] != 'MOR_BUILDINGS':
-                    unit_ids.add(reward['unit'])
+                    if share_chaos_role_buffs and not reward.get('global_buff'):
+                        unit_ids.update(unit_role_equivalents(reward['unit']))
+                    else:
+                        unit_ids.add(reward['unit'])
                 continue
             unit_ids.update(tech_ids_for_rewards([reward]))
-        return sorted(unit_ids, key=unit_display_label)
+        return sorted(unit_ids, key=self.unit_faction_sort_key)
 
     def refresh_progress_view(self):
         if not self.state:
@@ -2769,6 +3055,7 @@ throw "Map $name was not found in expandmo*.mix"
                 resolved=len(cameo_paths),
                 missing=sorted(set(unit_ids) - set(cameo_paths)),
             )
+            photos = {}
             for unit_id in unit_ids:
                 cameo_path = cameo_paths.get(unit_id)
                 if not cameo_path:
@@ -2780,8 +3067,50 @@ throw "Map $name was not found in expandmo*.mix"
                     except tk.TclError:
                         continue
                     self.cameo_photo_cache[unit_id] = photo
+                photos[unit_id] = photo
+                self.unlock_cameo_images[unit_id] = photo
+
+            shared_rows = re.findall(r'\[\[MOR_SHARED:([A-Z0-9_,]+)\]\]', text)
+            for shared_ids in shared_rows:
+                token = f'[[MOR_SHARED:{shared_ids}]]'
+                position = self.unlocks_text.search(token, '1.0', stopindex='end', exact=True)
+                if not position:
+                    continue
+                self.unlocks_text.delete(position, f'{position}+{len(token)}c')
+                row_units = [unit_id for unit_id in shared_ids.split(',') if unit_id]
+                has_content = False
+                for unit_id in reversed(row_units):
+                    if has_content:
+                        self.unlocks_text.insert(position, '   ')
+                    photo = photos.get(unit_id)
+                    if photo is not None:
+                        self.unlocks_text.image_create(
+                            position,
+                            image=photo,
+                            align='center',
+                            padx=3,
+                            pady=2,
+                        )
+                    else:
+                        self.unlocks_text.insert(position, '[no cameo]')
+                    has_content = True
+
+            for unit_id in unit_ids:
+                photo = photos.get(unit_id)
+                if photo is None:
+                    continue
                 label = unit_display_label(unit_id)
                 position = self.unlocks_text.search(label, '1.0', stopindex='end', exact=True)
+                while position:
+                    line_text = self.unlocks_text.get(f'{position} linestart', f'{position} lineend')
+                    if line_text == label:
+                        break
+                    position = self.unlocks_text.search(
+                        label,
+                        f'{position}+{len(label)}c',
+                        stopindex='end',
+                        exact=True,
+                    )
                 if not position:
                     continue
                 self.unlocks_text.image_create(
@@ -2791,7 +3120,6 @@ throw "Map $name was not found in expandmo*.mix"
                     padx=5,
                     pady=2,
                 )
-                self.unlock_cameo_images[unit_id] = photo
         self.unlocks_text.configure(state='disabled')
         self.refresh_unlock_search()
 
@@ -2799,4 +3127,3 @@ throw "Map $name was not found in expandmo*.mix"
 def main():
     app = LauncherApp()
     app.mainloop()
-

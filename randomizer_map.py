@@ -359,12 +359,17 @@ def expand_equivalent_role_buffs(rewards, enabled=False):
     return expanded
 
 
-def remove_locked_techlevel_actions(lines, unlocked_tech_ids):
+def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_ids=None):
     start, end = find_section_bounds(lines, 'Actions')
     if start is None:
         return 0
 
-    controlled = {section.upper() for section in controlled_tech_ids()}
+    controlled = {
+        section.upper()
+        for section in (
+            controlled_tech_ids() if randomized_tech_ids is None else randomized_tech_ids
+        )
+    }
     unlocked = {section.upper() for section in unlocked_tech_ids}
     removed = 0
 

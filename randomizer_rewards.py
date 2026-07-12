@@ -785,6 +785,7 @@ def build_defense_unlock_rewards():
             rewards.append({
                 'name': f'{label} Access',
                 'description': f'Allows {label} construction from the faction Construction Yard.',
+                'access_category': 'defense',
                 'rules': build_unlock(defense_id, 1, access['defenses'], access['houses']),
                 'factions': [faction],
             })

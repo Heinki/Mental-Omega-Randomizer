@@ -28,7 +28,7 @@ The launcher keeps two kinds of data:
 - `config/mental_omega_randomizer.yaml` stores setup defaults, seed options, campaign filter, speed, difficulty, and future Archipelago-shaped options.
 - `randomizer_state.json` stores current seed progress, mission order, completed missions, completed objective/victory checks, and earned rewards.
 
-Archipelago is not active yet. The YAML structure is intentionally shaped so a future Archipelago world can map options into it without replacing the standalone launcher.
+Archipelago is not active yet. The YAML structure is intentionally shaped so a future Archipelago world can map options into it without replacing the standalone launcher. All player-facing generation settings are round-tripped through the YAML and copied into seed state so an active run retains its generated behavior.
 
 ## Mission Discovery
 
@@ -93,7 +93,7 @@ Maps with multiple player-controlled houses apply country-level buffs to every p
 
 Standard mode excludes every Foehn unit, defense, buff target, and Foehn superpower. The Foehn campaign draws Allied and Soviet rewards because those are its normal production factions; Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. The full Foehn catalogue is exclusive to Chaos.
 
-`Chaos (Experimental)` is orthogonal to mission campaign selection. Its reward pool spans every faction and disables role sharing. At map generation, every faction production structure is made available from the player Construction Yard, and each earned access item receives all player-controlled countries plus a valid factory prerequisite. Foreign access is routed to the current player faction's physical barracks, War Factory, shipyard, or Construction Yard so the earned object appears on the production sidebar the player actually builds. Aircraft use that faction's air command when one exists and otherwise retain their real aircraft factory, which Chaos also makes constructible. Unit cost and speed buffs become direct TechnoType values, armor becomes unit-specific effective durability through Strength, and unsupported per-unit production-speed rewards are removed from the Chaos pool. Explicitly global production and army-wide ROF rewards keep their advertised global behavior.
+`Chaos (Experimental)` is orthogonal to mission campaign selection and always enables randomized access/tech locking. Its reward pool spans every faction and keeps role sharing off by default. Players can optionally share unit buffs across the explicit `UNIT_ROLE_EQUIVALENCE_GROUPS`; reward eligibility then accepts an unlocked peer, and map injection expands every earned unit buff across that peer group. At map generation, every faction production structure is made available from the player Construction Yard, and each earned access item receives all player-controlled countries plus a valid factory prerequisite. Foreign access is routed to the current player faction's physical barracks, War Factory, shipyard, or Construction Yard so the earned object appears on the production sidebar the player actually builds. Every playable faction TechnoType and Chaos production structure also receives a map-local faction-band `CameoPriority`; the player's native faction receives the highest band and equal priorities preserve vanilla sorting within each block. Aircraft use that faction's air command when one exists and otherwise retain their real aircraft factory, which Chaos also makes constructible. Unit cost and speed buffs become direct TechnoType values, armor becomes unit-specific effective durability through Strength, and unsupported per-unit production-speed rewards are removed from the Chaos pool. Explicitly global production and army-wide ROF rewards keep their advertised global behavior.
 
 The Epsilon `MIND` reward target is labeled as Mastermind. Yuri Adept / PsiCorps Trooper mission units use the separate `YURI` section in maps such as `EHUMAN`, so Mastermind buffs do not affect those scripted infantry.
 
@@ -179,6 +179,8 @@ Starting units can be harder than newly built units because some buffs are appli
 ## Cameo Images
 
 The Current Unlocks view reads each unit's `Image` and `CameoPCX` mapping from the installed `rulesmo.ini` and `artmo.ini` inside the Mental Omega MIX archives. The launcher extracts only needed PCX files, decodes the indexed PCX data to PNG with the Python standard library, and caches the results locally. No Pillow installation or generated replacement artwork is required.
+
+Unlock entries are ordered Allies, Soviets, Epsilon, then Foehn. Shared Chaos role groups use that same faction order within a single side-by-side cameo row. The defensive-building option filters both access and buff rewards and also narrows the set of TechnoTypes whose native map unlock actions are suppressed.
 
 ## Known Limits
 

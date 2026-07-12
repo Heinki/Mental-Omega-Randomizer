@@ -15,6 +15,7 @@ from randomizer_map import (
 )
 from randomizer_rewards import (
     ALWAYS_AVAILABLE_TECH_IDS,
+    BUFF_TARGETS,
     REWARD_POOL,
     unit_role_equivalents,
 )
@@ -307,6 +308,37 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_acces
     return rules
 
 
+def chaos_cameo_priority_rules(player_family):
+    """Keep each faction contiguous on Chaos production sidebars."""
+    faction_order = ['allies', 'soviets', 'epsilon', 'foehn']
+    player_family = str(player_family or '').lower()
+    if player_family in faction_order:
+        faction_order.remove(player_family)
+        faction_order.insert(0, player_family)
+    priorities = {
+        faction: (len(faction_order) - index) * 100
+        for index, faction in enumerate(faction_order)
+    }
+
+    rules = {}
+    for tech_id, target in BUFF_TARGETS.items():
+        factions = target.get('factions') or []
+        if len(factions) != 1:
+            continue
+        faction = str(factions[0]).lower()
+        if faction in priorities:
+            rules[tech_id] = {'CameoPriority': str(priorities[faction])}
+
+    for faction, categories in PRODUCTION_BUILDINGS.items():
+        priority = priorities.get(faction)
+        if priority is None:
+            continue
+        for building_ids in categories.values():
+            for building_id in building_ids:
+                rules.setdefault(building_id, {})['CameoPriority'] = str(priority)
+    return rules
+
+
 def chaos_earned_access_rules(lines, earned_rewards):
     """Adapt every earned access item to player-controlled production."""
     player_houses = set(player_controlled_houses(lines))
@@ -398,6 +430,8 @@ def chaos_earned_access_rules(lines, earned_rewards):
                 'ForbiddenHouses': 'none',
                 'PrerequisiteOverride': chosen_prerequisite,
             }
+    for section, values in chaos_cameo_priority_rules(player_family).items():
+        rules.setdefault(section, {}).update(values)
     return rules
 
 

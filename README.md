@@ -10,7 +10,8 @@ This project is currently a non-Archipelago base. It can generate a seed, launch
 2. Extract `MentalOmegaRandomizer.exe` into your Mental Omega game folder, next to `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
 3. Start `MentalOmegaRandomizer.exe`.
 4. Choose campaign, difficulty, game speed, mission goal, rewards per objective, and reward settings.
-   `Standard` uses campaign-aware rewards and role translation. `Chaos (Experimental)` allows independently unlocked units from every faction and makes all faction production structures available to the player.
+   `Standard` uses campaign-aware rewards and role translation. `Chaos (Experimental)` forces randomized unit access, allows independently unlocked units from every faction, and makes all faction production structures available to the player. In-game production cameos are kept in contiguous faction blocks with the current player faction first. Its optional same-tier sharing setting applies a unit buff to every curated cross-faction equivalent (for example GI, Conscript, Initiate, and Knightframe).
+   Hover over a setting for an explanation. Buff subsettings are disabled when buff rewards are off, and defensive-building access/buffs can be included or excluded independently.
 5. Press `Generate New Seed`.
 6. Select an open mission and press `Launch Mission`.
 7. Finish objectives and win the mission. The launcher detects rewards automatically and, by default, closes the spawned game after detecting victory.
@@ -69,7 +70,7 @@ Working:
 - optional building-free faction superweapon rewards
 - guarded map-local unit/weapon buffs
 - optional allied-helper buffing
-- real in-game unit cameos in the Current Unlocks view
+- real in-game unit cameos grouped by faction in the Current Unlocks view
 
 Known limits:
 
