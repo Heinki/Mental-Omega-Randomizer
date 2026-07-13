@@ -189,7 +189,14 @@ class TreeTooltip:
             self.current_row = row
             self.tip = tk.Toplevel(self.tree)
             self.tip.wm_overrideredirect(True)
-            label = ttk.Label(self.tip, text=text, justify='left', padding=(8, 6, 8, 6), relief='solid')
+            label = ttk.Label(
+                self.tip,
+                text=text,
+                justify='left',
+                padding=(8, 6, 8, 6),
+                relief='solid',
+                wraplength=620,
+            )
             label.grid(row=0, column=0)
         self.tip.wm_geometry(f'+{x}+{y}')
 
@@ -454,8 +461,9 @@ class LauncherApp(tk.Tk):
         WidgetTooltip(
             self.reward_mode_combo,
             'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
-            'Chaos draws units from all four factions, forces randomized access/tech locking, and makes '
-            'all faction production structures available.',
+            'Chaos draws units from all four factions, forces randomized access/tech locking, and lets '
+            'earned units use matching production structures that the mission gives the player. It does '
+            'not grant foreign production structures.',
         )
         button_row = ttk.Frame(right_frame)
         button_row.grid(row=3, column=0, sticky='ew', pady=(0, 6))
@@ -1620,6 +1628,8 @@ class LauncherApp(tk.Tk):
         for check in missing:
             rewards = check_rewards(check)
             lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
+            for reward in rewards:
+                lines.append(f'    • {reward_display_name(reward)}')
         return '\n'.join(lines)
 
     def on_launch_selected(self):
@@ -3165,6 +3175,11 @@ throw "Map $name was not found in expandmo*.mix"
                 hint = check.get('hint')
                 if hint and not check.get('unlocked'):
                     lines.append(f'   {hint}')
+                if rewards:
+                    for reward in rewards:
+                        lines.append(f'   • {reward_display_name(reward)}')
+                else:
+                    lines.append('   • No reward assigned')
             lines.append('')
             lines.append('Earned reward details are grouped in the Unlocks tab.')
         elif not lines:

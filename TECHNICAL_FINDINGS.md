@@ -1,192 +1,231 @@
-# Technical Findings
+# Mental Omega Randomizer Technical Reference
 
-This document explains how the standalone Mental Omega randomizer currently works and what we learned while getting it stable.
+This document is the authoritative implementation reference. Player-facing option semantics are intentionally kept in [README_RANDOMIZER.md](README_RANDOMIZER.md#settings-reference) so they are not duplicated here.
+
+## Runtime Architecture
+
+| Component | Responsibility |
+|---|---|
+| `launcher_gui.py` | Entry point and packaged `--self-check` |
+| `randomizer_app.py` | UI, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
+| `randomizer_map.py` | INI parsing/merging, generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
+| `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
+| `randomizer_rewards.py` | Installed roster metadata, reward catalogue, role equivalence, stack limits, and display names |
+| `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
+
+The launcher does not patch the original campaign MIX archives. It extracts and caches source maps, writes a temporary loose root map for the selected scenario, and removes only files carrying the randomizer hook marker.
 
 ## Launch Model
 
-The launcher does not modify the in-game UI. It prepares launch files and starts the game through:
+Missions start through:
 
 ```text
 Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 ```
 
-The selected mission is written to `spawn.ini` as `Scenario=<map>.MAP`. The launcher writes game speed and difficulty into `spawn.ini` and the regular option INIs where possible:
+`spawn.ini` receives the scenario, game speed, `Difficulty`, `CampDifficulty`, and human/computer difficulty values. The launcher also updates the normal option INIs where safe. `RA2MD.INI` may be extremely large, so values are patched in place above the size threshold instead of rewriting the complete file.
 
-- `GameSpeed`
-- `Difficulty`
-- `CampDifficulty`
-- `DifficultyModeHuman`
+`-LOG` produces `debug/debug.log`, which is the communication channel for objective/victory markers. `-SPEEDCONTROL` keeps the spawned-game speed control available.
 
-`RA2MD.INI` can become extremely large on some installs. When it is above the safety limit, the launcher patches the small speed/difficulty values in place instead of rewriting the whole file.
+The packaged launcher uses a PyInstaller on-directory build: a small `MentalOmegaRandomizer.exe` plus `RandomizerLauncherRuntime`. This avoids one-file extraction on every startup.
 
-`-SPEEDCONTROL` is required for the in-game speed slider to appear during spawned missions. The launcher keeps the flag enabled and writes the selected engine speed value (`0` slowest through `6` fastest) to `spawn.ini` and the option INIs. A previous reversed mapping made `0 - Slowest` write the high end of the range, which could normalize to a fast live speed in spawned campaign launches.
+## Configuration and State
 
-## State And Config
+The launcher separates defaults from active progress:
 
-The launcher keeps two kinds of data:
+| Data | Contents | Mutation rule |
+|---|---|---|
+| `config/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
+| `randomizer_state.json` | Active seed, frozen reward settings, mission order, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
 
-- `config/mental_omega_randomizer.yaml` stores setup defaults, seed options, campaign filter, speed, difficulty, and future Archipelago-shaped options.
-- `randomizer_state.json` stores current seed progress, mission order, completed missions, completed objective/victory checks, and earned rewards.
+This split is important for a future Archipelago client: option values generate a slot/seed once, while received locations/items update progress. The current `archipelago.*` keys are placeholders and have no network behavior.
 
-Archipelago is not active yet. The YAML structure is intentionally shaped so a future Archipelago world can map options into it without replacing the standalone launcher. All player-facing generation settings are round-tripped through the YAML and copied into seed state so an active run retains its generated behavior.
+## Mission Discovery and Seed Construction
 
-## Mission Discovery
+Mission code, map filename, title, side, and briefing objective text are read from `INI/BattleClient.ini`. A mission with briefing objectives receives one check per objective plus a separate `victory` check. When no objective text exists, the launcher creates three placeholder objective checks plus victory.
 
-Missions are read from `INI/BattleClient.ini`. The launcher records:
+Seed construction is deterministic for a seed string:
 
-- mission code
-- scenario map
-- displayed title
-- campaign/faction
-- briefing objective lines
+1. Filter eligible missions by campaign.
+2. Build a staged shuffled mission order up to the mission goal.
+3. Allocate `objective count + 1 victory` checks per mission.
+4. Allocate 1–10 reward slots to every check.
+5. Build the complete reward plan with a random stream derived from `<seed>:seed-rewards`.
+6. Store every check and assigned reward in state before play begins.
 
-The seed can include all campaigns or a single campaign. `All Campaigns` draws from the combined Allied, Soviet, Epsilon, and Foehn reward pool regardless of the current mission side. A selected faction remains strictly faction-only; mixed-mission playability is handled by mission-local safety fallbacks rather than cross-faction rewards.
+Access rewards are unique by reward name. Seed planning prioritizes access, attempts a buff every fifth slot, and prefers a global buff every tenth slot while its stack cap permits. Unit buffs normally require prior planned access; buff-only seeds relax that requirement. Buff selection spreads upgrades across the least-buffed eligible units before stacking them further. Capped effects such as veterancy, cloaking, sensors, and self-healing cannot be repeated beyond their useful limit.
 
-Some missions, especially special cases, do not expose clean objective text. Those fall back to generated objective placeholders until map trigger analysis supplies better checks.
+The mission-table reward fraction counts reward items, not check objects. The Rewards tab and mission hover text read the stored check reward arrays and display each `reward_display_name`, so a 10-item check shows all ten assignments.
 
-## Generated Maps
+## Generated Map Pipeline
 
-Campaign maps live in MIX archives. The launcher extracts a loose generated copy for the selected scenario, patches that copy, launches it, and removes the generated root map afterward.
+Every mission launch starts from the cached extracted source, not the previous generated result. `prepare_hooked_map` performs the following operations in order:
 
-Generated maps are used for:
+1. Build the global controlled-tech lock set for the active seed.
+2. Add mission-required Standard equivalents or Chaos all-faction production alternatives.
+3. Merge already-earned access rules and remove their launcher locks.
+4. Apply safe map-local country/house buffs to all player-controlled houses and optionally AI allied helpers.
+5. Apply guarded direct unit/weapon buffs where no unsafe enemy uses the same global type.
+6. Add a map-start trigger for already-earned building-free superweapons.
+7. Remove native action `106` tech unlocks that would reopen still-unearned controlled technology.
+8. Discover objective/victory action lists and add marker teams.
+9. Run the native unlock filter again after action-list edits.
+10. Write a diagnostic copy under `generated_maps` and a loose scenario map in the game root.
 
-- objective/victory marker hooks
-- tech locks
-- earned tech unlocks
-- map-local country/house buffs
-- guarded unit and weapon buffs
+The root copy begins with `HOOKED_MAP_MARKER`. A pre-existing non-randomizer loose map is backed up before replacement. Cleanup scans root `*.MAP` files and removes only those carrying this marker; extracted and diagnostic copies remain cached.
 
-The launcher avoids patching original MIX archives in place.
+## Objective and Victory Hooks
 
-## Objective And Victory Hooks
+### Why a map hook is required
 
-The game does not reliably write a simple "objective completed" state file. The practical solution is active map patching:
+The engine does not expose reliable objective state in a simple external save file. The launcher therefore attaches harmless marker-team creation to existing map action lists and observes the resulting team launch name in `debug/debug.log`.
 
-1. Find objective-complete and likely victory trigger actions.
-2. Add randomizer marker team actions to those triggers.
-3. Watch `debug/debug.log` for marker launches.
-4. Grant the matching reward check once.
+The hook is an observer. It does not replace the mission objective logic or decide when the player wins.
 
-The launcher stores completed check IDs in state, so restarting a mission should not grant the same objective twice.
+### Check-to-action discovery
 
-Victory is treated as its own reward check. If a victory marker fires, the launcher can mark the mission complete and grant any missed objective rewards for that mission.
+Objective action lists are recognized by these action signatures:
 
-Victory markers are inserted before the existing `Winner is`/`Announce Win` action. Appending after those actions is unreliable because the engine may end the scenario before a later marker action runs. The launcher prefers a true `Winner is` action when a map also contains an earlier `Announce Win` action. It does not change `[Basic] EndOfGame`, because forcing that field caused immediate mission completion in earlier experiments.
+| Action | Recognized parameter | Meaning used by the launcher |
+|---:|---|---|
+| `19` | `ObjectiveComplete` | Text/UI objective completion |
+| `21` | `EVA_ObjectiveComplete` | EVA objective-complete notification |
+| `11` | `Mission:ObjC` | Mission objective-complete variable |
 
-After the watcher sees the victory marker, it closes the spawned Syringe/gamemd process tree after a short delay. This prevents the player from continuing into the normal campaign flow. The behavior is enabled by default and can be disabled in the launcher.
+An action list containing terminal victory codes `1` or `67` is excluded from ordinary objective candidates. Remaining objective checks and candidate action IDs are paired in their encountered order with `zip`; extra briefing checks or extra actions cannot be matched automatically without mission-specific metadata.
 
-## Tech Locking
+Victory candidates are ordered deliberately:
 
-The randomizer first locks all randomizer-controlled combat tech in the generated map, then reopens only earned units.
+1. Action lists containing code `1` (`Winner is`).
+2. Action lists containing code `67` (`Announce Win`).
+3. Trigger names containing `[win]`, `/win`, `mission victory`, or `mission successful`.
 
-This prevents campaign maps from handing out units early through normal mission tech. Refineries and basic base operation tech are intentionally not treated as randomizer combat rewards.
+The first candidate is used for the victory check. Preferring a real winner action prevents an earlier announcement from completing the randomizer mission prematurely.
 
-Every unearned controlled TechnoType receives `BuildLimit=0` in addition to the normal TechLevel sentinel. This blocks player production even in campaign contexts that expose high TechLevels, while scripted and preplaced mission units can still exist. Script-critical units avoid a hard TechLevel override and rely on the safer build limit.
+### Marker construction
 
-Earned access rewards are forced to `TechLevel=1` in generated maps. That means a late-game unit can be available in an early mission if the player has already earned it and the mission provides the necessary production structure/prerequisites.
-
-At launch time the launcher scans the extracted mission map for placed conyards, barracks, factories, air commands, and shipyards, plus numbered production nodes in House-section base plans. The latter is necessary for missions such as Epsilon 07, whose captured Soviet/Chinese base is not listed under `[Structures]`. In a selected-faction campaign it translates earned access roles into equivalents supported by off-faction production: an earned Initiate role can enable a GI or Conscript, an earned Lasher role can enable the corresponding Allied/Soviet/Foehn tank, and the same rule applies to air and naval roles. Production family is derived from the physical building type rather than its pre-handover owner. Each translated rule supplies TechLevel, the real factory prerequisite, native owners, and all active player countries. Always-available matching Engineers remain available, but no combat unit is granted without an earned equivalent. Foehn missions can translate earned roles into both Allied and Soviet technology when those factories are present. `All Campaigns` keeps the unconditional basic safety net because its reward pool already spans all factions.
-
-Single-faction campaigns use explicit cross-faction role groups for mixed-mission buffs. The mapping covers comparable infantry, scouts, specialists, tanks, APCs, artillery, support vehicles, transports, aircraft, naval units, capital ships, and defenses. Once a role peer has earned or fallback access, compatible buffs propagate using each target's own installed stats and weapons. Unique units without a credible counterpart remain independent. `All Campaigns` disables all role sharing because its combined reward pool can provide independent access and buffs across the complete roster.
-
-Maps with multiple player-controlled houses apply country-level buffs to every player house, including mixed-faction combinations such as a primary Allied house and a secondary Soviet house. Unit/weapon safety checks likewise treat all player-controlled houses as allowed users. The `Buff allied helpers` option extends the same treatment to AI-controlled allied houses; it is not required for additional human/player-controlled houses.
-
-Standard mode excludes every Foehn unit, defense, buff target, and Foehn superpower. The Foehn campaign draws Allied and Soviet rewards because those are its normal production factions. Curated Allied/Soviet role peers are emitted as one access reward, and compatible unit buffs share across the same pair. The Unlocks view stores the bundled unit IDs and renders their cameos, access names, and accumulated effects in one shared row. Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. The full Foehn catalogue is exclusive to Chaos.
-
-`Chaos (Experimental)` is orthogonal to mission campaign selection and always enables randomized access/tech locking. Its reward pool spans every faction and keeps role sharing off by default. Players can optionally share unit buffs across the explicit `UNIT_ROLE_EQUIVALENCE_GROUPS`; reward eligibility then accepts an unlocked peer, and map injection expands every earned unit buff across that peer group. At map generation each earned access item receives all player-controlled countries and resets its single campaign prerequisite override. Ares `Prerequisite.List0` plus independent `Prerequisite.List#` alternatives then accept the matching production building from any faction: all four barracks for infantry, factories for vehicles, air commands for aircraft, shipyards for naval units, and Construction Yards for defenses. No foreign production structure is granted. Every playable faction TechnoType receives a map-local faction-band `CameoPriority`; the player's native faction receives the highest band and equal priorities preserve vanilla sorting within each block. Unit cost and speed buffs become direct TechnoType values, armor becomes unit-specific effective durability through Strength, and unsupported per-unit production-speed rewards are removed from the Chaos pool. Explicitly global production and army-wide ROF rewards keep their advertised global behavior.
-
-House-scoped bonuses are routed to the player and enabled allied helpers. Country/house cloning handles production, cost, speed, armor, army-wide fire rate, and veterancy. Unit/weapon rules cannot be house-scoped by the engine, so the launcher applies them only when no enemy uses the affected global type. Registering inherited player-only combat types and splitting TaskForces was tested, but caused fatal incomplete weapon construction and severe in-game slowdown even after complete weapon sections were copied. That runtime-heavy path was removed. Action 36 (`All change House`) triggers whose target is the player are included in the allowed set; debug triggers are excluded.
-
-The Epsilon `MIND` reward target is labeled as Mastermind. Yuri Adept / PsiCorps Trooper mission units use the separate `YURI` section in maps such as `EHUMAN`, so Mastermind buffs do not affect those scripted infantry.
-
-## Reward Generation
-
-Rewards are positive only. Access unlocks have higher priority than buffs so the player is less likely to get stuck without required units.
-
-The buff catalogue is audited against the full installed 3.3.6 faction roster rather than inferred from access rewards. Coverage is currently 52 Allied, 52 Soviet, 47 Epsilon, and 46 Foehn unit sections. Public names do not always match rules IDs (for example Cavalier=`MTNK`, Mirage=`MGTK`, Zephyr=`HOWI`, Catastrophe=`APOC`, SODAR=`MSA`), so the explicit roster mapping is intentional.
-
-`BFRT` and `FORTRESS` are distinct Allied units despite the similar historical naming: `BFRT` is the ground Battle Tortoise, while `FORTRESS` is the Barracuda aircraft. Old saved rewards named `Battle Fortress Access` are canonicalized to `Barracuda Access` and use the Allied airfield prerequisite.
-
-Normal access coverage excludes only economy/base essentials: the four MCVs, four miners, and four Engineer sections. These have no access rewards and are removed from `controlled_tech_ids`, so access randomization cannot lock them. Every remaining roster section is an access item, with faction-wide ownership and a basic production `PrerequisiteOverride`. Defense access/buff coverage is 11 Allied, 11 Soviet, 9 Epsilon, and 12 Foehn structures; power plants, refineries, Construction Yards, production structures, walls, and gates remain outside access randomization.
-
-Access rewards are unique per seed. A unit is unlocked once for the whole seed. Later rewards for that unit become repeatable buffs.
-
-Every access item's faction ownership and basic production `PrerequisiteOverride` are prepared at map load. Unearned access retains its production limit; an earned reward removes that limit and applies TechLevel 1 on the next mission launch. Applying access between missions prevents campaign-native TechLevel actions from bypassing randomizer state.
-
-Current reward categories include:
-
-- unit access
-- building-free faction superweapons
-- production speed
-- cost reduction
-- movement speed
-- per-unit weapon fire rate
-- army-wide fire rate
-- building construction speed
-- veteran start
-- armor/health
-- vision
-- attack range
-- automatic engagement range (`GuardRange`)
-- guarded weapon tuning
-- self-healing
-- cloaking
-- sensors
-
-Veteran start is capped at one effective stack per unit because the available house flag starts units as veteran, not elite.
-
-The superweapon family uses trigger action `34` (`Add repeating Superweapon`) rather than action `129`, which only changes the charge of a building-backed power. The installed 3.3.6 indices are Lightning Storm `2`, Tactical Nuke `0`, Psychic Dominator `7`, and Great Tempest `48`. Earned powers are granted from a one-second player-owned map trigger at the start of each future mission. Attaching the action directly to objective triggers would be unsafe because most objective triggers are owned by a different house.
-
-This proves building-free access, but not two independent copies of the same power. A matching constructed building may consolidate with the directly granted house instance. Guaranteed duplicate cameos would require cloned superweapon types and mission-local type registration.
-
-## House And Country Buffs
-
-Mental Omega/RA2 has house and country fields that can apply broad multipliers:
-
-- `CostInfantryMult`
-- `CostUnitsMult`
-- `SpeedInfantryMult`
-- `SpeedUnitsMult`
-- `BuildTimeInfantryMult`
-- `BuildTimeUnitsMult`
-- `BuildTimeBuildingsMult`
-- `ArmorInfantryMult`
-- `ArmorUnitsMult`
-- `ROF`
-- `VeteranInfantry`
-- `VeteranUnits`
-- `VeteranAircraft`
-- `VeteranBuildings` (the Ares key used for trainable defenses; `VeteranDefenses` is not valid)
-
-These are powerful because they can affect only a country/house, but they are dangerous if the player shares that country with enemies. The launcher checks map houses before applying them. If the player's country is shared with unsafe enemy houses, the buff is skipped instead of making enemies stronger.
-
-The faction-production reward applies all five build-time country multipliers (`Infantry`, `Units`, `Aircraft`, `Buildings`, and `Defenses`). Seed generation reserves every tenth reward for this global upgrade until its three-stack cap, so the much larger complete unit roster cannot crowd it out.
-
-When `Buff allied helpers` is enabled, the launcher attempts to apply safe global helper buffs to allied AI houses too. The safety check follows `ParentCountry` inheritance: an enemy on `UnitedStates2`, for example, is treated as a consumer of `UnitedStates` defaults. If an allied helper needs that shared parent, the launcher assigns the helper a private map-local `MORALLY*` country clone and buffs the clone instead of the parent.
-
-## Guarded Unit And Weapon Buffs
-
-Some desired upgrades cannot be expressed as house flags, especially true per-unit damage/range style changes. The launcher can apply guarded map-local unit/weapon changes when it can prove that unsafe enemy houses do not use that same unit in the selected map. The safety check also follows Mental Omega weapon sharing, so an enemy using a different unit with the same weapon prevents that shared weapon section from being changed.
-
-If unsafe houses use the unit, the launcher logs a skip such as:
+Every mapped incomplete check receives unique map-local IDs:
 
 ```text
-Skipped guarded unit/weapon buffs because unsafe houses use those units: GI (...)
+TeamType:  RND00001
+TaskForce: RNT00001
+Script:    RNS00001
+Marker:    MOR_<MISSION>_O1  or  MOR_<MISSION>_VIC
 ```
 
-This protects the player from accidentally powering up enemies.
+The TaskForce is empty. The ScriptType uses a harmless guard action. The TeamType is owned by the active player house and carries the marker in its name. The original action list receives action code `4` to create that marker team.
 
-Starting and TaskForce-created units participate in the same global-type safety audit as newly produced copies.
+Objective markers are appended to their action list. Victory markers are inserted immediately before the first terminal code in the set `1`, `67`, or `69`; appending after a winner action is unreliable because the scenario may end before later actions execute. A name-only fallback with no recognized terminal code retains append behavior.
 
-## Cameo Images
+The launcher deliberately leaves `[Basic] EndOfGame` unchanged. Earlier attempts to force that field could end a mission immediately on load.
 
-The Current Unlocks view reads each unit's `Image` and `CameoPCX` mapping from the installed `rulesmo.ini` and `artmo.ini` inside the Mental Omega MIX archives. The launcher extracts only needed PCX files, decodes the indexed PCX data to PNG with the Python standard library, and caches the results locally. No Pillow installation or generated replacement artwork is required.
+### Log watcher and exactly-once behavior
 
-Unlock entries are ordered Allies, Soviets, Epsilon, then Foehn. Shared Chaos role groups use that same faction order within a single side-by-side cameo row. The defensive-building option filters both access and buff rewards and also narrows the set of TechnoTypes whose native map unlock actions are suppressed.
+At process launch, the active hook stores:
+
+- mission code and scenario;
+- marker-to-check mapping;
+- an empty `seen` set;
+- the current end offset of `debug/debug.log`;
+- the spawned process and generated root-map path.
+
+Starting at the current log offset prevents markers from an earlier launch being replayed. Every 1500 ms the watcher reads only appended text. If the log is truncated, it resets the offset to zero. A line containing `[LAUNCH] <marker>`—or the marker text as a compatibility fallback—calls `unlock_mission_check` once. Both the in-memory `seen` set and the persisted check `unlocked` flag make duplicate log lines harmless.
+
+Objective completion unlocks that check's stored rewards. Rewards modify launcher state immediately but their technology/buffs are injected when a later mission map is generated; the running map is not rewritten in memory.
+
+### Victory semantics
+
+Victory is a separate configured reward check. When its marker is seen:
+
+1. The mission code is added to `completed_missions`.
+2. The victory check is unlocked.
+3. Any still-locked objective checks in that mission are unlocked and their stored rewards are granted.
+4. State is saved, the mission list refreshes, and the next mission slot opens.
+5. After 2500 ms, the launcher closes the spawned Syringe/gamemd process tree to prevent normal campaign continuation.
+
+The close callback verifies that the process and hook are still current, then uses `taskkill /PID <pid> /T /F` with a direct terminate fallback. If the game has already exited, no close is attempted.
+
+Granting missed objective checks on victory is intentional. The objective/action mapping is incomplete on some maps, and a legitimate win must not leave the mission in a partially rewarded state.
+
+### Watcher shutdown and failure behavior
+
+Polling continues while the spawned process is alive. On exit the launcher records marker counts, clears the active process/hook, removes generated root maps, and removes any launcher-generated loose `rulesmo.ini` file.
+
+If map extraction or hook preparation throws, the launcher logs the traceback, cleans generated root maps, and can still start the mission without automatic objective detection. If no victory candidate exists, the mission remains playable but automatic victory progress is unavailable; the hidden debug completion control is the recovery path.
+
+An installed Mental Omega 3.3.6 audit recognized a victory action on all 97 extracted campaign maps. Objective matching is less complete: 58 maps had a different number of briefing objectives and hookable objective actions, while `SROAD` and `EGODSEND` exposed no standard objective-complete action. This is why victory reconciliation remains required.
+
+## Technology Locking and Access
+
+With access randomization enabled, every controlled unearned combat TechnoType receives `BuildLimit=0`. Regular units also receive a high TechLevel sentinel. Script-critical types use only the safer build limit so preplaced units and campaign TeamTypes can still exist.
+
+MCVs, miners, Engineers, refineries, core production, and other base-operation essentials are outside the access pool. Earned access removes launcher locks and is forced to TechLevel 1 in future generated maps.
+
+Before launch, the mission safety layer scans both placed structures and numbered House-section base plans for Construction Yards, barracks, factories, air commands, and shipyards. House plans matter for captured bases that are not initially present under `[Structures]`, such as Epsilon 07.
+
+### Standard mixed-faction access
+
+A selected single-faction campaign translates earned curated roles to foreign production families that the mission gives the player. The generated rule includes the physical factory prerequisite, native ownership, and active player countries. No combat role is granted without an earned equivalent; matching Engineers remain always available.
+
+Foehn Standard draws bundled Allied/Soviet access peers. Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. Full Foehn reward definitions are reserved for Chaos.
+
+### Chaos access
+
+Chaos always enables controlled-tech locking and draws all four factions. Each earned unit receives player-country ownership and Ares alternative prerequisite lists for every matching production family. The map's provided barracks/factory/airfield/shipyard/conyard can therefore produce the earned unit without granting foreign production structures.
+
+Phobos `CameoPriority` bands keep production cameos in contiguous faction groups with the current player faction first.
+
+## Buff Safety Model
+
+### House and country effects
+
+House-supported rewards use map-local country data for production time, construction time, category cost, category speed, category armor, army ROF, and veteran lists. Every player-controlled house participates. With `buff_allied_helpers`, eligible allied AI houses also participate.
+
+If an allied helper uses a country inherited by unsafe enemy houses, it can be moved to a private `MORALLY*` country copy. Parent-country relationships are included in safety analysis. This isolates the friendly effect without modifying the enemy parent.
+
+Action `36` (`All change House`) transfers whose target is the player are included as friendly future users; debug-only transfer triggers are ignored.
+
+### Direct unit and weapon effects
+
+Health, sight, ammo, healing, cloak, sensors, guard range, weapon damage, weapon reload, and weapon range are TechnoType/WeaponType fields and therefore global within the map. The launcher applies them only when placed units and TaskForce usage show no unsafe enemy using the same unit. Known cross-unit shared weapons are checked as well.
+
+Unsafe direct changes are logged and skipped instead of powering up enemies. Starting, produced, and TeamType-created units all use the same global definition, so the safety decision covers all of them.
+
+Map-local cloned combat types were tested as an isolation mechanism. Registering many inherited units, full weapons, and split TaskForces produced fatal incomplete weapon construction and severe live-game slowdown. That approach was removed; country copies remain limited to lightweight house-scoped effects.
+
+## Building-Free Superweapons
+
+Earned powers use action `34` (`Add repeating Superweapon`) from a one-second player-owned map-start trigger. Installed 3.3.6 indices are:
+
+| Power | Index |
+|---|---:|
+| Tactical Nuke | `0` |
+| Lightning Storm | `2` |
+| Psychic Dominator | `7` |
+| Great Tempest | `48` |
+
+Action `129` is not used because it changes the charge of a building-backed instance. A constructed matching building may consolidate with the granted instance; independent duplicate cameos are not guaranteed.
+
+## Cameo Pipeline
+
+The Unlocks view resolves unit `Image` and `CameoPCX` values from installed `rulesmo.ini` and `artmo.ini` files inside Mental Omega MIX archives. Only requested PCX members are extracted. A standard-library decoder converts indexed PCX data to cached PNG files, so Pillow and replacement artwork are unnecessary.
+
+## Rejected or Disabled Paths
+
+| Approach | Reason |
+|---|---|
+| Forced `[Basic] EndOfGame` | Could complete a mission immediately and bypass normal map logic |
+| Marker appended after terminal victory | Engine may end the scenario before executing it |
+| Loose global `rulesmo.ini` for ordinary rewards | Can destabilize spawned missions or cause client installation checks to fail |
+| Player-only cloned TechnoTypes/WeaponTypes/TaskForces | Fatal weapon construction and unacceptable campaign runtime slowdown |
+| Buffing a shared global type anyway | Would grant the same reward to enemy units |
 
 ## Known Limits
 
-- Game-speed behavior still needs validation across more campaign maps.
-- Victory actions are recognized in all 97 extracted campaign maps. Objective matching remains incomplete: 58 maps have different briefing-objective and hook-action counts, while `SROAD` and `EGODSEND` expose no standard objective-complete action.
-- Some allied-helper detection cases need more map data before buffs can safely include every friendly house.
-- Perfectly isolated per-unit buffs need an engine-supported house effect or runtime hook; map-local combat-type registration proved too expensive for campaign play.
+- Objective checks are paired to recognized action lists by order; mission-specific mappings are still needed where briefing and action counts differ.
+- `SROAD` and `EGODSEND` have no recognized standard objective-complete action in the installed audit.
+- Some unusual alliance/house-transfer layouts need more map-specific data before allied-helper inclusion can be proven safe.
+- Direct unit/weapon buffs are skipped when an enemy shares the global type.
+- Matching superweapon buildings may share the granted power instead of creating an independent copy.
+- Game-speed behavior needs validation across more campaign maps.
+- Archipelago transport, slot data, item IDs, and location IDs are not implemented yet.
