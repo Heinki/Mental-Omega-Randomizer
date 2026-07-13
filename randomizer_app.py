@@ -1036,6 +1036,92 @@ class LauncherApp(tk.Tk):
             return 'Foehn'
         return ''
 
+    def foehn_standard_bundles_enabled(self):
+        selected = (
+            self.campaign_var.get()
+            if hasattr(self, 'campaign_var')
+            else (self.state or {}).get('campaign_filter', '')
+        )
+        mode = (
+            self.reward_mode_var.get()
+            if hasattr(self, 'reward_mode_var')
+            else self.active_reward_mode()
+        )
+        return selected == 'Foehn' and mode == 'Standard'
+
+    def bundle_foehn_standard_access(self, pool):
+        """Bundle Allied/Soviet role peers into one Foehn access reward."""
+        if not self.foehn_standard_bundles_enabled():
+            return list(pool)
+
+        access_by_tech = {}
+        for reward in pool:
+            if reward.get('kind') in {'buff', 'superweapon'}:
+                continue
+            tech_ids = tech_ids_for_rewards([reward])
+            if len(tech_ids) != 1:
+                continue
+            tech_id = next(iter(tech_ids))
+            factions = BUFF_TARGETS.get(tech_id, {}).get('factions') or []
+            if len(factions) == 1 and factions[0] in {'Allies', 'Soviets'}:
+                access_by_tech[tech_id] = reward
+
+        bundled = []
+        consumed = set()
+        for reward in pool:
+            if reward.get('kind') in {'buff', 'superweapon'}:
+                bundled.append(reward)
+                continue
+            tech_ids = tech_ids_for_rewards([reward])
+            if len(tech_ids) != 1:
+                bundled.append(reward)
+                continue
+            tech_id = next(iter(tech_ids))
+            if tech_id in consumed:
+                continue
+            if tech_id not in access_by_tech:
+                bundled.append(reward)
+                consumed.add(tech_id)
+                continue
+
+            peers = [
+                peer
+                for peer in unit_role_equivalents(tech_id)
+                if peer in access_by_tech
+            ]
+            peer_factions = {
+                (BUFF_TARGETS.get(peer, {}).get('factions') or [''])[0]
+                for peer in peers
+            }
+            if not {'Allies', 'Soviets'}.issubset(peer_factions):
+                bundled.append(reward)
+                consumed.add(tech_id)
+                continue
+
+            peers.sort(key=self.unit_faction_sort_key)
+            rules = {}
+            source_names = []
+            for peer in peers:
+                peer_reward = access_by_tech[peer]
+                source_names.append(peer_reward.get('name', peer))
+                for section, values in peer_reward.get('rules', {}).items():
+                    rules[section] = dict(values)
+
+            labels = [unit_display_label(peer) for peer in peers]
+            bundled.append({
+                'name': 'Foehn Shared Access: ' + ' / '.join(labels),
+                'description': (
+                    'Unlocks the equivalent Allied and Soviet technologies '
+                    'as one Foehn campaign reward.'
+                ),
+                'rules': rules,
+                'factions': ['Allies', 'Soviets'],
+                'bundle_units': peers,
+                'bundle_reward_names': source_names,
+            })
+            consumed.update(peers)
+        return bundled
+
     def reward_pool_for_code(self, code):
         reward_mode = self.reward_mode_var.get() if hasattr(self, 'reward_mode_var') else REWARD_MODES[0]
         if reward_mode == 'Chaos (Experimental)':
@@ -1046,7 +1132,7 @@ class LauncherApp(tk.Tk):
             for reward in REWARD_POOL
             if not reward.get('factions') or factions.intersection(reward.get('factions', []))
         ]
-        return self.filter_reward_pool(pool)
+        return self.bundle_foehn_standard_access(self.filter_reward_pool(pool))
 
     def configured_reward_pool(self):
         return self.filter_reward_pool(REWARD_POOL)
@@ -2863,8 +2949,9 @@ throw "Map $name was not found in expandmo*.mix"
             return 'No unlocks or buffs earned yet.'
 
         groups = {}
-        shared_buff_groups = {}
+        shared_groups = {}
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
+        share_foehn_roles = self.foehn_standard_bundles_enabled()
 
         def group_for(tech_id):
             group = groups.setdefault(tech_id, {
@@ -2876,16 +2963,44 @@ throw "Map $name was not found in expandmo*.mix"
             return group
 
         for reward in earned:
+            bundle_units = reward.get('bundle_units') or []
+            if bundle_units:
+                unit_ids = tuple(sorted(set(bundle_units), key=self.unit_faction_sort_key))
+                shared_group = shared_groups.setdefault(
+                    unit_ids,
+                    {'access': {}, 'buffs': {}},
+                )
+                shared_group['access'].setdefault(reward.get('name', 'Shared Access'), reward)
+                continue
+
             if reward.get('kind') == 'buff' and reward.get('unit'):
                 source_unit = reward['unit']
                 equivalent_units = unit_role_equivalents(source_unit)
                 if (
-                    share_chaos_role_buffs
+                    (share_chaos_role_buffs or share_foehn_roles)
                     and not reward.get('global_buff')
                     and len(equivalent_units) > 1
                 ):
+                    if share_foehn_roles:
+                        equivalent_units = {
+                            unit_id
+                            for unit_id in equivalent_units
+                            if self.unit_faction(unit_id) in {'Allies', 'Soviets'}
+                        }
+                    if len(equivalent_units) < 2:
+                        group = group_for(source_unit)
+                        key = reward.get('buff_type', reward.get('name', 'buff'))
+                        entry = group['buffs'].setdefault(
+                            key,
+                            {'reward': reward, 'count': 0},
+                        )
+                        entry['count'] += 1
+                        continue
                     unit_ids = tuple(sorted(equivalent_units, key=self.unit_faction_sort_key))
-                    shared_group = shared_buff_groups.setdefault(unit_ids, {'buffs': {}})
+                    shared_group = shared_groups.setdefault(
+                        unit_ids,
+                        {'access': {}, 'buffs': {}},
+                    )
                     key = reward.get('buff_type', reward.get('name', 'buff'))
                     display_reward = dict(reward)
                     display_reward.pop('name', None)
@@ -2914,17 +3029,32 @@ throw "Map $name was not found in expandmo*.mix"
                 })['other'].append(reward)
 
         lines = []
-        if shared_buff_groups:
-            lines.append('Shared Unit Buffs')
-            lines.append('=================')
-            lines.append('Every pictured unit receives the bonuses listed beneath its group.')
+        if shared_groups:
+            heading = (
+                'Shared Allied / Soviet Bundles'
+                if share_foehn_roles
+                else 'Shared Unit Buffs'
+            )
+            lines.append(heading)
+            lines.append('=' * len(heading))
+            lines.append(
+                'Each pictured role is earned together; listed bonuses apply to every pictured unit.'
+                if share_foehn_roles
+                else 'Every pictured unit receives the bonuses listed beneath its group.'
+            )
             lines.append('')
             for unit_ids, shared_group in sorted(
-                shared_buff_groups.items(),
+                shared_groups.items(),
                 key=lambda item: tuple(unit_display_label(unit_id) for unit_id in item[0]),
             ):
                 lines.append(f'[[MOR_SHARED:{",".join(unit_ids)}]]')
                 lines.append('  •  '.join(unit_display_label(unit_id) for unit_id in unit_ids))
+                for reward in sorted(
+                    shared_group['access'].values(),
+                    key=lambda item: item.get('name', ''),
+                ):
+                    source_names = reward.get('bundle_reward_names') or [reward_display_name(reward)]
+                    lines.append('  Shared access: ' + '  •  '.join(source_names))
                 for _, entry in sorted(shared_group['buffs'].items()):
                     reward = entry['reward']
                     count = effective_buff_count(reward, entry['count'])
@@ -2976,12 +3106,23 @@ throw "Map $name was not found in expandmo*.mix"
             return []
         unit_ids = set()
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
+        share_foehn_roles = self.foehn_standard_bundles_enabled()
         for reward in self.earned_rewards_from_checks():
             reward = canonical_reward(reward)
             if reward.get('kind') == 'buff' and reward.get('unit'):
                 if reward['unit'] != 'MOR_BUILDINGS':
-                    if share_chaos_role_buffs and not reward.get('global_buff'):
-                        unit_ids.update(unit_role_equivalents(reward['unit']))
+                    if (
+                        (share_chaos_role_buffs or share_foehn_roles)
+                        and not reward.get('global_buff')
+                    ):
+                        equivalents = unit_role_equivalents(reward['unit'])
+                        if share_foehn_roles:
+                            equivalents = {
+                                unit_id
+                                for unit_id in equivalents
+                                if self.unit_faction(unit_id) in {'Allies', 'Soviets'}
+                            }
+                        unit_ids.update(equivalents)
                     else:
                         unit_ids.add(reward['unit'])
                 continue

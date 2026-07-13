@@ -56,12 +56,14 @@ PRODUCTION_BUILDINGS = {
         'base': {'NACNST'},
         'infantry': {'NAHAND'},
         'vehicles': {'NAWEAP'},
+        'air': {'NAAIR'},
         'naval': {'NAYARD'},
     },
     'epsilon': {
         'base': {'YACNST'},
         'infantry': {'YURRAX', 'YABRCK'},
         'vehicles': {'YAWEAP'},
+        'air': {'YAAIRF'},
         'naval': {'YAYARD'},
     },
     'foehn': {
@@ -87,20 +89,32 @@ CHAOS_PRIMARY_PRODUCTION = {
         'base': 'NACNST',
         'infantry': 'NAHAND',
         'vehicles': 'NAWEAP',
+        'air': 'NAAIR',
         'naval': 'NAYARD',
     },
     'epsilon': {
         'base': 'YACNST',
         'infantry': 'YABRCK',
         'vehicles': 'YAWEAP',
+        'air': 'YAAIRF',
         'naval': 'YAYARD',
     },
     'foehn': {
         'base': 'FACNST',
         'infantry': 'FABARR',
         'vehicles': 'FAWEAP',
+        'air': 'FAWEAP',
         'naval': 'FAYARD',
     },
+}
+
+CHAOS_PRODUCTION_ALTERNATIVES = {
+    category: tuple(
+        categories[category]
+        for categories in CHAOS_PRIMARY_PRODUCTION.values()
+        if categories.get(category)
+    )
+    for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
 }
 
 TECH_ORDER = [
@@ -172,11 +186,15 @@ def _access_catalog():
             if not tech_level or not production:
                 continue
             family, category = production
+            owner = next(
+                (str(value) for key, value in values.items() if key.lower() == 'owner'),
+                '',
+            )
             key = (tech_id, family, category)
             if key in seen:
                 continue
             seen.add(key)
-            catalog.append((tech_id, tech_level, family, category))
+            catalog.append((tech_id, tech_level, family, category, prerequisite, owner))
     return catalog
 
 
@@ -193,10 +211,26 @@ def _structure_owner_and_type(line):
     return parts[0], parts[1].upper()
 
 
-def _structure_family(owner, building_family, house_records):
-    record = house_records.get(owner or '')
-    owner_family = country_family(record) if record else ''
-    return owner_family or building_family
+def _mission_production_buildings(lines, house_records):
+    """Yield physical production types placed or planned by the mission."""
+    for line in section_lines(lines, 'Structures'):
+        _owner, building_id = _structure_owner_and_type(line)
+        if building_id:
+            yield building_id
+
+    # Several campaign missions, notably Epsilon 07, define the base the
+    # player later operates only as numbered build nodes in a House section.
+    # Those factories never appear in [Structures] in the source map.
+    for house in house_records:
+        for line in section_lines(lines, house):
+            if '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            if not key.strip().isdigit():
+                continue
+            building_id = value.split(',', 1)[0].strip().upper()
+            if building_id:
+                yield building_id
 
 
 def _player_family(lines, house_records):
@@ -204,6 +238,32 @@ def _player_family(lines, house_records):
     if not player_house:
         return ''
     return country_family(house_records.get(player_house, {}))
+
+
+def _comma_items(value):
+    return [item.strip() for item in str(value or '').split(',') if item.strip()]
+
+
+def _merged_items(*groups):
+    result = []
+    seen = set()
+    for group in groups:
+        for item in group:
+            key = item.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def _player_build_countries(lines, house_records):
+    countries = []
+    for house in player_controlled_houses(lines):
+        country = house_records.get(house, {}).get('country') or house.replace(' House', '')
+        if country:
+            countries.append(country)
+    return _merged_items(countries, ['MORPLAYER'])
 
 
 def _allowed_safety_families(player_family):
@@ -231,18 +291,6 @@ def _unlocks_for_category(family, category):
     return []
 
 
-def _unique_unlocks(unlocks):
-    seen = set()
-    result = []
-    for tech_id, tech_level in unlocks:
-        key = tech_id.upper()
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append((key, tech_level))
-    return result
-
-
 def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_access=False):
     """Return off-faction access needed by mixed mission production.
 
@@ -258,14 +306,17 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_acces
     player_family = _player_family(lines, house_records)
     allowed_families = _allowed_safety_families(player_family)
 
-    for line in section_lines(lines, 'Structures'):
-        owner, building_id = _structure_owner_and_type(line)
+    for building_id in _mission_production_buildings(lines, house_records):
         building_match = PRODUCTION_LOOKUP.get(building_id)
         if not building_match:
             continue
 
         building_family, category = building_match
-        family = _structure_family(owner, building_family, house_records)
+        # Production is determined by the physical factory type. Its starting
+        # owner can be an enemy or neutral house before a scripted handover or
+        # capture, and using that owner's country misclassifies Soviet/Allied
+        # factories in mixed campaign missions.
+        family = building_family
         if family not in allowed_families:
             continue
         production_categories.add((family, category))
@@ -285,11 +336,20 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_acces
         available_access = earned_access_ids | {
             tech_id.upper() for tech_id in ALWAYS_AVAILABLE_TECH_IDS
         }
-        for tech_id, tech_level, family, category in ACCESS_CATALOG:
+        player_build_countries = _player_build_countries(lines, house_records)
+        for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
             if (family, category) not in expanded_categories:
                 continue
             if unit_role_equivalents(tech_id).intersection(available_access):
-                unlocks.append((tech_id, tech_level))
+                owners = _merged_items(_comma_items(native_owners), player_build_countries)
+                access_rule = {
+                    'TechLevel': tech_level,
+                    'Owner': ','.join(owners),
+                    'RequiredHouses': ','.join(owners),
+                    'ForbiddenHouses': 'none',
+                    'PrerequisiteOverride': prerequisite,
+                }
+                unlocks.append((tech_id, tech_level, access_rule))
 
         # Engineers are not access rewards, so add the matching off-faction
         # engineer when a base or barracks is present.
@@ -297,14 +357,21 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_acces
             if category not in {'base', 'infantry'}:
                 continue
             unlocks.extend(
-                (tech_id, level)
+                (tech_id, level, None)
                 for tech_id, level in BASIC_INFANTRY_UNLOCKS.get(family, [])
                 if tech_id in ALWAYS_AVAILABLE_TECH_IDS
             )
 
     rules = {}
-    for tech_id, tech_level in _unique_unlocks(unlocks):
-        rules[tech_id] = {'TechLevel': tech_level}
+    seen = set()
+    for unlock in unlocks:
+        tech_id, tech_level = unlock[:2]
+        tech_id = tech_id.upper()
+        if tech_id in seen:
+            continue
+        seen.add(tech_id)
+        rule = unlock[2] if len(unlock) > 2 else None
+        rules[tech_id] = dict(rule or {'TechLevel': tech_level})
     return rules
 
 
@@ -329,13 +396,26 @@ def chaos_cameo_priority_rules(player_family):
         if faction in priorities:
             rules[tech_id] = {'CameoPriority': str(priorities[faction])}
 
-    for faction, categories in PRODUCTION_BUILDINGS.items():
-        priority = priorities.get(faction)
-        if priority is None:
-            continue
-        for building_ids in categories.values():
-            for building_id in building_ids:
-                rules.setdefault(building_id, {})['CameoPriority'] = str(priority)
+    return rules
+
+
+def _chaos_prerequisite_rules(category, fallback):
+    """Allow an earned item from the matching factory of any faction."""
+    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+    if not alternatives and fallback:
+        alternatives = [fallback]
+    if not alternatives:
+        return {}
+
+    rules = {
+        # Reset campaign/global overrides so Ares' independent prerequisite
+        # lists below decide availability.
+        'PrerequisiteOverride': 'none',
+        'Prerequisite.List0': alternatives[0],
+        'Prerequisite.Lists': str(max(0, len(alternatives) - 1)),
+    }
+    for index, building_id in enumerate(alternatives[1:], start=1):
+        rules[f'Prerequisite.List{index}'] = building_id
     return rules
 
 
@@ -358,46 +438,9 @@ def chaos_earned_access_rules(lines, earned_rewards):
     if not player_countries:
         return {}
 
-    production_by_category = {}
-    for line in section_lines(lines, 'Structures'):
-        owner, building_id = _structure_owner_and_type(line)
-        if owner not in player_houses:
-            continue
-        production = PRODUCTION_LOOKUP.get(building_id)
-        if not production:
-            continue
-        _, category = production
-        production_by_category.setdefault(category, []).append(building_id)
-
-    if not production_by_category:
-        production_by_category = {}
-
     rules = {}
     owners = ','.join(player_countries + ['MORPLAYER'])
     player_family = _player_family(lines, records)
-    primary_production = CHAOS_PRIMARY_PRODUCTION.get(player_family, {})
-    base_buildings = production_by_category.get('base', [])
-    base_prerequisite = primary_production.get('base')
-    if not base_prerequisite and base_buildings:
-        base_prerequisite = base_buildings[0]
-
-    # Chaos makes every faction's production structures available from the
-    # player's Construction Yard. This covers aircraft/naval factories that a
-    # mission does not place initially and keeps the actual factory type valid
-    # for the engine instead of pretending a War Factory can build AircraftTypes.
-    if base_prerequisite:
-        for categories in PRODUCTION_BUILDINGS.values():
-            for category, building_ids in categories.items():
-                if category == 'base':
-                    continue
-                for building_id in sorted(building_ids):
-                    rules[building_id] = {
-                        'TechLevel': '1',
-                        'Owner': owners,
-                        'RequiredHouses': owners,
-                        'ForbiddenHouses': 'none',
-                        'PrerequisiteOverride': base_prerequisite,
-                    }
 
     for reward in earned_rewards:
         if reward.get('kind') in {'buff', 'superweapon'}:
@@ -415,21 +458,15 @@ def chaos_earned_access_rules(lines, earned_rewards):
             if not tech_level or not production:
                 continue
             _, category = production
-            # Route foreign unlocks through the current player's own sidebar.
-            # A campaign may not place the factory at map start, so relying on
-            # Structures alone leaves (for example) Soviet infantry tied to
-            # NAHAND even after the player later builds an Allied GAPILE.
-            chosen_prerequisite = primary_production.get(category)
-            if not chosen_prerequisite:
-                available_buildings = production_by_category.get(category, [])
-                chosen_prerequisite = available_buildings[0] if available_buildings else prerequisite
             rules[tech_id.upper()] = {
                 'TechLevel': tech_level,
                 'Owner': owners,
                 'RequiredHouses': owners,
                 'ForbiddenHouses': 'none',
-                'PrerequisiteOverride': chosen_prerequisite,
             }
+            rules[tech_id.upper()].update(
+                _chaos_prerequisite_rules(category, prerequisite)
+            )
     for section, values in chaos_cameo_priority_rules(player_family).items():
         rules.setdefault(section, {}).update(values)
     return rules

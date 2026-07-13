@@ -5,6 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $outputPath = [IO.Path]::GetFullPath((Join-Path $scriptDir $Output))
+$outputDir = Split-Path -Parent $outputPath
+$runtimeName = "RandomizerLauncherRuntime"
+$runtimePath = Join-Path $outputDir $runtimeName
 $distDir = Join-Path $scriptDir "dist"
 $workDir = Join-Path $scriptDir "build"
 
@@ -15,7 +18,8 @@ if (-not (python -m PyInstaller --version 2>$null)) {
 python -m PyInstaller `
     --noconfirm `
     --clean `
-    --onefile `
+    --onedir `
+    --contents-directory $runtimeName `
     --windowed `
     --name MentalOmegaRandomizer `
     --distpath $distDir `
@@ -27,5 +31,10 @@ if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller build failed with exit code $LASTEXITCODE."
 }
 
-Copy-Item -Force (Join-Path $distDir "MentalOmegaRandomizer.exe") $outputPath
-Write-Host "Built $outputPath"
+$bundleDir = Join-Path $distDir "MentalOmegaRandomizer"
+Copy-Item -Force (Join-Path $bundleDir "MentalOmegaRandomizer.exe") $outputPath
+if (Test-Path $runtimePath) {
+    Remove-Item -LiteralPath $runtimePath -Recurse -Force
+}
+Copy-Item -Recurse -Force (Join-Path $bundleDir $runtimeName) $runtimePath
+Write-Host "Built $outputPath with adjacent runtime folder $runtimePath"

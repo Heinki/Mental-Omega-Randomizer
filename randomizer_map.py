@@ -10,7 +10,6 @@ from randomizer_rewards import (
     CLONE_REQUIRED_BUFF_TYPES,
     HOUSE_SCOPED_BUFF_TYPES,
     REWARD_POOL,
-    UNIT_STAT_BUFF_TYPES,
     WEAPON_STAT_BUFF_TYPES,
     canonical_reward,
     canonical_rewards,
@@ -664,6 +663,55 @@ SHARED_WEAPON_USER_IDS = {
 }
 
 
+def apply_unit_buff_value(values, target, buff_type, count):
+    if buff_type == 'health':
+        multiplier = min(2.0, 1.15 ** count)
+        values['Strength'] = str(max(1, int(round(target['strength'] * multiplier))))
+    elif buff_type == 'sight':
+        values['Sight'] = str(int(round(target['sight'] + min(4, count))))
+    elif buff_type == 'ammo':
+        values['Ammo'] = str(int(round(target['ammo'] + min(5, count))))
+    elif buff_type == 'self_healing':
+        values['SelfHealing'] = 'yes'
+    elif buff_type == 'cloak':
+        values['Cloakable'] = 'yes'
+        values['Cloakable.Stages'] = '1'
+        values['CloakingSpeed'] = '1'
+        values['CloakSound'] = 'none'
+    elif buff_type == 'sensors':
+        values['Sensors'] = 'yes'
+        values['SensorsSight'] = str(int(round(target.get('sight', 5) + 2)))
+    elif buff_type == 'guard_range':
+        values['GuardRange'] = format_multiplier(target['guard_range'] + min(5, count))
+    elif buff_type == 'cost':
+        multiplier = max(0.30, 0.80 ** count)
+        values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
+    elif buff_type == 'speed':
+        multiplier = min(1.75, 1.10 ** count)
+        values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
+    elif buff_type == 'armor':
+        multiplier = max(0.50, 0.90 ** count)
+        current_strength = int(values.get('Strength', target['strength']))
+        values['Strength'] = str(max(1, int(round(current_strength / multiplier))))
+    else:
+        return False
+    return True
+
+
+def apply_weapon_buff_value(values, base_stats, buff_type, count):
+    if buff_type == 'damage' and 'damage' in base_stats:
+        multiplier = min(2.0, 1.15 ** count)
+        values['Damage'] = str(max(1, int(round(base_stats['damage'] * multiplier))))
+    elif buff_type == 'range' and 'range' in base_stats:
+        values['Range'] = format_multiplier(base_stats['range'] + min(3.0, 0.5 * count))
+    elif buff_type == 'reload' and 'rof' in base_stats:
+        multiplier = max(0.45, 0.90 ** count)
+        values['ROF'] = str(max(1, int(round(base_stats['rof'] * multiplier))))
+    else:
+        return False
+    return True
+
+
 def unit_weapon_buff_rules(
     lines,
     rewards,
@@ -673,21 +721,35 @@ def unit_weapon_buff_rules(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
 ):
+    """Apply direct buffs only when their global type is safe for friendly houses.
+
+    TechnoType and WeaponType values are global in the engine.  Country cloning
+    safely scopes house-level bonuses, but cloning and registering whole combat
+    types per mission causes severe Ares runtime overhead.  Keep the established
+    safety guard here: player, allied-helper, and transfer houses participate;
+    a direct buff is skipped if an enemy also uses the affected global type.
+    """
     player_house = player_house_from_map(lines)
     if not player_house:
         return ({}, [], [])
 
     player_houses = player_controlled_houses(lines) or [player_house]
     helper_houses = allied_helper_houses(lines, player_house) if buff_allied_helpers else []
+    transfer_houses = player_transfer_houses(lines)
     records = map_house_records(lines)
     allowed_names = []
-    for house in unique_in_order(player_houses + helper_houses):
+    for house in unique_in_order(player_houses + helper_houses + transfer_houses):
         record = records.get(house, {})
+        if not record:
+            record = records.get(house + ' House', {})
         allowed_names.append(house)
         allowed_names.append(house.replace(' House', ''))
+        if not house.lower().endswith(' house'):
+            allowed_names.append(house + ' House')
         if record.get('country'):
             allowed_names.append(record['country'])
     allowed_houses = {name.lower() for name in allowed_names if name}
+
     grouped_counts = {}
     active_rewards = buffs_with_unlocked_access(
         rewards,
@@ -728,78 +790,74 @@ def unit_weapon_buff_rules(
         key = (unit_id, buff_type)
         grouped_counts[key] = grouped_counts.get(key, 0) + 1
 
+    counts_by_unit = {}
+    for (unit_id, buff_type), count in grouped_counts.items():
+        counts_by_unit.setdefault(unit_id, {})[buff_type] = count
+
     rule_sections = {}
     applied_units = []
     skipped_units = []
-    for (unit_id, buff_type), count in grouped_counts.items():
+    for unit_id, counts in counts_by_unit.items():
         target = BUFF_TARGETS.get(unit_id, {})
-        usage = unit_usage_houses(lines, unit_id)
-        unsafe_houses = sorted(house for house in usage if house.lower() not in allowed_houses)
-        if unsafe_houses:
-            skipped_units.append(f'{target.get("label", unit_id)} ({", ".join(unsafe_houses)})')
-            continue
+        unsafe_unit_houses = sorted({
+            house
+            for house in unit_usage_houses(lines, unit_id)
+            if house.lower() not in allowed_houses
+        })
 
         applied = False
-        if buff_type in UNIT_STAT_BUFF_TYPES or buff_type in {'cost', 'speed', 'armor'}:
-            values = rule_sections.setdefault(unit_id, {})
-            if buff_type == 'health':
-                multiplier = min(2.0, 1.15 ** count)
-                values['Strength'] = str(max(1, int(round(target['strength'] * multiplier))))
-            elif buff_type == 'sight':
-                values['Sight'] = str(int(round(target['sight'] + min(4, count))))
-            elif buff_type == 'ammo':
-                values['Ammo'] = str(int(round(target['ammo'] + min(5, count))))
-            elif buff_type == 'self_healing':
-                values['SelfHealing'] = 'yes'
-            elif buff_type == 'cloak':
-                values['Cloakable'] = 'yes'
-                values['Cloakable.Stages'] = '1'
-                values['CloakingSpeed'] = '1'
-                values['CloakSound'] = 'none'
-            elif buff_type == 'sensors':
-                values['Sensors'] = 'yes'
-                values['SensorsSight'] = str(int(round(target.get('sight', 5) + 2)))
-            elif buff_type == 'guard_range':
-                values['GuardRange'] = format_multiplier(target['guard_range'] + min(5, count))
-            elif buff_type == 'cost':
-                multiplier = max(0.30, 0.80 ** count)
-                values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
-            elif buff_type == 'speed':
-                multiplier = min(1.75, 1.10 ** count)
-                values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
-            elif buff_type == 'armor':
-                multiplier = max(0.50, 0.90 ** count)
-                current_strength = int(values.get('Strength', target['strength']))
-                values['Strength'] = str(max(1, int(round(current_strength / multiplier))))
-            applied = True
+        direct_types = set(counts) - WEAPON_STAT_BUFF_TYPES
+        if unsafe_unit_houses and direct_types:
+            skipped_units.append(
+                f'{target.get("label", unit_id)} ({", ".join(unsafe_unit_houses)})'
+            )
+        elif direct_types:
+            unit_values = rule_sections.setdefault(unit_id, {})
+            for buff_type in (
+                'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
+                'sensors', 'guard_range', 'cost', 'speed',
+            ):
+                if buff_type in counts and apply_unit_buff_value(
+                    unit_values,
+                    target,
+                    buff_type,
+                    counts[buff_type],
+                ):
+                    applied = True
+            if not unit_values:
+                rule_sections.pop(unit_id, None)
 
-        if buff_type in WEAPON_STAT_BUFF_TYPES:
+        weapon_buff_types = WEAPON_STAT_BUFF_TYPES.intersection(counts)
+        if weapon_buff_types:
             for weapon, base_stats in target.get('weapons', {}).items():
                 weapon_users = SHARED_WEAPON_USER_IDS.get(weapon.upper(), {unit_id})
-                weapon_usage = set()
-                for weapon_user in weapon_users:
-                    weapon_usage.update(unit_usage_houses(lines, weapon_user))
-                unsafe_weapon_houses = sorted(
-                    house for house in weapon_usage if house.lower() not in allowed_houses
-                )
+                unsafe_weapon_houses = sorted({
+                    house
+                    for weapon_user in weapon_users
+                    for house in unit_usage_houses(lines, weapon_user)
+                    if house.lower() not in allowed_houses
+                })
                 if unsafe_weapon_houses:
                     skipped_units.append(
                         f'{target.get("label", unit_id)} / {weapon} '
                         f'({", ".join(unsafe_weapon_houses)})'
                     )
                     continue
-                values = rule_sections.setdefault(weapon, {})
-                if buff_type == 'damage' and 'damage' in base_stats:
-                    multiplier = min(2.0, 1.15 ** count)
-                    values['Damage'] = str(max(1, int(round(base_stats['damage'] * multiplier))))
-                    applied = True
-                elif buff_type == 'range' and 'range' in base_stats:
-                    values['Range'] = format_multiplier(base_stats['range'] + min(3.0, 0.5 * count))
-                    applied = True
-                elif buff_type == 'reload' and 'rof' in base_stats:
-                    multiplier = max(0.45, 0.90 ** count)
-                    values['ROF'] = str(max(1, int(round(base_stats['rof'] * multiplier))))
-                    applied = True
+                weapon_values = {}
+                for buff_type in ('damage', 'range', 'reload'):
+                    if buff_type in weapon_buff_types:
+                        applied = (
+                            apply_weapon_buff_value(
+                                weapon_values,
+                                base_stats,
+                                buff_type,
+                                counts[buff_type],
+                            )
+                            or applied
+                        )
+                if not weapon_values:
+                    continue
+                rule_sections.setdefault(weapon, {}).update(weapon_values)
         if applied:
             applied_units.append(target.get('label', unit_id))
 
@@ -909,6 +967,48 @@ def player_controlled_houses(lines):
         house_values = section_value_map(lines, section)
         if house_values.get('playercontrol', '').lower() == 'yes':
             houses.append(section)
+    return unique_in_order(houses)
+
+
+def player_transfer_houses(lines):
+    """Return houses whose complete forces are scripted to join the player."""
+    player_house = player_house_from_map(lines)
+    if not player_house:
+        return []
+
+    player_index = ''
+    for line in section_lines(lines, 'Houses'):
+        if '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        if value.strip().lower() == player_house.lower():
+            player_index = key.strip()
+            break
+    if not player_index:
+        return []
+
+    transfer_actions = set()
+    for line in section_lines(lines, 'Actions'):
+        if '=' not in line:
+            continue
+        action_id, value = line.split('=', 1)
+        _, groups = parse_action_groups(value)
+        if any(group[0] == '36' and group[2] == player_index for group in groups):
+            transfer_actions.add(action_id.strip().lower())
+
+    houses = []
+    for line in section_lines(lines, 'Triggers'):
+        if '=' not in line:
+            continue
+        trigger_id, value = line.split('=', 1)
+        if trigger_id.strip().lower() not in transfer_actions:
+            continue
+        parts = [part.strip() for part in value.split(',')]
+        if len(parts) < 3 or 'debug' in parts[2].lower():
+            continue
+        owner = parts[0]
+        if owner and owner.lower() not in {'<none>', 'neutral'}:
+            houses.append(owner)
     return unique_in_order(houses)
 
 

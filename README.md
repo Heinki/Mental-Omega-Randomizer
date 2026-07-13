@@ -7,10 +7,10 @@ This project is currently a non-Archipelago base. It can generate a seed, launch
 ## Normal User Quick Start
 
 1. Download the latest release zip from this repository.
-2. Extract `MentalOmegaRandomizer.exe` into your Mental Omega game folder, next to `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
+2. Extract `MentalOmegaRandomizer.exe` and `RandomizerLauncherRuntime` into your Mental Omega game folder, next to `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
 3. Start `MentalOmegaRandomizer.exe`.
 4. Choose campaign, difficulty, game speed, mission goal, rewards per objective, and reward settings.
-   `Standard` uses campaign-aware rewards and role translation. `Chaos (Experimental)` forces randomized unit access, allows independently unlocked units from every faction, and makes all faction production structures available to the player. In-game production cameos are kept in contiguous faction blocks with the current player faction first. Its optional same-tier sharing setting applies a unit buff to every curated cross-faction equivalent (for example GI, Conscript, Initiate, and Knightframe).
+   `Standard` uses campaign-aware rewards and role translation; Foehn seeds bundle matching Allied/Soviet access and buffs together. `Chaos (Experimental)` forces randomized unit access and allows every earned unit from the matching barracks, factory, air command, shipyard, or Construction Yard of any faction the mission lets the player operate. It does not grant the other factions' production structures. In-game production cameos are kept in contiguous faction blocks with the current player faction first. Its optional same-tier sharing setting applies a unit buff to every curated cross-faction equivalent (for example GI, Conscript, Initiate, and Knightframe).
    Hover over a setting for an explanation. Buff subsettings are disabled when buff rewards are off, and defensive-building access/buffs can be included or excluded independently.
 5. Press `Generate New Seed`.
 6. Select an open mission and press `Launch Mission`.
@@ -34,6 +34,8 @@ Or build and run the standalone one-file executable:
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 .\MentalOmegaRandomizer.exe
 ```
+
+Keep the generated `RandomizerLauncherRuntime` folder next to the EXE. The on-directory package avoids the slow temporary extraction performed by a one-file executable.
 
 The build requires PyInstaller (`python -m pip install pyinstaller`). The resulting EXE bundles Python and Tkinter; players do not need Python or the source folder.
 
