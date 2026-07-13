@@ -65,6 +65,6 @@ Packaged writable data lives under `RandomizerLauncherData`; source-mode data li
 
 ## Current Status
 
-The standalone flow supports seed generation, campaign filtering, Standard and experimental Chaos rewards, direct spawned mission launch, objective/victory marker detection on many maps, tech locking/unlocking, positive buffs, allied-helper buffs, optional building-free superweapons, and installed in-game cameos.
+The standalone flow supports seed generation, campaign filtering, Standard and experimental Chaos rewards, direct spawned mission launch, objective/victory marker detection on many maps, tech locking/unlocking, positive buffs, allied-helper buffs, optional building-free offensive/secondary superweapons and aid powers, and installed in-game cameos.
 
 The principal remaining limitations are mission-specific objective matching, a few allied-house safety cases, validation of game speed on more maps, and engine limits around isolating direct unit/weapon buffs when enemies use the same global type. See [Technical Findings: Known Limits](TECHNICAL_FINDINGS.md#known-limits) for the maintained list.

@@ -22,12 +22,20 @@ DEFAULT_CONFIG = {
     'generation': {
         'reward_mode': 'Standard',
         'starting_unlocked_missions': 3,
-        'enabled_reward_types': ['access', 'buff', 'superweapon'],
+        'enabled_reward_types': [
+            'access',
+            'buff',
+            'superweapon',
+            'secondary_superweapon',
+            'aid_power',
+        ],
         'randomize_unit_access': True,
         'include_defensive_buildings': True,
         'share_chaos_role_buffs': False,
         'include_buff_rewards': True,
         'include_superweapon_rewards': True,
+        'include_secondary_superweapon_rewards': True,
+        'include_aid_power_rewards': True,
         'enabled_buff_types': [
             'production',
             'cost',

@@ -33,9 +33,11 @@ The launcher is currently standalone and offline. The option keys below are inte
 |---|---|---:|---|
 | Randomize unit access and lock unearned tech | `generation.randomize_unit_access` | `true` | Adds unit access rewards and removes unearned combat technology from player production. Economy essentials, MCVs, miners, and Engineers remain available. Chaos forces this on. |
 | Include defensive building rewards | `generation.include_defensive_buildings` | `true` | Includes faction defenses in both access rewards and defense-targeted buffs. It does not randomize power plants, refineries, production structures, walls, or gates. |
-| Include buff rewards | `generation.include_buff_rewards` | `true` | Adds positive repeatable upgrades. Turning it off disables the buff-type selections. A seed must have access rewards, buff rewards, or both enabled. |
+| Include buff rewards | `generation.include_buff_rewards` | `true` | Adds positive repeatable upgrades. Turning it off disables the buff-type selections. At least one reward-pool option must remain enabled. |
 | Share buffs with same-tier equivalent units (Chaos only) | `generation.share_chaos_role_buffs` | `false` | Makes a unit buff affect its curated cross-faction peers, such as GI, Conscript, Initiate, and Knightframe. It does not grant access by itself. Shared groups appear together in Unlocks. |
-| Include building-free superweapon rewards | `generation.include_superweapon_rewards` | `true` | Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest to eligible reward pools. An earned power is restored at the start of future missions without its normal superweapon building. |
+| Include offensive superweapon rewards | `generation.include_superweapon_rewards` | `true` | Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest. |
+| Include secondary superweapon rewards | `generation.include_secondary_superweapon_rewards` | `true` | Adds Chronoshift, Invulnerability, Rage, and Blasticade independently from the offensive-superweapon option. |
+| Include aid/reinforcement power rewards | `generation.include_aid_power_rewards` | `true` | Adds the installed faction delivery powers: unit drops, temporary reinforcements, deployable support structures/mines, and delivery-based support markers. |
 | Enabled Buff Types | `generation.enabled_buff_types` | All listed types | Limits which buff families seed generation may assign. This option is ignored when **Include buff rewards** is off. |
 
 ### Buff type options
@@ -68,7 +70,7 @@ These keys are runtime/developer controls and should not become normal Archipela
 | Key | Default | Purpose |
 |---|---:|---|
 | `generation.starting_unlocked_missions` | `3` | Persisted compatibility value; the current launcher opens three missions at seed start. |
-| `generation.enabled_reward_types` | `[access, buff, superweapon]` | Derived compatibility list written from the three reward-pool toggles. |
+| `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power]` | Derived compatibility list written from the five reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
 | `generation.allow_shared_country_buffs` | `false` | Developer override that may affect enemy houses sharing a country; keep disabled for normal play. |
 | `generation.transient_rulesmo_buffs` | `false` | Experimental loose `rulesmo.ini` injection; disabled because loose rules files can destabilize launches/client checks. |
@@ -88,6 +90,22 @@ Foehn Standard uses Allied/Soviet bundled access and compatible shared buffs bec
 Chaos draws access and buffs independently from all four factions. An earned unit can be produced from any matching production building that the current mission gives the player: barracks for infantry, factories for vehicles, air commands for aircraft, shipyards for naval units, and Construction Yards for defenses. Chaos does **not** grant foreign production buildings.
 
 The sidebar groups earned production cameos into faction bands with the current player faction first. Same-tier buff sharing is optional and off by default.
+
+## Power Reward Catalogue
+
+All earned power rewards are restored by a player-owned map-start grant in future launched missions. They do not require their normal source building or original subfaction, and their auxiliary-building/designator availability gates are removed from the earned instance. Their installed cost, recharge, targeting behavior, delivered objects, and enemy inhibitors remain intact.
+
+| Category | Allies | Soviets | Epsilon | Foehn |
+|---|---|---|---|---|
+| Offensive superweapon | Lightning Storm | Tactical Nuke | Psychic Dominator | Great Tempest |
+| Secondary superweapon | Chronoshift | Invulnerability (Iron Curtain) | Rage | Blasticade |
+| Aid/reinforcement | Airborne; Bloodhounds; Zephyrobot; Lightning Rod; Ultra Miner; Kingsnakes; Paladin Aid | Repair Drone; Tank Drop; Instant Shelter; Motor Ambush; Naval Mine; Terror Drop; Flame Tower; Drakuv Prison Vehicle; Repair Drones; Disruptor | Risen Monolith; Scout Raven; Vision; Magnetic Beam; Libra Clones; Bloatick Trap; Quick Fort; Ruiner; Hijackers | Spinblade; Megaarena; Knightfall; Sweeper Drop; Signal Jammer; Decoy Team; Decoy Squadron; M.A.D. Mine |
+
+Blasticade is correctly classified as Foehn's support superweapon. It activates the owning House's existing Blast Trenches, so earning Blasticade does not create trenches and the separate **Foehn Blast Trench Access** reward is still needed to construct them. Golden Wind remains an ordinary Blast Furnace/Spinblade support power and is not the secondary superweapon.
+
+Elite Reserves is intentionally excluded. Unlike a unit drop, it delivers an internal production-state marker from a Soviet advanced lab; attempting to create that power with a building-free map action crashes the engine. Older seeds containing it display the reward as retired and do not inject it.
+
+Standard uses campaign-appropriate power factions; Foehn Standard additionally includes native Foehn powers alongside its Allied/Soviet operating technologies. Chaos draws all four factions' power rewards, so any player faction can earn and use them.
 
 ## Seeing Exact Rewards
 

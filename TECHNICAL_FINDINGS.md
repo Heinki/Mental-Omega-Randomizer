@@ -193,18 +193,40 @@ Unsafe direct changes are logged and skipped instead of powering up enemies. Sta
 
 Map-local cloned combat types were tested as an isolation mechanism. Registering many inherited units, full weapons, and split TaskForces produced fatal incomplete weapon construction and severe live-game slowdown. That approach was removed; country copies remain limited to lightweight house-scoped effects.
 
-## Building-Free Superweapons
+## Building-Free Powers
 
-Earned powers use action `34` (`Add repeating Superweapon`) from a one-second player-owned map-start trigger. Installed 3.3.6 indices are:
+Earned offensive, secondary, and aid powers use action `34` (`Add repeating Superweapon`) from player-owned map-start triggers. Aid entries are limited to player-facing faction delivery/reinforcement definitions; internal automatic spawn handlers and neutral tech-building powers are not rewards.
 
-| Power | Index |
-|---|---:|
-| Tactical Nuke | `0` |
-| Lightning Storm | `2` |
-| Psychic Dominator | `7` |
-| Great Tempest | `48` |
+Large inventories are split into action lists of at most `16` grants and the
+lists are staggered one second apart. The installed campaign maps use at most
+`24` actions in any native list; emitting all `35` earned Chaos powers in one
+list reproduced the cross-faction `C0000005` crash at `007C9B92`.
+
+For earned aid instances, the generated map clears only the availability fields actually declared by that installed definition (`SW.RequiredHouses`, `SW.AuxBuildings`, `SW.NegBuildings`, or `SW.Designators`). This removes the original building/subfaction gate for Chaos without adding empty overrides to unrelated powers or changing recharge, cost, delivered types, targeting, or inhibitors.
+
+Installed 3.3.6 offensive and secondary indices are:
+
+| Faction | Offensive power (index) | Secondary power (index) |
+|---|---|---|
+| Allies | Lightning Storm (`2`) | Chronoshift (`3`; the engine handles its ChronoWarp follow-up) |
+| Soviets | Tactical Nuke (`0`) | Invulnerability (`1`) |
+| Epsilon | Psychic Dominator (`7`) | Rage (`28`) |
+| Foehn | Great Tempest (`48`) | Blasticade (`47`) |
+
+Installed aid/reinforcement indices are:
+
+| Faction | Power indices |
+|---|---|
+| Allies | Airborne `6`; Bloodhounds `26`; Zephyrobot `34`; Lightning Rod `51`; Ultra Miner `61`; Kingsnakes `126`; Paladin Aid `128` |
+| Soviets | Repair Drone `13`; Tank Drop `16`; Instant Shelter `29`; Motor Ambush `32`; Naval Mine `60`; Terror Drop `62`; Flame Tower `68`; Drakuv Prison Vehicle `70`; Repair Drones `124`; Disruptor `125` |
+| Epsilon | Risen Monolith `15`; Scout Raven `18`; Vision `21`; Magnetic Beam `30`; Libra Clones `33`; Bloatick Trap `36`; Quick Fort `86`; Ruiner `93`; Hijackers `108` |
+| Foehn | Spinblade `39`; Megaarena `52`; Knightfall `72`; Sweeper Drop `76`; Signal Jammer `77`; Decoy Team `118`; Decoy Squadron `119`; M.A.D. Mine `133` |
 
 Action `129` is not used because it changes the charge of a building-backed instance. A constructed matching building may consolidate with the granted instance; independent duplicate cameos are not guaranteed.
+
+Blasticade is intentionally not replaced by Golden Wind. It is the documented Foehn support superweapon and still needs owned Blast Trench objects to produce a barrier; the access pool already contains a separate Blast Trench reward.
+
+`EliteReservesSpecial` (`100`) is not eligible. Its `UnitDelivery` creates the invisible `F_ERESB` production-state marker through a Soviet advanced lab instead of delivering a normal targetable reinforcement. The 2026-07-14 crash reports consistently ended while action `34` processed Elite Reserves: it was last in the Soviet and Chaos grant lists and second-to-last in the Foehn list, while successful Allied/Epsilon lists did not contain it. Legacy stored rewards are canonicalized to a retired, non-injected entry.
 
 ## Cameo Pipeline
 
@@ -219,6 +241,7 @@ The Unlocks view resolves unit `Image` and `CameoPCX` values from installed `rul
 | Loose global `rulesmo.ini` for ordinary rewards | Can destabilize spawned missions or cause client installation checks to fail |
 | Player-only cloned TechnoTypes/WeaponTypes/TaskForces | Fatal weapon construction and unacceptable campaign runtime slowdown |
 | Buffing a shared global type anyway | Would grant the same reward to enemy units |
+| Building-free Elite Reserves | Action `34` crashes while creating its lab-bound internal production-state marker |
 
 ## Known Limits
 
@@ -226,6 +249,7 @@ The Unlocks view resolves unit `Image` and `CameoPCX` values from installed `rul
 - `SROAD` and `EGODSEND` have no recognized standard objective-complete action in the installed audit.
 - Some unusual alliance/house-transfer layouts need more map-specific data before allied-helper inclusion can be proven safe.
 - Direct unit/weapon buffs are skipped when an enemy shares the global type.
-- Matching superweapon buildings may share the granted power instead of creating an independent copy.
+- Matching power buildings may share the granted power instead of creating an independent copy.
+- Blasticade has no effect until the player owns Blast Trenches; earning the power does not create them.
 - Game-speed behavior needs validation across more campaign maps.
 - Archipelago transport, slot data, item IDs, and location IDs are not implemented yet.

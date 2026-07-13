@@ -1203,6 +1203,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'rules': {},
         'factions': ['Allies'],
         'kind': 'superweapon',
+        'power_category': 'offensive',
         'superweapon': 'LightningStormSpecial',
         'superweapon_index': 2,
     },
@@ -1212,6 +1213,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'rules': {},
         'factions': ['Soviets'],
         'kind': 'superweapon',
+        'power_category': 'offensive',
         'superweapon': 'NukeSpecial',
         'superweapon_index': 0,
     },
@@ -1221,6 +1223,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'rules': {},
         'factions': ['Epsilon'],
         'kind': 'superweapon',
+        'power_category': 'offensive',
         'superweapon': 'PsychicDominatorSpecial',
         'superweapon_index': 7,
     },
@@ -1230,10 +1233,148 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'rules': {},
         'factions': ['Foehn'],
         'kind': 'superweapon',
+        'power_category': 'offensive',
         'superweapon': 'GreatTempestSpecial',
         'superweapon_index': 48,
     },
 ]
+
+SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
+    {
+        'name': 'Chronoshift Power',
+        'description': 'Grants a building-free, repeating Chronoshift in future launched missions.',
+        'rules': {},
+        'factions': ['Allies'],
+        'kind': 'superweapon',
+        'power_category': 'secondary',
+        'superweapon': 'ChronoSphereSpecial',
+        'superweapon_index': 3,
+    },
+    {
+        'name': 'Invulnerability Power',
+        'description': 'Grants a building-free, repeating Iron Curtain Invulnerability power in future launched missions.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'superweapon',
+        'power_category': 'secondary',
+        'superweapon': 'IronCurtainSpecial',
+        'superweapon_index': 1,
+    },
+    {
+        'name': 'Rage Power',
+        'description': 'Grants a building-free, repeating Rage Inductor power in future launched missions.',
+        'rules': {},
+        'factions': ['Epsilon'],
+        'kind': 'superweapon',
+        'power_category': 'secondary',
+        'superweapon': 'RageInductorSpecial',
+        'superweapon_index': 28,
+    },
+    {
+        'name': 'Blasticade Power',
+        'description': 'Grants a building-free, repeating Blasticade activation; Foehn Blast Trenches are still required for its barrier.',
+        'rules': {},
+        'factions': ['Foehn'],
+        'kind': 'superweapon',
+        'power_category': 'secondary',
+        'superweapon': 'BlasticadeSpecial',
+        'superweapon_index': 47,
+    },
+]
+
+
+def build_aid_power_rewards():
+    # These are the installed, player-facing delivery/reinforcement powers.
+    # Internal automatic spawn helpers and neutral tech-building powers are
+    # deliberately excluded even though the engine also classifies them as
+    # superweapons.
+    definitions = [
+        # Allies
+        ('Airborne Power', 'Drops 6 G.I.s and 4 Guardian G.I.s at the selected area.', 'Allies', 'AmericanParaDropSpecial', 6),
+        ('Bloodhounds Power', 'Drops 3 Airborne Humvees and 2 Stryker I.F.V.s at the selected area.', 'Allies', 'BloodhoundsSpecial', 26),
+        ('Zephyrobot Power', 'Deploys a Zephyrobot artillery beacon at the selected area.', 'Allies', 'ZephyrBeaconSpecial', 34),
+        ('Lightning Rod Power', 'Deploys a temporary Lightning Rod at the selected area.', 'Allies', 'LightningRodSpecial', 51),
+        ('Ultra Miner Power', 'Deploys an Ultra Miner at the selected area.', 'Allies', 'WarpMinersSpecial', 61),
+        ('Kingsnakes Power', 'Deploys a temporary Kingsnake defense portal at the selected area.', 'Allies', 'KingsnakesSpecial', 126),
+        ('Paladin Aid Power', 'Deploys 2 Paladin Tank Hunters for the player.', 'Allies', 'PaladinAidSpecial', 128),
+        # Soviets
+        ('Repair Drone Power', 'Drops 1 Repair Drone at the selected area.', 'Soviets', 'RepairDroneSpecial', 13),
+        ('Tank Drop Power', 'Drops the Russian Hydra Cannon and Tank Killer contingent at the selected area.', 'Soviets', 'TankDropSpecial', 16),
+        ('Instant Shelter Power', 'Deploys a Battle Bunker with 2 Conscripts at the selected area.', 'Soviets', 'InstantShelterSpecial', 29),
+        ('Motor Ambush Power', 'Deploys 3 Mortar Quads at the selected area.', 'Soviets', 'MotorAmbushSpecial', 32),
+        ('Naval Mine Power', 'Deploys a Naval Mine at the selected water area.', 'Soviets', 'NavalMineSpecial', 60),
+        ('Terror Drop Power', 'Drops 2 Terror Drones at the selected area.', 'Soviets', 'TerrorDropSpecial', 62),
+        ('Flame Tower Power', 'Deploys a temporary Flame Tower at the selected area.', 'Soviets', 'FlameTowerSpecial', 68),
+        ('Drakuv Prison Vehicle Power', 'Deploys a Drakuv Prison Vehicle for the player.', 'Soviets', 'DrakuvSpecial', 70),
+        ('Repair Drones Power', 'Drops the upgraded Repair Drone contingent at the selected area.', 'Soviets', 'RepairDronesSpecial', 124),
+        ('Disruptor Power', 'Deploys a Disruptor support unit for the player.', 'Soviets', 'DisruptorSpecial', 125),
+        # Epsilon
+        ('Risen Monolith Power', 'Deploys a temporary Risen Monolith at the selected area.', 'Epsilon', 'RisenMonolithSpecial', 15),
+        ('Scout Raven Power', 'Deploys a Scout Raven at the selected area.', 'Epsilon', 'RavenSpecial', 18),
+        ('Vision Power', 'Deploys an Epsilon Vision scout at the selected area.', 'Epsilon', 'VisionSpecial', 21),
+        ('Magnetic Beam Power', 'Deploys the Magnetic Beam support object at the selected area.', 'Epsilon', 'MagnetShiftSpecial', 30),
+        ('Libra Clones Power', 'Drops 3 Libra Clones at the selected area.', 'Epsilon', 'LibraCloneSpecial', 33),
+        ('Bloatick Trap Power', 'Deploys a Bloatick Trap at the selected area.', 'Epsilon', 'TickTrapSpecial', 36),
+        ('Quick Fort Power', 'Deploys a temporarily strengthened Tank Bunker at the selected area.', 'Epsilon', 'QuickFortSpecial', 86),
+        ('Ruiner Power', 'Deploys a Ruiner support unit for the player.', 'Epsilon', 'RuinerSpecial', 93),
+        ('Hijackers Power', 'Drops 3 Hijackers at the selected area.', 'Epsilon', 'HijackersSpecial', 108),
+        # Foehn
+        ('Spinblade Power', 'Deploys a Spinblade support structure at the selected area.', 'Foehn', 'SpinbladeSpecial', 39),
+        ('Megaarena Power', 'Deploys a temporary Megaarena Projector at the selected area.', 'Foehn', 'MegaarenaSpecial', 52),
+        ('Knightfall Power', 'Deploys a Knightfall reinforcement beacon at the selected area.', 'Foehn', 'KnightfallSpecial', 72),
+        ('Sweeper Drop Power', 'Drops 2 Sweepers at the selected area.', 'Foehn', 'SweeperDropSpecial', 76),
+        ('Signal Jammer Power', 'Deploys a temporary Signal Jammer at the selected area.', 'Foehn', 'SignalJammerSpecial', 77),
+        ('Decoy Team Power', 'Deploys a holographic infantry decoy team at the selected area.', 'Foehn', 'DecoyTeamSpecial', 118),
+        ('Decoy Squadron Power', 'Deploys a holographic aircraft decoy squadron at the selected area.', 'Foehn', 'DecoySquadronSpecial', 119),
+        ('M.A.D. Mine Power', 'Deploys a M.A.D. Mine at the selected area.', 'Foehn', 'MADMineSpecial', 133),
+    ]
+    availability_overrides = {
+        'WarpMinersSpecial': {'SW.AuxBuildings': ''},
+        'KingsnakesSpecial': {
+            'SW.RequiredHouses': '',
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+        },
+        'PaladinAidSpecial': {
+            'SW.RequiredHouses': '',
+            'SW.AuxBuildings': '',
+        },
+        'RepairDroneSpecial': {'SW.NegBuildings': ''},
+        'NavalMineSpecial': {'SW.Designators': ''},
+        'DrakuvSpecial': {
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+        },
+        'RepairDronesSpecial': {'SW.AuxBuildings': ''},
+        'DisruptorSpecial': {'SW.AuxBuildings': ''},
+        'RuinerSpecial': {
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+        },
+        'DecoySquadronSpecial': {'SW.AuxBuildings': ''},
+        'MADMineSpecial': {'SW.Designators': ''},
+    }
+    rewards = [
+        {
+            'name': name,
+            'description': description + ' Restored at the start of future missions without its normal source building.',
+            'rules': {},
+            'factions': [faction],
+            'kind': 'superweapon',
+            'power_category': 'aid',
+            'superweapon': superweapon,
+            'superweapon_index': index,
+        }
+        for name, description, faction, superweapon, index in definitions
+    ]
+    for reward in rewards:
+        overrides = availability_overrides.get(reward['superweapon'])
+        if overrides:
+            reward['superweapon_rules'] = dict(overrides)
+    return rewards
+
+
+AID_POWER_UNLOCK_REWARDS = build_aid_power_rewards()
 
 REWARD_POOL = (
     UNIT_UNLOCK_REWARDS
@@ -1241,9 +1382,25 @@ REWARD_POOL = (
     + ROSTER_UNIT_UNLOCK_REWARDS
     + DEFENSE_UNLOCK_REWARDS
     + SUPERWEAPON_UNLOCK_REWARDS
+    + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
+    + AID_POWER_UNLOCK_REWARDS
     + UNIT_BUFF_REWARDS
 )
 REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
+RETIRED_REWARD_BY_NAME = {
+    # Elite Reserves is implemented by delivering an invisible production-state
+    # marker from a Soviet lab. Granting the power itself with action 34 and no
+    # source building crashes during the map-start trigger. Keep old generated
+    # seeds loadable, but never inject or assign this unsafe reward again.
+    'Elite Reserves Power': {
+        'name': 'Elite Reserves Power (retired: unsafe building-free grant)',
+        'description': 'Disabled because its internal production marker requires the original Soviet lab source.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+}
 REWARD_ALIASES = {
     'Medic Drill I': 'Field Medic Drill I',
     'Humvee Assembly I': 'Humvee Drill I',
@@ -1273,6 +1430,8 @@ def canonical_reward(reward):
         return reward
     reward_name = REWARD_ALIASES.get(reward_name, reward_name)
 
+    if reward_name in RETIRED_REWARD_BY_NAME:
+        return RETIRED_REWARD_BY_NAME[reward_name]
     return REWARD_BY_NAME.get(reward_name, reward)
 
 

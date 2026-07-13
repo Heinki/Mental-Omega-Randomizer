@@ -455,6 +455,29 @@ def superweapon_actions_for_rewards(rewards):
     return actions
 
 
+def superweapon_rule_sections_for_rewards(rewards):
+    """Remove source-building and faction gates for earned power rewards.
+
+    Action 34 creates a repeating House-owned power, but several support
+    powers also declare their original subfaction, auxiliary building, or
+    designator requirements in rulesmo.ini. Clearing only those availability
+    gates lets the earned instance work for any player faction while retaining
+    its real cost, recharge, targeting, inhibitors, and delivered objects.
+    """
+    sections = {}
+    for reward in canonical_rewards(rewards):
+        if reward.get('kind') != 'superweapon':
+            continue
+        superweapon = str(reward.get('superweapon') or '').strip()
+        if not superweapon:
+            continue
+        overrides = reward.get('superweapon_rules')
+        if not isinstance(overrides, dict) or not overrides:
+            continue
+        sections.setdefault(superweapon, {}).update(overrides)
+    return sections
+
+
 def techlevel_rules_for_reward(reward):
     reward = canonical_reward(reward)
     rule_sections = {}
@@ -1454,20 +1477,36 @@ def unique_section_key(lines, sections, prefix):
     raise RuntimeError(f'Could not allocate a unique {prefix} map key.')
 
 
+SUPERWEAPON_ACTIONS_PER_TRIGGER = 16
+
+
 def append_superweapon_grant_trigger(lines, house, action_groups):
+    """Grant earned powers without overflowing a campaign action list.
+
+    Mental Omega's installed campaign maps top out at 24 actions in one list.
+    Large Chaos inventories previously wrote every power into a single list
+    (35 in the reported crash), which corrupts the engine while processing the
+    map-start trigger. Keep a conservative margin and stagger additional
+    chunks by one second so every power is still granted exactly once.
+    """
     actions = [list(group) for group in action_groups]
     if not actions or any(len(group) != 8 for group in actions):
         return ''
 
-    trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGSW')
-    tag_id = unique_section_key(lines, ('Tags',), 'RNGST')
-    action_tokens = ','.join(action_group_tokens(actions))
-    name = 'MOR Earned Superweapons'
-    append_section_entry(lines, 'Events', trigger_id, '1,13,0,1')
-    append_section_entry(lines, 'Actions', trigger_id, f'{len(actions)},{action_tokens}')
-    append_section_entry(lines, 'Triggers', trigger_id, f'{house},<none>,{name},0,1,1,1,0')
-    append_section_entry(lines, 'Tags', tag_id, f'0,{name} 1,{trigger_id}')
-    return trigger_id
+    trigger_ids = []
+    for offset in range(0, len(actions), SUPERWEAPON_ACTIONS_PER_TRIGGER):
+        chunk = actions[offset:offset + SUPERWEAPON_ACTIONS_PER_TRIGGER]
+        chunk_number = len(trigger_ids) + 1
+        trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGSW')
+        tag_id = unique_section_key(lines, ('Tags',), 'RNGST')
+        action_tokens = ','.join(action_group_tokens(chunk))
+        name = f'MOR Earned Superweapons {chunk_number}'
+        append_section_entry(lines, 'Events', trigger_id, f'1,13,0,{chunk_number}')
+        append_section_entry(lines, 'Actions', trigger_id, f'{len(chunk)},{action_tokens}')
+        append_section_entry(lines, 'Triggers', trigger_id, f'{house},<none>,{name},0,1,1,1,0')
+        append_section_entry(lines, 'Tags', tag_id, f'0,{name} 1,{trigger_id}')
+        trigger_ids.append(trigger_id)
+    return trigger_ids[0]
 
 
 def append_hook_team(lines, team_id, taskforce_id, script_id, marker_name, house):

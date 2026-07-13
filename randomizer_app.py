@@ -91,6 +91,7 @@ from randomizer_map import (
     set_ini_value_lines,
     stacked_house_buff_values,
     superweapon_actions_for_rewards,
+    superweapon_rule_sections_for_rewards,
     tech_ids_for_rewards,
     unlocked_reward_tech_ids,
     trigger_action_ids_by_name,
@@ -279,6 +280,12 @@ class LauncherApp(tk.Tk):
         )
         self.include_superweapon_rewards_var = tk.BooleanVar(
             value=reward_settings['include_superweapon_rewards']
+        )
+        self.include_secondary_superweapon_rewards_var = tk.BooleanVar(
+            value=reward_settings['include_secondary_superweapon_rewards']
+        )
+        self.include_aid_power_rewards_var = tk.BooleanVar(
+            value=reward_settings['include_aid_power_rewards']
         )
         self.buff_type_vars = {
             buff_type['id']: tk.BooleanVar(value=buff_type['id'] in enabled_buff_types)
@@ -593,13 +600,33 @@ class LauncherApp(tk.Tk):
         )
         self.include_superweapon_rewards_check = ttk.Checkbutton(
             reward_frame,
-            text='Include building-free superweapon rewards',
+            text='Include offensive superweapon rewards',
             variable=self.include_superweapon_rewards_var,
         )
         self.include_superweapon_rewards_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_superweapon_rewards_check,
-            'Adds faction superweapons as rewards without requiring their normal superweapon building.',
+            'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
+        )
+        self.include_secondary_superweapon_rewards_check = ttk.Checkbutton(
+            reward_frame,
+            text='Include secondary superweapon rewards',
+            variable=self.include_secondary_superweapon_rewards_var,
+        )
+        self.include_secondary_superweapon_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.include_secondary_superweapon_rewards_check,
+            'Adds Chronoshift, Invulnerability, Rage, and Blasticade as building-free rewards.',
+        )
+        self.include_aid_power_rewards_check = ttk.Checkbutton(
+            reward_frame,
+            text='Include aid/reinforcement power rewards',
+            variable=self.include_aid_power_rewards_var,
+        )
+        self.include_aid_power_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.include_aid_power_rewards_check,
+            'Adds faction unit drops, temporary reinforcements, deployable towers, mines, and other delivery-based support actions.',
         )
 
         buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
@@ -870,6 +897,10 @@ class LauncherApp(tk.Tk):
         randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
         include_buffs = bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
         include_superweapons = bool(generation_config.get('include_superweapon_rewards', True))
+        include_secondary_superweapons = bool(
+            generation_config.get('include_secondary_superweapon_rewards', True)
+        )
+        include_aid_powers = bool(generation_config.get('include_aid_power_rewards', True))
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
@@ -882,12 +913,16 @@ class LauncherApp(tk.Tk):
             'buff_allied_helpers': buff_allied_helpers,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
+            'include_secondary_superweapon_rewards': include_secondary_superweapons,
+            'include_aid_power_rewards': include_aid_powers,
             'enabled_reward_types': [
                 reward_type
                 for reward_type, enabled in (
                     ('access', randomize_access),
                     ('buff', include_buffs),
                     ('superweapon', include_superweapons),
+                    ('secondary_superweapon', include_secondary_superweapons),
+                    ('aid_power', include_aid_powers),
                 )
                 if enabled
             ],
@@ -904,6 +939,8 @@ class LauncherApp(tk.Tk):
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
         include_buffs = bool(self.include_buff_rewards_var.get())
         include_superweapons = bool(self.include_superweapon_rewards_var.get())
+        include_secondary_superweapons = bool(self.include_secondary_superweapon_rewards_var.get())
+        include_aid_powers = bool(self.include_aid_power_rewards_var.get())
         enabled_buff_types = [
             buff_type['id']
             for buff_type in BUFF_TYPES
@@ -916,12 +953,16 @@ class LauncherApp(tk.Tk):
             'buff_allied_helpers': buff_allied_helpers,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
+            'include_secondary_superweapon_rewards': include_secondary_superweapons,
+            'include_aid_power_rewards': include_aid_powers,
             'enabled_reward_types': [
                 reward_type
                 for reward_type, enabled in (
                     ('access', randomize_access),
                     ('buff', include_buffs),
                     ('superweapon', include_superweapons),
+                    ('secondary_superweapon', include_secondary_superweapons),
+                    ('aid_power', include_aid_powers),
                 )
                 if enabled
             ],
@@ -947,6 +988,8 @@ class LauncherApp(tk.Tk):
             settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
         settings.setdefault('include_superweapon_rewards', False)
+        settings.setdefault('include_secondary_superweapon_rewards', False)
+        settings.setdefault('include_aid_power_rewards', False)
         if not isinstance(settings.get('enabled_buff_types'), list):
             settings['enabled_buff_types'] = [buff_type['id'] for buff_type in BUFF_TYPES]
         return settings
@@ -988,6 +1031,8 @@ class LauncherApp(tk.Tk):
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
+        self.config['generation']['include_secondary_superweapon_rewards'] = reward_settings['include_secondary_superweapon_rewards']
+        self.config['generation']['include_aid_power_rewards'] = reward_settings['include_aid_power_rewards']
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
         self.config['generation']['reward_mode'] = self.reward_mode_var.get()
         self.config['generation'].pop('close_game_on_victory', None)
@@ -1135,10 +1180,19 @@ class LauncherApp(tk.Tk):
         if reward_mode == 'Chaos (Experimental)':
             return self.configured_reward_pool()
         factions = self.reward_factions_for_code(code)
+        selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
         pool = [
             reward
             for reward in REWARD_POOL
-            if not reward.get('factions') or factions.intersection(reward.get('factions', []))
+            if (
+                not reward.get('factions')
+                or factions.intersection(reward.get('factions', []))
+                or (
+                    selected == 'Foehn'
+                    and reward.get('kind') == 'superweapon'
+                    and 'Foehn' in reward.get('factions', [])
+                )
+            )
         ]
         return self.bundle_foehn_standard_access(self.filter_reward_pool(pool))
 
@@ -1156,6 +1210,10 @@ class LauncherApp(tk.Tk):
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
+        include_secondary_superweapons = bool(
+            reward_settings.get('include_secondary_superweapon_rewards', False)
+        )
+        include_aid_powers = bool(reward_settings.get('include_aid_power_rewards', False))
         include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
         chaos_mode = (
@@ -1177,7 +1235,23 @@ class LauncherApp(tk.Tk):
                         and not reward.get('global_buff')
                     )
                 )
-                or (reward.get('kind') == 'superweapon' and include_superweapons)
+                or (
+                    reward.get('kind') == 'superweapon'
+                    and (
+                        (
+                            reward.get('power_category', 'offensive') == 'offensive'
+                            and include_superweapons
+                        )
+                        or (
+                            reward.get('power_category') == 'secondary'
+                            and include_secondary_superweapons
+                        )
+                        or (
+                            reward.get('power_category') == 'aid'
+                            and include_aid_powers
+                        )
+                    )
+                )
                 or (
                     reward.get('kind') not in {'buff', 'superweapon'}
                     and randomize_access
@@ -1700,8 +1774,14 @@ class LauncherApp(tk.Tk):
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
         reward_settings = self.current_reward_settings()
-        if not reward_settings['randomize_unit_access'] and not reward_settings['include_buff_rewards']:
-            self.append_log('Cannot generate seed: enable unit access rewards, buff rewards, or both.', error=True)
+        if not any((
+            reward_settings['randomize_unit_access'],
+            reward_settings['include_buff_rewards'],
+            reward_settings['include_superweapon_rewards'],
+            reward_settings['include_secondary_superweapon_rewards'],
+            reward_settings['include_aid_power_rewards'],
+        )):
+            self.append_log('Cannot generate seed: enable at least one reward-pool option.', error=True)
             return
         if reward_settings['include_buff_rewards'] and not reward_settings['enabled_buff_types']:
             self.append_log('Cannot generate seed: buff rewards are enabled but no buff types are selected.', error=True)
@@ -2342,6 +2422,11 @@ throw "Map $name was not found in expandmo*.mix"
 
     def prepare_hooked_map(self, mission, extra_rules=None):
         rule_sections = self.map_rules_for_launch(extra_rules)
+        if self.state:
+            for section, values in superweapon_rule_sections_for_rewards(
+                self.earned_rewards_from_checks()
+            ).items():
+                rule_sections.setdefault(section, {}).update(values)
         transient_rulesmo_sections = {}
         fallback_tech_ids = {
             section.upper()
