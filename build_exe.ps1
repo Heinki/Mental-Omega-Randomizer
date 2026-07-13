@@ -6,8 +6,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $outputPath = [IO.Path]::GetFullPath((Join-Path $scriptDir $Output))
 $outputDir = Split-Path -Parent $outputPath
-$runtimeName = "RandomizerLauncherRuntime"
-$runtimePath = Join-Path $outputDir $runtimeName
+$runtimePath = [IO.Path]::GetFullPath((Join-Path $outputDir "RandomizerLauncherRuntime"))
 $distDir = Join-Path $scriptDir "dist"
 $workDir = Join-Path $scriptDir "build"
 
@@ -15,12 +14,25 @@ if (-not (python -m PyInstaller --version 2>$null)) {
     throw "PyInstaller is required. Install it with: python -m pip install pyinstaller"
 }
 
+# The standalone launcher has no network client. Remove the network-related
+# exclusions below when Archipelago connectivity is implemented.
 python -m PyInstaller `
     --noconfirm `
     --clean `
-    --onedir `
-    --contents-directory $runtimeName `
+    --onefile `
+    --optimize 1 `
     --windowed `
+    --exclude-module logging.handlers `
+    --exclude-module ssl `
+    --exclude-module _ssl `
+    --exclude-module http `
+    --exclude-module urllib.request `
+    --exclude-module urllib.error `
+    --exclude-module ftplib `
+    --exclude-module smtplib `
+    --exclude-module email `
+    --exclude-module hashlib `
+    --exclude-module _hashlib `
     --name MentalOmegaRandomizer `
     --distpath $distDir `
     --workpath $workDir `
@@ -31,10 +43,19 @@ if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller build failed with exit code $LASTEXITCODE."
 }
 
-$bundleDir = Join-Path $distDir "MentalOmegaRandomizer"
-Copy-Item -Force (Join-Path $bundleDir "MentalOmegaRandomizer.exe") $outputPath
+$builtExe = Join-Path $distDir "MentalOmegaRandomizer.exe"
+Copy-Item -Force $builtExe $outputPath
+
+# Remove the support folder created by older on-directory builds. Guard the
+# resolved path because this is the only recursive deletion in the build.
 if (Test-Path $runtimePath) {
+    $expectedParent = [IO.Path]::GetFullPath($outputDir).TrimEnd('\') + '\'
+    if (
+        -not $runtimePath.StartsWith($expectedParent, [StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFileName($runtimePath) -ne 'RandomizerLauncherRuntime'
+    ) {
+        throw "Refusing to remove unexpected runtime path: $runtimePath"
+    }
     Remove-Item -LiteralPath $runtimePath -Recurse -Force
 }
-Copy-Item -Recurse -Force (Join-Path $bundleDir $runtimeName) $runtimePath
-Write-Host "Built $outputPath with adjacent runtime folder $runtimePath"
+Write-Host "Built single-file launcher $outputPath"

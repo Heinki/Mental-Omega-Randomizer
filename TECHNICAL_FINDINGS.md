@@ -27,7 +27,7 @@ Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 
 `-LOG` produces `debug/debug.log`, which is the communication channel for objective/victory markers. `-SPEEDCONTROL` keeps the spawned-game speed control available.
 
-The packaged launcher uses a PyInstaller on-directory build: a small `MentalOmegaRandomizer.exe` plus `RandomizerLauncherRuntime`. This avoids one-file extraction on every startup.
+The packaged launcher uses PyInstaller one-file mode so the release contains only `MentalOmegaRandomizer.exe`. PyInstaller embeds Python, Tcl/Tk, and native extensions and expands them to its temporary `_MEI*` directory at startup. That extraction cannot be removed while retaining a self-contained PyInstaller/Tk executable, so unnecessary imports are kept out of the bundle and diagnostics use the base `logging.FileHandler` rather than `logging.handlers` and its unused mail/network stack. Persistent configuration and caches remain under `RandomizerLauncherData`; they are player data rather than application runtime files.
 
 ## Configuration and State
 

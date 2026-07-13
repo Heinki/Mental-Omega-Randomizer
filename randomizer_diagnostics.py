@@ -1,16 +1,38 @@
 """Persistent, bounded diagnostics for support and play-session debugging."""
 import json
 import logging
-import platform
+import os
 import sys
-import uuid
-from logging.handlers import RotatingFileHandler
 
 from randomizer_paths import FROZEN, GAME_ROOT, LAUNCHER_LOG
 
 
-SESSION_ID = uuid.uuid4().hex[:8]
+SESSION_ID = os.urandom(4).hex()
 LOGGER = logging.getLogger('mental_omega_randomizer')
+MAX_LOG_BYTES = 2 * 1024 * 1024
+LOG_BACKUP_COUNT = 4
+
+
+def rotate_log_at_startup():
+    """Bound diagnostics without importing logging.handlers and its network stack."""
+    try:
+        if not LAUNCHER_LOG.exists() or LAUNCHER_LOG.stat().st_size < MAX_LOG_BYTES:
+            return
+        for index in range(LOG_BACKUP_COUNT, 0, -1):
+            source = (
+                LAUNCHER_LOG
+                if index == 1
+                else LAUNCHER_LOG.with_name(f'{LAUNCHER_LOG.name}.{index - 1}')
+            )
+            target = LAUNCHER_LOG.with_name(f'{LAUNCHER_LOG.name}.{index}')
+            if not source.exists():
+                continue
+            if target.exists():
+                target.unlink()
+            source.replace(target)
+    except OSError:
+        # Logging must never prevent the launcher from starting.
+        pass
 
 
 def event(name, level=logging.INFO, **details):
@@ -25,12 +47,8 @@ def setup_logging():
     LOGGER.propagate = False
     try:
         LAUNCHER_LOG.parent.mkdir(parents=True, exist_ok=True)
-        handler = RotatingFileHandler(
-            LAUNCHER_LOG,
-            maxBytes=2 * 1024 * 1024,
-            backupCount=4,
-            encoding='utf-8',
-        )
+        rotate_log_at_startup()
+        handler = logging.FileHandler(LAUNCHER_LOG, encoding='utf-8')
         handler.setFormatter(logging.Formatter(
             '%(asctime)s | %(levelname)s | session=%(session)s | %(message)s'
         ))
@@ -40,8 +58,8 @@ def setup_logging():
     event(
         'launcher_started',
         frozen=FROZEN,
-        python=platform.python_version(),
-        windows=platform.platform(),
+        python=sys.version.split()[0],
+        windows=str(sys.getwindowsversion()) if hasattr(sys, 'getwindowsversion') else sys.platform,
         executable=sys.executable,
         game_root=GAME_ROOT,
     )

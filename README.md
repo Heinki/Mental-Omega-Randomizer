@@ -6,7 +6,7 @@ Archipelago is planned but is not connected yet. The standalone configuration de
 
 ## Quick Start
 
-1. Put `MentalOmegaRandomizer.exe` and `RandomizerLauncherRuntime` in the Mental Omega folder beside `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
+1. Put `MentalOmegaRandomizer.exe` in the Mental Omega folder beside `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
 2. Run `MentalOmegaRandomizer.exe`.
 3. Choose the seed settings and press **Generate New Seed**.
 4. Select an open mission and press **Launch Selected Mission**.
@@ -38,7 +38,7 @@ Build the packaged launcher with:
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
 
-The build requires PyInstaller. It produces `MentalOmegaRandomizer.exe` and the adjacent `RandomizerLauncherRuntime` folder. This on-directory layout avoids the slow temporary extraction of a one-file executable. Players do not need Python or the source directory.
+The build requires PyInstaller and produces one self-contained `MentalOmegaRandomizer.exe`. Players do not need Python, the source directory, or a separate runtime folder. The launcher creates `RandomizerLauncherData` for configuration, saves, logs, and cached map/cameo data after it is run; this is writable player data, not part of the distributed application.
 
 Run a packaged installation check without opening the UI:
 

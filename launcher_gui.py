@@ -1,6 +1,7 @@
 """Entry point for source runs and the packaged launcher."""
 
 import json
+import random
 import sys
 import traceback
 
@@ -32,6 +33,7 @@ def run_self_check():
             'abrams_cameo_extracted': 'ABRM' in cameos,
             'abrams_cameo_path': str(cameos.get('ABRM', '')),
             'diagnostic_log': str(LAUNCHER_LOG),
+            'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
         }
         checks['passed'] = all(
             checks[key]
@@ -41,6 +43,7 @@ def run_self_check():
                 'gamemd_exists',
                 'map_renderer_exists',
                 'abrams_cameo_extracted',
+                'deterministic_seed_rng_works',
             )
         )
         report_path.write_text(json.dumps(checks, indent=2), encoding='utf-8')
