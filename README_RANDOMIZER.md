@@ -136,7 +136,7 @@ The reward count is a summary, not a mystery bundle:
 
 - Hover an incomplete mission row to see every remaining check and every assigned reward name.
 - Select a mission and open **Rewards** to see each objective/victory check, its completion state, its count, and the full reward-name list.
-- Open **Unlocks** to see rewards already earned, grouped by faction/unit with installed cameo art and accumulated buff effects.
+- Open **Unlocks** to see rewards already earned, grouped by faction/unit with installed cameo art and accumulated buff effects. Offensive, secondary, and aid/reinforcement powers display their installed sidebar icon beside the reward name.
 - The mission table `Rewards` fraction counts reward items, not checks. With 10 rewards per check, completing one check advances it by 10.
 
 Reward assignments are generated and stored when the seed is created. Access rewards are unique within a seed; once access is planned for a unit, later eligible slots can provide repeatable buffs. Some buff types have stack caps.

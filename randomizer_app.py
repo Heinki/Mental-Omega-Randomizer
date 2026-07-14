@@ -7,7 +7,7 @@ import subprocess
 import traceback
 
 from randomizer_config import CONFIG_PATH, load_config, save_config
-from randomizer_cameos import ensure_unit_cameos
+from randomizer_cameos import ensure_superweapon_cameos, ensure_unit_cameos
 from randomizer_diagnostics import event as log_event
 from grid_progression import (
     COMPLETED as GRID_COMPLETED,
@@ -3705,7 +3705,10 @@ throw "Map $name was not found in expandmo*.mix"
                         lines.append(f'  {summary}')
 
             for reward in group['other']:
-                lines.append(f'Reward: {reward_display_name(reward)}')
+                power_token = ''
+                if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
+                    power_token = f'[[MOR_POWER:{reward["superweapon"]}]]'
+                lines.append(f'{power_token}Reward: {reward_display_name(reward)}')
                 for summary in reward_rule_summary(reward):
                     lines.append(f'  {summary}')
 
@@ -3903,6 +3906,55 @@ throw "Map $name was not found in expandmo*.mix"
                     padx=5,
                     pady=2,
                 )
+
+        power_ids = sorted(set(re.findall(r'\[\[MOR_POWER:([A-Za-z0-9_]+)\]\]', text)))
+        if power_ids:
+            try:
+                power_cameo_paths = ensure_superweapon_cameos(power_ids)
+            except Exception:
+                power_cameo_paths = {}
+                log_event(
+                    'superweapon_cameo_load_failed',
+                    level=logging.ERROR,
+                    traceback=traceback.format_exc(),
+                )
+            normalized_power_ids = {power_id.upper() for power_id in power_ids}
+            log_event(
+                'superweapon_cameos_resolved',
+                requested=len(normalized_power_ids),
+                resolved=len(power_cameo_paths),
+                missing=sorted(normalized_power_ids - set(power_cameo_paths)),
+            )
+            for power_id in power_ids:
+                token = f'[[MOR_POWER:{power_id}]]'
+                position = self.unlocks_text.search(token, '1.0', stopindex='end', exact=True)
+                while position:
+                    self.unlocks_text.delete(position, f'{position}+{len(token)}c')
+                    cache_key = f'power:{power_id.upper()}'
+                    photo = self.cameo_photo_cache.get(cache_key)
+                    cameo_path = power_cameo_paths.get(power_id.upper())
+                    if photo is None and cameo_path:
+                        try:
+                            photo = tk.PhotoImage(file=str(cameo_path))
+                        except tk.TclError:
+                            photo = None
+                        if photo is not None:
+                            self.cameo_photo_cache[cache_key] = photo
+                    if photo is not None:
+                        self.unlocks_text.image_create(
+                            position,
+                            image=photo,
+                            align='center',
+                            padx=5,
+                            pady=2,
+                        )
+                        self.unlock_cameo_images[cache_key] = photo
+                    position = self.unlocks_text.search(
+                        token,
+                        position,
+                        stopindex='end',
+                        exact=True,
+                    )
         self.unlocks_text.configure(state='disabled')
         self.refresh_unlock_search()
 

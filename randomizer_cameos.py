@@ -17,6 +17,7 @@ EXTRACT_REQUEST_PATH = CAMEO_CACHE_DIR / 'extract_requests.json'
 SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None
+_RULES_SIDEBAR_NAMES = None
 
 
 def powershell_literal(value):
@@ -174,6 +175,36 @@ def rules_art_names():
     return mapping
 
 
+def rules_sidebar_names():
+    """Return installed SidebarPCX filenames keyed by rules section."""
+    global _RULES_SIDEBAR_NAMES
+    if _RULES_SIDEBAR_NAMES is not None:
+        return _RULES_SIDEBAR_NAMES
+    if not RULES_CACHE_PATH.exists():
+        extract_mix_files([('RULESMO.INI', RULES_CACHE_PATH)])
+    if not RULES_CACHE_PATH.exists():
+        return {}
+
+    mapping = {}
+    section = ''
+    for raw_line in RULES_CACHE_PATH.read_text(encoding='utf-8', errors='ignore').splitlines():
+        line = raw_line.strip()
+        section_match = re.match(r'^\[([^]]+)\]', line)
+        if section_match:
+            section = section_match.group(1).strip().upper()
+            continue
+        if not section or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        if key.strip().lower() != 'sidebarpcx':
+            continue
+        filename = value.split(';', 1)[0].strip()
+        if SAFE_ASSET_NAME.fullmatch(filename):
+            mapping[section] = filename
+    _RULES_SIDEBAR_NAMES = mapping
+    return mapping
+
+
 def png_chunk(kind, payload):
     return (
         struct.pack('>I', len(payload))
@@ -246,16 +277,8 @@ def decode_pcx_to_png(pcx_path, png_path):
     return True
 
 
-def ensure_unit_cameos(unit_ids):
-    cameo_names = art_cameo_names()
-    art_names = rules_art_names()
-    requested = {}
-    for unit_id in unit_ids:
-        unit_id = str(unit_id).upper()
-        cameo_name = cameo_names.get(art_names.get(unit_id, unit_id))
-        if cameo_name:
-            requested[unit_id] = cameo_name
-
+def ensure_requested_cameos(requested):
+    """Extract and decode a mapping of stable UI keys to PCX filenames."""
     missing_pcxs = []
     for cameo_name in set(requested.values()):
         pcx_path = CAMEO_CACHE_DIR / cameo_name.lower()
@@ -265,7 +288,7 @@ def ensure_unit_cameos(unit_ids):
     extract_mix_files(missing_pcxs)
 
     result = {}
-    for unit_id, cameo_name in requested.items():
+    for asset_id, cameo_name in requested.items():
         pcx_path = CAMEO_CACHE_DIR / cameo_name.lower()
         png_path = pcx_path.with_suffix('.png')
         if not png_path.exists() and pcx_path.exists():
@@ -274,5 +297,29 @@ def ensure_unit_cameos(unit_ids):
             except OSError:
                 pass
         if png_path.exists():
-            result[unit_id] = png_path
+            result[asset_id] = png_path
     return result
+
+
+def ensure_unit_cameos(unit_ids):
+    cameo_names = art_cameo_names()
+    art_names = rules_art_names()
+    requested = {}
+    for unit_id in unit_ids:
+        unit_id = str(unit_id).upper()
+        cameo_name = cameo_names.get(art_names.get(unit_id, unit_id))
+        if cameo_name:
+            requested[unit_id] = cameo_name
+    return ensure_requested_cameos(requested)
+
+
+def ensure_superweapon_cameos(superweapon_ids):
+    """Resolve the installed sidebar icon for each requested superweapon."""
+    sidebar_names = rules_sidebar_names()
+    requested = {}
+    for superweapon_id in superweapon_ids:
+        superweapon_id = str(superweapon_id).upper()
+        cameo_name = sidebar_names.get(superweapon_id)
+        if cameo_name:
+            requested[superweapon_id] = cameo_name
+    return ensure_requested_cameos(requested)

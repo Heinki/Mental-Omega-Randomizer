@@ -6,7 +6,7 @@ import sys
 import traceback
 
 from randomizer_app import main
-from randomizer_cameos import ensure_unit_cameos
+from randomizer_cameos import ensure_superweapon_cameos, ensure_unit_cameos
 from randomizer_diagnostics import event as log_event
 from randomizer_paths import (
     APP_DIR,
@@ -24,6 +24,7 @@ def run_self_check():
     try:
         APP_DIR.mkdir(parents=True, exist_ok=True)
         cameos = ensure_unit_cameos(['ABRM'])
+        power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         checks = {
             'game_root': str(GAME_ROOT),
             'runtime_data_writable': APP_DIR.exists(),
@@ -32,6 +33,8 @@ def run_self_check():
             'map_renderer_exists': MAP_RENDERER_DIR.exists(),
             'abrams_cameo_extracted': 'ABRM' in cameos,
             'abrams_cameo_path': str(cameos.get('ABRM', '')),
+            'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
+            'lightning_storm_cameo_path': str(power_cameos.get('LIGHTNINGSTORMSPECIAL', '')),
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
         }
@@ -43,6 +46,7 @@ def run_self_check():
                 'gamemd_exists',
                 'map_renderer_exists',
                 'abrams_cameo_extracted',
+                'lightning_storm_cameo_extracted',
                 'deterministic_seed_rng_works',
             )
         )
