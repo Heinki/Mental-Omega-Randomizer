@@ -992,7 +992,7 @@ def add_complete_faction_buff_targets():
     defense_buff_types = [
         'production', 'cost', 'armor', 'health', 'sight',
         'damage', 'reload', 'rof', 'range',
-        'self_healing', 'cloak', 'sensors', 'guard_range', 'veteran',
+        'self_healing', 'cloak', 'sensors', 'veteran',
     ]
     for faction, defenses in FACTION_DEFENSE_ROSTERS.items():
         for defense_id, label in defenses.items():
@@ -1198,14 +1198,6 @@ BUFF_TYPES = [
         'name': 'Sensor Suite',
         'setting_label': 'Sensors',
         'description': '{plural} gain sensors in future launched missions.',
-        'requires_clone': True,
-    },
-    {
-        'id': 'guard_range',
-        'name': 'Targeting Package',
-        'setting_label': 'Auto-engagement range',
-        'description': '{plural} automatically notice and engage enemies from farther away without increasing weapon range.',
-        'requires_stat': 'guard_range',
         'requires_clone': True,
     },
     {
@@ -1473,7 +1465,16 @@ REWARD_ALIASES = {
     'Battle Fortress Access': 'Barracuda Access',
     'Mind Control Access': 'Mastermind Access',
     'Base Construction Drill I': 'Faction Production Drill I',
+    'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
 }
+for target in BUFF_TARGETS.values():
+    # Existing seeds may contain the removed GuardRange reward. Convert it to
+    # the same unit's useful vision reward instead of applying behavior that
+    # can pull units out of position or leaving the old location reward empty.
+    old_name = f'{target["label"]} Targeting Package I'
+    replacement_name = f'{target["label"]} Recon Package I'
+    if replacement_name in REWARD_BY_NAME:
+        REWARD_ALIASES[old_name] = replacement_name
 for defense_id, target in BUFF_TARGETS.items():
     if target.get('category') == 'defenses' and not target.get('trainable'):
         REWARD_ALIASES[
@@ -1540,7 +1541,7 @@ HOUSE_CATEGORY_SUFFIXES = {
 
 HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'rof', 'veteran'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
-UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors', 'guard_range'}
+UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors'}
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES
 MAX_VETERANCY_STACKS = 1
@@ -1654,9 +1655,6 @@ def buff_effect_lines(reward, count=1, include_label=True):
     if buff_type == 'sensors':
         sensor_range = int(round(target.get('sight', 5) + 2))
         return [f'{prefix}Sensors enabled ({sensor_range}-cell range; {stack_label(count)})']
-    if buff_type == 'guard_range':
-        increase = min(5, count)
-        return [f'{prefix}Auto-engagement range +{increase} ({stack_label(count)})']
     return []
 
 

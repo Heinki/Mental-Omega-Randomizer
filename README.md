@@ -6,11 +6,19 @@ Archipelago is planned but is not connected yet. The standalone configuration de
 
 ## Quick Start
 
-1. Put `MentalOmegaRandomizer.exe` in the Mental Omega folder beside `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
-2. Run `MentalOmegaRandomizer.exe`.
-3. Choose the seed settings and press **Generate New Seed**.
-4. Select an open mission and press **Launch Selected Mission**.
-5. Complete objectives and win. The launcher records detected checks and applies earned rewards to future mission launches.
+1. Make a **new, separate, fresh installation of Mental Omega**. Do not use the copy in which you normally install map packs, funmaps, rules edits, or other modifiers.
+2. Start that clean installation normally once and verify that an original campaign mission launches.
+3. Put `MentalOmegaRandomizer.exe` in that installation's root folder beside `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
+4. Run `MentalOmegaRandomizer.exe`.
+5. Choose the seed settings and press **Generate New Seed**.
+6. Select an open mission and press **Launch Selected Mission**.
+7. Complete objectives and win. The launcher records detected checks and applies earned rewards to future mission launches.
+
+### Supported game content
+
+The Randomizer has been developed and tested against the **original Mental Omega campaign maps only**. Custom maps, funmaps, map packs, modified rules, and installations containing other gameplay modifiers are not currently supported. Those additions can redefine houses, units, weapons, triggers, and mission scripts in ways the Randomizer has not audited; combining them may produce incorrect rewards or progress, buff the wrong force, fail to launch, or affect the original content.
+
+Using a dedicated clean installation is the same isolation normally recommended for map packs and other game modifiers. It protects the player's usual installation and gives bug reports a known baseline. The launcher does **not** modify Mental Omega's MIX archives: it reads the installed archives, creates a generated loose copy of the selected campaign map, and stores its own configuration, saves, logs, and caches in `RandomizerLauncherData`.
 
 **Mission List** progression opens the first three missions and adds one more after each victory. **Grid Mode** places the required missions on a compact faction-colored board: completing a node opens its orthogonal neighbors, and the bottom-right exit finishes the run after every required node is cleared. Mixed-campaign seeds weight the short seven-mission Foehn campaign proportionally instead of allowing it to dominate the randomized order. The hidden **Debug: Mark Complete** control appears only when the launcher log is expanded and is intended for development recovery.
 

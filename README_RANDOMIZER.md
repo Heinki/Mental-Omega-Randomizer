@@ -4,6 +4,8 @@ This is the authoritative player-facing guide for seed settings and reward behav
 
 The launcher is currently standalone and offline. The option keys below are intentionally stable so they can later become Archipelago world options without redefining their meaning.
 
+> **Installation requirement:** use the executable in a new, separate, unmodified Mental Omega installation. Only the original Mental Omega campaign maps have been tested. Custom maps, funmaps, map packs, modified rules, and other gameplay modifiers are unsupported; see [Quick Start and supported game content](README.md#quick-start).
+
 ## Seed Lifecycle
 
 - **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan.
@@ -27,7 +29,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Difficulty | `difficulty` | `Casual`, `Normal`, `Mental`; default `Normal` | Writes the selected campaign/human difficulty to launch configuration. It does not change rewards. | Every launch |
 | Game speed | `game_speed` | `0 - Slowest` through `6 - Fastest`; default `3 - Medium` | Writes the engine speed and launches with `-SPEEDCONTROL`, keeping the in-game speed control available. It does not change rewards. | Every launch |
 | Rewards per objective | `rewards_per_objective` | `1`–`10`; default `1` | Assigns exactly this many reward items to every briefing-objective check and to the separate Mission Victory check. Total mission rewards are `number of checks × this value`. | Seed generation |
-| Buff allied helpers | `generation.buff_allied_helpers` | `false`/`true`; default `false` | Adds eligible AI-controlled allied houses to earned buff targets and failed-mission retry assistance. Additional player-controlled houses and forces scripted to transfer to the player are always included. AI-trigger TeamTypes use their runtime trigger owner instead of reusable `Neutral` placeholders. A unit supplied to a friendly force by the mission can receive its earned buffs even before the player earns that unit's access reward. Assisted helpers receive private map-local country copies; enemies are never included. | Seed generation |
+| Buff allied helpers | `generation.buff_allied_helpers` | `false`/`true`; default `false` | Adds eligible AI-controlled allied houses to earned buff targets and failed-mission retry assistance. Additional player-controlled houses are always included. Start-of-map ownership-choice transfers can participate, but transfer/helper houses involved in any campaign `Make Enemy` trigger against the player's coalition are rejected because a static buff could not be removed before or after that story transition. AI-trigger TeamTypes use their runtime trigger owner instead of reusable `Neutral` placeholders. A unit supplied to a permanent friendly force by the mission can receive its earned buffs even before the player earns that unit's separate access reward. Country rules are used only when no unassisted house shares that country; enemies are never included. | Seed generation |
 | Strengthen failed missions on retry | `generation.failure_assistance` | `false`/`true`; default `false` | An unsuccessful mission exit, reload, or detected restart adds one assistance stack to that mission only. Its next launch receives cumulative production, cost, movement-speed, health, damage, armor, fire-rate, and attack-range help. With randomized access, eligibility is resolved from earned units, always-available essentials, and units supplied by the mission; otherwise the normal player-faction roster is included. The grid tile, Mission Details, and a compact Unlocks block show its stacks; victory deletes them. House-level assistance uses private player countries; global unit/weapon fields are guarded and skipped whenever an enemy uses the affected type. | Seed generation |
 | Reward mode | `generation.reward_mode` | `Standard`, `Chaos (Experimental)`; default `Standard` | Selects campaign-aware rewards or the all-faction Chaos production/access model described below. Chaos always enables access randomization. | Seed generation |
 
@@ -62,10 +64,9 @@ The launcher is currently standalone and offline. The option keys below are inte
 | `self_healing` | Self-healing | Enables self-healing | Direct unit type; one effective stack. |
 | `cloak` | Cloaking | Enables cloaking | Direct unit type; one effective stack. |
 | `sensors` | Sensors | Enables sensors with a unit-derived radius | Direct unit type; one effective stack. |
-| `guard_range` | Auto-engagement range | +1 automatic engagement range | Direct unit type; does not increase weapon range. |
 | `veteran` | Veteran start | Newly produced affected units start veteran | House scoped; one effective stack because the engine flag does not start units elite. |
 
-Direct unit and weapon definitions are global to the map. If an enemy uses the same type, the launcher skips that unsafe direct change instead of buffing the enemy or registering expensive cloned combat types. House-scoped rewards still use isolated player/allied country copies.
+Direct unit and weapon definitions are global to the map. If an enemy uses the same type, the launcher skips that unsafe direct change instead of buffing the enemy or registering expensive cloned combat types. House-scoped rewards are written to an existing country only when that country is not shared with an enemy. Campaign houses are never reassigned to synthetic countries, because map triggers are owned by the original country IDs.
 
 ### Non-UI configuration keys
 
@@ -76,8 +77,7 @@ These keys are runtime/developer controls and should not become normal Archipela
 | `generation.starting_unlocked_missions` | `3` | Mission List starting count. Grid Mode uses its own start rule. |
 | `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power]` | Derived compatibility list written from the five reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
-| `generation.allow_shared_country_buffs` | `false` | Developer override that may affect enemy houses sharing a country; keep disabled for normal play. |
-| `generation.experimental_house_buffs` | `false` | Older experimental country-clone route; the stable safe-country path is preferred. |
+| `generation.experimental_house_buffs` | `false` | Legacy house-buff route; it is still constrained by the same no-reassignment trigger safety rule. |
 | `archipelago.*` | Disabled/blank | Reserved connection and slot fields. They currently do not connect to an Archipelago server. |
 
 ## Progression Modes

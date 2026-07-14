@@ -1,9 +1,11 @@
 ﻿import json
 import logging
+import queue
 import random
 import re
 import shutil
 import subprocess
+import threading
 import traceback
 
 from randomizer_config import CONFIG_PATH, load_config, save_config
@@ -339,12 +341,22 @@ class LauncherApp(tk.Tk):
         self.unlock_search_current = None
         self.cameo_photo_cache = {}
         self.unlock_cameo_images = {}
+        self.busy_depth = 0
+        self.ui_queue = queue.Queue()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
         self.create_widgets()
-        self.refresh_missions()
-        self.refresh_progress_view()
+        self.show_busy(
+            'Loading randomizer…',
+            'Reading missions and restoring the current run. Please wait.',
+        )
+        try:
+            self.refresh_missions()
+            self.refresh_progress_view()
+        finally:
+            self.hide_busy()
+        self.after(40, self.process_ui_queue)
         log_event(
             'launcher_ready',
             missions=len(self.missions),
@@ -507,7 +519,8 @@ class LauncherApp(tk.Tk):
         WidgetTooltip(
             self.buff_allied_helpers_check,
             'Also applies earned buffs and failed-mission retry assistance to '
-            'AI-controlled allied helper houses. '
+            'permanent AI-controlled allied helper houses. Campaign houses that '
+            'can be scripted hostile are excluded. '
             'Player-controlled allied houses are always included.',
         )
         ttk.Label(options_row, text='Reward mode').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
@@ -832,6 +845,132 @@ class LauncherApp(tk.Tk):
         main_frame.columnconfigure(0, weight=4)
         main_frame.columnconfigure(2, weight=3)
 
+        # Long operations remain synchronous because mission preparation must
+        # finish before the game can start. Cover the window before that work
+        # begins so the launcher never appears frozen or accepts a second
+        # launch/generation request while the first one is still running.
+        self.busy_overlay = tk.Frame(main_frame, background='#edf3f8')
+        busy_card = tk.Frame(
+            self.busy_overlay,
+            background='#f9fcff',
+            highlightbackground='#79cfff',
+            highlightthickness=3,
+            padx=34,
+            pady=26,
+        )
+        busy_card.place(relx=0.5, rely=0.5, anchor='center')
+        self.busy_title = tk.Label(
+            busy_card,
+            text='',
+            background='#f9fcff',
+            foreground='#172a3a',
+            font=('Segoe UI', 13, 'bold'),
+        )
+        self.busy_title.pack()
+        self.busy_detail = tk.Label(
+            busy_card,
+            text='',
+            background='#f9fcff',
+            foreground='#4c6172',
+            font=('Segoe UI', 9),
+            wraplength=380,
+            justify='center',
+        )
+        self.busy_detail.pack(pady=(8, 14))
+        self.busy_progress = ttk.Progressbar(busy_card, mode='indeterminate', length=300)
+        self.busy_progress.pack(fill='x')
+
+    def show_busy(self, title, detail='Please wait.'):
+        self.busy_depth += 1
+        self.busy_title.configure(text=title)
+        self.busy_detail.configure(text=detail)
+        self.busy_overlay.place(x=0, y=0, relwidth=1, relheight=1)
+        self.busy_overlay.lift()
+        self.busy_progress.start(12)
+        self.configure(cursor='wait')
+        try:
+            self.busy_overlay.grab_set()
+        except tk.TclError:
+            pass
+        # Paint the message before the following synchronous work begins.
+        self.update_idletasks()
+
+    def hide_busy(self):
+        self.busy_depth = max(0, self.busy_depth - 1)
+        if self.busy_depth:
+            return
+        self.busy_progress.stop()
+        try:
+            if self.grab_current() == self.busy_overlay:
+                self.busy_overlay.grab_release()
+        except tk.TclError:
+            pass
+        self.busy_overlay.place_forget()
+        self.configure(cursor='')
+
+    def run_with_busy(self, title, detail, callback):
+        self.show_busy(title, detail)
+
+        def run_callback():
+            try:
+                callback()
+            finally:
+                self.hide_busy()
+
+        # Give the window manager one event-loop turn to display the overlay.
+        self.after(50, run_callback)
+
+    def run_in_background(self, title, detail, callback, on_success, on_error):
+        """Run filesystem/CPU work without blocking Tk's event loop."""
+        self.show_busy(title, detail)
+
+        def worker():
+            try:
+                result = callback()
+            except Exception as exc:
+                error_detail = traceback.format_exc()
+
+                def deliver_error(exc=exc, error_detail=error_detail):
+                    try:
+                        on_error(exc, error_detail)
+                    finally:
+                        self.hide_busy()
+
+                self.ui_queue.put(('callback', deliver_error))
+                return
+
+            def deliver_result(result=result):
+                try:
+                    on_success(result)
+                finally:
+                    self.hide_busy()
+
+            self.ui_queue.put(('callback', deliver_result))
+
+        self.after(
+            50,
+            lambda: threading.Thread(
+                target=worker,
+                name='MentalOmegaRandomizerWorker',
+                daemon=True,
+            ).start(),
+        )
+
+    def process_ui_queue(self):
+        try:
+            try:
+                while True:
+                    kind, payload = self.ui_queue.get_nowait()
+                    if kind == 'log':
+                        message, error = payload
+                        self.append_log_to_widgets(message, error=error)
+                    elif kind == 'callback':
+                        payload()
+            except queue.Empty:
+                pass
+        finally:
+            self.after(40, self.process_ui_queue)
+
     def on_settings_content_configure(self, event=None):
         if hasattr(self, 'settings_canvas'):
             self.settings_canvas.configure(scrollregion=self.settings_canvas.bbox('all'))
@@ -957,6 +1096,7 @@ class LauncherApp(tk.Tk):
             self.main_frame.rowconfigure(9, weight=1)
             self.log_toggle_button.configure(text='Hide Launcher Log')
             self.log_visible_var.set(True)
+            self.log_text.see('end')
 
     def append_log(self, message, error=False):
         log_event(
@@ -964,15 +1104,21 @@ class LauncherApp(tk.Tk):
             level=logging.ERROR if error else logging.INFO,
             message=str(message),
         )
+        if threading.current_thread() is not threading.main_thread():
+            self.ui_queue.put(('log', (str(message), bool(error))))
+            return
+        self.append_log_to_widgets(message, error=error)
+
+    def append_log_to_widgets(self, message, error=False):
         self.log_text.configure(state='normal')
         self.log_text.insert('end', f'{message}\n')
         if error:
             self.log_text.tag_add('error', 'end-2l', 'end-1c')
             self.log_text.tag_config('error', foreground='red')
         self.log_text.configure(state='disabled')
-        self.log_text.see('end')
+        if self.log_visible_var.get():
+            self.log_text.see('end')
         self.status_label.config(text='Error' if error else message[:120])
-        self.update_idletasks()
 
     def clear_log(self):
         self.log_text.configure(state='normal')
@@ -1674,16 +1820,6 @@ class LauncherApp(tk.Tk):
         rng = random.Random(f'{seed}:seed-rewards')
         require_access_for_unit_buffs = self.randomize_unit_access_enabled()
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
-        access_by_code = {}
-        buffs_by_code = {}
-        for code in mission_codes:
-            pool = [canonical_reward(reward) for reward in self.reward_pool_for_code(code)]
-            access = [dict(reward) for reward in pool if reward.get('kind') != 'buff']
-            buffs = [dict(reward) for reward in pool if reward.get('kind') == 'buff']
-            rng.shuffle(access)
-            access_by_code[code] = access
-            buffs_by_code[code] = buffs
-
         used_access_names = set()
         seed_unlocked_tech_ids = set()
         buff_counts = {}
@@ -1712,15 +1848,53 @@ class LauncherApp(tk.Tk):
             for affected_unit in units:
                 unit_buff_counts[affected_unit] = unit_buff_counts.get(affected_unit, 0) + 1
 
+        # Reward settings are seed-wide, and the current faction selector does
+        # not vary by mission code. Build/canonicalize each distinct faction
+        # pool once instead of repeating it for every mission. Buff metadata is
+        # also static during the draw and is therefore calculated once here.
+        pool_cache = {}
+        pool_by_code = {}
+        access_by_code = {}
+        buffs_by_code = {}
+        for code in mission_codes:
+            pool_key = tuple(sorted(self.reward_factions_for_code(code)))
+            if pool_key not in pool_cache:
+                canonical_pool = tuple(
+                    canonical_reward(reward)
+                    for reward in self.reward_pool_for_code(code)
+                )
+                access_template = tuple(
+                    reward for reward in canonical_pool if reward.get('kind') != 'buff'
+                )
+                buff_metadata = tuple(
+                    (
+                        reward,
+                        buff_stack_limit(reward),
+                        buff_count_key(reward),
+                        reward.get('unit'),
+                        bool(reward.get('global_buff') or not reward.get('unit')),
+                        reward.get('name'),
+                    )
+                    for reward in canonical_pool
+                    if reward.get('kind') == 'buff'
+                )
+                pool_cache[pool_key] = (canonical_pool, access_template, buff_metadata)
+            canonical_pool, access_template, buff_metadata = pool_cache[pool_key]
+            access = list(access_template)
+            rng.shuffle(access)
+            pool_by_code[code] = canonical_pool
+            access_by_code[code] = access
+            buffs_by_code[code] = buff_metadata
+
         def draw_access(code):
             access = access_by_code.get(code, [])
             while access:
                 reward = access.pop()
-                name = canonical_reward(reward).get('name')
+                name = reward.get('name')
                 if name in used_access_names:
                     continue
                 used_access_names.add(name)
-                return reward
+                return dict(reward)
             return None
 
         def draw_buff(code, prefer_global=False):
@@ -1730,14 +1904,11 @@ class LauncherApp(tk.Tk):
 
             unit_candidates = []
             global_candidates = []
-            for reward in buffs:
-                limit = buff_stack_limit(reward)
-                count_key = buff_count_key(reward)
+            for reward, limit, count_key, unit, is_global, name in buffs:
                 if limit is not None and buff_counts.get(count_key, 0) >= limit:
                     continue
-                unit = reward.get('unit')
-                if reward.get('global_buff') or not unit:
-                    count = global_buff_counts.get(reward.get('name'), 0)
+                if is_global:
+                    count = global_buff_counts.get(name, 0)
                     if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
                         global_candidates.append(reward)
                 elif not require_access_for_unit_buffs or unit_access_earned(unit):
@@ -1773,7 +1944,7 @@ class LauncherApp(tk.Tk):
             return reward
 
         def draw_repeatable_fallback(code):
-            pool = [dict(reward) for reward in self.reward_pool_for_code(code)]
+            pool = [dict(reward) for reward in pool_by_code.get(code, ())]
             buffs = [reward for reward in pool if reward.get('kind') == 'buff']
             candidates = []
             for reward in buffs or pool:
@@ -2303,7 +2474,7 @@ class LauncherApp(tk.Tk):
             completed_missions=len(self.state.get('completed_missions', [])),
             earned_rewards=len(self.state.get('earned_rewards', [])),
         )
-        self.launch_mission(mission)
+        self.launch_mission_async(mission)
 
     def on_new_seed(self):
         if self.state and self.state.get('completed_missions'):
@@ -2315,7 +2486,11 @@ class LauncherApp(tk.Tk):
                 return
 
         self.seed_var.set(f'MO-{random.randrange(0x10000000):08X}')
-        self.generate_seed_from_settings()
+        self.run_with_busy(
+            'Generating new randomizer run…',
+            'Building the mission order and reward plan. Please wait.',
+            self.generate_seed_from_settings,
+        )
 
     def on_generate_seed(self):
         if self.state and self.state.get('completed_missions'):
@@ -2325,7 +2500,11 @@ class LauncherApp(tk.Tk):
             )
             if not confirmed:
                 return
-        self.generate_seed_from_settings()
+        self.run_with_busy(
+            'Generating randomizer run…',
+            'Building the mission order and reward plan. Please wait.',
+            self.generate_seed_from_settings,
+        )
 
     def generate_seed_from_settings(self, force=False):
         if not self.missions:
@@ -3098,11 +3277,6 @@ throw "Map $name was not found in expandmo*.mix"
 
     def prepare_hooked_map(self, mission, extra_rules=None):
         rule_sections = self.map_rules_for_launch(extra_rules)
-        if self.state:
-            for section, values in superweapon_rule_sections_for_rewards(
-                self.earned_rewards_from_checks()
-            ).items():
-                rule_sections.setdefault(section, {}).update(values)
         fallback_tech_ids = {
             section.upper()
             for section, values in (extra_rules or {}).items()
@@ -3126,6 +3300,12 @@ throw "Map $name was not found in expandmo*.mix"
 
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        earned_rewards = self.earned_rewards_from_checks() if self.state else []
+        launch_power_rewards = list(earned_rewards)
+        for section, values in superweapon_rule_sections_for_rewards(
+            launch_power_rewards
+        ).items():
+            rule_sections.setdefault(section, {}).update(values)
         assistance_unit_ids = []
         mission_buff_unit_ids = []
         if self.state:
@@ -3147,7 +3327,6 @@ throw "Map $name was not found in expandmo*.mix"
         generation_config = self.config.get('generation', {})
         experimental_house_buffs = bool(generation_config.get('experimental_house_buffs', False))
         safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
-        allow_shared_country_buffs = bool(generation_config.get('allow_shared_country_buffs', False))
         require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
         buff_access_tech_ids = set(fallback_tech_ids) | set(mission_buff_unit_ids)
         if self.state and experimental_house_buffs:
@@ -3161,12 +3340,11 @@ throw "Map $name was not found in expandmo*.mix"
             )
             if house_buffs:
                 buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
-                self.append_log(f'Applied player-house buffs to {player_house} via MORPLAYER: {buff_summary}')
+                self.append_log(f'Applied trigger-safe player-country buffs to {player_house}: {buff_summary}')
         elif self.state and safe_player_country_buffs:
             player_house, player_country, house_rule_sections, shared_houses, buffed_allies, skipped_allies = player_country_buff_rules(
                 lines,
                 self.earned_rewards_from_checks(),
-                allow_shared_country=allow_shared_country_buffs,
                 buff_allied_helpers=buff_allied_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
@@ -3180,10 +3358,11 @@ throw "Map $name was not found in expandmo*.mix"
                 shared_note = f' Shared country houses: {", ".join(shared_houses)}.' if shared_houses else ''
                 helper_note = f' Allied player/helper houses buffed: {", ".join(buffed_allies)}.' if buffed_allies else ''
                 skipped_note = f' Allied player/helper houses skipped: {", ".join(skipped_allies)}.' if skipped_allies else ''
-                self.append_log(
-                    f'Applied map-local player-country buffs for {player_house}/{player_country}: '
-                    f'{buff_summary}.{shared_note}{helper_note}{skipped_note}'
-                )
+                if player_country in house_rule_sections:
+                    lead = f'Applied map-local player-country buffs for {player_house}/{player_country}'
+                else:
+                    lead = f'Skipped shared player country {player_house}/{player_country}; applied safe allied country buffs'
+                self.append_log(f'{lead}: {buff_summary}.{shared_note}{helper_note}{skipped_note}')
             elif shared_houses:
                 self.append_log(
                     f'Skipped player-country buffs for {player_house}/{player_country}: '
@@ -3206,24 +3385,28 @@ throw "Map $name was not found in expandmo*.mix"
         assistance_stacks = self.mission_failure_stack(code)
         assistance_direct_rewards = []
         if self.failure_assistance_enabled() and assistance_stacks:
-            assistance_rules, assisted_houses, assistance_clones = mission_assistance_buff_rules(
+            assistance_rules, assisted_houses, skipped_assistance_countries = mission_assistance_buff_rules(
                 lines,
                 assistance_stacks,
                 buff_allied_helpers=buff_allied_helpers,
             )
-            if assistance_rules:
-                merge_ini_section_values(lines, assistance_rules)
-                clone_note = ''
-                if assistance_clones:
-                    clone_note = ' Assisted houses use private assistance countries: ' + ', '.join(
-                        f'{original}->{clone}'
-                        for original, clone, _ in assistance_clones
+            if assisted_houses:
+                if assistance_rules:
+                    merge_ini_section_values(lines, assistance_rules)
+                skip_note = ''
+                if skipped_assistance_countries:
+                    skip_note = ' Country-level bonuses skipped where enemies share the country: ' + ', '.join(
+                        f'{country} ({", ".join(shared)})'
+                        for country, _, shared in skipped_assistance_countries
                     ) + '.'
                 self.append_log(
                     f'Applied {assistance_stacks} retry assistance stack(s) to {code} for '
                     f'{", ".join(assisted_houses)} across {len(assistance_unit_ids)} currently '
-                    f'accessible or mission-provided unit type(s).{clone_note}'
+                    f'accessible or mission-provided unit type(s).{skip_note}'
                 )
+                # Direct health/damage/range rewards still pass through the
+                # global type/weapon ownership guard even when a shared
+                # country makes category multipliers unsafe.
                 assistance_direct_rewards = mission_assistance_direct_rewards(
                     assistance_unit_ids,
                     assistance_stacks,
@@ -3262,14 +3445,13 @@ throw "Map $name was not found in expandmo*.mix"
                     error=True,
                 )
 
-        earned_rewards = self.earned_rewards_from_checks() if self.state else []
         house = player_country_from_map(lines)
-        superweapon_actions = superweapon_actions_for_rewards(earned_rewards)
+        superweapon_actions = superweapon_actions_for_rewards(launch_power_rewards)
         superweapon_trigger = append_superweapon_grant_trigger(lines, house, superweapon_actions)
         if superweapon_trigger:
             power_names = [
                 reward_display_name(reward)
-                for reward in canonical_rewards(earned_rewards)
+                for reward in canonical_rewards(launch_power_rewards)
                 if reward.get('kind') == 'superweapon'
             ]
             self.append_log(
@@ -3361,12 +3543,16 @@ throw "Map $name was not found in expandmo*.mix"
         GENERATED_MAP_DIR.mkdir(parents=True, exist_ok=True)
         generated_path = GENERATED_MAP_DIR / scenario.upper()
         generated_text = HOOKED_MAP_MARKER + '\r\n' + '\r\n'.join(lines) + '\r\n'
-        generated_path.write_text(generated_text, encoding='utf-8')
+        # Path.write_text translates every ``\n`` on Windows. Because the map
+        # text already uses CRLF, that produced CRCRLF and inserted a blank
+        # line after every source line. Write bytes so campaign INI formatting
+        # remains byte-for-byte conventional.
+        generated_path.write_bytes(generated_text.encode('utf-8'))
 
         root_map = GAME_ROOT / scenario
         if root_map.exists() and not is_generated_hooked_map(root_map):
             backup_file_once(root_map, 'before-randomizer-hook')
-        root_map.write_text(generated_text, encoding='utf-8')
+        root_map.write_bytes(generated_text.encode('utf-8'))
         self.append_log(f'Prepared generated map {scenario}: {len(markers)} marker trigger(s).')
 
         return {
@@ -3545,12 +3731,19 @@ throw "Map $name was not found in expandmo*.mix"
                 if check_id == 'victory' and unlocked:
                     self.schedule_game_close_after_victory()
 
-        for _ in range(text.count('MapClass::Init_Clear entry')):
-            if self.active_hook.get('scenario_initialized'):
-                if not self.is_mission_complete(code):
-                    self.record_failed_mission_attempt(code, 'In-game mission restart detected')
-            else:
-                self.active_hook['scenario_initialized'] = True
+        # A normal game startup emits more than one Init_Clear message before
+        # the scenario becomes interactive. Only an Init_Clear that occurs
+        # after Capture_Mouse marks a genuine in-game restart. Process the log
+        # in order so startup messages in the same polling chunk are not
+        # mistaken for failed attempts.
+        for line in text.splitlines():
+            if 'MapClass::Init_Clear entry' in line:
+                if self.active_hook.get('scenario_ready'):
+                    self.active_hook['scenario_ready'] = False
+                    if not self.is_mission_complete(code):
+                        self.record_failed_mission_attempt(code, 'In-game mission restart detected')
+            elif 'Capture_Mouse()' in line:
+                self.active_hook['scenario_ready'] = True
 
     def schedule_game_close_after_victory(self):
         hook = self.active_hook
@@ -3603,6 +3796,11 @@ throw "Map $name was not found in expandmo*.mix"
                 offset = self.active_hook.get('offset', 0)
                 if size < offset:
                     offset = 0
+                    # A truncated/recreated debug log starts a new startup
+                    # sequence. Do not carry an earlier Capture_Mouse state
+                    # across that boundary or the first Init_Clear in the new
+                    # file is misclassified as an in-game restart.
+                    self.active_hook['scenario_ready'] = False
                 with DEBUG_LOG.open('r', encoding='utf-8', errors='ignore') as handle:
                     handle.seek(offset)
                     text = handle.read()
@@ -3640,7 +3838,7 @@ throw "Map $name was not found in expandmo*.mix"
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
-    def launch_mission(self, mission, extra_rules=None, launch_note=''):
+    def launch_mission_async(self, mission, extra_rules=None, launch_note=''):
         missing = [path for path in (GAME_LAUNCHER_EXE, GAME_EXE) if not path.exists()]
         if missing:
             self.append_log('Missing launch executable(s): ' + ', '.join(str(path) for path in missing), error=True)
@@ -3653,6 +3851,39 @@ throw "Map $name was not found in expandmo*.mix"
 
         difficulty_value = self.get_selected_difficulty_value()
         game_speed_value = self.get_selected_game_speed_value()
+        self.run_in_background(
+            'Starting game, please wait…',
+            'Preparing the mission and applying earned rewards.',
+            lambda: self.prepare_mission_launch_files(
+                mission,
+                extra_rules,
+                difficulty_value,
+                game_speed_value,
+            ),
+            lambda hook: self.start_mission_process(
+                mission,
+                hook,
+                difficulty_value,
+                game_speed_value,
+                launch_note,
+            ),
+            self.handle_mission_prepare_error,
+        )
+
+    def handle_mission_prepare_error(self, exc, detail):
+        self.cleanup_generated_root_maps()
+        self.disable_generated_rules_for_client()
+        self.append_log(detail, error=True)
+        messagebox.showerror('Launch Failed', 'Failed to write launch files. See log for details.')
+
+    def prepare_mission_launch_files(
+        self,
+        mission,
+        extra_rules,
+        difficulty_value,
+        game_speed_value,
+    ):
+        scenario = mission['scenario']
         try:
             # Loose generated rulesmo.ini files can crash spawned missions or make
             # the MO client reject the install. Keep rewards in launcher state
@@ -3685,10 +3916,18 @@ throw "Map $name was not found in expandmo*.mix"
         except Exception:
             self.cleanup_generated_root_maps()
             self.disable_generated_rules_for_client()
-            messagebox.showerror('Launch Failed', 'Failed to write launch files. See log for details.')
-            self.append_log(traceback.format_exc(), error=True)
-            return
+            raise
+        return hook
 
+    def start_mission_process(
+        self,
+        mission,
+        hook,
+        difficulty_value,
+        game_speed_value,
+        launch_note='',
+    ):
+        scenario = mission['scenario']
         cmd = self.build_command()
         self.append_log('Attempting game launch via: ' + cmd)
 
@@ -3728,7 +3967,7 @@ throw "Map $name was not found in expandmo*.mix"
             self.active_game_process = process
             self.active_hook = hook
             if self.active_hook is not None:
-                self.active_hook['scenario_initialized'] = False
+                self.active_hook['scenario_ready'] = False
             self.active_mission_attempt = {
                 'mission_code': mission.get('code'),
                 'scenario': scenario,
@@ -3744,6 +3983,31 @@ throw "Map $name was not found in expandmo*.mix"
             self.append_log(
                 'Objective/victory hooks are watching debug.log. A detected victory will update the run automatically.'
             )
+
+    def launch_mission(self, mission, extra_rules=None, launch_note=''):
+        """Synchronous compatibility wrapper used by developer/source callers."""
+        missing = [path for path in (GAME_LAUNCHER_EXE, GAME_EXE) if not path.exists()]
+        if missing or not mission.get('scenario'):
+            return
+        difficulty_value = self.get_selected_difficulty_value()
+        game_speed_value = self.get_selected_game_speed_value()
+        try:
+            hook = self.prepare_mission_launch_files(
+                mission,
+                extra_rules,
+                difficulty_value,
+                game_speed_value,
+            )
+        except Exception as exc:
+            self.handle_mission_prepare_error(exc, traceback.format_exc())
+            return
+        self.start_mission_process(
+            mission,
+            hook,
+            difficulty_value,
+            game_speed_value,
+            launch_note,
+        )
 
     def reward_group_label(self, tech_id):
         return unit_display_label(tech_id)

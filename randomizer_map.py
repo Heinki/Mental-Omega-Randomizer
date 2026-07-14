@@ -721,7 +721,16 @@ def mission_assistance_buff_values(base_values, stacks):
 
 
 def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
-    """Scope retry assistance to private player/optional-helper countries."""
+    """Scope retry assistance without changing a campaign house's country.
+
+    Trigger owners in campaign maps are country IDs (for example ``Guild1``
+    or ``UnitedStates``). Reassigning a house to a private clone disconnects
+    every trigger owned by the original country and can break scripted unit
+    transfers or the mission itself. Country-level assistance is therefore
+    applied only when every house in that country family is an assisted house.
+    Global unit/weapon assistance is guarded separately by
+    :func:`unit_weapon_buff_rules`.
+    """
     try:
         stacks = max(0, int(stacks))
     except (TypeError, ValueError):
@@ -729,54 +738,51 @@ def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
     if not stacks:
         return ({}, [], [])
 
-    primary_house = player_house_from_map(lines)
+    records = map_house_records(lines)
+    primary_house = player_house_from_map(lines, records=records)
     if not primary_house:
         return ({}, [], [])
-    player_houses = player_controlled_houses(lines) or [primary_house]
+    player_houses = player_controlled_houses(lines, records=records) or [primary_house]
+    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
+    transfer_houses = player_transfer_houses(
+        lines,
+        records=records,
+        scripted_enemies=scripted_enemies,
+    )
     helper_houses = (
-        allied_helper_houses(lines, primary_house)
+        allied_helper_houses(
+            lines,
+            primary_house,
+            records=records,
+            transfer_houses=transfer_houses,
+            scripted_enemies=scripted_enemies,
+        )
         if buff_allied_helpers
         else []
     )
-    transfer_houses = player_transfer_houses(lines)
     assisted_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
-    records = map_house_records(lines)
     country_houses = {}
     for house in assisted_houses:
         country = records.get(house, {}).get('country') or house.replace(' House', '')
         country_houses.setdefault(country, []).append(house)
 
     rule_sections = {}
-    cloned_countries = []
-    existing_countries = {
-        line.split('=', 1)[1].strip().lower()
-        for line in section_lines(lines, 'Countries')
-        if '=' in line
-    }
+    skipped_countries = []
     for country, houses in country_houses.items():
         original_values = section_value_map_preserve(lines, country)
         assistance_values = mission_assistance_buff_values(original_values, stacks)
-        shared_houses = unsafe_country_houses(lines, country, assisted_houses)
-        clone_index = len(cloned_countries) + 1
-        cloned_country = f'MORASSIST{clone_index}'
-        while cloned_country.lower() in existing_countries:
-            clone_index += 1
-            cloned_country = f'MORASSIST{clone_index}'
-        existing_countries.add(cloned_country.lower())
-        append_section_list_entry(lines, 'Countries', cloned_country)
+        shared_houses = unsafe_country_houses(
+            lines,
+            country,
+            assisted_houses,
+            records=records,
+        )
+        if shared_houses:
+            skipped_countries.append((country, list(houses), shared_houses))
+            continue
+        rule_sections[country] = assistance_values
 
-        country_values = dict(original_values)
-        country_values.update({
-            'Name': cloned_country,
-            'ParentCountry': country,
-        })
-        country_values.update(assistance_values)
-        rule_sections[cloned_country] = country_values
-        for house in houses:
-            rule_sections.setdefault(house, {})['Country'] = cloned_country
-        cloned_countries.append((country, cloned_country, shared_houses))
-
-    return (rule_sections, assisted_houses, cloned_countries)
+    return (rule_sections, assisted_houses, skipped_countries)
 
 
 def ai_trigger_team_usage_houses(lines):
@@ -878,7 +884,34 @@ def placed_unit_usage_houses(lines, unit_id):
     return usage_houses
 
 
-def unit_usage_houses(lines, unit_id):
+def build_unit_usage_index(lines):
+    """Index placed and scripted unit ownership with one map parse.
+
+    Direct buffs may inspect hundreds of unit and shared-weapon users. Parsing
+    every large campaign map once per lookup caused multi-second launch stalls.
+    The index preserves the same ownership rules while making later lookups
+    constant-time.
+    """
+    usage = {}
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {name.lower(): values for name, values in sections.items()}
+    for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
+        for value in sections_by_lower.get(section.lower(), {}).values():
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) >= 2:
+                usage.setdefault(tokens[1].upper(), set()).add(tokens[0])
+
+    for taskforce_id, houses in taskforce_usage_houses(lines, sections=sections).items():
+        for value in sections_by_lower.get(taskforce_id, {}).values():
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) >= 2:
+                usage.setdefault(tokens[1].upper(), set()).update(houses)
+    return usage
+
+
+def unit_usage_houses(lines, unit_id, usage_index=None):
+    if usage_index is not None:
+        return set(usage_index.get(str(unit_id or '').upper(), set()))
     return placed_unit_usage_houses(lines, unit_id) | taskforce_unit_usage_houses(lines, unit_id)
 
 
@@ -901,17 +934,28 @@ def mission_assistance_unit_ids(
     def is_unit(unit_id):
         return BUFF_TARGETS.get(str(unit_id or '').upper(), {}).get('category') in combat_categories
 
-    player_houses = player_controlled_houses(lines)
-    primary_house = player_house_from_map(lines)
+    records = map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=records)
+    primary_house = player_house_from_map(lines, records=records)
     if not player_houses and primary_house:
         player_houses = [primary_house]
+    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
+    transfer_houses = player_transfer_houses(
+        lines,
+        records=records,
+        scripted_enemies=scripted_enemies,
+    )
     helper_houses = (
-        allied_helper_houses(lines, primary_house)
+        allied_helper_houses(
+            lines,
+            primary_house,
+            records=records,
+            transfer_houses=transfer_houses,
+            scripted_enemies=scripted_enemies,
+        )
         if buff_allied_helpers and primary_house
         else []
     )
-    transfer_houses = player_transfer_houses(lines)
-    records = map_house_records(lines)
 
     allowed_names = set()
     for house in unique_in_order(player_houses + helper_houses + transfer_houses):
@@ -1012,8 +1056,6 @@ def apply_unit_buff_value(values, target, buff_type, count):
     elif buff_type == 'sensors':
         values['Sensors'] = 'yes'
         values['SensorsSight'] = str(int(round(target.get('sight', 5) + 2)))
-    elif buff_type == 'guard_range':
-        values['GuardRange'] = format_multiplier(target['guard_range'] + min(5, count))
     elif buff_type == 'cost':
         multiplier = max(0.30, 0.80 ** count)
         values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
@@ -1055,20 +1097,33 @@ def unit_weapon_buff_rules(
 ):
     """Apply direct buffs only when their global type is safe for friendly houses.
 
-    TechnoType and WeaponType values are global in the engine.  Country cloning
-    safely scopes house-level bonuses, but cloning and registering whole combat
-    types per mission causes severe Ares runtime overhead.  Keep the established
-    safety guard here: player, allied-helper, and transfer houses participate;
-    a direct buff is skipped if an enemy also uses the affected global type.
+    TechnoType and WeaponType values are global in the engine. Keep the
+    established safety guard here: player, allied-helper, and transfer houses
+    participate; a direct buff is skipped if an enemy also uses the affected
+    global type.
     """
-    player_house = player_house_from_map(lines)
+    records = map_house_records(lines)
+    player_house = player_house_from_map(lines, records=records)
     if not player_house:
         return ({}, [], [])
 
-    player_houses = player_controlled_houses(lines) or [player_house]
-    helper_houses = allied_helper_houses(lines, player_house) if buff_allied_helpers else []
-    transfer_houses = player_transfer_houses(lines)
-    records = map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=records) or [player_house]
+    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
+    transfer_houses = player_transfer_houses(
+        lines,
+        records=records,
+        scripted_enemies=scripted_enemies,
+    )
+    helper_houses = (
+        allied_helper_houses(
+            lines,
+            player_house,
+            records=records,
+            transfer_houses=transfer_houses,
+            scripted_enemies=scripted_enemies,
+        )
+        if buff_allied_helpers else []
+    )
     allowed_names = []
     for house in unique_in_order(player_houses + helper_houses + transfer_houses):
         record = records.get(house, {})
@@ -1081,6 +1136,7 @@ def unit_weapon_buff_rules(
         if record.get('country'):
             allowed_names.append(record['country'])
     allowed_houses = {name.lower() for name in allowed_names if name}
+    usage_index = build_unit_usage_index(lines)
 
     grouped_counts = {}
     active_rewards = buffs_with_unlocked_access(
@@ -1115,8 +1171,6 @@ def unit_weapon_buff_rules(
             continue
         if buff_type == 'ammo' and 'ammo' not in target:
             continue
-        if buff_type == 'guard_range' and 'guard_range' not in target:
-            continue
         if buff_type == 'cost' and 'cost' not in target:
             continue
         if buff_type == 'speed' and 'speed' not in target:
@@ -1137,7 +1191,7 @@ def unit_weapon_buff_rules(
         target = BUFF_TARGETS.get(unit_id, {})
         unsafe_unit_houses = sorted({
             house
-            for house in unit_usage_houses(lines, unit_id)
+            for house in unit_usage_houses(lines, unit_id, usage_index)
             if house.lower() not in allowed_houses
         })
 
@@ -1151,7 +1205,7 @@ def unit_weapon_buff_rules(
             unit_values = rule_sections.setdefault(unit_id, {})
             for buff_type in (
                 'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
-                'sensors', 'guard_range', 'cost', 'speed',
+                'sensors', 'cost', 'speed',
             ):
                 if buff_type in counts and apply_unit_buff_value(
                     unit_values,
@@ -1170,7 +1224,7 @@ def unit_weapon_buff_rules(
                 unsafe_weapon_houses = sorted({
                     house
                     for weapon_user in weapon_users
-                    for house in unit_usage_houses(lines, weapon_user)
+                    for house in unit_usage_houses(lines, weapon_user, usage_index)
                     if house.lower() not in allowed_houses
                 })
                 if unsafe_weapon_houses:
@@ -1288,53 +1342,42 @@ def unique_in_order(items):
 
 
 def player_country_from_map(lines):
-    house = player_house_from_map(lines)
+    records = map_house_records(lines)
+    house = player_house_from_map(lines, records=records)
     if house:
-        house_values = section_value_map(lines, house)
-        return house_values.get('country') or house.replace(' House', '')
+        return records.get(house, {}).get('country') or house.replace(' House', '')
     return 'UnitedStates'
 
 
-def player_house_from_map(lines):
-    for house_name in section_lines(lines, 'Houses'):
-        if '=' not in house_name:
-            continue
-        _, value = house_name.split('=', 1)
-        section = value.strip()
-        house_values = section_value_map(lines, section)
-        if house_values.get('playercontrol', '').lower() == 'yes':
-            return section
+def player_house_from_map(lines, records=None):
+    records = records if records is not None else map_house_records(lines)
+    for name, record in records.items():
+        if record.get('player'):
+            return name
     return ''
 
 
-def player_controlled_houses(lines):
-    houses = []
-    for house_name in section_lines(lines, 'Houses'):
-        if '=' not in house_name:
-            continue
-        _, value = house_name.split('=', 1)
-        section = value.strip()
-        house_values = section_value_map(lines, section)
-        if house_values.get('playercontrol', '').lower() == 'yes':
-            houses.append(section)
-    return unique_in_order(houses)
+def player_controlled_houses(lines, records=None):
+    records = records if records is not None else map_house_records(lines)
+    return [name for name, record in records.items() if record.get('player')]
 
 
-def player_transfer_houses(lines):
-    """Return houses whose complete forces are scripted to join the player."""
-    player_house = player_house_from_map(lines)
-    if not player_house:
+def player_transfer_houses(lines, records=None, scripted_enemies=None):
+    """Return houses whose complete forces join any player-controlled house."""
+    records = records if records is not None else map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=records)
+    if not player_houses:
         return []
 
-    player_index = ''
+    player_indexes = set()
+    wanted_players = {house.lower() for house in player_houses}
     for line in section_lines(lines, 'Houses'):
         if '=' not in line:
             continue
         key, value = line.split('=', 1)
-        if value.strip().lower() == player_house.lower():
-            player_index = key.strip()
-            break
-    if not player_index:
+        if value.strip().lower() in wanted_players:
+            player_indexes.add(key.strip())
+    if not player_indexes:
         return []
 
     transfer_actions = set()
@@ -1343,7 +1386,7 @@ def player_transfer_houses(lines):
             continue
         action_id, value = line.split('=', 1)
         _, groups = parse_action_groups(value)
-        if any(group[0] == '36' and group[2] == player_index for group in groups):
+        if any(group[0] == '36' and group[2] in player_indexes for group in groups):
             transfer_actions.add(action_id.strip().lower())
 
     houses = []
@@ -1359,21 +1402,39 @@ def player_transfer_houses(lines):
         owner = parts[0]
         if owner and owner.lower() not in {'<none>', 'neutral'}:
             houses.append(owner)
-    records = map_house_records(lines)
     canonical_houses = []
     for house in unique_in_order(houses):
-        wanted = house.lower()
-        canonical = next((
-            name
-            for name, record in records.items()
-            if wanted in {
-                name.lower(),
-                name.replace(' House', '').lower(),
-                (record.get('country') or '').lower(),
-            }
-        ), house)
+        canonical = canonical_house_name(records, house) or house
         canonical_houses.append(canonical)
-    return unique_in_order(canonical_houses)
+    canonical_houses = unique_in_order(canonical_houses)
+
+    # A complete-force transfer can occur after a house has fought the player.
+    # Map-local buffs exist from scenario load and cannot be switched off before
+    # that transfer, so a house with a scripted hostile phase is not a safe buff
+    # target. Start-of-map choice/ownership transfers without such hostility
+    # (for example Foehn 04) remain eligible.
+    coalition_names = list(player_houses)
+    for player in player_houses:
+        coalition_names.extend(records.get(player, {}).get('allies', []))
+    coalition = set()
+    for house in coalition_names:
+        canonical = canonical_house_name(records, house)
+        if canonical:
+            coalition.add(canonical.lower())
+    scripted_enemies = (
+        scripted_enemy_house_pairs(lines, records=records)
+        if scripted_enemies is None
+        else scripted_enemies
+    )
+    return [
+        house
+        for house in canonical_houses
+        if not any(
+            frozenset((house.lower(), coalition_house)) in scripted_enemies
+            for coalition_house in coalition
+            if coalition_house != house.lower()
+        )
+    ]
 
 
 def clone_player_country_for_house_buffs(
@@ -1402,26 +1463,12 @@ def clone_player_country_for_house_buffs(
     if not house_buff_values:
         return (player_house, {})
 
-    cloned_country = 'MORPLAYER'
-    country_values = dict(original_values)
-    country_values.update({
-        'Name': cloned_country,
-        'ParentCountry': original_country,
-    })
-    country_values.update(house_buff_values)
-
-    countries = [
-        line.split('=', 1)[1].strip().lower()
-        for line in section_lines(lines, 'Countries')
-        if '=' in line
-    ]
-    if cloned_country.lower() not in countries:
-        append_section_list_entry(lines, 'Countries', cloned_country)
-
-    merge_ini_section_values(lines, {
-        cloned_country: country_values,
-        player_house: {'Country': cloned_country},
-    })
+    # Campaign triggers are owned by the house's Country ID. Never replace it
+    # with a private clone: doing so silently detaches the original triggers.
+    unsafe_houses = unsafe_country_houses(lines, original_country, [player_house])
+    if unsafe_houses:
+        return (player_house, {})
+    merge_ini_section_values(lines, {original_country: house_buff_values})
     return (player_house, house_buff_values)
 
 
@@ -1447,16 +1494,18 @@ def houses_for_country(lines, country):
     return matches
 
 
-def country_inherits_from(lines, country, ancestor):
+def country_inherits_from(lines, country, ancestor, sections=None):
     wanted = (ancestor or '').strip().lower()
     current = (country or '').strip()
     visited = set()
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    by_lower = {name.lower(): values for name, values in sections.items()}
     while current and current.lower() not in visited:
         current_lower = current.lower()
         if current_lower == wanted:
             return True
         visited.add(current_lower)
-        values = section_value_map(lines, current)
+        values = by_lower.get(current_lower, {})
         parent = values.get('parentcountry', '').strip()
         if not parent or parent.lower() == current_lower:
             break
@@ -1476,12 +1525,26 @@ def house_names(lines):
     return unique_in_order(names)
 
 
-def map_house_records(lines):
+def map_house_records(lines, sections=None):
+    """Return map house metadata after a single INI parse.
+
+    Campaign maps can contain hundreds of sections. The former implementation
+    rescanned the complete file for the house and country section of every
+    listed house, making ownership checks disproportionately expensive during
+    launch. A case-insensitive section index preserves the same result in one
+    pass.
+    """
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    by_lower = {name.lower(): values for name, values in sections.items()}
+    houses = by_lower.get('houses', {})
     records = {}
-    for name in house_names(lines):
-        values = section_value_map(lines, name)
+    for name in houses.values():
+        name = name.strip()
+        if not name:
+            continue
+        values = by_lower.get(name.lower(), {})
         country = values.get('country') or name.replace(' House', '')
-        country_values = section_value_map(lines, country)
+        country_values = by_lower.get(country.lower(), {})
         records[name] = {
             'name': name,
             'country': country,
@@ -1491,6 +1554,84 @@ def map_house_records(lines):
             'player': values.get('playercontrol', '').lower() == 'yes',
         }
     return records
+
+
+def canonical_house_name(records, value):
+    """Resolve FinalAlert's House/Country aliases without guessing.
+
+    Trigger owners usually omit the `` House`` suffix. Country names are only
+    used as a fallback when exactly one map house uses that country; choosing
+    the first shared-country match can silently assign a scripted action to the
+    wrong owner.
+    """
+    wanted = str(value or '').strip().lower()
+    if not wanted or wanted in {'<none>', 'none', 'neutral'}:
+        return ''
+
+    for name in records:
+        if wanted in {name.lower(), name.removesuffix(' House').lower()}:
+            return name
+
+    country_matches = [
+        name
+        for name, record in records.items()
+        if wanted == (record.get('country') or '').strip().lower()
+    ]
+    return country_matches[0] if len(country_matches) == 1 else ''
+
+
+def scripted_enemy_house_pairs(lines, records=None):
+    """Return house pairs that a campaign trigger can make hostile.
+
+    Campaign maps often start future enemies as one-way allies so their units
+    remain passive until a story trigger fires. Action 38 (Make Enemy) is the
+    reliable distinction between those staged houses and permanent helpers.
+    Static rules buffs cannot be removed when that trigger fires, so any such
+    house must never be treated as a buffable allied helper.
+    """
+    records = records if records is not None else map_house_records(lines)
+    house_by_index = {}
+    for line in section_lines(lines, 'Houses'):
+        if '=' not in line:
+            continue
+        index, value = line.split('=', 1)
+        house = canonical_house_name(records, value)
+        if house:
+            house_by_index[index.strip()] = house
+
+    enemy_targets_by_action = {}
+    for line in section_lines(lines, 'Actions'):
+        if '=' not in line:
+            continue
+        action_id, value = line.split('=', 1)
+        _, groups = parse_action_groups(value)
+        targets = {
+            house_by_index.get(group[2].strip(), '')
+            for group in groups
+            if len(group) >= 3 and group[0] == '38'
+        } - {''}
+        if targets:
+            enemy_targets_by_action[action_id.strip().lower()] = targets
+
+    pairs = set()
+    for line in section_lines(lines, 'Triggers'):
+        if '=' not in line:
+            continue
+        trigger_id, value = line.split('=', 1)
+        targets = enemy_targets_by_action.get(trigger_id.strip().lower())
+        if not targets:
+            continue
+        tokens = [token.strip() for token in value.split(',')]
+        # Debug-only triggers are launcher/map-author utilities, not gameplay.
+        if len(tokens) >= 3 and 'debug' in tokens[2].lower():
+            continue
+        owner = canonical_house_name(records, tokens[0] if tokens else '')
+        if not owner:
+            continue
+        for target in targets:
+            if owner.lower() != target.lower():
+                pairs.add(frozenset((owner.lower(), target.lower())))
+    return pairs
 
 
 def is_buffable_helper_house(record):
@@ -1563,31 +1704,78 @@ def same_helper_family(player_record, helper_record):
     return player_family == helper_family
 
 
-def allied_helper_houses(lines, player_house):
-    records = map_house_records(lines)
+def allied_helper_houses(
+    lines,
+    player_house,
+    records=None,
+    transfer_houses=None,
+    scripted_enemies=None,
+):
+    records = records if records is not None else map_house_records(lines)
     player_record = records.get(player_house)
     if not player_record:
         return []
 
-    player_allies = {name.lower() for name in player_record.get('allies', [])}
+    player_houses = player_controlled_houses(lines, records=records) or [player_house]
+    player_house_names = {name.lower() for name in player_houses}
+    player_allies = set()
+    for controlled_house in player_houses:
+        for ally in records.get(controlled_house, {}).get('allies', []):
+            canonical = canonical_house_name(records, ally)
+            if canonical:
+                player_allies.add(canonical.lower())
+    coalition = set()
+    coalition_names = list(player_houses)
+    for controlled_house in player_houses:
+        coalition_names.extend(records.get(controlled_house, {}).get('allies', []))
+    if scripted_enemies is None:
+        scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
+    if transfer_houses is None:
+        transfer_houses = player_transfer_houses(
+            lines,
+            records=records,
+            scripted_enemies=scripted_enemies,
+        )
+    coalition_names.extend(transfer_houses)
+    for coalition_name in coalition_names:
+        canonical = canonical_house_name(records, coalition_name)
+        if canonical:
+            coalition.add(canonical.lower())
     helpers = []
     for name, record in records.items():
-        if name.lower() == player_house.lower() or record.get('player'):
+        if name.lower() in player_house_names or record.get('player'):
             continue
-        record_allies = {ally.lower() for ally in record.get('allies', [])}
-        if name.lower() not in player_allies and player_house.lower() not in record_allies:
+        record_allies = set()
+        for ally in record.get('allies', []):
+            canonical = canonical_house_name(records, ally)
+            if canonical:
+                record_allies.add(canonical.lower())
+        if name.lower() not in player_allies and not player_house_names.intersection(record_allies):
             continue
         if not is_buffable_helper_house(record):
+            continue
+        if any(
+            frozenset((name.lower(), coalition_house)) in scripted_enemies
+            for coalition_house in coalition
+            if coalition_house != name.lower()
+        ):
             continue
         helpers.append(name)
     return unique_in_order(helpers)
 
 
-def unsafe_country_houses(lines, country, allowed_house_names):
+def unsafe_country_houses(lines, country, allowed_house_names, records=None, sections=None):
     allowed = {name.lower() for name in allowed_house_names}
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    records = records if records is not None else map_house_records(lines, sections=sections)
     unsafe = []
-    for name, record in map_house_records(lines).items():
-        if not country_inherits_from(lines, record.get('country'), country):
+    for name, record in records.items():
+        if not country_inherits_from(
+            lines,
+            record.get('country'),
+            country,
+            sections=sections,
+        ):
             continue
         if name.lower() not in allowed:
             unsafe.append(name)
@@ -1597,25 +1785,46 @@ def unsafe_country_houses(lines, country, allowed_house_names):
 def player_country_buff_rules(
     lines,
     rewards,
-    allow_shared_country=False,
     buff_allied_helpers=False,
     require_unlocked_access=True,
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
 ):
-    player_house = player_house_from_map(lines)
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {name.lower(): values for name, values in sections.items()}
+    records = map_house_records(lines, sections=sections)
+    player_house = player_house_from_map(lines, records=records)
     if not player_house:
         return ('', '', {}, [], [], [])
 
-    player_houses = player_controlled_houses(lines) or [player_house]
-    house_values = section_value_map(lines, player_house)
+    player_houses = player_controlled_houses(lines, records=records) or [player_house]
+    house_values = sections_by_lower.get(player_house.lower(), {})
     player_country = house_values.get('country') or player_house.replace(' House', '')
-    helper_houses = allied_helper_houses(lines, player_house) if buff_allied_helpers else []
-    transfer_houses = player_transfer_houses(lines)
+    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
+    transfer_houses = player_transfer_houses(
+        lines,
+        records=records,
+        scripted_enemies=scripted_enemies,
+    )
+    helper_houses = (
+        allied_helper_houses(
+            lines,
+            player_house,
+            records=records,
+            transfer_houses=transfer_houses,
+            scripted_enemies=scripted_enemies,
+        )
+        if buff_allied_helpers else []
+    )
     allowed_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
-    shared_houses = unsafe_country_houses(lines, player_country, allowed_houses)
-
+    shared_houses = unsafe_country_houses(
+        lines,
+        player_country,
+        allowed_houses,
+        records=records,
+        sections=sections,
+    )
     rule_sections = {}
     buffed_allies = []
     skipped_allies = []
@@ -1628,30 +1837,9 @@ def player_country_buff_rules(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
     )
-    player_buff_country = player_country
     if house_buff_values:
-        if not shared_houses or allow_shared_country:
+        if not shared_houses:
             rule_sections[player_country] = house_buff_values
-        else:
-            existing_countries = {
-                line.split('=', 1)[1].strip().lower()
-                for line in section_lines(lines, 'Countries')
-                if '=' in line
-            }
-            clone_index = 1
-            player_buff_country = 'MORPLAYER'
-            while player_buff_country.lower() in existing_countries:
-                clone_index += 1
-                player_buff_country = f'MORPLAYER{clone_index}'
-            clone_values = dict(original_values)
-            clone_values.update({
-                'Name': player_buff_country,
-                'ParentCountry': player_country,
-            })
-            clone_values.update(house_buff_values)
-            append_section_list_entry(lines, 'Countries', player_buff_country)
-            rule_sections[player_buff_country] = clone_values
-            rule_sections[player_house] = {'Country': player_buff_country}
 
     # Every player-controlled house participates automatically, even when it
     # belongs to another faction. The UI option only adds AI-controlled allied
@@ -1662,56 +1850,24 @@ def player_country_buff_rules(
         + helper_houses
     )
     if allied_targets:
-        records = map_house_records(lines)
-        helper_clones = {}
         for helper in allied_targets:
             helper_country = records.get(helper, {}).get('country') or helper.replace(' House', '')
             if helper_country.lower() == player_country.lower():
-                if player_buff_country in rule_sections:
-                    if player_buff_country.lower() != player_country.lower():
-                        rule_sections[helper] = {'Country': player_buff_country}
+                if player_country in rule_sections:
                     buffed_allies.append(helper)
                 else:
                     skipped_allies.append(helper)
                 continue
 
-            unsafe_houses = unsafe_country_houses(lines, helper_country, allowed_houses)
-            if unsafe_houses and not allow_shared_country:
-                cloned_country = helper_clones.get(helper_country.lower())
-                if not cloned_country:
-                    clone_index = len(helper_clones) + 1
-                    cloned_country = f'MORALLY{clone_index}'
-                    existing_countries = {
-                        line.split('=', 1)[1].strip().lower()
-                        for line in section_lines(lines, 'Countries')
-                        if '=' in line
-                    }
-                    while cloned_country.lower() in existing_countries:
-                        clone_index += 1
-                        cloned_country = f'MORALLY{clone_index}'
-                    original_values = section_value_map_preserve(lines, helper_country)
-                    helper_buff_values = stacked_house_buff_values(
-                        rewards,
-                        original_values,
-                        require_unlocked_access=require_unlocked_access,
-                        additional_unlocked_tech_ids=additional_unlocked_tech_ids,
-                        share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                        unit_specific_mode=unit_specific_mode,
-                    )
-                    if not helper_buff_values:
-                        skipped_allies.append(helper)
-                        continue
-                    clone_values = dict(original_values)
-                    clone_values.update({
-                        'Name': cloned_country,
-                        'ParentCountry': helper_country,
-                    })
-                    clone_values.update(helper_buff_values)
-                    append_section_list_entry(lines, 'Countries', cloned_country)
-                    rule_sections[cloned_country] = clone_values
-                    helper_clones[helper_country.lower()] = cloned_country
-                rule_sections[helper] = {'Country': cloned_country}
-                buffed_allies.append(helper)
+            unsafe_houses = unsafe_country_houses(
+                lines,
+                helper_country,
+                allowed_houses,
+                records=records,
+                sections=sections,
+            )
+            if unsafe_houses:
+                skipped_allies.append(helper)
                 continue
 
             original_values = section_value_map_preserve(lines, helper_country)
@@ -1801,33 +1957,74 @@ def insert_actions_before_codes(lines, action_id, action_tokens_list, before_cod
 
 
 def merge_ini_section_values(lines, section_values):
-    for section, values in section_values.items():
-        start, end = find_section_bounds(lines, section)
-        if start is None:
-            if lines and lines[-1].strip():
-                lines.append('')
-            lines.append(f'[{section}]')
-            for key, value in sorted(values.items()):
-                lines.append(f'{key}={value}')
+    """Merge many INI sections in one pass through the map.
+
+    Launch preparation can inject hundreds of sections into a large campaign
+    map. Looking up every section by rescanning the complete file made this
+    operation quadratic. Rebuilding the line list once keeps existing section
+    order and key placement while appending only missing keys/sections.
+    """
+    pending = {
+        section.lower(): (
+            section,
+            {key.lower(): (key, value) for key, value in values.items()},
+        )
+        for section, values in section_values.items()
+        if values
+    }
+    if not pending:
+        return
+
+    output = []
+    active_key = None
+    active_values = None
+    seen_keys = set()
+    found_sections = set()
+
+    def flush_missing_values():
+        if active_values is None:
+            return
+        for key_lower in sorted(active_values, key=lambda item: active_values[item][0]):
+            if key_lower not in seen_keys:
+                key, value = active_values[key_lower]
+                output.append(f'{key}={value}')
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            flush_missing_values()
+            section_key = stripped[1:-1].strip().lower()
+            active_key = section_key if section_key in pending and section_key not in found_sections else None
+            if active_key is not None:
+                found_sections.add(active_key)
+                active_values = pending[active_key][1]
+                seen_keys = set()
+            else:
+                active_values = None
+                seen_keys = set()
+            output.append(line)
             continue
 
-        existing_keys = {}
-        for index in range(start + 1, end):
-            line = lines[index]
-            if '=' not in line:
+        if active_values is not None and '=' in line:
+            key_lower = line.split('=', 1)[0].strip().lower()
+            replacement = active_values.get(key_lower)
+            if replacement is not None:
+                key, value = replacement
+                output.append(f'{key}={value}')
+                seen_keys.add(key_lower)
                 continue
-            key = line.split('=', 1)[0].strip().lower()
-            existing_keys[key] = index
+        output.append(line)
 
-        insert_at = end
-        inserted = 0
-        for key, value in sorted(values.items()):
-            existing_index = existing_keys.get(key.lower())
-            if existing_index is not None:
-                lines[existing_index] = f'{key}={value}'
-            else:
-                lines.insert(insert_at + inserted, f'{key}={value}')
-                inserted += 1
+    flush_missing_values()
+    for section_key, (section, values) in pending.items():
+        if section_key in found_sections:
+            continue
+        if output and output[-1].strip():
+            output.append('')
+        output.append(f'[{section}]')
+        for _, (key, value) in sorted(values.items(), key=lambda item: item[1][0]):
+            output.append(f'{key}={value}')
+    lines[:] = output
 
 
 def unique_section_key(lines, sections, prefix):
