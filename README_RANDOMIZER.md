@@ -9,8 +9,9 @@ The launcher is currently standalone and offline. The option keys below are inte
 - **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan.
 - Seed-generation settings are copied into `randomizer_state.json`. Changing the Settings tab afterward affects the next seed, not the active seed.
 - Difficulty and game speed are launch settings and may be changed between missions.
-- The first three missions are open. Each completed mission opens one additional mission.
-- The generated mission order contains **Missions to finish** missions, and the run finishes when all of those required victories are recorded.
+- **Mission List** mode opens the first three missions and each completed mission opens one additional mission.
+- **Grid Mode** opens the top-left node, or the two orthogonal neighbors of top-left when **Two start positions** is enabled. A victory opens the node's up/down/left/right neighbors; diagonal nodes do not open.
+- The generated mission order contains **Missions to finish** missions. The run finishes after every required victory; in Grid Mode this includes completing the bottom-right exit node.
 
 ## Settings Reference
 
@@ -21,6 +22,8 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Seed | `seed` | Generated `MO-XXXXXXXX` identifier; blank config default | Seeds the deterministic mission order and reward plan. The **Generate New Seed** button creates a fresh identifier. | Seed generation |
 | Campaign | `campaign_filter` | `All Campaigns`, `Allies`, `Soviets`, `Epsilon`, `Foehn`; default `All Campaigns` | Restricts the mission pool. In Standard mode it also selects the campaign-appropriate reward pool. Foehn Standard uses bundled Allied/Soviet roles because those campaigns operate those production families. | Seed generation |
 | Missions to finish | `mission_goal` | `1` through the number of eligible missions; default `15` | Number of mission victories required to finish the run and therefore the length of the generated mission order. | Seed generation |
+| Progression | `progression_mode` | `Mission List`, `Grid Mode`; default `Mission List` | Selects the original linear mission list or the orthogonal-neighbor grid described below. | Seed generation |
+| Start with two available missions | `grid_two_start_positions` | `false`/`true`; default `false` | Starts Grid Mode from the cells directly right of and below top-left instead of top-left itself. Requires at least four missions. | Seed generation |
 | Difficulty | `difficulty` | `Casual`, `Normal`, `Mental`; default `Normal` | Writes the selected campaign/human difficulty to launch configuration. It does not change rewards. | Every launch |
 | Game speed | `game_speed` | `0 - Slowest` through `6 - Fastest`; default `3 - Medium` | Writes the engine speed and launches with `-SPEEDCONTROL`, keeping the in-game speed control available. It does not change rewards. | Every launch |
 | Rewards per objective | `rewards_per_objective` | `1`–`10`; default `1` | Assigns exactly this many reward items to every briefing-objective check and to the separate Mission Victory check. Total mission rewards are `number of checks × this value`. | Seed generation |
@@ -69,13 +72,33 @@ These keys are runtime/developer controls and should not become normal Archipela
 
 | Key | Default | Purpose |
 |---|---:|---|
-| `generation.starting_unlocked_missions` | `3` | Persisted compatibility value; the current launcher opens three missions at seed start. |
+| `generation.starting_unlocked_missions` | `3` | Mission List starting count. Grid Mode uses its own start rule. |
 | `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power]` | Derived compatibility list written from the five reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
 | `generation.allow_shared_country_buffs` | `false` | Developer override that may affect enemy houses sharing a country; keep disabled for normal play. |
 | `generation.transient_rulesmo_buffs` | `false` | Experimental loose `rulesmo.ini` injection; disabled because loose rules files can destabilize launches/client checks. |
 | `generation.experimental_house_buffs` | `false` | Older experimental country-clone route; the stable safe-country path is preferred. |
 | `archipelago.*` | Disabled/blank | Reserved connection and slot fields. They currently do not connect to an Archipelago server. |
+
+## Progression Modes
+
+### Mission List
+
+Mission List preserves the original progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry.
+
+### Grid Mode
+
+Grid Mode assigns each generated mission to a visible node. Its dimensions are calculated from **Missions to finish**; there are no separate width/height settings. The launcher prefers a reasonably balanced exact factorization, so 18 missions form a complete `6 × 3` board. Totals without a suitable factorization use the densest balanced rectangle and trim only unavoidable corner cells.
+
+Allied tile bodies are blue, Soviet red, Epsilon purple, and Foehn teal. The mission title already contains its faction and number, so tiles omit the redundant faction/code footer. Locked tiles are entirely grey. Available missions have no status banner; their faction color is the availability signal. Launching one or earning an objective reward adds an amber **In Progress** banner, while victory adds a green **Mission Completed** banner. State banners use plain text without decorative symbols. The selected tile receives a flat light-blue highlight on every edge. The bottom-right goal keeps a separate outer gold border and gains the light-blue inner selection border when selected, so both meanings remain visible. Selection and progress updates modify existing tiles in place without rebuilding the board. Only available, in-progress, or completed nodes can be launched. Selecting a node shows its coordinates, current state, and the currently locked neighbors that its completion would open.
+
+The **Settings** tab is a vertically scrollable panel. Its scrollbar and mouse-wheel handling keep every reward-pool and buff-type option reachable when the launcher is used at its minimum window size.
+
+Completing a node opens only existing orthogonal neighbors. Missing cells and diagonals are ignored. Automatically selected partial rectangles clip top-right/bottom-left corner cells while preserving a connected orthogonal route, top-left start, and bottom-right exit.
+
+The exit may become reachable before the rest of the grid has been cleared, but completing it early does not finish the run. The launcher reports **Finished** only when the exit and every other required node are completed.
+
+The installed pool contains 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missions. In **All Campaigns**, Foehn receives a proportional per-seed cap—for example, at most 2 Foehn missions in an 18-mission seed. A Foehn-only seed can use all 7 missions, and the **Missions to finish** control is limited to the selected campaign's available count.
 
 ## Reward Modes
 

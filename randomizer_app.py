@@ -9,6 +9,15 @@ import traceback
 from randomizer_config import CONFIG_PATH, load_config, save_config
 from randomizer_cameos import ensure_unit_cameos
 from randomizer_diagnostics import event as log_event
+from grid_progression import (
+    COMPLETED as GRID_COMPLETED,
+    LOCKED as GRID_LOCKED,
+    UNLOCKED as GRID_UNLOCKED,
+    completing_unlocks,
+    create_grid,
+    is_complete as is_grid_complete,
+    refresh_states as refresh_grid_states,
+)
 from randomizer_rewards import (
     BUFF_TARGETS,
     BUFF_TYPES,
@@ -118,6 +127,7 @@ GAME_SPEEDS = [
 ]
 CAMPAIGN_FILTERS = ['All Campaigns', 'Allies', 'Soviets', 'Epsilon', 'Foehn']
 REWARD_MODES = ['Standard', 'Chaos (Experimental)']
+PROGRESSION_MODES = ['Mission List', 'Grid Mode']
 
 STARTING_UNLOCKED_MISSIONS = 3
 DEFAULT_MISSION_GOAL = 15
@@ -129,6 +139,12 @@ MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
 GLOBAL_BUFF_REWARD_INTERVAL = 10
 FACTION_ORDER = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
+FACTION_TILE_COLORS = {
+    'Allies': '#285f9e',
+    'Soviets': '#a53636',
+    'Epsilon': '#70429a',
+    'Foehn': '#16898b',
+}
 
 
 class WidgetTooltip:
@@ -225,6 +241,8 @@ class LauncherApp(tk.Tk):
         self.active_hook = None
         self.mission_sort_column = None
         self.mission_sort_reverse = False
+        self.grid_render_signature = None
+        self.grid_tile_widgets = {}
         self.selected_index = tk.IntVar(value=0)
         difficulty_default = valid_choice(
             self.config.get('difficulty'),
@@ -261,6 +279,19 @@ class LauncherApp(tk.Tk):
             REWARD_MODES[0],
         )
         self.reward_mode_var = tk.StringVar(value=reward_mode_default)
+        progression_mode_default = valid_choice(
+            self.state.get('progression_mode', self.config.get('progression_mode')),
+            PROGRESSION_MODES,
+            PROGRESSION_MODES[0],
+        )
+        self.progression_mode_var = tk.StringVar(value=progression_mode_default)
+        grid_state = self.state.get('grid', {}) if isinstance(self.state.get('grid'), dict) else {}
+        self.grid_two_starts_var = tk.BooleanVar(
+            value=bool(grid_state.get(
+                'two_start_positions',
+                self.config.get('grid_two_start_positions', False),
+            ))
+        )
         reward_settings = self.config_reward_settings()
         enabled_buff_types = set(reward_settings['enabled_buff_types'])
         self.buff_allied_helpers_var = tk.BooleanVar(
@@ -378,6 +409,16 @@ class LauncherApp(tk.Tk):
         tree_scrollbar = ttk.Scrollbar(main_frame, orient='vertical', command=self.missions_tree.yview)
         tree_scrollbar.grid(row=2, column=1, rowspan=5, sticky='ns')
         self.missions_tree.configure(yscrollcommand=tree_scrollbar.set)
+        self.tree_scrollbar = tree_scrollbar
+
+        self.grid_frame = ttk.Frame(main_frame, padding=(4, 4, 4, 4))
+        self.grid_frame.grid(row=2, column=0, columnspan=2, rowspan=5, sticky='nsew', padx=(0, 8))
+        self.grid_placeholder = ttk.Label(
+            self.grid_frame,
+            text='Generate a Grid Mode seed to create the mission grid.',
+            anchor='center',
+            justify='center',
+        )
 
         right_frame = ttk.Frame(main_frame)
         right_frame.grid(row=2, column=2, rowspan=5, sticky='nsew')
@@ -414,7 +455,8 @@ class LauncherApp(tk.Tk):
         )
         self.game_speed_combo.grid(row=0, column=3, sticky='ew')
 
-        ttk.Label(options_row, text='Campaign').grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+        self.campaign_label = ttk.Label(options_row, text='Campaign')
+        self.campaign_label.grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
         self.campaign_combo = ttk.Combobox(
             options_row,
             state='readonly',
@@ -471,6 +513,31 @@ class LauncherApp(tk.Tk):
             'Chaos draws units from all four factions, forces randomized access/tech locking, and lets '
             'earned units use matching production structures that the mission gives the player. It does '
             'not grant foreign production structures.',
+        )
+
+        ttk.Label(options_row, text='Progression').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+        self.progression_mode_combo = ttk.Combobox(
+            options_row,
+            state='readonly',
+            textvariable=self.progression_mode_var,
+            values=PROGRESSION_MODES,
+            width=12,
+        )
+        self.progression_mode_combo.grid(row=4, column=1, sticky='ew', pady=(6, 0))
+        self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
+
+        self.grid_options_frame = ttk.Frame(options_row)
+        self.grid_options_frame.grid(row=5, column=0, columnspan=4, sticky='ew', pady=(6, 0))
+        self.grid_two_starts_check = ttk.Checkbutton(
+            self.grid_options_frame,
+            text='Start with two available missions',
+            variable=self.grid_two_starts_var,
+        )
+        self.grid_two_starts_check.grid(row=0, column=0, sticky='w')
+        WidgetTooltip(
+            self.grid_two_starts_check,
+            'Opens the missions directly right of and below the top-left node at seed start. '
+            'The board dimensions are calculated automatically from Missions to finish.',
         )
         button_row = ttk.Frame(right_frame)
         button_row.grid(row=3, column=0, sticky='ew', pady=(0, 6))
@@ -539,16 +606,47 @@ class LauncherApp(tk.Tk):
         self.bind_all('<F3>', self.find_unlock_next, add='+')
         self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
 
-        settings_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
-        settings_frame.columnconfigure(0, weight=1)
-        info_tabs.add(settings_frame, text='Settings')
+        settings_tab = ttk.Frame(info_tabs)
+        self.settings_tab = settings_tab
+        settings_tab.columnconfigure(0, weight=1)
+        settings_tab.rowconfigure(0, weight=1)
+        info_tabs.add(settings_tab, text='Settings')
 
-        ttk.Label(
+        settings_canvas = tk.Canvas(
+            settings_tab,
+            borderwidth=0,
+            highlightthickness=0,
+            background=style.lookup('TFrame', 'background') or '#f0f0f0',
+        )
+        self.settings_canvas = settings_canvas
+        settings_scrollbar = ttk.Scrollbar(
+            settings_tab,
+            orient='vertical',
+            command=settings_canvas.yview,
+        )
+        settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
+        settings_canvas.grid(row=0, column=0, sticky='nsew')
+        settings_scrollbar.grid(row=0, column=1, sticky='ns')
+
+        settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
+        settings_frame.columnconfigure(0, weight=1)
+        self.settings_frame = settings_frame
+        self.settings_canvas_window = settings_canvas.create_window(
+            (0, 0),
+            window=settings_frame,
+            anchor='nw',
+        )
+        settings_frame.bind('<Configure>', self.on_settings_content_configure, add='+')
+        settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
+        self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
+
+        self.settings_intro_label = ttk.Label(
             settings_frame,
             text='Settings are saved for the next generated seed. Existing runs keep the settings they were generated with.',
-            wraplength=520,
+            wraplength=340,
             foreground='#555555',
-        ).grid(row=0, column=0, sticky='ew', pady=(0, 8))
+        )
+        self.settings_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 8))
 
         reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
         reward_frame.grid(row=1, column=0, sticky='ew')
@@ -589,7 +687,7 @@ class LauncherApp(tk.Tk):
         )
         self.share_chaos_role_buffs_check = ttk.Checkbutton(
             reward_frame,
-            text='Share buffs with same-tier equivalent units (Chaos only)',
+            text='Share buffs with equivalent units (Chaos only)',
             variable=self.share_chaos_role_buffs_var,
         )
         self.share_chaos_role_buffs_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
@@ -631,11 +729,11 @@ class LauncherApp(tk.Tk):
 
         buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
         buff_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
-        for column in range(3):
+        for column in range(2):
             buff_frame.columnconfigure(column, weight=1)
         self.buff_type_checks = []
         for index, buff_type in enumerate(BUFF_TYPES):
-            row, column = divmod(index, 3)
+            row, column = divmod(index, 2)
             check = ttk.Checkbutton(
                 buff_frame,
                 text=buff_type.get('setting_label', buff_type['name']),
@@ -690,6 +788,33 @@ class LauncherApp(tk.Tk):
         main_frame.rowconfigure(9, weight=0)
         main_frame.columnconfigure(0, weight=4)
         main_frame.columnconfigure(2, weight=3)
+
+    def on_settings_content_configure(self, event=None):
+        if hasattr(self, 'settings_canvas'):
+            self.settings_canvas.configure(scrollregion=self.settings_canvas.bbox('all'))
+
+    def on_settings_canvas_configure(self, event):
+        if hasattr(self, 'settings_canvas_window'):
+            self.settings_canvas.itemconfigure(self.settings_canvas_window, width=event.width)
+        if hasattr(self, 'settings_intro_label'):
+            self.settings_intro_label.configure(wraplength=max(220, event.width - 32))
+
+    def on_settings_mousewheel(self, event):
+        if not hasattr(self, 'settings_canvas') or not hasattr(self, 'settings_tab'):
+            return None
+        if self.info_tabs.select() != str(self.settings_tab):
+            return None
+        pointer_x = self.winfo_pointerx()
+        pointer_y = self.winfo_pointery()
+        left = self.settings_canvas.winfo_rootx()
+        top = self.settings_canvas.winfo_rooty()
+        right = left + self.settings_canvas.winfo_width()
+        bottom = top + self.settings_canvas.winfo_height()
+        if not (left <= pointer_x <= right and top <= pointer_y <= bottom):
+            return None
+        steps = -1 if event.delta > 0 else 1
+        self.settings_canvas.yview_scroll(steps, 'units')
+        return 'break'
 
     def focus_unlock_search(self, event=None):
         if hasattr(self, 'info_tabs') and hasattr(self, 'unlocks_tab'):
@@ -873,6 +998,29 @@ class LauncherApp(tk.Tk):
                         check['unlocked'] = True
                         changed = True
 
+        if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
+            existing_grid = self.state['grid']
+            if existing_grid.get('layout_version') != 3:
+                try:
+                    self.state['grid'] = create_grid(
+                        self.state.get('mission_order', []),
+                        bool(existing_grid.get('two_start_positions')),
+                    )
+                    changed = True
+                except ValueError:
+                    log_event(
+                        'grid_layout_migration_failed',
+                        level=logging.ERROR,
+                        traceback=traceback.format_exc(),
+                    )
+            before = {
+                code: node.get('state')
+                for code, node in self.state['grid'].get('nodes', {}).items()
+            }
+            after = refresh_grid_states(self.state['grid'], completed)
+            if after != before:
+                changed = True
+
         if changed:
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
 
@@ -1019,6 +1167,10 @@ class LauncherApp(tk.Tk):
         self.config['seed'] = seed
         self.config['campaign_filter'] = self.campaign_var.get()
         self.config['mission_goal'] = mission_goal
+        self.config['progression_mode'] = self.progression_mode_var.get()
+        self.config.pop('grid_width', None)
+        self.config.pop('grid_height', None)
+        self.config['grid_two_start_positions'] = bool(self.grid_two_starts_var.get())
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['difficulty'] = self.difficulty_var.get()
         self.config['game_speed'] = self.game_speed_var.get()
@@ -1568,6 +1720,19 @@ class LauncherApp(tk.Tk):
     def on_reward_mode_changed(self, event=None):
         self.refresh_setting_states()
 
+    def on_progression_mode_changed(self, event=None):
+        self.refresh_progression_setting_states()
+        if not self.state:
+            self.redraw_progression_views()
+
+    def refresh_progression_setting_states(self):
+        if not hasattr(self, 'grid_options_frame'):
+            return
+        if self.progression_mode_var.get() == 'Grid Mode':
+            self.grid_options_frame.grid()
+        else:
+            self.grid_options_frame.grid_remove()
+
     def refresh_setting_states(self):
         if not hasattr(self, 'randomize_unit_access_check'):
             return
@@ -1588,14 +1753,240 @@ class LauncherApp(tk.Tk):
         self.include_defensive_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
         )
+        self.refresh_progression_setting_states()
 
     def update_mission_goal_limit(self):
         if not self.missions:
             return
         filtered_count = len(self.filtered_missions_for_seed())
+        self.campaign_label.configure(text=f'Campaign ({filtered_count})')
         self.mission_goal_spinbox.configure(to=max(1, filtered_count))
         if self.mission_goal_var.get() > filtered_count:
             self.mission_goal_var.set(max(1, filtered_count))
+
+    def active_progression_mode(self):
+        if self.state:
+            return self.state.get('progression_mode', PROGRESSION_MODES[0])
+        return self.progression_mode_var.get()
+
+    def sync_grid_progression(self):
+        if self.active_progression_mode() != 'Grid Mode':
+            return {}
+        grid = self.state.get('grid') if self.state else None
+        if not isinstance(grid, dict):
+            return {}
+        return refresh_grid_states(grid, self.state.get('completed_missions', []))
+
+    def mission_unlocks(self, code):
+        """Return the mission codes that completing ``code`` would open now."""
+        if self.active_progression_mode() != 'Grid Mode' or not self.state:
+            return []
+        self.sync_grid_progression()
+        return completing_unlocks(self.state.get('grid', {}), code)
+
+    def redraw_progression_views(self):
+        grid_mode = self.active_progression_mode() == 'Grid Mode'
+        if grid_mode:
+            self.missions_tree.grid_remove()
+            self.tree_scrollbar.grid_remove()
+            self.grid_frame.grid()
+            self.redraw_grid()
+        else:
+            self.grid_frame.grid_remove()
+            self.missions_tree.grid()
+            self.tree_scrollbar.grid()
+
+    def redraw_grid(self):
+        grid = self.state.get('grid') if self.state else None
+        if not isinstance(grid, dict) or not grid.get('nodes'):
+            if self.grid_render_signature != ('empty',):
+                for child in self.grid_frame.winfo_children():
+                    child.destroy()
+                self.grid_tile_widgets = {}
+                self.grid_render_signature = ('empty',)
+                ttk.Label(
+                    self.grid_frame,
+                    text='Generate a Grid Mode seed to create the mission grid.',
+                    anchor='center',
+                    justify='center',
+                ).grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
+                self.grid_frame.columnconfigure(0, weight=1)
+                self.grid_frame.rowconfigure(0, weight=1)
+            return
+
+        index_by_code = {mission['code']: idx for idx, mission in enumerate(self.missions)}
+        width = int(grid.get('width', 1))
+        height = int(grid.get('height', 1))
+        signature = (
+            'grid',
+            width,
+            height,
+            tuple(sorted(
+                (code, int(node['x']), int(node['y']))
+                for code, node in grid['nodes'].items()
+            )),
+        )
+        if signature == self.grid_render_signature:
+            self.refresh_grid_tiles()
+            return
+
+        for child in self.grid_frame.winfo_children():
+            child.destroy()
+        self.grid_tile_widgets = {}
+        self.grid_render_signature = signature
+        for column in range(12):
+            self.grid_frame.columnconfigure(column, weight=0, minsize=0, uniform='')
+        for row in range(12):
+            self.grid_frame.rowconfigure(row, weight=0, minsize=0, uniform='')
+        for column in range(width):
+            self.grid_frame.columnconfigure(
+                column,
+                weight=1,
+                minsize=105,
+                uniform='grid-column',
+            )
+        for row in range(height):
+            self.grid_frame.rowconfigure(row, weight=1, minsize=88, uniform='grid-row')
+
+        positions = {
+            (node['x'], node['y']): code
+            for code, node in grid['nodes'].items()
+        }
+        # Create every coordinate slot, including a quiet background for a
+        # trimmed corner. This keeps rows and columns visually aligned as a
+        # board instead of allowing an irregular set of widgets to collapse.
+        for row in range(height):
+            for column in range(width):
+                if (column, row) in positions:
+                    continue
+                spacer = tk.Frame(self.grid_frame, background='#e9ecef', borderwidth=0)
+                spacer.grid(row=row, column=column, sticky='nsew', padx=3, pady=3)
+
+        for code, node in grid['nodes'].items():
+            tile = tk.Frame(
+                self.grid_frame,
+                relief='flat',
+                borderwidth=0,
+                cursor='hand2',
+            )
+            tile.mission_code = code
+            tile.columnconfigure(0, weight=1)
+            tile.rowconfigure(0, weight=1)
+            selection_frame = tk.Frame(
+                tile,
+                relief='flat',
+                borderwidth=0,
+                cursor='hand2',
+            )
+            selection_frame.columnconfigure(0, weight=1)
+            selection_frame.rowconfigure(1, weight=1)
+            is_goal = code == grid.get('goal')
+            selection_frame.grid(
+                row=0,
+                column=0,
+                sticky='nsew',
+                padx=3 if is_goal else 0,
+                pady=3 if is_goal else 0,
+            )
+            banner = tk.Label(
+                selection_frame,
+                font=('Segoe UI', 7, 'bold'),
+                anchor='center',
+                justify='center',
+                wraplength=max(74, 520 // max(1, width)),
+                padx=3,
+                pady=3,
+            )
+            banner.grid(row=0, column=0, sticky='ew', padx=4, pady=(4, 0))
+            body = tk.Label(
+                selection_frame,
+                font=('Segoe UI', 9, 'bold'),
+                justify='center',
+                anchor='center',
+                wraplength=max(80, 560 // max(1, width)),
+                padx=5,
+                pady=6,
+            )
+            body.grid(row=1, column=0, sticky='nsew', padx=4, pady=(0, 4))
+            mission_index = index_by_code.get(code, 0)
+            for widget in (tile, selection_frame, banner, body):
+                widget.bind(
+                    '<Button-1>',
+                    lambda event, index=mission_index: self.select_grid_mission(index),
+                )
+            tile.grid(row=node['y'], column=node['x'], sticky='nsew', padx=3, pady=3)
+            self.grid_tile_widgets[code] = {
+                'tile': tile,
+                'selection': selection_frame,
+                'banner': banner,
+                'body': body,
+            }
+        self.refresh_grid_tiles()
+
+    def refresh_grid_tiles(self, mission_codes=None):
+        if not self.grid_tile_widgets or not self.state:
+            return
+        grid = self.state.get('grid', {})
+        states = self.sync_grid_progression()
+        lookup = self.mission_lookup()
+        selected_code = self.selected_mission_code()
+        codes = list(mission_codes) if mission_codes is not None else list(self.grid_tile_widgets)
+        for code in codes:
+            widgets = self.grid_tile_widgets.get(code)
+            if not widgets:
+                continue
+            mission = lookup.get(code, {})
+            state = states.get(code, GRID_LOCKED)
+            faction = self.normalize_faction(mission.get('side', ''))
+            faction_color = FACTION_TILE_COLORS.get(faction, '#315b82')
+            started = self.is_mission_started(code)
+            if state == GRID_LOCKED:
+                background, foreground = '#3f454b', '#aeb5bc'
+                state_label = 'MISSION LOCKED'
+                banner_color = '#555c63'
+            elif state == GRID_COMPLETED:
+                background, foreground = faction_color, '#ffffff'
+                state_label = 'MISSION COMPLETED'
+                banner_color = '#23864b'
+            elif started:
+                background, foreground = faction_color, '#ffffff'
+                done, total = self.mission_check_counts(code)
+                state_label = f'IN PROGRESS  ·  {done}/{total}'
+                banner_color = '#b77913'
+            else:
+                background, foreground = faction_color, '#ffffff'
+                state_label = ''
+                banner_color = faction_color
+            is_goal = code == grid.get('goal')
+            widgets['tile'].configure(
+                background='#d6ad37' if is_goal else background,
+            )
+            widgets['selection'].configure(
+                background='#86cdf7' if code == selected_code else background,
+            )
+            if state == GRID_UNLOCKED and not started:
+                widgets['banner'].grid_remove()
+                widgets['body'].grid_configure(pady=4)
+            else:
+                widgets['banner'].configure(
+                    text=state_label,
+                    background=banner_color,
+                    foreground='#ffffff' if state != GRID_LOCKED else '#d4d8dc',
+                )
+                widgets['banner'].grid()
+                widgets['body'].grid_configure(pady=(0, 4))
+            widgets['body'].configure(
+                text=mission.get('title', code),
+                background=background,
+                foreground=foreground,
+            )
+
+    def select_grid_mission(self, index):
+        previous_code = self.selected_mission_code()
+        self.selected_index.set(index)
+        current_code = self.selected_mission_code()
+        self.refresh_grid_tiles({previous_code, current_code})
+        self.refresh_progress_view()
 
     def redraw_mission_tree(self):
         for item in self.missions_tree.get_children():
@@ -1610,11 +2001,11 @@ class LauncherApp(tk.Tk):
             title = mission.get('title', code)
             checks_done, checks_total = self.mission_check_counts(code)
             if self.is_mission_complete(code):
-                state = '✓ Done'
+                state = 'Done'
             elif not self.state:
                 state = 'Vanilla'
             elif code in unlocked:
-                state = 'Open'
+                state = 'Started' if self.is_mission_started(code) else 'Open'
             else:
                 state = 'Locked'
             checks_label = '' if not self.state else f'{checks_done}/{checks_total}'
@@ -1636,6 +2027,7 @@ class LauncherApp(tk.Tk):
         elif children:
             self.missions_tree.selection_set(children[0])
             self.selected_index.set(int(children[0]))
+        self.redraw_progression_views()
 
     def sort_missions_by(self, column):
         if column not in self.mission_heading_labels:
@@ -1687,6 +2079,23 @@ class LauncherApp(tk.Tk):
         if checks:
             return any(check.get('id') == 'victory' and check.get('unlocked') for check in checks)
         return code in self.state.get('completed_missions', [])
+
+    def is_mission_started(self, code):
+        if not self.state or self.is_mission_complete(code):
+            return False
+        return (
+            code in self.state.get('started_missions', [])
+            or any(check.get('unlocked') for check in self.mission_checks(code))
+        )
+
+    def is_run_complete(self):
+        if not self.state:
+            return False
+        if self.active_progression_mode() == 'Grid Mode':
+            self.sync_grid_progression()
+            return is_grid_complete(self.state.get('grid', {}))
+        goal = self.state.get('mission_goal', len(self.state.get('mission_order', [])))
+        return len(self.state.get('completed_missions', [])) >= goal
 
     def mission_tooltip_text(self, row_id):
         if not self.state:
@@ -1788,7 +2197,22 @@ class LauncherApp(tk.Tk):
             return
 
         self._reward_settings_override = reward_settings
+        campaign_counts = self.campaign_mission_counts(seed_missions)
+        campaign_limits = self.seed_campaign_limits(seed_missions, mission_goal)
         mission_codes = self.seed_mission_order(seed_missions, rng, mission_goal)
+        progression_mode = self.progression_mode_var.get()
+        grid = None
+        if progression_mode == 'Grid Mode':
+            try:
+                grid = create_grid(
+                    mission_codes,
+                    bool(self.grid_two_starts_var.get()),
+                )
+            except ValueError as exc:
+                self._reward_settings_override = None
+                self.append_log(f'Cannot generate grid: {exc}.', error=True)
+                messagebox.showwarning('Invalid Grid', str(exc))
+                return
         if not any(self.reward_pool_for_code(code) for code in mission_codes):
             self._reward_settings_override = None
             self.append_log('Cannot generate seed: the selected reward settings produce no available rewards.', error=True)
@@ -1813,11 +2237,15 @@ class LauncherApp(tk.Tk):
             'created_at': now_stamp(),
             'campaign_filter': self.campaign_var.get(),
             'reward_mode': self.reward_mode_var.get(),
+            'progression_mode': progression_mode,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'starting_unlocked_missions': min(STARTING_UNLOCKED_MISSIONS, len(mission_codes)),
             'mission_order': mission_codes,
+            'campaign_mission_counts': campaign_counts,
+            'campaign_mission_limits': campaign_limits,
             'completed_missions': [],
+            'started_missions': [],
             'earned_rewards': [],
             'reward_queue': rewards,
             'mission_checks': mission_checks,
@@ -1825,6 +2253,8 @@ class LauncherApp(tk.Tk):
             'reward_settings': reward_settings,
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
+        if grid is not None:
+            self.state['grid'] = grid
         self._reward_settings_override = None
         self.seed_var.set(seed)
         self.save_state()
@@ -1832,20 +2262,35 @@ class LauncherApp(tk.Tk):
         self.disable_generated_rules_for_client()
         self.redraw_mission_tree()
         self.refresh_progress_view()
+        opening = (
+            'Start from the top-left neighbors.'
+            if grid is not None and grid.get('two_start_positions')
+            else 'Start from the top-left node.'
+            if grid is not None
+            else f'First {self.state["starting_unlocked_missions"]} missions are open.'
+        )
         self.append_log(
             f'Generated seed {seed}. Finish {mission_goal} missions. '
-            f'{rewards_per_check} reward(s) per objective. '
-            f'First {self.state["starting_unlocked_missions"]} missions are open. '
+            f'{rewards_per_check} reward(s) per objective. {opening} '
             f'Setup saved to {CONFIG_PATH}.'
         )
+        if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
+            self.append_log(
+                f'Foehn pool: {campaign_counts["Foehn"]} missions available; '
+                f'this seed is limited to {campaign_limits["Foehn"]} Foehn mission(s).'
+            )
         log_event(
             'seed_generated',
             seed=seed,
             campaign=self.campaign_var.get(),
             reward_mode=self.reward_mode_var.get(),
+            progression_mode=progression_mode,
+            grid=grid,
             mission_goal=mission_goal,
             rewards_per_check=rewards_per_check,
             mission_order=mission_codes,
+            campaign_mission_counts=campaign_counts,
+            campaign_mission_limits=campaign_limits,
             reward_settings=reward_settings,
         )
 
@@ -1866,11 +2311,38 @@ class LauncherApp(tk.Tk):
             score = max(score, 24)
         return score
 
+    def campaign_mission_counts(self, missions):
+        counts = {faction: 0 for faction in FACTION_ORDER}
+        for mission in missions:
+            faction = self.normalize_faction(mission.get('side', ''))
+            if faction in counts:
+                counts[faction] += 1
+        return {faction: count for faction, count in counts.items() if count}
+
+    def seed_campaign_limits(self, missions, mission_goal):
+        """Cap short campaigns proportionally in a mixed-campaign seed."""
+        counts = self.campaign_mission_counts(missions)
+        if len(counts) <= 1 or 'Foehn' not in counts:
+            return dict(counts)
+
+        total = sum(counts.values())
+        limits = dict(counts)
+        # Foehn has seven installed missions versus thirty for each original
+        # campaign. Ceil keeps it represented without letting its early-stage
+        # missions dominate the staged random order.
+        limits['Foehn'] = min(
+            counts['Foehn'],
+            max(1, (mission_goal * counts['Foehn'] + total - 1) // total),
+        )
+        return limits
+
     def seed_mission_order(self, missions, rng, mission_goal):
         missions = list(missions)
         mission_goal = max(1, min(mission_goal, len(missions)))
         if not missions:
             return []
+        campaign_limits = self.seed_campaign_limits(missions, mission_goal)
+        picked_by_faction = {faction: 0 for faction in campaign_limits}
 
         def bucket(mission):
             score = self.mission_stage_score(mission)
@@ -1907,11 +2379,26 @@ class LauncherApp(tk.Tk):
 
         picked_codes = set()
         ordered = []
-        for mission in starting_pool:
-            if mission['code'] in picked_codes:
-                continue
+
+        def can_add(mission):
+            faction = self.normalize_faction(mission.get('side', ''))
+            return picked_by_faction.get(faction, 0) < campaign_limits.get(
+                faction,
+                len(missions),
+            )
+
+        def add_mission(mission):
+            if mission['code'] in picked_codes or not can_add(mission):
+                return False
             ordered.append(mission)
             picked_codes.add(mission['code'])
+            faction = self.normalize_faction(mission.get('side', ''))
+            picked_by_faction[faction] = picked_by_faction.get(faction, 0) + 1
+            return True
+
+        for mission in starting_pool:
+            if not add_mission(mission):
+                continue
             if len(ordered) >= start_count:
                 break
 
@@ -1920,18 +2407,14 @@ class LauncherApp(tk.Tk):
 
         for bucket_index in range(4):
             for mission in shuffled([mission for mission in candidates if bucket(mission) == bucket_index]):
-                if mission['code'] in picked_codes:
+                if not add_mission(mission):
                     continue
-                ordered.append(mission)
-                picked_codes.add(mission['code'])
                 if len(ordered) >= mission_goal:
                     return [item['code'] for item in ordered]
 
         for mission in shuffled(missions):
-            if mission['code'] in picked_codes:
+            if not add_mission(mission):
                 continue
-            ordered.append(mission)
-            picked_codes.add(mission['code'])
             if len(ordered) >= mission_goal:
                 break
         return [item['code'] for item in ordered]
@@ -1980,6 +2463,7 @@ class LauncherApp(tk.Tk):
             return False
 
         earned_now = []
+        grid_unlocks = self.mission_unlocks(code) if check_id == 'victory' else []
         if check_id == 'victory':
             completed = self.state.setdefault('completed_missions', [])
             if code not in completed:
@@ -1992,6 +2476,7 @@ class LauncherApp(tk.Tk):
             target['unlocked'] = True
             earned_now.extend(check_rewards(target))
 
+        self.sync_grid_progression()
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         self.save_state()
         self.append_log(
@@ -2009,6 +2494,17 @@ class LauncherApp(tk.Tk):
         )
         if check_id == 'victory' and len(earned_now) > len(check_rewards(target)):
             self.append_log('Victory granted any missed objective rewards for this mission.')
+        if grid_unlocks:
+            names = [self.mission_lookup().get(item, {}).get('title', item) for item in grid_unlocks]
+            self.append_log(f'Grid neighbors unlocked: {", ".join(names)}.')
+        if check_id == 'victory' and self.is_run_complete():
+            self.append_log('Randomizer goal complete.')
+            log_event(
+                'randomizer_goal_complete',
+                seed=self.state.get('seed', ''),
+                progression_mode=self.active_progression_mode(),
+                completed_missions=len(self.state.get('completed_missions', [])),
+            )
         self.redraw_mission_tree()
         self.refresh_progress_view()
         return True
@@ -2045,9 +2541,6 @@ class LauncherApp(tk.Tk):
         )
         if self.unlock_mission_check(code, victory['id'], 'Debug override'):
             self.disable_generated_rules_for_client()
-            goal = self.state.get('mission_goal', len(self.state.get('mission_order', [])))
-            if len(self.state.get('completed_missions', [])) >= goal:
-                self.append_log('Randomizer goal complete.')
 
     def parse_missions(self):
         if not BATTLE_CLIENT_INI.exists():
@@ -2193,6 +2686,14 @@ class LauncherApp(tk.Tk):
     def unlocked_mission_codes(self):
         if not self.state:
             return [mission['code'] for mission in self.missions]
+
+        if self.active_progression_mode() == 'Grid Mode':
+            states = self.sync_grid_progression()
+            return [
+                code
+                for code in self.state.get('mission_order', [])
+                if states.get(code) in {GRID_UNLOCKED, GRID_COMPLETED}
+            ]
 
         order = self.state.get('mission_order', [])
         completed_count = len(self.state.get('completed_missions', []))
@@ -2993,6 +3494,22 @@ throw "Map $name was not found in expandmo*.mix"
         try:
             process = subprocess.Popen(cmd, cwd=GAME_ROOT)
             self.append_log(f'Launched game process PID={process.pid}.')
+            if self.state and mission.get('code') in self.state.get('mission_order', []):
+                try:
+                    started_missions = self.state.setdefault('started_missions', [])
+                    if mission['code'] not in started_missions:
+                        started_missions.append(mission['code'])
+                        self.save_state()
+                        self.redraw_mission_tree()
+                        self.refresh_progress_view()
+                except Exception:
+                    self.append_log('Could not persist the mission in-progress state.', error=True)
+                    log_event(
+                        'mission_started_state_save_failed',
+                        level=logging.ERROR,
+                        code=mission.get('code'),
+                        traceback=traceback.format_exc(),
+                    )
             log_event(
                 'mission_process_started',
                 pid=process.pid,
@@ -3233,13 +3750,18 @@ throw "Map $name was not found in expandmo*.mix"
 
         completed = len(self.state.get('completed_missions', []))
         order = self.state.get('mission_order', [])
-        unlocked = len(self.unlocked_mission_codes())
+        unlocked = len([
+            code for code in self.unlocked_mission_codes()
+            if code not in self.state.get('completed_missions', [])
+        ])
         earned = self.state.get('earned_rewards', [])
         goal = self.state.get('mission_goal', len(order))
-        status = 'Finished' if completed >= goal else 'In progress'
+        status = 'Finished' if self.is_run_complete() else 'In progress'
+        progression_mode = self.active_progression_mode()
         self.progress_label.config(
             text=(
-                f'Seed: {self.state.get("seed", "")} | Mode: {self.state.get("reward_mode", REWARD_MODES[0])}\n'
+                f'Seed: {self.state.get("seed", "")} | {progression_mode} | '
+                f'Rewards: {self.state.get("reward_mode", REWARD_MODES[0])}\n'
                 f'Goal: {completed}/{goal} | Open: {unlocked} | Rewards: {len(earned)} | {status}'
             )
         )
@@ -3251,12 +3773,32 @@ throw "Map $name was not found in expandmo*.mix"
             done_checks, total_checks = self.mission_check_counts(code)
             lines.append(selected['title'])
             lines.append(f'Code: {code}  •  Faction: {selected.get("side", "Unknown")}')
+            if progression_mode == 'Grid Mode':
+                node = self.state.get('grid', {}).get('nodes', {}).get(code, {})
+                node_state = node.get('state', GRID_LOCKED).title()
+                if self.is_mission_started(code):
+                    node_state = 'In Progress'
+                lines.append(
+                    f'Grid: column {int(node.get("x", 0)) + 1}, row {int(node.get("y", 0)) + 1}  '
+                    f'•  {node_state}'
+                )
+                unlocks = self.mission_unlocks(code)
+                if unlocks:
+                    lookup = self.mission_lookup()
+                    labels = [lookup.get(item, {}).get('title', item) for item in unlocks]
+                    lines.append('Completing this node unlocks: ' + ', '.join(labels))
+                elif node.get('state') == GRID_COMPLETED:
+                    lines.append('This node is complete; its neighbors are already open.')
+                else:
+                    lines.append('Completing this node does not unlock a currently locked neighbor.')
             lines.append(f'Reward progress: {done_checks}/{total_checks}')
             lines.append('')
             for check in self.mission_checks(code):
-                status_icon = '✓' if check.get('unlocked') else '○'
+                status_label = 'Complete' if check.get('unlocked') else 'Pending'
                 rewards = check_rewards(check)
-                lines.append(f'{status_icon} {check.get("name", "Check")} — {len(rewards)} reward(s)')
+                lines.append(
+                    f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
+                )
                 hint = check.get('hint')
                 if hint and not check.get('unlocked'):
                     lines.append(f'   {hint}')

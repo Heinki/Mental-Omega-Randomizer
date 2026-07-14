@@ -9,6 +9,8 @@ DEFAULT_CONFIG = {
     'seed': '',
     'campaign_filter': 'All Campaigns',
     'mission_goal': 15,
+    'progression_mode': 'Mission List',
+    'grid_two_start_positions': False,
     'rewards_per_objective': 1,
     'difficulty': 'Normal',
     'game_speed': '3 - Medium',

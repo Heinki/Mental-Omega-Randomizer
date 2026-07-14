@@ -8,6 +8,7 @@ This document is the authoritative implementation reference. Player-facing optio
 |---|---|
 | `launcher_gui.py` | Entry point and packaged `--self-check` |
 | `randomizer_app.py` | UI, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
+| `grid_progression.py` | Pure grid topology, corner trimming, explicit node states, unlock queries, and completion rules |
 | `randomizer_map.py` | INI parsing/merging, generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
 | `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
 | `randomizer_rewards.py` | Installed roster metadata, reward catalogue, role equivalence, stack limits, and display names |
@@ -36,7 +37,7 @@ The launcher separates defaults from active progress:
 | Data | Contents | Mutation rule |
 |---|---|---|
 | `config/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
-| `randomizer_state.json` | Active seed, frozen reward settings, mission order, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
+| `randomizer_state.json` | Active seed, frozen reward settings, mission order, optional grid/node state, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
 
 This split is important for a future Archipelago client: option values generate a slot/seed once, while received locations/items update progress. The current `archipelago.*` keys are placeholders and have no network behavior.
 
@@ -48,10 +49,19 @@ Seed construction is deterministic for a seed string:
 
 1. Filter eligible missions by campaign.
 2. Build a staged shuffled mission order up to the mission goal.
-3. Allocate `objective count + 1 victory` checks per mission.
-4. Allocate 1–10 reward slots to every check.
-5. Build the complete reward plan with a random stream derived from `<seed>:seed-rewards`.
-6. Store every check and assigned reward in state before play begins.
+3. In Grid Mode, map that order onto the corner-trimmed grid and persist each node's coordinates and initial state.
+4. Allocate `objective count + 1 victory` checks per mission.
+5. Allocate 1–10 reward slots to every check.
+6. Build the complete reward plan with a random stream derived from `<seed>:seed-rewards`.
+7. Store every check and assigned reward in state before play begins.
+
+Grid progression is derived from completed mission codes and then written back as explicit `locked`, `unlocked`, or `completed` node state. Launch history adds the UI-only in-progress presentation before objective markers arrive. `completing_unlocks` provides the side-effect-free current unlock query used by mission details and victory logging. Grid dimensions are derived solely from the mission goal: balanced exact factors are preferred, then the densest balanced partial rectangle receives connected corner trimming. Layout version 3 migrates older manually sized boards without losing completed mission codes.
+
+The Tk grid renderer keys its persistent tile-widget cache by a topology signature of dimensions, mission codes, and coordinates. A topology change rebuilds the board; ordinary selection reconfigures only the old/new tile containers, while reward and victory changes update cached tile labels and colors in place. Available nodes hide the banner widget rather than displaying a redundant label, and the body receives symmetric padding so the selection border remains visible along the top. Each tile uses nested border containers: the goal can retain its outer gold border while the inner container displays the normal light-blue selection border. This avoids window destruction, geometry churn, and visible selection flicker.
+
+The Settings notebook page owns a canvas viewport and an inner controls frame. Canvas/content configure events synchronize the inner width and scroll region; mouse-wheel scrolling is accepted only while Settings is selected and the pointer is inside that viewport. The controls themselves remain ordinary ttk widgets and retain their existing callbacks and state rules.
+
+The installed campaign counts are 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missions. Mixed-campaign construction caps Foehn at `ceil(mission_goal × 7 / 97)` (bounded to the installed count), while single-campaign Foehn seeds retain all seven eligible missions. This cap is applied during every staged-order selection pass, including the early starting pool and fallback fill.
 
 Access rewards are unique by reward name. Seed planning prioritizes access, attempts a buff every fifth slot, and prefers a global buff every tenth slot while its stack cap permits. Unit buffs normally require prior planned access; buff-only seeds relax that requirement. Buff selection spreads upgrades across the least-buffed eligible units before stacking them further. Capped effects such as veterancy, cloaking, sensors, and self-healing cannot be repeated beyond their useful limit.
 

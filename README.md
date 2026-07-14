@@ -12,7 +12,7 @@ Archipelago is planned but is not connected yet. The standalone configuration de
 4. Select an open mission and press **Launch Selected Mission**.
 5. Complete objectives and win. The launcher records detected checks and applies earned rewards to future mission launches.
 
-The first three missions are open at seed start. Completing a mission opens another until the configured mission goal is reached. The hidden **Debug: Mark Complete** control appears only when the launcher log is expanded and is intended for development recovery.
+**Mission List** progression opens the first three missions and adds one more after each victory. **Grid Mode** places the required missions on a compact faction-colored board: completing a node opens its orthogonal neighbors, and the bottom-right exit finishes the run after every required node is cleared. Mixed-campaign seeds weight the short seven-mission Foehn campaign proportionally instead of allowing it to dominate the randomized order. The hidden **Debug: Mark Complete** control appears only when the launcher log is expanded and is intended for development recovery.
 
 ## Documentation
 
@@ -54,6 +54,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 |---|---|
 | `launcher_gui.py` | Packaged/source entry point and self-check |
 | `randomizer_app.py` | Tk interface, seed flow, game launch, and log watcher |
+| `grid_progression.py` | Grid construction, corner trimming, node state, neighbor unlocks, and exit rules |
 | `randomizer_map.py` | Generated-map patching, marker helpers, tech rules, and map-local buffs |
 | `randomizer_mission_safety.py` | Mixed-faction and Chaos production access |
 | `randomizer_rewards.py` | Reward catalogue, equivalence groups, stacking, and display helpers |
