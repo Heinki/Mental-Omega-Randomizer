@@ -160,7 +160,7 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 |---|---|---|
 | Config defaults | `RandomizerLauncher\config\mental_omega_randomizer.yaml` | `RandomizerLauncherData\config\mental_omega_randomizer.yaml` |
 | Active seed/progress | `RandomizerLauncher\randomizer_state.json` | `RandomizerLauncherData\randomizer_state.json` |
-| Logs, maps, backups, cameos | Under `RandomizerLauncher` | Under `RandomizerLauncherData` |
+| Logs, generated/extracted maps, cameos | Under `RandomizerLauncher` | Under `RandomizerLauncherData` |
 
 Configuration describes the next seed. State describes the active seed and must be preserved to continue that run.
 

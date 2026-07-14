@@ -24,7 +24,7 @@ Missions start through:
 Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 ```
 
-`spawn.ini` receives the scenario, game speed, `Difficulty`, `CampDifficulty`, and human/computer difficulty values. The launcher also updates the normal option INIs where safe. `RA2MD.INI` may be extremely large, so values are patched in place above the size threshold instead of rewriting the complete file.
+`spawn.ini` receives the scenario, game speed, `Difficulty`, `CampDifficulty`, and human/computer difficulty values. The launcher also updates existing normal option INIs where safe, but does not create a missing `RA2MO.ini` or `RA2MD.INI`. `RA2MD.INI` may be extremely large, so values are patched in place above the size threshold instead of rewriting the complete file. Routine INI snapshots are not retained because they were never consumed or restored; the selected launch settings are intentionally persistent.
 
 `-LOG` produces `debug/debug.log`, which is the communication channel for objective/victory markers. `-SPEEDCONTROL` keeps the spawned-game speed control available.
 

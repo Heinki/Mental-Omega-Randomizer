@@ -3167,7 +3167,6 @@ throw "Map $name was not found in expandmo*.mix"
 
     def write_spawn_ini(self, scenario, difficulty_value, game_speed_value):
         try:
-            backup_file_once(SPAWN_INI, 'original')
             content = [
                 '[Settings]',
                 f'Scenario={scenario}',
@@ -3200,6 +3199,11 @@ throw "Map $name was not found in expandmo*.mix"
             written = []
             skipped = []
             for path in (OPTIONS_INI, YR_OPTIONS_INI):
+                # Do not create option files that the installation does not
+                # already use. Mental Omega normally provides RA2MO.ini;
+                # RA2MD.INI is optional and was previously created needlessly.
+                if not path.exists():
+                    continue
                 if path.exists() and path.stat().st_size > MAX_OPTION_INI_BYTES:
                     patched = self.patch_large_options_ini(
                         path,
@@ -3214,8 +3218,7 @@ throw "Map $name was not found in expandmo*.mix"
                     else:
                         skipped.append(f'{path.name} ({path.stat().st_size} bytes)')
                     continue
-                backup_file_once(path, 'original')
-                text = read_text(path) if path.exists() else ''
+                text = read_text(path)
                 text = set_ini_value_lines(text, 'Options', 'GameSpeed', game_speed_value)
                 text = set_ini_value_lines(text, 'Options', 'Difficulty', difficulty_value)
                 text = set_ini_value_lines(text, 'Options', 'CampDifficulty', difficulty_value)
@@ -3241,7 +3244,6 @@ throw "Map $name was not found in expandmo*.mix"
     def patch_large_options_ini(self, path, values):
         """Patch one-digit option values in oversized/corrupt INIs without rewriting them."""
         try:
-            backup_file_once(path, 'original')
             patched = []
             with path.open('r+b') as handle:
                 for key, value in values.items():
