@@ -59,6 +59,7 @@ DEFAULT_CONFIG = {
         'safe_player_country_buffs': True,
         'allow_shared_country_buffs': False,
         'buff_allied_helpers': False,
+        'failure_assistance': False,
         'experimental_house_buffs': False,
     },
 }

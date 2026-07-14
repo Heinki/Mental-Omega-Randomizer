@@ -93,6 +93,10 @@ from randomizer_map import (
     launch_rules_for_reward,
     map_house_records,
     merge_ini_section_values,
+    mission_assistance_buff_rules,
+    mission_assistance_direct_rewards,
+    mission_assistance_multipliers,
+    mission_assistance_unit_ids,
     now_stamp,
     player_country_buff_rules,
     player_country_from_map,
@@ -243,6 +247,7 @@ class LauncherApp(tk.Tk):
         self._reward_settings_override = None
         self.active_game_process = None
         self.active_hook = None
+        self.active_mission_attempt = None
         self.mission_sort_column = None
         self.mission_sort_reverse = False
         self.grid_render_signature = None
@@ -300,6 +305,9 @@ class LauncherApp(tk.Tk):
         enabled_buff_types = set(reward_settings['enabled_buff_types'])
         self.buff_allied_helpers_var = tk.BooleanVar(
             value=bool(generation_config.get('buff_allied_helpers', False))
+        )
+        self.failure_assistance_var = tk.BooleanVar(
+            value=bool(generation_config.get('failure_assistance', False))
         )
         self.randomize_unit_access_var = tk.BooleanVar(
             value=reward_settings['randomize_unit_access']
@@ -498,7 +506,8 @@ class LauncherApp(tk.Tk):
         self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
         WidgetTooltip(
             self.buff_allied_helpers_check,
-            'Also applies earned buffs to AI-controlled allied helper houses. '
+            'Also applies earned buffs and failed-mission retry assistance to '
+            'AI-controlled allied helper houses. '
             'Player-controlled allied houses are always included.',
         )
         ttk.Label(options_row, text='Reward mode').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
@@ -747,6 +756,36 @@ class LauncherApp(tk.Tk):
             self.buff_type_checks.append(check)
             description = buff_type.get('description', '').format(plural='Affected units')
             WidgetTooltip(check, description)
+
+        assistance_frame = ttk.LabelFrame(
+            settings_frame,
+            text='Mission Assistance',
+            padding=(8, 8, 8, 8),
+        )
+        assistance_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+        self.failure_assistance_check = ttk.Checkbutton(
+            assistance_frame,
+            text='Strengthen failed missions on retry',
+            variable=self.failure_assistance_var,
+        )
+        self.failure_assistance_check.grid(row=0, column=0, sticky='w')
+        WidgetTooltip(
+            self.failure_assistance_check,
+            'Each unsuccessful attempt adds one assistance stack only to that mission. '
+            'The stack applies on its next launch and is removed when the mission is completed.',
+        )
+        ttk.Label(
+            assistance_frame,
+            text=(
+                'Per stack: faster production and firing, cheaper units, and higher movement '
+                'speed, health, weapon damage, armor effectiveness, and attack range. Applies '
+                'to earned units and units supplied by that mission; normal faction rosters '
+                'are used when unit access is not randomized.'
+            ),
+            wraplength=340,
+            justify='left',
+            foreground='#555555',
+        ).grid(row=1, column=0, sticky='ew', pady=(5, 0))
 
         self.refresh_setting_states()
 
@@ -1002,6 +1041,41 @@ class LauncherApp(tk.Tk):
                         check['unlocked'] = True
                         changed = True
 
+        raw_failure_stacks = self.state.get('mission_failure_stacks', {})
+        if not isinstance(raw_failure_stacks, dict):
+            raw_failure_stacks = {}
+        valid_codes = set(self.state.get('mission_order', []))
+        normalized_failure_stacks = {}
+        for code, value in raw_failure_stacks.items():
+            try:
+                count = max(0, int(value))
+            except (TypeError, ValueError):
+                count = 0
+            if code in valid_codes and code not in completed and count:
+                normalized_failure_stacks[code] = count
+        if self.state.get('mission_failure_stacks') != normalized_failure_stacks:
+            self.state['mission_failure_stacks'] = normalized_failure_stacks
+            changed = True
+
+        raw_assistance_units = self.state.get('mission_assistance_units', {})
+        if not isinstance(raw_assistance_units, dict):
+            raw_assistance_units = {}
+        normalized_assistance_units = {}
+        for code, unit_ids in raw_assistance_units.items():
+            if code not in valid_codes or code in completed or not isinstance(unit_ids, list):
+                continue
+            normalized = sorted({
+                str(unit_id).upper()
+                for unit_id in unit_ids
+                if BUFF_TARGETS.get(str(unit_id).upper(), {}).get('category')
+                in {'infantry', 'units', 'aircraft'}
+            })
+            if normalized:
+                normalized_assistance_units[code] = normalized
+        if self.state.get('mission_assistance_units') != normalized_assistance_units:
+            self.state['mission_assistance_units'] = normalized_assistance_units
+            changed = True
+
         if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
             existing_grid = self.state['grid']
             if existing_grid.get('layout_version') != 3:
@@ -1056,6 +1130,7 @@ class LauncherApp(tk.Tk):
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
+        failure_assistance = bool(generation_config.get('failure_assistance', False))
         if generation_config.get('reward_mode') == 'Chaos (Experimental)':
             randomize_access = True
         return {
@@ -1063,6 +1138,7 @@ class LauncherApp(tk.Tk):
             'include_defensive_buildings': include_defensive_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
+            'failure_assistance': failure_assistance,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
             'include_secondary_superweapon_rewards': include_secondary_superweapons,
@@ -1089,6 +1165,7 @@ class LauncherApp(tk.Tk):
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
+        failure_assistance = bool(self.failure_assistance_var.get())
         include_buffs = bool(self.include_buff_rewards_var.get())
         include_superweapons = bool(self.include_superweapon_rewards_var.get())
         include_secondary_superweapons = bool(self.include_secondary_superweapon_rewards_var.get())
@@ -1103,6 +1180,7 @@ class LauncherApp(tk.Tk):
             'include_defensive_buildings': include_defensive_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
+            'failure_assistance': failure_assistance,
             'include_buff_rewards': include_buffs,
             'include_superweapon_rewards': include_superweapons,
             'include_secondary_superweapon_rewards': include_secondary_superweapons,
@@ -1136,6 +1214,7 @@ class LauncherApp(tk.Tk):
             'buff_allied_helpers',
             bool(self.config.get('generation', {}).get('buff_allied_helpers', False)),
         )
+        settings.setdefault('failure_assistance', False)
         if self.active_reward_mode() == 'Chaos (Experimental)':
             settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
@@ -1157,6 +1236,75 @@ class LauncherApp(tk.Tk):
 
     def buff_rewards_enabled(self):
         return bool(self.active_reward_settings().get('include_buff_rewards', True))
+
+    def failure_assistance_enabled(self):
+        return bool(self.active_reward_settings().get('failure_assistance', False))
+
+    def mission_failure_stack(self, code):
+        if not self.state or not code:
+            return 0
+        try:
+            return max(0, int(self.state.get('mission_failure_stacks', {}).get(code, 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    def mission_assistance_units(self, code):
+        if not self.state or not code:
+            return []
+        unit_ids = self.state.get('mission_assistance_units', {}).get(code, [])
+        if not isinstance(unit_ids, list):
+            return []
+        return sorted(
+            {str(unit_id).upper() for unit_id in unit_ids},
+            key=self.unit_faction_sort_key,
+        )
+
+    def cache_mission_assistance_units(self, code, unit_ids):
+        if not self.state or not code or code not in self.state.get('mission_order', []):
+            return
+        normalized = sorted({
+            str(unit_id).upper()
+            for unit_id in unit_ids
+            if BUFF_TARGETS.get(str(unit_id).upper(), {}).get('category')
+            in {'infantry', 'units', 'aircraft'}
+        })
+        cached = self.state.setdefault('mission_assistance_units', {})
+        if cached.get(code) == normalized:
+            return
+        if normalized:
+            cached[code] = normalized
+        else:
+            cached.pop(code, None)
+        self.save_state()
+
+    def record_failed_mission_attempt(self, code, source):
+        if (
+            not self.state
+            or not self.failure_assistance_enabled()
+            or not code
+            or code not in self.state.get('mission_order', [])
+            or self.is_mission_complete(code)
+        ):
+            return False
+
+        stacks = self.state.setdefault('mission_failure_stacks', {})
+        next_stack = self.mission_failure_stack(code) + 1
+        stacks[code] = next_stack
+        self.save_state()
+        self.append_log(
+            f'{source}: {code} now has {next_stack} retry assistance stack(s). '
+            'They will apply the next time this mission is launched.'
+        )
+        log_event(
+            'mission_failure_assistance_added',
+            seed=self.state.get('seed', ''),
+            code=code,
+            source=source,
+            stacks=next_stack,
+        )
+        self.refresh_grid_tiles({code})
+        self.refresh_progress_view()
+        return True
 
     def active_reward_mode(self):
         if self.__dict__.get('_reward_settings_override') is not None and hasattr(self, 'reward_mode_var'):
@@ -1181,6 +1329,7 @@ class LauncherApp(tk.Tk):
         reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
+        self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
@@ -1956,6 +2105,13 @@ class LauncherApp(tk.Tk):
                 background, foreground = faction_color, '#ffffff'
                 done, total = self.mission_check_counts(code)
                 state_label = f'IN PROGRESS  ·  {done}/{total}'
+                assistance_stacks = (
+                    self.mission_failure_stack(code)
+                    if self.failure_assistance_enabled()
+                    else 0
+                )
+                if assistance_stacks:
+                    state_label += f'\nASSISTANCE  ·  {assistance_stacks}'
                 banner_color = '#b77913'
             else:
                 background, foreground = faction_color, '#ffffff'
@@ -2250,6 +2406,8 @@ class LauncherApp(tk.Tk):
             'campaign_mission_limits': campaign_limits,
             'completed_missions': [],
             'started_missions': [],
+            'mission_failure_stacks': {},
+            'mission_assistance_units': {},
             'earned_rewards': [],
             'reward_queue': rewards,
             'mission_checks': mission_checks,
@@ -2472,11 +2630,14 @@ class LauncherApp(tk.Tk):
             completed = self.state.setdefault('completed_missions', [])
             if code not in completed:
                 completed.append(code)
+            cleared_assistance = self.state.setdefault('mission_failure_stacks', {}).pop(code, 0)
+            self.state.setdefault('mission_assistance_units', {}).pop(code, None)
             for check in checks:
                 if not check.get('unlocked'):
                     check['unlocked'] = True
                     earned_now.extend(check_rewards(check))
         else:
+            cleared_assistance = 0
             target['unlocked'] = True
             earned_now.extend(check_rewards(target))
 
@@ -2498,6 +2659,10 @@ class LauncherApp(tk.Tk):
         )
         if check_id == 'victory' and len(earned_now) > len(check_rewards(target)):
             self.append_log('Victory granted any missed objective rewards for this mission.')
+        if cleared_assistance:
+            self.append_log(
+                f'Mission victory removed {cleared_assistance} retry assistance stack(s) from {code}.'
+            )
         if grid_unlocks:
             names = [self.mission_lookup().get(item, {}).get('title', item) for item in grid_unlocks]
             self.append_log(f'Grid neighbors unlocked: {", ".join(names)}.')
@@ -2952,6 +3117,7 @@ throw "Map $name was not found in expandmo*.mix"
             or self.share_chaos_role_buffs_enabled()
         )
         chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos (Experimental)'
+        buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
 
         scenario = mission.get('scenario')
         code = mission.get('code')
@@ -2960,6 +3126,20 @@ throw "Map $name was not found in expandmo*.mix"
 
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        assistance_unit_ids = []
+        mission_buff_unit_ids = []
+        if self.state:
+            mission_buff_unit_ids = mission_assistance_unit_ids(
+                lines,
+                unlocked_unit_ids=unlocked_reward_tech_ids(self.earned_rewards_from_checks()),
+                additional_unit_ids=fallback_tech_ids,
+                randomized_access=self.randomize_unit_access_enabled(),
+                fallback_faction=self.normalize_faction(mission.get('side', '')),
+                buff_allied_helpers=buff_allied_helpers,
+            )
+        if self.state and self.failure_assistance_enabled():
+            assistance_unit_ids = mission_buff_unit_ids
+            self.cache_mission_assistance_units(code, assistance_unit_ids)
         if rule_sections:
             merge_ini_section_values(lines, rule_sections)
             self.append_log(f'Injected {len(rule_sections)} map rule section(s) into {scenario}.')
@@ -2968,14 +3148,14 @@ throw "Map $name was not found in expandmo*.mix"
         experimental_house_buffs = bool(generation_config.get('experimental_house_buffs', False))
         safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
         allow_shared_country_buffs = bool(generation_config.get('allow_shared_country_buffs', False))
-        buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
         require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
+        buff_access_tech_ids = set(fallback_tech_ids) | set(mission_buff_unit_ids)
         if self.state and experimental_house_buffs:
             player_house, house_buffs = clone_player_country_for_house_buffs(
                 lines,
                 self.earned_rewards_from_checks(),
                 require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=fallback_tech_ids,
+                additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -2989,7 +3169,7 @@ throw "Map $name was not found in expandmo*.mix"
                 allow_shared_country=allow_shared_country_buffs,
                 buff_allied_helpers=buff_allied_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=fallback_tech_ids,
+                additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -3013,7 +3193,7 @@ throw "Map $name was not found in expandmo*.mix"
             pending_house_buffs = stacked_house_buff_values(
                 self.earned_rewards_from_checks(),
                 require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=fallback_tech_ids,
+                additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -3023,13 +3203,46 @@ throw "Map $name was not found in expandmo*.mix"
                     'earned buff rewards are tracked but not injected into this map.'
                 )
 
+        assistance_stacks = self.mission_failure_stack(code)
+        assistance_direct_rewards = []
+        if self.failure_assistance_enabled() and assistance_stacks:
+            assistance_rules, assisted_houses, assistance_clones = mission_assistance_buff_rules(
+                lines,
+                assistance_stacks,
+                buff_allied_helpers=buff_allied_helpers,
+            )
+            if assistance_rules:
+                merge_ini_section_values(lines, assistance_rules)
+                clone_note = ''
+                if assistance_clones:
+                    clone_note = ' Assisted houses use private assistance countries: ' + ', '.join(
+                        f'{original}->{clone}'
+                        for original, clone, _ in assistance_clones
+                    ) + '.'
+                self.append_log(
+                    f'Applied {assistance_stacks} retry assistance stack(s) to {code} for '
+                    f'{", ".join(assisted_houses)} across {len(assistance_unit_ids)} currently '
+                    f'accessible or mission-provided unit type(s).{clone_note}'
+                )
+                assistance_direct_rewards = mission_assistance_direct_rewards(
+                    assistance_unit_ids,
+                    assistance_stacks,
+                )
+            else:
+                self.append_log(
+                    f'Could not find a player house for {code}; retry assistance was not injected.',
+                    error=True,
+                )
+
         if self.state:
+            guarded_rewards = list(self.earned_rewards_from_checks())
+            guarded_rewards.extend(assistance_direct_rewards)
             weapon_rule_sections, weapon_buffed_units, weapon_skipped_units = unit_weapon_buff_rules(
                 lines,
-                self.earned_rewards_from_checks(),
+                guarded_rewards,
                 buff_allied_helpers=buff_allied_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=fallback_tech_ids,
+                additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -3332,6 +3545,13 @@ throw "Map $name was not found in expandmo*.mix"
                 if check_id == 'victory' and unlocked:
                     self.schedule_game_close_after_victory()
 
+        for _ in range(text.count('MapClass::Init_Clear entry')):
+            if self.active_hook.get('scenario_initialized'):
+                if not self.is_mission_complete(code):
+                    self.record_failed_mission_attempt(code, 'In-game mission restart detected')
+            else:
+                self.active_hook['scenario_initialized'] = True
+
     def schedule_game_close_after_victory(self):
         hook = self.active_hook
         process = self.active_game_process
@@ -3410,8 +3630,13 @@ throw "Map $name was not found in expandmo*.mix"
                 markers_expected=marker_count,
                 completed=self.is_mission_complete(self.active_hook.get('mission_code')),
             )
+        attempt = self.active_mission_attempt or {}
+        attempt_code = attempt.get('mission_code')
+        if attempt_code and not self.is_mission_complete(attempt_code):
+            self.record_failed_mission_attempt(attempt_code, 'Mission closed without victory')
         self.active_hook = None
         self.active_game_process = None
+        self.active_mission_attempt = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
@@ -3502,6 +3727,12 @@ throw "Map $name was not found in expandmo*.mix"
                 self.append_log(launch_note)
             self.active_game_process = process
             self.active_hook = hook
+            if self.active_hook is not None:
+                self.active_hook['scenario_initialized'] = False
+            self.active_mission_attempt = {
+                'mission_code': mission.get('code'),
+                'scenario': scenario,
+            }
             self.after(HOOK_POLL_MS, self.poll_hook_log)
         except Exception:
             self.cleanup_generated_root_maps()
@@ -3528,12 +3759,44 @@ throw "Map $name was not found in expandmo*.mix"
         rank = FACTION_ORDER.index(faction) if faction in FACTION_ORDER else len(FACTION_ORDER)
         return (rank, unit_display_label(tech_id).lower())
 
+    def mission_assistance_effect_text(self, stacks):
+        multipliers = mission_assistance_multipliers(stacks)
+        range_cells = multipliers['range']
+        range_unit = 'cell' if range_cells == 1 else 'cells'
+        return (
+            f'production time {round((1 - multipliers["production"]) * 100)}% shorter, '
+            f'cost {round((1 - multipliers["cost"]) * 100)}% cheaper, '
+            f'movement speed {round((multipliers["speed"] - 1) * 100)}% faster, '
+            f'health {round((multipliers["health"] - 1) * 100)}% higher, '
+            f'weapon damage {round((multipliers["damage"] - 1) * 100)}% higher, '
+            f'damage taken {round((1 - multipliers["armor"]) * 100)}% lower, '
+            f'fire rate {round(((1 / multipliers["rof"]) - 1) * 100)}% faster, '
+            f'attack range +{range_cells:g} {range_unit}'
+        )
+
     def current_unlocks_text(self):
         if not self.state:
             return 'No randomizer seed generated yet.'
 
+        lines = []
+        selected = self.selected_mission()
+        if selected and self.failure_assistance_enabled():
+            code = selected['code']
+            stacks = self.mission_failure_stack(code)
+            if stacks:
+                heading = f'Retry Assistance — {selected["title"]}'
+                lines.extend([
+                    heading,
+                    '=' * len(heading),
+                    f'{stacks} stack(s), for this mission only',
+                    self.mission_assistance_effect_text(stacks).capitalize() + '.',
+                    '',
+                ])
+
         earned = [canonical_reward(reward) for reward in self.earned_rewards_from_checks()]
         if not earned:
+            if lines:
+                return '\n'.join(lines).rstrip()
             return 'No unlocks or buffs earned yet.'
 
         groups = {}
@@ -3616,7 +3879,6 @@ throw "Map $name was not found in expandmo*.mix"
                     'other': [],
                 })['other'].append(reward)
 
-        lines = []
         if shared_groups:
             heading = (
                 'Shared Allied / Soviet Bundles'
@@ -3771,6 +4033,20 @@ throw "Map $name was not found in expandmo*.mix"
                 else:
                     lines.append('Completing this node does not unlock a currently locked neighbor.')
             lines.append(f'Reward progress: {done_checks}/{total_checks}')
+            if self.failure_assistance_enabled():
+                assistance_stacks = self.mission_failure_stack(code)
+                if assistance_stacks:
+                    lines.append(
+                        f'Retry assistance: {assistance_stacks} stack(s), for this mission only'
+                    )
+                    lines.append(
+                        'Current retry buffs: '
+                        + self.mission_assistance_effect_text(assistance_stacks)
+                        + '.'
+                    )
+                    lines.append('Completing the mission removes all of its retry assistance stacks.')
+                else:
+                    lines.append('Retry assistance: 0 stacks for this mission')
             lines.append('')
             for check in self.mission_checks(code):
                 status_label = 'Complete' if check.get('unlocked') else 'Pending'

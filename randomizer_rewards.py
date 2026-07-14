@@ -1,5 +1,11 @@
 ﻿"""Reward catalogue and display helpers for the Mental Omega randomizer."""
 
+from randomizer_weapon_stats import (
+    ROSTER_DAMAGE_WEAPON_REFS,
+    ROSTER_WEAPON_REFS,
+    WEAPON_BASE_STATS,
+)
+
 # This module is intentionally data-heavy. Keeping it separate from the Tk
 # launcher makes future Archipelago item/location work much easier.
 
@@ -237,24 +243,43 @@ UNIT_BASE_STATS = {
     'LEVI': (3200, 3, 1300, 8, 8, None),
 }
 
-# Weapon baselines for the initially reported omissions.  These enable their
-# damage, reload, rapid-fire and range reward families in addition to the
-# universal unit buffs.  More weapon tables can be added without changing the
-# roster coverage contract.
-ROSTER_WEAPON_STATS = {
-    'MTNK': {
-        '105mmR': {'damage': 60, 'rof': 45, 'range': 6},
-        '105mmRE': {'damage': 60, 'rof': 45, 'range': 6},
-    },
-    'MGTK': {
-        'MirageGun': {'damage': 110, 'rof': 55, 'range': 7},
-        'MirageGunE': {'damage': 110, 'rof': 55, 'range': 7},
-    },
-    'HOWI': {
-        'Howitzer': {'damage': 85, 'rof': 110, 'range': 14},
-        'HowitzerE': {'damage': 85, 'rof': 110, 'range': 14},
-    },
-}
+def build_roster_weapon_stats():
+    """Expand the generated rules registry into the normal reward format."""
+    roster = {}
+    field_names = ('damage', 'rof', 'range')
+    for unit_id, weapon_ids in ROSTER_WEAPON_REFS.items():
+        weapons = {}
+        for weapon_id in weapon_ids:
+            values = WEAPON_BASE_STATS.get(weapon_id)
+            if not values:
+                continue
+            stats = {}
+            for field, value in zip(field_names, values):
+                if value is None or value <= 0:
+                    continue
+                # Damage=1 is commonly a launcher/scanner control value. The
+                # real damaging payload is registered separately below.
+                if field == 'damage' and value <= 1:
+                    continue
+                # ROF=1 is already the engine minimum and cannot be reduced
+                # to make the weapon fire faster.
+                if field == 'rof' and value <= 1:
+                    continue
+                stats[field] = value
+            if stats:
+                weapons[weapon_id] = stats
+        for weapon_id in ROSTER_DAMAGE_WEAPON_REFS.get(unit_id, ()):
+            values = WEAPON_BASE_STATS.get(weapon_id)
+            damage = values[0] if values else None
+            if damage is not None and damage > 1:
+                weapons.setdefault(weapon_id, {})['damage'] = damage
+        if weapons:
+            roster[unit_id] = weapons
+    return roster
+
+
+# Complete playable 3.3.6 weapon baselines extracted from RULESMO.INI.
+ROSTER_WEAPON_STATS = build_roster_weapon_stats()
 
 # Economy and base-operation essentials are deliberately never access items.
 # They remain available regardless of normal-randomizer progress.
@@ -995,6 +1020,26 @@ def add_complete_faction_buff_targets():
 
 add_complete_faction_buff_targets()
 
+# Westwood-spawn missiles do not expose their real impact damage as a normal
+# WeaponType. These General-section fields are the actual payload damage for
+# the corresponding playable launchers.
+SPECIAL_DAMAGE_FIELDS = {
+    'V3': {
+        'V3RocketDamage': 250,
+        'V3RocketEliteDamage': 400,
+    },
+    'DRED': {
+        'DMislDamage': 300,
+        'DMislEliteDamage': 400,
+    },
+    'AKULA': {
+        'CMislDamage': 300,
+        'CMislEliteDamage': 400,
+    },
+}
+for special_unit_id, damage_fields in SPECIAL_DAMAGE_FIELDS.items():
+    BUFF_TARGETS[special_unit_id]['special_damage_fields'] = damage_fields
+
 UNIT_LABELS = {
     'ADOG': 'Attack Dog',
     'AEGIS': 'Aegis Cruiser',
@@ -1096,6 +1141,7 @@ BUFF_TYPES = [
         'setting_label': 'Damage',
         'description': '{plural} deal more weapon damage in future launched missions.',
         'requires_weapons': True,
+        'requires_weapon_stat': 'damage',
         'requires_clone': True,
     },
     {
@@ -1104,6 +1150,8 @@ BUFF_TYPES = [
         'setting_label': 'Unit fire rate',
         'description': '{plural} fire their weapons faster in future launched missions.',
         'requires_weapons': True,
+        'requires_weapon_stat': 'rof',
+        'requires_weapon_min': 1,
         'requires_clone': True,
     },
     {
@@ -1112,6 +1160,7 @@ BUFF_TYPES = [
         'setting_label': 'Army-wide fire rate',
         'description': 'All player weapons fire faster in future launched missions.',
         'requires_weapons': True,
+        'requires_weapon_stat': 'rof',
     },
     {
         'id': 'range',
@@ -1119,6 +1168,7 @@ BUFF_TYPES = [
         'setting_label': 'Attack range',
         'description': '{plural} gain more weapon range in future launched missions.',
         'requires_weapons': True,
+        'requires_weapon_stat': 'range',
         'requires_clone': True,
     },
     {
@@ -1178,6 +1228,19 @@ def build_buff_rewards():
                 continue
             if buff_type.get('requires_weapons') and not target.get('weapons'):
                 continue
+            required_weapon_stat = buff_type.get('requires_weapon_stat')
+            if required_weapon_stat:
+                required_weapon_min = buff_type.get('requires_weapon_min', 0)
+                has_weapon_stat = any(
+                    stats.get(required_weapon_stat, 0) > required_weapon_min
+                    for stats in target.get('weapons', {}).values()
+                )
+                has_special_damage = (
+                    required_weapon_stat == 'damage'
+                    and bool(target.get('special_damage_fields'))
+                )
+                if not has_weapon_stat and not has_special_damage:
+                    continue
             rewards.append({
                 'name': f'{target["label"]} {buff_type["name"]} I',
                 'description': target.get('buff_descriptions', {}).get(
