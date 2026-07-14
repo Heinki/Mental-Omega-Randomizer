@@ -203,6 +203,8 @@ Campaign maps can define reusable TeamTypes with `House=Neutral` and assign thei
 
 House-supported rewards use map-local country data for production time, construction time, category cost, category speed, category armor, army ROF, and veteran lists. Every player-controlled house participates. With `buff_allied_helpers`, eligible allied AI houses also participate.
 
+Veterancy uses `VeteranInfantry`, `VeteranUnits`, `VeteranAircraft`, and `VeteranBuildings`. Trainable defenses such as the Allied Grand Cannon must use `VeteranBuildings`; `VeteranDefenses` is not an engine key. Empty cinematic/neutral placeholder houses that inherit a player country do not block that country's rewards when they own no placed or scripted TechnoTypes, are allied to the assisted coalition, and have no scripted hostile transition.
+
 If an allied helper uses a country inherited by unsafe enemy houses, the country-level reward is skipped for that helper. Parent-country relationships are included in safety analysis. The house is not moved to a synthetic country because doing that disconnects triggers owned by its original country.
 
 Action `36` (`All change House`) transfers whose target is any player-controlled house are included as friendly future users; debug-only transfer triggers are ignored. The 97-map audit found 48 transfer-bearing missions with 116 future-friendly source-house cases, including transfers into secondary player houses on multi-house missions.

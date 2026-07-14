@@ -853,8 +853,8 @@ BUFF_TARGETS = {
         'allowed_buff_types': ['production'],
         'buff_descriptions': {
             'production': (
-                'Infantry, vehicles, aircraft, buildings, and defenses produce '
-                '15% faster for the player faction and enabled allied helpers.'
+                'Infantry, vehicles, aircraft, buildings, and defenses have '
+                '15% shorter production times for the player faction and enabled allied helpers.'
             ),
         },
         'global_buff': True,
@@ -1100,8 +1100,8 @@ BUFF_TYPES = [
     {
         'id': 'production',
         'name': 'Drill',
-        'setting_label': 'Production / construction speed',
-        'description': '{plural} build/train 15% faster in future launched missions.',
+        'setting_label': 'Production / construction time',
+        'description': '{plural} have 15% shorter build/train times in future launched missions.',
     },
     {
         'id': 'cost',
@@ -1593,9 +1593,13 @@ def buff_effect_lines(reward, count=1, include_label=True):
     count = effective_buff_count(reward, count)
     if buff_type == 'production':
         multiplier = max(0.35, 0.85 ** count)
-        faster = int(round((1.0 - multiplier) * 100))
-        effect = 'Construction' if target.get('category') in {'buildings', 'defenses'} else 'Production'
-        return [f'{prefix}{effect} {faster}% faster ({stack_label(count)})']
+        shorter = int(round((1.0 - multiplier) * 100))
+        effect = (
+            'Construction time'
+            if target.get('category') in {'buildings', 'defenses'}
+            else 'Production time'
+        )
+        return [f'{prefix}{effect} {shorter}% shorter ({stack_label(count)})']
     if buff_type == 'cost':
         multiplier = max(0.30, 0.80 ** count)
         cheaper = int(round((1.0 - multiplier) * 100))

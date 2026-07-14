@@ -592,7 +592,13 @@ def stacked_house_buff_values(
                     and not equivalent_target.get('trainable')
                 ):
                     continue
-                equivalent_suffix = house_category_suffix(equivalent_target)
+                # Ares uses VeteranBuildings for trainable defenses. There is
+                # no VeteranDefenses country key.
+                equivalent_suffix = (
+                    'Buildings'
+                    if equivalent_target.get('category') == 'defenses'
+                    else house_category_suffix(equivalent_target)
+                )
                 veteran_units.setdefault(equivalent_suffix, []).append(unit_id)
             continue
         suffixes = {suffix}
@@ -761,6 +767,7 @@ def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
         else []
     )
     assisted_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
+    usage_index = build_unit_usage_index(lines)
     country_houses = {}
     for house in assisted_houses:
         country = records.get(house, {}).get('country') or house.replace(' House', '')
@@ -776,6 +783,8 @@ def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
             country,
             assisted_houses,
             records=records,
+            usage_index=usage_index,
+            scripted_enemies=scripted_enemies,
         )
         if shared_houses:
             skipped_countries.append((country, list(houses), shared_houses))
@@ -1764,10 +1773,30 @@ def allied_helper_houses(
     return unique_in_order(helpers)
 
 
-def unsafe_country_houses(lines, country, allowed_house_names, records=None, sections=None):
+def unsafe_country_houses(
+    lines,
+    country,
+    allowed_house_names,
+    records=None,
+    sections=None,
+    usage_index=None,
+    scripted_enemies=None,
+):
     allowed = {name.lower() for name in allowed_house_names}
     sections = sections if sections is not None else all_section_value_maps(lines)
     records = records if records is not None else map_house_records(lines, sections=sections)
+    usage_index = build_unit_usage_index(lines) if usage_index is None else usage_index
+    scripted_enemies = (
+        scripted_enemy_house_pairs(lines, records=records)
+        if scripted_enemies is None
+        else scripted_enemies
+    )
+    used_houses = set()
+    for owners in usage_index.values():
+        for owner in owners:
+            canonical = canonical_house_name(records, owner)
+            used_houses.add((canonical or owner).lower())
+
     unsafe = []
     for name, record in records.items():
         if not country_inherits_from(
@@ -1777,7 +1806,40 @@ def unsafe_country_houses(lines, country, allowed_house_names, records=None, sec
             sections=sections,
         ):
             continue
-        if name.lower() not in allowed:
+        name_lower = name.lower()
+        if name_lower in allowed:
+            continue
+
+        # Empty cinematic/neutral placeholder houses commonly inherit the
+        # player's country solely for map scripting. They cannot receive a
+        # gameplay buff when they own no placed/scripted TechnoTypes, are
+        # allied to the assisted coalition, and never become its enemy. Do not
+        # let such a harmless descendant disable every player country bonus.
+        record_allies = {
+            canonical_house_name(records, ally).lower()
+            for ally in record.get('allies', [])
+            if canonical_house_name(records, ally)
+        }
+        allied_to_allowed = bool(record_allies.intersection(allowed)) or any(
+            name_lower in {
+                canonical_house_name(records, ally).lower()
+                for ally in records.get(allowed_house, {}).get('allies', [])
+                if canonical_house_name(records, ally)
+            }
+            for allowed_house in allowed_house_names
+        )
+        hostile_to_allowed = any(
+            frozenset((name_lower, allowed_house)) in scripted_enemies
+            for allowed_house in allowed
+            if allowed_house != name_lower
+        )
+        harmless_placeholder = (
+            not is_buffable_helper_house(record)
+            and name_lower not in used_houses
+            and allied_to_allowed
+            and not hostile_to_allowed
+        )
+        if not harmless_placeholder:
             unsafe.append(name)
     return unsafe
 
@@ -1818,12 +1880,15 @@ def player_country_buff_rules(
         if buff_allied_helpers else []
     )
     allowed_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
+    usage_index = build_unit_usage_index(lines)
     shared_houses = unsafe_country_houses(
         lines,
         player_country,
         allowed_houses,
         records=records,
         sections=sections,
+        usage_index=usage_index,
+        scripted_enemies=scripted_enemies,
     )
     rule_sections = {}
     buffed_allies = []
@@ -1865,6 +1930,8 @@ def player_country_buff_rules(
                 allowed_houses,
                 records=records,
                 sections=sections,
+                usage_index=usage_index,
+                scripted_enemies=scripted_enemies,
             )
             if unsafe_houses:
                 skipped_allies.append(helper)
