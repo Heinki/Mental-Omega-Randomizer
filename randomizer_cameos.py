@@ -18,10 +18,29 @@ SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None
 _RULES_SIDEBAR_NAMES = None
+MIX_READER_ASSEMBLY_NAMES = (
+    'NLog.dll',
+    'CNCMaps.Shared.dll',
+    'CNCMaps.FileFormats.dll',
+)
 
 
 def powershell_literal(value):
     return "'" + str(value).replace("'", "''") + "'"
+
+
+def mix_reader_assembly_paths():
+    return [MAP_RENDERER_DIR / name for name in MIX_READER_ASSEMBLY_NAMES]
+
+
+def powershell_mix_reader_load_script():
+    """Load marked renderer assemblies without modifying their Zone.Identifier streams."""
+    return '\n'.join(
+        '[void][Reflection.Assembly]::Load([IO.File]::ReadAllBytes('
+        + powershell_literal(path)
+        + '))'
+        for path in mix_reader_assembly_paths()
+    )
 
 
 def extract_mix_files(requests):
@@ -38,13 +57,11 @@ def extract_mix_files(requests):
     if not pending:
         return True
 
-    shared_dll = MAP_RENDERER_DIR / 'CNCMaps.Shared.dll'
-    formats_dll = MAP_RENDERER_DIR / 'CNCMaps.FileFormats.dll'
-    if not shared_dll.exists() or not formats_dll.exists():
+    assembly_paths = mix_reader_assembly_paths()
+    if any(not path.exists() for path in assembly_paths):
         log_event(
             'cameo_extraction_unavailable',
-            shared_dll_exists=shared_dll.exists(),
-            formats_dll_exists=formats_dll.exists(),
+            assemblies={path.name: path.exists() for path in assembly_paths},
         )
         return False
 
@@ -52,8 +69,7 @@ def extract_mix_files(requests):
     EXTRACT_REQUEST_PATH.write_text(json.dumps(pending), encoding='utf-8')
     script = f"""
 $ErrorActionPreference = 'Stop'
-Add-Type -Path {powershell_literal(shared_dll)}
-Add-Type -Path {powershell_literal(formats_dll)}
+{powershell_mix_reader_load_script()}
 $pending = [Collections.Generic.List[object]]::new()
 $decodedRequests = Get-Content -Raw {powershell_literal(EXTRACT_REQUEST_PATH)} | ConvertFrom-Json
 foreach($request in $decodedRequests) {{

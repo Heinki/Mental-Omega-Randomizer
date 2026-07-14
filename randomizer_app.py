@@ -7,7 +7,12 @@ import subprocess
 import traceback
 
 from randomizer_config import CONFIG_PATH, load_config, save_config
-from randomizer_cameos import ensure_superweapon_cameos, ensure_unit_cameos
+from randomizer_cameos import (
+    ensure_superweapon_cameos,
+    ensure_unit_cameos,
+    mix_reader_assembly_paths,
+    powershell_mix_reader_load_script,
+)
 from randomizer_diagnostics import event as log_event
 from grid_progression import (
     COMPLETED as GRID_COMPLETED,
@@ -67,7 +72,6 @@ from randomizer_paths import (
 from randomizer_map import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
-    RANDOMIZER_RULES_MARKER,
     SCRIPTED_TECH_BUILD_LIMIT,
     SCRIPTED_TECH_LOCK_EXCLUSIONS,
     action_has_code,
@@ -2803,12 +2807,10 @@ class LauncherApp(tk.Tk):
             shutil.copy2(loose_root_map, output_path)
             return output_path
 
-        dlls = [
-            MAP_RENDERER_DIR / 'CNCMaps.Shared.dll',
-            MAP_RENDERER_DIR / 'CNCMaps.FileFormats.dll',
-        ]
-        if any(not dll.exists() for dll in dlls):
-            raise FileNotFoundError('Map Renderer CNCMaps DLLs are missing.')
+        assembly_paths = mix_reader_assembly_paths()
+        if any(not path.exists() for path in assembly_paths):
+            missing = ', '.join(path.name for path in assembly_paths if not path.exists())
+            raise FileNotFoundError(f'Map Renderer dependency files are missing: {missing}.')
 
         mix_paths = sorted(GAME_ROOT.glob('expandmo*.mix'), reverse=True)
         if not mix_paths:
@@ -2816,13 +2818,11 @@ class LauncherApp(tk.Tk):
 
         escaped_name = scenario.upper().replace("'", "''")
         escaped_output = str(output_path).replace("'", "''")
-        escaped_dlls = [str(dll).replace("'", "''") for dll in dlls]
         escaped_mixes = [str(path).replace("'", "''") for path in mix_paths]
         mix_array = ','.join(f"'{path}'" for path in escaped_mixes)
         script = f"""
 $ErrorActionPreference = 'Stop'
-Add-Type -Path '{escaped_dlls[0]}'
-Add-Type -Path '{escaped_dlls[1]}'
+{powershell_mix_reader_load_script()}
 $name = '{escaped_name}'
 $output = '{escaped_output}'
 foreach ($mixPath in @({mix_array})) {{
@@ -2851,9 +2851,19 @@ throw "Map $name was not found in expandmo*.mix"
             cwd=GAME_ROOT,
             capture_output=True,
             text=True,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
         )
         if result.returncode != 0:
-            raise RuntimeError((result.stderr or result.stdout or 'Map extraction failed.').strip())
+            detail = (result.stderr or result.stdout or 'Map extraction failed.').strip()
+            log_event(
+                'map_extraction_failed',
+                level=logging.ERROR,
+                scenario=scenario,
+                returncode=result.returncode,
+                stderr=result.stderr.strip(),
+                stdout=result.stdout.strip(),
+            )
+            raise RuntimeError(detail)
         return output_path
 
     def randomized_tech_ids(self):
@@ -2928,7 +2938,6 @@ throw "Map $name was not found in expandmo*.mix"
                 self.earned_rewards_from_checks()
             ).items():
                 rule_sections.setdefault(section, {}).update(values)
-        transient_rulesmo_sections = {}
         fallback_tech_ids = {
             section.upper()
             for section, values in (extra_rules or {}).items()
@@ -2959,7 +2968,6 @@ throw "Map $name was not found in expandmo*.mix"
         experimental_house_buffs = bool(generation_config.get('experimental_house_buffs', False))
         safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
         allow_shared_country_buffs = bool(generation_config.get('allow_shared_country_buffs', False))
-        transient_rulesmo_buffs = bool(generation_config.get('transient_rulesmo_buffs', False))
         buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
         require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
         if self.state and experimental_house_buffs:
@@ -2996,8 +3004,6 @@ throw "Map $name was not found in expandmo*.mix"
                     f'Applied map-local player-country buffs for {player_house}/{player_country}: '
                     f'{buff_summary}.{shared_note}{helper_note}{skipped_note}'
                 )
-                if transient_rulesmo_buffs:
-                    transient_rulesmo_sections.update(house_rule_sections)
             elif shared_houses:
                 self.append_log(
                     f'Skipped player-country buffs for {player_house}/{player_country}: '
@@ -3157,7 +3163,6 @@ throw "Map $name was not found in expandmo*.mix"
             'seen': set(),
             'offset': DEBUG_LOG.stat().st_size if DEBUG_LOG.exists() else 0,
             'root_map': root_map,
-            'rulesmo_sections': transient_rulesmo_sections,
         }
 
     def write_spawn_ini(self, scenario, difficulty_value, game_speed_value):
@@ -3300,36 +3305,6 @@ throw "Map $name was not found in expandmo*.mix"
             else:
                 carry = data
             offset += len(chunk)
-
-    def write_transient_rulesmo_ini(self, rule_sections):
-        if not rule_sections:
-            self.disable_generated_rules_for_client()
-            return False
-
-        if not self.config.get('generation', {}).get('transient_rulesmo_buffs', False):
-            self.disable_generated_rules_for_client()
-            self.append_log('Skipped transient rulesmo.ini buffs because generation.transient_rulesmo_buffs is disabled.')
-            return False
-
-        if RULESMO_INI.exists() and not is_generated_rules_file(RULESMO_INI):
-            backup = backup_file_once(RULESMO_INI, 'before-randomizer')
-            self.append_log(f'Existing rulesmo.ini was backed up to {backup}')
-
-        lines = [
-            RANDOMIZER_RULES_MARKER,
-            '; Temporary direct-launch rules generated by the randomizer.',
-            '; The launcher disables this file again after the spawned mission exits.',
-            '',
-        ]
-        for section in sorted(rule_sections):
-            lines.append(f'[{section}]')
-            for key, value in sorted(rule_sections[section].items()):
-                lines.append(f'{key}={value}')
-            lines.append('')
-
-        RULESMO_INI.write_text('\r\n'.join(lines), encoding='utf-8')
-        self.append_log(f'Written transient rulesmo.ini with {len(rule_sections)} section(s).')
-        return True
 
     def disable_generated_rules_for_client(self):
         for path in (RULESMO_INI, DISABLED_RULESMO_INI):
@@ -3480,7 +3455,6 @@ throw "Map $name was not found in expandmo*.mix"
                 self.cleanup_generated_root_maps()
             self.write_spawn_ini(scenario, difficulty_value, game_speed_value)
             self.write_launch_options(difficulty_value, game_speed_value)
-            self.write_transient_rulesmo_ini((hook or {}).get('rulesmo_sections', {}))
         except Exception:
             self.cleanup_generated_root_maps()
             self.disable_generated_rules_for_client()

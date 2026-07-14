@@ -76,7 +76,6 @@ These keys are runtime/developer controls and should not become normal Archipela
 | `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power]` | Derived compatibility list written from the five reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
 | `generation.allow_shared_country_buffs` | `false` | Developer override that may affect enemy houses sharing a country; keep disabled for normal play. |
-| `generation.transient_rulesmo_buffs` | `false` | Experimental loose `rulesmo.ini` injection; disabled because loose rules files can destabilize launches/client checks. |
 | `generation.experimental_house_buffs` | `false` | Older experimental country-clone route; the stable safe-country path is preferred. |
 | `archipelago.*` | Disabled/blank | Reserved connection and slot fields. They currently do not connect to an Archipelago server. |
 
