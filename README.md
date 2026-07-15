@@ -4,6 +4,10 @@ A standalone Windows campaign randomizer for Mental Omega. It generates determin
 
 Archipelago is planned but is not connected yet. The standalone configuration deliberately uses stable option-style keys so those settings can later map to an Archipelago world.
 
+## AI-Assisted Development
+
+This project was developed with assistance from OpenAI's ChatGPT, including Codex coding assistance. AI tools have been used to analyze Mental Omega's INI formats, catalogue unit, weapon, projectile, and image tags for the UI, and support implementation, refactoring, debugging, and documentation. Generated suggestions are reviewed, adapted, and validated against project requirements before inclusion. Final design decisions, releases, and project behavior remain the responsibility of the project maintainer.
+
 ## Quick Start
 
 1. Make a **new, separate, fresh installation of Mental Omega**. Do not use the copy in which you normally install map packs, funmaps, rules edits, or other modifiers.
@@ -22,6 +26,10 @@ Using a dedicated clean installation is the same isolation normally recommended 
 
 **Mission List** progression opens the first three missions and adds one more after each victory. **Grid Mode** places the required missions on a compact faction-colored board: completing a node opens its orthogonal neighbors, and the bottom-right exit finishes the run after every required node is cleared. Mixed-campaign seeds weight the short seven-mission Foehn campaign proportionally instead of allowing it to dominate the randomized order. The hidden **Debug: Mark Complete** control appears only when the launcher log is expanded and is intended for development recovery.
 
+## Early Development Stage
+
+The Randomizer remains in an early development stage. Features may be incomplete, behave incorrectly, or cause crashes. Please report reproducible problems through the repository's [issue tracker](https://github.com/Heinki/Mental-Omega-Randomizer/issues).
+
 ## Documentation
 
 Each document has one purpose so the same behavior is not maintained in several places.
@@ -32,15 +40,23 @@ Each document has one purpose so the same behavior is not maintained in several 
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
 | `config/mental_omega_randomizer.yaml` | Launcher/runtime | Saved standalone option values; it is data, not a second source of documentation |
 
-## Developer Start
+## Developer Workflow
 
-From the Mental Omega folder:
+Run the launcher from source, starting in the Mental Omega folder:
 
 ```powershell
 python RandomizerLauncher\launcher_gui.py
 ```
 
-Build the packaged launcher with:
+Before packaging, compile every source module to catch syntax and import-time parsing errors:
+
+```powershell
+Set-Location RandomizerLauncher
+python -m compileall -q .
+python launcher_gui.py --self-check
+```
+
+Build the packaged launcher from the Mental Omega folder with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
@@ -63,14 +79,26 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `launcher_gui.py` | Packaged/source entry point and self-check |
 | `randomizer_app.py` | Tk interface, seed flow, game launch, and log watcher |
 | `grid_progression.py` | Grid construction, corner trimming, node state, neighbor unlocks, and exit rules |
+| `randomizer_missions.py` | Pure campaign parsing, faction normalization, stage scoring, and deterministic mission ordering |
+| `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass section merging |
 | `randomizer_map.py` | Generated-map patching, marker helpers, tech rules, and map-local buffs |
 | `randomizer_mission_safety.py` | Mixed-faction and Chaos production access |
 | `randomizer_rewards.py` | Reward catalogue, equivalence groups, stacking, and display helpers |
 | `randomizer_cameos.py` | Installed MIX cameo extraction and PCX-to-PNG decoding |
 | `randomizer_config.py` | YAML-compatible configuration defaults and persistence |
+| `randomizer_diagnostics.py` | Bounded structured launcher logging for support and debugging |
 | `randomizer_paths.py` | Source and packaged runtime paths |
+| `randomizer_weapon_stats.py` | Readable accessors for the installed weapon registry snapshot |
+| `randomizer_weapon_stats_data.py` | Generated packed Mental Omega 3.3.6 weapon data |
+| `build_exe.ps1` | PyInstaller build and packaged self-check workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
+
+## Troubleshooting and Bug Reports
+
+Run `MentalOmegaRandomizer.exe --self-check` first. The result is saved to `RandomizerLauncherData\self_check.json`, and structured launcher diagnostics are kept in `RandomizerLauncherData\logs\launcher.log`. Objective and victory marker activity comes from the game's `debug\debug.log`.
+
+When reporting a reproducible problem, include those files together with the mission code, seed, reward mode, and whether the issue also occurs on a fresh unmodified Mental Omega installation. Do not post `randomizer_state.json` publicly without reviewing it first; it contains the active run's seed and progress.
 
 ## Current Status
 

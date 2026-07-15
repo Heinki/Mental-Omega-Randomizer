@@ -1698,14 +1698,3 @@ def reward_rule_summary(reward):
             summaries.append(f'{unit_display_label(section)}: {", ".join(changes)}')
 
     return summaries
-
-
-def reward_display_lines(reward, indent='  '):
-    reward = canonical_reward(reward)
-    if reward.get('kind') not in {'buff', 'superweapon'}:
-        return []
-
-    lines = []
-    for summary in reward_rule_summary(reward):
-        lines.append(f'{indent}{summary}')
-    return lines

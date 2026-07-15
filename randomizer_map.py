@@ -3,6 +3,19 @@ import re
 import shutil
 from datetime import datetime
 
+from randomizer_ini import (
+    action_group_tokens,
+    all_section_value_maps,
+    append_section_entry,
+    append_section_list_entry,
+    find_section_bounds,
+    merge_ini_section_values,
+    parse_action_groups,
+    read_text,
+    section_lines,
+    section_value_map,
+    section_value_map_preserve,
+)
 from randomizer_paths import BACKUP_DIR
 from randomizer_rewards import (
     ALWAYS_AVAILABLE_UNIT_IDS,
@@ -15,7 +28,6 @@ from randomizer_rewards import (
     WEAPON_STAT_BUFF_TYPES,
     canonical_reward,
     canonical_rewards,
-    check_rewards,
     house_category_suffix,
     unit_role_equivalents,
 )
@@ -77,10 +89,6 @@ def now_stamp():
     return datetime.now().strftime('%Y%m%d-%H%M%S')
 
 
-def read_text(path):
-    return path.read_text(encoding='utf-8', errors='ignore')
-
-
 def backup_file_once(path, label):
     if not path.exists():
         return None
@@ -90,43 +98,6 @@ def backup_file_once(path, label):
     if not target.exists():
         shutil.copy2(path, target)
     return target
-
-
-def set_ini_value_lines(text, section, key, value):
-    lines = text.splitlines()
-    output = []
-    in_section = False
-    section_found = False
-    key_written = False
-
-    for line in lines:
-        stripped = line.strip()
-        is_section = stripped.startswith('[') and stripped.endswith(']')
-        if is_section:
-            if in_section and not key_written:
-                output.append(f'{key}={value}')
-                key_written = True
-            current = stripped[1:-1].strip()
-            in_section = current.lower() == section.lower()
-            section_found = section_found or in_section
-        elif in_section and '=' in stripped:
-            current_key = stripped.split('=', 1)[0].strip()
-            if current_key.lower() == key.lower():
-                output.append(f'{key}={value}')
-                key_written = True
-                continue
-        output.append(line)
-
-    if in_section and not key_written:
-        output.append(f'{key}={value}')
-        key_written = True
-
-    if not section_found:
-        if output and output[-1].strip():
-            output.append('')
-        output.extend([f'[{section}]', f'{key}={value}'])
-
-    return '\r\n'.join(output) + '\r\n'
 
 
 def is_generated_rules_file(path):
@@ -151,144 +122,6 @@ def is_generated_hooked_map(path):
 def sanitize_marker_part(value, max_length=12):
     cleaned = re.sub(r'[^A-Za-z0-9]', '', value or '').upper()
     return (cleaned or 'UNK')[:max_length]
-
-
-def find_section_bounds(lines, section):
-    wanted = section.lower()
-    start = None
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            if start is not None:
-                return (start, index)
-            if stripped[1:-1].strip().lower() == wanted:
-                start = index
-    if start is None:
-        return (None, None)
-    return (start, len(lines))
-
-
-def find_all_section_bounds(lines, section):
-    wanted = section.lower()
-    matches = []
-    start = None
-    for index, line in enumerate(lines):
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            if start is not None:
-                matches.append((start, index))
-                start = None
-            if stripped[1:-1].strip().lower() == wanted:
-                start = index
-    if start is not None:
-        matches.append((start, len(lines)))
-    return matches
-
-
-def section_lines(lines, section):
-    start, end = find_section_bounds(lines, section)
-    if start is None:
-        return []
-    return lines[start + 1:end]
-
-
-def section_names(lines):
-    names = []
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            names.append(stripped[1:-1].strip())
-    return names
-
-
-def section_value_map(lines, section):
-    values = {}
-    for line in section_lines(lines, section):
-        if '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        values[key.strip().lower()] = value.strip()
-    return values
-
-
-def section_value_map_preserve(lines, section):
-    values = {}
-    for line in section_lines(lines, section):
-        if '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        values[key.strip()] = value.strip()
-    return values
-
-
-def all_section_value_maps(lines):
-    sections = {}
-    current = None
-    current_values = None
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            current = stripped[1:-1].strip()
-            current_values = {}
-            sections[current] = current_values
-            continue
-        if current_values is not None and '=' in line:
-            key, value = line.split('=', 1)
-            current_values[key.strip().lower()] = value.strip()
-    return sections
-
-
-def next_numeric_section_index(lines, section):
-    highest = -1
-    for line in section_lines(lines, section):
-        if '=' not in line:
-            continue
-        key = line.split('=', 1)[0].strip()
-        if key.isdigit():
-            highest = max(highest, int(key))
-    return highest + 1
-
-
-def append_section_list_entry(lines, section, value):
-    start, end = find_section_bounds(lines, section)
-    if start is None:
-        if lines and lines[-1].strip():
-            lines.append('')
-        lines.extend([f'[{section}]', f'0={value}'])
-        return
-
-    index = next_numeric_section_index(lines, section)
-    lines.insert(end, f'{index}={value}')
-
-
-def append_section_entry(lines, section, key, value):
-    start, end = find_section_bounds(lines, section)
-    if start is None:
-        if lines and lines[-1].strip():
-            lines.append('')
-        lines.extend([f'[{section}]', f'{key}={value}'])
-        return
-    lines.insert(end, f'{key}={value}')
-
-
-def parse_action_groups(value):
-    tokens = [token.strip() for token in value.split(',')]
-    if not tokens:
-        return (0, [])
-    try:
-        count = int(tokens[0])
-    except ValueError:
-        return (0, [])
-    groups = []
-    cursor = 1
-    while cursor + 7 < len(tokens):
-        groups.append(tokens[cursor:cursor + 8])
-        cursor += 8
-    return (count, groups)
-
-
-def action_group_tokens(groups):
-    return [token for group in groups for token in group]
 
 
 def tech_ids_for_rewards(rewards):
@@ -419,27 +252,6 @@ def action_has_objective_complete(groups):
         if action_code == '11' and parameter == 'mission:objc':
             return True
     return False
-
-
-def techlevel_action_tokens(section, level):
-    return ['106', '9', section, '0', '0', '0', '0', str(level)]
-
-
-def techlevel_actions_for_reward(reward):
-    reward = canonical_reward(reward)
-    actions = []
-    for section, values in reward.get('rules', {}).items():
-        for key, value in values.items():
-            if key.lower() == 'techlevel':
-                actions.append(techlevel_action_tokens(section, UNLOCKED_TECH_LEVEL))
-    return actions
-
-
-def techlevel_actions_for_rewards(rewards):
-    actions = []
-    for reward in canonical_rewards(rewards):
-        actions.extend(techlevel_actions_for_reward(reward))
-    return actions
 
 
 def superweapon_actions_for_rewards(rewards):
@@ -1284,15 +1096,6 @@ def controlled_tech_ids():
     return tech_ids - {tech_id.upper() for tech_id in ALWAYS_AVAILABLE_TECH_IDS}
 
 
-def reward_unlock_tech_ids():
-    tech_ids = set()
-    for reward in REWARD_POOL:
-        if reward.get('kind') == 'buff':
-            continue
-        tech_ids.update(techlevel_rules_for_reward(reward))
-    return tech_ids
-
-
 def action_line_ids(lines, predicate):
     start, end = find_section_bounds(lines, 'Actions')
     if start is None:
@@ -1481,28 +1284,6 @@ def clone_player_country_for_house_buffs(
     return (player_house, house_buff_values)
 
 
-def houses_for_country(lines, country):
-    matches = []
-    wanted = (country or '').strip().lower()
-    if not wanted:
-        return matches
-
-    for house_name in section_lines(lines, 'Houses'):
-        if '=' not in house_name:
-            continue
-        _, value = house_name.split('=', 1)
-        section = value.strip()
-        house_values = section_value_map(lines, section)
-        house_country = house_values.get('country') or section.replace(' House', '')
-        if house_country.strip().lower() != wanted:
-            continue
-        matches.append({
-            'name': section,
-            'player': house_values.get('playercontrol', '').lower() == 'yes',
-        })
-    return matches
-
-
 def country_inherits_from(lines, country, ancestor, sections=None):
     wanted = (ancestor or '').strip().lower()
     current = (country or '').strip()
@@ -1520,18 +1301,6 @@ def country_inherits_from(lines, country, ancestor, sections=None):
             break
         current = parent
     return False
-
-
-def house_names(lines):
-    names = []
-    for house_name in section_lines(lines, 'Houses'):
-        if '=' not in house_name:
-            continue
-        _, value = house_name.split('=', 1)
-        name = value.strip()
-        if name:
-            names.append(name)
-    return unique_in_order(names)
 
 
 def map_house_records(lines, sections=None):
@@ -1696,21 +1465,6 @@ def country_family(record):
     if 'gdi' in text:
         return 'allies'
     return ''
-
-
-def same_helper_family(player_record, helper_record):
-    player_family = country_family(player_record)
-    helper_family = country_family(helper_record)
-    if not player_family or not helper_family:
-        return False
-    if player_family == 'foehn' and helper_family in {'allies', 'soviets', 'foehn'}:
-        player_allies = {name.lower() for name in player_record.get('allies', [])}
-        helper_allies = {name.lower() for name in helper_record.get('allies', [])}
-        return (
-            helper_record.get('name', '').lower() in player_allies
-            and player_record.get('name', '').lower() in helper_allies
-        )
-    return player_family == helper_family
 
 
 def allied_helper_houses(
@@ -2021,77 +1775,6 @@ def insert_actions_before_codes(lines, action_id, action_tokens_list, before_cod
         lines[index] = f'{key}={",".join(tokens)}'
         return True
     return False
-
-
-def merge_ini_section_values(lines, section_values):
-    """Merge many INI sections in one pass through the map.
-
-    Launch preparation can inject hundreds of sections into a large campaign
-    map. Looking up every section by rescanning the complete file made this
-    operation quadratic. Rebuilding the line list once keeps existing section
-    order and key placement while appending only missing keys/sections.
-    """
-    pending = {
-        section.lower(): (
-            section,
-            {key.lower(): (key, value) for key, value in values.items()},
-        )
-        for section, values in section_values.items()
-        if values
-    }
-    if not pending:
-        return
-
-    output = []
-    active_key = None
-    active_values = None
-    seen_keys = set()
-    found_sections = set()
-
-    def flush_missing_values():
-        if active_values is None:
-            return
-        for key_lower in sorted(active_values, key=lambda item: active_values[item][0]):
-            if key_lower not in seen_keys:
-                key, value = active_values[key_lower]
-                output.append(f'{key}={value}')
-
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith('[') and stripped.endswith(']'):
-            flush_missing_values()
-            section_key = stripped[1:-1].strip().lower()
-            active_key = section_key if section_key in pending and section_key not in found_sections else None
-            if active_key is not None:
-                found_sections.add(active_key)
-                active_values = pending[active_key][1]
-                seen_keys = set()
-            else:
-                active_values = None
-                seen_keys = set()
-            output.append(line)
-            continue
-
-        if active_values is not None and '=' in line:
-            key_lower = line.split('=', 1)[0].strip().lower()
-            replacement = active_values.get(key_lower)
-            if replacement is not None:
-                key, value = replacement
-                output.append(f'{key}={value}')
-                seen_keys.add(key_lower)
-                continue
-        output.append(line)
-
-    flush_missing_values()
-    for section_key, (section, values) in pending.items():
-        if section_key in found_sections:
-            continue
-        if output and output[-1].strip():
-            output.append('')
-        output.append(f'[{section}]')
-        for _, (key, value) in sorted(values.items(), key=lambda item: item[1][0]):
-            output.append(f'{key}={value}')
-    lines[:] = output
 
 
 def unique_section_key(lines, sections, prefix):

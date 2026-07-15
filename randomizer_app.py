@@ -25,6 +25,19 @@ from grid_progression import (
     is_complete as is_grid_complete,
     refresh_states as refresh_grid_states,
 )
+from randomizer_missions import (
+    FACTION_ORDER,
+    campaign_mission_counts,
+    normalize_faction,
+    parse_missions,
+    seed_campaign_limits,
+    seed_mission_order,
+)
+from randomizer_ini import (
+    merge_ini_section_values,
+    read_text,
+    set_ini_value_lines,
+)
 from randomizer_rewards import (
     BUFF_TARGETS,
     BUFF_TYPES,
@@ -54,7 +67,6 @@ except ImportError:
 
 
 from randomizer_paths import (
-    APP_DIR,
     BATTLE_CLIENT_INI,
     DEBUG_LOG,
     DISABLED_RULESMO_INI,
@@ -64,7 +76,6 @@ from randomizer_paths import (
     GAME_ROOT,
     GENERATED_MAP_DIR,
     LAUNCHER_LOG,
-    MAP_RENDERER_DIR,
     OPTIONS_INI,
     RULESMO_INI,
     SPAWN_INI,
@@ -85,16 +96,11 @@ from randomizer_map import (
     backup_file_once,
     clone_player_country_for_house_buffs,
     controlled_tech_ids,
-    find_section_bounds,
     hook_marker_name,
     is_generated_hooked_map,
     is_generated_rules_file,
     insert_actions_before_codes,
-    allied_helper_houses,
-    country_family,
     launch_rules_for_reward,
-    map_house_records,
-    merge_ini_section_values,
     mission_assistance_buff_rules,
     mission_assistance_direct_rewards,
     mission_assistance_multipliers,
@@ -102,12 +108,7 @@ from randomizer_map import (
     now_stamp,
     player_country_buff_rules,
     player_country_from_map,
-    player_house_from_map,
-    read_text,
     remove_locked_techlevel_actions,
-    section_lines,
-    section_value_map,
-    set_ini_value_lines,
     stacked_house_buff_values,
     superweapon_actions_for_rewards,
     superweapon_rule_sections_for_rewards,
@@ -148,7 +149,6 @@ VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
 GLOBAL_BUFF_REWARD_INTERVAL = 10
-FACTION_ORDER = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
 FACTION_TILE_COLORS = {
     'Allies': '#285f9e',
     'Soviets': '#a53636',
@@ -243,6 +243,7 @@ class LauncherApp(tk.Tk):
         self.resizable(True, True)
 
         self.missions = []
+        self._mission_by_code = {}
         self.config = load_config()
         self.state = self.load_state()
         self.migrate_state()
@@ -1380,9 +1381,6 @@ class LauncherApp(tk.Tk):
             and self.active_reward_settings().get('share_chaos_role_buffs', False)
         )
 
-    def buff_rewards_enabled(self):
-        return bool(self.active_reward_settings().get('include_buff_rewards', True))
-
     def failure_assistance_enabled(self):
         return bool(self.active_reward_settings().get('failure_assistance', False))
 
@@ -1393,17 +1391,6 @@ class LauncherApp(tk.Tk):
             return max(0, int(self.state.get('mission_failure_stacks', {}).get(code, 0)))
         except (TypeError, ValueError):
             return 0
-
-    def mission_assistance_units(self, code):
-        if not self.state or not code:
-            return []
-        unit_ids = self.state.get('mission_assistance_units', {}).get(code, [])
-        if not isinstance(unit_ids, list):
-            return []
-        return sorted(
-            {str(unit_id).upper() for unit_id in unit_ids},
-            key=self.unit_faction_sort_key,
-        )
 
     def cache_mission_assistance_units(self, code, unit_ids):
         if not self.state or not code or code not in self.state.get('mission_order', []):
@@ -1499,7 +1486,7 @@ class LauncherApp(tk.Tk):
         )
 
     def mission_lookup(self):
-        return {mission['code']: mission for mission in self.missions}
+        return self._mission_by_code
 
     def objective_templates_for_code(self, code):
         mission = self.mission_lookup().get(code, {})
@@ -1527,18 +1514,6 @@ class LauncherApp(tk.Tk):
         ]
         templates.append(('victory', 'Mission Victory', 'Win the mission.'))
         return templates
-
-    def normalize_faction(self, side):
-        side = (side or '').strip().lower()
-        if 'allies' in side or 'allied' in side:
-            return 'Allies'
-        if 'soviet' in side:
-            return 'Soviets'
-        if 'epsilon' in side:
-            return 'Epsilon'
-        if 'foehn' in side:
-            return 'Foehn'
-        return ''
 
     def foehn_standard_bundles_enabled(self):
         selected = (
@@ -2020,7 +1995,8 @@ class LauncherApp(tk.Tk):
 
     def refresh_missions(self):
         self.append_log('Refreshing mission list...')
-        self.missions = self.parse_missions()
+        self.missions = parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
+        self._mission_by_code = {mission['code']: mission for mission in self.missions}
         self.mission_goal_spinbox.configure(to=max(1, len(self.missions)))
         if self.missions and self.mission_goal_var.get() > len(self.missions):
             self.mission_goal_var.set(len(self.missions))
@@ -2261,7 +2237,7 @@ class LauncherApp(tk.Tk):
                 continue
             mission = lookup.get(code, {})
             state = states.get(code, GRID_LOCKED)
-            faction = self.normalize_faction(mission.get('side', ''))
+            faction = normalize_faction(mission.get('side', ''))
             faction_color = FACTION_TILE_COLORS.get(faction, '#315b82')
             started = self.is_mission_started(code)
             if state == GRID_LOCKED:
@@ -2492,20 +2468,6 @@ class LauncherApp(tk.Tk):
             self.generate_seed_from_settings,
         )
 
-    def on_generate_seed(self):
-        if self.state and self.state.get('completed_missions'):
-            confirmed = messagebox.askyesno(
-                'Regenerate Seed',
-                'This will replace the current randomizer progress. Continue?',
-            )
-            if not confirmed:
-                return
-        self.run_with_busy(
-            'Generating randomizer run…',
-            'Building the mission order and reward plan. Please wait.',
-            self.generate_seed_from_settings,
-        )
-
     def generate_seed_from_settings(self, force=False):
         if not self.missions:
             self.append_log('Cannot generate seed: no missions loaded.', error=True)
@@ -2536,9 +2498,9 @@ class LauncherApp(tk.Tk):
             return
 
         self._reward_settings_override = reward_settings
-        campaign_counts = self.campaign_mission_counts(seed_missions)
-        campaign_limits = self.seed_campaign_limits(seed_missions, mission_goal)
-        mission_codes = self.seed_mission_order(seed_missions, rng, mission_goal)
+        campaign_counts = campaign_mission_counts(seed_missions)
+        campaign_limits = seed_campaign_limits(seed_missions, mission_goal)
+        mission_codes = seed_mission_order(seed_missions, rng, mission_goal)
         progression_mode = self.progression_mode_var.get()
         grid = None
         if progression_mode == 'Grid Mode':
@@ -2634,163 +2596,6 @@ class LauncherApp(tk.Tk):
             campaign_mission_limits=campaign_limits,
             reward_settings=reward_settings,
         )
-
-    def mission_stage_score(self, mission):
-        title = mission.get('title', '') or ''
-        code = mission.get('code', '') or ''
-        match = re.search(r'\b(?:Allied|Soviet|Epsilon|Foehn)\s+(\d{1,2})\b', title, flags=re.IGNORECASE)
-        if match:
-            score = int(match.group(1))
-        elif re.search(r'\bOp\b', title, flags=re.IGNORECASE):
-            score = 9
-        else:
-            score = int(mission.get('index') or 12)
-
-        if re.search(r'\b(finale|final)\b', title, flags=re.IGNORECASE):
-            score = max(score, 24)
-        if code.upper() in {'SHAND'}:
-            score = max(score, 24)
-        return score
-
-    def campaign_mission_counts(self, missions):
-        counts = {faction: 0 for faction in FACTION_ORDER}
-        for mission in missions:
-            faction = self.normalize_faction(mission.get('side', ''))
-            if faction in counts:
-                counts[faction] += 1
-        return {faction: count for faction, count in counts.items() if count}
-
-    def seed_campaign_limits(self, missions, mission_goal):
-        """Cap short campaigns proportionally in a mixed-campaign seed."""
-        counts = self.campaign_mission_counts(missions)
-        if len(counts) <= 1 or 'Foehn' not in counts:
-            return dict(counts)
-
-        total = sum(counts.values())
-        limits = dict(counts)
-        # Foehn has seven installed missions versus thirty for each original
-        # campaign. Ceil keeps it represented without letting its early-stage
-        # missions dominate the staged random order.
-        limits['Foehn'] = min(
-            counts['Foehn'],
-            max(1, (mission_goal * counts['Foehn'] + total - 1) // total),
-        )
-        return limits
-
-    def seed_mission_order(self, missions, rng, mission_goal):
-        missions = list(missions)
-        mission_goal = max(1, min(mission_goal, len(missions)))
-        if not missions:
-            return []
-        campaign_limits = self.seed_campaign_limits(missions, mission_goal)
-        picked_by_faction = {faction: 0 for faction in campaign_limits}
-
-        def bucket(mission):
-            score = self.mission_stage_score(mission)
-            if score <= 6:
-                return 0
-            if score <= 16:
-                return 1
-            if score < 24:
-                return 2
-            return 3
-
-        def shuffled(items):
-            items = list(items)
-            rng.shuffle(items)
-            return items
-
-        early_mid = [mission for mission in missions if bucket(mission) <= 1]
-        non_finale = [mission for mission in missions if bucket(mission) <= 2]
-        if mission_goal <= 5 and len(early_mid) >= mission_goal:
-            candidates = early_mid
-        elif len(non_finale) >= mission_goal:
-            candidates = non_finale
-        else:
-            candidates = missions
-
-        start_count = min(STARTING_UNLOCKED_MISSIONS, mission_goal)
-        starting_pool = shuffled([mission for mission in candidates if bucket(mission) == 0])
-        if len(starting_pool) < start_count:
-            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 1]))
-        if len(starting_pool) < start_count:
-            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 2]))
-        if len(starting_pool) < start_count:
-            starting_pool.extend(shuffled([mission for mission in candidates if bucket(mission) == 3]))
-
-        picked_codes = set()
-        ordered = []
-
-        def can_add(mission):
-            faction = self.normalize_faction(mission.get('side', ''))
-            return picked_by_faction.get(faction, 0) < campaign_limits.get(
-                faction,
-                len(missions),
-            )
-
-        def add_mission(mission):
-            if mission['code'] in picked_codes or not can_add(mission):
-                return False
-            ordered.append(mission)
-            picked_codes.add(mission['code'])
-            faction = self.normalize_faction(mission.get('side', ''))
-            picked_by_faction[faction] = picked_by_faction.get(faction, 0) + 1
-            return True
-
-        for mission in starting_pool:
-            if not add_mission(mission):
-                continue
-            if len(ordered) >= start_count:
-                break
-
-        if len(ordered) >= mission_goal:
-            return [item['code'] for item in ordered]
-
-        for bucket_index in range(4):
-            for mission in shuffled([mission for mission in candidates if bucket(mission) == bucket_index]):
-                if not add_mission(mission):
-                    continue
-                if len(ordered) >= mission_goal:
-                    return [item['code'] for item in ordered]
-
-        for mission in shuffled(missions):
-            if not add_mission(mission):
-                continue
-            if len(ordered) >= mission_goal:
-                break
-        return [item['code'] for item in ordered]
-
-    def generate_rewards_for_count(self, count, seed, reward_pool=None):
-        rng = random.Random(f'{seed}:rewards')
-        reward_pool = list(reward_pool or REWARD_POOL)
-        access_pool = [reward for reward in reward_pool if reward.get('kind') != 'buff']
-        buff_pool = [reward for reward in reward_pool if reward.get('kind') == 'buff']
-
-        if not access_pool or not buff_pool or count < 2:
-            rewards = []
-            while len(rewards) < count:
-                batch = [dict(item) for item in reward_pool]
-                rng.shuffle(batch)
-                rewards.extend(batch)
-            return rewards[:count]
-
-        access_batch = []
-        buff_batch = []
-
-        def draw(pool, batch):
-            if not batch:
-                batch.extend(dict(item) for item in pool)
-                rng.shuffle(batch)
-            return batch.pop()
-
-        rewards = []
-        for index in range(count):
-            if index % 5 == 4:
-                rewards.append(draw(buff_pool, buff_batch))
-            else:
-                rewards.append(draw(access_pool, access_batch))
-
-        return rewards[:count]
 
     def unlock_mission_check(self, code, check_id, source):
         if not self.state:
@@ -2890,70 +2695,6 @@ class LauncherApp(tk.Tk):
         if self.unlock_mission_check(code, victory['id'], 'Debug override'):
             self.disable_generated_rules_for_client()
 
-    def parse_missions(self):
-        if not BATTLE_CLIENT_INI.exists():
-            self.append_log(f'BattleClient.ini not found at {BATTLE_CLIENT_INI}', error=True)
-            return []
-
-        lines = read_text(BATTLE_CLIENT_INI).splitlines()
-        mission_codes = []
-        sections = {}
-        current_section = None
-        in_battles = False
-
-        for line in lines:
-            no_comment = line.split(';', 1)[0].strip()
-            if not no_comment:
-                continue
-            if no_comment.startswith('[') and no_comment.endswith(']'):
-                current_section = no_comment[1:-1].strip()
-                in_battles = current_section == 'Battles'
-                sections.setdefault(current_section, {})
-                continue
-
-            if in_battles and '=' in no_comment:
-                _, value = no_comment.split('=', 1)
-                code = value.strip()
-                if code and code not in mission_codes:
-                    mission_codes.append(code)
-                continue
-
-            if current_section and '=' in no_comment:
-                key, value = no_comment.split('=', 1)
-                sections.setdefault(current_section, {})[key.strip()] = value.strip()
-
-        missions = []
-        for position, code in enumerate(mission_codes, start=1):
-            section = sections.get(code, {})
-            scenario = section.get('Scenario') or section.get('SCENARIO')
-            if not scenario:
-                continue
-            title = section.get('Description') or section.get('description') or code
-            side = section.get('SideName') or section.get('Side') or ''
-            objectives = self.parse_long_description_objectives(section.get('LongDescription', ''))
-            missions.append({
-                'index': position,
-                'code': code,
-                'scenario': scenario,
-                'title': title,
-                'side': side,
-                'objectives': objectives,
-                'objective_count': len(objectives) or FALLBACK_OBJECTIVE_COUNT,
-            })
-
-        return missions
-
-    def parse_long_description_objectives(self, text):
-        if not text:
-            return []
-
-        objectives = []
-        for part in text.split('@'):
-            match = re.match(r'\s*Objective\s+(\d+)\s*:\s*(.+?)\s*$', part, flags=re.IGNORECASE)
-            if match:
-                objectives.append(match.group(2).strip())
-        return objectives
-
     def filtered_missions_for_seed(self):
         selected = self.campaign_var.get()
         if selected == CAMPAIGN_FILTERS[0]:
@@ -2961,7 +2702,7 @@ class LauncherApp(tk.Tk):
         return [
             mission
             for mission in self.missions
-            if self.normalize_faction(mission.get('side', '')) == selected
+            if normalize_faction(mission.get('side', '')) == selected
         ]
 
     def randomizer_order_map(self):
@@ -3314,7 +3055,7 @@ throw "Map $name was not found in expandmo*.mix"
                 unlocked_unit_ids=unlocked_reward_tech_ids(self.earned_rewards_from_checks()),
                 additional_unit_ids=fallback_tech_ids,
                 randomized_access=self.randomize_unit_access_enabled(),
-                fallback_faction=self.normalize_faction(mission.get('side', '')),
+                fallback_faction=normalize_faction(mission.get('side', '')),
                 buff_allied_helpers=buff_allied_helpers,
             )
         if self.state and self.failure_assistance_enabled():
@@ -3983,31 +3724,6 @@ throw "Map $name was not found in expandmo*.mix"
             self.append_log(
                 'Objective/victory hooks are watching debug.log. A detected victory will update the run automatically.'
             )
-
-    def launch_mission(self, mission, extra_rules=None, launch_note=''):
-        """Synchronous compatibility wrapper used by developer/source callers."""
-        missing = [path for path in (GAME_LAUNCHER_EXE, GAME_EXE) if not path.exists()]
-        if missing or not mission.get('scenario'):
-            return
-        difficulty_value = self.get_selected_difficulty_value()
-        game_speed_value = self.get_selected_game_speed_value()
-        try:
-            hook = self.prepare_mission_launch_files(
-                mission,
-                extra_rules,
-                difficulty_value,
-                game_speed_value,
-            )
-        except Exception as exc:
-            self.handle_mission_prepare_error(exc, traceback.format_exc())
-            return
-        self.start_mission_process(
-            mission,
-            hook,
-            difficulty_value,
-            game_speed_value,
-            launch_note,
-        )
 
     def reward_group_label(self, tech_id):
         return unit_display_label(tech_id)

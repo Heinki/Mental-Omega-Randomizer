@@ -161,9 +161,21 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 |---|---|---|
 | Config defaults | `RandomizerLauncher\config\mental_omega_randomizer.yaml` | `RandomizerLauncherData\config\mental_omega_randomizer.yaml` |
 | Active seed/progress | `RandomizerLauncher\randomizer_state.json` | `RandomizerLauncherData\randomizer_state.json` |
-| Logs, generated/extracted maps, cameos | Under `RandomizerLauncher` | Under `RandomizerLauncherData` |
+| Launcher diagnostics | `RandomizerLauncher\logs\launcher.log` | `RandomizerLauncherData\logs\launcher.log` |
+| Self-check report | `RandomizerLauncher\self_check.json` | `RandomizerLauncherData\self_check.json` |
+| Generated/extracted maps and cameos | Under `RandomizerLauncher` | Under `RandomizerLauncherData` |
 
 Configuration describes the next seed. State describes the active seed and must be preserved to continue that run.
+
+## Troubleshooting
+
+If the launcher does not start or cannot find required game files, run the self-check from the Mental Omega folder:
+
+```powershell
+.\MentalOmegaRandomizer.exe --self-check
+```
+
+Review `RandomizerLauncherData\self_check.json` and `RandomizerLauncherData\logs\launcher.log`. For missing objective or victory detection, also preserve `debug\debug.log` before launching another mission. A useful report includes the mission code, seed, reward mode, what was expected, and whether the problem reproduces in a separate fresh installation without map packs or rules modifications.
 
 ## Player-Facing Limitations
 

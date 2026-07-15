@@ -11,8 +11,8 @@ from randomizer_map import (
     map_house_records,
     player_controlled_houses,
     player_house_from_map,
-    section_lines,
 )
+from randomizer_ini import section_lines
 from randomizer_rewards import (
     ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,

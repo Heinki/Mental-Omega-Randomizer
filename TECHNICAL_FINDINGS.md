@@ -9,7 +9,9 @@ This document is the authoritative implementation reference. Player-facing optio
 | `launcher_gui.py` | Entry point and packaged `--self-check` |
 | `randomizer_app.py` | UI, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
 | `grid_progression.py` | Pure grid topology, corner trimming, explicit node states, unlock queries, and completion rules |
-| `randomizer_map.py` | INI parsing/merging, generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
+| `randomizer_missions.py` | Pure BattleClient parsing, faction normalization, mission staging, campaign caps, and deterministic ordering |
+| `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass bulk section merging |
+| `randomizer_map.py` | Generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
 | `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
 | `randomizer_rewards.py` | Installed roster metadata, reward catalogue, role equivalence, stack limits, and display names |
 | `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
