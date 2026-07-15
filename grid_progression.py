@@ -214,6 +214,8 @@ def refresh_states(grid, completed_codes):
     unlocked = set(starting_nodes(grid))
     for code in completed:
         unlocked.update(neighbors(grid, code))
+    if grid.get('goal') in completed:
+        unlocked.update(nodes)
 
     for code, node in nodes.items():
         node['state'] = COMPLETED if code in completed else UNLOCKED if code in unlocked else LOCKED
@@ -222,19 +224,24 @@ def refresh_states(grid, completed_codes):
 
 def completing_unlocks(grid, code):
     """Query which currently locked nodes would open after completing code."""
-    if code not in grid.get('nodes', {}):
+    nodes = grid.get('nodes', {})
+    if code not in nodes:
         return []
+    if code == grid.get('goal'):
+        return [
+            node_code
+            for node_code, node in nodes.items()
+            if node_code != code and node.get('state') == LOCKED
+        ]
     return [
         neighbor
         for neighbor in neighbors(grid, code)
-        if grid['nodes'][neighbor].get('state') == LOCKED
+        if nodes[neighbor].get('state') == LOCKED
     ]
 
 
 def is_complete(grid):
-    """The exit is complete only when it and every required node are cleared."""
+    """A grid run is complete when its designated endgoal is cleared."""
     nodes = grid.get('nodes', {})
     goal = grid.get('goal')
-    return bool(nodes and goal in nodes) and all(
-        node.get('state') == COMPLETED for node in nodes.values()
-    )
+    return bool(nodes and goal in nodes) and nodes[goal].get('state') == COMPLETED

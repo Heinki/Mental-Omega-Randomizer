@@ -509,6 +509,8 @@ class LauncherApp(tk.Tk):
             to=MAX_REWARDS_PER_CHECK,
             textvariable=self.rewards_per_check_var,
             width=6,
+            validate='key',
+            validatecommand=(self.register(self.validate_rewards_per_check), '%P'),
         )
         self.rewards_per_check_spinbox.grid(row=2, column=1, sticky='w', pady=(6, 0))
         self.buff_allied_helpers_check = ttk.Checkbutton(
@@ -524,7 +526,18 @@ class LauncherApp(tk.Tk):
             'can be scripted hostile are excluded. '
             'Player-controlled allied houses are always included.',
         )
-        ttk.Label(options_row, text='Reward mode').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+        self.rewards_per_check_message_label = ttk.Label(options_row, text='')
+        self.rewards_per_check_message_label.grid(
+            row=3,
+            column=0,
+            columnspan=4,
+            sticky='w',
+            pady=(4, 0),
+        )
+        self.rewards_per_check_var.trace_add('write', self.refresh_rewards_per_check_message)
+        self.refresh_rewards_per_check_message()
+
+        ttk.Label(options_row, text='Reward mode').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
         self.reward_mode_combo = ttk.Combobox(
             options_row,
             state='readonly',
@@ -532,7 +545,7 @@ class LauncherApp(tk.Tk):
             values=REWARD_MODES,
             width=20,
         )
-        self.reward_mode_combo.grid(row=3, column=1, columnspan=3, sticky='ew', pady=(6, 0))
+        self.reward_mode_combo.grid(row=4, column=1, columnspan=3, sticky='ew', pady=(6, 0))
         self.reward_mode_combo.bind('<<ComboboxSelected>>', self.on_reward_mode_changed, add='+')
         WidgetTooltip(
             self.reward_mode_combo,
@@ -542,7 +555,7 @@ class LauncherApp(tk.Tk):
             'not grant foreign production structures.',
         )
 
-        ttk.Label(options_row, text='Progression').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+        ttk.Label(options_row, text='Progression').grid(row=5, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
         self.progression_mode_combo = ttk.Combobox(
             options_row,
             state='readonly',
@@ -550,11 +563,11 @@ class LauncherApp(tk.Tk):
             values=PROGRESSION_MODES,
             width=12,
         )
-        self.progression_mode_combo.grid(row=4, column=1, sticky='ew', pady=(6, 0))
+        self.progression_mode_combo.grid(row=5, column=1, sticky='ew', pady=(6, 0))
         self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
 
         self.grid_options_frame = ttk.Frame(options_row)
-        self.grid_options_frame.grid(row=5, column=0, columnspan=4, sticky='ew', pady=(6, 0))
+        self.grid_options_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(6, 0))
         self.grid_two_starts_check = ttk.Checkbutton(
             self.grid_options_frame,
             text='Start with two available missions',
@@ -1187,6 +1200,8 @@ class LauncherApp(tk.Tk):
                     if not check.get('unlocked'):
                         check['unlocked'] = True
                         changed = True
+                    if check.pop('released', None) is not None:
+                        changed = True
 
         raw_failure_stacks = self.state.get('mission_failure_stacks', {})
         if not isinstance(raw_failure_stacks, dict):
@@ -1245,6 +1260,18 @@ class LauncherApp(tk.Tk):
             after = refresh_grid_states(self.state['grid'], completed)
             if after != before:
                 changed = True
+            goal_code = self.state['grid'].get('goal')
+            if goal_code in completed:
+                released_rewards, released_checks = self.release_remaining_grid_rewards()
+                if released_checks:
+                    changed = True
+                    log_event(
+                        'grid_goal_rewards_released_on_migration',
+                        seed=self.state.get('seed', ''),
+                        goal_code=goal_code,
+                        released_rewards=len(released_rewards),
+                        released_checks=len(released_checks),
+                    )
 
         if changed:
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
@@ -1720,6 +1747,20 @@ class LauncherApp(tk.Tk):
             rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
         )
         self.state['mission_objectives'] = summary
+        grid = self.state.get('grid', {})
+        if (
+            self.state.get('progression_mode') == 'Grid Mode'
+            and grid.get('goal') in self.state.get('completed_missions', [])
+        ):
+            released_rewards, released_checks = self.release_remaining_grid_rewards()
+            if released_checks:
+                log_event(
+                    'grid_goal_rewards_released_after_check_sync',
+                    seed=self.state.get('seed', ''),
+                    goal_code=grid.get('goal'),
+                    released_rewards=len(released_rewards),
+                    released_checks=len(released_checks),
+                )
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         self.state['reward_queue'] = [
             reward
@@ -1768,15 +1809,22 @@ class LauncherApp(tk.Tk):
             templates = templates_by_code[code]
             for check_id, name, hint in templates:
                 old_check = old_checks.get(check_id)
-                if old_check and old_check.get('unlocked') and check_rewards(old_check):
+                if (
+                    old_check
+                    and (old_check.get('unlocked') or old_check.get('released'))
+                    and check_rewards(old_check)
+                ):
                     rewards_for_check = check_rewards(old_check)
-                    unlocked = True
+                    unlocked = bool(old_check.get('unlocked'))
+                    released = bool(old_check.get('released')) and not unlocked
                 elif check_id == 'objective_1' and code in completed_rewards:
                     rewards_for_check = canonical_rewards(completed_rewards[code])
                     unlocked = code in completed
+                    released = False
                 else:
                     rewards_for_check = rewards[reward_index:reward_index + rewards_per_check]
                     unlocked = False
+                    released = False
                 reward_index += rewards_per_check
                 primary_reward = rewards_for_check[0] if rewards_for_check else {}
                 mission_checks.append({
@@ -1786,6 +1834,7 @@ class LauncherApp(tk.Tk):
                     'reward': primary_reward,
                     'rewards': rewards_for_check,
                     'unlocked': unlocked or code in completed,
+                    'released': released and code not in completed,
                 })
             checks[code] = mission_checks
 
@@ -1989,9 +2038,23 @@ class LauncherApp(tk.Tk):
         earned = []
         for code in self.state.get('mission_order', []):
             for check in self.state.get('mission_checks', {}).get(code, []):
-                if check.get('unlocked'):
+                if check.get('unlocked') or check.get('released'):
                     earned.extend(check_rewards(check))
         return earned
+
+    def release_remaining_grid_rewards(self):
+        """Release pending Grid rewards without marking optional missions complete."""
+        released_rewards = []
+        released_checks = []
+        for code in self.state.get('mission_order', []):
+            for check in self.state.get('mission_checks', {}).get(code, []):
+                if check.get('unlocked') or check.get('released'):
+                    continue
+                check['released'] = True
+                rewards = check_rewards(check)
+                released_rewards.extend(rewards)
+                released_checks.append((code, check.get('id', '')))
+        return released_rewards, released_checks
 
     def refresh_missions(self):
         self.append_log('Refreshing mission list...')
@@ -2377,7 +2440,11 @@ class LauncherApp(tk.Tk):
         checks = self.mission_checks(code)
         if not checks:
             return (0, 0)
-        done = sum(len(check_rewards(check)) for check in checks if check.get('unlocked'))
+        done = sum(
+            len(check_rewards(check))
+            for check in checks
+            if check.get('unlocked') or check.get('released')
+        )
         total = sum(max(1, len(check_rewards(check))) for check in checks)
         return (done, total)
 
@@ -2411,7 +2478,11 @@ class LauncherApp(tk.Tk):
             code = self.missions[int(row_id)]['code']
         except (IndexError, ValueError):
             return ''
-        missing = [check for check in self.mission_checks(code) if not check.get('unlocked')]
+        missing = [
+            check
+            for check in self.mission_checks(code)
+            if not check.get('unlocked') and not check.get('released')
+        ]
         if not missing:
             return ''
         lines = ['Remaining mission checks:']
@@ -2609,7 +2680,16 @@ class LauncherApp(tk.Tk):
             return False
 
         earned_now = []
+        grid = self.state.get('grid', {})
+        grid_goal_victory = (
+            check_id == 'victory'
+            and self.active_progression_mode() == 'Grid Mode'
+            and code == grid.get('goal')
+        )
         grid_unlocks = self.mission_unlocks(code) if check_id == 'victory' else []
+        released_rewards = []
+        released_checks = []
+        previously_released_rewards = []
         if check_id == 'victory':
             completed = self.state.setdefault('completed_missions', [])
             if code not in completed:
@@ -2618,19 +2698,36 @@ class LauncherApp(tk.Tk):
             self.state.setdefault('mission_assistance_units', {}).pop(code, None)
             for check in checks:
                 if not check.get('unlocked'):
+                    was_released = bool(check.pop('released', False))
                     check['unlocked'] = True
-                    earned_now.extend(check_rewards(check))
+                    if was_released:
+                        previously_released_rewards.extend(check_rewards(check))
+                    else:
+                        earned_now.extend(check_rewards(check))
         else:
             cleared_assistance = 0
+            was_released = bool(target.pop('released', False))
             target['unlocked'] = True
-            earned_now.extend(check_rewards(target))
+            if was_released:
+                previously_released_rewards.extend(check_rewards(target))
+            else:
+                earned_now.extend(check_rewards(target))
 
         self.sync_grid_progression()
+        if grid_goal_victory:
+            released_rewards, released_checks = self.release_remaining_grid_rewards()
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         self.save_state()
+        reward_note = (
+            f'Reward(s) earned: {reward_names(earned_now)}'
+            if earned_now
+            else f'{len(previously_released_rewards)} assigned reward(s) were already released at Grid victory.'
+            if previously_released_rewards
+            else 'No reward assigned.'
+        )
         self.append_log(
             f'{source}: {code} {target.get("name", check_id)} complete. '
-            f'Reward(s) earned: {reward_names(earned_now)}'
+            + reward_note
         )
         log_event(
             'mission_check_unlocked',
@@ -2640,6 +2737,7 @@ class LauncherApp(tk.Tk):
             check_name=target.get('name', check_id),
             source=source,
             rewards=[reward.get('name') for reward in earned_now],
+            previously_released_rewards=len(previously_released_rewards),
         )
         if check_id == 'victory' and len(earned_now) > len(check_rewards(target)):
             self.append_log('Victory granted any missed objective rewards for this mission.')
@@ -2647,11 +2745,34 @@ class LauncherApp(tk.Tk):
             self.append_log(
                 f'Mission victory removed {cleared_assistance} retry assistance stack(s) from {code}.'
             )
-        if grid_unlocks:
+        if grid_goal_victory:
+            names = [self.mission_lookup().get(item, {}).get('title', item) for item in grid_unlocks]
+            unlock_note = (
+                f' Newly unlocked: {", ".join(names)}.'
+                if names
+                else ' No locked grid missions remained.'
+            )
+            self.append_log(
+                f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
+                f'All remaining grid missions are unlocked and all {len(released_rewards)} '
+                f'pending rewards are released.{unlock_note}'
+            )
+            log_event(
+                'randomizer_victory_achieved',
+                seed=self.state.get('seed', ''),
+                progression_mode='Grid Mode',
+                goal_code=code,
+                unlocked_missions=grid_unlocks,
+                released_rewards=len(released_rewards),
+                released_checks=len(released_checks),
+                completed_missions=len(self.state.get('completed_missions', [])),
+            )
+        elif grid_unlocks:
             names = [self.mission_lookup().get(item, {}).get('title', item) for item in grid_unlocks]
             self.append_log(f'Grid neighbors unlocked: {", ".join(names)}.')
         if check_id == 'victory' and self.is_run_complete():
-            self.append_log('Randomizer goal complete.')
+            if not grid_goal_victory:
+                self.append_log('Randomizer goal complete.')
             log_event(
                 'randomizer_goal_complete',
                 seed=self.state.get('seed', ''),
@@ -2771,6 +2892,38 @@ class LauncherApp(tk.Tk):
         value = max(1, min(value, MAX_REWARDS_PER_CHECK))
         self.rewards_per_check_var.set(value)
         return value
+
+    @staticmethod
+    def validate_rewards_per_check(proposed_value):
+        if proposed_value == '':
+            return True
+        if not proposed_value.isdigit():
+            return False
+        return 1 <= int(proposed_value) <= MAX_REWARDS_PER_CHECK
+
+    @staticmethod
+    def rewards_per_check_message(value):
+        if value >= MAX_REWARDS_PER_CHECK:
+            return 'Ok that is now enough...'
+        if value >= 20:
+            return "So you don't feel powerful enough?"
+        if value >= 10:
+            return 'Wanting to feel good eh?'
+        return ''
+
+    def refresh_rewards_per_check_message(self, *_args):
+        try:
+            value = int(self.rewards_per_check_var.get())
+        except (TypeError, ValueError, tk.TclError):
+            value = 0
+
+        message = self.rewards_per_check_message(value)
+
+        self.rewards_per_check_message_label.configure(text=message)
+        if message:
+            self.rewards_per_check_message_label.grid()
+        else:
+            self.rewards_per_check_message_label.grid_remove()
 
     def unlocked_mission_codes(self):
         if not self.state:
@@ -3977,13 +4130,20 @@ throw "Map $name was not found in expandmo*.mix"
         ])
         earned = self.state.get('earned_rewards', [])
         goal = self.state.get('mission_goal', len(order))
-        status = 'Finished' if self.is_run_complete() else 'In progress'
         progression_mode = self.active_progression_mode()
+        run_complete = self.is_run_complete()
+        status = (
+            'Victory achieved'
+            if progression_mode == 'Grid Mode' and run_complete
+            else 'Finished'
+            if run_complete
+            else 'In progress'
+        )
         self.progress_label.config(
             text=(
                 f'Seed: {self.state.get("seed", "")} | {progression_mode} | '
                 f'Rewards: {self.state.get("reward_mode", REWARD_MODES[0])}\n'
-                f'Goal: {completed}/{goal} | Open: {unlocked} | Rewards: {len(earned)} | {status}'
+                f'Completed: {completed}/{goal} | Open: {unlocked} | Rewards: {len(earned)} | {status}'
             )
         )
 
@@ -4004,7 +4164,12 @@ throw "Map $name was not found in expandmo*.mix"
                     f'•  {node_state}'
                 )
                 unlocks = self.mission_unlocks(code)
-                if unlocks:
+                if code == self.state.get('grid', {}).get('goal') and node.get('state') != GRID_COMPLETED:
+                    lines.append(
+                        'Completing this endgoal records Randomizer victory, releases every '
+                        'pending reward, and unlocks every unfinished grid mission.'
+                    )
+                elif unlocks:
                     lookup = self.mission_lookup()
                     labels = [lookup.get(item, {}).get('title', item) for item in unlocks]
                     lines.append('Completing this node unlocks: ' + ', '.join(labels))
@@ -4029,13 +4194,19 @@ throw "Map $name was not found in expandmo*.mix"
                     lines.append('Retry assistance: 0 stacks for this mission')
             lines.append('')
             for check in self.mission_checks(code):
-                status_label = 'Complete' if check.get('unlocked') else 'Pending'
+                status_label = (
+                    'Complete'
+                    if check.get('unlocked')
+                    else 'Reward Released'
+                    if check.get('released')
+                    else 'Pending'
+                )
                 rewards = check_rewards(check)
                 lines.append(
                     f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
                 )
                 hint = check.get('hint')
-                if hint and not check.get('unlocked'):
+                if hint and not check.get('unlocked') and not check.get('released'):
                     lines.append(f'   {hint}')
                 if rewards:
                     for reward in rewards:

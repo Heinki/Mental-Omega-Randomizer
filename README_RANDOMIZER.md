@@ -13,7 +13,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 - Difficulty and game speed are launch settings and may be changed between missions.
 - **Mission List** mode opens the first three missions and each completed mission opens one additional mission.
 - **Grid Mode** opens the top-left node, or the two orthogonal neighbors of top-left when **Two start positions** is enabled. A victory opens the node's up/down/left/right neighbors; diagonal nodes do not open.
-- The generated mission order contains **Missions to finish** missions. The run finishes after every required victory; in Grid Mode this includes completing the bottom-right exit node.
+- The generated mission order contains **Missions to finish** missions. Mission List finishes after that many victories. Grid Mode finishes when its bottom-right endgoal is completed, then releases every remaining reward and opens every unfinished node for optional cleanup.
 
 ## Settings Reference
 
@@ -28,7 +28,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Start with two available missions | `grid_two_start_positions` | `false`/`true`; default `false` | Starts Grid Mode from the cells directly right of and below top-left instead of top-left itself. Requires at least four missions. | Seed generation |
 | Difficulty | `difficulty` | `Casual`, `Normal`, `Mental`; default `Normal` | Writes the selected campaign/human difficulty to launch configuration. It does not change rewards. | Every launch |
 | Game speed | `game_speed` | `0 - Slowest` through `6 - Fastest`; default `3 - Medium` | Writes the engine speed and launches with `-SPEEDCONTROL`, keeping the in-game speed control available. It does not change rewards. | Every launch |
-| Rewards per objective | `rewards_per_objective` | `1`–`10`; default `1` | Assigns exactly this many reward items to every briefing-objective check and to the separate Mission Victory check. Total mission rewards are `number of checks × this value`. | Seed generation |
+| Rewards per objective | `rewards_per_objective` | `1`–`30`; default `1` | Assigns exactly this many reward items to every briefing-objective check and to the separate Mission Victory check. Total mission rewards are `number of checks × this value`. The launcher adds playful messages at 10, 20, and the maximum of 30. | Seed generation |
 | Buff allied helpers | `generation.buff_allied_helpers` | `false`/`true`; default `false` | Adds eligible AI-controlled allied houses to earned buff targets and failed-mission retry assistance. Additional player-controlled houses are always included. Start-of-map ownership-choice transfers can participate, but transfer/helper houses involved in any campaign `Make Enemy` trigger against the player's coalition are rejected because a static buff could not be removed before or after that story transition. AI-trigger TeamTypes use their runtime trigger owner instead of reusable `Neutral` placeholders. A unit supplied to a permanent friendly force by the mission can receive its earned buffs even before the player earns that unit's separate access reward. Country rules are used only when no unassisted house shares that country; enemies are never included. | Seed generation |
 | Strengthen failed missions on retry | `generation.failure_assistance` | `false`/`true`; default `false` | An unsuccessful mission exit, reload, or detected restart adds one assistance stack to that mission only. Its next launch receives cumulative production, cost, movement-speed, health, damage, armor, fire-rate, and attack-range help. With randomized access, eligibility is resolved from earned units, always-available essentials, and units supplied by the mission; otherwise the normal player-faction roster is included. The grid tile, Mission Details, and a compact Unlocks block show its stacks; victory deletes them. House-level assistance uses private player countries; global unit/weapon fields are guarded and skipped whenever an enemy uses the affected type. | Seed generation |
 | Reward mode | `generation.reward_mode` | `Standard`, `Chaos (Experimental)`; default `Standard` | Selects campaign-aware rewards or the all-faction Chaos production/access model described below. Chaos always enables access randomization. | Seed generation |
@@ -96,7 +96,7 @@ The **Settings** tab is a vertically scrollable panel. Its scrollbar and mouse-w
 
 Completing a node opens only existing orthogonal neighbors. Missing cells and diagonals are ignored. Automatically selected partial rectangles clip top-right/bottom-left corner cells while preserving a connected orthogonal route, top-left start, and bottom-right exit.
 
-The exit may become reachable before the rest of the grid has been cleared, but completing it early does not finish the run. The launcher reports **Finished** only when the exit and every other required node are completed.
+The endgoal may become reachable before the rest of the grid has been cleared. Completing it immediately records Randomizer victory, reports **Finished**, writes a structured victory event to the launcher log, releases every reward assigned to a still-pending grid check, and opens every unfinished node. Those missions stay available for optional cleanup without granting duplicate rewards when their checks are later completed. Released checks are shown as **Reward Released**, while mission completion remains separate.
 
 The installed pool contains 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missions. In **All Campaigns**, Foehn receives a proportional per-seed cap—for example, at most 2 Foehn missions in an 18-mission seed. A Foehn-only seed can use all 7 missions, and the **Missions to finish** control is limited to the selected campaign's available count.
 
@@ -137,7 +137,7 @@ The reward count is a summary, not a mystery bundle:
 - Hover an incomplete mission row to see every remaining check and every assigned reward name.
 - Select a mission and open **Rewards** to see each objective/victory check, its completion state, its count, and the full reward-name list.
 - Open **Unlocks** to see rewards already earned, grouped by faction/unit with installed cameo art and accumulated buff effects. Offensive, secondary, and aid/reinforcement powers display their installed sidebar icon beside the reward name.
-- The mission table `Rewards` fraction counts reward items, not checks. With 10 rewards per check, completing one check advances it by 10.
+- The mission table `Rewards` fraction counts reward items, not checks. With 30 rewards per check, completing one check advances it by 30.
 
 Reward assignments are generated and stored when the seed is created. Access rewards are unique within a seed; once access is planned for a unit, later eligible slots can provide repeatable buffs. Some buff types have stack caps.
 

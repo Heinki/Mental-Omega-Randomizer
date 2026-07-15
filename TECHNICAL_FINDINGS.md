@@ -53,11 +53,11 @@ Seed construction is deterministic for a seed string:
 2. Build a staged shuffled mission order up to the mission goal.
 3. In Grid Mode, map that order onto the corner-trimmed grid and persist each node's coordinates and initial state.
 4. Allocate `objective count + 1 victory` checks per mission.
-5. Allocate 1–10 reward slots to every check.
+5. Allocate 1–30 reward slots to every check.
 6. Build the complete reward plan with a random stream derived from `<seed>:seed-rewards`.
 7. Store every check and assigned reward in state before play begins.
 
-Grid progression is derived from completed mission codes and then written back as explicit `locked`, `unlocked`, or `completed` node state. Launch history adds the UI-only in-progress presentation before objective markers arrive. `completing_unlocks` provides the side-effect-free current unlock query used by mission details and victory logging. Grid dimensions are derived solely from the mission goal: balanced exact factors are preferred, then the densest balanced partial rectangle receives connected corner trimming. Layout version 3 migrates older manually sized boards without losing completed mission codes.
+Grid progression is derived from completed mission codes and then written back as explicit `locked`, `unlocked`, or `completed` node state. Launch history adds the UI-only in-progress presentation before objective markers arrive. `completing_unlocks` provides the side-effect-free current unlock query used by mission details and victory logging. Completing the designated endgoal marks the Grid Mode run complete, changes every unfinished node to `unlocked`, and marks every still-pending check reward as `released`. Released rewards participate in earned tech/buffs immediately without setting their mission checks or victory checks to complete; later optional completion clears the release marker without awarding a duplicate. Existing saves whose endgoal was already completed receive the same release during migration. The launcher writes both the visible victory message and a structured `randomizer_victory_achieved` event for future Archipelago status integration. Mission List completion remains based on its configured mission count. Grid dimensions are derived solely from the mission goal: balanced exact factors are preferred, then the densest balanced partial rectangle receives connected corner trimming. Layout version 3 migrates older manually sized boards without losing completed mission codes.
 
 The Tk grid renderer keys its persistent tile-widget cache by a topology signature of dimensions, mission codes, and coordinates. A topology change rebuilds the board; ordinary selection reconfigures only the old/new tile containers, while reward and victory changes update cached tile labels and colors in place. Available nodes hide the banner widget rather than displaying a redundant label, and the body receives symmetric padding so the selection border remains visible along the top. Each tile uses nested border containers: the goal can retain its outer gold border while the inner container displays the normal light-blue selection border. This avoids window destruction, geometry churn, and visible selection flicker.
 
@@ -154,6 +154,8 @@ Victory is a separate configured reward check. When its marker is seen:
 3. Any still-locked objective checks in that mission are unlocked and their stored rewards are granted.
 4. State is saved, the mission list refreshes, and the next mission slot opens.
 5. After 2500 ms, the launcher closes the spawned Syringe/gamemd process tree to prevent normal campaign continuation.
+
+In Grid Mode, victory on the designated endgoal additionally records Randomizer victory, releases every pending reward, and unlocks every unfinished grid node. Release state is separate from check completion, preventing both false mission victories and duplicate rewards during optional cleanup.
 
 The close callback verifies that the process and hook are still current, then uses `taskkill /PID <pid> /T /F` with a direct terminate fallback. If the game has already exited, no close is attempted.
 

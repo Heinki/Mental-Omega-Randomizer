@@ -4,10 +4,6 @@ A standalone Windows campaign randomizer for Mental Omega. It generates determin
 
 Archipelago is planned but is not connected yet. The standalone configuration deliberately uses stable option-style keys so those settings can later map to an Archipelago world.
 
-## AI-Assisted Development
-
-This project was developed with assistance from OpenAI's ChatGPT, including Codex coding assistance. AI tools have been used to analyze Mental Omega's INI formats, catalogue unit, weapon, projectile, and image tags for the UI, and support implementation, refactoring, debugging, and documentation. Generated suggestions are reviewed, adapted, and validated against project requirements before inclusion. Final design decisions, releases, and project behavior remain the responsibility of the project maintainer.
-
 ## Quick Start
 
 1. Make a **new, separate, fresh installation of Mental Omega**. Do not use the copy in which you normally install map packs, funmaps, rules edits, or other modifiers.
@@ -28,7 +24,17 @@ Using a dedicated clean installation is the same isolation normally recommended 
 
 ## Early Development Stage
 
-The Randomizer remains in an early development stage. Features may be incomplete, behave incorrectly, or cause crashes. Please report reproducible problems through the repository's [issue tracker](https://github.com/Heinki/Mental-Omega-Randomizer/issues).
+The current code is still a hot mess, since this is the first version I am releasing before doing more cleanup. It was also written with the help of ChatGPT so there might be even more code parts that need further cleanup.
+Features may be incomplete, behave incorrectly, or cause crashes. 
+The Randomizer was mostly tested with the Allied Faction, a bit of Soviets and barely with Epsilon and Foehn
+For the Foehn faction the player will get Soviet/Allied tech instead as the Foehn Campaign does not have their own faction units.
+In Chaos Mode you can get Foehn unit however.
+Please report reproducible problems through the repository's [issue tracker](https://github.com/Heinki/Mental-Omega-Randomizer/issues).
+
+
+## AI-Assisted Development
+
+This project was developed with assistance from OpenAI's ChatGPT, including Codex coding assistance. AI tools have been used to analyze Mental Omega's INI formats, catalogue unit, weapon, projectile, and image tags for the UI, and support implementation, refactoring, debugging, and documentation. Generated suggestions are reviewed, adapted, and validated against project requirements before inclusion. Final design decisions, releases, and project behavior remain the responsibility of the project maintainer.
 
 ## Documentation
 
