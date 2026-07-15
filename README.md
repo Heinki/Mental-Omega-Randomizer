@@ -4,6 +4,10 @@ A standalone Windows campaign randomizer for Mental Omega. It generates determin
 
 Archipelago is planned but is not connected yet. The standalone configuration deliberately uses stable option-style keys so those settings can later map to an Archipelago world.
 
+## Disclaimer
+
+I am *not* part of the Development of Mental Omega nor did I contribute in any way, all I did was access the game and the mapfiles to create the randomizer. Credits go to the Mental Omega Developers and their work!
+
 ## Quick Start
 
 1. Make a **new, separate, fresh installation of Mental Omega**. Do not use the copy in which you normally install map packs, funmaps, rules edits, or other modifiers.
@@ -111,3 +115,8 @@ When reporting a reproducible problem, include those files together with the mis
 The standalone flow supports seed generation, campaign filtering, Standard and experimental Chaos rewards, direct spawned mission launch, objective/victory marker detection on many maps, tech locking/unlocking, positive buffs, allied-helper buffs, optional building-free offensive/secondary superweapons and aid powers, and installed in-game unit and superpower cameos.
 
 The principal remaining limitations are mission-specific objective matching, a few allied-house safety cases, validation of game speed on more maps, and engine limits around isolating direct unit/weapon buffs when enemies use the same global type. See [Technical Findings: Known Limits](TECHNICAL_FINDINGS.md#known-limits) for the maintained list.
+
+
+## Contact
+
+I'm in the Mental Omega Discord where you can message me, I do not know have a Discord Server so right now this will be one of the ways you can contact me, especially if you have further ideas or suggestions
