@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="mo-logo-puzzle.png" alt="Mental Omega Randomizer Launcher logo" width="500">
+</p>
+
 # Mental Omega Randomizer Launcher
 
 A standalone Windows campaign randomizer for Mental Omega. It generates deterministic mission and reward plans, launches campaign maps directly, tracks objective and victory checks, locks unearned technology, and applies earned access and buffs through generated mission copies.
