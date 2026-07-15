@@ -1,0 +1,82 @@
+name: Build attested Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and attest EXE
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
+      - name: Install pinned build dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-build.txt
+
+      - name: Compile source
+        run: python -m compileall -q .
+
+      - name: Build icon-bearing executable
+        shell: powershell
+        run: .\build_exe.ps1 -Output 'release\MentalOmegaRandomizer.exe'
+
+      - name: Create SHA-256 checksum
+        shell: powershell
+        run: |
+          $hash = (Get-FileHash -Algorithm SHA256 'release\MentalOmegaRandomizer.exe').Hash.ToLowerInvariant()
+          "$hash *MentalOmegaRandomizer.exe" | Set-Content -Encoding ascii 'release\SHA256SUMS.txt'
+
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: '${{ github.workspace }}/release/MentalOmegaRandomizer.exe'
+
+      - name: Upload attested build
+        uses: actions/upload-artifact@v7
+        with:
+          name: MentalOmegaRandomizer-${{ github.sha }}
+          path: |
+            release/MentalOmegaRandomizer.exe
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish assets for version tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME `
+              'release\MentalOmegaRandomizer.exe' `
+              'release\SHA256SUMS.txt' `
+              --clobber
+          } else {
+            gh release create $env:GITHUB_REF_NAME `
+              'release\MentalOmegaRandomizer.exe' `
+              'release\SHA256SUMS.txt' `
+              --verify-tag `
+              --generate-notes `
+              --title $env:GITHUB_REF_NAME
+          }

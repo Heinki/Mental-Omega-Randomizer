@@ -4,6 +4,8 @@
 
 # Mental Omega Randomizer Launcher
 
+[![Security checks](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml/badge.svg)](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml)
+
 A standalone Windows campaign randomizer for Mental Omega. It generates deterministic mission and reward plans, launches campaign maps directly, tracks objective and victory checks, locks unearned technology, and applies earned access and buffs through generated mission copies.
 
 Archipelago is planned but is not connected yet. The standalone configuration deliberately uses stable option-style keys so those settings can later map to an Archipelago world.
@@ -21,6 +23,31 @@ I am *not* part of the Development of Mental Omega nor did I contribute in any w
 5. Choose the seed settings and press **Generate New Seed**.
 6. Select an open mission and press **Launch Selected Mission**.
 7. Complete objectives and win. The launcher records detected checks and applies earned rewards to future mission launches.
+
+## Release Safety and Verification
+
+No badge or antivirus scan can prove that any program is harmless. Releases use checks that make the build public and verifiable:
+
+- GitHub Actions builds tagged Windows releases from repository source on a clean hosted runner.
+- CodeQL scans Python source, and dependency review rejects newly introduced vulnerable build dependencies.
+- Every release includes `SHA256SUMS.txt` and GitHub-signed build provenance.
+- The Windows package build must succeed before a release is published.
+
+Download only from this repository's [GitHub Releases](https://github.com/Heinki/Mental-Omega-Randomizer/releases). Verify its checksum in PowerShell:
+
+```powershell
+$expected = (Get-Content .\SHA256SUMS.txt).Split()[0]
+$actual = (Get-FileHash .\MentalOmegaRandomizer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+$actual -eq $expected
+```
+
+Expected result is `True`. With [GitHub CLI](https://cli.github.com/) installed, verify that GitHub built the exact EXE from this repository:
+
+```powershell
+gh attestation verify .\MentalOmegaRandomizer.exe --repo Heinki/Mental-Omega-Randomizer
+```
+
+Build provenance proves where the file came from; it is not an antivirus verdict. Microsoft SmartScreen may still warn about a new or unsigned EXE because file and publisher reputation are separate from malware detection. Do not disable antivirus. If Defender incorrectly detects a release, submit that exact release to [Microsoft Security Intelligence](https://www.microsoft.com/wdsi/filesubmission) as a software developer and include the resulting submission ID in the issue report. Authenticode code signing remains the next step for showing a verified publisher name.
 
 ### Supported game content
 
@@ -76,7 +103,13 @@ Build the packaged launcher from the Mental Omega folder with:
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
 
-The build requires PyInstaller and produces one self-contained `MentalOmegaRandomizer.exe`. Players do not need Python, the source directory, or a separate runtime folder. The launcher creates `RandomizerLauncherData` for configuration, saves, logs, and cached map/cameo data after it is run; this is writable player data, not part of the distributed application.
+GitHub Actions installs pinned build dependencies from `requirements-build.txt` automatically. Only install them yourself when choosing an optional local build:
+
+```powershell
+python -m pip install -r RandomizerLauncher\requirements-build.txt
+```
+
+The build uses PyInstaller and embeds `mo-logo-puzzle-icon.ico`, an exact unscaled 32 x 32 crop from `mo-logo-puzzle.png`, as the Windows executable icon. Build dependencies are installed temporarily on the GitHub runner; maintainers need them locally only when choosing to build locally. Players do not need Python, build packages, the source directory, or a separate runtime folder. The launcher creates `RandomizerLauncherData` for configuration, saves, logs, and cached map/cameo data after it is run; this is writable player data, not part of the distributed application.
 
 Run a packaged installation check without opening the UI:
 
@@ -123,4 +156,5 @@ The principal remaining limitations are mission-specific objective matching, a f
 
 ## Contact
 
-I'm in the Mental Omega Discord where you can message me, I do not know have a Discord Server so right now this will be one of the ways you can contact me, especially if you have further ideas or suggestions
+In the official Mental Omega Discord is a channel for the Randomizer mo_randomizer you can contact me there or via Discord where my Name is Heinki
+Mental Omega Discord Invite link : https://discord.com/invite/KpJzhWY

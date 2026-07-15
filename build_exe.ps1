@@ -9,9 +9,15 @@ $outputDir = Split-Path -Parent $outputPath
 $runtimePath = [IO.Path]::GetFullPath((Join-Path $outputDir "RandomizerLauncherRuntime"))
 $distDir = Join-Path $scriptDir "dist"
 $workDir = Join-Path $scriptDir "build"
+$iconPath = Join-Path $scriptDir "mo-logo-puzzle-icon.ico"
+
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
 if (-not (python -m PyInstaller --version 2>$null)) {
-    throw "PyInstaller is required. Install it with: python -m pip install pyinstaller"
+    throw "PyInstaller is required. Install build dependencies with: python -m pip install -r requirements-build.txt"
+}
+if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
+    throw "Launcher icon is missing: $iconPath"
 }
 
 # The standalone launcher has no network client. Remove the network-related
@@ -22,6 +28,7 @@ python -m PyInstaller `
     --onefile `
     --optimize 1 `
     --windowed `
+    --icon $iconPath `
     --exclude-module logging.handlers `
     --exclude-module ssl `
     --exclude-module _ssl `

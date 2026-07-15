@@ -12,6 +12,7 @@ RandomizerLauncherData/
 logs/
 build/
 dist/
+release/
 *.spec
 
 # Local Codex maintenance memory; never distribute with the launcher.
