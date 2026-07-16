@@ -85,11 +85,13 @@ These keys are runtime/developer controls and should not become normal Archipela
 
 ### Mission List
 
-Mission List preserves the original progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry.
+Mission List preserves the original progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry. Its first five generated entries are drawn from low-level campaign missions (missions 1-6 in the installed catalogue). Every later entry is fully shuffled from the remaining eligible pool, so Act 2 and finale missions can appear from position six onward.
 
 ### Grid Mode
 
 Grid Mode assigns each generated mission to a visible node. Its dimensions are calculated from **Missions to finish**; there are no separate width/height settings. The launcher prefers a reasonably balanced exact factorization, so 18 missions form a complete `6 × 3` board. Totals without a suitable factorization use the densest balanced rectangle and trim only unavoidable corner cells.
+
+Grid openings are protected by position rather than mission-list order. With one start, the top-left mission and both missions it can unlock are low-level. With two starts, both initially available missions and every immediate neighbor around them are low-level (up to six protected nodes). All other grid cells are filled from the unrestricted remaining pool, allowing nearby later choices to include Act 2 and finale missions.
 
 Allied tile bodies are blue, Soviet red, Epsilon purple, and Foehn teal. The mission title already contains its faction and number, so tiles omit the redundant faction/code footer. Locked tiles are entirely grey. Available missions have no status banner; their faction color is the availability signal. Launching one or earning an objective reward adds an amber **In Progress** banner, while victory adds a green **Mission Completed** banner. State banners use plain text without decorative symbols. The selected tile receives a flat light-blue highlight on every edge. The bottom-right goal keeps a separate outer gold border and gains the light-blue inner selection border when selected, so both meanings remain visible. Selection and progress updates modify existing tiles in place without rebuilding the board. Only available, in-progress, or completed nodes can be launched. Selecting a node shows its coordinates, current state, and the currently locked neighbors that its completion would open.
 

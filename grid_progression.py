@@ -147,24 +147,55 @@ def automatic_dimensions(node_count, two_start_positions=False):
     )
 
 
-def create_grid(mission_codes, two_start_positions=False):
+def _layout_cells(node_count, two_start_positions=False):
+    width, height = automatic_dimensions(node_count, two_start_positions)
+    required_starts = {(1, 0), (0, 1)} if two_start_positions else set()
+    cells = trimmed_cells(
+        width,
+        height,
+        node_count,
+        required_cells=required_starts,
+    )
+    return width, height, cells
+
+
+def _protected_opening_cells(cells, two_start_positions=False):
+    """Return starts and every cell one move from a start, in grid order."""
+    cells = list(cells)
+    cell_set = set(cells)
+    starts = {(1, 0), (0, 1)} if two_start_positions else {(0, 0)}
+    protected = set(starts) & cell_set
+    for x, y in tuple(protected):
+        protected.update(
+            cell
+            for cell in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
+            if cell in cell_set
+        )
+    return [cell for cell in cells if cell in protected]
+
+
+def grid_opening_mission_count(node_count, two_start_positions=False):
+    """Count missions that must be low-level around the grid entrance."""
+    _, _, cells = _layout_cells(node_count, two_start_positions)
+    return len(_protected_opening_cells(cells, two_start_positions))
+
+
+def create_grid(mission_codes, two_start_positions=False, protect_opening=False):
     """Create a serializable grid state for the supplied mission content."""
     mission_codes = list(mission_codes)
     if not mission_codes or len(set(mission_codes)) != len(mission_codes):
         raise ValueError('mission codes must be a non-empty unique sequence')
 
-    width, height = automatic_dimensions(len(mission_codes), two_start_positions)
-    required_starts = {(1, 0), (0, 1)} if two_start_positions else set()
-    cells = trimmed_cells(
-        width,
-        height,
-        len(mission_codes),
-        required_cells=required_starts,
-    )
+    width, height, cells = _layout_cells(len(mission_codes), two_start_positions)
+    placement_cells = cells
+    if protect_opening:
+        opening_cells = _protected_opening_cells(cells, two_start_positions)
+        opening_set = set(opening_cells)
+        placement_cells = opening_cells + [cell for cell in cells if cell not in opening_set]
 
     nodes = {
         code: {'x': x, 'y': y, 'state': LOCKED}
-        for code, (x, y) in zip(mission_codes, cells)
+        for code, (x, y) in zip(mission_codes, placement_cells)
     }
     grid = {
         'layout_version': 3,

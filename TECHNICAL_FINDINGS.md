@@ -50,7 +50,7 @@ Mission code, map filename, title, side, and briefing objective text are read fr
 Seed construction is deterministic for a seed string:
 
 1. Filter eligible missions by campaign.
-2. Build a staged shuffled mission order up to the mission goal.
+2. Protect the progression opening with stage 1-6 missions, then fill every remaining slot from one unrestricted shuffle of the eligible pool. Mission List protects its first five entries; Grid Mode protects topology cells at or one move from its start nodes.
 3. In Grid Mode, map that order onto the corner-trimmed grid and persist each node's coordinates and initial state.
 4. Allocate `objective count + 1 victory` checks per mission.
 5. Allocate 1–30 reward slots to every check.
@@ -63,7 +63,7 @@ The Tk grid renderer keys its persistent tile-widget cache by a topology signatu
 
 The Settings notebook page owns a canvas viewport and an inner controls frame. Canvas/content configure events synchronize the inner width and scroll region; mouse-wheel scrolling is accepted only while Settings is selected and the pointer is inside that viewport. The controls themselves remain ordinary ttk widgets and retain their existing callbacks and state rules.
 
-The installed campaign counts are 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missions. Mixed-campaign construction caps Foehn at `ceil(mission_goal × 7 / 97)` (bounded to the installed count), while single-campaign Foehn seeds retain all seven eligible missions. This cap is applied during every staged-order selection pass, including the early starting pool and fallback fill.
+The installed campaign counts are 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missions. Mixed-campaign construction caps Foehn at `ceil(mission_goal × 7 / 97)` (bounded to the installed count), while single-campaign Foehn seeds retain all seven eligible missions. This cap is applied during both the protected opening and unrestricted remainder. Mission List protects its first five entries. Grid Mode computes its protected cells from topology: one-start grids protect `(0,0)` and its existing orthogonal neighbors; two-start grids protect `(1,0)`, `(0,1)`, and every existing orthogonal neighbor of either start, normally six cells. Low-level missions are assigned to those cells before unrestricted missions fill the remainder. The installed catalogue has enough stage 1-6 missions for every campaign filter; stage-ordered fallback exists only for custom or incomplete catalogues.
 
 Access rewards are unique by reward name. Seed planning prioritizes access, attempts a buff every fifth slot, and prefers a global buff every tenth slot while its stack cap permits. Unit buffs normally require prior planned access; buff-only seeds relax that requirement. Buff selection spreads upgrades across the least-buffed eligible units before stacking them further. Capped effects such as veterancy, cloaking, sensors, and self-healing cannot be repeated beyond their useful limit.
 

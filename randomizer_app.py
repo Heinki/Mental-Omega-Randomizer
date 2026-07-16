@@ -22,11 +22,13 @@ from grid_progression import (
     UNLOCKED as GRID_UNLOCKED,
     completing_unlocks,
     create_grid,
+    grid_opening_mission_count,
     is_complete as is_grid_complete,
     refresh_states as refresh_grid_states,
 )
 from randomizer_missions import (
     FACTION_ORDER,
+    LOW_LEVEL_MISSION_COUNT,
     campaign_mission_counts,
     normalize_faction,
     parse_missions,
@@ -2632,14 +2634,33 @@ class LauncherApp(tk.Tk):
         self._starting_unit_ids_override = starting_unit_ids
         campaign_counts = campaign_mission_counts(seed_missions)
         campaign_limits = seed_campaign_limits(seed_missions, mission_goal)
-        mission_codes = seed_mission_order(seed_missions, rng, mission_goal)
         progression_mode = self.progression_mode_var.get()
+        two_start_positions = bool(self.grid_two_starts_var.get())
+        try:
+            low_level_count = (
+                grid_opening_mission_count(mission_goal, two_start_positions)
+                if progression_mode == 'Grid Mode'
+                else LOW_LEVEL_MISSION_COUNT
+            )
+        except ValueError as exc:
+            self._reward_settings_override = None
+            self._starting_unit_ids_override = None
+            self.append_log(f'Cannot generate grid: {exc}.', error=True)
+            messagebox.showwarning('Invalid Grid', str(exc))
+            return
+        mission_codes = seed_mission_order(
+            seed_missions,
+            rng,
+            mission_goal,
+            low_level_count=low_level_count,
+        )
         grid = None
         if progression_mode == 'Grid Mode':
             try:
                 grid = create_grid(
                     mission_codes,
-                    bool(self.grid_two_starts_var.get()),
+                    two_start_positions,
+                    protect_opening=True,
                 )
             except ValueError as exc:
                 self._reward_settings_override = None

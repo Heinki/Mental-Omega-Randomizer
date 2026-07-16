@@ -10,6 +10,8 @@ import re
 FACTION_ORDER = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
 FALLBACK_OBJECTIVE_COUNT = 3
 STARTING_UNLOCKED_MISSIONS = 3
+LOW_LEVEL_MISSION_COUNT = 5
+LOW_LEVEL_STAGE_MAX = 6
 
 
 def normalize_faction(side):
@@ -125,8 +127,13 @@ def seed_campaign_limits(missions, mission_goal):
     return limits
 
 
-def seed_mission_order(missions, rng, mission_goal, starting_count=STARTING_UNLOCKED_MISSIONS):
-    """Return the deterministic staged mission order for one seed RNG."""
+def seed_mission_order(
+    missions,
+    rng,
+    mission_goal,
+    low_level_count=LOW_LEVEL_MISSION_COUNT,
+):
+    """Return the requested low-level opening, then an unrestricted shuffle."""
     missions = list(missions)
     if not missions:
         return []
@@ -136,28 +143,14 @@ def seed_mission_order(missions, rng, mission_goal, starting_count=STARTING_UNLO
 
     def bucket(mission):
         score = mission_stage_score(mission)
-        return 0 if score <= 6 else 1 if score <= 16 else 2 if score < 24 else 3
+        return 0 if score <= LOW_LEVEL_STAGE_MAX else 1 if score <= 16 else 2 if score < 24 else 3
 
     def shuffled(items):
         items = list(items)
         rng.shuffle(items)
         return items
 
-    early_mid = [mission for mission in missions if bucket(mission) <= 1]
-    non_finale = [mission for mission in missions if bucket(mission) <= 2]
-    if mission_goal <= 5 and len(early_mid) >= mission_goal:
-        candidates = early_mid
-    elif len(non_finale) >= mission_goal:
-        candidates = non_finale
-    else:
-        candidates = missions
-
-    start_count = min(starting_count, mission_goal)
-    starting_pool = shuffled(mission for mission in candidates if bucket(mission) == 0)
-    for bucket_index in (1, 2, 3):
-        if len(starting_pool) >= start_count:
-            break
-        starting_pool.extend(shuffled(mission for mission in candidates if bucket(mission) == bucket_index))
+    opening_count = min(max(0, int(low_level_count)), mission_goal)
 
     picked_codes = set()
     ordered = []
@@ -174,16 +167,23 @@ def seed_mission_order(missions, rng, mission_goal, starting_count=STARTING_UNLO
         picked_by_faction[faction] = picked_by_faction.get(faction, 0) + 1
         return True
 
-    for mission in starting_pool:
-        if add_mission(mission) and len(ordered) >= start_count:
+    # Keep only the opening approachable. The installed catalogue has enough
+    # missions 1-6 for all campaign filters; later buckets are a defensive
+    # fallback for custom or incomplete catalogues.
+    for bucket_index in range(4) if opening_count else ():
+        bucket_missions = (
+            mission for mission in missions if bucket(mission) == bucket_index
+        )
+        for mission in shuffled(bucket_missions):
+            if add_mission(mission) and len(ordered) >= opening_count:
+                break
+        if len(ordered) >= opening_count:
             break
     if len(ordered) >= mission_goal:
         return [item['code'] for item in ordered]
 
-    for bucket_index in range(4):
-        for mission in shuffled(mission for mission in candidates if bucket(mission) == bucket_index):
-            if add_mission(mission) and len(ordered) >= mission_goal:
-                return [item['code'] for item in ordered]
+    # Everything after the protected opening is equally eligible. Act 2 and
+    # finale missions can therefore appear in the first unprotected slot.
     for mission in shuffled(missions):
         if add_mission(mission) and len(ordered) >= mission_goal:
             break
