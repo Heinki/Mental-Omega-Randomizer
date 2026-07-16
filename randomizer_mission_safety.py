@@ -35,6 +35,38 @@ BASIC_VEHICLE_UNLOCKS = {
     'foehn': [('JACKAL', '2'), ('CYCL', '2')],
 }
 
+# Four guaranteed combat roles for the optional seed-start roster. Standard
+# translates each role to the physical production families present in a map.
+# Chaos assigns every faction once across the four roles.
+TIER_ONE_ROLE_UNITS = {
+    'ground_infantry': {
+        'allies': ('E1', 'infantry'),
+        'soviets': ('E2', 'infantry'),
+        'epsilon': ('INIT', 'infantry'),
+        'foehn': ('KNIGHT', 'infantry'),
+    },
+    'anti_air_infantry': {
+        'allies': ('GGI', 'infantry'),
+        'soviets': ('FLAKT', 'infantry'),
+        'epsilon': ('HARP', 'infantry'),
+        'foehn': ('COVE', 'infantry'),
+    },
+    'ground_vehicle': {
+        'allies': ('ETNK', 'vehicles'),
+        'soviets': ('HTNK', 'vehicles'),
+        'epsilon': ('LTNK', 'vehicles'),
+        'foehn': ('DRACO', 'vehicles'),
+    },
+    'anti_air_vehicle': {
+        'allies': ('AHMV', 'vehicles'),
+        'soviets': ('HTK', 'vehicles'),
+        'epsilon': ('YTNK', 'vehicles'),
+        'foehn': ('JACKAL', 'vehicles'),
+    },
+}
+
+STANDARD_TIER_ONE_FAMILIES = ('allies', 'soviets', 'epsilon')
+
 BASIC_AIR_UNLOCKS = {
     'allies': [('JUMPJET', '1')],
 }
@@ -416,6 +448,105 @@ def _chaos_prerequisite_rules(category, fallback):
     }
     for index, building_id in enumerate(alternatives[1:], start=1):
         rules[f'Prerequisite.List{index}'] = building_id
+    return rules
+
+
+def tier_one_unit_ids(families):
+    """Return all four starter roles for each requested faction family."""
+    requested = {str(family or '').lower() for family in families}
+    return tuple(
+        role_units[family][0]
+        for role_units in TIER_ONE_ROLE_UNITS.values()
+        for family in STANDARD_TIER_ONE_FAMILIES + ('foehn',)
+        if family in requested
+    )
+
+
+def random_chaos_tier_one_unit_ids(rng):
+    """Assign every faction once across ground/AA infantry and vehicles."""
+    families = list(STANDARD_TIER_ONE_FAMILIES) + ['foehn']
+    rng.shuffle(families)
+    return tuple(
+        role_units[family][0]
+        for role_units, family in zip(TIER_ONE_ROLE_UNITS.values(), families)
+    )
+
+
+def starting_tier_one_rules(
+    lines,
+    starting_unit_ids,
+    chaos_mode=False,
+    standard_families=STANDARD_TIER_ONE_FAMILIES,
+):
+    """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
+    selected_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (starting_unit_ids or ())
+        if unit_id
+    }
+    if not selected_ids:
+        return {}
+
+    records = map_house_records(lines)
+    player_countries = _player_build_countries(lines, records)
+    owners = ','.join(player_countries)
+    rules = {}
+
+    if chaos_mode:
+        for role_units in TIER_ONE_ROLE_UNITS.values():
+            for family, (tech_id, category) in role_units.items():
+                if tech_id not in selected_ids:
+                    continue
+                values = {
+                    'TechLevel': '1',
+                    'Owner': owners,
+                    'RequiredHouses': owners,
+                    'ForbiddenHouses': 'none',
+                }
+                fallback = CHAOS_PRIMARY_PRODUCTION[family][category]
+                values.update(_chaos_prerequisite_rules(category, fallback))
+                rules[tech_id] = values
+        return rules
+
+    allowed_families = {
+        str(family or '').lower()
+        for family in standard_families
+        if str(family or '').lower() in STANDARD_TIER_ONE_FAMILIES
+    }
+    selected_roles = {
+        role
+        for role, role_units in TIER_ONE_ROLE_UNITS.items()
+        if selected_ids.intersection(tech_id for tech_id, _category in role_units.values())
+    }
+    available_categories = set()
+    for building_id in _mission_production_buildings(lines, records):
+        production = PRODUCTION_LOOKUP.get(building_id)
+        if not production:
+            continue
+        family, category = production
+        if family not in allowed_families:
+            continue
+        available_categories.add((family, category))
+        if category == 'base':
+            available_categories.add((family, 'infantry'))
+            available_categories.add((family, 'vehicles'))
+
+    for role in selected_roles:
+        role_units = TIER_ONE_ROLE_UNITS[role]
+        for family in STANDARD_TIER_ONE_FAMILIES:
+            if family not in allowed_families:
+                continue
+            tech_id, category = role_units[family]
+            if (family, category) not in available_categories:
+                continue
+            prerequisite = CHAOS_PRIMARY_PRODUCTION[family][category]
+            rules[tech_id] = {
+                'TechLevel': '1',
+                'Owner': owners,
+                'RequiredHouses': owners,
+                'ForbiddenHouses': 'none',
+                'PrerequisiteOverride': prerequisite,
+            }
     return rules
 
 

@@ -38,6 +38,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | UI setting | Standalone/AP option key | Default | What it changes |
 |---|---|---:|---|
 | Randomize unit access and lock unearned tech | `generation.randomize_unit_access` | `true` | Adds unit access rewards and removes unearned combat technology from player production. Economy essentials, MCVs, miners, and Engineers remain available. Chaos forces this on. |
+| Start with basic Tier 1 combat units | `generation.start_with_tier_one_units` | `false` | Grants ground and anti-air infantry plus ground and anti-air vehicles from seed start. Standard translates the four roles to each physical Allied, Soviet, or Epsilon barracks/factory family present in the mission: Allied production gets Allied starters, Soviet production Soviet starters, and Epsilon production Epsilon starters, regardless of campaign or player house. Foehn Standard uses Allied/Soviet operating technology; native Foehn starters remain Chaos-only. Starter access rewards are removed from that seed's reward pool, but their buff rewards remain eligible immediately. |
 | Include defensive building rewards | `generation.include_defensive_buildings` | `true` | Includes faction defenses in both access rewards and defense-targeted buffs. It does not randomize power plants, refineries, production structures, walls, or gates. |
 | Include buff rewards | `generation.include_buff_rewards` | `true` | Adds positive repeatable upgrades. Turning it off disables the buff-type selections. At least one reward-pool option must remain enabled. |
 | Share buffs with same-tier equivalent units (Chaos only) | `generation.share_chaos_role_buffs` | `false` | Makes a unit buff affect its curated cross-faction peers, such as GI, Conscript, Initiate, and Knightframe. It does not grant access by itself. Shared groups appear together in Unlocks. |
@@ -106,11 +107,15 @@ The installed pool contains 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missio
 
 Standard keeps the reward pool appropriate to the selected campaign. Single-faction campaigns translate earned roles when a mission gives the player a foreign barracks, factory, air command, or shipyard. For example, an earned basic-infantry role can provide the corresponding unit for a captured production family.
 
+With **Start with basic Tier 1 combat units**, Standard immediately grants four roles: basic ground infantry, anti-air infantry, a basic ground vehicle, and an anti-air vehicle. Their faction follows the physical production family discovered in the map, matching the existing equivalent-access behavior. For example, Epsilon 04 gives Allied starters after its Allied Construction Yard is captured; a map with Epsilon barracks/factories gives Epsilon starters even when its campaign or current player house differs. **All Campaigns** supports all Allied, Soviet, and Epsilon production families. Foehn Standard still uses Allied/Soviet operating technology; native Foehn starters remain exclusive to Chaos.
+
 Foehn Standard uses Allied/Soviet bundled access and compatible shared buffs because Foehn missions commonly operate those technologies. Standard **All Campaigns** uses Allied, Soviet, and Epsilon rewards; the complete Foehn reward catalogue is reserved for Chaos.
 
 ### Chaos (Experimental)
 
 Chaos draws access and buffs independently from all four factions. An earned unit can be produced from any matching production building that the current mission gives the player: barracks for infantry, factories for vehicles, air commands for aircraft, shipyards for naval units, and Construction Yards for defenses. Chaos does **not** grant foreign production buildings.
+
+With **Start with basic Tier 1 combat units**, Chaos shuffles all four factions across four guaranteed roles: ground infantry, anti-air infantry, ground vehicle, and anti-air vehicle. Every seed therefore starts with both ground and anti-air answers and exactly one Allied, Soviet, Epsilon, and Foehn starter.
 
 The sidebar groups earned production cameos into faction bands with the current player faction first. Same-tier buff sharing is optional and off by default.
 

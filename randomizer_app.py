@@ -121,7 +121,10 @@ from randomizer_map import (
 from randomizer_mission_safety import (
     chaos_earned_access_rules,
     mission_basic_unit_rules,
+    random_chaos_tier_one_unit_ids,
+    starting_tier_one_rules,
     summarize_basic_unit_rules,
+    tier_one_unit_ids,
 )
 DIFFICULTIES = [('Casual', 0), ('Normal', 1), ('Mental', 2)]
 GAME_SPEEDS = [
@@ -248,6 +251,7 @@ class LauncherApp(tk.Tk):
         self.state = self.load_state()
         self.migrate_state()
         self._reward_settings_override = None
+        self._starting_unit_ids_override = None
         self.active_game_process = None
         self.active_hook = None
         self.active_mission_attempt = None
@@ -314,6 +318,9 @@ class LauncherApp(tk.Tk):
         )
         self.randomize_unit_access_var = tk.BooleanVar(
             value=reward_settings['randomize_unit_access']
+        )
+        self.start_with_tier_one_units_var = tk.BooleanVar(
+            value=reward_settings['start_with_tier_one_units']
         )
         self.include_defensive_buildings_var = tk.BooleanVar(
             value=reward_settings['include_defensive_buildings']
@@ -703,12 +710,24 @@ class LauncherApp(tk.Tk):
             'Turns combat units into access rewards. Units not yet earned are removed from production. '
             'Chaos always requires this option.',
         )
+        self.start_with_tier_one_units_check = ttk.Checkbutton(
+            reward_frame,
+            text='Start with basic Tier 1 combat units',
+            variable=self.start_with_tier_one_units_var,
+        )
+        self.start_with_tier_one_units_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.start_with_tier_one_units_check,
+            'Standard grants ground/anti-air infantry and vehicles matching each Allied, Soviet, or '
+            'Epsilon production family present in the mission. Chaos assigns one unit from every faction '
+            'across the four roles. Foehn units appear only in Chaos. Starter units remain buffable.',
+        )
         self.include_defensive_buildings_check = ttk.Checkbutton(
             reward_frame,
             text='Include defensive building rewards',
             variable=self.include_defensive_buildings_var,
         )
-        self.include_defensive_buildings_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        self.include_defensive_buildings_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_defensive_buildings_check,
             'Includes faction defenses such as Pillboxes, Tesla Coils, mines, and support defenses. '
@@ -720,7 +739,7 @@ class LauncherApp(tk.Tk):
             variable=self.include_buff_rewards_var,
             command=self.refresh_setting_states,
         )
-        self.include_buff_rewards_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
+        self.include_buff_rewards_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_buff_rewards_check,
             'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
@@ -730,7 +749,7 @@ class LauncherApp(tk.Tk):
             text='Share buffs with equivalent units (Chaos only)',
             variable=self.share_chaos_role_buffs_var,
         )
-        self.share_chaos_role_buffs_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+        self.share_chaos_role_buffs_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.share_chaos_role_buffs_check,
             'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
@@ -741,7 +760,7 @@ class LauncherApp(tk.Tk):
             text='Include offensive superweapon rewards',
             variable=self.include_superweapon_rewards_var,
         )
-        self.include_superweapon_rewards_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
+        self.include_superweapon_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_superweapon_rewards_check,
             'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
@@ -751,7 +770,7 @@ class LauncherApp(tk.Tk):
             text='Include secondary superweapon rewards',
             variable=self.include_secondary_superweapon_rewards_var,
         )
-        self.include_secondary_superweapon_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+        self.include_secondary_superweapon_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_secondary_superweapon_rewards_check,
             'Adds Chronoshift, Invulnerability, Rage, and Blasticade as building-free rewards.',
@@ -761,7 +780,7 @@ class LauncherApp(tk.Tk):
             text='Include aid/reinforcement power rewards',
             variable=self.include_aid_power_rewards_var,
         )
-        self.include_aid_power_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+        self.include_aid_power_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_aid_power_rewards_check,
             'Adds faction unit drops, temporary reinforcements, deployable towers, mines, and other delivery-based support actions.',
@@ -1295,6 +1314,7 @@ class LauncherApp(tk.Tk):
             if str(buff_type) in {item['id'] for item in BUFF_TYPES}
         ]
         randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
+        start_with_tier_one_units = bool(generation_config.get('start_with_tier_one_units', False))
         include_buffs = bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
         include_superweapons = bool(generation_config.get('include_superweapon_rewards', True))
         include_secondary_superweapons = bool(
@@ -1309,6 +1329,7 @@ class LauncherApp(tk.Tk):
             randomize_access = True
         return {
             'randomize_unit_access': randomize_access,
+            'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -1336,6 +1357,7 @@ class LauncherApp(tk.Tk):
             return self.config_reward_settings()
         chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
         randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
+        start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
@@ -1351,6 +1373,7 @@ class LauncherApp(tk.Tk):
         ]
         return {
             'randomize_unit_access': randomize_access,
+            'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -1382,6 +1405,7 @@ class LauncherApp(tk.Tk):
         else:
             settings = self.current_reward_settings()
         settings.setdefault('randomize_unit_access', True)
+        settings.setdefault('start_with_tier_one_units', False)
         settings.setdefault('include_defensive_buildings', True)
         settings.setdefault('share_chaos_role_buffs', False)
         settings.setdefault(
@@ -1401,6 +1425,38 @@ class LauncherApp(tk.Tk):
 
     def randomize_unit_access_enabled(self):
         return bool(self.active_reward_settings().get('randomize_unit_access', True))
+
+    def starting_tier_one_unit_ids_for_seed(self, seed, reward_settings=None):
+        settings = reward_settings or self.active_reward_settings()
+        if not settings.get('start_with_tier_one_units', False):
+            return []
+        if self.active_reward_mode() == 'Chaos (Experimental)':
+            rng = random.Random(f'{seed}:starting-tier-one')
+            return list(random_chaos_tier_one_unit_ids(rng))
+
+        selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else 'All Campaigns'
+        families = {
+            'Allies': ('allies',),
+            'Soviets': ('soviets',),
+            'Epsilon': ('epsilon',),
+            'Foehn': ('allies', 'soviets'),
+            'All Campaigns': ('allies', 'soviets', 'epsilon'),
+        }.get(selected, ('allies', 'soviets', 'epsilon'))
+        return list(tier_one_unit_ids(families))
+
+    def active_starting_tier_one_unit_ids(self):
+        override = self.__dict__.get('_starting_unit_ids_override')
+        if override is not None:
+            return list(override)
+        if self.state:
+            return [
+                str(unit_id).upper()
+                for unit_id in self.state.get('starting_unit_ids', [])
+                if unit_id
+            ]
+        return self.starting_tier_one_unit_ids_for_seed(
+            self.seed_var.get() if hasattr(self, 'seed_var') else '',
+        )
 
     def share_chaos_role_buffs_enabled(self):
         return bool(
@@ -1492,6 +1548,7 @@ class LauncherApp(tk.Tk):
         self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
+        self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
@@ -1660,6 +1717,7 @@ class LauncherApp(tk.Tk):
 
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
+        starting_unit_ids = set(self.active_starting_tier_one_unit_ids())
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
@@ -1709,6 +1767,7 @@ class LauncherApp(tk.Tk):
                     reward.get('kind') not in {'buff', 'superweapon'}
                     and randomize_access
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                    and not tech_ids_for_rewards([reward]).intersection(starting_unit_ids)
                 )
             )
         ]
@@ -1845,7 +1904,7 @@ class LauncherApp(tk.Tk):
         require_access_for_unit_buffs = self.randomize_unit_access_enabled()
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         used_access_names = set()
-        seed_unlocked_tech_ids = set()
+        seed_unlocked_tech_ids = set(self.active_starting_tier_one_unit_ids())
         buff_counts = {}
         unit_buff_counts = {}
         global_buff_counts = {}
@@ -2569,6 +2628,8 @@ class LauncherApp(tk.Tk):
             return
 
         self._reward_settings_override = reward_settings
+        starting_unit_ids = self.starting_tier_one_unit_ids_for_seed(seed, reward_settings)
+        self._starting_unit_ids_override = starting_unit_ids
         campaign_counts = campaign_mission_counts(seed_missions)
         campaign_limits = seed_campaign_limits(seed_missions, mission_goal)
         mission_codes = seed_mission_order(seed_missions, rng, mission_goal)
@@ -2582,11 +2643,13 @@ class LauncherApp(tk.Tk):
                 )
             except ValueError as exc:
                 self._reward_settings_override = None
+                self._starting_unit_ids_override = None
                 self.append_log(f'Cannot generate grid: {exc}.', error=True)
                 messagebox.showwarning('Invalid Grid', str(exc))
                 return
         if not any(self.reward_pool_for_code(code) for code in mission_codes):
             self._reward_settings_override = None
+            self._starting_unit_ids_override = None
             self.append_log('Cannot generate seed: the selected reward settings produce no available rewards.', error=True)
             return
 
@@ -2621,6 +2684,7 @@ class LauncherApp(tk.Tk):
             'mission_failure_stacks': {},
             'mission_assistance_units': {},
             'earned_rewards': [],
+            'starting_unit_ids': starting_unit_ids,
             'reward_queue': rewards,
             'mission_checks': mission_checks,
             'mission_objectives': mission_objectives,
@@ -2630,6 +2694,7 @@ class LauncherApp(tk.Tk):
         if grid is not None:
             self.state['grid'] = grid
         self._reward_settings_override = None
+        self._starting_unit_ids_override = None
         self.seed_var.set(seed)
         self.save_state()
         self.save_launcher_config(seed, mission_goal, rewards_per_check)
@@ -2648,6 +2713,12 @@ class LauncherApp(tk.Tk):
             f'{rewards_per_check} reward(s) per objective. {opening} '
             f'Setup saved to {CONFIG_PATH}.'
         )
+        if starting_unit_ids:
+            self.append_log(
+                'Starting Tier 1 units: '
+                + ', '.join(unit_display_label(unit_id) for unit_id in starting_unit_ids)
+                + '.'
+            )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
             self.append_log(
                 f'Foehn pool: {campaign_counts["Foehn"]} missions available; '
@@ -2666,6 +2737,7 @@ class LauncherApp(tk.Tk):
             campaign_mission_counts=campaign_counts,
             campaign_mission_limits=campaign_limits,
             reward_settings=reward_settings,
+            starting_unit_ids=starting_unit_ids,
         )
 
     def unlock_mission_check(self, code, check_id, source):
@@ -3001,20 +3073,51 @@ class LauncherApp(tk.Tk):
             return {}
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        starting_unit_ids = self.active_starting_tier_one_unit_ids()
         if self.active_reward_mode() == 'Chaos (Experimental)':
-            return chaos_earned_access_rules(lines, self.earned_rewards_from_checks())
+            rules = chaos_earned_access_rules(lines, self.earned_rewards_from_checks())
+            starter_rules = starting_tier_one_rules(
+                lines,
+                starting_unit_ids,
+                chaos_mode=True,
+            )
+            for section, values in starter_rules.items():
+                rules.setdefault(section, {}).update(values)
+            return rules
         selected_campaign = self.state.get('campaign_filter', '') if self.state else ''
-        use_equivalent_access = selected_campaign in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+        # All-Campaign normally retains its legacy unconditional mixed-factory
+        # safety net. When faction-specific starters are enabled, use earned
+        # role translation instead so that safety net cannot silently grant
+        # another faction's Tier 1 starter roster for free.
+        use_equivalent_access = bool(starting_unit_ids) or selected_campaign in {
+            'Allies', 'Soviets', 'Epsilon', 'Foehn'
+        }
         earned_access_ids = (
             unlocked_reward_tech_ids(self.earned_rewards_from_checks())
             if use_equivalent_access
             else set()
         )
-        return mission_basic_unit_rules(
+        rules = mission_basic_unit_rules(
             lines,
             earned_access_ids=earned_access_ids,
             use_equivalent_access=use_equivalent_access,
         )
+        standard_starter_families = {
+            'All Campaigns': ('allies', 'soviets', 'epsilon'),
+            'Allies': ('allies', 'soviets', 'epsilon'),
+            'Soviets': ('allies', 'soviets', 'epsilon'),
+            'Epsilon': ('allies', 'soviets', 'epsilon'),
+            # Foehn Standard deliberately operates Allied/Soviet technology.
+            'Foehn': ('allies', 'soviets'),
+        }.get(selected_campaign, ())
+        starter_rules = starting_tier_one_rules(
+            lines,
+            starting_unit_ids,
+            standard_families=standard_starter_families,
+        )
+        for section, values in starter_rules.items():
+            rules.setdefault(section, {}).update(values)
+        return rules
 
     def cleanup_generated_root_maps(self):
         for path in list(GAME_ROOT.glob('*.MAP')) + list(GAME_ROOT.glob('*.map')):
@@ -3355,6 +3458,7 @@ throw "Map $name was not found in expandmo*.mix"
             )
 
         unlocked_tech_ids = tech_ids_for_rewards(earned_rewards)
+        unlocked_tech_ids.update(fallback_tech_ids)
         randomized_tech_ids = self.randomized_tech_ids()
         removed_techlevel_actions = remove_locked_techlevel_actions(
             lines,
@@ -3912,6 +4016,13 @@ throw "Map $name was not found in expandmo*.mix"
             return 'No randomizer seed generated yet.'
 
         lines = []
+        starting_unit_ids = self.active_starting_tier_one_unit_ids()
+        if starting_unit_ids:
+            heading = 'Starting Tier 1 Units'
+            lines.extend([heading, '=' * len(heading)])
+            for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
+                lines.append(unit_display_label(unit_id))
+            lines.append('')
         selected = self.selected_mission()
         if selected and self.failure_assistance_enabled():
             code = selected['code']
@@ -4090,7 +4201,7 @@ throw "Map $name was not found in expandmo*.mix"
     def current_unlock_unit_ids(self):
         if not self.state:
             return []
-        unit_ids = set()
+        unit_ids = set(self.active_starting_tier_one_unit_ids())
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         for reward in self.earned_rewards_from_checks():

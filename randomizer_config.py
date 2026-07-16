@@ -32,6 +32,7 @@ DEFAULT_CONFIG = {
             'aid_power',
         ],
         'randomize_unit_access': True,
+        'start_with_tier_one_units': False,
         'include_defensive_buildings': True,
         'share_chaos_role_buffs': False,
         'include_buff_rewards': True,

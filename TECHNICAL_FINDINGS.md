@@ -183,9 +183,15 @@ A selected single-faction campaign translates earned curated roles to foreign pr
 
 Foehn Standard draws bundled Allied/Soviet access peers. Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. Full Foehn reward definitions are reserved for Chaos.
 
+The optional Tier 1 starter roster models four explicit roles: ground infantry, anti-air infantry, ground vehicle, and anti-air vehicle. Standard follows the established equivalent-access rule: the physical barracks/factory family discovered in placed structures or House base plans selects the corresponding Allied, Soviet, or Epsilon starter. Campaign side and current player-house country do not select the unit family. This is required for maps such as Epsilon 04, where an Epsilon player captures and operates an Allied base. All Campaigns supports all three production families; Foehn-only Standard supports its Allied/Soviet operating families and never grants native Foehn starters. While starters are active, All Campaigns uses earned-role translation instead of duplicating its legacy unconditional mixed-factory safety net. Starter access items are excluded from reward planning, while their role markers seed equivalent buff eligibility before any check is completed.
+
+A 97-map starter audit matched every injected Standard starter section exactly to discovered physical production categories. Focused regressions verify that `ESHIP` maps an Epsilon player to Allied starters through its captured Allied base, `AGHOST` maps an Allied campaign mission to Epsilon starters through Epsilon production, and Foehn-only `FREMNANT` excludes both Epsilon and native Foehn starters.
+
 ### Chaos access
 
 Chaos always enables controlled-tech locking and draws all four factions. Each earned unit receives player-country ownership and Ares alternative prerequisite lists for every matching production family. The map's provided barracks/factory/airfield/shipyard/conyard can therefore produce the earned unit without granting foreign production structures.
+
+Chaos Tier 1 starters use a separate deterministic stream, `<seed>:starting-tier-one`, so mission order and normal reward RNG calls remain unchanged. Faction order is shuffled once and assigned across the four guaranteed roles, producing exactly one Allied, Soviet, Epsilon, and Foehn unit while always covering ground and anti-air infantry and vehicles. Those units use the same all-faction prerequisite alternatives as earned Chaos access.
 
 Phobos `CameoPriority` bands keep production cameos in contiguous faction groups with the current player faction first.
 
