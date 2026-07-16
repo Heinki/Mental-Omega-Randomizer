@@ -1784,23 +1784,80 @@ def insert_actions_before_codes(lines, action_id, action_tokens_list, before_cod
     return False
 
 
-def unique_short_section_id(lines, prefix='M'):
-    """Return a compact unused section ID for action-line references.
+def append_parallel_global_hook(lines, source_action_id, marker_action, marker_name):
+    """Mirror a global objective trigger when its native action line is full.
 
-    The game truncates map action lines at 512 bytes. Hook TeamType IDs are
-    embedded in those lines, so keep them short while avoiding collisions
-    with native map sections.
+    Action lines are capped at 511 bytes, but some campaign objective lists
+    already sit near that limit. Global-variable and all-of-type-destroyed
+    events can be observed by a second trigger. Mirror native enable/disable
+    actions so a source trigger that starts disabled retains its timing.
     """
-    existing = {
-        stripped[1:-1].strip().lower()
-        for line in lines
-        if (stripped := line.strip()).startswith('[') and stripped.endswith(']')
-    }
-    for index in range(1, 10000):
-        candidate = f'{prefix}{index}'
-        if candidate.lower() not in existing:
-            return candidate
-    raise RuntimeError(f'Could not allocate a unique short {prefix} map key.')
+    events = section_value_map_preserve(lines, 'Events')
+    triggers = section_value_map_preserve(lines, 'Triggers')
+    source_event = events.get(source_action_id)
+    source_trigger = triggers.get(source_action_id)
+    if not source_event or not source_trigger or len(marker_action) != 8:
+        return False
+
+    event_tokens = [token.strip() for token in source_event.split(',')]
+    if len(event_tokens) < 2 or event_tokens[0] != '1' or event_tokens[1] not in {'11', '61'}:
+        return False
+
+    trigger_tokens = [token.strip() for token in source_trigger.split(',')]
+    if len(trigger_tokens) != 8:
+        return False
+
+    hook_trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNH00')
+    hook_tag_id = unique_section_key(lines, ('Tags',), 'RHT00')
+    source_lower = source_action_id.lower()
+    mirrored_lines = []
+    mirrored_enable = False
+    start, end = find_section_bounds(lines, 'Actions')
+    if start is None:
+        return False
+
+    for index in range(start + 1, end):
+        line = lines[index]
+        if '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        declared_count, groups = parse_action_groups(value)
+        if declared_count != len(groups):
+            continue
+
+        expanded = []
+        changed = False
+        for group in groups:
+            expanded.append(group)
+            if group[0] not in {'53', '54'} or group[2].lower() != source_lower:
+                continue
+            mirrored = list(group)
+            mirrored[2] = hook_trigger_id
+            expanded.append(mirrored)
+            changed = True
+            if group[0] == '53':
+                mirrored_enable = True
+        if not changed:
+            continue
+
+        replacement = f'{key}={len(expanded)},{",".join(action_group_tokens(expanded))}'
+        if len(replacement.encode('utf-8')) > MAX_MAP_ACTION_LINE_LENGTH:
+            return False
+        mirrored_lines.append((index, replacement))
+
+    source_starts_disabled = trigger_tokens[3] == '1'
+    if source_starts_disabled and not mirrored_enable:
+        return False
+
+    for index, replacement in mirrored_lines:
+        lines[index] = replacement
+
+    trigger_tokens[2] = marker_name
+    append_section_entry(lines, 'Events', hook_trigger_id, source_event)
+    append_section_entry(lines, 'Actions', hook_trigger_id, f'1,{",".join(marker_action)}')
+    append_section_entry(lines, 'Triggers', hook_trigger_id, ','.join(trigger_tokens))
+    append_section_entry(lines, 'Tags', hook_tag_id, f'0,{marker_name} 1,{hook_trigger_id}')
+    return True
 
 
 def unique_section_key(lines, sections, prefix):

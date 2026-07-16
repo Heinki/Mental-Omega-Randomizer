@@ -95,6 +95,7 @@ from randomizer_map import (
     action_line_ids,
     append_action_to_action_id,
     append_hook_team,
+    append_parallel_global_hook,
     append_superweapon_grant_trigger,
     backup_file_once,
     clone_player_country_for_house_buffs,
@@ -119,7 +120,6 @@ from randomizer_map import (
     unlocked_reward_tech_ids,
     trigger_action_ids_by_name,
     unique_in_order,
-    unique_short_section_id,
     unit_weapon_buff_rules,
 )
 from randomizer_mission_safety import (
@@ -3507,17 +3507,18 @@ throw "Map $name was not found in expandmo*.mix"
             + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
             + trigger_action_ids_by_name(lines, ['[win]', '/win', 'mission victory', 'mission successful'])
         )
-        checks = [check for check in self.mission_checks(code) if not check.get('unlocked')] if self.state else []
+        checks = self.mission_checks(code) if self.state else []
 
         patch_plan = []
         objective_checks = [check for check in checks if check.get('id') != 'victory']
         for check, action_id in zip(objective_checks, objective_action_ids):
-            patch_plan.append((check, action_id))
+            if not check.get('unlocked'):
+                patch_plan.append((check, action_id))
 
         victory_check = next((check for check in checks if check.get('id') == 'victory'), None)
-        if victory_check and victory_action_ids:
+        if victory_check and not victory_check.get('unlocked') and victory_action_ids:
             patch_plan.append((victory_check, victory_action_ids[0]))
-        elif victory_check:
+        elif victory_check and not victory_check.get('unlocked'):
             self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
 
         if not patch_plan and not rule_sections and not superweapon_trigger:
@@ -3527,7 +3528,7 @@ throw "Map $name was not found in expandmo*.mix"
         markers = {}
         for index, (check, action_id) in enumerate(patch_plan, start=1):
             marker = hook_marker_name(code, check.get('id', f'check_{index}'))
-            team_id = unique_short_section_id(lines)
+            team_id = f'RND{index:05d}'
             taskforce_id = f'RNT{index:05d}'
             script_id = f'RNS{index:05d}'
             marker_action = ['4', '1', team_id, '0', '0', '0', '0', 'A']
@@ -3545,6 +3546,13 @@ throw "Map $name was not found in expandmo*.mix"
                     patched = append_action_to_action_id(lines, action_id, marker_action)
             else:
                 patched = append_action_to_action_id(lines, action_id, marker_action)
+                if not patched:
+                    patched = append_parallel_global_hook(
+                        lines,
+                        action_id,
+                        marker_action,
+                        marker,
+                    )
             if patched:
                 append_hook_team(lines, team_id, taskforce_id, script_id, marker, house)
                 markers[marker] = check.get('id')

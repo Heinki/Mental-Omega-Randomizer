@@ -109,7 +109,7 @@ Objective action lists are recognized by these action signatures:
 | `21` | `EVA_ObjectiveComplete` | EVA objective-complete notification |
 | `11` | `Mission:ObjC` | Mission objective-complete variable |
 
-An action list containing terminal victory codes `1` or `67` is excluded from ordinary objective candidates. Remaining objective checks and candidate action IDs are paired in their encountered order with `zip`; extra briefing checks or extra actions cannot be matched automatically without mission-specific metadata.
+An action list containing terminal victory codes `1` or `67` is excluded from ordinary objective candidates. Every objective check and candidate action ID is first paired in its encountered ordinal position with `zip`; completed checks are filtered only after that pairing. This preserves Objective 2 -> action 2 after a restart where Objective 1 is already complete instead of shifting Objective 2 onto action 1. Extra briefing checks or extra actions cannot be matched automatically without mission-specific metadata.
 
 Victory candidates are ordered deliberately:
 
@@ -124,7 +124,7 @@ The first candidate is used for the victory check. Preferring a real winner acti
 Every mapped incomplete check receives unique map-local IDs:
 
 ```text
-TeamType:  M1 (shortest unused M<number> ID)
+TeamType:  RND00001
 TaskForce: RNT00001
 Script:    RNS00001
 Marker:    MOR_<MISSION>_O1  or  MOR_<MISSION>_VIC
@@ -135,13 +135,16 @@ The TaskForce is empty. The ScriptType uses a harmless guard action. The TeamTyp
 Objective markers are appended to their action list. Victory markers are inserted immediately before the first terminal code in the set `1`, `67`, or `69`; appending after a winner action is unreliable because the scenario may end before later actions execute. A name-only fallback with no recognized terminal code retains append behavior.
 
 Map action lines must remain at most `511` UTF-8 bytes because the game truncates
-the parser input at byte `512`. Marker TeamType IDs are therefore compact and
-collision-safe. Golden Gate's native objective action `01000108` is already
-`493` bytes; the former `RND00002` marker made it `516` bytes and caused
-`C0000005` at `007C9B92` with `006DD009` in the stack. The compact ID keeps it
-at `510` bytes. Both append and pre-terminal insertion reject any result above
-the limit. If even a compact marker cannot fit, that individual automatic hook
-is skipped; victory reconciliation still grants its missed objective rewards.
+the parser input at byte `512`. Hook TeamType IDs remain the proven eight-character
+`RND00001` form; shorter IDs loaded but action `4` did not create the marker team
+in live Bleed Red testing. Both append and pre-terminal insertion reject any
+result above the limit. When a full objective list uses a standalone global
+event (`11`, global set, or `61`, all objects of type destroyed), the launcher
+adds a separate marker-only trigger and mirrors the native trigger's enable and
+disable actions. Golden Gate's native `01000108` therefore remains its original
+`493` bytes instead of becoming the crashing `516` bytes, while its objective
+still produces an immediate marker. Unsupported full-list hooks are skipped;
+victory reconciliation remains the fallback.
 
 The launcher deliberately leaves `[Basic] EndOfGame` unchanged. Earlier attempts to force that field could end a mission immediately on load.
 
