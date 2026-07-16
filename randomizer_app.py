@@ -4351,7 +4351,7 @@ throw "Map $name was not found in expandmo*.mix"
                     f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
                 )
                 hint = check.get('hint')
-                if hint and not check.get('unlocked') and not check.get('released'):
+                if hint:
                     lines.append(f'   {hint}')
                 if rewards:
                     for reward in rewards:

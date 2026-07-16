@@ -69,6 +69,11 @@ Access rewards are unique by reward name. Seed planning prioritizes access, atte
 
 The mission-table reward fraction counts reward items, not check objects. The Rewards tab and mission hover text read the stored check reward arrays and display each `reward_display_name`, so a 10-item check shows all ten assignments.
 
+Mission Details always shows each check's stored briefing-objective hint beside
+its rewards. Completion and Grid reward release change only the status label;
+they do not hide the objective text. Existing saves receive current hints from
+the normal objective-summary synchronization without a schema migration.
+
 ## Generated Map Pipeline
 
 Every mission launch starts from the cached extracted source, not the previous generated result. `prepare_hooked_map` performs the following operations in order:
