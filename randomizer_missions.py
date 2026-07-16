@@ -127,6 +127,15 @@ def seed_campaign_limits(missions, mission_goal):
     return limits
 
 
+def classic_mission_order(missions, mission_goal):
+    """Return the requested missions in installed campaign-catalogue order."""
+    missions = list(missions)
+    if not missions:
+        return []
+    mission_goal = max(1, min(mission_goal, len(missions)))
+    return [mission['code'] for mission in missions[:mission_goal]]
+
+
 def seed_mission_order(
     missions,
     rng,

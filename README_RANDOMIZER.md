@@ -11,9 +11,10 @@ The launcher is currently standalone and offline. The option keys below are inte
 - **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan.
 - Seed-generation settings are copied into `randomizer_state.json`. Changing the Settings tab afterward affects the next seed, not the active seed.
 - Difficulty and game speed are launch settings and may be changed between missions.
-- **Mission List** mode opens the first three missions and each completed mission opens one additional mission.
+- **Classic** mode preserves the installed campaign order, opens only the first mission, and opens the next mission after each victory.
+- **Mission List** mode randomizes the linear mission order, opens the first three missions, and opens one additional mission after each victory.
 - **Grid Mode** opens the top-left node, or the two orthogonal neighbors of top-left when **Two start positions** is enabled. A victory opens the node's up/down/left/right neighbors; diagonal nodes do not open.
-- The generated mission order contains **Missions to finish** missions. Mission List finishes after that many victories. Grid Mode finishes when its bottom-right endgoal is completed, then releases every remaining reward and opens every unfinished node for optional cleanup.
+- The generated mission order contains **Missions to finish** missions. Classic and Mission List finish after that many victories. Grid Mode finishes when its bottom-right endgoal is completed, then releases every remaining reward and opens every unfinished node for optional cleanup.
 
 ## Settings Reference
 
@@ -24,7 +25,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Seed | `seed` | Generated `MO-XXXXXXXX` identifier; blank config default | Seeds the deterministic mission order and reward plan. The **Generate New Seed** button creates a fresh identifier. | Seed generation |
 | Campaign | `campaign_filter` | `All Campaigns`, `Allies`, `Soviets`, `Epsilon`, `Foehn`; default `All Campaigns` | Restricts the mission pool. In Standard mode it also selects the campaign-appropriate reward pool. Foehn Standard uses bundled Allied/Soviet roles because those campaigns operate those production families. | Seed generation |
 | Missions to finish | `mission_goal` | `1` through the number of eligible missions; default `15` | Number of mission victories required to finish the run and therefore the length of the generated mission order. | Seed generation |
-| Progression | `progression_mode` | `Mission List`, `Grid Mode`; default `Mission List` | Selects the original linear mission list or the orthogonal-neighbor grid described below. | Seed generation |
+| Progression | `progression_mode` | `Classic`, `Mission List`, `Grid Mode`; default `Mission List` | Selects original campaign order, a randomized linear mission list, or the orthogonal-neighbor grid described below. | Seed generation |
 | Start with two available missions | `grid_two_start_positions` | `false`/`true`; default `false` | Starts Grid Mode from the cells directly right of and below top-left instead of top-left itself. Requires at least four missions. | Seed generation |
 | Difficulty | `difficulty` | `Casual`, `Normal`, `Mental`; default `Normal` | Writes the selected campaign/human difficulty to launch configuration. It does not change rewards. | Every launch |
 | Game speed | `game_speed` | `0 - Slowest` through `6 - Fastest`; default `3 - Medium` | Writes the engine speed and launches with `-SPEEDCONTROL`, keeping the in-game speed control available. It does not change rewards. | Every launch |
@@ -37,7 +38,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 
 | UI setting | Standalone/AP option key | Default | What it changes |
 |---|---|---:|---|
-| Randomize unit access and lock unearned tech | `generation.randomize_unit_access` | `true` | Adds unit access rewards and removes unearned combat technology from player production. Economy essentials, MCVs, miners, and Engineers remain available. Chaos forces this on. |
+| Randomize unit access and lock unearned tech | `generation.randomize_unit_access` | `true` | Adds unit access rewards and removes unearned combat technology from player production. Economy essentials, MCVs, miners, Engineers, and each faction's amphibious transport remain available. Chaos forces this on. |
 | Start with basic Tier 1 combat units | `generation.start_with_tier_one_units` | `false` | Grants ground and anti-air infantry plus ground and anti-air vehicles from seed start. Standard translates the four roles to each physical Allied, Soviet, or Epsilon barracks/factory family present in the mission: Allied production gets Allied starters, Soviet production Soviet starters, and Epsilon production Epsilon starters, regardless of campaign or player house. Foehn Standard uses Allied/Soviet operating technology; native Foehn starters remain Chaos-only. Starter access rewards are removed from that seed's reward pool, but their buff rewards remain eligible immediately. |
 | Include defensive building rewards | `generation.include_defensive_buildings` | `true` | Includes faction defenses in both access rewards and defense-targeted buffs. It does not randomize power plants, refineries, production structures, walls, or gates. |
 | Include buff rewards | `generation.include_buff_rewards` | `true` | Adds positive repeatable upgrades. Turning it off disables the buff-type selections. At least one reward-pool option must remain enabled. |
@@ -83,9 +84,13 @@ These keys are runtime/developer controls and should not become normal Archipela
 
 ## Progression Modes
 
+### Classic
+
+Classic takes missions directly from the filtered installed campaign catalogue without shuffling them. Only the first mission is initially open, and each victory opens the next mission. Reward assignment remains seeded, so normal buffs, unit access, powers, and other enabled Randomizer systems still apply. With **All Campaigns**, catalogue order is preserved across the complete installed mission list; selecting one campaign preserves that campaign's own order.
+
 ### Mission List
 
-Mission List preserves the original progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry. Its first five generated entries are drawn from low-level campaign missions (missions 1-6 in the installed catalogue). Every later entry is fully shuffled from the remaining eligible pool, so Act 2 and finale missions can appear from position six onward.
+Mission List uses randomized linear progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry. Its first five generated entries are drawn from low-level campaign missions (missions 1-6 in the installed catalogue). Every later entry is fully shuffled from the remaining eligible pool, so Act 2 and finale missions can appear from position six onward.
 
 ### Grid Mode
 

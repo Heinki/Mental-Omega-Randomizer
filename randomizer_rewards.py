@@ -281,12 +281,14 @@ def build_roster_weapon_stats():
 # Complete playable 3.3.6 weapon baselines extracted from RULESMO.INI.
 ROSTER_WEAPON_STATS = build_roster_weapon_stats()
 
-# Economy and base-operation essentials are deliberately never access items.
-# They remain available regardless of normal-randomizer progress.
+# Economy, base-operation, and mission-transport essentials are deliberately
+# never access items. They remain available regardless of randomizer progress.
+AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset({'LCRF', 'SAPC', 'YHVR', 'SEAT'})
 ALWAYS_AVAILABLE_UNIT_IDS = {
     'AMCV', 'SMCV', 'PCV', 'FMCV',
     'CMIN', 'HARV', 'YMIN', 'NMIN',
     'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
+    *AMPHIBIOUS_TRANSPORT_UNIT_IDS,
 }
 ALWAYS_AVAILABLE_BUILDING_IDS = {
     'GACNST', 'NACNST', 'YACNST', 'FACNST',
@@ -699,12 +701,6 @@ EXTRA_UNIT_UNLOCK_REWARDS = [
         'factions': ['Allies'],
     },
     {
-        'name': 'Allied Transport Access',
-        'description': 'Allows Allied naval transports where the map tech tree permits them.',
-        'rules': build_unlock('LCRF', 2, 'GAYARD'),
-        'factions': ['Allies'],
-    },
-    {
         'name': 'Battlecruiser Access',
         'description': 'Allows Allied battlecruisers where the map tech tree permits them.',
         'rules': build_unlock('HCRUIS', 4, 'GAYARD'),
@@ -726,12 +722,6 @@ EXTRA_UNIT_UNLOCK_REWARDS = [
         'name': 'Sea Scorpion Access',
         'description': 'Allows Sea Scorpions where the map tech tree permits them.',
         'rules': {'DBOAT': {'TechLevel': '3'}},
-        'factions': ['Soviets'],
-    },
-    {
-        'name': 'Soviet Transport Access',
-        'description': 'Allows Soviet naval transports where the map tech tree permits them.',
-        'rules': {'SAPC': {'TechLevel': '2'}},
         'factions': ['Soviets'],
     },
 ]
@@ -1058,14 +1048,14 @@ UNIT_LABELS = {
     'GGI': 'Guardian GI',
     'HCRUIS': 'Battlecruiser',
     'JUMPJET': 'Rocketeer',
-    'LCRF': 'Allied Transport',
+    'LCRF': 'Voyager Transport',
     'AKULA': 'Akula',
     'DBOAT': 'Sea Scorpion',
     'DRED': 'Dreadnought',
     'FLAKT': 'Flak Trooper',
     'HTK': 'Flak Track',
     'HTNK': 'Heavy Tank',
-    'SAPC': 'Soviet Transport',
+    'SAPC': 'Zubr Transport',
     'SHK': 'Tesla Trooper',
     'SQD': 'Giant Squid',
     'SUB': 'Typhoon Sub',

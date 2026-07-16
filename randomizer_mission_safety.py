@@ -76,6 +76,13 @@ BASIC_NAVAL_UNLOCKS = {
     'soviets': [('SAPC', '2'), ('SUB', '3'), ('DBOAT', '3')],
 }
 
+AMPHIBIOUS_TRANSPORTS = {
+    'allies': ('LCRF', 'GAYARD'),
+    'soviets': ('SAPC', 'NAYARD'),
+    'epsilon': ('YHVR', 'YAYARD'),
+    'foehn': ('SEAT', 'FAYARD'),
+}
+
 PRODUCTION_BUILDINGS = {
     'allies': {
         'base': {'GACNST'},
@@ -166,12 +173,14 @@ TECH_ORDER = [
     'SAPC',
     'SUB',
     'DBOAT',
+    'YHVR',
     'INIT',
     'LTNK',
     'YTNK',
     'KNIGHT',
     'JACKAL',
     'CYCL',
+    'SEAT',
 ]
 
 
@@ -448,6 +457,26 @@ def _chaos_prerequisite_rules(category, fallback):
     }
     for index, building_id in enumerate(alternatives[1:], start=1):
         rules[f'Prerequisite.List{index}'] = building_id
+    return rules
+
+
+def always_available_transport_rules(lines, chaos_mode=False):
+    """Make every faction's amphibious transport immediately buildable."""
+    records = map_house_records(lines)
+    owners = ','.join(_player_build_countries(lines, records))
+    rules = {}
+    for _family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
+        values = {
+            'TechLevel': '1',
+            'Owner': owners,
+            'RequiredHouses': owners,
+            'ForbiddenHouses': 'none',
+        }
+        if chaos_mode:
+            values.update(_chaos_prerequisite_rules('naval', prerequisite))
+        else:
+            values['PrerequisiteOverride'] = prerequisite
+        rules[tech_id] = values
     return rules
 
 

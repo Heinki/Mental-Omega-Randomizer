@@ -30,6 +30,7 @@ from randomizer_missions import (
     FACTION_ORDER,
     LOW_LEVEL_MISSION_COUNT,
     campaign_mission_counts,
+    classic_mission_order,
     normalize_faction,
     parse_missions,
     seed_campaign_limits,
@@ -41,6 +42,7 @@ from randomizer_ini import (
     set_ini_value_lines,
 )
 from randomizer_rewards import (
+    AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
@@ -123,6 +125,7 @@ from randomizer_map import (
     unit_weapon_buff_rules,
 )
 from randomizer_mission_safety import (
+    always_available_transport_rules,
     chaos_earned_access_rules,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
@@ -145,7 +148,8 @@ GAME_SPEEDS = [
 ]
 CAMPAIGN_FILTERS = ['All Campaigns', 'Allies', 'Soviets', 'Epsilon', 'Foehn']
 REWARD_MODES = ['Standard', 'Chaos (Experimental)']
-PROGRESSION_MODES = ['Mission List', 'Grid Mode']
+PROGRESSION_MODES = ['Classic', 'Mission List', 'Grid Mode']
+DEFAULT_PROGRESSION_MODE = 'Mission List'
 
 STARTING_UNLOCKED_MISSIONS = 3
 DEFAULT_MISSION_GOAL = 15
@@ -307,7 +311,7 @@ class LauncherApp(tk.Tk):
         progression_mode_default = valid_choice(
             self.state.get('progression_mode', self.config.get('progression_mode')),
             PROGRESSION_MODES,
-            PROGRESSION_MODES[0],
+            DEFAULT_PROGRESSION_MODE,
         )
         self.progression_mode_var = tk.StringVar(value=progression_mode_default)
         grid_state = self.state.get('grid', {}) if isinstance(self.state.get('grid'), dict) else {}
@@ -581,6 +585,12 @@ class LauncherApp(tk.Tk):
         )
         self.progression_mode_combo.grid(row=5, column=1, sticky='ew', pady=(6, 0))
         self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
+        WidgetTooltip(
+            self.progression_mode_combo,
+            'Classic follows the installed campaign order and opens one mission at a time. '
+            'Mission List uses a randomized linear order. Grid Mode uses randomized missions '
+            'on an orthogonal-neighbor board.',
+        )
 
         self.grid_options_frame = ttk.Frame(options_row)
         self.grid_options_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(6, 0))
@@ -1913,7 +1923,10 @@ class LauncherApp(tk.Tk):
         require_access_for_unit_buffs = self.randomize_unit_access_enabled()
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         used_access_names = set()
-        seed_unlocked_tech_ids = set(self.active_starting_tier_one_unit_ids())
+        seed_unlocked_tech_ids = (
+            set(self.active_starting_tier_one_unit_ids())
+            | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
+        )
         buff_counts = {}
         unit_buff_counts = {}
         global_buff_counts = {}
@@ -2197,7 +2210,7 @@ class LauncherApp(tk.Tk):
 
     def active_progression_mode(self):
         if self.state:
-            return self.state.get('progression_mode', PROGRESSION_MODES[0])
+            return self.state.get('progression_mode', DEFAULT_PROGRESSION_MODE)
         return self.progression_mode_var.get()
 
     def sync_grid_progression(self):
@@ -2640,27 +2653,31 @@ class LauncherApp(tk.Tk):
         starting_unit_ids = self.starting_tier_one_unit_ids_for_seed(seed, reward_settings)
         self._starting_unit_ids_override = starting_unit_ids
         campaign_counts = campaign_mission_counts(seed_missions)
-        campaign_limits = seed_campaign_limits(seed_missions, mission_goal)
         progression_mode = self.progression_mode_var.get()
         two_start_positions = bool(self.grid_two_starts_var.get())
-        try:
-            low_level_count = (
-                grid_opening_mission_count(mission_goal, two_start_positions)
-                if progression_mode == 'Grid Mode'
-                else LOW_LEVEL_MISSION_COUNT
+        if progression_mode == 'Classic':
+            mission_codes = classic_mission_order(seed_missions, mission_goal)
+            campaign_limits = campaign_mission_counts(seed_missions[:len(mission_codes)])
+        else:
+            campaign_limits = seed_campaign_limits(seed_missions, mission_goal)
+            try:
+                low_level_count = (
+                    grid_opening_mission_count(mission_goal, two_start_positions)
+                    if progression_mode == 'Grid Mode'
+                    else LOW_LEVEL_MISSION_COUNT
+                )
+            except ValueError as exc:
+                self._reward_settings_override = None
+                self._starting_unit_ids_override = None
+                self.append_log(f'Cannot generate grid: {exc}.', error=True)
+                messagebox.showwarning('Invalid Grid', str(exc))
+                return
+            mission_codes = seed_mission_order(
+                seed_missions,
+                rng,
+                mission_goal,
+                low_level_count=low_level_count,
             )
-        except ValueError as exc:
-            self._reward_settings_override = None
-            self._starting_unit_ids_override = None
-            self.append_log(f'Cannot generate grid: {exc}.', error=True)
-            messagebox.showwarning('Invalid Grid', str(exc))
-            return
-        mission_codes = seed_mission_order(
-            seed_missions,
-            rng,
-            mission_goal,
-            low_level_count=low_level_count,
-        )
         grid = None
         if progression_mode == 'Grid Mode':
             try:
@@ -2703,7 +2720,10 @@ class LauncherApp(tk.Tk):
             'progression_mode': progression_mode,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
-            'starting_unlocked_missions': min(STARTING_UNLOCKED_MISSIONS, len(mission_codes)),
+            'starting_unlocked_missions': min(
+                1 if progression_mode == 'Classic' else STARTING_UNLOCKED_MISSIONS,
+                len(mission_codes),
+            ),
             'mission_order': mission_codes,
             'campaign_mission_counts': campaign_counts,
             'campaign_mission_limits': campaign_limits,
@@ -2734,6 +2754,8 @@ class LauncherApp(tk.Tk):
             if grid is not None and grid.get('two_start_positions')
             else 'Start from the top-left node.'
             if grid is not None
+            else 'First campaign mission is open.'
+            if progression_mode == 'Classic'
             else f'First {self.state["starting_unlocked_missions"]} missions are open.'
         )
         self.append_log(
@@ -2748,10 +2770,16 @@ class LauncherApp(tk.Tk):
                 + '.'
             )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
-            self.append_log(
-                f'Foehn pool: {campaign_counts["Foehn"]} missions available; '
-                f'this seed is limited to {campaign_limits["Foehn"]} Foehn mission(s).'
-            )
+            if progression_mode == 'Classic':
+                self.append_log(
+                    f'Classic catalogue prefix includes {campaign_limits.get("Foehn", 0)} '
+                    'Foehn mission(s).'
+                )
+            else:
+                self.append_log(
+                    f'Foehn pool: {campaign_counts["Foehn"]} missions available; '
+                    f'this seed is limited to {campaign_limits["Foehn"]} Foehn mission(s).'
+                )
         log_event(
             'seed_generated',
             seed=seed,
@@ -3104,6 +3132,9 @@ class LauncherApp(tk.Tk):
         starting_unit_ids = self.active_starting_tier_one_unit_ids()
         if self.active_reward_mode() == 'Chaos (Experimental)':
             rules = chaos_earned_access_rules(lines, self.earned_rewards_from_checks())
+            transport_rules = always_available_transport_rules(lines, chaos_mode=True)
+            for section, values in transport_rules.items():
+                rules.setdefault(section, {}).update(values)
             starter_rules = starting_tier_one_rules(
                 lines,
                 starting_unit_ids,
@@ -3130,6 +3161,9 @@ class LauncherApp(tk.Tk):
             earned_access_ids=earned_access_ids,
             use_equivalent_access=use_equivalent_access,
         )
+        transport_rules = always_available_transport_rules(lines)
+        for section, values in transport_rules.items():
+            rules.setdefault(section, {}).update(values)
         standard_starter_families = {
             'All Campaigns': ('allies', 'soviets', 'epsilon'),
             'Allies': ('allies', 'soviets', 'epsilon'),
