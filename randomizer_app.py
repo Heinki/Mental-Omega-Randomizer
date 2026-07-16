@@ -3144,22 +3144,18 @@ class LauncherApp(tk.Tk):
                 rules.setdefault(section, {}).update(values)
             return rules
         selected_campaign = self.state.get('campaign_filter', '') if self.state else ''
-        # All-Campaign normally retains its legacy unconditional mixed-factory
-        # safety net. When faction-specific starters are enabled, use earned
-        # role translation instead so that safety net cannot silently grant
-        # another faction's Tier 1 starter roster for free.
-        use_equivalent_access = bool(starting_unit_ids) or selected_campaign in {
+        translate_equivalents = selected_campaign in {
             'Allies', 'Soviets', 'Epsilon', 'Foehn'
         }
         earned_access_ids = (
             unlocked_reward_tech_ids(self.earned_rewards_from_checks())
-            if use_equivalent_access
-            else set()
+            if self.randomize_unit_access_enabled()
+            else controlled_tech_ids()
         )
         rules = mission_basic_unit_rules(
             lines,
             earned_access_ids=earned_access_ids,
-            use_equivalent_access=use_equivalent_access,
+            translate_equivalents=translate_equivalents,
         )
         transport_rules = always_available_transport_rules(lines)
         for section, values in transport_rules.items():

@@ -2,8 +2,8 @@
 
 The randomizer locks unit access globally, but campaign maps sometimes hand
 the player another faction's production during the mission. Selected-faction
-campaigns translate earned roles to that production; All Campaigns retains a
-small unconditional safety net.
+campaigns translate earned roles to that production; All Campaigns preserves
+exact per-faction unlocks.
 """
 
 from randomizer_map import (
@@ -14,26 +14,14 @@ from randomizer_map import (
 )
 from randomizer_ini import section_lines
 from randomizer_rewards import (
-    ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
+    FACTION_ACCESS_RULES,
     REWARD_POOL,
     unit_role_equivalents,
 )
 
 
-BASIC_INFANTRY_UNLOCKS = {
-    'allies': [('ENGINEER', '1'), ('E1', '1'), ('GGI', '1')],
-    'soviets': [('ENGINEER', '1'), ('E2', '1'), ('FLAKT', '1')],
-    'epsilon': [('ENGINEER', '1'), ('INIT', '1')],
-    'foehn': [('ENGINEER', '1'), ('KNIGHT', '1')],
-}
-
-BASIC_VEHICLE_UNLOCKS = {
-    'allies': [('AHMV', '2'), ('FV', '2')],
-    'soviets': [('HTNK', '2'), ('HTK', '2')],
-    'epsilon': [('LTNK', '2'), ('YTNK', '2')],
-    'foehn': [('JACKAL', '2'), ('CYCL', '2')],
-}
+MIXED_PRODUCTION_ENGINEER = 'ENGINEER'
 
 # Four guaranteed combat roles for the optional seed-start roster. Standard
 # translates each role to the physical production families present in a map.
@@ -66,15 +54,6 @@ TIER_ONE_ROLE_UNITS = {
 }
 
 STANDARD_TIER_ONE_FAMILIES = ('allies', 'soviets', 'epsilon')
-
-BASIC_AIR_UNLOCKS = {
-    'allies': [('JUMPJET', '1')],
-}
-
-BASIC_NAVAL_UNLOCKS = {
-    'allies': [('LCRF', '2'), ('DEST', '3'), ('DLPH', '3')],
-    'soviets': [('SAPC', '2'), ('SUB', '3'), ('DBOAT', '3')],
-}
 
 AMPHIBIOUS_TRANSPORTS = {
     'allies': ('LCRF', 'GAYARD'),
@@ -315,29 +294,13 @@ def _allowed_safety_families(player_family):
     return set()
 
 
-def _unlocks_for_category(family, category):
-    if category == 'base':
-        return (
-            BASIC_INFANTRY_UNLOCKS.get(family, [])
-            + BASIC_VEHICLE_UNLOCKS.get(family, [])
-        )
-    if category == 'infantry':
-        return BASIC_INFANTRY_UNLOCKS.get(family, [])
-    if category == 'vehicles':
-        return BASIC_VEHICLE_UNLOCKS.get(family, [])
-    if category == 'air':
-        return BASIC_AIR_UNLOCKS.get(family, [])
-    if category == 'naval':
-        return BASIC_NAVAL_UNLOCKS.get(family, [])
-    return []
-
-
-def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_access=False):
+def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalents=False):
     """Return off-faction access needed by mixed mission production.
 
-    All-Campaign seeds retain the unconditional basic safety net. A selected
-    faction instead translates earned access into role-equivalent units for
-    the off-faction production actually present in the map.
+    All-Campaign seeds preserve exact earned unit IDs for each physical
+    production family. A selected single-faction campaign translates earned
+    access into role-equivalent units for foreign production. One Allied
+    Engineer covers all mixed barracks as a base-operation essential.
     """
     house_records = map_house_records(lines)
     unlocks = []
@@ -361,47 +324,55 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, use_equivalent_acces
         if family not in allowed_families:
             continue
         production_categories.add((family, category))
-        if not use_equivalent_access:
-            unlocks.extend(_unlocks_for_category(family, category))
 
-    if use_equivalent_access:
-        expanded_categories = set(production_categories)
-        for family, category in production_categories:
-            if category == 'base':
-                expanded_categories.add((family, 'infantry'))
-                expanded_categories.add((family, 'vehicles'))
-
-        # Engineers and similar economy essentials remain available because
-        # their selected-faction counterparts are always available. All other
-        # translated access requires an earned role peer.
-        available_access = earned_access_ids | {
-            tech_id.upper() for tech_id in ALWAYS_AVAILABLE_TECH_IDS
-        }
-        player_build_countries = _player_build_countries(lines, house_records)
-        for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
-            if (family, category) not in expanded_categories:
-                continue
-            if unit_role_equivalents(tech_id).intersection(available_access):
-                owners = _merged_items(_comma_items(native_owners), player_build_countries)
-                access_rule = {
-                    'TechLevel': tech_level,
-                    'Owner': ','.join(owners),
-                    'RequiredHouses': ','.join(owners),
-                    'ForbiddenHouses': 'none',
-                    'PrerequisiteOverride': prerequisite,
-                }
-                unlocks.append((tech_id, tech_level, access_rule))
-
-        # Engineers are not access rewards, so add the matching off-faction
-        # engineer when a base or barracks is present.
-        for family, category in expanded_categories:
-            if category not in {'base', 'infantry'}:
-                continue
-            unlocks.extend(
-                (tech_id, level, None)
-                for tech_id, level in BASIC_INFANTRY_UNLOCKS.get(family, [])
-                if tech_id in ALWAYS_AVAILABLE_TECH_IDS
+    expanded_categories = set(production_categories)
+    for family, category in production_categories:
+        if category == 'base':
+            expanded_categories.update(
+                (family, production_category)
+                for production_category in PRODUCTION_BUILDINGS[family]
+                if production_category != 'base'
             )
+
+    available_access = earned_access_ids
+    player_build_countries = _player_build_countries(lines, house_records)
+    for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
+        if (family, category) not in expanded_categories:
+            continue
+        has_access = (
+            bool(unit_role_equivalents(tech_id).intersection(available_access))
+            if translate_equivalents
+            else tech_id in available_access
+        )
+        if not has_access:
+            continue
+        owners = _merged_items(_comma_items(native_owners), player_build_countries)
+        access_rule = {
+            'TechLevel': tech_level,
+            'Owner': ','.join(owners),
+            'RequiredHouses': ','.join(owners),
+            'ForbiddenHouses': 'none',
+            'PrerequisiteOverride': prerequisite,
+        }
+        unlocks.append((tech_id, tech_level, access_rule))
+
+    # Engineers are progression essentials rather than access rewards. Their
+    # faction variants are functionally identical, so expose one Allied
+    # Engineer through the generic barracks prerequisite instead of adding one
+    # duplicate cameo for every captured production family.
+    if any(
+        category in {'base', 'infantry'}
+        for _family, category in expanded_categories
+    ):
+        native_owners = FACTION_ACCESS_RULES['Allies']['houses']
+        owners = _merged_items(_comma_items(native_owners), player_build_countries)
+        unlocks.append((MIXED_PRODUCTION_ENGINEER, '1', {
+            'TechLevel': '1',
+            'Owner': ','.join(owners),
+            'RequiredHouses': ','.join(owners),
+            'ForbiddenHouses': 'none',
+            'PrerequisiteOverride': 'BARRACKS',
+        }))
 
     rules = {}
     seen = set()

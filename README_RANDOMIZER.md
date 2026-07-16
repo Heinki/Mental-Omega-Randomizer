@@ -114,13 +114,15 @@ The installed pool contains 30 Allied, 30 Soviet, 30 Epsilon, and 7 Foehn missio
 
 Standard keeps the reward pool appropriate to the selected campaign. Single-faction campaigns translate earned roles when a mission gives the player a foreign barracks, factory, air command, or shipyard. For example, an earned basic-infantry role can provide the corresponding unit for a captured production family.
 
+**All Campaigns** does not translate roles between factions. Capturing production exposes only that physical faction's exact unit IDs already unlocked by the player. Capturing an Allied Barracks with only Snipers and Suppressors unlocked therefore adds only Snipers and Suppressors, never free GIs or Guardian GIs. Mixed captured barracks share one Allied Engineer cameo instead of adding duplicate faction Engineer variants. The four always-available amphibious transports remain progression exceptions. Optional Tier 1 starters add only their explicitly selected starter roles.
+
 With **Start with basic Tier 1 combat units**, Standard immediately grants four roles: basic ground infantry, anti-air infantry, a basic ground vehicle, and an anti-air vehicle. Their faction follows the physical production family discovered in the map, matching the existing equivalent-access behavior. For example, Epsilon 04 gives Allied starters after its Allied Construction Yard is captured; a map with Epsilon barracks/factories gives Epsilon starters even when its campaign or current player house differs. **All Campaigns** supports all Allied, Soviet, and Epsilon production families. Foehn Standard still uses Allied/Soviet operating technology; native Foehn starters remain exclusive to Chaos.
 
 Foehn Standard uses Allied/Soviet bundled access and compatible shared buffs because Foehn missions commonly operate those technologies. Standard **All Campaigns** uses Allied, Soviet, and Epsilon rewards; the complete Foehn reward catalogue is reserved for Chaos.
 
 ### Chaos (Experimental)
 
-Chaos draws access and buffs independently from all four factions. An earned unit can be produced from any matching production building that the current mission gives the player: barracks for infantry, factories for vehicles, air commands for aircraft, shipyards for naval units, and Construction Yards for defenses. Chaos does **not** grant foreign production buildings.
+Chaos draws access and buffs independently from all four factions. An earned unit can be produced from any matching production building that the current mission gives the player: barracks for infantry, factories for vehicles, air commands for aircraft, shipyards for naval units, and Construction Yards for defenses. Capturing another production building never grants another unit; it only provides another factory for already-earned access. Chaos does **not** grant foreign production buildings.
 
 With **Start with basic Tier 1 combat units**, Chaos shuffles all four factions across four guaranteed roles: ground infantry, anti-air infantry, ground vehicle, and anti-air vehicle. Every seed therefore starts with both ground and anti-air answers and exactly one Allied, Soviet, Epsilon, and Foehn starter.
 
