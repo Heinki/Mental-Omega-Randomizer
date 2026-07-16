@@ -12,7 +12,7 @@ from randomizer_map import (
     player_controlled_houses,
     player_house_from_map,
 )
-from randomizer_ini import section_lines
+from randomizer_ini import all_section_value_maps, section_lines
 from randomizer_rewards import (
     BUFF_TARGETS,
     FACTION_ACCESS_RULES,
@@ -22,6 +22,9 @@ from randomizer_rewards import (
 
 
 MIXED_PRODUCTION_ENGINEER = 'ENGINEER'
+REDUNDANT_ENGINEER_VARIANTS = ('SENGINEER', 'YENGINEER', 'FENGINEER')
+STALINS_FIST_FACTORY = 'NAFIST'
+STALINS_FIST_FAMILIES = {'soviets', 'epsilon'}
 
 # Four guaranteed combat roles for the optional seed-start roster. Standard
 # translates each role to the physical production families present in a map.
@@ -294,6 +297,46 @@ def _allowed_safety_families(player_family):
     return set()
 
 
+def _special_infantry_factories(sections):
+    """Return map-local infantry factories outside known faction barracks."""
+    return tuple(
+        section.upper()
+        for section, values in sections.items()
+        if values.get('factory', '').lower() == 'infantrytype'
+        and section.upper() not in PRODUCTION_LOOKUP
+    )
+
+
+def _map_provides_stalins_fist(lines, sections):
+    for section in ('Units', 'Structures'):
+        for line in section_lines(lines, section):
+            if '=' not in line:
+                continue
+            parts = [part.strip().upper() for part in line.split('=', 1)[1].split(',')]
+            if len(parts) >= 2 and parts[1] in {'MWF', STALINS_FIST_FACTORY}:
+                return True
+
+    by_lower = {name.lower(): values for name, values in sections.items()}
+    for taskforce_id in by_lower.get('taskforces', {}).values():
+        for key, value in by_lower.get(taskforce_id.lower(), {}).items():
+            if not key.isdigit():
+                continue
+            parts = [part.strip().upper() for part in value.split(',')]
+            if len(parts) >= 2 and parts[1] == 'MWF':
+                return True
+    return False
+
+
+def _special_factory_alternatives(lines, category, sections=None):
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    alternatives = []
+    if category == 'vehicles' and _map_provides_stalins_fist(lines, sections):
+        alternatives.append(STALINS_FIST_FACTORY)
+    if category == 'infantry':
+        alternatives.extend(_special_infantry_factories(sections))
+    return tuple(alternatives)
+
+
 def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalents=False):
     """Return off-faction access needed by mixed mission production.
 
@@ -302,7 +345,8 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalent
     access into role-equivalent units for foreign production. One Allied
     Engineer covers all mixed barracks as a base-operation essential.
     """
-    house_records = map_house_records(lines)
+    sections = all_section_value_maps(lines)
+    house_records = map_house_records(lines, sections=sections)
     unlocks = []
     production_categories = set()
     earned_access_ids = {str(unit_id).upper() for unit_id in (earned_access_ids or [])}
@@ -336,6 +380,53 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalent
 
     available_access = earned_access_ids
     player_build_countries = _player_build_countries(lines, house_records)
+
+    # Special map-local barracks intentionally share every exact unlocked
+    # infantry type, regardless of faction. Keep each unit's native barracks as
+    # an alternative so this map rule never removes ordinary production.
+    special_barracks = _special_infantry_factories(sections)
+    if special_barracks:
+        for tech_id, tech_level, _family, category, prerequisite, native_owners in ACCESS_CATALOG:
+            if category != 'infantry' or tech_id not in available_access:
+                continue
+            owners = _merged_items(_comma_items(native_owners), player_build_countries)
+            access_rule = {
+                'TechLevel': tech_level,
+                'Owner': ','.join(owners),
+                'RequiredHouses': ','.join(owners),
+                'ForbiddenHouses': 'none',
+            }
+            access_rule.update(
+                _alternative_prerequisite_rules((prerequisite, *special_barracks))
+            )
+            unlocks.append((tech_id, tech_level, access_rule))
+
+    # Stalin's Fist is physically Soviet but serves the current Soviet or
+    # Epsilon mission faction. Standard exposes only exact unlocked vehicles
+    # from that corresponding family.
+    if (
+        player_family in STALINS_FIST_FAMILIES
+        and _map_provides_stalins_fist(lines, sections)
+    ):
+        for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
+            if (
+                family != player_family
+                or category != 'vehicles'
+                or tech_id not in available_access
+            ):
+                continue
+            owners = _merged_items(_comma_items(native_owners), player_build_countries)
+            access_rule = {
+                'TechLevel': tech_level,
+                'Owner': ','.join(owners),
+                'RequiredHouses': ','.join(owners),
+                'ForbiddenHouses': 'none',
+            }
+            access_rule.update(
+                _alternative_prerequisite_rules((prerequisite, STALINS_FIST_FACTORY))
+            )
+            unlocks.append((tech_id, tech_level, access_rule))
+
     for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
         if (family, category) not in expanded_categories:
             continue
@@ -360,19 +451,29 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalent
     # faction variants are functionally identical, so expose one Allied
     # Engineer through the generic barracks prerequisite instead of adding one
     # duplicate cameo for every captured production family.
-    if any(
+    if special_barracks or any(
         category in {'base', 'infantry'}
         for _family, category in expanded_categories
     ):
         native_owners = FACTION_ACCESS_RULES['Allies']['houses']
         owners = _merged_items(_comma_items(native_owners), player_build_countries)
-        unlocks.append((MIXED_PRODUCTION_ENGINEER, '1', {
+        engineer_rule = {
             'TechLevel': '1',
             'Owner': ','.join(owners),
             'RequiredHouses': ','.join(owners),
             'ForbiddenHouses': 'none',
-            'PrerequisiteOverride': 'BARRACKS',
-        }))
+        }
+        if special_barracks:
+            engineer_rule.update(
+                _alternative_prerequisite_rules(('BARRACKS', *special_barracks))
+            )
+        else:
+            engineer_rule['PrerequisiteOverride'] = 'BARRACKS'
+        unlocks.append((MIXED_PRODUCTION_ENGINEER, '1', engineer_rule))
+        # Block only production of the functionally identical faction variants.
+        # BuildLimit leaves map-placed and scripted Engineers available.
+        for engineer_id in REDUNDANT_ENGINEER_VARIANTS:
+            unlocks.append((engineer_id, '', {'BuildLimit': '0'}))
 
     rules = {}
     seen = set()
@@ -411,17 +512,12 @@ def chaos_cameo_priority_rules(player_family):
     return rules
 
 
-def _chaos_prerequisite_rules(category, fallback):
-    """Allow an earned item from the matching factory of any faction."""
-    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
-    if not alternatives and fallback:
-        alternatives = [fallback]
+def _alternative_prerequisite_rules(alternatives):
+    alternatives = _merged_items(alternatives)
     if not alternatives:
         return {}
 
     rules = {
-        # Reset campaign/global overrides so Ares' independent prerequisite
-        # lists below decide availability.
         'PrerequisiteOverride': 'none',
         'Prerequisite.List0': alternatives[0],
         'Prerequisite.Lists': str(max(0, len(alternatives) - 1)),
@@ -431,9 +527,19 @@ def _chaos_prerequisite_rules(category, fallback):
     return rules
 
 
+def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
+    """Allow an earned item from the matching factory of any faction."""
+    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+    if not alternatives and fallback:
+        alternatives = [fallback]
+    alternatives.extend(extra_alternatives)
+    return _alternative_prerequisite_rules(alternatives)
+
+
 def always_available_transport_rules(lines, chaos_mode=False):
     """Make every faction's amphibious transport immediately buildable."""
-    records = map_house_records(lines)
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
     owners = ','.join(_player_build_countries(lines, records))
     rules = {}
     for _family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
@@ -487,7 +593,8 @@ def starting_tier_one_rules(
     if not selected_ids:
         return {}
 
-    records = map_house_records(lines)
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
     player_countries = _player_build_countries(lines, records)
     owners = ','.join(player_countries)
     rules = {}
@@ -504,7 +611,11 @@ def starting_tier_one_rules(
                     'ForbiddenHouses': 'none',
                 }
                 fallback = CHAOS_PRIMARY_PRODUCTION[family][category]
-                values.update(_chaos_prerequisite_rules(category, fallback))
+                values.update(_chaos_prerequisite_rules(
+                    category,
+                    fallback,
+                    _special_factory_alternatives(lines, category, sections),
+                ))
                 rules[tech_id] = values
         return rules
 
@@ -560,7 +671,8 @@ def chaos_earned_access_rules(lines, earned_rewards):
     if not player_houses:
         return {}
 
-    records = map_house_records(lines)
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
     player_countries = []
     for house in player_houses:
         country = records.get(house, {}).get('country') or house.replace(' House', '')
@@ -572,6 +684,10 @@ def chaos_earned_access_rules(lines, earned_rewards):
     rules = {}
     owners = ','.join(player_countries + ['MORPLAYER'])
     player_family = _player_family(lines, records)
+    special_alternatives = {
+        category: _special_factory_alternatives(lines, category, sections)
+        for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
+    }
 
     for reward in earned_rewards:
         if reward.get('kind') in {'buff', 'superweapon'}:
@@ -596,7 +712,11 @@ def chaos_earned_access_rules(lines, earned_rewards):
                 'ForbiddenHouses': 'none',
             }
             rules[tech_id.upper()].update(
-                _chaos_prerequisite_rules(category, prerequisite)
+                _chaos_prerequisite_rules(
+                    category,
+                    prerequisite,
+                    special_alternatives[category],
+                )
             )
     for section, values in chaos_cameo_priority_rules(player_family).items():
         rules.setdefault(section, {}).update(values)

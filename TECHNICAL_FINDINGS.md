@@ -196,9 +196,11 @@ Before launch, the mission safety layer scans both placed structures and numbere
 
 ### Standard mixed-faction access
 
-All Campaigns applies exact per-faction access. When the player captures foreign production, the mission rule adapts ownership only for earned TechnoType IDs belonging to that physical production family. A discovered foreign Construction Yard prepares every matching production category so later barracks, factories, airfields, and shipyards still expose only earned IDs. It never substitutes role peers and has no unconditional basic-unit safety roster. Mixed foreign barracks use one Allied `ENGINEER` with the generic `BARRACKS` prerequisite, avoiding duplicate faction Engineer cameos. Amphibious transports remain explicit progression essentials; optional Tier 1 starters are injected independently and do not relax exact access.
+All Campaigns applies exact per-faction access. When the player captures foreign production, the mission rule adapts ownership only for earned TechnoType IDs belonging to that physical production family. A discovered foreign Construction Yard prepares every matching production category so later barracks, factories, airfields, and shipyards still expose only earned IDs. It never substitutes role peers and has no unconditional basic-unit safety roster. Mixed foreign barracks use one Allied `ENGINEER` with the generic `BARRACKS` prerequisite. Map-local `BuildLimit=0` rules suppress `SENGINEER`, `YENGINEER`, and `FENGINEER` production while leaving preplaced and scripted Engineers intact. Amphibious transports remain explicit progression essentials; optional Tier 1 starters are injected independently and do not relax exact access.
 
 A selected single-faction campaign translates earned curated roles to foreign production families that the mission gives the player. The generated rule includes the physical factory prerequisite, native ownership, and active player countries. No combat role is granted without an earned equivalent; the shared Allied Engineer remains available.
+
+Map-local unknown buildings declaring `Factory=InfantryType` are special barracks. Every exact unlocked infantry ID receives that building as an independent prerequisite alternative, regardless of faction; the normal faction barracks remains another alternative. This covers Fallen Ashes `CAMINE`. A map that places `MWF`/`NAFIST`, including through a listed TaskForce, receives Stalin's Fist support: Standard adds `NAFIST` only to exact unlocked vehicle IDs matching the current Soviet or Epsilon player family. These special rules include explicit Tier 1 starters but never unearned access.
 
 Foehn Standard draws bundled Allied/Soviet access peers. Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. Full Foehn reward definitions are reserved for Chaos.
 
@@ -208,7 +210,7 @@ A 97-map starter audit matched every injected Standard starter section exactly t
 
 ### Chaos access
 
-Chaos always enables controlled-tech locking and draws all four factions. Each exact earned unit receives player-country ownership and Ares alternative prerequisite lists for every matching production family. The map's provided barracks/factory/airfield/shipyard/conyard can therefore produce the earned unit without granting foreign production structures or any additional unit access when another factory is captured.
+Chaos always enables controlled-tech locking and draws all four factions. Each exact earned unit receives player-country ownership and Ares alternative prerequisite lists for every matching production family. Detected special barracks are added for all earned infantry and `NAFIST` for all earned vehicles. The map's provided barracks/factory/airfield/shipyard/conyard can therefore produce the earned unit without granting foreign production structures or any additional unit access when another factory is captured.
 
 Chaos Tier 1 starters use a separate deterministic stream, `<seed>:starting-tier-one`, so mission order and normal reward RNG calls remain unchanged. Faction order is shuffled once and assigned across the four guaranteed roles, producing exactly one Allied, Soviet, Epsilon, and Foehn unit while always covering ground and anti-air infantry and vehicles. Those units use the same all-faction prerequisite alternatives as earned Chaos access.
 

@@ -3152,6 +3152,7 @@ class LauncherApp(tk.Tk):
             if self.randomize_unit_access_enabled()
             else controlled_tech_ids()
         )
+        earned_access_ids.update(starting_unit_ids)
         rules = mission_basic_unit_rules(
             lines,
             earned_access_ids=earned_access_ids,
