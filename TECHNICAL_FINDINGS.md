@@ -30,7 +30,7 @@ Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 
 `-LOG` produces `debug/debug.log`, which is the communication channel for objective/victory markers. `-SPEEDCONTROL` keeps the spawned-game speed control available.
 
-The packaged launcher uses PyInstaller one-file mode so the release contains only `MentalOmegaRandomizer.exe`. PyInstaller embeds Python, Tcl/Tk, and native extensions and expands them to its temporary `_MEI*` directory at startup. That extraction cannot be removed while retaining a self-contained PyInstaller/Tk executable, so unnecessary imports are kept out of the bundle and diagnostics use the base `logging.FileHandler` rather than `logging.handlers` and its unused mail/network stack. Persistent configuration and caches remain under `RandomizerLauncherData`; they are player data rather than application runtime files.
+The packaged launcher uses PyInstaller one-file mode so the release contains only `MentalOmegaRandomizer.exe`. PyInstaller embeds Python, Tcl/Tk, native extensions, and `mo-logo-puzzle-icon.ico`, then expands them to its temporary `_MEI*` directory at startup. The same icon is used for the executable shell icon and loaded through Tk `iconbitmap` for the running window; source runs read it directly from the repository. That extraction cannot be removed while retaining a self-contained PyInstaller/Tk executable, so unnecessary imports are kept out of the bundle and diagnostics use the base `logging.FileHandler` rather than `logging.handlers` and its unused mail/network stack. Persistent configuration and caches remain under `RandomizerLauncherData`; they are player data rather than application runtime files.
 
 ## Configuration and State
 
@@ -119,7 +119,7 @@ The first candidate is used for the victory check. Preferring a real winner acti
 Every mapped incomplete check receives unique map-local IDs:
 
 ```text
-TeamType:  RND00001
+TeamType:  M1 (shortest unused M<number> ID)
 TaskForce: RNT00001
 Script:    RNS00001
 Marker:    MOR_<MISSION>_O1  or  MOR_<MISSION>_VIC
@@ -128,6 +128,15 @@ Marker:    MOR_<MISSION>_O1  or  MOR_<MISSION>_VIC
 The TaskForce is empty. The ScriptType uses a harmless guard action. The TeamType is owned by the active player house and carries the marker in its name. The original action list receives action code `4` to create that marker team.
 
 Objective markers are appended to their action list. Victory markers are inserted immediately before the first terminal code in the set `1`, `67`, or `69`; appending after a winner action is unreliable because the scenario may end before later actions execute. A name-only fallback with no recognized terminal code retains append behavior.
+
+Map action lines must remain at most `511` UTF-8 bytes because the game truncates
+the parser input at byte `512`. Marker TeamType IDs are therefore compact and
+collision-safe. Golden Gate's native objective action `01000108` is already
+`493` bytes; the former `RND00002` marker made it `516` bytes and caused
+`C0000005` at `007C9B92` with `006DD009` in the stack. The compact ID keeps it
+at `510` bytes. Both append and pre-terminal insertion reject any result above
+the limit. If even a compact marker cannot fit, that individual automatic hook
+is skipped; victory reconciliation still grants its missed objective rewards.
 
 The launcher deliberately leaves `[Basic] EndOfGame` unchanged. Earlier attempts to force that field could end a mission immediately on load.
 
@@ -238,9 +247,10 @@ Map-local cloned combat types were tested as an isolation mechanism. Registering
 Earned offensive, secondary, and aid powers use action `34` (`Add repeating Superweapon`) from player-owned map-start triggers. Aid entries are limited to player-facing faction delivery/reinforcement definitions; internal automatic spawn handlers and neutral tech-building powers are not rewards.
 
 Large inventories are split into action lists of at most `16` grants and the
-lists are staggered one second apart. The installed campaign maps use at most
-`24` actions in any native list; emitting all `35` earned Chaos powers in one
-list reproduced the cross-faction `C0000005` crash at `007C9B92`.
+lists are staggered one second apart. This also keeps every generated action
+line below the engine's `512`-byte parser cutoff. Emitting all `35` earned Chaos
+powers in one line reproduced the malformed-action `C0000005` crash at
+`007C9B92`.
 
 For earned aid instances, the generated map clears only the availability fields actually declared by that installed definition (`SW.RequiredHouses`, `SW.AuxBuildings`, `SW.NegBuildings`, or `SW.Designators`). This removes the original building/subfaction gate for Chaos without adding empty overrides to unrelated powers or changing recharge, cost, delivered types, targeting, or inhibitors.
 

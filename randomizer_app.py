@@ -82,6 +82,7 @@ from randomizer_paths import (
     RULESMO_INI,
     SPAWN_INI,
     STATE_PATH,
+    WINDOW_ICON_PATH,
     YR_OPTIONS_INI,
 )
 from randomizer_map import (
@@ -118,6 +119,7 @@ from randomizer_map import (
     unlocked_reward_tech_ids,
     trigger_action_ids_by_name,
     unique_in_order,
+    unique_short_section_id,
     unit_weapon_buff_rules,
 )
 from randomizer_mission_safety import (
@@ -243,6 +245,11 @@ class LauncherApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title('Mental Omega Randomizer Launcher')
+        if WINDOW_ICON_PATH.is_file():
+            try:
+                self.iconbitmap(str(WINDOW_ICON_PATH))
+            except (OSError, tk.TclError):
+                pass
         self.geometry('1240x760')
         self.minsize(940, 560)
         self.resizable(True, True)
@@ -3520,10 +3527,9 @@ throw "Map $name was not found in expandmo*.mix"
         markers = {}
         for index, (check, action_id) in enumerate(patch_plan, start=1):
             marker = hook_marker_name(code, check.get('id', f'check_{index}'))
-            team_id = f'RND{index:05d}'
+            team_id = unique_short_section_id(lines)
             taskforce_id = f'RNT{index:05d}'
             script_id = f'RNS{index:05d}'
-            append_hook_team(lines, team_id, taskforce_id, script_id, marker, house)
             marker_action = ['4', '1', team_id, '0', '0', '0', '0', 'A']
             if check.get('id') == 'victory':
                 patched = insert_actions_before_codes(
@@ -3540,7 +3546,14 @@ throw "Map $name was not found in expandmo*.mix"
             else:
                 patched = append_action_to_action_id(lines, action_id, marker_action)
             if patched:
+                append_hook_team(lines, team_id, taskforce_id, script_id, marker, house)
                 markers[marker] = check.get('id')
+            else:
+                self.append_log(
+                    f'Skipped automatic {check.get("name", check.get("id", "check"))} hook for '
+                    f'{scenario}: action {action_id} has no safe room for a marker.',
+                    error=True,
+                )
 
         if patch_plan and not markers:
             self.append_log(f'Hook map generation found triggers for {scenario}, but patching actions failed.', error=True)

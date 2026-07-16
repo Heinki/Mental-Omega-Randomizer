@@ -15,6 +15,7 @@ from randomizer_paths import (
     GAME_ROOT,
     LAUNCHER_LOG,
     MAP_RENDERER_DIR,
+    WINDOW_ICON_PATH,
 )
 
 
@@ -31,6 +32,7 @@ def run_self_check():
             'syringe_exists': GAME_LAUNCHER_EXE.exists(),
             'gamemd_exists': GAME_EXE.exists(),
             'map_renderer_exists': MAP_RENDERER_DIR.exists(),
+            'window_icon_exists': WINDOW_ICON_PATH.is_file(),
             'abrams_cameo_extracted': 'ABRM' in cameos,
             'abrams_cameo_path': str(cameos.get('ABRM', '')),
             'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
@@ -45,6 +47,7 @@ def run_self_check():
                 'syringe_exists',
                 'gamemd_exists',
                 'map_renderer_exists',
+                'window_icon_exists',
                 'abrams_cameo_extracted',
                 'lightning_storm_cameo_extracted',
                 'deterministic_seed_rng_works',

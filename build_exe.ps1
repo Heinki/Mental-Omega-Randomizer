@@ -29,6 +29,7 @@ python -m PyInstaller `
     --optimize 1 `
     --windowed `
     --icon $iconPath `
+    --add-data "$iconPath;." `
     --exclude-module logging.handlers `
     --exclude-module ssl `
     --exclude-module _ssl `

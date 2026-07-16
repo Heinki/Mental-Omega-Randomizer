@@ -4,6 +4,7 @@ from pathlib import Path
 
 FROZEN = bool(getattr(sys, 'frozen', False))
 SOURCE_DIR = Path(__file__).resolve().parent
+WINDOW_ICON_PATH = SOURCE_DIR / 'mo-logo-puzzle-icon.ico'
 
 # A one-file build is placed directly in the Mental Omega folder. PyInstaller
 # expands bundled modules to a temporary directory, so __file__ cannot locate
