@@ -132,13 +132,19 @@ The sidebar groups earned production cameos into faction bands with the current 
 
 ## Power Reward Catalogue
 
-All earned power rewards are restored by a player-owned map-start grant in future launched missions. They do not require their normal source building or original subfaction, and their auxiliary-building/designator availability gates are removed from the earned instance. Their installed cost, recharge, targeting behavior, delivered objects, and enemy inhibitors remain intact.
+All earned power rewards are restored by a player-owned map-start grant in future launched missions. Each reward uses a new map-local `MOR...` power copied from the complete installed definition. The original power and any mission scripts using it remain untouched. The copy does not require its normal source building or original subfaction.
 
 | Category | Allies | Soviets | Epsilon | Foehn |
 |---|---|---|---|---|
 | Offensive superweapon | Lightning Storm | Tactical Nuke | Psychic Dominator | Great Tempest |
 | Secondary superweapon | Chronoshift | Invulnerability (Iron Curtain) | Rage | Blasticade |
 | Aid/reinforcement | Airborne; Bloodhounds; Zephyrobot; Lightning Rod; Ultra Miner; Kingsnakes; Paladin Aid | Repair Drone; Tank Drop; Instant Shelter; Motor Ambush; Naval Mine; Terror Drop; Flame Tower; Drakuv Prison Vehicle; Repair Drones; Disruptor | Risen Monolith; Scout Raven; Vision; Magnetic Beam; Libra Clones; Bloatick Trap; Quick Fort; Ruiner; Hijackers | Spinblade; Megaarena; Knightfall; Sweeper Drop; Signal Jammer; Decoy Team; Decoy Squadron; M.A.D. Mine |
+
+The copied aid powers keep installed costs, recharge times, delivered units, and effects unless their profile explicitly corrects a broken dependency. Paladin Aid and Knightfall receive their tested targeting and delivery corrections. M.A.D. Mine, Naval Mine, Drakuv, Ruiner, and Kingsnakes remove building/designator, inhibitor, source-range, and shroud gates from their copies while preserving land/water restrictions. Kingsnakes also uses a copied portal object with its separate `PoweredBy` dependency removed. Zephyrobot remains an artillery beacon: it needs Zephyr Artillery units already owned by the player and does not create shells by itself.
+
+Offensive and secondary rewards are also made independent from base power. Lightning Storm carries explicit normal storm values so campaign-specific weather scripts cannot silently reduce its damage or strike rate. Chronoshift explicitly invokes its ChronoWarp follow-up; like the installed power, it moves team vehicles/units, not enemy units or infantry.
+
+The proven `V3 Test Drop` custom-power definition is preserved as a disabled template for future powers. It is not assigned by new seeds, and legacy test rewards are retired without map injection.
 
 Blasticade is correctly classified as Foehn's support superweapon. It activates the owning House's existing Blast Trenches, so earning Blasticade does not create trenches and the separate **Foehn Blast Trench Access** reward is still needed to construct them. Golden Wind remains an ordinary Blast Furnace/Spinblade support power and is not the secondary superweapon.
 

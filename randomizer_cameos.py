@@ -18,6 +18,7 @@ SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None
 _RULES_SIDEBAR_NAMES = None
+_RULES_SECTION_VALUES = None
 MIX_READER_ASSEMBLY_NAMES = (
     'NLog.dll',
     'CNCMaps.Shared.dll',
@@ -131,6 +132,45 @@ if($pending.Count -gt 0) {{
         stderr=result.stderr.strip(),
     )
     return result.returncode == 0
+
+
+def installed_rules_registry():
+    """Return installed rules sections and ordered SuperWeaponType IDs.
+
+    Power clones need the complete installed section, not a map-overridden
+    version. Keeping this on the existing rules cache also works in packaged
+    mode without placing a loose global rulesmo.ini in the game directory.
+    """
+    global _RULES_SECTION_VALUES
+    if _RULES_SECTION_VALUES is None:
+        if not RULES_CACHE_PATH.exists():
+            extract_mix_files([('RULESMO.INI', RULES_CACHE_PATH)])
+        if not RULES_CACHE_PATH.exists():
+            return (), {}
+
+        sections = {}
+        current_values = None
+        for raw_line in RULES_CACHE_PATH.read_text(
+            encoding='utf-8', errors='ignore'
+        ).splitlines():
+            line = raw_line.strip()
+            section_match = re.match(r'^\[([^]]+)\]$', line)
+            if section_match:
+                current_values = {}
+                sections[section_match.group(1).strip()] = current_values
+                continue
+            if current_values is None or not line or line.startswith(';') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            current_values[key.strip()] = value.split(';', 1)[0].strip()
+        _RULES_SECTION_VALUES = sections
+
+    sections = {
+        section: dict(values)
+        for section, values in _RULES_SECTION_VALUES.items()
+    }
+    superweapon_types = tuple(sections.get('SuperWeaponTypes', {}).values())
+    return superweapon_types, sections
 
 
 def art_cameo_names():

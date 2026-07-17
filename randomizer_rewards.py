@@ -1241,6 +1241,128 @@ def build_buff_rewards():
 
 UNIT_BUFF_REWARDS = build_buff_rewards()
 
+
+# Keep the normal Allied storm independent from mission-local [General]
+# settings. SFIRE reduces shared lightning values for its scripted Ion Storm.
+LIGHTNING_STORM_MAP_RULES = {
+    'UIName': 'NAME:Storm',
+    'Name': 'Lightning Storm',
+    'IsPowered': 'false',
+    'RechargeTime': '10',
+    'Type': 'LightningStorm',
+    'Action': 'LightningStorm',
+    'SidebarPCX': 'bolticon.pcx',
+    'ShowTimer': 'yes',
+    'DisableableFromShell': 'no',
+    'AIDefendAgainst': 'yes',
+    'Range': '9',
+    'LineMultiplier': '3',
+    'SW.CreateRadarEvent': 'yes',
+    'Message.FirerColor': 'yes',
+    'Message.Launch': 'NAME:STORMACTIVE',
+    'Message.Abort': 'NAME:GREATTEMPESTNO',
+    'Message.Detected': 'NAME:STORMDETECT',
+    'EVA.Ready': 'EVA_BattlePowerReady',
+    'SW.AutoFire': 'no',
+    'SW.ManualFire': 'yes',
+    'SW.ShowCameo': 'yes',
+    'SW.UseAITargeting': 'no',
+    'SW.InitialReady': 'no',
+    'SW.AITargeting': 'LightningStorm',
+    'SW.RequiredHouses': '',
+    'SW.ForbiddenHouses': '',
+    'SW.AuxBuildings': '',
+    'SW.NegBuildings': '',
+    'SW.Damage': '250',
+    'SW.Warhead': 'IonWH',
+    'SW.Range': '10',
+    'SW.Deferment': '250',
+    'SW.ActivationSound': 'WeatherIntro',
+    'Lightning.Duration': '210',
+    'Lightning.RadarOutage': '450',
+    'Lightning.RadarOutageAffects': 'enemies',
+    'Lightning.HitDelay': '90',
+    'Lightning.ScatterDelay': '5',
+    'Lightning.ScatterCount': '1',
+    'Lightning.Separation': '3',
+    'Lightning.PrintText': 'yes',
+    'Lightning.Clouds': 'WCCLOUD1,WCCLOUD2,WCCLOUD3',
+    'Lightning.Bolts': 'WCLBOLT1,WCLBOLT2,WCLBOLT3',
+    'Lightning.BoltExplosion': 'EXPLOLB',
+    'Lightning.Sounds': 'WeatherStrike',
+    'Light.Enabled': 'yes',
+    'Light.Blue': '75',
+    'Light.Red': '45',
+    'Light.Green': '45',
+    'Light.Ambient': '100',
+    'SW.Inhibitors': 'CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM',
+    'Cursor': 'Storm',
+    'NoCursor': 'NoCanDo',
+}
+
+CHRONOSHIFT_MAP_RULES = {
+    'UIName': 'NAME:Chrono',
+    'Name': 'Chronoshift Pre',
+    'IsPowered': 'false',
+    'RechargeTime': '6.5',
+    'Type': 'ChronoSphere',
+    'Action': 'ChronoSphere',
+    'SidebarPCX': 'chroicon.pcx',
+    'ShowTimer': 'yes',
+    'DisableableFromShell': 'no',
+    'Range': '1',
+    'SW.Range': '3,3',
+    'LineMultiplier': '0',
+    'SW.FireIntoShroud': 'no',
+    'Chronosphere.ReconsiderBuildings': 'no',
+    'Message.FirerColor': 'yes',
+    'Message.Launch': 'NAME:CHRONOACTIVE',
+    'Message.Detected': 'NAME:CHRONODETECT',
+    'SW.CreateRadarEvent': 'yes',
+    'EVA.Ready': 'EVA_BattlePowerReady',
+    'EVA.Activated': 'none',
+    'EVA.Detected': 'EVA_ChronoSphereDetected',
+    'SW.AffectsHouse': 'team',
+    'SW.AffectsTarget': 'units',
+    'SW.PostDependent': 'ChronoWarpSpecial',
+    'SW.AutoFire': 'no',
+    'SW.ManualFire': 'yes',
+    'SW.ShowCameo': 'yes',
+    'SW.UseAITargeting': 'no',
+    'SW.InitialReady': 'no',
+    'SW.AITargeting': 'None',
+    'SW.RequiredHouses': '',
+    'SW.ForbiddenHouses': '',
+    'SW.AuxBuildings': '',
+    'SW.NegBuildings': '',
+    'SW.Inhibitors': 'CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM',
+    'Cursor': 'Shift',
+    'NoCursor': 'NoCanDo',
+}
+
+CHRONOWARP_MAP_RULES = {
+    'UIName': 'NAME:Chrono2',
+    'Name': 'Chronoshift Post',
+    'IsPowered': 'false',
+    'RechargeTime': '1',
+    'Type': 'ChronoWarp',
+    'Action': 'ChronoWarp',
+    'Range': '1',
+    'LineMultiplier': '1',
+    'SW.AffectsHouse': 'team',
+    'SW.AffectsTarget': 'units',
+    'SW.CreateRadarEvent': 'yes',
+    'SW.RequiredHouses': '',
+    'SW.ForbiddenHouses': '',
+    'SW.AuxBuildings': '',
+    'SW.NegBuildings': '',
+    'SW.Inhibitors': 'CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM',
+    'FlashSidebarTabFrames': '0',
+    'Cursor': 'Shift',
+    'NoCursor': 'NoCanDo',
+}
+
+
 SUPERWEAPON_UNLOCK_REWARDS = [
     {
         'name': 'Lightning Storm Power',
@@ -1251,6 +1373,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'offensive',
         'superweapon': 'LightningStormSpecial',
         'superweapon_index': 2,
+        'superweapon_rules': dict(LIGHTNING_STORM_MAP_RULES),
     },
     {
         'name': 'Nuclear Missile Power',
@@ -1261,6 +1384,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'offensive',
         'superweapon': 'NukeSpecial',
         'superweapon_index': 0,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
     {
         'name': 'Psychic Dominator Power',
@@ -1271,6 +1395,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'offensive',
         'superweapon': 'PsychicDominatorSpecial',
         'superweapon_index': 7,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
     {
         'name': 'Great Tempest Power',
@@ -1281,6 +1406,7 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'offensive',
         'superweapon': 'GreatTempestSpecial',
         'superweapon_index': 48,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
 ]
 
@@ -1294,6 +1420,10 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'secondary',
         'superweapon': 'ChronoSphereSpecial',
         'superweapon_index': 3,
+        'superweapon_rules': dict(CHRONOSHIFT_MAP_RULES),
+        'superweapon_rule_sections': {
+            'ChronoWarpSpecial': dict(CHRONOWARP_MAP_RULES),
+        },
     },
     {
         'name': 'Invulnerability Power',
@@ -1304,6 +1434,7 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'secondary',
         'superweapon': 'IronCurtainSpecial',
         'superweapon_index': 1,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
     {
         'name': 'Rage Power',
@@ -1314,6 +1445,7 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'secondary',
         'superweapon': 'RageInductorSpecial',
         'superweapon_index': 28,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
     {
         'name': 'Blasticade Power',
@@ -1324,8 +1456,327 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'secondary',
         'superweapon': 'BlasticadeSpecial',
         'superweapon_index': 47,
+        'superweapon_rules': {'IsPowered': 'false'},
     },
 ]
+
+
+AID_POWER_MAP_CONFIGS = [
+    # Allies
+    {
+        'superweapon': 'AmericanParaDropSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'BloodhoundsSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'ZephyrBeaconSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'RechargeTime': '5.5',
+            'Money.Amount': '-500',
+            'SW.Deferment': '0',
+            'Deliver.Types': 'ZTARGET',
+            'Deliver.Owner': 'neutral',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.ShowCameo': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.InitialReady': 'no',
+            'SW.AITargeting': 'None',
+            'SW.FireIntoShroud': 'no',
+            'SW.RequiresTarget': 'land',
+            'SW.RequiredHouses': '',
+            'SW.ForbiddenHouses': '',
+            'SW.AuxBuildings': '',
+            'SW.NegBuildings': '',
+            'AuxBuilding': '',
+            'SW.Inhibitors': 'CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM',
+        },
+    },
+    {
+        # Already source-independent in the installed rules.
+        'superweapon': 'LightningRodSpecial',
+        'values': {},
+    },
+    {
+        'superweapon': 'WarpMinersSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.AuxBuildings': '',
+        },
+    },
+    {
+        'superweapon': 'KingsnakesSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.FireIntoShroud': 'yes',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.AITargeting': 'None',
+            'SW.Inhibitors': '',
+            'SW.AnyInhibitor': 'no',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+            'SW.RequiredHouses': '',
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+        },
+        'techno_clones': {
+            'F_KSNAK': {
+                'list': 'VehicleTypes',
+                'clone': 'MORF_KSNAK',
+                'values': {'PoweredBy': ''},
+            },
+        },
+    },
+    {
+        'superweapon': 'PaladinAidSpecial',
+        'values': {
+            'Range': '1.5',
+            'SW.Sound': 'ChronosphereMove',
+            'EVA.Ready': 'EVA_ReinforcementsReady',
+            'IsPowered': 'false',
+            'SW.UseAITargeting': 'no',
+            'SW.Animation': 'CHRONOTG',
+            'SW.Deferment': '20',
+            'Deliver.Owner': 'invoker',
+            'Deliver.Types': 'PANTHER,PANTHER',
+            'LineMultiplier': '0',
+            'SW.AITargeting': 'None',
+            'SW.FireIntoShroud': 'no',
+            'SW.RequiresTarget': 'land',
+            'Cursor': 'Shift',
+            'SW.RequiredHouses': '',
+            'SW.AuxBuildings': '',
+        },
+    },
+    # Soviets
+    {
+        'superweapon': 'RepairDroneSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.NegBuildings': '',
+        },
+    },
+    {
+        'superweapon': 'TankDropSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'InstantShelterSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'MotorAmbushSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'NavalMineSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.FireIntoShroud': 'yes',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.AITargeting': 'None',
+            'SW.Designators': '',
+            'SW.Inhibitors': '',
+            'SW.AnyInhibitor': 'no',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+        },
+    },
+    {
+        'superweapon': 'TerrorDropSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'FlameTowerSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'DrakuvSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.FireIntoShroud': 'yes',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.AITargeting': 'None',
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+            'SW.Inhibitors': '',
+            'SW.AnyInhibitor': 'no',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+        },
+    },
+    {
+        'superweapon': 'RepairDronesSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.AuxBuildings': '',
+        },
+    },
+    {
+        'superweapon': 'DisruptorSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.AuxBuildings': '',
+        },
+    },
+    # Epsilon
+    {
+        'superweapon': 'RisenMonolithSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'RavenSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'VisionSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'MagnetShiftSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'LibraCloneSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'TickTrapSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'QuickFortSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'RuinerSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.FireIntoShroud': 'yes',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.AITargeting': 'None',
+            'SW.AuxBuildings': '',
+            'SW.Designators': '',
+            'SW.Inhibitors': '',
+            'SW.AnyInhibitor': 'no',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+        },
+    },
+    {
+        'superweapon': 'HijackersSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    # Foehn
+    {
+        'superweapon': 'SpinbladeSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'MegaarenaSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'KnightfallSpecial',
+        'values': {
+            'EVA.Ready': 'EVA_BattlePowerReady',
+            'IsPowered': 'false',
+            'RechargeTime': '0.5',
+            'SW.Deferment': '0',
+            'Deliver.Owner': 'invoker',
+            'LineMultiplier': '2',
+            'SW.AITargeting': 'None',
+            'SW.RangeMaximum': '-1',
+        },
+    },
+    {
+        'superweapon': 'SweeperDropSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'SignalJammerSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'DecoyTeamSpecial',
+        'values': {'IsPowered': 'false'},
+    },
+    {
+        'superweapon': 'DecoySquadronSpecial',
+        'values': {
+            'IsPowered': 'false',
+            'SW.AuxBuildings': '',
+        },
+    },
+    {
+        'superweapon': 'MADMineSpecial',
+        'values': {
+            'SW.FireIntoShroud': 'yes',
+            'SW.AutoFire': 'no',
+            'SW.ManualFire': 'yes',
+            'SW.UseAITargeting': 'no',
+            'SW.AITargeting': 'None',
+            'SW.Designators': '',
+            'SW.Inhibitors': '',
+            'SW.AnyInhibitor': 'no',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+        },
+    },
+    {
+        'superweapon': 'MORV3TestSpecial',
+        # Proven custom-power template. Keep definition for future use, but do
+        # not place it in generated reward pools while this switch is true.
+        'disabled': True,
+        'custom': True,
+        'clone': 'MORV3TestSpecial',
+        'cameo_superweapon': 'AmericanParaDropSpecial',
+        'values': {
+            'UIName': 'NAME:APara',
+            'Name': 'V3 Test Drop',
+            'IsPowered': 'false',
+            'RechargeTime': '0.5',
+            'Money.Amount': '0',
+            'Type': 'UnitDelivery',
+            'Action': 'Custom',
+            'SidebarPCX': 'aparicon.pcx',
+            'ShowTimer': 'no',
+            'DisableableFromShell': 'no',
+            'Range': '3',
+            'LineMultiplier': '0',
+            'Cursor': 'Paradrop',
+            'NoCursor': 'NoCanDo',
+            'EVA.Ready': 'EVA_ParatroopersReady',
+            'Deliver.Types': ','.join(['V3'] * 20),
+            'Deliver.Owner': 'invoker',
+            'SW.Deferment': '20',
+            'SW.FireIntoShroud': 'yes',
+            'SW.RequiresTarget': 'land',
+            'SW.AITargeting': 'None',
+            'SW.CreateRadarEvent': 'no',
+            'SW.Inhibitors': '',
+            'SW.RangeMaximum': '-1',
+            'SW.RangeMinimum': '-1',
+            'FlashSidebarTabFrames': '0',
+        },
+    },
+]
+AID_POWER_MAP_CONFIG_BY_SUPERWEAPON = {
+    config['superweapon']: config
+    for config in AID_POWER_MAP_CONFIGS
+}
 
 
 def build_aid_power_rewards():
@@ -1337,7 +1788,7 @@ def build_aid_power_rewards():
         # Allies
         ('Airborne Power', 'Drops 6 G.I.s and 4 Guardian G.I.s at the selected area.', 'Allies', 'AmericanParaDropSpecial', 6),
         ('Bloodhounds Power', 'Drops 3 Airborne Humvees and 2 Stryker I.F.V.s at the selected area.', 'Allies', 'BloodhoundsSpecial', 26),
-        ('Zephyrobot Power', 'Deploys a Zephyrobot artillery beacon at the selected area.', 'Allies', 'ZephyrBeaconSpecial', 34),
+        ('Zephyrobot Power', 'Deploys a targeting beacon for Zephyr Artillery units you already own.', 'Allies', 'ZephyrBeaconSpecial', 34),
         ('Lightning Rod Power', 'Deploys a temporary Lightning Rod at the selected area.', 'Allies', 'LightningRodSpecial', 51),
         ('Ultra Miner Power', 'Deploys an Ultra Miner at the selected area.', 'Allies', 'WarpMinersSpecial', 61),
         ('Kingsnakes Power', 'Deploys a temporary Kingsnake defense portal at the selected area.', 'Allies', 'KingsnakesSpecial', 126),
@@ -1348,6 +1799,7 @@ def build_aid_power_rewards():
         ('Instant Shelter Power', 'Deploys a Battle Bunker with 2 Conscripts at the selected area.', 'Soviets', 'InstantShelterSpecial', 29),
         ('Motor Ambush Power', 'Deploys 3 Mortar Quads at the selected area.', 'Soviets', 'MotorAmbushSpecial', 32),
         ('Naval Mine Power', 'Deploys a Naval Mine at the selected water area.', 'Soviets', 'NavalMineSpecial', 60),
+        ('V3 Test Drop Power', 'Drops 20 V3 Launchers using an isolated test power.', 'Soviets', 'MORV3TestSpecial', -1),
         ('Terror Drop Power', 'Drops 2 Terror Drones at the selected area.', 'Soviets', 'TerrorDropSpecial', 62),
         ('Flame Tower Power', 'Deploys a temporary Flame Tower at the selected area.', 'Soviets', 'FlameTowerSpecial', 68),
         ('Drakuv Prison Vehicle Power', 'Deploys a Drakuv Prison Vehicle for the player.', 'Soviets', 'DrakuvSpecial', 70),
@@ -1373,34 +1825,12 @@ def build_aid_power_rewards():
         ('Decoy Squadron Power', 'Deploys a holographic aircraft decoy squadron at the selected area.', 'Foehn', 'DecoySquadronSpecial', 119),
         ('M.A.D. Mine Power', 'Deploys a M.A.D. Mine at the selected area.', 'Foehn', 'MADMineSpecial', 133),
     ]
-    availability_overrides = {
-        'WarpMinersSpecial': {'SW.AuxBuildings': ''},
-        'KingsnakesSpecial': {
-            'SW.RequiredHouses': '',
-            'SW.AuxBuildings': '',
-            'SW.Designators': '',
-        },
-        'PaladinAidSpecial': {
-            'SW.RequiredHouses': '',
-            'SW.AuxBuildings': '',
-        },
-        'RepairDroneSpecial': {'SW.NegBuildings': ''},
-        'NavalMineSpecial': {'SW.Designators': ''},
-        'DrakuvSpecial': {
-            'SW.AuxBuildings': '',
-            'SW.Designators': '',
-        },
-        'RepairDronesSpecial': {'SW.AuxBuildings': ''},
-        'DisruptorSpecial': {'SW.AuxBuildings': ''},
-        'RuinerSpecial': {
-            'SW.AuxBuildings': '',
-            'SW.Designators': '',
-        },
-        'DecoySquadronSpecial': {'SW.AuxBuildings': ''},
-        'MADMineSpecial': {'SW.Designators': ''},
-    }
-    rewards = [
-        {
+    rewards = []
+    for name, description, faction, superweapon, index in definitions:
+        modified_config = AID_POWER_MAP_CONFIG_BY_SUPERWEAPON.get(superweapon)
+        if modified_config and modified_config.get('disabled'):
+            continue
+        reward = {
             'name': name,
             'description': description + ' Restored at the start of future missions without its normal source building.',
             'rules': {},
@@ -1410,12 +1840,28 @@ def build_aid_power_rewards():
             'superweapon': superweapon,
             'superweapon_index': index,
         }
-        for name, description, faction, superweapon, index in definitions
-    ]
-    for reward in rewards:
-        overrides = availability_overrides.get(reward['superweapon'])
-        if overrides:
-            reward['superweapon_rules'] = dict(overrides)
+        if modified_config and modified_config['values']:
+            reward['superweapon_rules'] = dict(modified_config['values'])
+        if modified_config and modified_config.get('sections'):
+            reward['superweapon_rule_sections'] = {
+                section: dict(values)
+                for section, values in modified_config['sections'].items()
+            }
+        if modified_config and modified_config.get('techno_clones'):
+            reward['superweapon_techno_clones'] = {
+                section: {
+                    key: dict(value) if key == 'values' else value
+                    for key, value in clone.items()
+                }
+                for section, clone in modified_config['techno_clones'].items()
+            }
+        if modified_config and modified_config.get('custom'):
+            reward['superweapon_custom'] = True
+        if modified_config and modified_config.get('clone'):
+            reward['superweapon_clone'] = modified_config['clone']
+        if modified_config and modified_config.get('cameo_superweapon'):
+            reward['cameo_superweapon'] = modified_config['cameo_superweapon']
+        rewards.append(reward)
     return rewards
 
 
@@ -1440,6 +1886,16 @@ RETIRED_REWARD_BY_NAME = {
     'Elite Reserves Power': {
         'name': 'Elite Reserves Power (retired: unsafe building-free grant)',
         'description': 'Disabled because its internal production marker requires the original Soviet lab source.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+    # The custom implementation works, but this test-only reward is currently
+    # disabled. Canonicalize old generated seeds so they do not inject it.
+    'V3 Test Drop Power': {
+        'name': 'V3 Test Drop Power (retired: test disabled)',
+        'description': 'Custom 20-V3 delivery test is preserved for future use but currently disabled.',
         'rules': {},
         'factions': ['Soviets'],
         'kind': 'retired',

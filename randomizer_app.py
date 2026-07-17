@@ -12,6 +12,7 @@ from randomizer_config import CONFIG_PATH, load_config, save_config
 from randomizer_cameos import (
     ensure_superweapon_cameos,
     ensure_unit_cameos,
+    installed_rules_registry,
     mix_reader_assembly_paths,
     powershell_mix_reader_load_script,
 )
@@ -100,6 +101,7 @@ from randomizer_map import (
     append_parallel_global_hook,
     append_superweapon_grant_trigger,
     backup_file_once,
+    cloned_superweapon_plan,
     clone_player_country_for_house_buffs,
     controlled_tech_ids,
     hook_marker_name,
@@ -116,8 +118,6 @@ from randomizer_map import (
     player_country_from_map,
     remove_locked_techlevel_actions,
     stacked_house_buff_values,
-    superweapon_actions_for_rewards,
-    superweapon_rule_sections_for_rewards,
     tech_ids_for_rewards,
     unlocked_reward_tech_ids,
     trigger_action_ids_by_name,
@@ -3358,10 +3358,27 @@ throw "Map $name was not found in expandmo*.mix"
         lines = read_text(source_path).splitlines()
         earned_rewards = self.earned_rewards_from_checks() if self.state else []
         launch_power_rewards = list(earned_rewards)
-        for section, values in superweapon_rule_sections_for_rewards(
-            launch_power_rewards
-        ).items():
+        installed_superweapon_types, installed_rule_sections = installed_rules_registry()
+        (
+            cloned_power_rules,
+            superweapon_actions,
+            cloned_power_names,
+            missing_power_sources,
+        ) = cloned_superweapon_plan(
+            lines,
+            launch_power_rewards,
+            installed_superweapon_types,
+            installed_rule_sections,
+        )
+        for section, values in cloned_power_rules.items():
             rule_sections.setdefault(section, {}).update(values)
+        if missing_power_sources:
+            self.append_log(
+                'Skipped power clone(s) because installed source rules were unavailable: '
+                + ', '.join(sorted(set(missing_power_sources)))
+                + '.',
+                error=True,
+            )
         assistance_unit_ids = []
         mission_buff_unit_ids = []
         if self.state:
@@ -3502,7 +3519,6 @@ throw "Map $name was not found in expandmo*.mix"
                 )
 
         house = player_country_from_map(lines)
-        superweapon_actions = superweapon_actions_for_rewards(launch_power_rewards)
         superweapon_trigger = append_superweapon_grant_trigger(lines, house, superweapon_actions)
         if superweapon_trigger:
             power_names = [
@@ -3511,7 +3527,8 @@ throw "Map $name was not found in expandmo*.mix"
                 if reward.get('kind') == 'superweapon'
             ]
             self.append_log(
-                'Prepared building-free superweapon grant for: '
+                'Prepared isolated building-free power clones '
+                f'({", ".join(cloned_power_names)}) for: '
                 + ', '.join(power_names)
                 + '.'
             )
@@ -4262,7 +4279,8 @@ throw "Map $name was not found in expandmo*.mix"
             for reward in group['other']:
                 power_token = ''
                 if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
-                    power_token = f'[[MOR_POWER:{reward["superweapon"]}]]'
+                    cameo_superweapon = reward.get('cameo_superweapon', reward['superweapon'])
+                    power_token = f'[[MOR_POWER:{cameo_superweapon}]]'
                 lines.append(f'{power_token}Reward: {reward_display_name(reward)}')
                 for summary in reward_rule_summary(reward):
                     lines.append(f'  {summary}')
