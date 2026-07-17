@@ -13,113 +13,131 @@ STARTING_UNLOCKED_MISSIONS = 3
 LOW_LEVEL_MISSION_COUNT = 5
 LOW_LEVEL_STAGE_MAX = 6
 
-# Curated gameplay classification for all 97 installed campaign maps. ``True``
-# means the mission is completed with fixed/scripted units, heroes, or map
-# powers instead of a player-operated production base. Keep every catalogue
-# code explicit: this is player-facing seed data, not a title/stage-name guess.
-NO_BUILD_MISSION_FLAGS = {
-    'AREDDAWN': False,
-    'AEAGLESFLY': False,
-    'AROADTRIP': False,
-    'AHEAVENHELL': False,
-    'ABADAPPLE': False,
-    'ABMIND': False,
-    'AHAMMERFALL': True,
-    'AWRONGSIDE': True,
-    'AZEROSIGNAL': False,
-    'AGARDENER': True,
-    'APANIC': False,
-    'ASUNLIGHT': False,
-    'ASIREN': True,
-    'APUPPET': False,
-    'ASTONE': False,
-    'AGHOST': False,
-    'ABOTTLE': True,
-    'AHYST': False,
-    'ASTORM': False,
-    'APARA': True,
-    'ARELE': False,
-    'AINSOMNIA': False,
-    'AWITHER': False,
-    'AHAMARTIA': False,
-    'SBLEED': False,
-    'SGGATE': False,
-    'SHBD': False,
-    'SSIDE': False,
-    'SPEACE': False,
-    'SRECH': True,
-    'SIDLE': False,
-    'SDEATH': False,
-    'SROAD': False,
-    'SOPEN': True,
-    'SMACHINE': False,
-    'SDRAGON': False,
-    'SRAVEN': False,
-    'SAWAKE': True,
-    'SEXIST': False,
-    'SFIRE': False,
-    'SJUGGER': False,
-    'SHEART': True,
-    'SRED': False,
-    'STHREAD': False,
-    'SMELT': False,
-    'SEARTH': False,
-    'SFATAL': False,
-    'SHAND': False,
-    'EPEACE': True,
-    'EACCEL': True,
-    'ESCRAP': False,
-    'ESHIP': False,
-    'EHUMAN': True,
-    'ELAND': True,
-    'ETHINK': False,
-    'ELORD': False,
-    'EFIELDS': True,
-    'EFOCUS': True,
-    'ESING': False,
-    'EMOON': False,
-    'EDILEMMA': False,
-    'EHUEHUE': True,
-    'EBREED': False,
-    'EDIVER': False,
-    'EGODSEND': False,
-    'ELIZARD': False,
-    'EBLOOD': False,
-    'EHEAD': True,
-    'ESANDS': False,
-    'ETOTAL': False,
-    'EREALITY': True,
-    'EMIGDAL': False,
-    'FNOBODY': True,
-    'FKILL': False,
-    'FEMPIRE': False,
-    'FBEYOND': False,
-    'FPOINT': True,
-    'FREMNANT': False,
-    'ADEMON': False,
-    'AOBST': False,
-    'ACONV': True,
-    'AFULL': False,
-    'AGRID': False,
-    'ASOMNIA': False,
-    'SARCHE': True,
-    'SECLIPSE': False,
-    'STROPH': False,
-    'SNOISE': False,
-    'SDAWN': False,
-    'SARMS': False,
-    'ETACI': True,
-    'EASHES': False,
-    'ERAGE': True,
-    'ESPLIT': False,
-    'ENIGHT': False,
-    'ESURV': False,
-    'FCAPSULE': True,
+BASE_BUILD = 'base_build'
+TRUE_NO_BUILD = 'true_no_build'
+NO_BUILD_PRODUCTION = 'no_build_production'
+
+# Community-reviewed gameplay classification for all 97 installed campaign
+# maps. Keep every catalogue code explicit: this is player-facing seed data,
+# not a title/stage-name guess.
+MISSION_BUILD_CLASSIFICATIONS = {
+    'AREDDAWN': BASE_BUILD,
+    'AEAGLESFLY': BASE_BUILD,
+    'AROADTRIP': NO_BUILD_PRODUCTION,
+    'AHEAVENHELL': BASE_BUILD,
+    'ABADAPPLE': NO_BUILD_PRODUCTION,
+    'ABMIND': BASE_BUILD,
+    'AHAMMERFALL': TRUE_NO_BUILD,
+    'AWRONGSIDE': TRUE_NO_BUILD,
+    'AZEROSIGNAL': NO_BUILD_PRODUCTION,
+    'AGARDENER': TRUE_NO_BUILD,
+    'APANIC': BASE_BUILD,
+    'ASUNLIGHT': BASE_BUILD,
+    'ASIREN': TRUE_NO_BUILD,
+    'APUPPET': BASE_BUILD,
+    'ASTONE': NO_BUILD_PRODUCTION,
+    'AGHOST': BASE_BUILD,
+    'ABOTTLE': TRUE_NO_BUILD,
+    'AHYST': BASE_BUILD,
+    'ASTORM': BASE_BUILD,
+    'APARA': TRUE_NO_BUILD,
+    'ARELE': BASE_BUILD,
+    'AINSOMNIA': BASE_BUILD,
+    'AWITHER': BASE_BUILD,
+    'AHAMARTIA': BASE_BUILD,
+    'SBLEED': BASE_BUILD,
+    'SGGATE': NO_BUILD_PRODUCTION,
+    'SHBD': BASE_BUILD,
+    'SSIDE': BASE_BUILD,
+    'SPEACE': NO_BUILD_PRODUCTION,
+    'SRECH': TRUE_NO_BUILD,
+    'SIDLE': BASE_BUILD,
+    'SDEATH': BASE_BUILD,
+    'SROAD': NO_BUILD_PRODUCTION,
+    'SOPEN': TRUE_NO_BUILD,
+    'SMACHINE': BASE_BUILD,
+    'SDRAGON': BASE_BUILD,
+    'SRAVEN': BASE_BUILD,
+    'SAWAKE': TRUE_NO_BUILD,
+    'SEXIST': BASE_BUILD,
+    'SFIRE': BASE_BUILD,
+    'SJUGGER': BASE_BUILD,
+    'SHEART': TRUE_NO_BUILD,
+    'SRED': BASE_BUILD,
+    'STHREAD': BASE_BUILD,
+    'SMELT': NO_BUILD_PRODUCTION,
+    'SEARTH': BASE_BUILD,
+    'SFATAL': BASE_BUILD,
+    'SHAND': BASE_BUILD,
+    'EPEACE': TRUE_NO_BUILD,
+    'EACCEL': TRUE_NO_BUILD,
+    'ESCRAP': NO_BUILD_PRODUCTION,
+    'ESHIP': BASE_BUILD,
+    'EHUMAN': TRUE_NO_BUILD,
+    'ELAND': TRUE_NO_BUILD,
+    'ETHINK': BASE_BUILD,
+    'ELORD': NO_BUILD_PRODUCTION,
+    'EFIELDS': TRUE_NO_BUILD,
+    'EFOCUS': TRUE_NO_BUILD,
+    'ESING': TRUE_NO_BUILD,
+    'EMOON': BASE_BUILD,
+    'EDILEMMA': BASE_BUILD,
+    'EHUEHUE': TRUE_NO_BUILD,
+    'EBREED': BASE_BUILD,
+    'EDIVER': BASE_BUILD,
+    'EGODSEND': NO_BUILD_PRODUCTION,
+    'ELIZARD': NO_BUILD_PRODUCTION,
+    'EBLOOD': BASE_BUILD,
+    'EHEAD': TRUE_NO_BUILD,
+    'ESANDS': BASE_BUILD,
+    'ETOTAL': BASE_BUILD,
+    'EREALITY': TRUE_NO_BUILD,
+    'EMIGDAL': BASE_BUILD,
+    'FNOBODY': TRUE_NO_BUILD,
+    'FKILL': BASE_BUILD,
+    'FEMPIRE': NO_BUILD_PRODUCTION,
+    'FBEYOND': BASE_BUILD,
+    'FPOINT': TRUE_NO_BUILD,
+    'FREMNANT': BASE_BUILD,
+    'ADEMON': NO_BUILD_PRODUCTION,
+    'AOBST': BASE_BUILD,
+    'ACONV': TRUE_NO_BUILD,
+    'AFULL': BASE_BUILD,
+    'AGRID': BASE_BUILD,
+    'ASOMNIA': BASE_BUILD,
+    'SARCHE': TRUE_NO_BUILD,
+    'SECLIPSE': BASE_BUILD,
+    'STROPH': NO_BUILD_PRODUCTION,
+    'SNOISE': NO_BUILD_PRODUCTION,
+    'SDAWN': BASE_BUILD,
+    'SARMS': BASE_BUILD,
+    'ETACI': TRUE_NO_BUILD,
+    'EASHES': NO_BUILD_PRODUCTION,
+    'ERAGE': TRUE_NO_BUILD,
+    'ESPLIT': BASE_BUILD,
+    'ENIGHT': NO_BUILD_PRODUCTION,
+    'ESURV': NO_BUILD_PRODUCTION,
+    'FCAPSULE': TRUE_NO_BUILD,
 }
 
-NO_BUILD_MISSION_CODES = frozenset(
-    code for code, no_build in NO_BUILD_MISSION_FLAGS.items() if no_build
+TRUE_NO_BUILD_MISSION_CODES = frozenset(
+    code for code, classification in MISSION_BUILD_CLASSIFICATIONS.items()
+    if classification == TRUE_NO_BUILD
 )
+NO_BUILD_PRODUCTION_MISSION_CODES = frozenset(
+    code for code, classification in MISSION_BUILD_CLASSIFICATIONS.items()
+    if classification == NO_BUILD_PRODUCTION
+)
+NO_BUILD_MISSION_CODES = frozenset(
+    TRUE_NO_BUILD_MISSION_CODES | NO_BUILD_PRODUCTION_MISSION_CODES
+)
+
+# Backward-compatible boolean view for older integrations. ``True`` means the
+# mission belongs to either non-base-building category.
+NO_BUILD_MISSION_FLAGS = {
+    code: classification != BASE_BUILD
+    for code, classification in MISSION_BUILD_CLASSIFICATIONS.items()
+}
 
 # User-approved early exceptions are Foehn 01 and 05. Every other Foehn map
 # is kept out of a protected opening while another eligible mission exists,
@@ -140,6 +158,25 @@ def normalize_faction(side):
     if 'foehn' in side:
         return 'Foehn'
     return ''
+
+
+def filter_missions_by_build_settings(
+    missions,
+    include_true_no_build=True,
+    include_no_build_production=True,
+):
+    """Apply the two independent no-build category inclusion settings."""
+    excluded = set()
+    if not include_true_no_build:
+        excluded.add(TRUE_NO_BUILD)
+    if not include_no_build_production:
+        excluded.add(NO_BUILD_PRODUCTION)
+    if not excluded:
+        return list(missions)
+    return [
+        mission for mission in missions
+        if mission.get('build_classification', BASE_BUILD) not in excluded
+    ]
 
 
 def parse_long_description_objectives(text):
@@ -200,7 +237,10 @@ def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
             'side': section.get('SideName') or section.get('Side') or '',
             'objectives': objectives,
             'objective_count': len(objectives) or fallback_objective_count,
+            'build_classification': MISSION_BUILD_CLASSIFICATIONS.get(code, BASE_BUILD),
             'no_build': bool(NO_BUILD_MISSION_FLAGS.get(code, False)),
+            'true_no_build': code in TRUE_NO_BUILD_MISSION_CODES,
+            'no_build_production': code in NO_BUILD_PRODUCTION_MISSION_CODES,
         })
     return missions
 

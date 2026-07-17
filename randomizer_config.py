@@ -25,6 +25,7 @@ DEFAULT_CONFIG = {
         'reward_mode': 'Standard',
         'starting_unlocked_missions': 3,
         'include_no_build_missions': True,
+        'include_no_build_production_missions': True,
         'prioritize_no_build_missions': False,
         'enabled_reward_types': [
             'access',

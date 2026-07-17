@@ -7,10 +7,13 @@ exact per-faction unlocks.
 """
 
 from randomizer_map import (
+    build_unit_usage_index,
     country_family,
     map_house_records,
     player_controlled_houses,
     player_house_from_map,
+    resolve_configured_helper_houses,
+    unsafe_country_houses,
 )
 from randomizer_ini import all_section_value_maps, section_lines
 from randomizer_rewards import (
@@ -280,11 +283,40 @@ def _merged_items(*groups):
     return result
 
 
-def _player_build_countries(lines, house_records):
-    countries = []
-    for house in player_controlled_houses(lines):
+def safe_build_countries(lines, house_records=None, additional_houses=()):
+    """Return player countries plus safely isolated helper countries.
+
+    The engine gates production by Country/HouseType, not by a campaign's
+    runtime House instance. Player countries must remain present or earned
+    access disappears. A helper country is added only when no denied active
+    house shares it.
+    """
+    house_records = house_records or map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=house_records)
+    if not player_houses:
+        player_house = player_house_from_map(lines, records=house_records)
+        if player_house:
+            player_houses = [player_house]
+    helper_houses, _ = resolve_configured_helper_houses(
+        house_records,
+        additional_houses,
+        player_houses,
+    )
+    allowed_houses = _merged_items(player_houses, helper_houses)
+    usage_index = build_unit_usage_index(lines)
+    countries = [
+        house_records.get(house, {}).get('country') or house.replace(' House', '')
+        for house in player_houses
+    ]
+    for house in helper_houses:
         country = house_records.get(house, {}).get('country') or house.replace(' House', '')
-        if country:
+        if country and not unsafe_country_houses(
+            lines,
+            country,
+            allowed_houses,
+            records=house_records,
+            usage_index=usage_index,
+        ):
             countries.append(country)
     return _merged_items(countries, ['MORPLAYER'])
 
@@ -337,7 +369,12 @@ def _special_factory_alternatives(lines, category, sections=None):
     return tuple(alternatives)
 
 
-def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalents=False):
+def mission_basic_unit_rules(
+    lines,
+    earned_access_ids=None,
+    translate_equivalents=False,
+    additional_build_houses=(),
+):
     """Return off-faction access needed by mixed mission production.
 
     All-Campaign seeds preserve exact earned unit IDs for each physical
@@ -379,7 +416,11 @@ def mission_basic_unit_rules(lines, earned_access_ids=None, translate_equivalent
             )
 
     available_access = earned_access_ids
-    player_build_countries = _player_build_countries(lines, house_records)
+    player_build_countries = safe_build_countries(
+        lines,
+        house_records,
+        additional_build_houses,
+    )
 
     # Special map-local barracks intentionally share every exact unlocked
     # infantry type, regardless of faction. Keep each unit's native barracks as
@@ -536,11 +577,11 @@ def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
     return _alternative_prerequisite_rules(alternatives)
 
 
-def always_available_transport_rules(lines, chaos_mode=False):
+def always_available_transport_rules(lines, chaos_mode=False, additional_build_houses=()):
     """Make every faction's amphibious transport immediately buildable."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    owners = ','.join(_player_build_countries(lines, records))
+    owners = ','.join(safe_build_countries(lines, records, additional_build_houses))
     rules = {}
     for _family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
         values = {
@@ -583,6 +624,7 @@ def starting_tier_one_rules(
     starting_unit_ids,
     chaos_mode=False,
     standard_families=STANDARD_TIER_ONE_FAMILIES,
+    additional_build_houses=(),
 ):
     """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
     selected_ids = {
@@ -595,7 +637,7 @@ def starting_tier_one_rules(
 
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    player_countries = _player_build_countries(lines, records)
+    player_countries = safe_build_countries(lines, records, additional_build_houses)
     owners = ','.join(player_countries)
     rules = {}
 
@@ -661,7 +703,7 @@ def starting_tier_one_rules(
     return rules
 
 
-def chaos_earned_access_rules(lines, earned_rewards):
+def chaos_earned_access_rules(lines, earned_rewards, additional_build_houses=()):
     """Adapt every earned access item to player-controlled production."""
     player_houses = set(player_controlled_houses(lines))
     if not player_houses:
@@ -673,16 +715,10 @@ def chaos_earned_access_rules(lines, earned_rewards):
 
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    player_countries = []
-    for house in player_houses:
-        country = records.get(house, {}).get('country') or house.replace(' House', '')
-        if country and country not in player_countries:
-            player_countries.append(country)
-    if not player_countries:
-        return {}
+    player_countries = safe_build_countries(lines, records, additional_build_houses)
 
     rules = {}
-    owners = ','.join(player_countries + ['MORPLAYER'])
+    owners = ','.join(player_countries)
     player_family = _player_family(lines, records)
     special_alternatives = {
         category: _special_factory_alternatives(lines, category, sections)

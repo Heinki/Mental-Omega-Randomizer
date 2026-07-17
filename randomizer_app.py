@@ -35,11 +35,13 @@ from randomizer_missions import (
     NO_BUILD_MISSION_CODES,
     campaign_mission_counts,
     classic_mission_order,
+    filter_missions_by_build_settings,
     normalize_faction,
     parse_missions,
     seed_campaign_limits,
     seed_mission_order,
 )
+from randomizer_mission_houses import mission_house_config
 from randomizer_ini import (
     merge_ini_section_values,
     read_text,
@@ -117,9 +119,12 @@ from randomizer_map import (
     mission_assistance_multipliers,
     mission_assistance_unit_ids,
     now_stamp,
+    player_controlled_houses,
     player_country_buff_rules,
     player_country_from_map,
+    map_house_records,
     remove_locked_techlevel_actions,
+    resolve_configured_helper_houses,
     stacked_house_buff_values,
     tech_ids_for_rewards,
     unlocked_reward_tech_ids,
@@ -132,6 +137,7 @@ from randomizer_mission_safety import (
     chaos_earned_access_rules,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
+    safe_build_countries,
     starting_tier_one_rules,
     summarize_basic_unit_rules,
     tier_one_unit_ids,
@@ -326,6 +332,9 @@ class LauncherApp(tk.Tk):
         )
         self.include_no_build_missions_var = tk.BooleanVar(
             value=bool(generation_config.get('include_no_build_missions', True))
+        )
+        self.include_no_build_production_missions_var = tk.BooleanVar(
+            value=bool(generation_config.get('include_no_build_production_missions', True))
         )
         self.prioritize_no_build_missions_var = tk.BooleanVar(
             value=bool(generation_config.get('prioritize_no_build_missions', False))
@@ -550,10 +559,9 @@ class LauncherApp(tk.Tk):
         self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
         WidgetTooltip(
             self.buff_allied_helpers_check,
-            'Also applies earned buffs and failed-mission retry assistance to '
-            'permanent AI-controlled allied helper houses. Campaign houses that '
-            'can be scripted hostile are excluded. '
-            'Player-controlled allied houses are always included.',
+            'Also gives earned buffs, unit access, and retry assistance to the '
+            'AI helper houses explicitly allowed for each mission. Every other '
+            'AI house is denied. Player-controlled houses are always included.',
         )
         self.rewards_per_check_message_label = ttk.Label(options_row, text='')
         self.rewards_per_check_message_label.grid(
@@ -731,24 +739,37 @@ class LauncherApp(tk.Tk):
         mission_pool_frame.grid(row=1, column=0, sticky='ew')
         self.include_no_build_missions_check = ttk.Checkbutton(
             mission_pool_frame,
-            text='Include no-build / fixed-unit missions',
+            text='Include true no-build / fixed-unit missions',
             variable=self.include_no_build_missions_var,
             command=self.on_mission_pool_settings_changed,
         )
         self.include_no_build_missions_check.grid(row=0, column=0, sticky='w')
         WidgetTooltip(
             self.include_no_build_missions_check,
-            'Includes missions completed with fixed units, heroes, or scripted map powers instead of a player production base.',
+            'Includes missions completed only with fixed units, heroes, or scripted map powers and no player production.',
+        )
+        self.include_no_build_production_missions_check = ttk.Checkbutton(
+            mission_pool_frame,
+            text='Include no-build missions with production',
+            variable=self.include_no_build_production_missions_var,
+            command=self.on_mission_pool_settings_changed,
+        )
+        self.include_no_build_production_missions_check.grid(
+            row=1, column=0, sticky='w', pady=(4, 0)
+        )
+        WidgetTooltip(
+            self.include_no_build_production_missions_check,
+            'Includes missions without normal base building that still provide limited unit production.',
         )
         self.prioritize_no_build_missions_check = ttk.Checkbutton(
             mission_pool_frame,
-            text='Prioritize no-build missions in opening',
+            text='Prioritize included no-build missions in opening',
             variable=self.prioritize_no_build_missions_var,
         )
-        self.prioritize_no_build_missions_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        self.prioritize_no_build_missions_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.prioritize_no_build_missions_check,
-            'Fills protected Mission List/Grid opening positions with easier no-build missions first.',
+            'Fills protected Mission List/Grid opening positions with easier enabled true-no-build and production-no-build missions first.',
         )
 
         reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
@@ -1605,6 +1626,9 @@ class LauncherApp(tk.Tk):
         self.config['generation']['include_no_build_missions'] = bool(
             self.include_no_build_missions_var.get()
         )
+        self.config['generation']['include_no_build_production_missions'] = bool(
+            self.include_no_build_production_missions_var.get()
+        )
         self.config['generation']['prioritize_no_build_missions'] = bool(
             self.prioritize_no_build_missions_var.get()
         )
@@ -2317,7 +2341,14 @@ class LauncherApp(tk.Tk):
             state='normal' if reward_source_enabled else 'disabled'
         )
         self.prioritize_no_build_missions_check.configure(
-            state='normal' if self.include_no_build_missions_var.get() else 'disabled'
+            state=(
+                'normal'
+                if (
+                    self.include_no_build_missions_var.get()
+                    or self.include_no_build_production_missions_var.get()
+                )
+                else 'disabled'
+            )
         )
         self.refresh_progression_setting_states()
 
@@ -2859,6 +2890,9 @@ class LauncherApp(tk.Tk):
             'campaign_mission_limits': campaign_limits,
             'mission_pool_settings': {
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
+                'include_no_build_production_missions': bool(
+                    self.include_no_build_production_missions_var.get()
+                ),
                 'prioritize_no_build_missions': bool(self.prioritize_no_build_missions_var.get()),
             },
             'completed_missions': [],
@@ -3085,9 +3119,13 @@ class LauncherApp(tk.Tk):
             for mission in self.missions
             if normalize_faction(mission.get('side', '')) == selected
         ]
-        if not self.include_no_build_missions_var.get():
-            missions = [mission for mission in missions if not mission.get('no_build', False)]
-        return missions
+        return filter_missions_by_build_settings(
+            missions,
+            include_true_no_build=self.include_no_build_missions_var.get(),
+            include_no_build_production=(
+                self.include_no_build_production_missions_var.get()
+            ),
+        )
 
     def randomizer_order_map(self):
         order = self.state.get('mission_order', [])
@@ -3264,16 +3302,31 @@ class LauncherApp(tk.Tk):
             return {}
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        house_config = mission_house_config(mission.get('code'))
+        helper_houses = (
+            house_config['allies']
+            if self.active_reward_settings().get('buff_allied_helpers', False)
+            else ()
+        )
         starting_unit_ids = self.active_starting_tier_one_unit_ids()
         if self.active_reward_mode() == 'Chaos (Experimental)':
-            rules = chaos_earned_access_rules(lines, self.earned_rewards_from_checks())
-            transport_rules = always_available_transport_rules(lines, chaos_mode=True)
+            rules = chaos_earned_access_rules(
+                lines,
+                self.earned_rewards_from_checks(),
+                additional_build_houses=helper_houses,
+            )
+            transport_rules = always_available_transport_rules(
+                lines,
+                chaos_mode=True,
+                additional_build_houses=helper_houses,
+            )
             for section, values in transport_rules.items():
                 rules.setdefault(section, {}).update(values)
             starter_rules = starting_tier_one_rules(
                 lines,
                 starting_unit_ids,
                 chaos_mode=True,
+                additional_build_houses=helper_houses,
             )
             for section, values in starter_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -3292,8 +3345,12 @@ class LauncherApp(tk.Tk):
             lines,
             earned_access_ids=earned_access_ids,
             translate_equivalents=translate_equivalents,
+            additional_build_houses=helper_houses,
         )
-        transport_rules = always_available_transport_rules(lines)
+        transport_rules = always_available_transport_rules(
+            lines,
+            additional_build_houses=helper_houses,
+        )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
         standard_starter_families = {
@@ -3308,6 +3365,7 @@ class LauncherApp(tk.Tk):
             lines,
             starting_unit_ids,
             standard_families=standard_starter_families,
+            additional_build_houses=helper_houses,
         )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -3491,6 +3549,37 @@ throw "Map $name was not found in expandmo*.mix"
 
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        house_config = mission_house_config(code)
+        configured_helpers = house_config['allies'] if buff_allied_helpers else ()
+        records = map_house_records(lines)
+        configured_helpers, missing_helpers = resolve_configured_helper_houses(
+            records,
+            configured_helpers,
+            player_controlled_houses(lines, records=records),
+        )
+        configured_enemies, missing_enemies = resolve_configured_helper_houses(
+            records,
+            house_config['enemies'],
+            (),
+        )
+        enemy_names = {house.lower() for house in configured_enemies}
+        configured_helpers = [
+            house for house in configured_helpers if house.lower() not in enemy_names
+        ]
+        missing_config = unique_in_order(missing_helpers + missing_enemies)
+        if missing_config:
+            self.append_log(
+                f'{code} house config contains names absent from this map: '
+                + ', '.join(missing_config)
+                + '.',
+                error=True,
+            )
+        if buff_allied_helpers and house_config['allies']:
+            self.append_log(
+                f'{code} configured allied helper allowlist: '
+                + (', '.join(configured_helpers) if configured_helpers else 'none')
+                + '. All other AI houses are denied rewards.'
+            )
         earned_rewards = self.earned_rewards_from_checks() if self.state else []
         launch_power_rewards = list(earned_rewards)
         installed_superweapon_types, installed_rule_sections = installed_rules_registry()
@@ -3507,6 +3596,17 @@ throw "Map $name was not found in expandmo*.mix"
         )
         for section, values in cloned_power_rules.items():
             rule_sections.setdefault(section, {}).update(values)
+        if self.randomized_tech_ids():
+            safe_owners = ','.join(
+                safe_build_countries(lines, records, configured_helpers)
+            )
+            for section in self.randomized_tech_ids():
+                values = rule_sections.get(section)
+                if not values:
+                    continue
+                values['Owner'] = safe_owners
+                values['RequiredHouses'] = safe_owners
+                values['ForbiddenHouses'] = 'none'
         if missing_power_sources:
             self.append_log(
                 'Skipped power clone(s) because installed source rules were unavailable: '
@@ -3523,7 +3623,7 @@ throw "Map $name was not found in expandmo*.mix"
                 additional_unit_ids=fallback_tech_ids,
                 randomized_access=self.randomize_unit_access_enabled(),
                 fallback_faction=normalize_faction(mission.get('side', '')),
-                buff_allied_helpers=buff_allied_helpers,
+                configured_helper_houses=configured_helpers,
             )
         if self.state and self.failure_assistance_enabled():
             assistance_unit_ids = mission_buff_unit_ids
@@ -3553,7 +3653,7 @@ throw "Map $name was not found in expandmo*.mix"
             player_house, player_country, house_rule_sections, shared_houses, buffed_allies, skipped_allies = player_country_buff_rules(
                 lines,
                 self.earned_rewards_from_checks(),
-                buff_allied_helpers=buff_allied_helpers,
+                configured_helper_houses=configured_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
@@ -3596,7 +3696,7 @@ throw "Map $name was not found in expandmo*.mix"
             assistance_rules, assisted_houses, skipped_assistance_countries = mission_assistance_buff_rules(
                 lines,
                 assistance_stacks,
-                buff_allied_helpers=buff_allied_helpers,
+                configured_helper_houses=configured_helpers,
             )
             if assisted_houses:
                 if assistance_rules:
@@ -3628,10 +3728,14 @@ throw "Map $name was not found in expandmo*.mix"
         if self.state:
             guarded_rewards = list(self.earned_rewards_from_checks())
             guarded_rewards.extend(assistance_direct_rewards)
-            weapon_rule_sections, weapon_buffed_units, weapon_skipped_units = unit_weapon_buff_rules(
+            (
+                weapon_rule_sections,
+                weapon_buffed_units,
+                weapon_skipped_units,
+            ) = unit_weapon_buff_rules(
                 lines,
                 guarded_rewards,
-                buff_allied_helpers=buff_allied_helpers,
+                configured_helper_houses=configured_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
@@ -3652,7 +3756,6 @@ throw "Map $name was not found in expandmo*.mix"
                     + '.',
                     error=True,
                 )
-
         house = player_country_from_map(lines)
         superweapon_trigger = append_superweapon_grant_trigger(lines, house, superweapon_actions)
         if superweapon_trigger:

@@ -729,7 +729,7 @@ def mission_assistance_buff_values(base_values, stacks):
     return values
 
 
-def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
+def mission_assistance_buff_rules(lines, stacks, configured_helper_houses=()):
     """Scope retry assistance without changing a campaign house's country.
 
     Trigger owners in campaign maps are country IDs (for example ``Guild1``
@@ -753,23 +753,12 @@ def mission_assistance_buff_rules(lines, stacks, buff_allied_helpers=False):
         return ({}, [], [])
     player_houses = player_controlled_houses(lines, records=records) or [primary_house]
     scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
-    transfer_houses = player_transfer_houses(
-        lines,
-        records=records,
-        scripted_enemies=scripted_enemies,
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
     )
-    helper_houses = (
-        allied_helper_houses(
-            lines,
-            primary_house,
-            records=records,
-            transfer_houses=transfer_houses,
-            scripted_enemies=scripted_enemies,
-        )
-        if buff_allied_helpers
-        else []
-    )
-    assisted_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
+    assisted_houses = unique_in_order(player_houses + helper_houses)
     usage_index = build_unit_usage_index(lines)
     country_houses = {}
     for house in assisted_houses:
@@ -933,7 +922,7 @@ def mission_assistance_unit_ids(
     additional_unit_ids=None,
     randomized_access=True,
     fallback_faction='',
-    buff_allied_helpers=False,
+    configured_helper_houses=(),
 ):
     """Return units the player can use through progression or this mission.
 
@@ -951,26 +940,14 @@ def mission_assistance_unit_ids(
     primary_house = player_house_from_map(lines, records=records)
     if not player_houses and primary_house:
         player_houses = [primary_house]
-    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
-    transfer_houses = player_transfer_houses(
-        lines,
-        records=records,
-        scripted_enemies=scripted_enemies,
-    )
-    helper_houses = (
-        allied_helper_houses(
-            lines,
-            primary_house,
-            records=records,
-            transfer_houses=transfer_houses,
-            scripted_enemies=scripted_enemies,
-        )
-        if buff_allied_helpers and primary_house
-        else []
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
     )
 
     allowed_names = set()
-    for house in unique_in_order(player_houses + helper_houses + transfer_houses):
+    for house in unique_in_order(player_houses + helper_houses):
         record = records.get(house, {})
         allowed_names.update({
             house.lower(),
@@ -1101,7 +1078,7 @@ def apply_weapon_buff_value(values, base_stats, buff_type, count):
 def unit_weapon_buff_rules(
     lines,
     rewards,
-    buff_allied_helpers=False,
+    configured_helper_houses=(),
     require_unlocked_access=True,
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
@@ -1109,10 +1086,9 @@ def unit_weapon_buff_rules(
 ):
     """Apply direct buffs only when their global type is safe for friendly houses.
 
-    TechnoType and WeaponType values are global in the engine. Keep the
-    established safety guard here: player, allied-helper, and transfer houses
-    participate; a direct buff is skipped if an enemy also uses the affected
-    global type.
+    TechnoType and WeaponType values are global in the engine. Player and
+    explicitly configured helper houses participate; any buff whose affected
+    unit type or shared weapon is also used by an enemy is skipped.
     """
     records = map_house_records(lines)
     player_house = player_house_from_map(lines, records=records)
@@ -1120,24 +1096,13 @@ def unit_weapon_buff_rules(
         return ({}, [], [])
 
     player_houses = player_controlled_houses(lines, records=records) or [player_house]
-    scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
-    transfer_houses = player_transfer_houses(
-        lines,
-        records=records,
-        scripted_enemies=scripted_enemies,
-    )
-    helper_houses = (
-        allied_helper_houses(
-            lines,
-            player_house,
-            records=records,
-            transfer_houses=transfer_houses,
-            scripted_enemies=scripted_enemies,
-        )
-        if buff_allied_helpers else []
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
     )
     allowed_names = []
-    for house in unique_in_order(player_houses + helper_houses + transfer_houses):
+    for house in unique_in_order(player_houses + helper_houses):
         record = records.get(house, {})
         if not record:
             record = records.get(house + ' House', {})
@@ -1277,7 +1242,11 @@ def unit_weapon_buff_rules(
         if applied:
             applied_units.append(target.get('label', unit_id))
 
-    return (rule_sections, unique_in_order(applied_units), unique_in_order(skipped_units))
+    return (
+        rule_sections,
+        unique_in_order(applied_units),
+        unique_in_order(skipped_units),
+    )
 
 
 def controlled_tech_ids():
@@ -1549,6 +1518,26 @@ def canonical_house_name(records, value):
     return country_matches[0] if len(country_matches) == 1 else ''
 
 
+def resolve_configured_helper_houses(records, configured_houses, player_houses=()):
+    """Resolve a mission's static helper allowlist against its map houses.
+
+    Missing or ambiguous names are rejected. Player-controlled houses are
+    already always included and therefore are not repeated as AI helpers.
+    """
+    player_names = {str(name or '').lower() for name in player_houses}
+    resolved = []
+    rejected = []
+    for value in configured_houses or ():
+        house = canonical_house_name(records, value)
+        if not house:
+            rejected.append(str(value))
+            continue
+        if house.lower() in player_names:
+            continue
+        resolved.append(house)
+    return (unique_in_order(resolved), unique_in_order(rejected))
+
+
 def scripted_enemy_house_pairs(lines, records=None):
     """Return house pairs that a campaign trigger can make hostile.
 
@@ -1792,7 +1781,7 @@ def unsafe_country_houses(
 def player_country_buff_rules(
     lines,
     rewards,
-    buff_allied_helpers=False,
+    configured_helper_houses=(),
     require_unlocked_access=True,
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
@@ -1809,22 +1798,12 @@ def player_country_buff_rules(
     house_values = sections_by_lower.get(player_house.lower(), {})
     player_country = house_values.get('country') or player_house.replace(' House', '')
     scripted_enemies = scripted_enemy_house_pairs(lines, records=records)
-    transfer_houses = player_transfer_houses(
-        lines,
-        records=records,
-        scripted_enemies=scripted_enemies,
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
     )
-    helper_houses = (
-        allied_helper_houses(
-            lines,
-            player_house,
-            records=records,
-            transfer_houses=transfer_houses,
-            scripted_enemies=scripted_enemies,
-        )
-        if buff_allied_helpers else []
-    )
-    allowed_houses = unique_in_order(player_houses + transfer_houses + helper_houses)
+    allowed_houses = unique_in_order(player_houses + helper_houses)
     usage_index = build_unit_usage_index(lines)
     shared_houses = unsafe_country_houses(
         lines,
@@ -1856,7 +1835,6 @@ def player_country_buff_rules(
     # helpers to this mandatory player-house set.
     allied_targets = unique_in_order(
         [house for house in player_houses if house.lower() != player_house.lower()]
-        + transfer_houses
         + helper_houses
     )
     if allied_targets:

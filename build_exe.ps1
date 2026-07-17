@@ -39,8 +39,6 @@ python -m PyInstaller `
     --exclude-module ftplib `
     --exclude-module smtplib `
     --exclude-module email `
-    --exclude-module hashlib `
-    --exclude-module _hashlib `
     --name MentalOmegaRandomizer `
     --distpath $distDir `
     --workpath $workDir `
