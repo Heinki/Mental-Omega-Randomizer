@@ -13,6 +13,121 @@ STARTING_UNLOCKED_MISSIONS = 3
 LOW_LEVEL_MISSION_COUNT = 5
 LOW_LEVEL_STAGE_MAX = 6
 
+# Curated gameplay classification for all 97 installed campaign maps. ``True``
+# means the mission is completed with fixed/scripted units, heroes, or map
+# powers instead of a player-operated production base. Keep every catalogue
+# code explicit: this is player-facing seed data, not a title/stage-name guess.
+NO_BUILD_MISSION_FLAGS = {
+    'AREDDAWN': False,
+    'AEAGLESFLY': False,
+    'AROADTRIP': False,
+    'AHEAVENHELL': False,
+    'ABADAPPLE': False,
+    'ABMIND': False,
+    'AHAMMERFALL': True,
+    'AWRONGSIDE': True,
+    'AZEROSIGNAL': False,
+    'AGARDENER': True,
+    'APANIC': False,
+    'ASUNLIGHT': False,
+    'ASIREN': True,
+    'APUPPET': False,
+    'ASTONE': False,
+    'AGHOST': False,
+    'ABOTTLE': True,
+    'AHYST': False,
+    'ASTORM': False,
+    'APARA': True,
+    'ARELE': False,
+    'AINSOMNIA': False,
+    'AWITHER': False,
+    'AHAMARTIA': False,
+    'SBLEED': False,
+    'SGGATE': False,
+    'SHBD': False,
+    'SSIDE': False,
+    'SPEACE': False,
+    'SRECH': True,
+    'SIDLE': False,
+    'SDEATH': False,
+    'SROAD': False,
+    'SOPEN': True,
+    'SMACHINE': False,
+    'SDRAGON': False,
+    'SRAVEN': False,
+    'SAWAKE': True,
+    'SEXIST': False,
+    'SFIRE': False,
+    'SJUGGER': False,
+    'SHEART': True,
+    'SRED': False,
+    'STHREAD': False,
+    'SMELT': False,
+    'SEARTH': False,
+    'SFATAL': False,
+    'SHAND': False,
+    'EPEACE': True,
+    'EACCEL': True,
+    'ESCRAP': False,
+    'ESHIP': False,
+    'EHUMAN': True,
+    'ELAND': True,
+    'ETHINK': False,
+    'ELORD': False,
+    'EFIELDS': True,
+    'EFOCUS': True,
+    'ESING': False,
+    'EMOON': False,
+    'EDILEMMA': False,
+    'EHUEHUE': True,
+    'EBREED': False,
+    'EDIVER': False,
+    'EGODSEND': False,
+    'ELIZARD': False,
+    'EBLOOD': False,
+    'EHEAD': True,
+    'ESANDS': False,
+    'ETOTAL': False,
+    'EREALITY': True,
+    'EMIGDAL': False,
+    'FNOBODY': True,
+    'FKILL': False,
+    'FEMPIRE': False,
+    'FBEYOND': False,
+    'FPOINT': True,
+    'FREMNANT': False,
+    'ADEMON': False,
+    'AOBST': False,
+    'ACONV': True,
+    'AFULL': False,
+    'AGRID': False,
+    'ASOMNIA': False,
+    'SARCHE': True,
+    'SECLIPSE': False,
+    'STROPH': False,
+    'SNOISE': False,
+    'SDAWN': False,
+    'SARMS': False,
+    'ETACI': True,
+    'EASHES': False,
+    'ERAGE': True,
+    'ESPLIT': False,
+    'ENIGHT': False,
+    'ESURV': False,
+    'FCAPSULE': True,
+}
+
+NO_BUILD_MISSION_CODES = frozenset(
+    code for code, no_build in NO_BUILD_MISSION_FLAGS.items() if no_build
+)
+
+# User-approved early exceptions are Foehn 01 and 05. Every other Foehn map
+# is kept out of a protected opening while another eligible mission exists,
+# including no-build operation TIME CAPSULE because its difficulty is high.
+LATE_FOEHN_MISSION_CODES = frozenset({
+    'FKILL', 'FEMPIRE', 'FBEYOND', 'FREMNANT', 'FCAPSULE',
+})
+
 
 def normalize_faction(side):
     side = (side or '').strip().lower()
@@ -85,6 +200,7 @@ def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
             'side': section.get('SideName') or section.get('Side') or '',
             'objectives': objectives,
             'objective_count': len(objectives) or fallback_objective_count,
+            'no_build': bool(NO_BUILD_MISSION_FLAGS.get(code, False)),
         })
     return missions
 
@@ -141,6 +257,8 @@ def seed_mission_order(
     rng,
     mission_goal,
     low_level_count=LOW_LEVEL_MISSION_COUNT,
+    preferred_opening_codes=None,
+    excluded_opening_codes=None,
 ):
     """Return the requested low-level opening, then an unrestricted shuffle."""
     missions = list(missions)
@@ -160,6 +278,8 @@ def seed_mission_order(
         return items
 
     opening_count = min(max(0, int(low_level_count)), mission_goal)
+    preferred_opening_codes = set(preferred_opening_codes or ())
+    excluded_opening_codes = set(excluded_opening_codes or ())
 
     picked_codes = set()
     ordered = []
@@ -176,18 +296,53 @@ def seed_mission_order(
         picked_by_faction[faction] = picked_by_faction.get(faction, 0) + 1
         return True
 
+    # Optional no-build preference still respects stage buckets: easier fixed-
+    # unit missions win before late/finale no-build missions. Late Foehn maps
+    # remain excluded from the protected opening.
+    if preferred_opening_codes and opening_count:
+        for bucket_index in range(4):
+            bucket_missions = (
+                mission for mission in missions
+                if mission['code'] in preferred_opening_codes
+                and mission['code'] not in excluded_opening_codes
+                and bucket(mission) == bucket_index
+            )
+            for mission in shuffled(bucket_missions):
+                if add_mission(mission) and len(ordered) >= opening_count:
+                    break
+            if len(ordered) >= opening_count:
+                break
+
     # Keep only the opening approachable. The installed catalogue has enough
     # missions 1-6 for all campaign filters; later buckets are a defensive
     # fallback for custom or incomplete catalogues.
-    for bucket_index in range(4) if opening_count else ():
+    for bucket_index in range(4) if len(ordered) < opening_count else ():
         bucket_missions = (
-            mission for mission in missions if bucket(mission) == bucket_index
+            mission for mission in missions
+            if mission['code'] not in excluded_opening_codes
+            and bucket(mission) == bucket_index
         )
         for mission in shuffled(bucket_missions):
             if add_mission(mission) and len(ordered) >= opening_count:
                 break
         if len(ordered) >= opening_count:
             break
+
+    # A narrow custom/campaign-only pool may contain too few safe opening maps.
+    # Fill from excluded maps only when otherwise impossible to reach requested
+    # opening size; mixed installed campaigns never need this fallback.
+    if len(ordered) < opening_count:
+        for bucket_index in range(4):
+            bucket_missions = (
+                mission for mission in missions
+                if mission['code'] in excluded_opening_codes
+                and bucket(mission) == bucket_index
+            )
+            for mission in shuffled(bucket_missions):
+                if add_mission(mission) and len(ordered) >= opening_count:
+                    break
+            if len(ordered) >= opening_count:
+                break
     if len(ordered) >= mission_goal:
         return [item['code'] for item in ordered]
 

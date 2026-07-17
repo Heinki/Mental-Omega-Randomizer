@@ -180,6 +180,22 @@ def grid_opening_mission_count(node_count, two_start_positions=False):
     return len(_protected_opening_cells(cells, two_start_positions))
 
 
+def grid_opening_mission_codes(grid):
+    """Return mission codes at a start or one orthogonal move from one."""
+    nodes = grid.get('nodes', {}) if isinstance(grid, dict) else {}
+    positioned = {
+        (node.get('x'), node.get('y')): code
+        for code, node in nodes.items()
+        if isinstance(node, dict)
+    }
+    cells = sorted(positioned, key=lambda cell: (cell[1], cell[0]))
+    opening_cells = _protected_opening_cells(
+        cells,
+        bool(grid.get('two_start_positions', False)),
+    )
+    return [positioned[cell] for cell in opening_cells]
+
+
 def create_grid(mission_codes, two_start_positions=False, protect_opening=False):
     """Create a serializable grid state for the supplied mission content."""
     mission_codes = list(mission_codes)

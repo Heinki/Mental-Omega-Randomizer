@@ -23,13 +23,16 @@ from grid_progression import (
     UNLOCKED as GRID_UNLOCKED,
     completing_unlocks,
     create_grid,
+    grid_opening_mission_codes,
     grid_opening_mission_count,
     is_complete as is_grid_complete,
     refresh_states as refresh_grid_states,
 )
 from randomizer_missions import (
     FACTION_ORDER,
+    LATE_FOEHN_MISSION_CODES,
     LOW_LEVEL_MISSION_COUNT,
+    NO_BUILD_MISSION_CODES,
     campaign_mission_counts,
     classic_mission_order,
     normalize_faction,
@@ -320,6 +323,12 @@ class LauncherApp(tk.Tk):
                 'two_start_positions',
                 self.config.get('grid_two_start_positions', False),
             ))
+        )
+        self.include_no_build_missions_var = tk.BooleanVar(
+            value=bool(generation_config.get('include_no_build_missions', True))
+        )
+        self.prioritize_no_build_missions_var = tk.BooleanVar(
+            value=bool(generation_config.get('prioritize_no_build_missions', False))
         )
         reward_settings = self.config_reward_settings()
         enabled_buff_types = set(reward_settings['enabled_buff_types'])
@@ -714,8 +723,36 @@ class LauncherApp(tk.Tk):
         )
         self.settings_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 8))
 
+        mission_pool_frame = ttk.LabelFrame(
+            settings_frame,
+            text='Mission Pool',
+            padding=(8, 8, 8, 8),
+        )
+        mission_pool_frame.grid(row=1, column=0, sticky='ew')
+        self.include_no_build_missions_check = ttk.Checkbutton(
+            mission_pool_frame,
+            text='Include no-build / fixed-unit missions',
+            variable=self.include_no_build_missions_var,
+            command=self.on_mission_pool_settings_changed,
+        )
+        self.include_no_build_missions_check.grid(row=0, column=0, sticky='w')
+        WidgetTooltip(
+            self.include_no_build_missions_check,
+            'Includes missions completed with fixed units, heroes, or scripted map powers instead of a player production base.',
+        )
+        self.prioritize_no_build_missions_check = ttk.Checkbutton(
+            mission_pool_frame,
+            text='Prioritize no-build missions in opening',
+            variable=self.prioritize_no_build_missions_var,
+        )
+        self.prioritize_no_build_missions_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.prioritize_no_build_missions_check,
+            'Fills protected Mission List/Grid opening positions with easier no-build missions first.',
+        )
+
         reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
-        reward_frame.grid(row=1, column=0, sticky='ew')
+        reward_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
         reward_frame.columnconfigure(0, weight=1)
         self.randomize_unit_access_check = ttk.Checkbutton(
             reward_frame,
@@ -806,7 +843,7 @@ class LauncherApp(tk.Tk):
         )
 
         buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
-        buff_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+        buff_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
         for column in range(2):
             buff_frame.columnconfigure(column, weight=1)
         self.buff_type_checks = []
@@ -827,7 +864,7 @@ class LauncherApp(tk.Tk):
             text='Mission Assistance',
             padding=(8, 8, 8, 8),
         )
-        assistance_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+        assistance_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
         self.failure_assistance_check = ttk.Checkbutton(
             assistance_frame,
             text='Strengthen failed missions on retry',
@@ -1215,6 +1252,8 @@ class LauncherApp(tk.Tk):
                 self.state.get('completed_missions', []),
                 preserved_checks={} if schema_changed else self.state.get('mission_checks', {}),
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
+                progression_mode=self.state.get('progression_mode'),
+                grid=self.state.get('grid'),
             )
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
             self.state['reward_queue'] = [
@@ -1563,6 +1602,12 @@ class LauncherApp(tk.Tk):
         self.config['game_speed'] = self.game_speed_var.get()
         reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
+        self.config['generation']['include_no_build_missions'] = bool(
+            self.include_no_build_missions_var.get()
+        )
+        self.config['generation']['prioritize_no_build_missions'] = bool(
+            self.prioritize_no_build_missions_var.get()
+        )
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
         self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
@@ -1823,6 +1868,8 @@ class LauncherApp(tk.Tk):
             self.state.get('completed_missions', []),
             preserved_checks=self.state.get('mission_checks', {}) if schema_current else {},
             rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
+            progression_mode=self.state.get('progression_mode'),
+            grid=self.state.get('grid'),
         )
         self.state['mission_objectives'] = summary
         grid = self.state.get('grid', {})
@@ -1857,6 +1904,8 @@ class LauncherApp(tk.Tk):
         completed_missions=None,
         preserved_checks=None,
         rewards_per_check=DEFAULT_REWARDS_PER_CHECK,
+        progression_mode=None,
+        grid=None,
     ):
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
         earned_rewards = list(earned_rewards or [])
@@ -1873,7 +1922,13 @@ class LauncherApp(tk.Tk):
             code: len(templates_by_code[code]) * rewards_per_check
             for code in mission_codes
         }
-        rewards_by_code = self.generate_seed_reward_plan(mission_codes, seed, slots_by_code)
+        rewards_by_code = self.generate_seed_reward_plan(
+            mission_codes,
+            seed,
+            slots_by_code,
+            progression_mode=progression_mode,
+            grid=grid,
+        )
 
         for code in mission_codes:
             mission_checks = []
@@ -1918,7 +1973,14 @@ class LauncherApp(tk.Tk):
 
         return checks
 
-    def generate_seed_reward_plan(self, mission_codes, seed, slots_by_code):
+    def generate_seed_reward_plan(
+        self,
+        mission_codes,
+        seed,
+        slots_by_code,
+        progression_mode=None,
+        grid=None,
+    ):
         rng = random.Random(f'{seed}:seed-rewards')
         require_access_for_unit_buffs = self.randomize_unit_access_enabled()
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
@@ -1930,8 +1992,22 @@ class LauncherApp(tk.Tk):
         buff_counts = {}
         unit_buff_counts = {}
         global_buff_counts = {}
-        plan = {}
+        plan = {
+            code: [None] * max(0, int(slots_by_code.get(code, 0)))
+            for code in mission_codes
+        }
         global_index = 0
+
+        if progression_mode is None:
+            progression_mode = (
+                self.state.get('progression_mode')
+                if getattr(self, 'state', None)
+                else self.progression_mode_var.get()
+                if hasattr(self, 'progression_mode_var')
+                else DEFAULT_PROGRESSION_MODE
+            )
+        if grid is None and getattr(self, 'state', None):
+            grid = self.state.get('grid')
 
         def unit_access_earned(unit):
             return (
@@ -1991,13 +2067,24 @@ class LauncherApp(tk.Tk):
             access_by_code[code] = access
             buffs_by_code[code] = buff_metadata
 
-        def draw_access(code):
+        def is_unit_access(reward):
+            return any(
+                BUFF_TARGETS.get(unit_id, {}).get('category')
+                in {'infantry', 'units', 'aircraft'}
+                for unit_id in tech_ids_for_rewards([reward])
+            )
+
+        def draw_access(code, unit_only=False):
             access = access_by_code.get(code, [])
-            while access:
-                reward = access.pop()
+            for index in range(len(access) - 1, -1, -1):
+                reward = access[index]
                 name = reward.get('name')
                 if name in used_access_names:
+                    access.pop(index)
                     continue
+                if unit_only and not is_unit_access(reward):
+                    continue
+                access.pop(index)
                 used_access_names.add(name)
                 return dict(reward)
             return None
@@ -2094,26 +2181,54 @@ class LauncherApp(tk.Tk):
                     record_unit_buff(unit)
             return reward
 
-        for code in mission_codes:
-            rewards = []
-            for _ in range(slots_by_code.get(code, 0)):
-                reward = None
-                prefer_global = (global_index + 1) % GLOBAL_BUFF_REWARD_INTERVAL == 0
-                if global_index % 5 == 4 or prefer_global:
-                    reward = draw_buff(code, prefer_global=prefer_global)
-                if reward is None:
-                    reward = draw_access(code)
-                if reward is None:
-                    reward = draw_buff(code, prefer_global=prefer_global)
-                if reward is None:
-                    reward = draw_repeatable_fallback(code)
-                if reward is not None:
-                    rewards.append(reward)
-                    seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))
-                global_index += 1
-            plan[code] = rewards
+        slot_order = []
+        reserved_opening_slots = set()
+        if progression_mode == 'Grid Mode' and isinstance(grid, dict):
+            for code in grid_opening_mission_codes(grid):
+                if code in plan and plan[code]:
+                    slot = (code, 0)
+                    reserved_opening_slots.add(slot)
+                    slot_order.append((code, 0, True))
 
-        return plan
+            remaining_slots = [
+                (code, slot_index, False)
+                for code in mission_codes
+                for slot_index in range(len(plan[code]))
+                if (code, slot_index) not in reserved_opening_slots
+            ]
+            rng.shuffle(remaining_slots)
+            slot_order.extend(remaining_slots)
+        else:
+            slot_order = [
+                (code, slot_index, False)
+                for code in mission_codes
+                for slot_index in range(len(plan[code]))
+            ]
+
+        for code, slot_index, force_unit_access in slot_order:
+            reward = None
+            prefer_global = (global_index + 1) % GLOBAL_BUFF_REWARD_INTERVAL == 0
+            if force_unit_access:
+                reward = draw_access(code, unit_only=True)
+            if reward is None and not force_unit_access and (
+                global_index % 5 == 4 or prefer_global
+            ):
+                reward = draw_buff(code, prefer_global=prefer_global)
+            if reward is None:
+                reward = draw_access(code)
+            if reward is None:
+                reward = draw_buff(code, prefer_global=prefer_global)
+            if reward is None:
+                reward = draw_repeatable_fallback(code)
+            if reward is not None:
+                plan[code][slot_index] = reward
+                seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))
+            global_index += 1
+
+        return {
+            code: [reward for reward in rewards if reward is not None]
+            for code, rewards in plan.items()
+        }
 
     def earned_rewards_from_checks(self):
         earned = []
@@ -2161,6 +2276,10 @@ class LauncherApp(tk.Tk):
     def on_campaign_filter_changed(self, event=None):
         self.update_mission_goal_limit()
 
+    def on_mission_pool_settings_changed(self):
+        self.refresh_setting_states()
+        self.update_mission_goal_limit()
+
     def on_reward_mode_changed(self, event=None):
         self.refresh_setting_states()
 
@@ -2196,6 +2315,9 @@ class LauncherApp(tk.Tk):
         reward_source_enabled = bool(self.randomize_unit_access_var.get()) or buffs_enabled
         self.include_defensive_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
+        )
+        self.prioritize_no_build_missions_check.configure(
+            state='normal' if self.include_no_build_missions_var.get() else 'disabled'
         )
         self.refresh_progression_setting_states()
 
@@ -2677,6 +2799,12 @@ class LauncherApp(tk.Tk):
                 rng,
                 mission_goal,
                 low_level_count=low_level_count,
+                preferred_opening_codes=(
+                    NO_BUILD_MISSION_CODES
+                    if self.prioritize_no_build_missions_var.get()
+                    else None
+                ),
+                excluded_opening_codes=LATE_FOEHN_MISSION_CODES,
             )
         grid = None
         if progression_mode == 'Grid Mode':
@@ -2702,6 +2830,8 @@ class LauncherApp(tk.Tk):
             mission_codes,
             seed,
             rewards_per_check=rewards_per_check,
+            progression_mode=progression_mode,
+            grid=grid,
         )
         rewards = [
             reward
@@ -2727,6 +2857,10 @@ class LauncherApp(tk.Tk):
             'mission_order': mission_codes,
             'campaign_mission_counts': campaign_counts,
             'campaign_mission_limits': campaign_limits,
+            'mission_pool_settings': {
+                'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
+                'prioritize_no_build_missions': bool(self.prioritize_no_build_missions_var.get()),
+            },
             'completed_missions': [],
             'started_missions': [],
             'mission_failure_stacks': {},
@@ -2946,13 +3080,14 @@ class LauncherApp(tk.Tk):
 
     def filtered_missions_for_seed(self):
         selected = self.campaign_var.get()
-        if selected == CAMPAIGN_FILTERS[0]:
-            return list(self.missions)
-        return [
+        missions = list(self.missions) if selected == CAMPAIGN_FILTERS[0] else [
             mission
             for mission in self.missions
             if normalize_faction(mission.get('side', '')) == selected
         ]
+        if not self.include_no_build_missions_var.get():
+            missions = [mission for mission in missions if not mission.get('no_build', False)]
+        return missions
 
     def randomizer_order_map(self):
         order = self.state.get('mission_order', [])
