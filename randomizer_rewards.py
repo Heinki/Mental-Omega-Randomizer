@@ -281,6 +281,43 @@ def build_roster_weapon_stats():
 # Complete playable 3.3.6 weapon baselines extracted from RULESMO.INI.
 ROSTER_WEAPON_STATS = build_roster_weapon_stats()
 
+# Installed 3.3.6 capability snapshot. Do not offer a one-time enable reward
+# when the TechnoType already has that capability. Explicit ``no`` values are
+# intentionally absent because those units can still gain the capability.
+EXISTING_SELF_HEALING_IDS = frozenset('''
+AMEDIC TTNK AKULA DRED SQD MIND QUETZ RIOT SUPR TANY SIEG ARMR CMIN AMCV COMA
+ABRM CHRTNK THOR VCARR BFRT CRYO DLPH HCRUIS CARRIER STORM ORCA BEAG FORTRESS
+HBIRD DESO DESOR CHITZ VOLKOV MORALES YUNRU HARV SMCV RAVA WOLF MWF APOC SCHP
+EMPR EDRN CNTR ZEP FOX DUST BRUTE YURI YURIPR SCRG STALKER LIBRA UNDER ASSN
+YMIN PCV DISK SCAV DEVO RUINER BASIL GOTTER NAUT BSUB BLIGHT VENOM WASP BANE
+SIBFIN SICALI EUREKA URAGAN NMIN FMCV BUZZ COND MEGA MAD VIPER HURR PROME
+GHTNK BOID LEVI FAFILD FACONF
+'''.split())
+EXISTING_CLOAK_IDS = frozenset('''
+AKULA SUB SQD DLPH STORM ORCA BEAG FORTRESS HBIRD FOX DUST UNDER YMIN SHADOW
+QUAD SLED NAUT BSUB BLIGHT VENOM SHARK GACPIL GACRYO NATRAP YAVNMM FAFILD
+FACONF FAMMIN
+'''.split())
+EXISTING_SENSOR_IDS = frozenset('''
+SHK AKULA DRED SUB SQD GHOST TANY SIEG ROBO DEST DLPH SHOCK VOLKOV MORALES
+YUNRU BOREK ARMA LIBRA UNDER ASSN STING SHADOW SLED NAUT BSUB HUNTR SIBFIN
+SICALI EUREKA MSA SWORD SHARK NASCOM FAFILD FACONF
+'''.split())
+EXISTING_CAPABILITY_IDS = {
+    'self_healing': EXISTING_SELF_HEALING_IDS,
+    'cloak': EXISTING_CLOAK_IDS,
+    'sensors': EXISTING_SENSOR_IDS,
+}
+
+# These types mount disguise, capture/defuse, scanner, or explicit
+# ``NotAWeapon`` helpers. Their WeaponType fields are engine controls rather
+# than attacks, so weapon-stat rewards are misleading or ineffective.
+NONCOMBAT_WEAPON_TARGET_IDS = frozenset({
+    'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
+    'SPY', 'SBTR', 'INTRUDER', 'HIJACKER',
+    'MWF', 'MSA', 'SWPR', 'ORCIN',
+})
+
 # Economy, base-operation, and mission-transport essentials are deliberately
 # never access items. They remain available regardless of randomizer progress.
 AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset({'LCRF', 'SAPC', 'YHVR', 'SEAT'})
@@ -1046,7 +1083,7 @@ UNIT_LABELS = {
     'FORTRESS': 'Barracuda',
     'FV': 'IFV',
     'GGI': 'Guardian GI',
-    'HCRUIS': 'Battlecruiser',
+    'HCRUIS': 'Trident Battleship',
     'JUMPJET': 'Rocketeer',
     'LCRF': 'Voyager Transport',
     'AKULA': 'Akula',
@@ -1084,6 +1121,42 @@ def unit_display_label(unit_id):
     if target:
         return target.get('label', unit_id)
     return UNIT_LABELS.get((unit_id or '').upper(), unit_id)
+
+
+ACCESS_REWARD_ALIASES = {}
+
+
+def normalize_access_reward_display_names():
+    """Use the installed playable name for every single-unit access item."""
+    access_rewards = (
+        UNIT_UNLOCK_REWARDS
+        + EXTRA_UNIT_UNLOCK_REWARDS
+        + ROSTER_UNIT_UNLOCK_REWARDS
+        + DEFENSE_UNLOCK_REWARDS
+    )
+    for reward in access_rewards:
+        unlocked_ids = [
+            section
+            for section, values in reward.get('rules', {}).items()
+            if any(key.lower() == 'techlevel' for key in values)
+        ]
+        if len(unlocked_ids) != 1:
+            continue
+        unit_id = unlocked_ids[0].upper()
+        target = BUFF_TARGETS.get(unit_id)
+        if not target:
+            continue
+        old_name = reward.get('name', '')
+        new_name = f'{target["label"]} Access'
+        if old_name and old_name != new_name:
+            ACCESS_REWARD_ALIASES[old_name] = new_name
+        reward['name'] = new_name
+        reward['description'] = (
+            f'Allows {target["plural"]} where the map tech tree permits them.'
+        )
+
+
+normalize_access_reward_display_names()
 
 
 BUFF_TYPES = [
@@ -1203,8 +1276,16 @@ def build_buff_rewards():
     rewards = []
     for unit_id, target in BUFF_TARGETS.items():
         for buff_type in BUFF_TYPES:
+            buff_type_id = buff_type['id']
             allowed_types = target.get('allowed_buff_types')
-            if allowed_types and buff_type.get('id') not in allowed_types:
+            if allowed_types and buff_type_id not in allowed_types:
+                continue
+            if unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ()):
+                continue
+            if (
+                unit_id in NONCOMBAT_WEAPON_TARGET_IDS
+                and buff_type_id in {'damage', 'reload', 'rof', 'range'}
+            ):
                 continue
             if buff_type.get('requires_stat') and buff_type.get('requires_stat') not in target:
                 continue
@@ -1878,6 +1959,10 @@ REWARD_POOL = (
     + UNIT_BUFF_REWARDS
 )
 REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
+REWARD_BY_BUFF_KEY = {
+    (reward.get('unit'), reward.get('buff_type')): reward
+    for reward in UNIT_BUFF_REWARDS
+}
 RETIRED_REWARD_BY_NAME = {
     # Elite Reserves is implemented by delivering an invisible production-state
     # marker from a Soviet lab. Granting the power itself with action 34 and no
@@ -1903,6 +1988,7 @@ RETIRED_REWARD_BY_NAME = {
     },
 }
 REWARD_ALIASES = {
+    **ACCESS_REWARD_ALIASES,
     'Medic Drill I': 'Field Medic Drill I',
     'Humvee Assembly I': 'Humvee Drill I',
     'IFV Assembly I': 'IFV Drill I',
@@ -1942,7 +2028,27 @@ def canonical_reward(reward):
 
     if reward_name in RETIRED_REWARD_BY_NAME:
         return RETIRED_REWARD_BY_NAME[reward_name]
-    return REWARD_BY_NAME.get(reward_name, reward)
+    current_reward = REWARD_BY_NAME.get(reward_name)
+    if current_reward:
+        return current_reward
+    if reward.get('kind') == 'buff' and reward.get('buff_type'):
+        active_reward = REWARD_BY_BUFF_KEY.get(
+            (reward.get('unit'), reward.get('buff_type'))
+        )
+        if active_reward:
+            return active_reward
+        return {
+            'name': f'{reward_name} (retired: redundant or inapplicable)',
+            'description': (
+                'Disabled because the installed unit already has this capability '
+                'or has no compatible combat weapon.'
+            ),
+            'rules': {},
+            'factions': list(reward.get('factions') or []),
+            'kind': 'retired',
+            'retired_reward': True,
+        }
+    return reward
 
 
 def canonical_rewards(rewards):
@@ -1996,6 +2102,10 @@ MAX_VETERANCY_STACKS = 1
 def reward_display_name(reward):
     reward = canonical_reward(reward)
     name = reward.get('name', 'Unknown reward')
+    if reward.get('kind') == 'buff' and reward.get('buff_type'):
+        effect_lines = buff_effect_lines(reward, include_stack=False)
+        if effect_lines:
+            return effect_lines[0]
     if reward.get('kind') == 'buff' and name.endswith(' I'):
         return name[:-2]
     return name
@@ -2027,7 +2137,7 @@ def stack_label(count):
     return f'Stacked {count} time' + ('s' if count != 1 else '')
 
 
-def buff_effect_lines(reward, count=1, include_label=True):
+def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return []
@@ -2037,6 +2147,12 @@ def buff_effect_lines(reward, count=1, include_label=True):
     label = target.get('label', reward.get('unit', 'Unit'))
     prefix = f'{label}: ' if include_label else ''
     count = effective_buff_count(reward, count)
+
+    def stacked(text):
+        if not include_stack:
+            return text
+        return f'{text} ({stack_label(count)})'
+
     if buff_type == 'production':
         multiplier = max(0.35, 0.85 ** count)
         shorter = int(round((1.0 - multiplier) * 100))
@@ -2045,66 +2161,67 @@ def buff_effect_lines(reward, count=1, include_label=True):
             if target.get('category') in {'buildings', 'defenses'}
             else 'Production time'
         )
-        return [f'{prefix}{effect} {shorter}% shorter ({stack_label(count)})']
+        return [stacked(f'{prefix}{effect} {shorter}% shorter')]
     if buff_type == 'cost':
         multiplier = max(0.30, 0.80 ** count)
         cheaper = int(round((1.0 - multiplier) * 100))
-        return [f'{prefix}Cost {cheaper}% cheaper ({stack_label(count)})']
+        return [stacked(f'{prefix}Cost {cheaper}% cheaper')]
     if buff_type == 'speed':
         multiplier = min(1.75, 1.10 ** count)
         faster = int(round((multiplier - 1.0) * 100))
-        return [f'{prefix}Speed {faster}% faster ({stack_label(count)})']
+        return [stacked(f'{prefix}Speed {faster}% faster')]
     if buff_type == 'armor':
         multiplier = max(0.50, 0.90 ** count)
         tougher = int(round((1.0 - multiplier) * 100))
-        return [f'{prefix}Armor {tougher}% stronger ({stack_label(count)})']
+        return [stacked(f'{prefix}Armor {tougher}% stronger')]
     if buff_type == 'health':
         multiplier = min(2.0, 1.15 ** count)
         stronger = int(round((multiplier - 1.0) * 100))
-        return [f'{prefix}Health {stronger}% higher ({stack_label(count)})']
+        return [stacked(f'{prefix}Health {stronger}% higher')]
     if buff_type == 'sight':
         increase = min(4, count)
-        return [f'{prefix}Vision +{increase} ({stack_label(count)})']
+        return [stacked(f'{prefix}Vision +{increase}')]
     if buff_type == 'rof':
         multiplier = max(0.40, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'Army-wide fire rate {faster}% faster ({stack_label(count)})']
+        return [stacked(f'Army-wide fire rate {faster}% faster')]
     if buff_type == 'veteran':
-        return [f'{prefix}Veteran start ({stack_label(count)})']
+        return [stacked(f'{prefix}Veteran start')]
     if buff_type == 'damage':
         multiplier = min(2.0, 1.15 ** count)
         stronger = int(round((multiplier - 1.0) * 100))
-        return [f'{prefix}Damage {stronger}% higher ({stack_label(count)})']
+        return [stacked(f'{prefix}Damage {stronger}% higher')]
     if buff_type == 'reload':
         multiplier = max(0.45, 0.90 ** count)
         faster = int(round((1.0 - multiplier) * 100))
-        return [f'{prefix}Fire rate {faster}% faster ({stack_label(count)})']
+        return [stacked(f'{prefix}Fire rate {faster}% faster')]
     if buff_type == 'range':
         increase = min(3.0, 0.5 * count)
         if increase.is_integer():
             increase_text = str(int(increase))
         else:
             increase_text = f'{increase:.1f}'
-        return [f'{prefix}Range +{increase_text} ({stack_label(count)})']
+        return [stacked(f'{prefix}Range +{increase_text}')]
     if buff_type == 'ammo':
         increase = min(5, count)
         base_ammo = int(target.get('ammo', 0))
         total_ammo = base_ammo + increase
         if reward.get('unit') == 'ABRM':
-            return [
-                f'{prefix}Main-cannon ammo {base_ammo} -> {total_ammo} '
-                f'({stack_label(count)})'
-            ]
-        return [
-            f'{prefix}Ammo {base_ammo} -> {total_ammo} ({stack_label(count)})'
-        ]
+            return [stacked(f'{prefix}Main-cannon ammo {base_ammo} -> {total_ammo}')]
+        return [stacked(f'{prefix}Ammo {base_ammo} -> {total_ammo}')]
     if buff_type == 'self_healing':
-        return [f'{prefix}Self-healing enabled ({stack_label(count)})']
+        return [stacked(f'{prefix}Self-healing enabled')]
     if buff_type == 'cloak':
-        return [f'{prefix}Cloaking enabled ({stack_label(count)})']
+        return [stacked(f'{prefix}Cloaking enabled')]
     if buff_type == 'sensors':
         sensor_range = int(round(target.get('sight', 5) + 2))
-        return [f'{prefix}Sensors enabled ({sensor_range}-cell range; {stack_label(count)})']
+        sensor_text = f'{prefix}Sensors enabled ({sensor_range}-cell range)'
+        if include_stack:
+            sensor_text = (
+                f'{prefix}Sensors enabled ({sensor_range}-cell range; '
+                f'{stack_label(count)})'
+            )
+        return [sensor_text]
     return []
 
 

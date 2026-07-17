@@ -70,6 +70,10 @@ The launcher is currently standalone and offline. The option keys below are inte
 
 Direct unit and weapon definitions are global to the map. If an enemy uses the same type, the launcher skips that unsafe direct change instead of buffing the enemy or registering expensive cloned combat types. House-scoped rewards are written to an existing country only when that country is not shared with an enemy. Campaign houses are never reassigned to synthetic countries, because map triggers are owned by the original country IDs.
 
+Reward labels shown in mission tiles, mission details, logs, and the Rewards tab state the actual effect, such as `Typhoon Attack Sub: Cost 20% cheaper`, instead of internal catalogue names such as `Attack Sub Logistics`. Access rewards use the installed playable roster name; for example, `HCRUIS` is shown as `Trident Battleship Access`, not the obsolete `Battlecruiser Access`.
+
+The pool omits capability rewards a unit already possesses. Existing self-healing, cloaking (including staged/stop/attach-effect cloak), `Sensors=yes`, and `SensorArray=yes` are detected from the installed 3.3.6 definitions. Disguise kits, engineer tools, scanners, and explicit `NotAWeapon` helpers do not qualify their unit for weapon-stat rewards. Functional support weapons such as healing, repair, EMP, web, and time-warp tools remain eligible where reload or range really changes their effect. Legacy stored rewards that are now redundant or inapplicable retire without map injection.
+
 ### Non-UI configuration keys
 
 These keys are runtime/developer controls and should not become normal Archipelago options without a design review.
