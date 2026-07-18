@@ -1075,6 +1075,900 @@ def apply_weapon_buff_value(values, base_stats, buff_type, count):
     return True
 
 
+TECHNO_TYPE_LISTS = {
+    'infantry': 'InfantryTypes',
+    'units': 'VehicleTypes',
+    'aircraft': 'AircraftTypes',
+}
+
+
+def _active_direct_buff_counts(
+    rewards,
+    require_unlocked_access=True,
+    additional_unlocked_tech_ids=None,
+    share_basic_equivalent_buffs=False,
+    unit_specific_mode=False,
+):
+    """Group applicable direct TechnoType/WeaponType buffs by source unit."""
+    grouped_counts = {}
+    active_rewards = buffs_with_unlocked_access(
+        rewards,
+        require_unlocked_access=require_unlocked_access,
+        additional_unlocked_tech_ids=additional_unlocked_tech_ids,
+        share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+    )
+    for reward in expand_equivalent_role_buffs(
+        active_rewards,
+        enabled=share_basic_equivalent_buffs,
+    ):
+        if reward.get('kind') != 'buff':
+            continue
+        buff_type = reward.get('buff_type')
+        direct_chaos_types = {'cost', 'speed', 'armor'} if unit_specific_mode else set()
+        if buff_type not in CLONE_REQUIRED_BUFF_TYPES and buff_type not in direct_chaos_types:
+            continue
+        unit_id = str(reward.get('unit') or '').upper()
+        target = BUFF_TARGETS.get(unit_id, {})
+        if not unit_id or not target:
+            continue
+        if (
+            buff_type in WEAPON_STAT_BUFF_TYPES
+            and not target.get('weapons')
+            and not (buff_type == 'damage' and target.get('special_damage_fields'))
+        ):
+            continue
+        required_field = {
+            'health': 'strength',
+            'sight': 'sight',
+            'ammo': 'ammo',
+            'cost': 'cost',
+            'speed': 'speed',
+            'armor': 'strength',
+        }.get(buff_type)
+        if required_field and required_field not in target:
+            continue
+        key = (unit_id, buff_type)
+        grouped_counts[key] = grouped_counts.get(key, 0) + 1
+
+    counts_by_unit = {}
+    for (unit_id, buff_type), count in grouped_counts.items():
+        counts_by_unit.setdefault(unit_id, {})[buff_type] = count
+    return counts_by_unit
+
+
+def _allowed_buff_house_names(lines, configured_helper_houses=()):
+    records = map_house_records(lines)
+    player_house = player_house_from_map(lines, records=records)
+    if not player_house:
+        return records, set()
+    player_houses = player_controlled_houses(lines, records=records) or [player_house]
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
+    )
+    allowed_names = []
+    for house in unique_in_order(player_houses + helper_houses):
+        record = records.get(house, {})
+        if not record:
+            record = records.get(house + ' House', {})
+        allowed_names.extend((
+            house,
+            house.replace(' House', ''),
+            house + ' House' if not house.lower().endswith(' house') else house,
+            record.get('country'),
+        ))
+    return records, {name.lower() for name in allowed_names if name}
+
+
+def _register_map_type(section_rules, lines, installed_sections, list_section, type_id):
+    installed_entries = installed_sections.get(list_section, {})
+    map_entries = section_value_map_preserve(lines, list_section)
+    pending_entries = section_rules.setdefault(list_section, {})
+    registered = {
+        str(value).lower()
+        for value in list(installed_entries.values())
+        + list(map_entries.values())
+        + list(pending_entries.values())
+    }
+    if type_id.lower() in registered:
+        return
+    keys = {str(key).lower() for key in map_entries}
+    keys.update(str(key).lower() for key in pending_entries)
+    key, _ = _next_reserved_type_key(keys, RANDOMIZER_TYPE_LIST_KEY_START)
+    pending_entries[key] = type_id
+
+
+def _clone_reference_rules(
+    lines,
+    replacements,
+    allowed_houses,
+    installed_sections,
+    reserved_ids,
+):
+    """Rewrite friendly placements and split friendly TaskForce consumers."""
+    section_rules = {}
+    rewritten = 0
+    mixed_taskforces = []
+    for section in ('Infantry', 'Units', 'Aircraft'):
+        for key, value in section_value_map_preserve(lines, section).items():
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) < 2 or tokens[0].lower() not in allowed_houses:
+                continue
+            replacement = replacements.get(tokens[1].upper())
+            if not replacement:
+                continue
+            tokens[1] = replacement
+            section_rules.setdefault(section, {})[key] = ','.join(tokens)
+            rewritten += 1
+
+    sections = all_section_value_maps(lines)
+    taskforce_owners = taskforce_usage_houses(lines, sections=sections)
+    ai_team_houses = ai_trigger_team_usage_houses(lines)
+    directly_created = directly_created_team_ids(lines)
+    placeholder_houses = {'neutral', 'neutral house', '<none>', 'none'}
+    for taskforce_id, owners in taskforce_owners.items():
+        owner_names = {owner.lower() for owner in owners if owner}
+        taskforce_values = section_value_map_preserve(lines, taskforce_id)
+        cloned_values = dict(taskforce_values)
+        replaced_values = 0
+        for key, value in taskforce_values.items():
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) < 2:
+                continue
+            replacement = replacements.get(tokens[1].upper())
+            if not replacement:
+                continue
+            tokens[1] = replacement
+            cloned_values[key] = ','.join(tokens)
+            replaced_values += 1
+        if not replaced_values:
+            continue
+        if not owner_names or not owner_names.issubset(allowed_houses):
+            if not owner_names.intersection(allowed_houses):
+                continue
+
+            friendly_team_types = []
+            unresolved_team_types = []
+            for team_id, values in sections.items():
+                if str(values.get('taskforce') or '').lower() != taskforce_id.lower():
+                    continue
+                section_key = team_id.lower()
+                runtime_houses = set(ai_team_houses.get(section_key, set()))
+                house = str(values.get('house') or '')
+                if (
+                    house
+                    and (
+                        house.lower() not in placeholder_houses
+                        or not runtime_houses
+                        or section_key in directly_created
+                    )
+                ):
+                    runtime_houses.add(house)
+                runtime_names = {
+                    item.lower() for item in runtime_houses if item
+                }
+                if runtime_names and runtime_names.issubset(allowed_houses):
+                    friendly_team_types.append(team_id)
+                elif runtime_names.intersection(allowed_houses):
+                    unresolved_team_types.append(team_id)
+
+            if friendly_team_types:
+                clone_id = _collision_safe_type_id(
+                    f'MORTF{taskforce_id}',
+                    f'player-taskforce:{taskforce_id}',
+                    reserved_ids,
+                )
+                _register_map_type(
+                    section_rules,
+                    lines,
+                    installed_sections,
+                    'TaskForces',
+                    clone_id,
+                )
+                section_rules[clone_id] = cloned_values
+                for team_id in friendly_team_types:
+                    section_rules.setdefault(team_id, {})['TaskForce'] = clone_id
+                rewritten += replaced_values
+            if unresolved_team_types:
+                mixed_taskforces.append(
+                    f'{taskforce_id} ({", ".join(unresolved_team_types)})'
+                )
+            continue
+
+        section_rules[taskforce_id] = cloned_values
+        rewritten += replaced_values
+    return section_rules, rewritten, mixed_taskforces
+
+
+def _standalone_clone_values(
+    lines,
+    installed_sections,
+    installed_section,
+    map_section,
+):
+    """Return a complete map-local copy without Ares inheritance.
+
+    Ares accepts ``$Inherits`` in a map section, but live testing showed that a
+    cloned WeaponType can still be constructed before inherited core fields are
+    available. Merge installed values with map-local overrides instead so fields
+    such as Projectile and Warhead physically exist on the clone.
+    """
+    values = {}
+    key_by_lower = {}
+    for source_values in (
+        installed_sections.get(installed_section, {}) if installed_section else {},
+        section_value_map_preserve(lines, map_section) if map_section else {},
+    ):
+        for key, value in source_values.items():
+            lowered = str(key).lower()
+            previous = key_by_lower.get(lowered)
+            if previous is not None and previous != key:
+                values.pop(previous, None)
+            values[key] = value
+            key_by_lower[lowered] = key
+    inherited_key = key_by_lower.get('$inherits')
+    if inherited_key is not None:
+        values.pop(inherited_key, None)
+    return values
+
+
+def _standalone_clone_values_from_maps(installed_values, map_values):
+    """Merge installed values with an unmodified pre-launch map section."""
+    values = {}
+    key_by_lower = {}
+    for source_values in (installed_values or {}, map_values or {}):
+        for key, value in source_values.items():
+            lowered = str(key).lower()
+            previous = key_by_lower.get(lowered)
+            if previous is not None and previous != key:
+                values.pop(previous, None)
+            values[key] = value
+            key_by_lower[lowered] = key
+    inherited_key = key_by_lower.get('$inherits')
+    if inherited_key is not None:
+        values.pop(inherited_key, None)
+    return values
+
+
+def _value_case_insensitive(values, key, default=None):
+    lowered = str(key).lower()
+    return next(
+        (value for name, value in values.items() if str(name).lower() == lowered),
+        default,
+    )
+
+
+def _target_with_effective_unit_stats(target, effective_values):
+    """Use a variant's own base stats while retaining curated buff metadata."""
+    result = dict(target)
+    for target_key, rules_key in (
+        ('strength', 'Strength'),
+        ('sight', 'Sight'),
+        ('ammo', 'Ammo'),
+        ('cost', 'Cost'),
+        ('speed', 'Speed'),
+    ):
+        raw_value = _value_case_insensitive(effective_values, rules_key)
+        if raw_value is None:
+            continue
+        try:
+            result[target_key] = float(str(raw_value).strip())
+        except (TypeError, ValueError):
+            pass
+    return result
+
+
+def _friendly_variant_clone_candidates(
+    lines,
+    installed_sections,
+    map_sections,
+    counts_by_unit,
+    allowed_houses,
+    usage_index,
+):
+    """Find registered AI/map variants explicitly using a buff target's art."""
+    installed_name_by_lower = {
+        str(section).lower(): section for section in installed_sections
+    }
+    map_name_by_lower = {str(section).lower(): section for section in map_sections}
+    candidates = []
+    seen = set(counts_by_unit)
+    for list_section in TECHNO_TYPE_LISTS.values():
+        registered = list(installed_sections.get(list_section, {}).values())
+        registered.extend(section_value_map_preserve(lines, list_section).values())
+        for candidate in registered:
+            candidate_id = str(candidate).strip()
+            candidate_upper = candidate_id.upper()
+            if not candidate_id or candidate_upper in seen or candidate_upper.startswith('MORP'):
+                continue
+            installed_name = installed_name_by_lower.get(candidate_id.lower())
+            map_name = map_name_by_lower.get(candidate_id.lower())
+            effective_values = _standalone_clone_values(
+                lines,
+                installed_sections,
+                installed_name,
+                map_name,
+            )
+            base_id = str(
+                _value_case_insensitive(effective_values, 'Image', '')
+            ).strip().upper()
+            if base_id not in counts_by_unit or base_id == candidate_upper:
+                continue
+            usage_houses = unit_usage_houses(lines, candidate_id, usage_index)
+            if not any(house.lower() in allowed_houses for house in usage_houses):
+                continue
+            candidates.append((candidate_id, base_id, counts_by_unit[base_id]))
+            seen.add(candidate_upper)
+    return candidates
+
+
+def _helper_autocreate_taskforce_units(lines, helper_house_names):
+    """Return combat-production TaskForces used by configured helper AIs."""
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {name.lower(): values for name, values in sections.items()}
+    ai_team_houses = ai_trigger_team_usage_houses(lines)
+    directly_created = directly_created_team_ids(lines)
+    placeholder_houses = {'neutral', 'neutral house', '<none>', 'none'}
+    result = {}
+    for team_id, values in sections.items():
+        if str(values.get('autocreate') or '').lower() != 'yes':
+            continue
+        taskforce_id = str(values.get('taskforce') or '').strip()
+        if not taskforce_id:
+            continue
+        runtime_houses = set(ai_team_houses.get(team_id.lower(), set()))
+        house = str(values.get('house') or '').strip()
+        if (
+            house
+            and (
+                house.lower() not in placeholder_houses
+                or not runtime_houses
+                or team_id.lower() in directly_created
+            )
+        ):
+            runtime_houses.add(house)
+        if not {
+            owner.lower() for owner in runtime_houses if owner
+        }.intersection(helper_house_names):
+            continue
+        units = result.setdefault(taskforce_id.lower(), set())
+        for key, value in sections_by_lower.get(taskforce_id.lower(), {}).items():
+            tokens = [token.strip() for token in value.split(',')]
+            if str(key).isdigit() and len(tokens) >= 2 and tokens[1]:
+                units.add(tokens[1].upper())
+    return result
+
+
+def _registered_techno_categories(lines, installed_sections):
+    categories = {}
+    for category, list_section in TECHNO_TYPE_LISTS.items():
+        registered = list(installed_sections.get(list_section, {}).values())
+        registered.extend(section_value_map_preserve(lines, list_section).values())
+        for type_id in registered:
+            if str(type_id).strip():
+                categories[str(type_id).strip().upper()] = category
+    return categories
+
+
+def player_unit_clone_rules(
+    lines,
+    rewards,
+    installed_sections,
+    native_ai_helper_houses=(),
+    native_map_sections=None,
+    require_unlocked_access=True,
+    additional_unlocked_tech_ids=None,
+    buildable_tech_ids=None,
+    build_owner_ids=(),
+    build_forbidden_ids=(),
+    share_basic_equivalent_buffs=False,
+    unit_specific_mode=False,
+):
+    """Build narrow player-only combat clones for otherwise unsafe direct buffs.
+
+    Complete installed/map-effective sections are copied into standalone clones.
+    Only player placements and exclusively player-owned TaskForces are
+    rewritten. Every AI reference stays on its original type. Originals shared
+    with native helper production regain native AI rules without a global
+    ``BuildLimit``. Their TechLevel becomes 11 only when a visible player clone
+    replaces them, hiding the duplicate cameo while AI TaskForces still build.
+    """
+    installed_sections = installed_sections or {}
+    records, allowed_houses = _allowed_buff_house_names(
+        lines, ()
+    )
+    if not records or not allowed_houses:
+        return {}, [], {}, [], []
+
+    player_house = player_house_from_map(lines, records=records)
+    player_houses = player_controlled_houses(lines, records=records)
+    if not player_houses and player_house:
+        player_houses = [player_house]
+    native_helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        native_ai_helper_houses,
+        player_houses,
+    )
+    native_helper_names = set()
+    for house in native_helper_houses:
+        record = records.get(house, {})
+        country = record.get('country') or house.replace(' House', '')
+        native_helper_names.update({
+            house.lower(),
+            house.replace(' House', '').lower(),
+            str(country).lower(),
+        })
+
+    counts_by_unit = _active_direct_buff_counts(
+        rewards,
+        require_unlocked_access=require_unlocked_access,
+        additional_unlocked_tech_ids=additional_unlocked_tech_ids,
+        share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+        unit_specific_mode=unit_specific_mode,
+    )
+    usage_index = build_unit_usage_index(lines)
+    map_sections = all_section_value_maps(lines)
+    native_map_sections = native_map_sections or map_sections
+    installed_name_by_lower = {
+        str(section).lower(): section for section in installed_sections
+    }
+    map_name_by_lower = {str(section).lower(): section for section in map_sections}
+    native_map_name_by_lower = {
+        str(section).lower(): section for section in native_map_sections
+    }
+    reserved_ids = {str(section).lower() for section in installed_sections}
+    reserved_ids.update(str(section).lower() for section in map_sections)
+    buildable_ids = {str(item).upper() for item in (buildable_tech_ids or ())}
+    owner_ids = [str(item) for item in build_owner_ids if item]
+    forbidden_ids = unique_in_order(
+        str(item) for item in build_forbidden_ids if item
+    )
+    forbidden_value = ','.join(forbidden_ids) if forbidden_ids else 'none'
+    section_rules = {}
+    replacements = {}
+    player_veterancy_replacements = {}
+    cloned_labels = []
+    handled_by_unit = {}
+    unsupported = []
+    missing = []
+
+    native_helper_taskforces = _helper_autocreate_taskforce_units(
+        lines,
+        native_helper_names,
+    )
+    native_helper_source_ids = {
+        unit_id
+        for unit_ids in native_helper_taskforces.values()
+        for unit_id in unit_ids
+        if 'DUMMY' not in unit_id and not unit_id.endswith('MCV')
+    }
+
+    clone_candidates = [
+        (unit_id, unit_id, counts)
+        for unit_id, counts in counts_by_unit.items()
+    ]
+    clone_candidates.extend(
+        _friendly_variant_clone_candidates(
+            lines,
+            installed_sections,
+            map_sections,
+            counts_by_unit,
+            allowed_houses,
+            usage_index,
+        )
+    )
+    existing_candidate_ids = {
+        str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
+    }
+    clone_candidates.extend(
+        (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
+        for unit_id in sorted(native_helper_source_ids.intersection(buildable_ids))
+        if unit_id in BUFF_TARGETS and unit_id not in existing_candidate_ids
+    )
+    existing_candidate_ids.update(
+        str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
+    )
+    for unit_id, target_unit_id, counts in clone_candidates:
+        unit_id = str(unit_id).upper()
+        target = BUFF_TARGETS.get(target_unit_id, {})
+        list_section = TECHNO_TYPE_LISTS.get(target.get('category'))
+        if not list_section:
+            continue
+        source_unit = (
+            map_name_by_lower.get(unit_id.lower())
+            or installed_name_by_lower.get(unit_id.lower())
+        )
+        if not source_unit:
+            missing.append(unit_id)
+            continue
+
+        unsafe_unit_houses = {
+            house
+            for house in unit_usage_houses(lines, unit_id, usage_index)
+            if house.lower() not in allowed_houses
+        }
+        unit_usage = unit_usage_houses(lines, unit_id, usage_index)
+        direct_types = set(counts) - WEAPON_STAT_BUFF_TYPES
+        weapon_buff_types = WEAPON_STAT_BUFF_TYPES.intersection(counts)
+        installed_unit = installed_name_by_lower.get(unit_id.lower())
+        map_unit = map_name_by_lower.get(unit_id.lower())
+        effective_unit_values = _standalone_clone_values(
+            lines,
+            installed_sections,
+            installed_unit,
+            map_unit,
+        )
+        native_unit_values = _standalone_clone_values_from_maps(
+            installed_sections.get(installed_unit, {}) if installed_unit else {},
+            native_map_sections.get(
+                native_map_name_by_lower.get(unit_id.lower()), {}
+            ),
+        )
+        effective_target = _target_with_effective_unit_stats(
+            target, effective_unit_values
+        )
+        direct_weapon_keys = {
+            weapon.upper(): [
+                key
+                for key, value in effective_unit_values.items()
+                if str(value).strip().lower() == weapon.lower()
+            ]
+            for weapon in target.get('weapons', {})
+        }
+        weapon_unsafe = False
+        if weapon_buff_types:
+            for weapon in target.get('weapons', {}):
+                if not direct_weapon_keys.get(weapon.upper()):
+                    continue
+                weapon_users = SHARED_WEAPON_USER_IDS.get(weapon.upper(), {unit_id})
+                if any(
+                    house.lower() not in allowed_houses
+                    for weapon_user in weapon_users
+                    for house in unit_usage_houses(lines, weapon_user, usage_index)
+                ):
+                    weapon_unsafe = True
+                    break
+        is_variant = unit_id != target_unit_id
+        native_helper_shared = unit_id in native_helper_source_ids
+        variant_has_effect = bool(direct_types) or any(
+            direct_weapon_keys.get(weapon.upper())
+            for weapon in target.get('weapons', {})
+            if weapon_buff_types
+        )
+        if (
+            not is_variant
+            and not (unsafe_unit_houses and direct_types)
+            and not weapon_unsafe
+            and not native_helper_shared
+        ) or (
+            is_variant
+            and not variant_has_effect
+            and not native_helper_shared
+        ):
+            continue
+
+        clone_id = _collision_safe_type_id(
+            f'MORP{unit_id}', f'player-unit:{unit_id}', reserved_ids
+        )
+        clone_values = dict(effective_unit_values)
+        if not any(
+            str(key).lower() == 'image' and str(value).strip()
+            for key, value in clone_values.items()
+        ):
+            # TechnoType art defaults to its own section ID. A standalone clone
+            # therefore needs the original ID explicitly or it would look for a
+            # nonexistent MORP... art section.
+            clone_values['Image'] = source_unit
+        handled_unit_types = set()
+        handled_weapon_ids = set()
+        for buff_type in (
+            'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
+            'sensors', 'cost', 'speed',
+        ):
+            if buff_type in direct_types and apply_unit_buff_value(
+                clone_values, effective_target, buff_type, counts[buff_type]
+            ):
+                handled_unit_types.add(buff_type)
+        for weapon, base_stats in target.get('weapons', {}).items():
+            reference_keys = direct_weapon_keys.get(weapon.upper(), [])
+            if not reference_keys:
+                continue
+            source_weapon = (
+                map_name_by_lower.get(weapon.lower())
+                or installed_name_by_lower.get(weapon.lower())
+            )
+            installed_weapon = installed_name_by_lower.get(weapon.lower())
+            map_weapon = map_name_by_lower.get(weapon.lower())
+            weapon_values = _standalone_clone_values(
+                lines,
+                installed_sections,
+                installed_weapon,
+                map_weapon,
+            )
+            if not source_weapon:
+                missing.append(weapon)
+                continue
+            missing_core = [
+                required
+                for required in ('Projectile', 'Warhead')
+                if not any(
+                    str(key).lower() == required.lower() and str(value).strip()
+                    for key, value in weapon_values.items()
+                )
+            ]
+            if missing_core:
+                missing.append(
+                    f'{weapon} core field(s) {", ".join(missing_core)}'
+                )
+                continue
+            applied_weapon = False
+            for buff_type in ('damage', 'range', 'reload'):
+                if buff_type in weapon_buff_types:
+                    applied_weapon = (
+                        apply_weapon_buff_value(
+                            weapon_values, base_stats, buff_type, counts[buff_type]
+                        )
+                        or applied_weapon
+                    )
+            if not applied_weapon:
+                continue
+            weapon_clone = _collision_safe_type_id(
+                f'MORW{unit_id}{weapon}',
+                f'player-weapon:{unit_id}:{weapon}',
+                reserved_ids,
+            )
+            _register_map_type(
+                section_rules, lines, installed_sections, 'WeaponTypes', weapon_clone
+            )
+            section_rules[weapon_clone] = weapon_values
+            for key in reference_keys:
+                clone_values[key] = weapon_clone
+            handled_weapon_ids.add(weapon.upper())
+
+        if target.get('special_damage_fields') and 'damage' in weapon_buff_types:
+            unsupported.append(
+                f'{target.get("label", unit_id)} spawned-missile damage'
+            )
+        if unit_id in buildable_ids:
+            clone_values['TechLevel'] = UNLOCKED_TECH_LEVEL
+            clone_owner_ids = unique_in_order(owner_ids)
+            if clone_owner_ids:
+                owners = ','.join(clone_owner_ids)
+                clone_values.update({
+                    'Owner': owners,
+                    'RequiredHouses': owners,
+                    'ForbiddenHouses': forbidden_value,
+                })
+            # Do not use global BuildLimit=0 to hide the original: Ares then
+            # refuses native AI TeamTypes containing that unit. Restore the
+            # original to AI/map owners and forbid only the player countries.
+            native_owner_ids = comma_items(
+                _value_case_insensitive(native_unit_values, 'Owner', '')
+            )
+            native_owner_ids.extend(comma_items(
+                _value_case_insensitive(native_unit_values, 'RequiredHouses', '')
+            ))
+            for usage_house in unit_usage:
+                if usage_house.lower() in allowed_houses:
+                    continue
+                canonical = canonical_house_name(records, usage_house)
+                country = (
+                    records.get(canonical, {}).get('country')
+                    if canonical else usage_house.replace(' House', '')
+                )
+                if country:
+                    native_owner_ids.append(country)
+            player_owner_names = {item.lower() for item in owner_ids}
+            native_owner_ids = unique_in_order(
+                item for item in native_owner_ids
+                if item and item.lower() not in player_owner_names
+            )
+            original_rules = section_rules.setdefault(unit_id, {})
+            original_rules.update({
+                'ForbiddenHouses': ','.join(owner_ids) if owner_ids else 'none',
+                'BuildLimit': None,
+                # Always hide a replaced original, including types whose
+                # installed owners are entirely player countries. Those types
+                # previously escaped this block and kept a second cameo.
+                'TechLevel': LOCKED_TECH_LEVEL,
+            })
+            if native_owner_ids:
+                native_owners = ','.join(native_owner_ids)
+                original_rules.update({
+                    'Owner': native_owners,
+                    'RequiredHouses': native_owners,
+                })
+            native_prerequisite = _value_case_insensitive(
+                native_unit_values, 'Prerequisite'
+            )
+            if native_prerequisite is not None:
+                original_rules['Prerequisite'] = native_prerequisite
+            original_rules['PrerequisiteOverride'] = _value_case_insensitive(
+                native_unit_values, 'PrerequisiteOverride', 'none'
+            )
+        elif is_variant:
+            # Variants are reference replacements, not extra player build
+            # choices. TechLevel 11 keeps their cloned cameo hidden while map
+            # TeamType/reinforcement creation remains available.
+            clone_values['TechLevel'] = LOCKED_TECH_LEVEL
+
+        _register_map_type(
+            section_rules, lines, installed_sections, list_section, clone_id
+        )
+        section_rules[clone_id] = clone_values
+        replacements[unit_id] = clone_id
+        handled_by_unit[unit_id] = {
+            'unit_buff_types': handled_unit_types,
+            'weapon_ids': handled_weapon_ids,
+        }
+        label = target.get('label', target_unit_id)
+        cloned_labels.append(
+            f'{label} variant {unit_id}' if is_variant else label
+        )
+        if unit_id == target_unit_id and unit_id in buildable_ids:
+            player_veterancy_replacements[unit_id] = clone_id
+
+    # Restore native helper AI production on original IDs. No helper TeamType
+    # or TaskForce is rewritten. Player-access originals have their MORP clone;
+    # locked helper-only originals are forbidden to the player but remain
+    # available to the map's own AI country and factory rules. Shared originals
+    # replaced for the player stay at TechLevel 11, a campaign-proven AI-only
+    # production pattern that prevents duplicate human cameos.
+    native_category_by_unit = _registered_techno_categories(
+        lines,
+        installed_sections,
+    )
+    for unit_id in sorted(native_helper_source_ids):
+        if unit_id not in native_category_by_unit:
+            continue
+        installed_unit = installed_name_by_lower.get(unit_id.lower())
+        native_section = native_map_name_by_lower.get(unit_id.lower())
+        native_values = _standalone_clone_values_from_maps(
+            installed_sections.get(installed_unit, {}) if installed_unit else {},
+            native_map_sections.get(native_section, {}) if native_section else {},
+        )
+        if not native_values:
+            continue
+        ai_owner_ids = comma_items(
+            _value_case_insensitive(native_values, 'Owner', '')
+        )
+        ai_owner_ids.extend(comma_items(
+            _value_case_insensitive(native_values, 'RequiredHouses', '')
+        ))
+        for usage_house in unit_usage_houses(lines, unit_id, usage_index):
+            if usage_house.lower() not in native_helper_names:
+                continue
+            canonical = canonical_house_name(records, usage_house)
+            country = (
+                records.get(canonical, {}).get('country')
+                if canonical else usage_house.replace(' House', '')
+            )
+            if country:
+                ai_owner_ids.append(country)
+        if unit_id in buildable_ids and unit_id not in replacements:
+            # No player clone exists for this helper-used source. Keep its
+            # earned player access alongside native AI access; no cloned buff
+            # is attached to this original type.
+            ai_owner_ids.extend(owner_ids)
+        player_owner_names = {item.lower() for item in owner_ids}
+        ai_owner_ids = unique_in_order(
+            item for item in ai_owner_ids
+            if item and (
+                item.lower() not in player_owner_names
+                or (unit_id in buildable_ids and unit_id not in replacements)
+            )
+        )
+        if not ai_owner_ids:
+            continue
+        original_rules = section_rules.setdefault(unit_id, {})
+        owners = ','.join(ai_owner_ids)
+        original_rules.update({
+            'Owner': owners,
+            'RequiredHouses': owners,
+            'ForbiddenHouses': (
+                ','.join(owner_ids)
+                if unit_id in replacements or unit_id not in buildable_ids
+                else 'none'
+            ),
+            'BuildLimit': None,
+            'TechLevel': (
+                LOCKED_TECH_LEVEL
+                if unit_id in replacements and unit_id in buildable_ids
+                else _value_case_insensitive(native_values, 'TechLevel', LOCKED_TECH_LEVEL)
+            ),
+            'PrerequisiteOverride': _value_case_insensitive(
+                native_values, 'PrerequisiteOverride', 'none'
+            ),
+        })
+        for key in list(section_value_map_preserve(lines, unit_id)):
+            lowered = str(key).lower()
+            if (
+                lowered.startswith('prerequisite.list')
+                or lowered in {
+                    'prerequisite.negative',
+                    'prerequisite.stolentechs',
+                    'factoryowners',
+                    'factoryowners.forbidden',
+                }
+            ):
+                original_rules[key] = None
+        for key, value in native_values.items():
+            lowered = str(key).lower()
+            if (
+                lowered == 'techlevel'
+                and unit_id in replacements
+                and unit_id in buildable_ids
+            ):
+                continue
+            if (
+                lowered in {'techlevel', 'prerequisite', 'factoryowners', 'factoryowners.forbidden'}
+                or lowered.startswith('prerequisite.list')
+                or lowered in {'prerequisite.negative', 'prerequisite.stolentechs'}
+            ):
+                original_rules[key] = value
+
+    reference_rules, rewritten, mixed_taskforces = _clone_reference_rules(
+        lines,
+        replacements,
+        allowed_houses,
+        installed_sections,
+        reserved_ids,
+    )
+    for section, values in reference_rules.items():
+        section_rules.setdefault(section, {}).update(values)
+
+    # Country veterancy lists contain exact TechnoType IDs. Replace originals
+    # with the clone each country actually produces. Never append the whole
+    # clone inventory: Phobos rejects oversized INI values (FBEYOND reached
+    # 755 characters and logged VeteranUnits=M parse failures).
+    veteran_field_by_category = {
+        'infantry': 'VeteranInfantry',
+        'units': 'VeteranUnits',
+        'aircraft': 'VeteranAircraft',
+    }
+    player_countries = unique_in_order(
+        records.get(house, {}).get('country') or house.replace(' House', '')
+        for house in player_houses
+    )
+    for country, country_replacements in (
+        (country, player_veterancy_replacements) for country in player_countries
+    ):
+        country_values = section_value_map_preserve(lines, country)
+        for category, field in veteran_field_by_category.items():
+            current = _value_case_insensitive(country_values, field, '')
+            if not current:
+                continue
+            items = [item.strip() for item in str(current).split(',') if item.strip()]
+            rewritten_items = []
+            for item in items:
+                target_category = BUFF_TARGETS.get(item.upper(), {}).get('category')
+                replacement = country_replacements.get(item.upper())
+                candidate = replacement if replacement and target_category == category else item
+                proposed = ','.join(rewritten_items + [candidate])
+                # Stay below the engine/Phobos single-value parser boundary.
+                if len(proposed) > 500 and candidate != item:
+                    candidate = item
+                rewritten_items.append(candidate)
+            rewritten_value = ','.join(unique_in_order(rewritten_items))
+            if rewritten_value != current:
+                section_rules.setdefault(country, {})[field] = rewritten_value
+    if replacements and not rewritten and not buildable_ids.intersection(replacements):
+        unsupported.append('no friendly placement or exclusive TaskForce references rewritten')
+    if mixed_taskforces:
+        unsupported.append(
+            'shared friendly/enemy TaskForces left on original types: '
+            + ', '.join(mixed_taskforces)
+        )
+    return (
+        section_rules,
+        sorted(replacements),
+        handled_by_unit,
+        unique_in_order(cloned_labels),
+        unique_in_order(unsupported + [f'missing source {item}' for item in missing]),
+    )
+
+
 def unit_weapon_buff_rules(
     lines,
     rewards,
@@ -1083,6 +1977,7 @@ def unit_weapon_buff_rules(
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
+    clone_handled=None,
 ):
     """Apply direct buffs only when their global type is safe for friendly houses.
 
@@ -1115,56 +2010,27 @@ def unit_weapon_buff_rules(
     allowed_houses = {name.lower() for name in allowed_names if name}
     usage_index = build_unit_usage_index(lines)
 
-    grouped_counts = {}
-    active_rewards = buffs_with_unlocked_access(
+    counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
         additional_unlocked_tech_ids=additional_unlocked_tech_ids,
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+        unit_specific_mode=unit_specific_mode,
     )
-    for reward in expand_equivalent_role_buffs(
-        active_rewards,
-        enabled=share_basic_equivalent_buffs,
-    ):
-        if reward.get('kind') != 'buff':
-            continue
-        buff_type = reward.get('buff_type')
-        direct_chaos_types = {'cost', 'speed', 'armor'} if unit_specific_mode else set()
-        if buff_type not in CLONE_REQUIRED_BUFF_TYPES and buff_type not in direct_chaos_types:
-            continue
-        unit_id = reward.get('unit')
-        target = BUFF_TARGETS.get(unit_id, {})
-        if not unit_id or not target:
-            continue
-        if (
-            buff_type in WEAPON_STAT_BUFF_TYPES
-            and not target.get('weapons')
-            and not (buff_type == 'damage' and target.get('special_damage_fields'))
-        ):
-            continue
-        if buff_type == 'health' and 'strength' not in target:
-            continue
-        if buff_type == 'sight' and 'sight' not in target:
-            continue
-        if buff_type == 'ammo' and 'ammo' not in target:
-            continue
-        if buff_type == 'cost' and 'cost' not in target:
-            continue
-        if buff_type == 'speed' and 'speed' not in target:
-            continue
-        if buff_type == 'armor' and 'strength' not in target:
-            continue
-        key = (unit_id, buff_type)
-        grouped_counts[key] = grouped_counts.get(key, 0) + 1
-
-    counts_by_unit = {}
-    for (unit_id, buff_type), count in grouped_counts.items():
-        counts_by_unit.setdefault(unit_id, {})[buff_type] = count
+    clone_handled = {
+        str(unit_id).upper(): values
+        for unit_id, values in (clone_handled or {}).items()
+    }
 
     rule_sections = {}
     applied_units = []
     skipped_units = []
     for unit_id, counts in counts_by_unit.items():
+        handled = clone_handled.get(unit_id.upper(), {})
+        handled_unit_types = set(handled.get('unit_buff_types', ()))
+        handled_weapon_ids = {
+            str(weapon).upper() for weapon in handled.get('weapon_ids', ())
+        }
         target = BUFF_TARGETS.get(unit_id, {})
         unsafe_unit_houses = sorted({
             house
@@ -1173,7 +2039,9 @@ def unit_weapon_buff_rules(
         })
 
         applied = False
-        direct_types = set(counts) - WEAPON_STAT_BUFF_TYPES
+        direct_types = (
+            set(counts) - WEAPON_STAT_BUFF_TYPES - handled_unit_types
+        )
         if unsafe_unit_houses and direct_types:
             skipped_units.append(
                 f'{target.get("label", unit_id)} ({", ".join(unsafe_unit_houses)})'
@@ -1197,6 +2065,8 @@ def unit_weapon_buff_rules(
         weapon_buff_types = WEAPON_STAT_BUFF_TYPES.intersection(counts)
         if weapon_buff_types:
             for weapon, base_stats in target.get('weapons', {}).items():
+                if weapon.upper() in handled_weapon_ids:
+                    continue
                 weapon_users = SHARED_WEAPON_USER_IDS.get(weapon.upper(), {unit_id})
                 unsafe_weapon_houses = sorted({
                     house

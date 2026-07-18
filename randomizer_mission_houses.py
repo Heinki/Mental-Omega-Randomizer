@@ -656,16 +656,22 @@ MISSION_HOUSE_CONFIG = {
     'FBEYOND': {
         'allies': (
             'FoehnNavy House',
+            # The unselected Soviet/Allied base becomes the friendly AI base.
+            # Suffix 2/3/4 is the mission's difficulty-specific house copy.
+            'China2 House',
+            'China3 House',
+            'China4 House',
+            'Pacific2 House',
+            'Pacific3 House',
+            'Pacific4 House',
+            # Script helper inherits Guild1. It is not a combat enemy; marking
+            # it hostile makes the player country look shared and disables all
+            # Guild1 ROF/veterancy/category buffs.
+            'SellMCV House',
         ),
         'enemies': (
             'Chinese House',
-            'China4 House',
-            'China3 House',
-            'China2 House',
             'Pacific House',
-            'Pacific2 House',
-            'Pacific4 House',
-            'Pacific3 House',
             'Guild2 House',
             'Latin House',
             'USSR2 House',
@@ -677,7 +683,6 @@ MISSION_HOUSE_CONFIG = {
             'DybbukHive House',
             'ScorpionCell House',
             'UnitedStates House',
-            'SellMCV House',
         ),
     },
     'FCAPSULE': {
@@ -829,4 +834,3 @@ def mission_house_config(code):
         'allies': tuple(entry.get('allies', ())),
         'enemies': tuple(entry.get('enemies', ())),
     }
-

@@ -164,7 +164,8 @@ def merge_ini_section_values(lines, section_values):
             for key_lower in sorted(active_values, key=lambda item: active_values[item][0]):
                 if key_lower not in seen_keys:
                     key, value = active_values[key_lower]
-                    output.append(f'{key}={value}')
+                    if value is not None:
+                        output.append(f'{key}={value}')
 
     for line in lines:
         stripped = line.strip()
@@ -186,7 +187,8 @@ def merge_ini_section_values(lines, section_values):
             replacement = active_values.get(key_lower)
             if replacement is not None:
                 key, value = replacement
-                output.append(f'{key}={value}')
+                if value is not None:
+                    output.append(f'{key}={value}')
                 seen_keys.add(key_lower)
                 continue
         output.append(line)
@@ -199,5 +201,6 @@ def merge_ini_section_values(lines, section_values):
             output.append('')
         output.append(f'[{section}]')
         for _, (key, value) in sorted(values.items(), key=lambda item: item[1][0]):
-            output.append(f'{key}={value}')
+            if value is not None:
+                output.append(f'{key}={value}')
     lines[:] = output
