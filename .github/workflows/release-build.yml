@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'V*'
 
 permissions:
   contents: read
@@ -61,7 +62,7 @@ jobs:
           retention-days: 90
 
       - name: Publish assets for version tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}

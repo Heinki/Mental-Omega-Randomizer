@@ -5,6 +5,7 @@ import os
 import sys
 
 from randomizer_paths import FROZEN, GAME_ROOT, LAUNCHER_LOG
+from randomizer_version import APP_VERSION
 
 
 SESSION_ID = os.urandom(4).hex()
@@ -57,6 +58,7 @@ def setup_logging():
         LOGGER.addHandler(logging.NullHandler())
     event(
         'launcher_started',
+        version=APP_VERSION,
         frozen=FROZEN,
         python=sys.version.split()[0],
         windows=str(sys.getwindowsversion()) if hasattr(sys, 'getwindowsversion') else sys.platform,

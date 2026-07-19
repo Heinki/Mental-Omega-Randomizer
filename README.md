@@ -109,7 +109,7 @@ GitHub Actions installs pinned build dependencies from `requirements-build.txt` 
 python -m pip install -r RandomizerLauncher\requirements-build.txt
 ```
 
-The build uses PyInstaller and embeds `mo-logo-puzzle-icon.ico`, an exact unscaled 32 x 32 crop from `mo-logo-puzzle.png`, as both the Windows executable icon and the running Tk window icon. Build dependencies are installed temporarily on the GitHub runner; maintainers need them locally only when choosing to build locally. Players do not need Python, build packages, the source directory, or a separate runtime folder. The launcher creates `RandomizerLauncherData` for configuration, saves, logs, and cached map/cameo data after it is run; this is writable player data, not part of the distributed application.
+The build uses PyInstaller without UPX packing, embeds the release number as Windows version metadata, and embeds `mo-logo-puzzle-icon.ico`, an exact unscaled 32 x 32 crop from `mo-logo-puzzle.png`, as both the Windows executable icon and the running Tk window icon. Build dependencies are installed temporarily on the GitHub runner; maintainers need them locally only when choosing to build locally. Players do not need Python, build packages, the source directory, or a separate runtime folder. The launcher creates `RandomizerLauncherData` for configuration, saves, logs, and cached map/cameo data after it is run; this is writable player data, not part of the distributed application.
 
 Run a packaged installation check without opening the UI:
 

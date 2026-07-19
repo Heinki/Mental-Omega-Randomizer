@@ -17,6 +17,7 @@ from randomizer_paths import (
     MAP_RENDERER_DIR,
     WINDOW_ICON_PATH,
 )
+from randomizer_version import APP_VERSION
 
 
 def run_self_check():
@@ -27,6 +28,7 @@ def run_self_check():
         cameos = ensure_unit_cameos(['ABRM'])
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         checks = {
+            'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),
             'runtime_data_writable': APP_DIR.exists(),
             'syringe_exists': GAME_LAUNCHER_EXE.exists(),

@@ -17,6 +17,7 @@ from randomizer_cameos import (
     powershell_mix_reader_load_script,
 )
 from randomizer_diagnostics import event as log_event
+from randomizer_version import APP_VERSION
 from grid_progression import (
     COMPLETED as GRID_COMPLETED,
     LOCKED as GRID_LOCKED,
@@ -261,7 +262,7 @@ class TreeTooltip:
 class LauncherApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('Mental Omega Randomizer Launcher')
+        self.title(f'Mental Omega Randomizer Launcher v{APP_VERSION}')
         if WINDOW_ICON_PATH.is_file():
             try:
                 self.iconbitmap(str(WINDOW_ICON_PATH))
@@ -429,7 +430,11 @@ class LauncherApp(tk.Tk):
         style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
         style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
 
-        header = ttk.Label(main_frame, text='Mental Omega Randomizer Launcher', font=('Segoe UI', 14, 'bold'))
+        header = ttk.Label(
+            main_frame,
+            text=f'Mental Omega Randomizer Launcher v{APP_VERSION}',
+            font=('Segoe UI', 14, 'bold'),
+        )
         header.grid(row=0, column=0, columnspan=4, sticky='w')
         ttk.Label(
             main_frame,
