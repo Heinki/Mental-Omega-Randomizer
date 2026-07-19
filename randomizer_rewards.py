@@ -753,7 +753,11 @@ EXTRA_UNIT_UNLOCK_REWARDS = [
         'name': 'Squid Access',
         'description': 'Allows Giant Squids where the map tech tree permits them.',
         'rules': {'SQD': {'TechLevel': '3'}},
-        'factions': ['Soviets'],
+        # Mental Omega 3.3.6 assigns SQD to the Epsilon naval roster.  This
+        # used to say Soviets even though normalize_roster_unlock_rules()
+        # correctly rewrote its ownership/prerequisite to Epsilon, allowing
+        # an Epsilon cameo into Soviet seeds.
+        'factions': ['Epsilon'],
     },
     {
         'name': 'Sea Scorpion Access',

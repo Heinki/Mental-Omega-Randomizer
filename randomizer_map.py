@@ -88,6 +88,7 @@ LOCKED_TECH_LEVEL = '11'
 UNLOCKED_TECH_LEVEL = '1'
 MISSION_ASSISTANCE_CATEGORIES = ('Infantry', 'Units', 'Aircraft')
 MAX_MAP_ACTION_LINE_LENGTH = 511
+MAX_COUNTRY_VETERAN_VALUE_LENGTH = 480
 
 
 def now_stamp():
@@ -534,6 +535,23 @@ def merge_unique_csv(existing, additions):
     return ','.join(merged)
 
 
+def merge_unique_csv_bounded(existing, additions, max_length):
+    """Merge CSV IDs without crossing the engine's single-value parser limit."""
+    merged = []
+    seen = set()
+    for item in comma_items(existing) + list(additions):
+        item = str(item or '').strip()
+        key = item.upper()
+        if not item or key in seen:
+            continue
+        candidate = ','.join(merged + [item])
+        if len(candidate.encode('utf-8')) > max_length:
+            continue
+        seen.add(key)
+        merged.append(item)
+    return ','.join(merged)
+
+
 def stacked_house_buff_values(
     rewards,
     base_values=None,
@@ -541,6 +559,7 @@ def stacked_house_buff_values(
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
+    veteran_priority_unit_ids=None,
 ):
     base_values = base_values or {}
     category_counts = {}
@@ -639,10 +658,47 @@ def stacked_house_buff_values(
         base = parse_float(base_values.get('ROF'), 1.0)
         values['ROF'] = format_multiplier(base * max(0.40, 0.90 ** rof_count))
 
+    country_side = str(
+        next(
+            (
+                value
+                for key, value in base_values.items()
+                if str(key).lower() == 'side'
+            ),
+            '',
+        )
+    ).lower()
+    country_faction = {
+        'gdi': 'Allies',
+        'nod': 'Soviets',
+        'thirdside': 'Epsilon',
+        'fourthside': 'Foehn',
+    }.get(country_side, '')
+    veteran_priority = {
+        str(unit_id).upper(): index
+        for index, unit_id in enumerate(veteran_priority_unit_ids or ())
+    }
     for suffix, units in veteran_units.items():
         key = f'Veteran{suffix}'
         existing_key = next((key_name for key_name in base_values if key_name.lower() == key.lower()), key)
-        values[key] = merge_unique_csv(base_values.get(existing_key, ''), units)
+        if country_faction or veteran_priority:
+            # Standard-mode role sharing can add equivalents from all four
+            # factions. Keep proven helper-production clones first, then the
+            # current country's native roster, when the one-value limit hits.
+            units = sorted(
+                unique_in_order(units),
+                key=lambda unit_id: (
+                    unit_id.upper() not in veteran_priority,
+                    veteran_priority.get(unit_id.upper(), len(veteran_priority)),
+                    country_faction
+                    not in BUFF_TARGETS.get(unit_id, {}).get('factions', ()),
+                ),
+            )
+        values[key] = merge_unique_csv_bounded(
+            base_values.get(existing_key, ''),
+            units,
+            MAX_COUNTRY_VETERAN_VALUE_LENGTH,
+        )
 
     return values
 
@@ -1185,9 +1241,21 @@ def _clone_reference_rules(
     allowed_houses,
     installed_sections,
     reserved_ids,
+    taskforce_replacements=None,
+    taskforce_allowed_houses=None,
 ):
     """Rewrite friendly placements and split friendly TaskForce consumers."""
     section_rules = {}
+    taskforce_replacements = (
+        replacements
+        if taskforce_replacements is None
+        else taskforce_replacements
+    )
+    taskforce_allowed_houses = (
+        allowed_houses
+        if taskforce_allowed_houses is None
+        else taskforce_allowed_houses
+    )
     rewritten = 0
     mixed_taskforces = []
     for section in ('Infantry', 'Units', 'Aircraft'):
@@ -1216,7 +1284,7 @@ def _clone_reference_rules(
             tokens = [token.strip() for token in value.split(',')]
             if len(tokens) < 2:
                 continue
-            replacement = replacements.get(tokens[1].upper())
+            replacement = taskforce_replacements.get(tokens[1].upper())
             if not replacement:
                 continue
             tokens[1] = replacement
@@ -1224,8 +1292,8 @@ def _clone_reference_rules(
             replaced_values += 1
         if not replaced_values:
             continue
-        if not owner_names or not owner_names.issubset(allowed_houses):
-            if not owner_names.intersection(allowed_houses):
+        if not owner_names or not owner_names.issubset(taskforce_allowed_houses):
+            if not owner_names.intersection(taskforce_allowed_houses):
                 continue
 
             friendly_team_types = []
@@ -1248,9 +1316,9 @@ def _clone_reference_rules(
                 runtime_names = {
                     item.lower() for item in runtime_houses if item
                 }
-                if runtime_names and runtime_names.issubset(allowed_houses):
+                if runtime_names and runtime_names.issubset(taskforce_allowed_houses):
                     friendly_team_types.append(team_id)
-                elif runtime_names.intersection(allowed_houses):
+                elif runtime_names.intersection(taskforce_allowed_houses):
                     unresolved_team_types.append(team_id)
 
             if friendly_team_types:
@@ -1440,6 +1508,562 @@ def _helper_autocreate_taskforce_units(lines, helper_house_names):
     return result
 
 
+def _techno_production_class(
+    unit_id,
+    categories,
+    installed_sections,
+    map_sections,
+):
+    """Return the factory/movement class relevant to an AI TaskForce slot."""
+    unit_id = str(unit_id or '').upper()
+    category = categories.get(unit_id)
+    if category == 'infantry':
+        return 'infantry'
+    if category == 'aircraft':
+        return 'aircraft'
+    if category != 'units':
+        return ''
+
+    installed_name = next(
+        (name for name in installed_sections if str(name).upper() == unit_id),
+        None,
+    )
+    map_name = next(
+        (name for name in map_sections if str(name).upper() == unit_id),
+        None,
+    )
+    values = _standalone_clone_values_from_maps(
+        installed_sections.get(installed_name, {}) if installed_name else {},
+        map_sections.get(map_name, {}) if map_name else {},
+    )
+    return (
+        'naval'
+        if str(_value_case_insensitive(values, 'Naval', 'no')).lower() == 'yes'
+        else 'units'
+    )
+
+
+def _helper_prerequisite_alternative(unit_values):
+    """Copy one proven native AI prerequisite path for an unlocked clone."""
+    override = str(
+        _value_case_insensitive(unit_values, 'PrerequisiteOverride', '') or ''
+    ).strip()
+    if override and override.lower() not in {'none', '<none>'}:
+        return override
+    prerequisite = str(
+        _value_case_insensitive(unit_values, 'Prerequisite', '') or ''
+    ).strip()
+    return prerequisite if prerequisite.lower() not in {'none', '<none>'} else ''
+
+
+def helper_ai_autobuild_plan(
+    lines,
+    helper_houses,
+    unlocked_unit_ids,
+    rewards,
+    installed_sections,
+    native_map_sections=None,
+):
+    """Plan native production support and additive helper AI teams.
+
+    Each enabled helper Autocreate source supplies a known-good TeamType,
+    ScriptType, TaskForce shape, owner, and prerequisite path. Existing helper
+    production stays on native IDs; parallel variants add earned clone types.
+    Native timing/scripts remain intact.
+    """
+    installed_sections = installed_sections or {}
+    native_map_sections = native_map_sections or all_section_value_maps(lines)
+    records = map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=records)
+    resolved_helpers, _ = resolve_configured_helper_houses(
+        records,
+        helper_houses,
+        player_houses,
+    )
+    if not resolved_helpers:
+        return {'variants': [], 'support': {}}
+
+    helper_aliases = {}
+    for house in resolved_helpers:
+        record = records.get(house, {})
+        country = record.get('country') or house.replace(' House', '')
+        for alias in (house, house.replace(' House', ''), country):
+            if alias:
+                helper_aliases[str(alias).lower()] = (house, country)
+
+    categories = _registered_techno_categories(lines, installed_sections)
+    unlocked = {
+        str(unit_id or '').upper()
+        for unit_id in (unlocked_unit_ids or ())
+        if str(unit_id or '').upper() in BUFF_TARGETS
+        and BUFF_TARGETS[str(unit_id or '').upper()].get('category')
+        in {'infantry', 'units', 'aircraft'}
+        and str(unit_id or '').upper() in categories
+    }
+    if not unlocked:
+        return {'variants': [], 'support': {}}
+
+    buffed_units = {
+        str(reward.get('unit') or '').upper()
+        for reward in rewards or ()
+        if reward.get('kind') == 'buff' and reward.get('unit')
+    }
+    pools = {}
+    for unit_id in unlocked:
+        production_class = _techno_production_class(
+            unit_id,
+            categories,
+            installed_sections,
+            native_map_sections,
+        )
+        if production_class:
+            pools.setdefault(production_class, []).append(unit_id)
+    for production_class in pools:
+        pools[production_class].sort(
+            key=lambda unit_id: (unit_id not in buffed_units, unit_id)
+        )
+        # Broad cloning previously caused severe mission-load slowdown. Eight
+        # distinct earned types per production class gives every capable helper
+        # a varied extra roster while bounding each map to at most 32 forced
+        # combat clones.
+        pools[production_class] = pools[production_class][:8]
+
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {
+        str(name).lower(): values for name, values in sections.items()
+    }
+    ai_triggers = section_value_map_preserve(lines, 'AITriggerTypes')
+    enabled = {
+        str(key).lower(): str(value).strip().lower()
+        for key, value in section_value_map_preserve(
+            lines, 'AITriggerTypesEnable'
+        ).items()
+    }
+    placeholder_houses = {'neutral', 'neutral house', '<none>', 'none', '<all>', 'all'}
+    cursors = {}
+    variants = []
+    support = {}
+    used_team_ids = set()
+    variant_counts = {}
+
+    installed_name_by_lower = {
+        str(name).lower(): name for name in installed_sections
+    }
+    native_name_by_lower = {
+        str(name).lower(): name for name in native_map_sections
+    }
+
+    def effective_values(type_id):
+        installed_name = installed_name_by_lower.get(str(type_id).lower())
+        native_name = native_name_by_lower.get(str(type_id).lower())
+        return _standalone_clone_values_from_maps(
+            installed_sections.get(installed_name, {}) if installed_name else {},
+            native_map_sections.get(native_name, {}) if native_name else {},
+        )
+
+    def helper_factory_classes():
+        result = {
+            (records.get(house, {}).get('country') or house.replace(' House', '')).lower(): set()
+            for house in resolved_helpers
+        }
+
+        def add_factory(owner, building_id):
+            helper = helper_aliases.get(str(owner or '').lower())
+            if not helper:
+                return
+            values = effective_values(building_id)
+            factory = str(_value_case_insensitive(values, 'Factory', '')).lower()
+            if factory == 'infantrytype':
+                production_class = 'infantry'
+            elif factory == 'aircrafttype':
+                production_class = 'aircraft'
+            elif factory == 'unittype':
+                production_class = (
+                    'naval'
+                    if str(_value_case_insensitive(values, 'Naval', 'no')).lower() == 'yes'
+                    else 'units'
+                )
+            else:
+                return
+            result.setdefault(helper[1].lower(), set()).add(production_class)
+
+        for value in sections_by_lower.get('structures', {}).values():
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) >= 2:
+                add_factory(tokens[0], tokens[1])
+        for house in resolved_helpers:
+            for key, value in sections_by_lower.get(house.lower(), {}).items():
+                if str(key).isdigit():
+                    add_factory(house, value.split(',', 1)[0].strip())
+        return result
+
+    factory_classes = helper_factory_classes()
+
+    def append_variant(
+        trigger_id,
+        trigger_tokens,
+        team_id,
+        helper_owner,
+        allowed_classes=None,
+        synthetic=False,
+    ):
+        helper_house, helper_country = helper_owner
+        country_key = helper_country.lower()
+        if variant_counts.get(country_key, 0) >= 8:
+            return
+        team_values = sections_by_lower.get(team_id.lower(), {})
+        if str(team_values.get('autocreate') or '').lower() != 'yes':
+            return
+        taskforce_id = str(team_values.get('taskforce') or '').strip()
+        if not taskforce_id:
+            return
+        taskforce_name = next(
+            (
+                name
+                for name in sections
+                if str(name).lower() == taskforce_id.lower()
+            ),
+            taskforce_id,
+        )
+        taskforce_values = section_value_map_preserve(lines, taskforce_name)
+        assignments = {}
+        for key, value in sorted(
+            taskforce_values.items(),
+            key=lambda item: (
+                0 if str(item[0]).isdigit() else 1,
+                int(item[0]) if str(item[0]).isdigit() else str(item[0]),
+            ),
+        ):
+            if not str(key).isdigit():
+                continue
+            tokens = [token.strip() for token in value.split(',')]
+            if len(tokens) < 2:
+                continue
+            source_id = tokens[1].upper()
+            production_class = _techno_production_class(
+                source_id,
+                categories,
+                installed_sections,
+                native_map_sections,
+            )
+            if allowed_classes is not None and production_class not in allowed_classes:
+                continue
+            pool = pools.get(production_class, ())
+            if not pool:
+                continue
+            cursor_key = (helper_country.lower(), production_class)
+            cursor = cursors.get(cursor_key, 0)
+            if cursor >= len(pool):
+                continue
+            unlocked_id = pool[cursor]
+            cursors[cursor_key] = cursor + 1
+            assignments[str(key)] = unlocked_id
+
+            alternative = _helper_prerequisite_alternative(
+                effective_values(source_id)
+            )
+            unit_support = support.setdefault(
+                unlocked_id,
+                {'countries': [], 'prerequisites': []},
+            )
+            unit_support['countries'] = unique_in_order(
+                unit_support['countries'] + [helper_country]
+            )
+            if alternative:
+                unit_support['prerequisites'] = unique_in_order(
+                    unit_support['prerequisites'] + [alternative]
+                )
+
+        if not assignments:
+            return
+        used_team_ids.add(team_id.lower())
+        variant_counts[country_key] = variant_counts.get(country_key, 0) + 1
+        variants.append({
+            'source_trigger_id': str(trigger_id),
+            'trigger_tokens': list(trigger_tokens),
+            'source_team_id': team_id,
+            'team_values': section_value_map_preserve(lines, team_id),
+            'source_taskforce_id': taskforce_id,
+            'taskforce_values': taskforce_values,
+            'assignments': assignments,
+            'helper_house': helper_house,
+            'helper_country': helper_country,
+            'synthetic_trigger': bool(synthetic),
+        })
+
+    def record_native_team_support(team_id, helper_owner):
+        """Make the helper's existing team members buildable as MORP clones."""
+        _helper_house, helper_country = helper_owner
+        team_values = sections_by_lower.get(str(team_id).lower(), {})
+        taskforce_id = str(team_values.get('taskforce') or '').strip()
+        if not taskforce_id:
+            return
+        taskforce_values = sections_by_lower.get(taskforce_id.lower(), {})
+        for key, value in taskforce_values.items():
+            if not str(key).isdigit():
+                continue
+            tokens = [token.strip() for token in str(value).split(',')]
+            if len(tokens) < 2:
+                continue
+            source_id = tokens[1].upper()
+            if source_id not in unlocked:
+                continue
+            unit_support = support.setdefault(
+                source_id,
+                {'countries': [], 'prerequisites': []},
+            )
+            unit_support['countries'] = unique_in_order(
+                unit_support['countries'] + [helper_country]
+            )
+            alternative = _helper_prerequisite_alternative(
+                effective_values(source_id)
+            )
+            if alternative:
+                unit_support['prerequisites'] = unique_in_order(
+                    unit_support['prerequisites'] + [alternative]
+                )
+
+    for trigger_id, trigger_value in ai_triggers.items():
+        if enabled.get(str(trigger_id).lower(), 'yes') == 'no':
+            continue
+        trigger_tokens = [token.strip() for token in trigger_value.split(',')]
+        if len(trigger_tokens) < 3:
+            continue
+        team_id = trigger_tokens[1]
+        team_values = sections_by_lower.get(team_id.lower(), {})
+
+        owner_candidates = []
+        trigger_owner = trigger_tokens[2]
+        team_owner = str(team_values.get('house') or '').strip()
+        if trigger_owner.lower() not in placeholder_houses:
+            owner_candidates.append(trigger_owner)
+        if team_owner.lower() not in placeholder_houses:
+            owner_candidates.append(team_owner)
+        helper_owner = next(
+            (
+                helper_aliases[candidate.lower()]
+                for candidate in owner_candidates
+                if candidate.lower() in helper_aliases
+            ),
+            None,
+        )
+        if not helper_owner:
+            continue
+        record_native_team_support(team_id, helper_owner)
+        append_variant(trigger_id, trigger_tokens, team_id, helper_owner)
+
+    # Many campaign helpers use map-authored Autocreate TeamTypes without a
+    # dedicated AITriggerTypes entry. When that helper owns a matching physical
+    # factory, create a parallel TeamType only; the map's existing action 13
+    # controls both native and generated Autocreate teams.
+    side_numbers = {
+        'gdi': '1',
+        'nod': '2',
+        'thirdside': '3',
+        'fourthside': '4',
+    }
+    for team_id, team_values in sections.items():
+        if team_id.lower() in used_team_ids:
+            continue
+        if str(team_values.get('autocreate') or '').lower() != 'yes':
+            continue
+        team_owner = str(team_values.get('house') or '').strip()
+        helper_owner = helper_aliases.get(team_owner.lower())
+        if not helper_owner:
+            continue
+        record_native_team_support(team_id, helper_owner)
+        helper_house, helper_country = helper_owner
+        available_classes = factory_classes.get(helper_country.lower(), set())
+        if not available_classes:
+            continue
+        side = side_numbers.get(
+            str(records.get(helper_house, {}).get('side') or '').lower(),
+            '0',
+        )
+        synthetic_tokens = [
+            f'MOR unlocked helper {helper_country}',
+            team_id,
+            helper_country,
+            '1',
+            '-1',
+            '<none>',
+            '0000000000000000000000000000000000000000000000000000000000000000',
+            '40.000000',
+            '20.000000',
+            '50.000000',
+            '1',
+            '0',
+            side,
+            '0',
+            '<none>',
+            '1',
+            '1',
+            '1',
+        ]
+        append_variant(
+            f'synthetic:{team_id}',
+            synthetic_tokens,
+            team_id,
+            helper_owner,
+            allowed_classes=available_classes,
+            synthetic=True,
+        )
+
+    return {'variants': variants, 'support': support}
+
+
+def _remove_case_insensitive(values, *keys):
+    lowered = {str(key).lower() for key in keys}
+    for existing in list(values):
+        if str(existing).lower() in lowered:
+            values.pop(existing, None)
+
+
+def _append_prerequisite_alternatives(values, alternatives):
+    existing_values = {
+        str(value).strip().lower()
+        for key, value in values.items()
+        if str(key).lower() == 'prerequisite'
+        or str(key).lower().startswith('prerequisite.list')
+    }
+    used_indexes = {
+        int(match.group(1))
+        for key in values
+        for match in [re.fullmatch(r'prerequisite\.list(\d+)', str(key), re.IGNORECASE)]
+        if match
+    }
+    next_index = 0
+    for alternative in alternatives or ():
+        alternative = str(alternative or '').strip()
+        if not alternative or alternative.lower() in existing_values:
+            continue
+        while next_index in used_indexes:
+            next_index += 1
+        values[f'Prerequisite.List{next_index}'] = alternative
+        used_indexes.add(next_index)
+        existing_values.add(alternative.lower())
+        next_index += 1
+
+
+def helper_ai_autobuild_rules(
+    lines,
+    plan,
+    clone_handled,
+    installed_sections,
+):
+    """Create parallel helper TaskForce/TeamType/AITrigger definitions."""
+    variants = list((plan or {}).get('variants') or ())
+    if not variants:
+        return {}, [], []
+    clone_ids = {
+        str(unit_id).upper(): str(values.get('clone_id') or '')
+        for unit_id, values in (clone_handled or {}).items()
+        if values.get('clone_id')
+    }
+    map_sections = all_section_value_maps(lines)
+    reserved_ids = {str(section).lower() for section in installed_sections or {}}
+    reserved_ids.update(str(section).lower() for section in map_sections)
+    for section in ('TaskForces', 'TeamTypes'):
+        reserved_ids.update(
+            str(value).lower()
+            for value in section_value_map_preserve(lines, section).values()
+        )
+    reserved_ids.update(
+        str(key).lower()
+        for key in section_value_map_preserve(lines, 'AITriggerTypes')
+    )
+
+    section_rules = {}
+    built_units = []
+    skipped = []
+    for index, variant in enumerate(variants, 1):
+        source_taskforce_values = dict(variant['taskforce_values'])
+        # A copied template can contain campaign-only members (for example a
+        # hidden MAMM). Keeping any untouched slot lets that invalid request
+        # stall the additive team's queue. Preserve TaskForce metadata, but
+        # populate numeric members exclusively with verified player clones.
+        taskforce_values = {
+            key: value
+            for key, value in source_taskforce_values.items()
+            if not str(key).isdigit()
+        }
+        replaced = 0
+        for key, unlocked_id in sorted(
+            variant['assignments'].items(),
+            key=lambda item: int(item[0]),
+        ):
+            clone_id = clone_ids.get(str(unlocked_id).upper())
+            original = source_taskforce_values.get(key)
+            if not clone_id or original is None:
+                skipped.append(str(unlocked_id))
+                continue
+            tokens = [token.strip() for token in original.split(',')]
+            if len(tokens) < 2:
+                skipped.append(str(unlocked_id))
+                continue
+            tokens[1] = clone_id
+            taskforce_values[str(replaced)] = ','.join(tokens)
+            replaced += 1
+            built_units.append(str(unlocked_id).upper())
+        if not replaced:
+            continue
+
+        identity = (
+            f"helper-ai:{variant['source_trigger_id']}:"
+            f"{variant['helper_country']}:{index}"
+        )
+        taskforce_id = _collision_safe_type_id(
+            f'MORHTF{index:04d}',
+            identity + ':taskforce',
+            reserved_ids,
+        )
+        team_id = _collision_safe_type_id(
+            f'MORHTM{index:04d}',
+            identity + ':team',
+            reserved_ids,
+        )
+        trigger_id = _collision_safe_type_id(
+            f'MORHTR{index:04d}',
+            identity + ':trigger',
+            reserved_ids,
+        )
+        _register_map_type(
+            section_rules, lines, installed_sections, 'TaskForces', taskforce_id
+        )
+        _register_map_type(
+            section_rules, lines, installed_sections, 'TeamTypes', team_id
+        )
+        taskforce_values['Name'] = (
+            f"MOR unlocked helper {variant['helper_country']} {index}"
+        )
+        section_rules[taskforce_id] = taskforce_values
+
+        team_values = dict(variant['team_values'])
+        team_values['TaskForce'] = taskforce_id
+        team_values['Name'] = (
+            f"MOR unlocked helper {variant['helper_country']} {index}"
+        )
+        team_values['Autocreate'] = 'yes'
+        section_rules[team_id] = team_values
+
+        trigger_tokens = list(variant['trigger_tokens'])
+        trigger_tokens[0] = (
+            f"MOR unlocked helper {variant['helper_country']} {index}"
+        )
+        trigger_tokens[1] = team_id
+        if not variant.get('synthetic_trigger'):
+            section_rules.setdefault('AITriggerTypes', {})[trigger_id] = ','.join(
+                trigger_tokens
+            )
+            section_rules.setdefault('AITriggerTypesEnable', {})[trigger_id] = 'yes'
+
+    return (
+        section_rules,
+        unique_in_order(built_units),
+        unique_in_order(skipped),
+    )
+
+
 def _registered_techno_categories(lines, installed_sections):
     categories = {}
     for category, list_section in TECHNO_TYPE_LISTS.items():
@@ -1461,18 +2085,17 @@ def player_unit_clone_rules(
     additional_unlocked_tech_ids=None,
     buildable_tech_ids=None,
     build_owner_ids=(),
-    build_forbidden_ids=(),
+    helper_autobuild_support=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
 ):
     """Build narrow player-only combat clones for otherwise unsafe direct buffs.
 
-    Complete installed/map-effective sections are copied into standalone clones.
-    Only player placements and exclusively player-owned TaskForces are
-    rewritten. Every AI reference stays on its original type. Originals shared
-    with native helper production regain native AI rules without a global
-    ``BuildLimit``. Their TechLevel becomes 11 only when a visible player clone
-    replaces them, hiding the duplicate cameo while AI TaskForces still build.
+    Complete installed sections are copied into standalone clones, with only
+    mission production gates overlaid for buildable player types. Player-owned
+    references can be rewritten. Helper TaskForces use buffed clones while
+    their native originals remain buildable as dynamic-AI fallbacks. Enemy
+    consumers remain on originals. Parallel helper teams use verified clones.
     """
     installed_sections = installed_sections or {}
     records, allowed_houses = _allowed_buff_house_names(
@@ -1499,6 +2122,9 @@ def player_unit_clone_rules(
             house.replace(' House', '').lower(),
             str(country).lower(),
         })
+    # Helper placements and TaskForces use buffed clones. Native source IDs are
+    # restored later so dynamic AI requests outside map TaskForces still work.
+    allowed_houses.update(native_helper_names)
 
     counts_by_unit = _active_direct_buff_counts(
         rewards,
@@ -1521,12 +2147,58 @@ def player_unit_clone_rules(
     reserved_ids.update(str(section).lower() for section in map_sections)
     buildable_ids = {str(item).upper() for item in (buildable_tech_ids or ())}
     owner_ids = [str(item) for item in build_owner_ids if item]
-    forbidden_ids = unique_in_order(
-        str(item) for item in build_forbidden_ids if item
+    helper_autobuild_support = {
+        str(unit_id).upper(): values
+        for unit_id, values in (helper_autobuild_support or {}).items()
+    }
+    # Snapshot map/additive TaskForce demand before generic country-roster
+    # discovery broadens this support table. Under the 480-byte Veteran* limit,
+    # clones that the helper is proven to produce must be listed first.
+    helper_priority_units_by_country = {}
+    for unit_id, support in helper_autobuild_support.items():
+        for country in support.get('countries', ()):
+            key = str(country).lower()
+            helper_priority_units_by_country.setdefault(key, []).append(unit_id)
+    helper_priority_units_by_country = {
+        country: unique_in_order(unit_ids)
+        for country, unit_ids in helper_priority_units_by_country.items()
+    }
+    main_player_countries = unique_in_order(
+        records.get(house, {}).get('country') or house.replace(' House', '')
+        for house in player_houses
     )
-    forbidden_value = ','.join(forbidden_ids) if forbidden_ids else 'none'
+    shared_player_veteran_ids = set()
+    for country in main_player_countries:
+        if not unsafe_country_houses(
+            lines,
+            country,
+            list(allowed_houses),
+            records=records,
+            sections=map_sections,
+            usage_index=usage_index,
+        ):
+            continue
+        country_values = section_value_map_preserve(lines, country)
+        country_side = _value_case_insensitive(country_values, 'Side', '')
+        earned_veterancy = stacked_house_buff_values(
+            rewards,
+            {'Side': country_side},
+            require_unlocked_access=require_unlocked_access,
+            additional_unlocked_tech_ids=additional_unlocked_tech_ids,
+            share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+            unit_specific_mode=unit_specific_mode,
+        )
+        for field in ('VeteranInfantry', 'VeteranUnits', 'VeteranAircraft'):
+            shared_player_veteran_ids.update(
+                unit_id.upper()
+                for unit_id in comma_items(
+                    _value_case_insensitive(earned_veterancy, field, '')
+                )
+                if unit_id.upper() in buildable_ids
+            )
     section_rules = {}
     replacements = {}
+    taskforce_replacements = {}
     player_veterancy_replacements = {}
     cloned_labels = []
     handled_by_unit = {}
@@ -1543,6 +2215,67 @@ def player_unit_clone_rules(
         for unit_id in unit_ids
         if 'DUMMY' not in unit_id and not unit_id.endswith('MCV')
     }
+
+    # Campaign AI also selects units from its country roster without naming
+    # every choice in a map TaskForce. If launch ownership removes that helper
+    # from an earned original, the AI can repeatedly request the now-illegal
+    # type and block its factory queue. Treat every buildable type whose native
+    # Owner/RequiredHouses names a configured helper as a helper source too.
+    helper_country_ancestry = {}
+    for house in native_helper_houses:
+        country = str(
+            records.get(house, {}).get('country') or house.replace(' House', '')
+        )
+        ancestry = []
+        current = country
+        while current and current.lower() not in {item.lower() for item in ancestry}:
+            ancestry.append(current)
+            installed_country = installed_name_by_lower.get(current.lower())
+            native_country = native_map_name_by_lower.get(current.lower())
+            country_values = _standalone_clone_values_from_maps(
+                installed_sections.get(installed_country, {}) if installed_country else {},
+                native_map_sections.get(native_country, {}) if native_country else {},
+            )
+            current = str(
+                _value_case_insensitive(country_values, 'ParentCountry', '') or ''
+            ).strip()
+        helper_country_ancestry[country] = {item.lower() for item in ancestry}
+    native_helper_country_ids = {
+        ancestor
+        for ancestry in helper_country_ancestry.values()
+        for ancestor in ancestry
+    }
+    for unit_id in sorted(buildable_ids):
+        installed_unit = installed_name_by_lower.get(unit_id.lower())
+        native_unit = native_map_name_by_lower.get(unit_id.lower())
+        native_values = _standalone_clone_values_from_maps(
+            installed_sections.get(installed_unit, {}) if installed_unit else {},
+            native_map_sections.get(native_unit, {}) if native_unit else {},
+        )
+        native_owners = {
+            item.lower()
+            for item in comma_items(_value_case_insensitive(native_values, 'Owner', ''))
+            + comma_items(_value_case_insensitive(native_values, 'RequiredHouses', ''))
+        }
+        if native_owners.intersection(native_helper_country_ids):
+            native_helper_source_ids.add(unit_id)
+            unit_support = helper_autobuild_support.setdefault(
+                unit_id,
+                {'countries': [], 'prerequisites': []},
+            )
+            unit_support['countries'] = unique_in_order(
+                list(unit_support.get('countries', ()))
+                + [
+                    country
+                    for country, ancestry in helper_country_ancestry.items()
+                    if ancestry.intersection(native_owners)
+                ]
+            )
+            alternative = _helper_prerequisite_alternative(native_values)
+            if alternative:
+                unit_support['prerequisites'] = unique_in_order(
+                    list(unit_support.get('prerequisites', ())) + [alternative]
+                )
 
     clone_candidates = [
         (unit_id, unit_id, counts)
@@ -1564,6 +2297,24 @@ def player_unit_clone_rules(
     clone_candidates.extend(
         (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
         for unit_id in sorted(native_helper_source_ids.intersection(buildable_ids))
+        if unit_id in BUFF_TARGETS and unit_id not in existing_candidate_ids
+    )
+    existing_candidate_ids.update(
+        str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
+    )
+    clone_candidates.extend(
+        (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
+        for unit_id in sorted(helper_autobuild_support)
+        if unit_id in buildable_ids
+        and unit_id in BUFF_TARGETS
+        and unit_id not in existing_candidate_ids
+    )
+    existing_candidate_ids.update(
+        str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
+    )
+    clone_candidates.extend(
+        (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
+        for unit_id in sorted(shared_player_veteran_ids)
         if unit_id in BUFF_TARGETS and unit_id not in existing_candidate_ids
     )
     existing_candidate_ids.update(
@@ -1605,13 +2356,34 @@ def player_unit_clone_rules(
                 native_map_name_by_lower.get(unit_id.lower()), {}
             ),
         )
+        clone_source_values = dict(effective_unit_values)
+        if unit_id in buildable_ids and installed_unit:
+            clone_source_values = dict(installed_sections.get(installed_unit, {}))
+            for key, value in effective_unit_values.items():
+                lowered = str(key).lower()
+                if (
+                    lowered in {
+                        'techlevel',
+                        'buildlimit',
+                        'prerequisite',
+                        'prerequisiteoverride',
+                        'prerequisite.negative',
+                        'prerequisite.stolentechs',
+                        'factoryowners',
+                        'factoryowners.forbidden',
+                        'builtat',
+                    }
+                    or lowered.startswith('prerequisite.list')
+                ):
+                    _remove_case_insensitive(clone_source_values, key)
+                    clone_source_values[key] = value
         effective_target = _target_with_effective_unit_stats(
-            target, effective_unit_values
+            target, clone_source_values
         )
         direct_weapon_keys = {
             weapon.upper(): [
                 key
-                for key, value in effective_unit_values.items()
+                for key, value in clone_source_values.items()
                 if str(value).strip().lower() == weapon.lower()
             ]
             for weapon in target.get('weapons', {})
@@ -1631,6 +2403,8 @@ def player_unit_clone_rules(
                     break
         is_variant = unit_id != target_unit_id
         native_helper_shared = unit_id in native_helper_source_ids
+        helper_autobuild_shared = unit_id in helper_autobuild_support
+        shared_player_veteran = unit_id in shared_player_veteran_ids
         variant_has_effect = bool(direct_types) or any(
             direct_weapon_keys.get(weapon.upper())
             for weapon in target.get('weapons', {})
@@ -1641,17 +2415,26 @@ def player_unit_clone_rules(
             and not (unsafe_unit_houses and direct_types)
             and not weapon_unsafe
             and not native_helper_shared
+            and not helper_autobuild_shared
+            and not shared_player_veteran
         ) or (
             is_variant
             and not variant_has_effect
             and not native_helper_shared
+            and not helper_autobuild_shared
+            and not shared_player_veteran
         ):
             continue
 
         clone_id = _collision_safe_type_id(
             f'MORP{unit_id}', f'player-unit:{unit_id}', reserved_ids
         )
-        clone_values = dict(effective_unit_values)
+        clone_values = dict(clone_source_values)
+        prerequisite_override = _value_case_insensitive(
+            clone_values, 'PrerequisiteOverride', ''
+        )
+        if str(prerequisite_override or '').strip().lower() in {'none', '<none>'}:
+            _remove_case_insensitive(clone_values, 'PrerequisiteOverride')
         if not any(
             str(key).lower() == 'image' and str(value).strip()
             for key, value in clone_values.items()
@@ -1732,14 +2515,42 @@ def player_unit_clone_rules(
             )
         if unit_id in buildable_ids:
             clone_values['TechLevel'] = UNLOCKED_TECH_LEVEL
-            clone_owner_ids = unique_in_order(owner_ids)
+            # Earned combat access is repeatable. Inherited 0/-1 limits can
+            # leave an Autocreate team permanently waiting after selection.
+            _remove_case_insensitive(clone_values, 'BuildLimit')
+            helper_support = helper_autobuild_support.get(unit_id, {})
+            helper_owner_ids = [
+                str(item)
+                for item in helper_support.get('countries', ())
+                if item
+            ]
+            clone_owner_ids = unique_in_order(owner_ids + helper_owner_ids)
             if clone_owner_ids:
                 owners = ','.join(clone_owner_ids)
                 clone_values.update({
                     'Owner': owners,
                     'RequiredHouses': owners,
-                    'ForbiddenHouses': forbidden_value,
                 })
+                # RequiredHouses is the positive isolation gate. A negative
+                # list containing a helper's ParentCountry can make Ares reject
+                # the clone even when its concrete campaign country is allowed.
+                _remove_case_insensitive(clone_values, 'ForbiddenHouses')
+            if helper_owner_ids:
+                # Unit ownership restrictions apply to AI factories too. The
+                # helper's cloned TeamType already supplies exact ownership;
+                # leaving source-faction FactoryOwners here can make its team
+                # wait forever on a foreign unlocked type.
+                _remove_case_insensitive(
+                    clone_values,
+                    'FactoryOwners',
+                    'FactoryOwners.Forbidden',
+                    'Prerequisite.Negative',
+                    'Prerequisite.StolenTechs',
+                )
+                _append_prerequisite_alternatives(
+                    clone_values,
+                    helper_support.get('prerequisites', ()),
+                )
             # Do not use global BuildLimit=0 to hide the original: Ares then
             # refuses native AI TeamTypes containing that unit. Restore the
             # original to AI/map owners and forbid only the player countries.
@@ -1784,13 +2595,19 @@ def player_unit_clone_rules(
             )
             if native_prerequisite is not None:
                 original_rules['Prerequisite'] = native_prerequisite
-            original_rules['PrerequisiteOverride'] = _value_case_insensitive(
-                native_unit_values, 'PrerequisiteOverride', 'none'
+            native_override = _value_case_insensitive(
+                native_unit_values, 'PrerequisiteOverride', ''
             )
-        elif is_variant:
-            # Variants are reference replacements, not extra player build
-            # choices. TechLevel 11 keeps their cloned cameo hidden while map
-            # TeamType/reinforcement creation remains available.
+            original_rules['PrerequisiteOverride'] = (
+                native_override
+                if str(native_override or '').strip().lower() not in {'', 'none', '<none>'}
+                else None
+            )
+        else:
+            # Any clone without earned/mission build access is a reference
+            # replacement only. Exact foreign role-buff clones previously
+            # inherited their native TechLevel and leaked into the sidebar;
+            # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
 
         _register_map_type(
@@ -1798,9 +2615,12 @@ def player_unit_clone_rules(
         )
         section_rules[clone_id] = clone_values
         replacements[unit_id] = clone_id
+        if unit_id in buildable_ids:
+            taskforce_replacements[unit_id] = clone_id
         handled_by_unit[unit_id] = {
             'unit_buff_types': handled_unit_types,
             'weapon_ids': handled_weapon_ids,
+            'clone_id': clone_id,
         }
         label = target.get('label', target_unit_id)
         cloned_labels.append(
@@ -1809,12 +2629,9 @@ def player_unit_clone_rules(
         if unit_id == target_unit_id and unit_id in buildable_ids:
             player_veterancy_replacements[unit_id] = clone_id
 
-    # Restore native helper AI production on original IDs. No helper TeamType
-    # or TaskForce is rewritten. Player-access originals have their MORP clone;
-    # locked helper-only originals are forbidden to the player but remain
-    # available to the map's own AI country and factory rules. Shared originals
-    # replaced for the player stay at TechLevel 11, a campaign-proven AI-only
-    # production pattern that prevents duplicate human cameos.
+    # Preserve valid originals for enemy/shared consumers and native helper
+    # TeamTypes. Helper factories must be able to satisfy both map TaskForces
+    # and dynamically selected country-roster requests using these native IDs.
     native_category_by_unit = _registered_techno_categories(
         lines,
         installed_sections,
@@ -1836,6 +2653,13 @@ def player_unit_clone_rules(
         ai_owner_ids.extend(comma_items(
             _value_case_insensitive(native_values, 'RequiredHouses', '')
         ))
+        ai_owner_ids.extend(
+            str(country)
+            for country in helper_autobuild_support.get(unit_id, {}).get(
+                'countries', ()
+            )
+            if country
+        )
         for usage_house in unit_usage_houses(lines, unit_id, usage_index):
             if usage_house.lower() not in native_helper_names:
                 continue
@@ -1866,19 +2690,21 @@ def player_unit_clone_rules(
         original_rules.update({
             'Owner': owners,
             'RequiredHouses': owners,
-            'ForbiddenHouses': (
-                ','.join(owner_ids)
-                if unit_id in replacements or unit_id not in buildable_ids
-                else 'none'
-            ),
+            # Generic campaign AI can request native roster IDs directly,
+            # outside map TaskForces. Keep those originals factory-buildable
+            # for concrete helper countries. Positive ownership hides them
+            # from the player; a parent-country negative also blocks children.
+            'ForbiddenHouses': None,
             'BuildLimit': None,
-            'TechLevel': (
-                LOCKED_TECH_LEVEL
-                if unit_id in replacements and unit_id in buildable_ids
-                else _value_case_insensitive(native_values, 'TechLevel', LOCKED_TECH_LEVEL)
+            'TechLevel': _value_case_insensitive(
+                native_values, 'TechLevel', UNLOCKED_TECH_LEVEL
             ),
-            'PrerequisiteOverride': _value_case_insensitive(
-                native_values, 'PrerequisiteOverride', 'none'
+            'PrerequisiteOverride': (
+                _value_case_insensitive(native_values, 'PrerequisiteOverride', '')
+                if str(_value_case_insensitive(
+                    native_values, 'PrerequisiteOverride', ''
+                ) or '').strip().lower() not in {'', 'none', '<none>'}
+                else None
             ),
         })
         for key in list(section_value_map_preserve(lines, unit_id)):
@@ -1914,6 +2740,11 @@ def player_unit_clone_rules(
         allowed_houses,
         installed_sections,
         reserved_ids,
+        taskforce_replacements=taskforce_replacements,
+        # Helper TeamTypes should field the same buffed clones as the player.
+        # Their native originals remain factory-buildable below as a fallback
+        # for dynamic country-roster requests that do not use a map TaskForce.
+        taskforce_allowed_houses=allowed_houses,
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)
@@ -1928,29 +2759,95 @@ def player_unit_clone_rules(
         'aircraft': 'VeteranAircraft',
     }
     player_countries = unique_in_order(
-        records.get(house, {}).get('country') or house.replace(' House', '')
-        for house in player_houses
+        main_player_countries
+        + [
+            str(country)
+            for values in helper_autobuild_support.values()
+            for country in values.get('countries', ())
+            if country
+        ]
     )
-    for country, country_replacements in (
-        (country, player_veterancy_replacements) for country in player_countries
-    ):
+    main_player_country_names = {
+        country.lower() for country in main_player_countries
+    }
+    for country in player_countries:
+        is_main_player_country = country.lower() in main_player_country_names
+        if is_main_player_country:
+            country_replacements = player_veterancy_replacements
+        else:
+            country_replacements = {
+                unit_id: clone_id
+                for unit_id, clone_id in player_veterancy_replacements.items()
+                if country.lower() in {
+                    str(item).lower()
+                    for item in helper_autobuild_support.get(
+                        unit_id, {}
+                    ).get('countries', ())
+                }
+            }
         country_values = section_value_map_preserve(lines, country)
+        earned_clone_veterancy = {}
+        if country_replacements:
+            reward_veterancy = stacked_house_buff_values(
+                rewards,
+                {'Side': _value_case_insensitive(country_values, 'Side', '')},
+                require_unlocked_access=require_unlocked_access,
+                additional_unlocked_tech_ids=additional_unlocked_tech_ids,
+                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+                unit_specific_mode=unit_specific_mode,
+                veteran_priority_unit_ids=helper_priority_units_by_country.get(
+                    country.lower(), ()
+                ),
+            )
+            for category, field in veteran_field_by_category.items():
+                reward_unit_ids = [
+                    item.upper()
+                    for item in comma_items(
+                        _value_case_insensitive(reward_veterancy, field, '')
+                    )
+                    if item.upper() in country_replacements
+                    and BUFF_TARGETS.get(item.upper(), {}).get('category') == category
+                ]
+                priority_ids = [
+                    unit_id
+                    for unit_id in helper_priority_units_by_country.get(
+                        country.lower(), ()
+                    )
+                    if unit_id in reward_unit_ids
+                ]
+                ordered_unit_ids = unique_in_order(priority_ids + reward_unit_ids)
+                earned_clone_veterancy[field] = [
+                    country_replacements[unit_id]
+                    for unit_id in ordered_unit_ids
+                ]
         for category, field in veteran_field_by_category.items():
             current = _value_case_insensitive(country_values, field, '')
-            if not current:
+            clone_additions = earned_clone_veterancy.get(field, [])
+            if not current and not clone_additions:
                 continue
             items = [item.strip() for item in str(current).split(',') if item.strip()]
             rewritten_items = []
             for item in items:
                 target_category = BUFF_TARGETS.get(item.upper(), {}).get('category')
                 replacement = country_replacements.get(item.upper())
-                candidate = replacement if replacement and target_category == category else item
-                proposed = ','.join(rewritten_items + [candidate])
-                # Stay below the engine/Phobos single-value parser boundary.
-                if len(proposed) > 500 and candidate != item:
-                    candidate = item
-                rewritten_items.append(candidate)
-            rewritten_value = ','.join(unique_in_order(rewritten_items))
+                if replacement and target_category == category:
+                    rewritten_items.append(replacement)
+                    if not is_main_player_country:
+                        # Helpers can still receive native fallback production
+                        # outside TaskForces. Preserve veteran status for those
+                        # originals after prioritizing the buffed clone ID.
+                        rewritten_items.append(item)
+                else:
+                    rewritten_items.append(item)
+            rewritten_value = merge_unique_csv_bounded(
+                '',
+                (
+                    rewritten_items + clone_additions
+                    if is_main_player_country
+                    else clone_additions + rewritten_items
+                ),
+                MAX_COUNTRY_VETERAN_VALUE_LENGTH,
+            )
             if rewritten_value != current:
                 section_rules.setdefault(country, {})[field] = rewritten_value
     if replacements and not rewritten and not buildable_ids.intersection(replacements):

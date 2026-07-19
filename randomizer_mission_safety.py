@@ -12,6 +12,7 @@ from randomizer_map import (
     map_house_records,
     player_controlled_houses,
     player_house_from_map,
+    player_transfer_houses,
     resolve_configured_helper_houses,
     unsafe_country_houses,
 )
@@ -238,16 +239,37 @@ def _structure_owner_and_type(line):
 
 
 def _mission_production_buildings(lines, house_records):
-    """Yield physical production types placed or planned by the mission."""
+    """Yield production owned by the player or a proven full-force transfer."""
+    eligible_houses = set()
+    for house in (
+        player_controlled_houses(lines, records=house_records)
+        + player_transfer_houses(lines, records=house_records)
+    ):
+        record = house_records.get(house, {})
+        eligible_houses.update({
+            house.lower(),
+            house.replace(' House', '').lower(),
+            str(record.get('country') or '').lower(),
+        })
+    eligible_houses.discard('')
+
     for line in section_lines(lines, 'Structures'):
-        _owner, building_id = _structure_owner_and_type(line)
-        if building_id:
+        owner, building_id = _structure_owner_and_type(line)
+        if building_id and str(owner or '').lower() in eligible_houses:
             yield building_id
 
     # Several campaign missions, notably Epsilon 07, define the base the
     # player later operates only as numbered build nodes in a House section.
     # Those factories never appear in [Structures] in the source map.
     for house in house_records:
+        record = house_records.get(house, {})
+        aliases = {
+            house.lower(),
+            house.replace(' House', '').lower(),
+            str(record.get('country') or '').lower(),
+        }
+        if not aliases.intersection(eligible_houses):
+            continue
         for line in section_lines(lines, house):
             if '=' not in line:
                 continue
@@ -578,12 +600,24 @@ def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
 
 
 def always_available_transport_rules(lines, chaos_mode=False, additional_build_houses=()):
-    """Make every faction's amphibious transport immediately buildable."""
+    """Make relevant amphibious transports immediately buildable."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     owners = ','.join(safe_build_countries(lines, records, additional_build_houses))
+    allowed_families = set(AMPHIBIOUS_TRANSPORTS) if chaos_mode else {
+        _player_family(lines, records)
+    }
+    if not chaos_mode:
+        allowed_families.update(
+            family
+            for building_id in _mission_production_buildings(lines, records)
+            for family, category in [PRODUCTION_LOOKUP.get(building_id, ('', ''))]
+            if family and category in {'base', 'naval'}
+        )
     rules = {}
-    for _family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
+    for family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
+        if family not in allowed_families:
+            continue
         values = {
             'TechLevel': '1',
             'Owner': owners,

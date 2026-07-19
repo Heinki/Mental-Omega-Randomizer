@@ -111,6 +111,8 @@ from randomizer_map import (
     clone_player_country_for_house_buffs,
     controlled_tech_ids,
     hook_marker_name,
+    helper_ai_autobuild_plan,
+    helper_ai_autobuild_rules,
     is_generated_hooked_map,
     is_generated_rules_file,
     insert_actions_before_codes,
@@ -555,14 +557,15 @@ class LauncherApp(tk.Tk):
         self.rewards_per_check_spinbox.grid(row=2, column=1, sticky='w', pady=(6, 0))
         self.buff_allied_helpers_check = ttk.Checkbutton(
             options_row,
-            text='Buff allied helpers (suspended)',
+            text='Buff allied helpers',
             variable=self.buff_allied_helpers_var,
         )
         self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
         WidgetTooltip(
             self.buff_allied_helpers_check,
-            'Temporarily disabled. Allied AI keeps native production, units, '
-            'and TaskForces; randomized clones and buffs remain player-only.',
+            'Gives reviewed allied AI helpers safe country buffs and compatible '
+            'earned unit clones through extra Autocreate teams. Native units, '
+            'TaskForces, timing, and scripts stay intact.',
         )
         self.rewards_per_check_message_label = ttk.Label(options_row, text='')
         self.rewards_per_check_message_label.grid(
@@ -1704,6 +1707,43 @@ class LauncherApp(tk.Tk):
         )
         return selected == 'Foehn' and mode == 'Standard'
 
+    def active_launch_reward_factions(self):
+        """Return factions whose saved rewards may affect this launch.
+
+        Existing state files retain their original serialized reward data.
+        Canonicalizing and filtering again at launch prevents an old catalog
+        mistake from leaking foreign technology into a single-faction seed.
+        """
+        if self.active_reward_mode() == 'Chaos (Experimental)':
+            return None
+        selected = (self.state or {}).get('campaign_filter', '')
+        if selected == 'Foehn':
+            # Foehn Standard intentionally uses bundled Allied/Soviet access;
+            # native Foehn powers may also be valid campaign rewards.
+            return {'Allies', 'Soviets', 'Foehn'}
+        if selected in {'Allies', 'Soviets', 'Epsilon'}:
+            return {selected}
+        return None
+
+    def active_launch_rewards(self):
+        rewards = canonical_rewards(
+            self.earned_rewards_from_checks() if self.state else []
+        )
+        allowed_factions = self.active_launch_reward_factions()
+        if allowed_factions is None:
+            return rewards
+        return [
+            reward
+            for reward in rewards
+            if (
+                not reward.get('factions')
+                or allowed_factions.intersection(reward.get('factions', ()))
+            )
+        ]
+
+    def active_unlocked_reward_tech_ids(self):
+        return unlocked_reward_tech_ids(self.active_launch_rewards())
+
     def bundle_foehn_standard_access(self, pool):
         """Bundle Allied/Soviet role peers into one Foehn access reward."""
         if not self.foehn_standard_bundles_enabled():
@@ -2337,10 +2377,12 @@ class LauncherApp(tk.Tk):
             self.randomize_unit_access_check.configure(state='normal')
             self.share_chaos_role_buffs_check.grid_remove()
         self.share_chaos_role_buffs_check.configure(state='normal' if buffs_enabled else 'disabled')
-        self.buff_allied_helpers_check.configure(state='disabled')
+        reward_source_enabled = bool(self.randomize_unit_access_var.get()) or buffs_enabled
+        self.buff_allied_helpers_check.configure(
+            state='normal' if reward_source_enabled else 'disabled'
+        )
         for check in getattr(self, 'buff_type_checks', []):
             check.configure(state='normal' if buffs_enabled else 'disabled')
-        reward_source_enabled = bool(self.randomize_unit_access_var.get()) or buffs_enabled
         self.include_defensive_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
         )
@@ -3310,7 +3352,7 @@ class LauncherApp(tk.Tk):
         if self.active_reward_mode() == 'Chaos (Experimental)':
             rules = chaos_earned_access_rules(
                 lines,
-                self.earned_rewards_from_checks(),
+                self.active_launch_rewards(),
                 additional_build_houses=(),
             )
             transport_rules = always_available_transport_rules(
@@ -3334,7 +3376,7 @@ class LauncherApp(tk.Tk):
             'Allies', 'Soviets', 'Epsilon', 'Foehn'
         }
         earned_access_ids = (
-            unlocked_reward_tech_ids(self.earned_rewards_from_checks())
+            self.active_unlocked_reward_tech_ids()
             if self.randomize_unit_access_enabled()
             else controlled_tech_ids()
         )
@@ -3500,8 +3542,7 @@ throw "Map $name was not found in expandmo*.mix"
         if self.state:
             earned_rewards = self.earned_rewards_from_checks()
             self.state['earned_rewards'] = earned_rewards
-            for reward in earned_rewards:
-                reward = canonical_reward(reward)
+            for reward in self.active_launch_rewards():
                 if reward.get('kind') == 'buff' and reward.get('buff_type'):
                     continue
                 for section, values in launch_rules_for_reward(reward).items():
@@ -3566,14 +3607,17 @@ throw "Map $name was not found in expandmo*.mix"
         native_helpers = [
             house for house in native_helpers if house.lower() not in enemy_names
         ]
-        # Helper cloning/buffing is suspended. Native helper TeamTypes,
-        # prerequisites, and unlimited production stay intact while player-only
-        # clones isolate earned buffs from every AI house.
-        country_safety_helpers = tuple(
-            house for house in records
-            if house.lower() == 'sellmcv house'
-        )
-        reward_helpers = ()
+        # Native helper timing, scripts, and triggers stay intact. Compatible
+        # TaskForce slots use buffed clones, while native unit IDs remain
+        # buildable for dynamic AI requests outside those TaskForces.
+        reward_helpers = tuple(native_helpers) if buff_allied_helpers else ()
+        country_safety_helpers = tuple(unique_in_order(
+            list(reward_helpers)
+            + [
+                house for house in records
+                if house.lower() == 'sellmcv house'
+            ]
+        ))
         enemy_country_ids = unique_in_order(
             records.get(house, {}).get('country') or house.replace(' House', '')
             for house in configured_enemies
@@ -3588,10 +3632,11 @@ throw "Map $name was not found in expandmo*.mix"
             )
         if buff_allied_helpers and house_config['allies']:
             self.append_log(
-                f'{code} allied-helper clone/buff injection is suspended; '
-                'native helper production and TeamTypes are preserved.'
+                f'{code} configured allied helper allowlist: '
+                + (', '.join(reward_helpers) if reward_helpers else 'none')
+                + '. Helper teams use buffed clones; native IDs remain buildable queue fallbacks.'
             )
-        earned_rewards = self.earned_rewards_from_checks() if self.state else []
+        earned_rewards = self.active_launch_rewards() if self.state else []
         launch_power_rewards = list(earned_rewards)
         installed_superweapon_types, installed_rule_sections = installed_rules_registry()
         (
@@ -3631,7 +3676,7 @@ throw "Map $name was not found in expandmo*.mix"
         if self.state:
             mission_buff_unit_ids = mission_assistance_unit_ids(
                 lines,
-                unlocked_unit_ids=unlocked_reward_tech_ids(self.earned_rewards_from_checks()),
+                unlocked_unit_ids=self.active_unlocked_reward_tech_ids(),
                 additional_unit_ids=fallback_tech_ids,
                 randomized_access=self.randomize_unit_access_enabled(),
                 fallback_faction=normalize_faction(mission.get('side', '')),
@@ -3652,7 +3697,7 @@ throw "Map $name was not found in expandmo*.mix"
         if self.state and experimental_house_buffs:
             player_house, house_buffs = clone_player_country_for_house_buffs(
                 lines,
-                self.earned_rewards_from_checks(),
+                earned_rewards,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
@@ -3664,7 +3709,7 @@ throw "Map $name was not found in expandmo*.mix"
         elif self.state and safe_player_country_buffs:
             player_house, player_country, house_rule_sections, shared_houses, buffed_allies, skipped_allies = player_country_buff_rules(
                 lines,
-                self.earned_rewards_from_checks(),
+                earned_rewards,
                 configured_helper_houses=country_safety_helpers,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
@@ -3690,7 +3735,7 @@ throw "Map $name was not found in expandmo*.mix"
                 )
         elif self.state:
             pending_house_buffs = stacked_house_buff_values(
-                self.earned_rewards_from_checks(),
+                earned_rewards,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
@@ -3738,15 +3783,30 @@ throw "Map $name was not found in expandmo*.mix"
                 )
 
         if self.state:
-            guarded_rewards = list(self.earned_rewards_from_checks())
+            guarded_rewards = list(earned_rewards)
             guarded_rewards.extend(assistance_direct_rewards)
             buildable_clone_ids = set(fallback_tech_ids)
+            buildable_clone_ids.update(
+                self.active_unlocked_reward_tech_ids()
+            )
             if not require_unlocked_access_for_buffs:
                 buildable_clone_ids.update(
                     unit_id
                     for unit_id, target in BUFF_TARGETS.items()
                     if target.get('category') in {'infantry', 'units', 'aircraft'}
                 )
+            helper_autobuild = (
+                helper_ai_autobuild_plan(
+                    lines,
+                    reward_helpers,
+                    buildable_clone_ids,
+                    guarded_rewards,
+                    installed_rule_sections,
+                    native_map_sections=native_map_sections,
+                )
+                if reward_helpers
+                else {'variants': [], 'support': {}}
+            )
             (
                 clone_rule_sections,
                 _cloned_source_unit_ids,
@@ -3763,7 +3823,7 @@ throw "Map $name was not found in expandmo*.mix"
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 buildable_tech_ids=buildable_clone_ids,
                 build_owner_ids=safe_build_countries(lines, records, ()),
-                build_forbidden_ids=enemy_country_ids,
+                helper_autobuild_support=helper_autobuild.get('support'),
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -3772,12 +3832,41 @@ throw "Map $name was not found in expandmo*.mix"
                 self.append_log(
                     'Prepared isolated standalone player unit clones for: '
                     + ', '.join(cloned_unit_names)
-                    + '. Allied AI references remain native.'
+                    + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
                 )
             if clone_warnings:
                 self.append_log(
                     'Player unit clone limitations: '
                     + '; '.join(clone_warnings)
+                    + '.',
+                    error=True,
+                )
+            (
+                helper_ai_rules,
+                helper_built_units,
+                helper_ai_skipped,
+            ) = helper_ai_autobuild_rules(
+                lines,
+                helper_autobuild,
+                clone_handled,
+                installed_rule_sections,
+            )
+            if helper_ai_rules:
+                merge_ini_section_values(lines, helper_ai_rules)
+                self.append_log(
+                    'Added parallel allied-helper Autocreate teams for unlocked units: '
+                    + ', '.join(helper_built_units)
+                    + '. Native timing/scripts remain active and dynamic native-ID production stays valid.'
+                )
+            elif reward_helpers:
+                self.append_log(
+                    'No compatible parallel allied-helper unlock variants were found; '
+                    'native helper timing remains active.'
+                )
+            if helper_ai_skipped:
+                self.append_log(
+                    'Skipped allied-helper unit clones without a complete player clone: '
+                    + ', '.join(helper_ai_skipped)
                     + '.',
                     error=True,
                 )
