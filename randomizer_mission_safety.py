@@ -49,9 +49,10 @@ CONYARD_BY_MCV = {
 STALINS_FIST_FACTORY = 'NAFIST'
 STALINS_FIST_FAMILIES = {'soviets', 'epsilon'}
 
-# Four guaranteed combat roles for the optional seed-start roster. Standard
+# Five guaranteed combat roles for the optional seed-start roster. Standard
 # translates each role to the physical production families present in a map.
-# Chaos assigns every faction once across the four roles.
+# Chaos assigns every faction once across the four ground roles, then selects
+# one true AircraftType from the three factions that own an airfield.
 TIER_ONE_ROLE_UNITS = {
     'ground_infantry': {
         'allies': ('E1', 'infantry'),
@@ -77,9 +78,26 @@ TIER_ONE_ROLE_UNITS = {
         'epsilon': ('YTNK', 'vehicles'),
         'foehn': ('JACKAL', 'vehicles'),
     },
+    'basic_aircraft': {
+        'allies': ('STORM', 'air'),
+        'soviets': ('FOX', 'air'),
+        'epsilon': ('BLIGHT', 'air'),
+    },
 }
+TIER_ONE_GROUND_ROLES = (
+    'ground_infantry',
+    'anti_air_infantry',
+    'ground_vehicle',
+    'anti_air_vehicle',
+)
 
 STANDARD_TIER_ONE_FAMILIES = ('allies', 'soviets', 'epsilon')
+
+TIER_ONE_AIRFIELDS = {
+    'allies': 'GAAIRC',
+    'soviets': 'NAAIR',
+    'epsilon': 'YAAIRF',
+}
 
 AMPHIBIOUS_TRANSPORTS = {
     'allies': ('LCRF', 'GAYARD'),
@@ -800,24 +818,71 @@ def always_available_transport_rules(
 
 
 def tier_one_unit_ids(families):
-    """Return all four starter roles for each requested faction family."""
+    """Return all starter roles for each requested faction family."""
     requested = {str(family or '').lower() for family in families}
     return tuple(
         role_units[family][0]
         for role_units in TIER_ONE_ROLE_UNITS.values()
         for family in STANDARD_TIER_ONE_FAMILIES + ('foehn',)
-        if family in requested
+        if family in requested and family in role_units
     )
 
 
 def random_chaos_tier_one_unit_ids(rng):
-    """Assign every faction once across ground/AA infantry and vehicles."""
+    """Assign every faction once on ground, plus one seeded basic aircraft."""
     families = list(STANDARD_TIER_ONE_FAMILIES) + ['foehn']
     rng.shuffle(families)
-    return tuple(
-        role_units[family][0]
-        for role_units, family in zip(TIER_ONE_ROLE_UNITS.values(), families)
-    )
+    units = [
+        TIER_ONE_ROLE_UNITS[role][family][0]
+        for role, family in zip(TIER_ONE_GROUND_ROLES, families)
+    ]
+    aircraft_family = rng.choice(STANDARD_TIER_ONE_FAMILIES)
+    units.append(TIER_ONE_ROLE_UNITS['basic_aircraft'][aircraft_family][0])
+    return tuple(units)
+
+
+def _tier_one_airfield_rules(
+    base_families,
+    aircraft_families,
+    owners,
+    required_houses,
+    chaos_mode=False,
+):
+    """Unlock required AircraftType factories only when base building exists."""
+    base_families = {
+        family for family in base_families if family in CHAOS_PRIMARY_PRODUCTION
+    }
+    if not base_families:
+        return {}
+
+    if chaos_mode:
+        # Chaos aircraft may belong to another faction. Any detected MCV/
+        # Construction Yard can therefore place the selected native airfield.
+        conyards = tuple(
+            CHAOS_PRIMARY_PRODUCTION[family]['base']
+            for family in sorted(base_families)
+        )
+        airfield_families = set(aircraft_families)
+    else:
+        conyards = ()
+        airfield_families = set(base_families).intersection(aircraft_families)
+
+    rules = {}
+    for family in sorted(airfield_families):
+        airfield = TIER_ONE_AIRFIELDS.get(family)
+        if not airfield:
+            continue
+        prerequisites = conyards or (CHAOS_PRIMARY_PRODUCTION[family]['base'],)
+        values = {
+            'TechLevel': '1',
+            'BuildLimit': None,
+            'Owner': owners,
+            'RequiredHouses': required_houses,
+            'ForbiddenHouses': 'none',
+        }
+        values.update(_alternative_prerequisite_rules(prerequisites))
+        rules[airfield] = values
+    return rules
 
 
 def starting_tier_one_rules(
@@ -846,6 +911,24 @@ def starting_tier_one_rules(
     required_houses = ','.join(player_countries)
     rules = {}
 
+    production_categories = set()
+    for building_id in _mission_production_buildings(
+        lines,
+        records,
+        additional_production_houses,
+    ):
+        production = PRODUCTION_LOOKUP.get(building_id)
+        if production:
+            production_categories.add(production)
+    base_families = {
+        family for family, category in production_categories if category == 'base'
+    }
+    selected_aircraft_families = {
+        family
+        for family, (tech_id, _category) in TIER_ONE_ROLE_UNITS['basic_aircraft'].items()
+        if tech_id in selected_ids
+    }
+
     if chaos_mode:
         for role_units in TIER_ONE_ROLE_UNITS.values():
             for family, (tech_id, category) in role_units.items():
@@ -864,6 +947,13 @@ def starting_tier_one_rules(
                     _special_factory_alternatives(lines, category, sections),
                 ))
                 rules[tech_id] = values
+        rules.update(_tier_one_airfield_rules(
+            base_families,
+            selected_aircraft_families,
+            owners,
+            required_houses,
+            chaos_mode=True,
+        ))
         return rules
 
     allowed_families = {
@@ -877,21 +967,14 @@ def starting_tier_one_rules(
         if selected_ids.intersection(tech_id for tech_id, _category in role_units.values())
     }
     available_categories = set()
-    for building_id in _mission_production_buildings(
-        lines,
-        records,
-        additional_production_houses,
-    ):
-        production = PRODUCTION_LOOKUP.get(building_id)
-        if not production:
-            continue
-        family, category = production
+    for family, category in production_categories:
         if family not in allowed_families:
             continue
         available_categories.add((family, category))
         if category == 'base':
             available_categories.add((family, 'infantry'))
             available_categories.add((family, 'vehicles'))
+            available_categories.add((family, 'air'))
 
     for role in selected_roles:
         role_units = TIER_ONE_ROLE_UNITS[role]
@@ -909,6 +992,16 @@ def starting_tier_one_rules(
                 'ForbiddenHouses': 'none',
                 'PrerequisiteOverride': prerequisite,
             }
+    rules.update(_tier_one_airfield_rules(
+        base_families.intersection(allowed_families),
+        (
+            TIER_ONE_ROLE_UNITS['basic_aircraft']
+            if 'basic_aircraft' in selected_roles
+            else ()
+        ),
+        owners,
+        required_houses,
+    ))
     return rules
 
 

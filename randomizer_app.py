@@ -187,6 +187,36 @@ FACTION_TILE_COLORS = {
     'Epsilon': '#70429a',
     'Foehn': '#16898b',
 }
+LIGHT_UI_PALETTE = {
+    'background': '#f0f0f0',
+    'panel': '#ffffff',
+    'canvas': '#e9ecef',
+    'foreground': '#202124',
+    'muted': '#555555',
+    'field': '#ffffff',
+    'border': '#b8bec5',
+    'select': '#3478bd',
+    'select_foreground': '#ffffff',
+    'busy': '#edf3f8',
+    'busy_card': '#f9fcff',
+    'busy_title': '#172a3a',
+    'busy_detail': '#4c6172',
+}
+DARK_UI_PALETTE = {
+    'background': '#171a1f',
+    'panel': '#20242b',
+    'canvas': '#12151a',
+    'foreground': '#e8eaed',
+    'muted': '#aeb6c2',
+    'field': '#111419',
+    'border': '#49515c',
+    'select': '#315f91',
+    'select_foreground': '#ffffff',
+    'busy': '#111419',
+    'busy_card': '#202a34',
+    'busy_title': '#f2f7fb',
+    'busy_detail': '#b9c7d4',
+}
 
 
 class WidgetTooltip:
@@ -282,6 +312,10 @@ class LauncherApp(tk.Tk):
         self.missions = []
         self._mission_by_code = {}
         self.config = load_config()
+        self.dark_mode_var = tk.BooleanVar(value=bool(self.config.get('dark_mode', False)))
+        self.hide_reward_details_var = tk.BooleanVar(
+            value=bool(self.config.get('hide_reward_details', False))
+        )
         self.state = self.load_state()
         self.migrate_state()
         self._reward_settings_override = None
@@ -370,6 +404,9 @@ class LauncherApp(tk.Tk):
         self.include_defensive_buildings_var = tk.BooleanVar(
             value=reward_settings['include_defensive_buildings']
         )
+        self.unlimited_hero_units_var = tk.BooleanVar(
+            value=reward_settings['unlimited_hero_units']
+        )
         self.share_chaos_role_buffs_var = tk.BooleanVar(
             value=reward_settings['share_chaos_role_buffs']
         )
@@ -434,10 +471,11 @@ class LauncherApp(tk.Tk):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        style = ttk.Style(self)
-        style.configure('Randomizer.TNotebook', tabposition='n')
-        style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
-        style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
+        self.style = ttk.Style(self)
+        self.light_ttk_theme = self.style.theme_use()
+        self.style.configure('Randomizer.TNotebook', tabposition='n')
+        self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
+        self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
 
         header = ttk.Label(
             main_frame,
@@ -445,11 +483,12 @@ class LauncherApp(tk.Tk):
             font=('Segoe UI', 14, 'bold'),
         )
         header.grid(row=0, column=0, columnspan=4, sticky='w')
-        ttk.Label(
+        self.subtitle_label = ttk.Label(
             main_frame,
             text='Choose an open mission, earn randomized upgrades, and let victory tracking update your run.',
-            foreground='#555555',
-        ).grid(row=1, column=0, columnspan=4, sticky='w', pady=(2, 10))
+            style='Muted.TLabel',
+        )
+        self.subtitle_label.grid(row=1, column=0, columnspan=4, sticky='w', pady=(2, 10))
 
         self.missions_tree = ttk.Treeview(
             main_frame,
@@ -754,7 +793,7 @@ class LauncherApp(tk.Tk):
             settings_tab,
             borderwidth=0,
             highlightthickness=0,
-            background=style.lookup('TFrame', 'background') or '#f0f0f0',
+            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
         )
         self.settings_canvas = settings_canvas
         settings_scrollbar = ttk.Scrollbar(
@@ -780,9 +819,12 @@ class LauncherApp(tk.Tk):
 
         self.settings_intro_label = ttk.Label(
             settings_frame,
-            text='Settings are saved for the next generated seed. Existing runs keep the settings they were generated with.',
+            text=(
+                'Gameplay settings are saved for the next generated seed. Existing runs keep '
+                'their generated gameplay settings. Appearance and privacy apply immediately.'
+            ),
             wraplength=340,
-            foreground='#555555',
+            style='Muted.TLabel',
         )
         self.settings_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 8))
 
@@ -850,9 +892,11 @@ class LauncherApp(tk.Tk):
         self.start_with_tier_one_units_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.start_with_tier_one_units_check,
-            'Standard grants ground/anti-air infantry and vehicles matching each Allied, Soviet, or '
-            'Epsilon production family present in the mission. Chaos assigns one unit from every faction '
-            'across the four roles. Foehn units appear only in Chaos. Starter units remain buffable.',
+            'Standard grants ground/anti-air infantry, vehicles, and one basic aircraft matching each '
+            'Allied, Soviet, or Epsilon production family present in the mission. An available MCV or '
+            'Construction Yard also unlocks the matching airfield. Chaos assigns every faction once '
+            'across the four ground roles, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
+            'Starter units remain buffable.',
         )
         self.include_defensive_buildings_check = ttk.Checkbutton(
             reward_frame,
@@ -887,12 +931,24 @@ class LauncherApp(tk.Tk):
             'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
             'Initiate, and Knightframe. Shared groups are displayed together in Unlocks.',
         )
+        self.unlimited_hero_units_check = ttk.Checkbutton(
+            reward_frame,
+            text='Unlimited unique / hero units',
+            variable=self.unlimited_hero_units_var,
+            command=self.refresh_setting_states,
+        )
+        self.unlimited_hero_units_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.unlimited_hero_units_check,
+            'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
+            'Opted-in allied helpers share the same clones. This disables the +1 limit buff.',
+        )
         self.include_superweapon_rewards_check = ttk.Checkbutton(
             reward_frame,
             text='Include offensive superweapon rewards',
             variable=self.include_superweapon_rewards_var,
         )
-        self.include_superweapon_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+        self.include_superweapon_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_superweapon_rewards_check,
             'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
@@ -902,7 +958,7 @@ class LauncherApp(tk.Tk):
             text='Include secondary superweapon rewards',
             variable=self.include_secondary_superweapon_rewards_var,
         )
-        self.include_secondary_superweapon_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+        self.include_secondary_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_secondary_superweapon_rewards_check,
             'Adds Chronoshift, Invulnerability, Rage, and Blasticade as building-free rewards.',
@@ -912,7 +968,7 @@ class LauncherApp(tk.Tk):
             text='Include aid/reinforcement power rewards',
             variable=self.include_aid_power_rewards_var,
         )
-        self.include_aid_power_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
+        self.include_aid_power_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_aid_power_rewards_check,
             'Adds faction unit drops, temporary reinforcements, deployable towers, mines, and other delivery-based support actions.',
@@ -923,15 +979,18 @@ class LauncherApp(tk.Tk):
         for column in range(2):
             buff_frame.columnconfigure(column, weight=1)
         self.buff_type_checks = []
+        self.buff_type_checks_by_id = {}
         for index, buff_type in enumerate(BUFF_TYPES):
             row, column = divmod(index, 2)
             check = ttk.Checkbutton(
                 buff_frame,
                 text=buff_type.get('setting_label', buff_type['name']),
                 variable=self.buff_type_vars[buff_type['id']],
+                command=self.refresh_setting_states,
             )
             check.grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
             self.buff_type_checks.append(check)
+            self.buff_type_checks_by_id[buff_type['id']] = check
             description = buff_type.get('description', '').format(plural='Affected units')
             WidgetTooltip(check, description)
         assistance_frame = ttk.LabelFrame(
@@ -951,18 +1010,46 @@ class LauncherApp(tk.Tk):
             'Each unsuccessful attempt adds one assistance stack only to that mission. '
             'The stack applies on its next launch and is removed when the mission is completed.',
         )
-        ttk.Label(
+        self.assistance_description_label = ttk.Label(
             assistance_frame,
             text=(
-                'Per stack: faster production and firing, cheaper units, and higher movement '
-                'speed, health, weapon damage, armor effectiveness, and attack range. Applies '
+                'Per stack: faster production and per-unit weapon firing, cheaper units, and higher movement '
+                'speed, health, weapon damage, armor effectiveness, and attack range. Infantry '
+                'movement is capped at the fastest installed ground-infantry speed (10). Applies '
                 'to earned units and units supplied by that mission; normal faction rosters '
                 'are used when unit access is not randomized.'
             ),
             wraplength=340,
             justify='left',
-            foreground='#555555',
-        ).grid(row=1, column=0, sticky='ew', pady=(5, 0))
+            style='Muted.TLabel',
+        )
+        self.assistance_description_label.grid(row=1, column=0, sticky='ew', pady=(5, 0))
+
+        appearance_frame = ttk.LabelFrame(
+            settings_frame,
+            text='Appearance & Privacy',
+            padding=(8, 8, 8, 8),
+        )
+        appearance_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+        self.dark_mode_check = ttk.Checkbutton(
+            appearance_frame,
+            text='Dark mode',
+            variable=self.dark_mode_var,
+            command=self.on_dark_mode_changed,
+        )
+        self.dark_mode_check.grid(row=0, column=0, sticky='w')
+        self.hide_reward_details_check = ttk.Checkbutton(
+            appearance_frame,
+            text='Hide reward names in Mission Details',
+            variable=self.hide_reward_details_var,
+            command=self.on_hide_reward_details_changed,
+        )
+        self.hide_reward_details_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+        WidgetTooltip(
+            self.hide_reward_details_check,
+            'Shows ????? for assigned rewards in Mission Details and mission-row hover text. '
+            'Earned rewards remain visible in Unlocks.',
+        )
 
         self.refresh_setting_states()
 
@@ -1014,7 +1101,7 @@ class LauncherApp(tk.Tk):
         # begins so the launcher never appears frozen or accepts a second
         # launch/generation request while the first one is still running.
         self.busy_overlay = tk.Frame(main_frame, background='#edf3f8')
-        busy_card = tk.Frame(
+        self.busy_card = tk.Frame(
             self.busy_overlay,
             background='#f9fcff',
             highlightbackground='#79cfff',
@@ -1022,9 +1109,9 @@ class LauncherApp(tk.Tk):
             padx=34,
             pady=26,
         )
-        busy_card.place(relx=0.5, rely=0.5, anchor='center')
+        self.busy_card.place(relx=0.5, rely=0.5, anchor='center')
         self.busy_title = tk.Label(
-            busy_card,
+            self.busy_card,
             text='',
             background='#f9fcff',
             foreground='#172a3a',
@@ -1032,7 +1119,7 @@ class LauncherApp(tk.Tk):
         )
         self.busy_title.pack()
         self.busy_detail = tk.Label(
-            busy_card,
+            self.busy_card,
             text='',
             background='#f9fcff',
             foreground='#4c6172',
@@ -1041,8 +1128,224 @@ class LauncherApp(tk.Tk):
             justify='center',
         )
         self.busy_detail.pack(pady=(8, 14))
-        self.busy_progress = ttk.Progressbar(busy_card, mode='indeterminate', length=300)
+        self.busy_progress = ttk.Progressbar(self.busy_card, mode='indeterminate', length=300)
         self.busy_progress.pack(fill='x')
+        self.apply_color_mode()
+
+    def ui_palette(self):
+        return DARK_UI_PALETTE if self.dark_mode_var.get() else LIGHT_UI_PALETTE
+
+    def ensure_checkbutton_indicator(self):
+        """Use a real tick instead of Clam's X-shaped checkbox marker."""
+        style = self.style
+
+        def checkbox_image(fill, border, tick=None):
+            photo = tk.PhotoImage(master=self, width=16, height=16)
+            photo.put(border, to=(0, 0, 16, 16))
+            photo.put(fill, to=(2, 2, 14, 14))
+            if tick:
+                # Thick, compact check mark that remains clear at 100% scaling.
+                for x, y in (
+                    (3, 8), (4, 9), (5, 10), (6, 11),
+                    (7, 10), (8, 9), (9, 8), (10, 7),
+                    (11, 6), (12, 5),
+                ):
+                    photo.put(tick, to=(x, y, min(16, x + 2), min(16, y + 2)))
+            return photo
+
+        if not hasattr(self, 'checkbox_indicator_images'):
+            self.checkbox_indicator_images = {
+                'light_off': checkbox_image('#eef0f2', '#68717a'),
+                'light_on': checkbox_image('#68717a', '#4f565d', '#ffffff'),
+                'light_disabled_off': checkbox_image('#e2e4e6', '#b2b6bb'),
+                'light_disabled_on': checkbox_image('#b9bec4', '#a5aab0', '#f2f2f2'),
+                'dark_off': checkbox_image('#353b43', '#8d97a3'),
+                'dark_on': checkbox_image('#626b76', '#a5afb9', '#ffffff'),
+                'dark_disabled_off': checkbox_image('#252a30', '#4d555f'),
+                'dark_disabled_on': checkbox_image('#3b4149', '#505863', '#858c95'),
+            }
+
+        mode = 'dark' if self.dark_mode_var.get() else 'light'
+        element = f'Randomizer.{mode}.Checkbutton.indicator'
+        if element not in style.element_names():
+            images = self.checkbox_indicator_images
+            style.element_create(
+                element,
+                'image',
+                images[f'{mode}_off'],
+                ('disabled', 'selected', images[f'{mode}_disabled_on']),
+                ('disabled', images[f'{mode}_disabled_off']),
+                ('selected', images[f'{mode}_on']),
+                sticky='',
+            )
+        style.layout(
+            'TCheckbutton',
+            [
+                ('Checkbutton.padding', {
+                    'sticky': 'nswe',
+                    'children': [
+                        (element, {'side': 'left', 'sticky': ''}),
+                        ('Checkbutton.focus', {
+                            'side': 'left',
+                            'sticky': 'w',
+                            'children': [
+                                ('Checkbutton.label', {'sticky': 'nswe'}),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        )
+
+    def apply_color_mode(self):
+        palette = self.ui_palette()
+        style = self.style
+        target_theme = 'clam' if self.dark_mode_var.get() else self.light_ttk_theme
+        if target_theme in style.theme_names() and style.theme_use() != target_theme:
+            style.theme_use(target_theme)
+
+        background = palette['background']
+        panel = palette['panel']
+        foreground = palette['foreground']
+        field = palette['field']
+        border = palette['border']
+        selected = palette['select']
+        selected_foreground = palette['select_foreground']
+        self.configure(background=background)
+
+        style.configure('TFrame', background=background)
+        style.configure('TLabel', background=background, foreground=foreground)
+        style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
+        # ttk's canonical style name uses a lowercase "f". The old spelling
+        # configured an unused style and left Settings group interiors light.
+        style.configure('TLabelframe', background=background, bordercolor=border)
+        style.configure('TLabelframe.Label', background=background, foreground=foreground)
+        style.configure('TCheckbutton', background=background, foreground=foreground)
+        self.ensure_checkbutton_indicator()
+        style.configure('TRadiobutton', background=background, foreground=foreground)
+        style.configure('TButton', background=panel, foreground=foreground, bordercolor=border)
+        style.configure('Launch.TButton', background=panel, foreground=foreground, bordercolor=border)
+        style.map(
+            'TButton',
+            background=[('active', selected), ('pressed', selected)],
+            foreground=[('active', selected_foreground), ('pressed', selected_foreground)],
+        )
+        style.map(
+            'TCheckbutton',
+            background=[('active', background)],
+            foreground=[('disabled', palette['muted']), ('active', foreground)],
+        )
+        style.configure('TEntry', fieldbackground=field, foreground=foreground, insertcolor=foreground)
+        style.configure('TSpinbox', fieldbackground=field, foreground=foreground, arrowcolor=foreground)
+        style.configure('TCombobox', fieldbackground=field, background=panel, foreground=foreground, arrowcolor=foreground)
+        style.map(
+            'TCombobox',
+            fieldbackground=[('readonly', field)],
+            foreground=[('readonly', foreground)],
+            selectbackground=[('readonly', selected)],
+            selectforeground=[('readonly', selected_foreground)],
+        )
+        style.configure('TNotebook', background=background, bordercolor=border)
+        style.configure('TNotebook.Tab', background=panel, foreground=foreground)
+        style.configure('Randomizer.TNotebook', background=background, bordercolor=border, tabposition='n')
+        style.configure(
+            'Randomizer.TNotebook.Tab',
+            background=panel,
+            foreground=foreground,
+            padding=(16, 7),
+            font=('Segoe UI', 10, 'bold'),
+        )
+        style.map(
+            'Randomizer.TNotebook.Tab',
+            background=[('selected', selected), ('active', palette['canvas'])],
+            foreground=[('selected', selected_foreground), ('active', foreground)],
+        )
+        style.configure(
+            'Treeview',
+            background=field,
+            fieldbackground=field,
+            foreground=foreground,
+            bordercolor=border,
+        )
+        style.map(
+            'Treeview',
+            background=[('selected', selected)],
+            foreground=[('selected', selected_foreground)],
+        )
+        style.configure('Treeview.Heading', background=panel, foreground=foreground, bordercolor=border)
+        style.map('Treeview.Heading', background=[('active', palette['canvas'])])
+        style.configure('TScrollbar', background=panel, troughcolor=background, bordercolor=border, arrowcolor=foreground)
+
+        if hasattr(self, 'missions_tree'):
+            self.missions_tree.tag_configure(
+                'completed',
+                background='#244a32' if self.dark_mode_var.get() else '#dff2df',
+                foreground='#b8efc5' if self.dark_mode_var.get() else '#176b2c',
+            )
+        for canvas_name in ('settings_canvas', 'grid_canvas'):
+            canvas = getattr(self, canvas_name, None)
+            if canvas is not None:
+                canvas.configure(background=palette['canvas'])
+        for text_name in ('rewards_text', 'unlocks_text'):
+            text_widget = getattr(self, text_name, None)
+            if text_widget is not None:
+                text_widget.configure(
+                    background=field,
+                    foreground=foreground,
+                    insertbackground=foreground,
+                    selectbackground=selected,
+                    selectforeground=selected_foreground,
+                )
+        if hasattr(self, 'unlocks_text'):
+            self.unlocks_text.tag_configure(
+                'search_match',
+                background='#665c20' if self.dark_mode_var.get() else '#fff0a6',
+                foreground=foreground,
+            )
+            self.unlocks_text.tag_configure(
+                'search_current',
+                background='#9b5d1f' if self.dark_mode_var.get() else '#ffbf69',
+                foreground=foreground,
+            )
+        if hasattr(self, 'log_text'):
+            self.log_text.configure(
+                background=field,
+                foreground=foreground,
+                insertbackground=foreground,
+                selectbackground=selected,
+                selectforeground=selected_foreground,
+            )
+            self.log_text.tag_config('error', foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020')
+        if hasattr(self, 'busy_overlay'):
+            self.busy_overlay.configure(background=palette['busy'])
+            self.busy_card.configure(
+                background=palette['busy_card'],
+                highlightbackground=selected,
+            )
+            self.busy_title.configure(
+                background=palette['busy_card'],
+                foreground=palette['busy_title'],
+            )
+            self.busy_detail.configure(
+                background=palette['busy_card'],
+                foreground=palette['busy_detail'],
+            )
+
+    def save_ui_preferences(self):
+        self.config['dark_mode'] = bool(self.dark_mode_var.get())
+        self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
+        save_config(self.config)
+
+    def on_dark_mode_changed(self):
+        self.apply_color_mode()
+        self.save_ui_preferences()
+        if hasattr(self, 'grid_content_frame'):
+            self.grid_render_signature = None
+            self.redraw_grid()
+
+    def on_hide_reward_details_changed(self):
+        self.save_ui_preferences()
+        self.refresh_progress_view()
 
     def show_busy(self, title, detail='Please wait.'):
         self.busy_depth += 1
@@ -1331,7 +1634,10 @@ class LauncherApp(tk.Tk):
         self.log_text.insert('end', f'{message}\n')
         if error:
             self.log_text.tag_add('error', 'end-2l', 'end-1c')
-            self.log_text.tag_config('error', foreground='red')
+            self.log_text.tag_config(
+                'error',
+                foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
+            )
         self.log_text.configure(state='disabled')
         if self.log_visible_var.get():
             self.log_text.see('end')
@@ -1508,6 +1814,12 @@ class LauncherApp(tk.Tk):
         )
         include_aid_powers = bool(generation_config.get('include_aid_power_rewards', True))
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
+        unlimited_hero_units = bool(generation_config.get('unlimited_hero_units', False))
+        if unlimited_hero_units:
+            enabled_buff_types = [
+                buff_type for buff_type in enabled_buff_types
+                if buff_type != 'build_limit'
+            ]
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
         failure_assistance = bool(generation_config.get('failure_assistance', False))
@@ -1517,6 +1829,7 @@ class LauncherApp(tk.Tk):
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
+            'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
             'failure_assistance': failure_assistance,
@@ -1545,6 +1858,7 @@ class LauncherApp(tk.Tk):
         randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
         start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
+        unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
         failure_assistance = bool(self.failure_assistance_var.get())
@@ -1557,10 +1871,16 @@ class LauncherApp(tk.Tk):
             for buff_type in BUFF_TYPES
             if self.buff_type_vars[buff_type['id']].get()
         ]
+        if unlimited_hero_units:
+            enabled_buff_types = [
+                buff_type for buff_type in enabled_buff_types
+                if buff_type != 'build_limit'
+            ]
         return {
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
+            'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
             'failure_assistance': failure_assistance,
@@ -1593,6 +1913,7 @@ class LauncherApp(tk.Tk):
         settings.setdefault('randomize_unit_access', True)
         settings.setdefault('start_with_tier_one_units', False)
         settings.setdefault('include_defensive_buildings', True)
+        settings.setdefault('unlimited_hero_units', False)
         settings.setdefault('share_chaos_role_buffs', False)
         settings.setdefault(
             'buff_allied_helpers',
@@ -1610,6 +1931,11 @@ class LauncherApp(tk.Tk):
         settings.setdefault('include_aid_power_rewards', False)
         if not isinstance(settings.get('enabled_buff_types'), list):
             settings['enabled_buff_types'] = [buff_type['id'] for buff_type in BUFF_TYPES]
+        if settings['unlimited_hero_units']:
+            settings['enabled_buff_types'] = [
+                buff_type for buff_type in settings['enabled_buff_types']
+                if buff_type != 'build_limit'
+            ]
         return settings
 
     def randomize_unit_access_enabled(self):
@@ -1721,6 +2047,8 @@ class LauncherApp(tk.Tk):
         return REWARD_MODES[0]
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
+        self.config['dark_mode'] = bool(self.dark_mode_var.get())
+        self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
         self.config['seed'] = seed
         self.config['campaign_filter'] = self.campaign_var.get()
         self.config['mission_goal'] = mission_goal
@@ -1749,6 +2077,7 @@ class LauncherApp(tk.Tk):
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
+        self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
@@ -2007,6 +2336,8 @@ class LauncherApp(tk.Tk):
         include_aid_powers = bool(reward_settings.get('include_aid_power_rewards', False))
         include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
+        if reward_settings.get('unlimited_hero_units'):
+            enabled_buff_types.discard('build_limit')
         chaos_mode = (
             hasattr(self, 'reward_mode_var')
             and self.reward_mode_var.get() == 'Chaos (Experimental)'
@@ -2517,6 +2848,9 @@ class LauncherApp(tk.Tk):
             return
         chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
         buffs_enabled = bool(self.include_buff_rewards_var.get())
+        unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
+        if unlimited_hero_units:
+            self.buff_type_vars['build_limit'].set(False)
         if chaos_mode:
             self.randomize_unit_access_var.set(True)
             self.randomize_unit_access_check.configure(state='disabled')
@@ -2531,6 +2865,11 @@ class LauncherApp(tk.Tk):
         )
         for check in getattr(self, 'buff_type_checks', []):
             check.configure(state='normal' if buffs_enabled else 'disabled')
+        build_limit_check = getattr(self, 'buff_type_checks_by_id', {}).get('build_limit')
+        if build_limit_check is not None:
+            build_limit_check.configure(
+                state='disabled' if unlimited_hero_units or not buffs_enabled else 'normal'
+            )
         self.include_defensive_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
         )
@@ -2666,7 +3005,11 @@ class LauncherApp(tk.Tk):
             for column in range(width):
                 if (column, row) in positions:
                     continue
-                spacer = tk.Frame(content_frame, background='#e9ecef', borderwidth=0)
+                spacer = tk.Frame(
+                    content_frame,
+                    background=self.ui_palette()['canvas'],
+                    borderwidth=0,
+                )
                 spacer.grid(row=row, column=column, sticky='nsew', padx=3, pady=3)
 
         for code, node in grid['nodes'].items():
@@ -2937,7 +3280,12 @@ class LauncherApp(tk.Tk):
             rewards = check_rewards(check)
             lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
             for reward in rewards:
-                lines.append(f'    • {reward_display_name(reward)}')
+                reward_name = (
+                    '?????'
+                    if self.hide_reward_details_var.get()
+                    else reward_display_name(reward)
+                )
+                lines.append(f'    • {reward_name}')
         return '\n'.join(lines)
 
     def on_launch_selected(self):
@@ -4044,6 +4392,11 @@ throw "Map $name was not found in expandmo*.mix"
                 forced_buildable_clone_ids=(
                     fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
                 ),
+                unlimited_build_limit_unit_ids=(
+                    mission_buff_unit_ids
+                    if self.active_reward_settings().get('unlimited_hero_units', False)
+                    else ()
+                ),
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -4693,7 +5046,8 @@ throw "Map $name was not found in expandmo*.mix"
         return (
             f'production time {round((1 - multipliers["production"]) * 100)}% shorter, '
             f'cost {round((1 - multipliers["cost"]) * 100)}% cheaper, '
-            f'movement speed {round((multipliers["speed"] - 1) * 100)}% faster, '
+            f'movement speed {round((multipliers["speed"] - 1) * 100)}% faster '
+            f'(ground infantry capped at Speed 10), '
             f'health {round((multipliers["health"] - 1) * 100)}% higher, '
             f'weapon damage {round((multipliers["damage"] - 1) * 100)}% higher, '
             f'damage taken {round((1 - multipliers["armor"]) * 100)}% lower, '
@@ -5012,7 +5366,12 @@ throw "Map $name was not found in expandmo*.mix"
                     lines.append(f'   {hint}')
                 if rewards:
                     for reward in rewards:
-                        lines.append(f'   • {reward_display_name(reward)}')
+                        reward_name = (
+                            '?????'
+                            if self.hide_reward_details_var.get()
+                            else reward_display_name(reward)
+                        )
+                        lines.append(f'   • {reward_name}')
                 else:
                     lines.append('   • No reward assigned')
             lines.append('')

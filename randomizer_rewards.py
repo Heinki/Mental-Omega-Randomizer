@@ -74,7 +74,7 @@ FACTION_UNIT_ROSTERS = {
             'CTNK': 'Qilin Assault Tank', 'DRON': 'Terror Drone',
             'SMCV': 'Soviet MCV', 'BOREK': 'Borillo', 'ARMA': 'Armadillo',
             'DTRUCK': 'Demolition Truck', 'BGGY': 'Bomb Buggy',
-            'RAVA': 'Drakuv Prison Vehicle', 'TTNK': 'Tesla Cruiser',
+            'TTNK': 'Tesla Cruiser',
             'V3': 'Scud Launcher', 'WOLF': 'Wolfhound', 'MWF': "Stalin's Fist",
             'APOC': 'Catastrophe Tank', 'BURA': 'Buratino', 'SCHP': 'Vulture',
             'FDRON': 'Fury Drone', 'EMPR': 'Nuwa Cannon', 'EDRN': 'Dragonfly',
@@ -134,7 +134,7 @@ FACTION_UNIT_ROSTERS = {
             'SHARK': 'Angelshark', 'MANTA': 'Whipray',
             'LEVI': 'Leviathan Helicarrier',
         },
-        'aircraft': {'HARB': 'Harbinger'},
+        'aircraft': {},
     },
 }
 
@@ -382,7 +382,7 @@ UNIT_ROLE_EQUIVALENCE_GROUPS = (
     frozenset({'SHAD', 'BOREK', 'LCRF', 'SAPC', 'YHVR', 'SEAT'}),
     # Aircraft and airborne combat roles.
     frozenset({'STORM', 'FOX', 'BLIGHT', 'QUETZ'}),
-    frozenset({'ORCA', 'DUST', 'VENOM', 'HARB'}),
+    frozenset({'ORCA', 'DUST', 'VENOM'}),
     frozenset({'THOR', 'SCHP', 'DISK', 'DIVER'}),
     frozenset({'FORTRESS', 'ZEP', 'BASIL', 'HURR'}),
     # Naval roles.
@@ -1037,7 +1037,7 @@ def add_complete_faction_buff_targets():
 
     defense_buff_types = [
         'production', 'cost', 'armor', 'health', 'sight',
-        'damage', 'reload', 'rof', 'range',
+        'damage', 'reload', 'range',
         'self_healing', 'cloak', 'sensors', 'veteran',
     ]
     for faction, defenses in FACTION_DEFENSE_ROSTERS.items():
@@ -1065,6 +1065,44 @@ def add_complete_faction_buff_targets():
 
 
 add_complete_faction_buff_targets()
+
+# Installed Mental Omega 3.3.6 trainable hero/unique units whose positive
+# BuildLimit is a live simultaneous-unit cap. Script-only mobile types and
+# capped defenses are deliberately absent: changing those limits can break
+# campaign teams, loss conditions, or base plans.
+LIMITED_HERO_BUILD_LIMITS = {
+    'TANY': 1,
+    'SIEG': 1,
+    'ARMR': 1,
+    'CHITZ': 1,
+    'VOLKOV': 1,
+    'MORALES': 1,
+    'YUNRU': 1,
+    'CNTR': 1,
+    'LIBRA': 1,
+    'UNDER': 1,
+    'ASSN': 1,
+    'GOTTER': 1,
+    'SIBFIN': 1,
+    'SICALI': 1,
+    'EUREKA': 1,
+    'URAGAN': 1,
+}
+LIMITED_HERO_UNIT_IDS = frozenset(LIMITED_HERO_BUILD_LIMITS)
+for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
+    BUFF_TARGETS[limited_unit_id]['build_limit'] = build_limit
+
+# Chitzkoi and Libra are the fastest installed ground infantry at Speed=10.
+# Faster InfantryType entries are airborne; their native speed is preserved,
+# but an earned movement buff never increases it further.
+MAX_GROUND_INFANTRY_SPEED = 10
+
+
+def capped_infantry_speed(base_speed, count):
+    """Return a safe earned infantry speed without lowering fast flyers."""
+    base_speed = max(1, int(base_speed))
+    ceiling = max(base_speed, MAX_GROUND_INFANTRY_SPEED)
+    return min(ceiling, max(1, int(round(base_speed * (1.10 ** count)))))
 
 # Westwood-spawn missiles do not expose their real impact damage as a normal
 # WeaponType. These General-section fields are the actual payload damage for
@@ -1237,14 +1275,6 @@ BUFF_TYPES = [
         'requires_clone': True,
     },
     {
-        'id': 'rof',
-        'name': 'Rapid Fire',
-        'setting_label': 'Army-wide fire rate',
-        'description': 'All player weapons fire faster in future launched missions.',
-        'requires_weapons': True,
-        'requires_weapon_stat': 'rof',
-    },
-    {
         'id': 'range',
         'name': 'Optics',
         'setting_label': 'Attack range',
@@ -1288,6 +1318,14 @@ BUFF_TYPES = [
         'setting_label': 'Veteran start',
         'description': '{plural} start as veterans for the player house in future launched missions.',
     },
+    {
+        'id': 'build_limit',
+        'name': 'Command Capacity',
+        'setting_label': 'Unique / hero unit limit +1',
+        'description': '{plural} can have one additional unit active at the same time in future launched missions.',
+        'requires_stat': 'build_limit',
+        'requires_clone': True,
+    },
 ]
 
 
@@ -1304,8 +1342,16 @@ def build_buff_rewards():
             if buff_type_id == 'veteran' and not target.get('trainable', True):
                 continue
             if (
+                buff_type_id == 'speed'
+                and target.get('category') == 'infantry'
+                and int(target.get('speed', 0)) >= MAX_GROUND_INFANTRY_SPEED
+            ):
+                # These infantry are already at the safe ground ceiling or
+                # are faster airborne InfantryTypes. Do not award a no-op.
+                continue
+            if (
                 unit_id in NONCOMBAT_WEAPON_TARGET_IDS
-                and buff_type_id in {'damage', 'reload', 'rof', 'range'}
+                and buff_type_id in {'damage', 'reload', 'range'}
             ):
                 continue
             if buff_type.get('requires_stat') and buff_type.get('requires_stat') not in target:
@@ -1795,13 +1841,17 @@ AID_POWER_MAP_CONFIGS = [
         'values': {
             'EVA.Ready': 'EVA_BattlePowerReady',
             'IsPowered': 'false',
-            'RechargeTime': '0.5',
+            'RechargeTime': '6.5',
             'SW.Deferment': '0',
             'Deliver.Owner': 'invoker',
             'LineMultiplier': '2',
             'SW.AITargeting': 'None',
             'SW.RangeMaximum': '-1',
         },
+    },
+    {
+        'superweapon': 'HarbingerSpecial',
+        'values': {'IsPowered': 'false'},
     },
     {
         'superweapon': 'SweeperDropSpecial',
@@ -1921,6 +1971,7 @@ def build_aid_power_rewards():
         ('Spinblade Power', 'Deploys a Spinblade support structure at the selected area.', 'Foehn', 'SpinbladeSpecial', 39),
         ('Megaarena Power', 'Deploys a temporary Megaarena Projector at the selected area.', 'Foehn', 'MegaarenaSpecial', 52),
         ('Knightfall Power', 'Deploys a Knightfall reinforcement beacon at the selected area.', 'Foehn', 'KnightfallSpecial', 72),
+        ('Harbinger Power', 'Calls a Harbinger strike aircraft over the selected area.', 'Foehn', 'HarbingerSpecial', 75),
         ('Sweeper Drop Power', 'Drops 2 Sweepers at the selected area.', 'Foehn', 'SweeperDropSpecial', 76),
         ('Signal Jammer Power', 'Deploys a temporary Signal Jammer at the selected area.', 'Foehn', 'SignalJammerSpecial', 77),
         ('Decoy Team Power', 'Deploys a holographic infantry decoy team at the selected area.', 'Foehn', 'DecoyTeamSpecial', 118),
@@ -1985,6 +2036,24 @@ REWARD_BY_BUFF_KEY = {
     for reward in UNIT_BUFF_REWARDS
 }
 RETIRED_REWARD_BY_NAME = {
+    # These installed types are payloads for aid powers, not trainable units.
+    # Canonicalize old seeds so they no longer expose inert production cameos.
+    'Drakuv Prison Vehicle Access': {
+        'name': 'Drakuv Prison Vehicle Access (retired: aid power only)',
+        'description': 'Use the Drakuv Prison Vehicle Power; the payload is not a trainable unit.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+    'Harbinger Access': {
+        'name': 'Harbinger Access (retired: aid power only)',
+        'description': 'Use the Harbinger Power; the strike aircraft is not a trainable unit.',
+        'rules': {},
+        'factions': ['Foehn'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
     # Elite Reserves is implemented by delivering an invisible production-state
     # marker from a Soviet lab. Granting the power itself with action 34 and no
     # source building crashes during the map-start trigger. Keep old generated
@@ -2028,6 +2097,13 @@ for target in BUFF_TARGETS.values():
     replacement_name = f'{target["label"]} Recon Package I'
     if replacement_name in REWARD_BY_NAME:
         REWARD_ALIASES[old_name] = replacement_name
+    # CountryType has no functional army-wide ROF multiplier in this engine.
+    # Preserve old seeds by converting each former Rapid Fire item into the
+    # same target's working cloned-weapon fire-rate reward.
+    old_rof_name = f'{target["label"]} Rapid Fire I'
+    replacement_rof_name = f'{target["label"]} Weapon Tuning I'
+    if replacement_rof_name in REWARD_BY_NAME:
+        REWARD_ALIASES[old_rof_name] = replacement_rof_name
 for defense_id, target in BUFF_TARGETS.items():
     if target.get('category') == 'defenses' and not target.get('trainable'):
         REWARD_ALIASES[
@@ -2127,11 +2203,11 @@ HOUSE_CATEGORY_SUFFIXES = {
     'defenses': 'Defenses',
 }
 
-HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'rof', 'veteran'}
+HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'veteran'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors'}
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
-CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES
+CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit'}
 MAX_VETERANCY_STACKS = 1
 
 
@@ -2157,6 +2233,15 @@ def buff_stack_limit(reward):
         return None
     if reward.get('buff_type') == 'veteran':
         return MAX_VETERANCY_STACKS
+    if reward.get('buff_type') == 'speed':
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        if target.get('category') == 'infantry':
+            base_speed = max(1, int(target.get('speed', 1)))
+            if base_speed >= MAX_GROUND_INFANTRY_SPEED:
+                return 1
+            for stacks in range(1, 33):
+                if capped_infantry_speed(base_speed, stacks) >= MAX_GROUND_INFANTRY_SPEED:
+                    return stacks
     if reward.get('buff_type') in {'self_healing', 'cloak', 'sensors'}:
         return 1
     return None
@@ -2203,6 +2288,13 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         cheaper = int(round((1.0 - multiplier) * 100))
         return [stacked(f'{prefix}Cost {cheaper}% cheaper')]
     if buff_type == 'speed':
+        if target.get('category') == 'infantry':
+            base_speed = int(target.get('speed', 1))
+            speed = capped_infantry_speed(base_speed, count)
+            return [stacked(
+                f'{prefix}Speed {base_speed} -> {speed} '
+                f'(safe ground ceiling {MAX_GROUND_INFANTRY_SPEED})'
+            )]
         multiplier = min(1.75, 1.10 ** count)
         faster = int(round((multiplier - 1.0) * 100))
         return [stacked(f'{prefix}Speed {faster}% faster')]
@@ -2217,12 +2309,11 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     if buff_type == 'sight':
         increase = min(4, count)
         return [stacked(f'{prefix}Vision +{increase}')]
-    if buff_type == 'rof':
-        multiplier = max(0.40, 0.90 ** count)
-        faster = int(round((1.0 - multiplier) * 100))
-        return [stacked(f'Army-wide fire rate {faster}% faster')]
     if buff_type == 'veteran':
         return [stacked(f'{prefix}Veteran start')]
+    if buff_type == 'build_limit':
+        base_limit = int(target.get('build_limit', 1))
+        return [stacked(f'{prefix}Simultaneous unit limit {base_limit} -> {base_limit + count}')]
     if buff_type == 'damage':
         multiplier = min(2.0, 1.15 ** count)
         stronger = int(round((multiplier - 1.0) * 100))

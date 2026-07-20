@@ -26,9 +26,11 @@ from randomizer_rewards import (
     ENGINEER_UNIT_IDS,
     HOUSE_SCOPED_BUFF_TYPES,
     FACTION_UNIT_ROSTERS,
+    LIMITED_HERO_UNIT_IDS,
     NONTRAINABLE_UNIT_IDS,
     REWARD_POOL,
     WEAPON_STAT_BUFF_TYPES,
+    capped_infantry_speed,
     canonical_reward,
     canonical_rewards,
     house_category_suffix,
@@ -50,7 +52,7 @@ COMMON_BUILD_TAB_TECH_LOCKS = {
     'DTRUCK', 'DUNE', 'EMPR', 'ENFO', 'ENTK', 'FLAMER', 'GHOST', 'GHTNK',
     'HARP', 'HCAN', 'HOWI', 'HUNTR', 'IDRAG', 'IVAN', 'JTNK', 'KINGS',
     'KTNK', 'MARA', 'MEGA', 'MGTK', 'MOTOR', 'MTNK', 'PHNT', 'PLAG',
-    'PROME', 'QTNK', 'QUICK', 'RACC', 'RAIL', 'RAMW', 'RAVA', 'RIOT',
+    'PROME', 'QTNK', 'QUICK', 'RACC', 'RAIL', 'RAMW', 'RIOT',
     'ROACH', 'ROBO', 'ROADR', 'SCAV', 'SDRN', 'SEITAAD', 'SHADOW',
     'SHRAY', 'SNIPE', 'SREF', 'STALKER', 'STING', 'STNK', 'SUPR',
     'TELE', 'TENGU', 'TNKKIL', 'TRACTOR', 'TRIKE', 'V3', 'VCARR',
@@ -64,7 +66,7 @@ EXTRA_TECH_LOCKS = {
     # Extra Mental Omega tech seen in campaign spawn maps.
     'AERO', 'AICLEG', 'AITHOR', 'AMCV', 'BEAG', 'BLIGHT', 'CHRTNK', 'CRYO',
     'CRYOAI', 'DUST', 'FOX', 'GAGAP', 'GASTAS', 'GAWEAT', 'HBIRD', 'LIONH',
-    'MWF', 'NAHAMM', 'NAINDP', 'NAIRDM', 'NAMISL', 'NASCOM', 'ORCA', 'RAVA',
+    'MWF', 'NAHAMM', 'NAINDP', 'NAIRDM', 'NAMISL', 'NASCOM', 'ORCA',
     'REAP', 'ROBOW', 'SBTR', 'SEIZER', 'SHOCK', 'SIEG', 'SMCV', 'SPY', 'SREF',
     'STORM', 'THOR', 'VENOM', 'VOLKOV',
     # Soviet campaign combat tech that can appear in build tabs even when it
@@ -566,8 +568,6 @@ def stacked_house_buff_values(
     base_values = base_values or {}
     category_counts = {}
     veteran_units = {}
-    rof_count = 0
-
     for reward in buffs_with_unlocked_access(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -594,9 +594,6 @@ def stacked_house_buff_values(
                 category_counts[key] = category_counts.get(key, 0) + 1
             continue
         suffix = house_category_suffix(target)
-        if buff_type == 'rof':
-            rof_count += 1
-            continue
         if buff_type == 'veteran':
             if not target.get('trainable', True):
                 continue
@@ -637,6 +634,11 @@ def stacked_house_buff_values(
                 if unit_id in BUFF_TARGETS
             )
         for equivalent_suffix in suffixes:
+            # A country SpeedInfantryMult has no per-unit ceiling and can push
+            # foot infantry beyond the engine-safe roster maximum. Infantry
+            # movement rewards are therefore applied as guarded direct values.
+            if buff_type == 'speed' and equivalent_suffix == 'Infantry':
+                continue
             key = (buff_type, equivalent_suffix)
             category_counts[key] = category_counts.get(key, 0) + 1
 
@@ -659,10 +661,6 @@ def stacked_house_buff_values(
         existing_key = next((key_name for key_name in base_values if key_name.lower() == key.lower()), key)
         base = parse_float(base_values.get(existing_key), 1.0)
         values[key] = format_multiplier(base * multiplier)
-
-    if rof_count:
-        base = parse_float(base_values.get('ROF'), 1.0)
-        values['ROF'] = format_multiplier(base * max(0.40, 0.90 ** rof_count))
 
     country_side = str(
         next(
@@ -720,7 +718,8 @@ def mission_assistance_multipliers(stacks):
         'cost': max(0.30, 0.80 ** stacks),
         'speed': min(1.75, 1.10 ** stacks),
         'armor': max(0.50, 0.90 ** stacks),
-        'rof': max(0.40, 0.90 ** stacks),
+        # Display/clone multiplier only. Never write this onto CountryType.
+        'rof': max(0.45, 0.90 ** stacks),
         'health': min(2.0, 1.15 ** stacks),
         'damage': min(2.0, 1.15 ** stacks),
         'range': min(3.0, 0.5 * stacks),
@@ -728,7 +727,7 @@ def mission_assistance_multipliers(stacks):
 
 
 def mission_assistance_direct_rewards(unit_ids, stacks):
-    """Build guarded health/damage/range buffs for accessible retry units.
+    """Build guarded direct buffs for accessible retry units.
 
     These stats live on global TechnoType/WeaponType sections rather than a
     country.  ``unit_weapon_buff_rules`` therefore remains responsible for
@@ -745,10 +744,25 @@ def mission_assistance_direct_rewards(unit_ids, stacks):
     for unit_id in unique_in_order(
         str(unit_id or '').upper() for unit_id in (unit_ids or [])
     ):
-        if unit_id not in BUFF_TARGETS:
+        target = BUFF_TARGETS.get(unit_id)
+        if not target:
             continue
         for _ in range(direct_stacks):
-            for buff_type in ('health', 'damage', 'range'):
+            buff_types = ['health', 'damage', 'range']
+            # Fire-rate assistance must modify cloned WeaponTypes. Country ROF
+            # is a difficulty field, not a supported CountryType multiplier.
+            if any(
+                stats.get('rof', 0) > 1
+                for stats in target.get('weapons', {}).values()
+            ):
+                buff_types.append('reload')
+            if (
+                target.get('category') == 'infantry'
+                and capped_infantry_speed(target.get('speed', 1), 1)
+                > int(target.get('speed', 1))
+            ):
+                buff_types.append('speed')
+            for buff_type in buff_types:
                 rewards.append({
                     'kind': 'buff',
                     'unit': unit_id,
@@ -778,6 +792,10 @@ def mission_assistance_buff_values(base_values, stacks):
     )
     for prefix, multiplier_name in fields:
         for suffix in MISSION_ASSISTANCE_CATEGORIES:
+            # Infantry retry speed uses guarded direct TechnoType values so it
+            # can obey the same hard ceiling as normal movement rewards.
+            if prefix == 'Speed' and suffix == 'Infantry':
+                continue
             key = f'{prefix}{suffix}Mult'
             existing_key = next(
                 (key_name for key_name in base_values if key_name.lower() == key.lower()),
@@ -786,8 +804,6 @@ def mission_assistance_buff_values(base_values, stacks):
             base = parse_float(base_values.get(existing_key), 1.0)
             values[key] = format_multiplier(base * multipliers[multiplier_name])
 
-    rof_key = next((key for key in base_values if key.lower() == 'rof'), 'ROF')
-    values['ROF'] = format_multiplier(parse_float(base_values.get(rof_key), 1.0) * multipliers['rof'])
     return values
 
 
@@ -1099,6 +1115,13 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['Ammo'] = str(int(round(target['ammo'] + min(5, count))))
     elif buff_type == 'self_healing':
         values['SelfHealing'] = 'yes'
+        if target.get('category') == 'defenses':
+            # Ares defaults to one hitpoint per RepairRate tick. On structures
+            # with hundreds or thousands of HP that appears non-functional.
+            # Keep the normal game interval but heal 1% max strength per tick.
+            values['SelfHealing.Amount'] = str(
+                max(1, int(round(target['strength'] * 0.01)))
+            )
     elif buff_type == 'cloak':
         values['Cloakable'] = 'yes'
         values['Cloakable.Stages'] = '1'
@@ -1123,8 +1146,11 @@ def apply_unit_buff_value(values, target, buff_type, count):
         base = parse_float(values.get(existing_key), 1.0)
         values[existing_key] = format_multiplier(base * multiplier)
     elif buff_type == 'speed':
-        multiplier = min(1.75, 1.10 ** count)
-        values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
+        if target.get('category') == 'infantry':
+            values['Speed'] = str(capped_infantry_speed(target['speed'], count))
+        else:
+            multiplier = min(1.75, 1.10 ** count)
+            values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
     elif buff_type == 'armor':
         multiplier = max(0.50, 0.90 ** count)
         current_strength = int(values.get('Strength', target['strength']))
@@ -1181,6 +1207,10 @@ def _active_direct_buff_counts(
         if reward.get('kind') != 'buff':
             continue
         buff_type = reward.get('buff_type')
+        unit_id = str(reward.get('unit') or '').upper()
+        target = BUFF_TARGETS.get(unit_id, {})
+        if not unit_id or not target:
+            continue
         if house_scoped_only and buff_type not in {
             'production', 'cost', 'speed', 'armor',
         }:
@@ -1194,11 +1224,11 @@ def _active_direct_buff_counts(
             direct_chaos_types.update(
                 {'production', 'cost', 'speed', 'armor'}
             )
+        # Standard-mode infantry speed also needs a direct value: the country
+        # multiplier cannot enforce a per-TechnoType safe ceiling.
+        if buff_type == 'speed' and target.get('category') == 'infantry':
+            direct_chaos_types.add('speed')
         if buff_type not in CLONE_REQUIRED_BUFF_TYPES and buff_type not in direct_chaos_types:
-            continue
-        unit_id = str(reward.get('unit') or '').upper()
-        target = BUFF_TARGETS.get(unit_id, {})
-        if not unit_id or not target:
             continue
         if (
             buff_type in WEAPON_STAT_BUFF_TYPES
@@ -1213,6 +1243,7 @@ def _active_direct_buff_counts(
             'cost': 'cost',
             'speed': 'speed',
             'armor': 'strength',
+            'build_limit': 'build_limit',
         }.get(buff_type)
         if required_field and required_field not in target:
             continue
@@ -2251,6 +2282,7 @@ def player_unit_clone_rules(
     build_owner_ids=(),
     helper_autobuild_support=None,
     forced_buildable_clone_ids=(),
+    unlimited_build_limit_unit_ids=(),
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
 ):
@@ -2364,6 +2396,12 @@ def player_unit_clone_rules(
         str(item).upper()
         for item in (forced_buildable_clone_ids or ())
         if str(item).upper() in buildable_ids
+    }
+    unlimited_limit_ids = {
+        str(item).upper()
+        for item in (unlimited_build_limit_unit_ids or ())
+        if str(item).upper() in buildable_ids
+        and str(item).upper() in LIMITED_HERO_UNIT_IDS
     }
     owner_ids = [str(item) for item in build_owner_ids if item]
     helper_autobuild_support = {
@@ -2684,6 +2722,14 @@ def player_unit_clone_rules(
     existing_candidate_ids.update(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     )
+    clone_candidates.extend(
+        (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
+        for unit_id in sorted(unlimited_limit_ids)
+        if unit_id in BUFF_TARGETS and unit_id not in existing_candidate_ids
+    )
+    existing_candidate_ids.update(
+        str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
+    )
     for unit_id, target_unit_id, counts in clone_candidates:
         unit_id = str(unit_id).upper()
         target = BUFF_TARGETS.get(target_unit_id, {})
@@ -2789,6 +2835,14 @@ def player_unit_clone_rules(
             and unit_id in buildable_ids
         )
         forced_player_clone = unit_id in forced_clone_ids or defense_buildable
+        forced_isolated_clone = (
+            unit_id in unlimited_limit_ids
+            or 'build_limit' in direct_types
+            or (
+                'speed' in direct_types
+                and target.get('category') == 'infantry'
+            )
+        )
         variant_has_effect = bool(direct_types) or any(
             direct_weapon_keys.get(weapon.upper())
             for weapon in target.get('weapons', {})
@@ -2808,6 +2862,7 @@ def player_unit_clone_rules(
             and not helper_autobuild_shared
             and not shared_player_veteran
             and not forced_player_clone
+            and not forced_isolated_clone
             and not needs_direct_house_fallback
         ) or (
             is_variant
@@ -2816,6 +2871,7 @@ def player_unit_clone_rules(
             and not helper_autobuild_shared
             and not shared_player_veteran
             and not forced_player_clone
+            and not forced_isolated_clone
         ):
             continue
 
@@ -2912,7 +2968,16 @@ def player_unit_clone_rules(
             # BuildLimit=1. Launcher locks (0) and one-build-only limits (-1)
             # can deadlock Autocreate teams and remain intentionally removed.
             _remove_case_insensitive(clone_values, 'BuildLimit')
-            if clone_build_limit:
+            if target_unit_id in LIMITED_HERO_UNIT_IDS:
+                if unit_id in unlimited_limit_ids:
+                    handled_unit_types.add('build_limit')
+                elif clone_build_limit:
+                    build_limit = int(clone_build_limit)
+                    if counts.get('build_limit'):
+                        build_limit += int(counts['build_limit'])
+                        handled_unit_types.add('build_limit')
+                    clone_values['BuildLimit'] = str(build_limit)
+            elif clone_build_limit:
                 clone_values['BuildLimit'] = clone_build_limit
             helper_support = helper_autobuild_support.get(unit_id, {})
             helper_owner_ids = [
