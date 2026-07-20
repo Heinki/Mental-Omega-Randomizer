@@ -20,7 +20,6 @@ BUGS AND IMPROVEMENTS
 -------------------------
 
 - Some Foehn units are not working
-- Investigate Save/loading
 - Super powers been given to the wrong house and not the player in SAWAKE and ASIREN, launcher 1 in downloads all for loggin
 - Commend from Crabuff Okay, so finished first run.
 Working mostly fine, had 2 issues: IC was modified in A6, had like 1 minute cooldown, and F2 didn't have defenses available for some reason. 
@@ -51,7 +50,7 @@ Allies: (Jackal Racer Prototype, Future Tank X-0, Diverbee Prototype, Tarchia Pr
 Epsilon: Rashidi(?), Cosmonaut, 
 Foehn: (Prototype Bison Tank????)
 
-- The raven no unit unlocks when getting the player faction,  Memory dealer crash, dance of blood no unlocks, The Remnant
+- The raven no unit unlocks when getting the player faction,  Memory dealer crash, dance of blood no unlocks, The Remnant, babel check, babel instant loss when the cutscene is over.
 - limit infantry movement speed after a certain speed level they get stuck, vehicles are fine.
 
 These are just the ones I could find by doing a very quick wiki search before I go off to bed- these all should have unique sidebar icons
@@ -62,3 +61,9 @@ The levels will be divided into 3 categories:
 •Easy, Medium, and Hard. Easy will be worth 1 point, Medium 2 points, and Hard 3 points (reward points).
 
 •The points earned from the levels can be used in the shop section of the main launcher to unlock new technologies and units (for example: 1 point to unlock Conscript, 3 points for Rhino Tank, or 2 points for Sniper+Pyro).
+
+
+INFO
+there's Survivors, Nightcrawler and Obsidian Sands, there's also Fullmetal, but your Allies in between a fight with Psicorps and Scorpion Cell.
+
+https://ares-developers.github.io/Ares-docs/new/typeselect.html?highlight=group for grouping same units and cloned units

@@ -42,7 +42,10 @@ from randomizer_missions import (
     seed_campaign_limits,
     seed_mission_order,
 )
-from randomizer_mission_houses import mission_house_config
+from randomizer_mission_houses import (
+    mission_house_config,
+    mission_player_production_houses,
+)
 from randomizer_ini import (
     all_section_value_maps,
     merge_ini_section_values,
@@ -290,6 +293,8 @@ class LauncherApp(tk.Tk):
         self.mission_sort_reverse = False
         self.grid_render_signature = None
         self.grid_tile_widgets = {}
+        self.grid_configured_width = 0
+        self.grid_configured_height = 0
         self.selected_index = tk.IntVar(value=0)
         difficulty_default = valid_choice(
             self.config.get('difficulty'),
@@ -489,8 +494,45 @@ class LauncherApp(tk.Tk):
 
         self.grid_frame = ttk.Frame(main_frame, padding=(4, 4, 4, 4))
         self.grid_frame.grid(row=2, column=0, columnspan=2, rowspan=5, sticky='nsew', padx=(0, 8))
-        self.grid_placeholder = ttk.Label(
+        self.grid_frame.columnconfigure(0, weight=1)
+        self.grid_frame.rowconfigure(0, weight=1)
+        self.grid_canvas = tk.Canvas(
             self.grid_frame,
+            borderwidth=0,
+            highlightthickness=0,
+            background='#e9ecef',
+        )
+        self.grid_vertical_scrollbar = ttk.Scrollbar(
+            self.grid_frame,
+            orient='vertical',
+            command=self.grid_canvas.yview,
+        )
+        self.grid_horizontal_scrollbar = ttk.Scrollbar(
+            self.grid_frame,
+            orient='horizontal',
+            command=self.grid_canvas.xview,
+        )
+        self.grid_canvas.configure(
+            xscrollcommand=self.grid_horizontal_scrollbar.set,
+            yscrollcommand=self.grid_vertical_scrollbar.set,
+        )
+        self.grid_canvas.grid(row=0, column=0, sticky='nsew')
+        self.grid_vertical_scrollbar.grid(row=0, column=1, sticky='ns')
+        self.grid_horizontal_scrollbar.grid(row=1, column=0, sticky='ew')
+        self.grid_content_frame = ttk.Frame(self.grid_canvas)
+        self.grid_canvas_window = self.grid_canvas.create_window(
+            (0, 0),
+            window=self.grid_content_frame,
+            anchor='nw',
+        )
+        self.grid_content_frame.bind(
+            '<Configure>', self.on_grid_content_configure, add='+'
+        )
+        self.grid_canvas.bind('<Configure>', self.on_grid_canvas_configure, add='+')
+        self.bind_all('<MouseWheel>', self.on_grid_mousewheel, add='+')
+        self.bind_all('<Shift-MouseWheel>', self.on_grid_shift_mousewheel, add='+')
+        self.grid_placeholder = ttk.Label(
+            self.grid_content_frame,
             text='Generate a Grid Mode seed to create the mission grid.',
             anchor='center',
             justify='center',
@@ -1118,6 +1160,59 @@ class LauncherApp(tk.Tk):
             return None
         steps = -1 if event.delta > 0 else 1
         self.settings_canvas.yview_scroll(steps, 'units')
+        return 'break'
+
+    def on_grid_content_configure(self, event=None):
+        self.resize_grid_canvas_window()
+
+    def on_grid_canvas_configure(self, event=None):
+        self.resize_grid_canvas_window()
+
+    def resize_grid_canvas_window(self):
+        if not hasattr(self, 'grid_canvas_window'):
+            return
+        self.grid_content_frame.update_idletasks()
+        width = max(
+            self.grid_canvas.winfo_width(),
+            self.grid_content_frame.winfo_reqwidth(),
+        )
+        height = max(
+            self.grid_canvas.winfo_height(),
+            self.grid_content_frame.winfo_reqheight(),
+        )
+        self.grid_canvas.itemconfigure(
+            self.grid_canvas_window,
+            width=width,
+            height=height,
+        )
+        self.grid_canvas.configure(scrollregion=(0, 0, width, height))
+
+    def grid_canvas_contains_pointer(self):
+        if (
+            not hasattr(self, 'grid_canvas')
+            or self.active_progression_mode() != 'Grid Mode'
+            or not self.grid_frame.winfo_ismapped()
+        ):
+            return False
+        pointer_x = self.winfo_pointerx()
+        pointer_y = self.winfo_pointery()
+        left = self.grid_canvas.winfo_rootx()
+        top = self.grid_canvas.winfo_rooty()
+        return (
+            left <= pointer_x <= left + self.grid_canvas.winfo_width()
+            and top <= pointer_y <= top + self.grid_canvas.winfo_height()
+        )
+
+    def on_grid_mousewheel(self, event):
+        if not self.grid_canvas_contains_pointer():
+            return None
+        self.grid_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
+        return 'break'
+
+    def on_grid_shift_mousewheel(self, event):
+        if not self.grid_canvas_contains_pointer():
+            return None
+        self.grid_canvas.xview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
     def focus_unlock_search(self, event=None):
@@ -2494,20 +2589,34 @@ class LauncherApp(tk.Tk):
 
     def redraw_grid(self):
         grid = self.state.get('grid') if self.state else None
+        content_frame = self.grid_content_frame
         if not isinstance(grid, dict) or not grid.get('nodes'):
             if self.grid_render_signature != ('empty',):
-                for child in self.grid_frame.winfo_children():
+                for child in content_frame.winfo_children():
                     child.destroy()
+                for column in range(self.grid_configured_width):
+                    content_frame.columnconfigure(
+                        column, weight=0, minsize=0, uniform=''
+                    )
+                for row in range(self.grid_configured_height):
+                    content_frame.rowconfigure(
+                        row, weight=0, minsize=0, uniform=''
+                    )
+                self.grid_configured_width = 1
+                self.grid_configured_height = 1
                 self.grid_tile_widgets = {}
                 self.grid_render_signature = ('empty',)
                 ttk.Label(
-                    self.grid_frame,
+                    content_frame,
                     text='Generate a Grid Mode seed to create the mission grid.',
                     anchor='center',
                     justify='center',
                 ).grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
-                self.grid_frame.columnconfigure(0, weight=1)
-                self.grid_frame.rowconfigure(0, weight=1)
+                content_frame.columnconfigure(0, weight=1)
+                content_frame.rowconfigure(0, weight=1)
+                self.grid_canvas.xview_moveto(0)
+                self.grid_canvas.yview_moveto(0)
+                self.after_idle(self.resize_grid_canvas_window)
             return
 
         index_by_code = {mission['code']: idx for idx, mission in enumerate(self.missions)}
@@ -2526,23 +2635,25 @@ class LauncherApp(tk.Tk):
             self.refresh_grid_tiles()
             return
 
-        for child in self.grid_frame.winfo_children():
+        for child in content_frame.winfo_children():
             child.destroy()
         self.grid_tile_widgets = {}
         self.grid_render_signature = signature
-        for column in range(12):
-            self.grid_frame.columnconfigure(column, weight=0, minsize=0, uniform='')
-        for row in range(12):
-            self.grid_frame.rowconfigure(row, weight=0, minsize=0, uniform='')
+        for column in range(max(width, self.grid_configured_width)):
+            content_frame.columnconfigure(column, weight=0, minsize=0, uniform='')
+        for row in range(max(height, self.grid_configured_height)):
+            content_frame.rowconfigure(row, weight=0, minsize=0, uniform='')
+        self.grid_configured_width = width
+        self.grid_configured_height = height
         for column in range(width):
-            self.grid_frame.columnconfigure(
+            content_frame.columnconfigure(
                 column,
                 weight=1,
                 minsize=105,
                 uniform='grid-column',
             )
         for row in range(height):
-            self.grid_frame.rowconfigure(row, weight=1, minsize=88, uniform='grid-row')
+            content_frame.rowconfigure(row, weight=1, minsize=88, uniform='grid-row')
 
         positions = {
             (node['x'], node['y']): code
@@ -2555,12 +2666,12 @@ class LauncherApp(tk.Tk):
             for column in range(width):
                 if (column, row) in positions:
                     continue
-                spacer = tk.Frame(self.grid_frame, background='#e9ecef', borderwidth=0)
+                spacer = tk.Frame(content_frame, background='#e9ecef', borderwidth=0)
                 spacer.grid(row=row, column=column, sticky='nsew', padx=3, pady=3)
 
         for code, node in grid['nodes'].items():
             tile = tk.Frame(
-                self.grid_frame,
+                content_frame,
                 relief='flat',
                 borderwidth=0,
                 cursor='hand2',
@@ -2617,6 +2728,9 @@ class LauncherApp(tk.Tk):
                 'banner': banner,
                 'body': body,
             }
+        self.grid_canvas.xview_moveto(0)
+        self.grid_canvas.yview_moveto(0)
+        self.after_idle(self.resize_grid_canvas_window)
         self.refresh_grid_tiles()
 
     def refresh_grid_tiles(self, mission_codes=None):
@@ -3402,16 +3516,21 @@ class LauncherApp(tk.Tk):
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
         starting_unit_ids = self.active_starting_tier_one_unit_ids()
+        production_houses = mission_player_production_houses(
+            mission.get('code')
+        )
         if self.active_reward_mode() == 'Chaos (Experimental)':
             rules = chaos_earned_access_rules(
                 lines,
                 self.active_launch_rewards(),
                 additional_build_houses=(),
+                additional_production_houses=production_houses,
             )
             transport_rules = always_available_transport_rules(
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
+                additional_production_houses=production_houses,
             )
             for section, values in transport_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -3419,6 +3538,7 @@ class LauncherApp(tk.Tk):
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
+                additional_production_houses=production_houses,
             )
             for section, values in engineer_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -3427,6 +3547,7 @@ class LauncherApp(tk.Tk):
                 starting_unit_ids,
                 chaos_mode=True,
                 additional_build_houses=(),
+                additional_production_houses=production_houses,
             )
             for section, values in starter_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -3446,10 +3567,12 @@ class LauncherApp(tk.Tk):
             earned_access_ids=earned_access_ids,
             translate_equivalents=translate_equivalents,
             additional_build_houses=(),
+            additional_production_houses=production_houses,
         )
         transport_rules = always_available_transport_rules(
             lines,
             additional_build_houses=(),
+            additional_production_houses=production_houses,
         )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -3466,6 +3589,7 @@ class LauncherApp(tk.Tk):
             starting_unit_ids,
             standard_families=standard_starter_families,
             additional_build_houses=(),
+            additional_production_houses=production_houses,
         )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -3882,7 +4006,9 @@ throw "Map $name was not found in expandmo*.mix"
                 buildable_clone_ids.update(
                     unit_id
                     for unit_id, target in BUFF_TARGETS.items()
-                    if target.get('category') in {'infantry', 'units', 'aircraft'}
+                    if target.get('category') in {
+                        'infantry', 'units', 'aircraft', 'defenses',
+                    }
                 )
             helper_autobuild = (
                 helper_ai_autobuild_plan(
@@ -3924,13 +4050,13 @@ throw "Map $name was not found in expandmo*.mix"
             if clone_rule_sections:
                 merge_ini_section_values(lines, clone_rule_sections)
                 self.append_log(
-                    'Prepared isolated standalone player unit clones for: '
+                    'Prepared isolated standalone player unit/defense clones for: '
                     + ', '.join(cloned_unit_names)
                     + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
                 )
             if clone_warnings:
                 self.append_log(
-                    'Player unit clone limitations: '
+                    'Player unit/defense clone limitations: '
                     + '; '.join(clone_warnings)
                     + '.',
                     error=True,

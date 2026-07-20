@@ -1110,6 +1110,18 @@ def apply_unit_buff_value(values, target, buff_type, count):
     elif buff_type == 'cost':
         multiplier = max(0.30, 0.80 ** count)
         values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
+    elif buff_type == 'production':
+        multiplier = max(0.35, 0.85 ** count)
+        existing_key = next(
+            (
+                key
+                for key in values
+                if str(key).lower() == 'buildtimemultiplier'
+            ),
+            'BuildTimeMultiplier',
+        )
+        base = parse_float(values.get(existing_key), 1.0)
+        values[existing_key] = format_multiplier(base * multiplier)
     elif buff_type == 'speed':
         multiplier = min(1.75, 1.10 ** count)
         values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
@@ -1141,6 +1153,7 @@ TECHNO_TYPE_LISTS = {
     'infantry': 'InfantryTypes',
     'units': 'VehicleTypes',
     'aircraft': 'AircraftTypes',
+    'defenses': 'BuildingTypes',
 }
 
 
@@ -1150,6 +1163,8 @@ def _active_direct_buff_counts(
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
+    include_house_scoped_fallback=False,
+    house_scoped_only=False,
 ):
     """Group applicable direct TechnoType/WeaponType buffs by source unit."""
     grouped_counts = {}
@@ -1166,7 +1181,19 @@ def _active_direct_buff_counts(
         if reward.get('kind') != 'buff':
             continue
         buff_type = reward.get('buff_type')
-        direct_chaos_types = {'cost', 'speed', 'armor'} if unit_specific_mode else set()
+        if house_scoped_only and buff_type not in {
+            'production', 'cost', 'speed', 'armor',
+        }:
+            continue
+        direct_chaos_types = (
+            {'production', 'cost', 'speed', 'armor'}
+            if unit_specific_mode
+            else set()
+        )
+        if include_house_scoped_fallback:
+            direct_chaos_types.update(
+                {'production', 'cost', 'speed', 'armor'}
+            )
         if buff_type not in CLONE_REQUIRED_BUFF_TYPES and buff_type not in direct_chaos_types:
             continue
         unit_id = str(reward.get('unit') or '').upper()
@@ -1249,8 +1276,9 @@ def _clone_reference_rules(
     reserved_ids,
     taskforce_replacements=None,
     taskforce_allowed_houses=None,
+    structure_plan_allowed_houses_by_unit=None,
 ):
-    """Rewrite friendly placements and split friendly TaskForce consumers."""
+    """Rewrite friendly placements, base plans, and TaskForce consumers."""
     section_rules = {}
     taskforce_replacements = (
         replacements
@@ -1262,9 +1290,17 @@ def _clone_reference_rules(
         if taskforce_allowed_houses is None
         else taskforce_allowed_houses
     )
+    structure_plan_allowed_houses_by_unit = {
+        str(unit_id).upper(): {
+            str(house).lower() for house in houses if house
+        }
+        for unit_id, houses in (
+            structure_plan_allowed_houses_by_unit or {}
+        ).items()
+    }
     rewritten = 0
     mixed_taskforces = []
-    for section in ('Infantry', 'Units', 'Aircraft'):
+    for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
         for key, value in section_value_map_preserve(lines, section).items():
             tokens = [token.strip() for token in value.split(',')]
             if len(tokens) < 2 or tokens[0].lower() not in allowed_houses:
@@ -1277,6 +1313,76 @@ def _clone_reference_rules(
             rewritten += 1
 
     sections = all_section_value_maps(lines)
+    sections_by_lower = {
+        str(section).lower(): values for section, values in sections.items()
+    }
+    trigger_values = sections_by_lower.get('triggers', {})
+    usage_index = build_unit_usage_index(lines)
+    globally_friendly_replacement_ids = set()
+    for source_id in replacements:
+        usage_houses = {
+            str(house).lower()
+            for house in unit_usage_houses(lines, source_id, usage_index)
+            if house
+        }
+        if usage_houses and usage_houses.issubset(allowed_houses):
+            globally_friendly_replacement_ids.add(source_id)
+    # Events such as "TechnoType does not exist" and actions such as
+    # "create/delete TechnoType" carry exact IDs. Mission triggers are often
+    # owned by a story/enemy house unrelated to the watched player hero
+    # (EMIGDAL watches PsiCorps LIBRA from a UnitedStates trigger). When every
+    # actual consumer of a cloned type is friendly, all exact trigger
+    # references are therefore safe and necessary to retarget. Shared types
+    # remain restricted to player/buffed-helper-owned trigger lists.
+    for section in ('Events', 'Actions'):
+        for key, value in section_value_map_preserve(lines, section).items():
+            trigger = trigger_values.get(str(key).lower(), '')
+            trigger_owner = str(trigger).split(',', 1)[0].strip().lower()
+            tokens = [token.strip() for token in value.split(',')]
+            replaced = False
+            for index, token in enumerate(tokens):
+                source_id = token.upper()
+                if source_id not in replacements:
+                    continue
+                if (
+                    source_id not in globally_friendly_replacement_ids
+                    and trigger_owner not in allowed_houses
+                ):
+                    continue
+                tokens[index] = replacements[source_id]
+                replaced = True
+            if not replaced:
+                continue
+            replacement = ','.join(tokens)
+            if len(f'{key}={replacement}'.encode('utf-8')) > MAX_MAP_ACTION_LINE_LENGTH:
+                mixed_taskforces.append(
+                    f'{section} {key} TechnoType clone rewrite exceeds parser limit'
+                )
+                continue
+            section_rules.setdefault(section, {})[key] = replacement
+            rewritten += 1
+
+    # Campaign AI base plans store ``BuildingType,...`` under numbered keys in
+    # each House section. Rewrite only player and opted-in buffed-helper plans;
+    # enemy plans must retain the unbuffed original defense ID.
+    for section, values in sections.items():
+        section_lower = str(section).lower()
+        for key, value in values.items():
+            if not str(key).isdigit():
+                continue
+            tokens = [token.strip() for token in value.split(',')]
+            if not tokens:
+                continue
+            source_id = tokens[0].upper()
+            replacement = replacements.get(source_id)
+            if not replacement or section_lower not in (
+                structure_plan_allowed_houses_by_unit.get(source_id, set())
+            ):
+                continue
+            tokens[0] = replacement
+            section_rules.setdefault(section, {})[key] = ','.join(tokens)
+            rewritten += 1
+
     taskforce_owners = taskforce_usage_houses(lines, sections=sections)
     ai_team_houses = ai_trigger_team_usage_houses(lines)
     directly_created = directly_created_team_ids(lines)
@@ -2148,13 +2254,14 @@ def player_unit_clone_rules(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
 ):
-    """Build narrow player-only combat clones for otherwise unsafe direct buffs.
+    """Build narrow player-only TechnoType clones for unsafe direct buffs.
 
     Complete installed sections are copied into standalone clones, with only
     mission production gates overlaid for buildable player types. Player-owned
-    references can be rewritten. Helper TaskForces use buffed clones while
-    their native originals remain buildable as dynamic-AI fallbacks. Enemy
-    consumers remain on originals. Parallel helper teams use verified clones.
+    references can be rewritten. Helper TaskForces and defense base plans
+    use buffed clones while native originals remain dynamic-AI fallbacks.
+    Enemy consumers remain on originals. Parallel helper teams use verified
+    mobile clones.
     """
     installed_sections = installed_sections or {}
     records, allowed_houses = _allowed_buff_house_names(
@@ -2199,6 +2306,26 @@ def player_unit_clone_rules(
     # are still retained separately for unmodified dynamic-AI fallback rules.
     allowed_houses.update(buffed_helper_names)
 
+    usage_index = build_unit_usage_index(lines)
+    # Some campaign child countries share their ParentCountry with scripted
+    # enemies. Country/category multipliers are then intentionally skipped to
+    # prevent leakage. With no buffed helper sharing these clones, bake the
+    # four TechnoType-compatible multipliers into isolated player clones so
+    # earned production/cost/speed/armor rewards do not silently disappear.
+    player_country_buff_unsafe = any(
+        unsafe_country_houses(
+            lines,
+            records.get(house, {}).get('country')
+            or house.replace(' House', ''),
+            list(allowed_houses),
+            records=records,
+            usage_index=usage_index,
+        )
+        for house in player_houses
+    )
+    direct_house_scoped_fallback = bool(
+        player_country_buff_unsafe and not buffed_helper_houses
+    )
     counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -2206,7 +2333,21 @@ def player_unit_clone_rules(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
     )
-    usage_index = build_unit_usage_index(lines)
+    if direct_house_scoped_fallback and not unit_specific_mode:
+        # Standard role sharing already receives direct health/weapon peers.
+        # Keep this last-resort country-buff replacement on the earned native
+        # unit IDs; expanding four more categories to every role peer creates
+        # hundreds of unnecessary clones in large campaign maps.
+        fallback_counts = _active_direct_buff_counts(
+            rewards,
+            require_unlocked_access=require_unlocked_access,
+            additional_unlocked_tech_ids=additional_unlocked_tech_ids,
+            share_basic_equivalent_buffs=False,
+            include_house_scoped_fallback=True,
+            house_scoped_only=True,
+        )
+        for unit_id, counts in fallback_counts.items():
+            counts_by_unit.setdefault(unit_id, {}).update(counts)
     map_sections = all_section_value_maps(lines)
     native_map_sections = native_map_sections or map_sections
     installed_name_by_lower = {
@@ -2258,6 +2399,20 @@ def player_unit_clone_rules(
         records.get(house, {}).get('country') or house.replace(' House', '')
         for house in player_houses
     )
+    defense_helper_houses = []
+    defense_helper_country_names = set()
+    for house in buffed_helper_houses:
+        country = str(
+            records.get(house, {}).get('country') or house.replace(' House', '')
+        )
+        if not country:
+            continue
+        # Unlike country-section buffs, a standalone defense clone is gated by
+        # exact concrete Owner/RequiredHouses IDs. ParentCountry descendants do
+        # not need to be rejected: enemy base plans stay on the native type.
+        # Rejecting them skipped the Europeans/Pacific bases in AWITHER.
+        defense_helper_houses.append(house)
+        defense_helper_country_names.add(country.lower())
     shared_player_veteran_ids = set()
     for country in main_player_countries:
         if not unsafe_country_houses(
@@ -2279,7 +2434,10 @@ def player_unit_clone_rules(
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=unit_specific_mode,
         )
-        for field in ('VeteranInfantry', 'VeteranUnits', 'VeteranAircraft'):
+        for field in (
+            'VeteranInfantry', 'VeteranUnits', 'VeteranAircraft',
+            'VeteranBuildings',
+        ):
             shared_player_veteran_ids.update(
                 unit_id.upper()
                 for unit_id in comma_items(
@@ -2290,11 +2448,46 @@ def player_unit_clone_rules(
     section_rules = {}
     replacements = {}
     taskforce_replacements = {}
+    structure_plan_allowed_houses_by_unit = {}
     player_veterancy_replacements = {}
     cloned_labels = []
     handled_by_unit = {}
     unsupported = []
     missing = []
+
+    # Event 61 is the campaign's exact TechnoType-destroyed/nonexistent test.
+    # Its Trigger owner is often only a story executor and does not identify
+    # which House's object is being watched. If a type has both friendly and
+    # non-friendly consumers and such an event is owned outside the assisted
+    # coalition, neither globally retargeting it nor leaving it on the source
+    # is safe after cloning. Keep that map's type native instead. Direct global
+    # buffs will then be rejected by the normal usage guard, but hero loss and
+    # objective scripts cannot fire merely because the clone changed identity.
+    ambiguous_mission_event_ids = set()
+    trigger_values = {
+        str(key).lower(): value
+        for key, value in section_value_map_preserve(lines, 'Triggers').items()
+    }
+    for key, value in section_value_map_preserve(lines, 'Events').items():
+        tokens = [token.strip().upper() for token in str(value).split(',')]
+        if '61' not in tokens:
+            continue
+        trigger_owner = str(
+            trigger_values.get(str(key).lower(), '')
+        ).split(',', 1)[0].strip().lower()
+        if trigger_owner in allowed_houses:
+            continue
+        for unit_id in set(tokens).intersection(BUFF_TARGETS):
+            usage_houses = {
+                str(house).lower()
+                for house in unit_usage_houses(lines, unit_id, usage_index)
+                if house
+            }
+            if (
+                usage_houses.intersection(allowed_houses)
+                and not usage_houses.issubset(allowed_houses)
+            ):
+                ambiguous_mission_event_ids.add(unit_id)
 
     native_helper_taskforces = _helper_autocreate_taskforce_units(
         lines,
@@ -2366,6 +2559,10 @@ def player_unit_clone_rules(
                 country
                 for country in matching_countries
                 if country.lower() in buffed_helper_names
+                and (
+                    BUFF_TARGETS.get(unit_id, {}).get('category') != 'defenses'
+                    or country.lower() in defense_helper_country_names
+                )
             ]
             unit_support = None
             if buffed_countries:
@@ -2384,6 +2581,45 @@ def player_unit_clone_rules(
                 if unit_support is not None:
                     unit_support['prerequisites'] = unique_in_order(
                         list(unit_support.get('prerequisites', ())) + [alternative]
+                    )
+
+    # Numbered helper House entries are exact defense construction requests.
+    # Concrete RequiredHouses ownership isolates opted-in helper clones while
+    # enemy plans retain native IDs.
+    for house in defense_helper_houses:
+        country = str(
+            records.get(house, {}).get('country') or house.replace(' House', '')
+        )
+        for key, value in section_value_map_preserve(lines, house).items():
+            if not str(key).isdigit():
+                continue
+            unit_id = str(value).split(',', 1)[0].strip().upper()
+            if (
+                unit_id not in buildable_ids
+                or BUFF_TARGETS.get(unit_id, {}).get('category') != 'defenses'
+            ):
+                continue
+            native_helper_source_ids.add(unit_id)
+            installed_unit = installed_name_by_lower.get(unit_id.lower())
+            native_unit = native_map_name_by_lower.get(unit_id.lower())
+            native_values = _standalone_clone_values_from_maps(
+                installed_sections.get(installed_unit, {}) if installed_unit else {},
+                native_map_sections.get(native_unit, {}) if native_unit else {},
+            )
+            alternative = _helper_prerequisite_alternative(native_values)
+            for support_table in (
+                native_helper_support,
+                helper_autobuild_support,
+            ):
+                support = support_table.setdefault(
+                    unit_id, {'countries': [], 'prerequisites': []}
+                )
+                support['countries'] = unique_in_order(
+                    list(support.get('countries', ())) + [country]
+                )
+                if alternative:
+                    support['prerequisites'] = unique_in_order(
+                        list(support.get('prerequisites', ())) + [alternative]
                     )
 
     clone_candidates = [
@@ -2406,7 +2642,13 @@ def player_unit_clone_rules(
     clone_candidates.extend(
         (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
         for unit_id in sorted(native_helper_source_ids.intersection(buildable_ids))
-        if unit_id in BUFF_TARGETS and unit_id not in existing_candidate_ids
+        if unit_id in BUFF_TARGETS
+        and unit_id not in existing_candidate_ids
+        and (
+            BUFF_TARGETS[unit_id].get('category') != 'defenses'
+            or unit_id in counts_by_unit
+            or unit_id in shared_player_veteran_ids
+        )
     )
     existing_candidate_ids.update(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
@@ -2417,6 +2659,11 @@ def player_unit_clone_rules(
         if unit_id in buildable_ids
         and unit_id in BUFF_TARGETS
         and unit_id not in existing_candidate_ids
+        and (
+            BUFF_TARGETS[unit_id].get('category') != 'defenses'
+            or unit_id in counts_by_unit
+            or unit_id in shared_player_veteran_ids
+        )
     )
     existing_candidate_ids.update(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
@@ -2440,6 +2687,11 @@ def player_unit_clone_rules(
     for unit_id, target_unit_id, counts in clone_candidates:
         unit_id = str(unit_id).upper()
         target = BUFF_TARGETS.get(target_unit_id, {})
+        if unit_id in ambiguous_mission_event_ids:
+            unsupported.append(
+                f'{target.get("label", target_unit_id)} shared mission event kept native'
+            )
+            continue
         list_section = TECHNO_TYPE_LISTS.get(target.get('category'))
         if not list_section:
             continue
@@ -2532,11 +2784,21 @@ def player_unit_clone_rules(
         native_helper_shared = unit_id in native_helper_source_ids
         helper_autobuild_shared = unit_id in helper_autobuild_support
         shared_player_veteran = unit_id in shared_player_veteran_ids
-        forced_player_clone = unit_id in forced_clone_ids
+        defense_buildable = (
+            target.get('category') == 'defenses'
+            and unit_id in buildable_ids
+        )
+        forced_player_clone = unit_id in forced_clone_ids or defense_buildable
         variant_has_effect = bool(direct_types) or any(
             direct_weapon_keys.get(weapon.upper())
             for weapon in target.get('weapons', {})
             if weapon_buff_types
+        )
+        needs_direct_house_fallback = bool(
+            direct_house_scoped_fallback
+            and direct_types.intersection(
+                {'production', 'cost', 'speed', 'armor'}
+            )
         )
         if (
             not is_variant
@@ -2546,6 +2808,7 @@ def player_unit_clone_rules(
             and not helper_autobuild_shared
             and not shared_player_veteran
             and not forced_player_clone
+            and not needs_direct_house_fallback
         ) or (
             is_variant
             and not variant_has_effect
@@ -2577,7 +2840,7 @@ def player_unit_clone_rules(
         handled_weapon_ids = set()
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
-            'sensors', 'cost', 'speed',
+            'sensors', 'production', 'cost', 'speed',
         ):
             if buff_type in direct_types and apply_unit_buff_value(
                 clone_values, effective_target, buff_type, counts[buff_type]
@@ -2657,12 +2920,38 @@ def player_unit_clone_rules(
                 for item in helper_support.get('countries', ())
                 if item
             ]
+            if target.get('category') == 'defenses':
+                helper_country_names = {
+                    country.lower() for country in helper_owner_ids
+                }
+                structure_plan_allowed_houses_by_unit[unit_id] = unique_in_order(
+                    player_houses
+                    + [
+                        house
+                        for house in defense_helper_houses
+                        if str(
+                            records.get(house, {}).get('country')
+                            or house.replace(' House', '')
+                        ).lower() in helper_country_names
+                    ]
+                )
             clone_owner_ids = unique_in_order(owner_ids + helper_owner_ids)
             if clone_owner_ids:
-                owners = ','.join(clone_owner_ids)
+                # Factories evaluate Owner through the active country's
+                # ParentCountry. Campaigns such as SRAVEN use a concrete
+                # ``Player`` child of USSR; Owner=Player alone leaves its
+                # transferred Soviet barracks/factory empty. Include parent
+                # IDs for factory eligibility, while RequiredHouses remains
+                # concrete and keeps hostile USSR descendants off the clone.
+                production_owners = ','.join(
+                    production_owner_countries(
+                        lines, clone_owner_ids, sections=map_sections
+                    )
+                )
+                required_houses = ','.join(clone_owner_ids)
                 clone_values.update({
-                    'Owner': owners,
-                    'RequiredHouses': owners,
+                    'Owner': production_owners,
+                    'RequiredHouses': required_houses,
                 })
                 # RequiredHouses is the positive isolation gate. A negative
                 # list containing a helper's ParentCountry can make Ares reject
@@ -2763,8 +3052,13 @@ def player_unit_clone_rules(
         )
         section_rules[clone_id] = clone_values
         replacements[unit_id] = clone_id
-        if unit_id in buildable_ids:
-            taskforce_replacements[unit_id] = clone_id
+        # Scripted teams must follow every friendly clone, including locked
+        # map-local hero variants. Otherwise exact loss triggers can watch the
+        # clone while a reinforcement TaskForce still creates the native ID,
+        # causing an immediate false mission failure (SNOISE Drakuv escorts).
+        # _clone_reference_rules keeps enemy consumers native and splits shared
+        # TaskForces, so reference-only clones are safe here.
+        taskforce_replacements[unit_id] = clone_id
         handled_by_unit[unit_id] = {
             'unit_buff_types': handled_unit_types,
             'weapon_ids': handled_weapon_ids,
@@ -2898,6 +3192,9 @@ def player_unit_clone_rules(
         # Their native originals remain factory-buildable below as a fallback
         # for dynamic country-roster requests that do not use a map TaskForce.
         taskforce_allowed_houses=allowed_houses,
+        structure_plan_allowed_houses_by_unit=(
+            structure_plan_allowed_houses_by_unit
+        ),
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)
@@ -2910,6 +3207,7 @@ def player_unit_clone_rules(
         'infantry': 'VeteranInfantry',
         'units': 'VeteranUnits',
         'aircraft': 'VeteranAircraft',
+        'defenses': 'VeteranBuildings',
     }
     player_countries = unique_in_order(
         main_player_countries
@@ -3393,6 +3691,38 @@ def country_inherits_from(lines, country, ancestor, sections=None):
             break
         current = parent
     return False
+
+
+def production_owner_countries(lines, countries, sections=None):
+    """Return concrete countries plus their ParentCountry chains.
+
+    Mental Omega campaign houses frequently use a custom country while their
+    acquired factories operate through its parent faction. ``Owner`` needs
+    both identities; callers retain only concrete IDs in ``RequiredHouses``
+    so inherited enemy countries cannot consume isolated player/helper tech.
+    """
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    by_lower = {
+        str(name).lower(): (str(name), values)
+        for name, values in sections.items()
+    }
+    result = []
+    seen = set()
+    for country in countries or ():
+        current = str(country or '').strip()
+        chain_seen = set()
+        while current and current.lower() not in chain_seen:
+            current_lower = current.lower()
+            chain_seen.add(current_lower)
+            if current_lower not in seen:
+                seen.add(current_lower)
+                result.append(current)
+            _section_name, values = by_lower.get(current_lower, ('', {}))
+            parent = str(values.get('parentcountry', '') or '').strip()
+            if not parent or parent.lower() == current_lower:
+                break
+            current = parent
+    return result
 
 
 def map_house_records(lines, sections=None):

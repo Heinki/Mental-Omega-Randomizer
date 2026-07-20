@@ -13,6 +13,7 @@ from randomizer_map import (
     player_controlled_houses,
     player_house_from_map,
     player_transfer_houses,
+    production_owner_countries,
     resolve_configured_helper_houses,
     unit_usage_houses,
     unsafe_country_houses,
@@ -256,12 +257,22 @@ def _structure_owner_and_type(line):
     return parts[0], parts[1].upper()
 
 
-def _mission_production_buildings(lines, house_records):
-    """Yield production owned by the player or a proven full-force transfer."""
+def _mission_production_buildings(
+    lines,
+    house_records,
+    additional_production_houses=(),
+):
+    """Yield production the player owns, receives, or captures by policy."""
     eligible_houses = set()
+    configured_sources, _ = resolve_configured_helper_houses(
+        house_records,
+        additional_production_houses,
+        (),
+    )
     for house in (
         player_controlled_houses(lines, records=house_records)
         + player_transfer_houses(lines, records=house_records)
+        + list(configured_sources)
     ):
         record = house_records.get(house, {})
         eligible_houses.update({
@@ -430,12 +441,17 @@ def single_engineer_rules(
     lines,
     chaos_mode=False,
     additional_build_houses=(),
+    additional_production_houses=(),
 ):
     """Prepare one installed Engineer cameo for any barracks the player gains."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     production_families = []
-    for building_id in _mission_production_buildings(lines, records):
+    for building_id in _mission_production_buildings(
+        lines,
+        records,
+        additional_production_houses,
+    ):
         production = PRODUCTION_LOOKUP.get(building_id)
         if not production or production[1] not in {'base', 'infantry'}:
             continue
@@ -470,7 +486,10 @@ def single_engineer_rules(
         records,
         additional_build_houses,
     )
-    owners = ','.join(player_countries)
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
     prerequisites = _merged_items(
         (
             CHAOS_PRIMARY_PRODUCTION[family]['infantry']
@@ -483,7 +502,7 @@ def single_engineer_rules(
         'TechLevel': '1',
         'BuildLimit': None,
         'Owner': owners,
-        'RequiredHouses': owners,
+        'RequiredHouses': required_houses,
         'ForbiddenHouses': 'none',
     }
     selected_rule.update(
@@ -522,6 +541,7 @@ def mission_basic_unit_rules(
     earned_access_ids=None,
     translate_equivalents=False,
     additional_build_houses=(),
+    additional_production_houses=(),
 ):
     """Return off-faction access needed by mixed mission production.
 
@@ -539,7 +559,11 @@ def mission_basic_unit_rules(
     player_family = _player_family(lines, house_records)
     allowed_families = _allowed_safety_families(player_family)
 
-    for building_id in _mission_production_buildings(lines, house_records):
+    for building_id in _mission_production_buildings(
+        lines,
+        house_records,
+        additional_production_houses,
+    ):
         building_match = PRODUCTION_LOOKUP.get(building_id)
         if not building_match:
             continue
@@ -578,11 +602,19 @@ def mission_basic_unit_rules(
         for tech_id, tech_level, _family, category, prerequisite, native_owners in ACCESS_CATALOG:
             if category != 'infantry' or tech_id not in available_access:
                 continue
-            owners = _merged_items(_comma_items(native_owners), player_build_countries)
+            owners = _merged_items(
+                _comma_items(native_owners),
+                production_owner_countries(
+                    lines, player_build_countries, sections=sections
+                ),
+            )
+            required_houses = _merged_items(
+                _comma_items(native_owners), player_build_countries
+            )
             access_rule = {
                 'TechLevel': tech_level,
                 'Owner': ','.join(owners),
-                'RequiredHouses': ','.join(owners),
+                'RequiredHouses': ','.join(required_houses),
                 'ForbiddenHouses': 'none',
             }
             access_rule.update(
@@ -604,11 +636,19 @@ def mission_basic_unit_rules(
                 or tech_id not in available_access
             ):
                 continue
-            owners = _merged_items(_comma_items(native_owners), player_build_countries)
+            owners = _merged_items(
+                _comma_items(native_owners),
+                production_owner_countries(
+                    lines, player_build_countries, sections=sections
+                ),
+            )
+            required_houses = _merged_items(
+                _comma_items(native_owners), player_build_countries
+            )
             access_rule = {
                 'TechLevel': tech_level,
                 'Owner': ','.join(owners),
-                'RequiredHouses': ','.join(owners),
+                'RequiredHouses': ','.join(required_houses),
                 'ForbiddenHouses': 'none',
             }
             access_rule.update(
@@ -626,11 +666,19 @@ def mission_basic_unit_rules(
         )
         if not has_access:
             continue
-        owners = _merged_items(_comma_items(native_owners), player_build_countries)
+        owners = _merged_items(
+            _comma_items(native_owners),
+            production_owner_countries(
+                lines, player_build_countries, sections=sections
+            ),
+        )
+        required_houses = _merged_items(
+            _comma_items(native_owners), player_build_countries
+        )
         access_rule = {
             'TechLevel': tech_level,
             'Owner': ','.join(owners),
-            'RequiredHouses': ','.join(owners),
+            'RequiredHouses': ','.join(required_houses),
             'ForbiddenHouses': 'none',
             'PrerequisiteOverride': prerequisite,
         }
@@ -649,6 +697,7 @@ def mission_basic_unit_rules(
     for section, values in single_engineer_rules(
         lines,
         additional_build_houses=additional_build_houses,
+        additional_production_houses=additional_production_houses,
     ).items():
         rules[section] = values
     return rules
@@ -702,18 +751,33 @@ def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
     return _alternative_prerequisite_rules(alternatives)
 
 
-def always_available_transport_rules(lines, chaos_mode=False, additional_build_houses=()):
+def always_available_transport_rules(
+    lines,
+    chaos_mode=False,
+    additional_build_houses=(),
+    additional_production_houses=(),
+):
     """Make relevant amphibious transports immediately buildable."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    owners = ','.join(safe_build_countries(lines, records, additional_build_houses))
+    player_countries = safe_build_countries(
+        lines, records, additional_build_houses
+    )
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
     allowed_families = set(AMPHIBIOUS_TRANSPORTS) if chaos_mode else {
         _player_family(lines, records)
     }
     if not chaos_mode:
         allowed_families.update(
             family
-            for building_id in _mission_production_buildings(lines, records)
+            for building_id in _mission_production_buildings(
+                lines,
+                records,
+                additional_production_houses,
+            )
             for family, category in [PRODUCTION_LOOKUP.get(building_id, ('', ''))]
             if family and category in {'base', 'naval'}
         )
@@ -724,7 +788,7 @@ def always_available_transport_rules(lines, chaos_mode=False, additional_build_h
         values = {
             'TechLevel': '1',
             'Owner': owners,
-            'RequiredHouses': owners,
+            'RequiredHouses': required_houses,
             'ForbiddenHouses': 'none',
         }
         if chaos_mode:
@@ -762,6 +826,7 @@ def starting_tier_one_rules(
     chaos_mode=False,
     standard_families=STANDARD_TIER_ONE_FAMILIES,
     additional_build_houses=(),
+    additional_production_houses=(),
 ):
     """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
     selected_ids = {
@@ -775,7 +840,10 @@ def starting_tier_one_rules(
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     player_countries = safe_build_countries(lines, records, additional_build_houses)
-    owners = ','.join(player_countries)
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
     rules = {}
 
     if chaos_mode:
@@ -786,7 +854,7 @@ def starting_tier_one_rules(
                 values = {
                     'TechLevel': '1',
                     'Owner': owners,
-                    'RequiredHouses': owners,
+                    'RequiredHouses': required_houses,
                     'ForbiddenHouses': 'none',
                 }
                 fallback = CHAOS_PRIMARY_PRODUCTION[family][category]
@@ -809,7 +877,11 @@ def starting_tier_one_rules(
         if selected_ids.intersection(tech_id for tech_id, _category in role_units.values())
     }
     available_categories = set()
-    for building_id in _mission_production_buildings(lines, records):
+    for building_id in _mission_production_buildings(
+        lines,
+        records,
+        additional_production_houses,
+    ):
         production = PRODUCTION_LOOKUP.get(building_id)
         if not production:
             continue
@@ -833,14 +905,19 @@ def starting_tier_one_rules(
             rules[tech_id] = {
                 'TechLevel': '1',
                 'Owner': owners,
-                'RequiredHouses': owners,
+                'RequiredHouses': required_houses,
                 'ForbiddenHouses': 'none',
                 'PrerequisiteOverride': prerequisite,
             }
     return rules
 
 
-def chaos_earned_access_rules(lines, earned_rewards, additional_build_houses=()):
+def chaos_earned_access_rules(
+    lines,
+    earned_rewards,
+    additional_build_houses=(),
+    additional_production_houses=(),
+):
     """Adapt every earned access item to player-controlled production."""
     player_houses = set(player_controlled_houses(lines))
     if not player_houses:
@@ -855,7 +932,10 @@ def chaos_earned_access_rules(lines, earned_rewards, additional_build_houses=())
     player_countries = safe_build_countries(lines, records, additional_build_houses)
 
     rules = {}
-    owners = ','.join(player_countries)
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
     player_family = _player_family(lines, records)
     special_alternatives = {
         category: _special_factory_alternatives(lines, category, sections)
@@ -881,7 +961,7 @@ def chaos_earned_access_rules(lines, earned_rewards, additional_build_houses=())
             rules[tech_id.upper()] = {
                 'TechLevel': tech_level,
                 'Owner': owners,
-                'RequiredHouses': owners,
+                'RequiredHouses': required_houses,
                 'ForbiddenHouses': 'none',
             }
             rules[tech_id.upper()].update(

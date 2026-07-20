@@ -827,6 +827,23 @@ MISSION_HOUSE_CONFIG = {
 }
 
 
+# Houses whose physical factories become player-usable through a local
+# capture/current-object script rather than Action 36's full-house transfer.
+# This policy is deliberately separate from MISSION_HOUSE_CONFIG: these
+# houses are production discovery sources only and must never become reward
+# helpers or receive player buffs merely because their base is later taken.
+MISSION_PLAYER_PRODUCTION_HOUSES = {
+    # Objective 1 attaches its capture trigger to PsiCorps2's YACNST.
+    'EBREED': ('PsiCorps2 House',),
+    # PC-AI is detected by its full-house transfer. PC-Base's two factories
+    # remain a separate mission-authored source used by the player's side.
+    'EBLOOD': ('PC-Base House',),
+    # Objective 2 changes every Guild3 structure bearing tag 01000314 to the
+    # Player house, including NACNST/NAHAND/NAWEAP/NAAIR.
+    'SRAVEN': ('Guild3 House',),
+}
+
+
 def mission_house_config(code):
     """Return immutable helper/enemy lists for a catalogue mission code."""
     entry = MISSION_HOUSE_CONFIG.get(str(code or '').upper(), {})
@@ -834,3 +851,10 @@ def mission_house_config(code):
         'allies': tuple(entry.get('allies', ())),
         'enemies': tuple(entry.get('enemies', ())),
     }
+
+
+def mission_player_production_houses(code):
+    """Return map houses whose captured factories become player-usable."""
+    return tuple(
+        MISSION_PLAYER_PRODUCTION_HOUSES.get(str(code or '').upper(), ())
+    )
