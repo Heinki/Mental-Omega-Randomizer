@@ -54,6 +54,7 @@ from randomizer_rewards import (
     BUFF_TARGETS,
     BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
+    ENGINEER_UNIT_IDS,
     effective_buff_count,
     buff_stack_limit,
     MAX_REWARDS_PER_CHECK,
@@ -111,6 +112,7 @@ from randomizer_map import (
     cloned_superweapon_plan,
     clone_player_country_for_house_buffs,
     controlled_tech_ids,
+    country_family,
     hook_marker_name,
     helper_ai_autobuild_plan,
     helper_ai_autobuild_rules,
@@ -126,6 +128,7 @@ from randomizer_map import (
     player_controlled_houses,
     player_country_buff_rules,
     player_country_from_map,
+    player_house_from_map,
     player_unit_clone_rules,
     map_house_records,
     remove_locked_techlevel_actions,
@@ -143,6 +146,7 @@ from randomizer_mission_safety import (
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
     safe_build_countries,
+    single_engineer_rules,
     starting_tier_one_rules,
     summarize_basic_unit_rules,
     tier_one_unit_ids,
@@ -1748,6 +1752,50 @@ class LauncherApp(tk.Tk):
 
     def active_unlocked_reward_tech_ids(self):
         return unlocked_reward_tech_ids(self.active_launch_rewards())
+
+    def mission_effective_unlocked_tech_ids(
+        self,
+        mission,
+        lines,
+        additional_tech_ids=(),
+    ):
+        """Limit Standard access to the factions this map can really use."""
+        additional = {
+            str(unit_id).upper()
+            for unit_id in (additional_tech_ids or ())
+            if unit_id
+        }
+        unlocked = set(self.active_unlocked_reward_tech_ids())
+        if self.active_reward_mode() == 'Chaos (Experimental)':
+            return unlocked | additional
+
+        records = map_house_records(lines)
+        family_names = {
+            'allies': 'Allies',
+            'soviets': 'Soviets',
+            'epsilon': 'Epsilon',
+            'foehn': 'Foehn',
+        }
+        primary_house = player_house_from_map(lines, records=records)
+        primary_family = country_family(records.get(primary_house, {}))
+        player_factions = (
+            {family_names[primary_family]}
+            if primary_family in family_names
+            else set()
+        )
+        if not player_factions:
+            fallback_faction = normalize_faction(mission.get('side', ''))
+            if fallback_faction:
+                player_factions.add(fallback_faction)
+
+        return additional | {
+            unit_id
+            for unit_id in unlocked
+            if not BUFF_TARGETS.get(unit_id, {}).get('factions')
+            or player_factions.intersection(
+                BUFF_TARGETS.get(unit_id, {}).get('factions', ())
+            )
+        }
 
     def bundle_foehn_standard_access(self, pool):
         """Bundle Allied/Soviet role peers into one Foehn access reward."""
@@ -3367,6 +3415,13 @@ class LauncherApp(tk.Tk):
             )
             for section, values in transport_rules.items():
                 rules.setdefault(section, {}).update(values)
+            engineer_rules = single_engineer_rules(
+                lines,
+                chaos_mode=True,
+                additional_build_houses=(),
+            )
+            for section, values in engineer_rules.items():
+                rules.setdefault(section, {}).update(values)
             starter_rules = starting_tier_one_rules(
                 lines,
                 starting_unit_ids,
@@ -3516,9 +3571,22 @@ throw "Map $name was not found in expandmo*.mix"
             if include_defenses or BUFF_TARGETS.get(section.upper(), {}).get('category') != 'defenses'
         }
 
-    def map_rules_for_launch(self, extra_rules=None):
+    def map_rules_for_launch(
+        self,
+        extra_rules=None,
+        allowed_unlocked_tech_ids=None,
+    ):
         rule_sections = {}
         randomized_tech_ids = self.randomized_tech_ids()
+        allowed_unlocked = (
+            None
+            if allowed_unlocked_tech_ids is None
+            else {
+                str(unit_id).upper()
+                for unit_id in allowed_unlocked_tech_ids
+                if unit_id
+            }
+        )
         if randomized_tech_ids:
             for section in sorted(randomized_tech_ids):
                 section_upper = section.upper()
@@ -3537,6 +3605,11 @@ throw "Map $name was not found in expandmo*.mix"
                 for section, values in launch_rules_for_reward(reward).items():
                     if section.upper() not in randomized_tech_ids:
                         continue
+                    if (
+                        allowed_unlocked is not None
+                        and section.upper() not in allowed_unlocked
+                    ):
+                        continue
                     prepared_values = {
                         key: value
                         for key, value in values.items()
@@ -3552,6 +3625,11 @@ throw "Map $name was not found in expandmo*.mix"
                     continue
                 for section, values in launch_rules_for_reward(reward).items():
                     if section.upper() not in randomized_tech_ids:
+                        continue
+                    if (
+                        allowed_unlocked is not None
+                        and section.upper() not in allowed_unlocked
+                    ):
                         continue
                     section_rules = rule_sections.setdefault(section, {})
                     # Remove launcher-injected safety locks before applying an
@@ -3569,7 +3647,6 @@ throw "Map $name was not found in expandmo*.mix"
         return rule_sections
 
     def prepare_hooked_map(self, mission, extra_rules=None):
-        rule_sections = self.map_rules_for_launch(extra_rules)
         fallback_tech_ids = {
             section.upper()
             for section, values in (extra_rules or {}).items()
@@ -3598,6 +3675,15 @@ throw "Map $name was not found in expandmo*.mix"
         native_map_sections = all_section_value_maps(lines)
         house_config = mission_house_config(code)
         records = map_house_records(lines)
+        mission_effective_tech_ids = self.mission_effective_unlocked_tech_ids(
+            mission,
+            lines,
+            fallback_tech_ids,
+        )
+        rule_sections = self.map_rules_for_launch(
+            extra_rules,
+            allowed_unlocked_tech_ids=mission_effective_tech_ids,
+        )
         native_helpers, missing_helpers = resolve_configured_helper_houses(
             records,
             house_config['allies'],
@@ -3681,7 +3767,7 @@ throw "Map $name was not found in expandmo*.mix"
         if self.state:
             mission_buff_unit_ids = mission_assistance_unit_ids(
                 lines,
-                unlocked_unit_ids=self.active_unlocked_reward_tech_ids(),
+                unlocked_unit_ids=mission_effective_tech_ids,
                 additional_unit_ids=fallback_tech_ids,
                 randomized_access=self.randomize_unit_access_enabled(),
                 fallback_faction=normalize_faction(mission.get('side', '')),
@@ -3791,9 +3877,7 @@ throw "Map $name was not found in expandmo*.mix"
             guarded_rewards = list(earned_rewards)
             guarded_rewards.extend(assistance_direct_rewards)
             buildable_clone_ids = set(fallback_tech_ids)
-            buildable_clone_ids.update(
-                self.active_unlocked_reward_tech_ids()
-            )
+            buildable_clone_ids.update(mission_effective_tech_ids)
             if not require_unlocked_access_for_buffs:
                 buildable_clone_ids.update(
                     unit_id
@@ -3808,6 +3892,7 @@ throw "Map $name was not found in expandmo*.mix"
                     guarded_rewards,
                     installed_rule_sections,
                     native_map_sections=native_map_sections,
+                    allow_cross_faction=chaos_unit_specific_buffs,
                 )
                 if reward_helpers
                 else {'variants': [], 'support': {}}
@@ -3823,12 +3908,16 @@ throw "Map $name was not found in expandmo*.mix"
                 guarded_rewards,
                 installed_rule_sections,
                 native_ai_helper_houses=native_helpers,
+                buffed_helper_houses=reward_helpers,
                 native_map_sections=native_map_sections,
                 require_unlocked_access=require_unlocked_access_for_buffs,
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 buildable_tech_ids=buildable_clone_ids,
                 build_owner_ids=safe_build_countries(lines, records, ()),
                 helper_autobuild_support=helper_autobuild.get('support'),
+                forced_buildable_clone_ids=(
+                    fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
+                ),
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
             )
@@ -3919,8 +4008,7 @@ throw "Map $name was not found in expandmo*.mix"
                 + '.'
             )
 
-        unlocked_tech_ids = tech_ids_for_rewards(earned_rewards)
-        unlocked_tech_ids.update(fallback_tech_ids)
+        unlocked_tech_ids = set(mission_effective_tech_ids)
         randomized_tech_ids = self.randomized_tech_ids()
         removed_techlevel_actions = remove_locked_techlevel_actions(
             lines,

@@ -46,11 +46,13 @@ Working mostly fine, had 2 issues: IC was modified in A6, had like 1 minute cool
 - Drakvu and harbinger stuck on production apparently
 - Derxs ui Adaption in randomizer check 
 - Special tech unlock check
-- Memory dealer crash
 - Soviets: Boris, Krukov, Reznov, Cyborg Vanguard, (Gharial Prototype, Mastodon Prototype, Infector Tank), Cosmonaut, Perun Flagship, Soviet Psychic Sensor(?), Soviet Cloning Lab(?), 
 Allies: (Jackal Racer Prototype, Future Tank X-0, Diverbee Prototype, Tarchia Prototype). Stratofortress Support Power?
 Epsilon: Rashidi(?), Cosmonaut, 
 Foehn: (Prototype Bison Tank????)
+
+- The raven no unit unlocks when getting the player faction,  Memory dealer crash, dance of blood no unlocks, The Remnant
+- limit infantry movement speed after a certain speed level they get stuck, vehicles are fine.
 
 These are just the ones I could find by doing a very quick wiki search before I go off to bed- these all should have unique sidebar icons
 

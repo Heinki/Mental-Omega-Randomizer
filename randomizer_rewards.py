@@ -318,13 +318,27 @@ NONCOMBAT_WEAPON_TARGET_IDS = frozenset({
     'MWF', 'MSA', 'SWPR', 'ORCIN',
 })
 
+# Installed 3.3.6 TechnoTypes with ``Trainable=no`` cannot use veterancy.
+# Keep this separate from NONCOMBAT_WEAPON_TARGET_IDS: some support units have
+# meaningful veteran behavior despite lacking an ordinary damaging weapon,
+# while many combat/support types below are simply unable to train.
+NONTRAINABLE_UNIT_IDS = frozenset('''
+AMEDIC ENGINEER SPY SUPR CMIN AMCV SHAD CRYO HBIRD
+SENGINEER SBTR ARSO DRON SMCV RAVA MWF FDRON EDRN DUST
+YENGINEER KAOS INTRUDER HIJACKER REPU YMIN PCV DRIL COYO QUAD RUINER YHVR
+FENGINEER SYNC CLAIR NMIN FMCV MSA RACC COON CONF DIVER MAD ORCIN BOID SEAT HARB
+'''.split())
+
 # Economy, base-operation, and mission-transport essentials are deliberately
 # never access items. They remain available regardless of randomizer progress.
 AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset({'LCRF', 'SAPC', 'YHVR', 'SEAT'})
+ENGINEER_UNIT_IDS = frozenset({
+    'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
+})
 ALWAYS_AVAILABLE_UNIT_IDS = {
     'AMCV', 'SMCV', 'PCV', 'FMCV',
     'CMIN', 'HARV', 'YMIN', 'NMIN',
-    'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
+    *ENGINEER_UNIT_IDS,
     *AMPHIBIOUS_TRANSPORT_UNIT_IDS,
 }
 ALWAYS_AVAILABLE_BUILDING_IDS = {
@@ -1012,6 +1026,7 @@ def add_complete_faction_buff_targets():
                     'strength': strength,
                     'sight': sight,
                     'guard_range': guard_range,
+                    'trainable': unit_id not in NONTRAINABLE_UNIT_IDS,
                 })
                 if ammo is not None:
                     target['ammo'] = ammo
@@ -1285,6 +1300,8 @@ def build_buff_rewards():
             if allowed_types and buff_type_id not in allowed_types:
                 continue
             if unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ()):
+                continue
+            if buff_type_id == 'veteran' and not target.get('trainable', True):
                 continue
             if (
                 unit_id in NONCOMBAT_WEAPON_TARGET_IDS
@@ -2016,6 +2033,12 @@ for defense_id, target in BUFF_TARGETS.items():
         REWARD_ALIASES[
             f'{target["label"]} Veteran Training I'
         ] = f'{target["label"]} Armor Plating I'
+for unit_id in NONTRAINABLE_UNIT_IDS:
+    target = BUFF_TARGETS.get(unit_id)
+    if target:
+        REWARD_ALIASES[
+            f'{target["label"]} Veteran Training I'
+        ] = f'{target["label"]} Armor Plating I'
 
 for buff_type in BUFF_TYPES:
     REWARD_ALIASES[f'Mind Control Unit {buff_type["name"]} I'] = f'Mastermind {buff_type["name"]} I'
@@ -2036,6 +2059,15 @@ def canonical_reward(reward):
     if current_reward:
         return current_reward
     if reward.get('kind') == 'buff' and reward.get('buff_type'):
+        if (
+            reward.get('buff_type') == 'veteran'
+            and str(reward.get('unit') or '').upper() in NONTRAINABLE_UNIT_IDS
+        ):
+            replacement = REWARD_BY_BUFF_KEY.get(
+                (str(reward.get('unit') or '').upper(), 'armor')
+            )
+            if replacement:
+                return replacement
         active_reward = REWARD_BY_BUFF_KEY.get(
             (reward.get('unit'), reward.get('buff_type'))
         )

@@ -14,19 +14,37 @@ from randomizer_map import (
     player_house_from_map,
     player_transfer_houses,
     resolve_configured_helper_houses,
+    unit_usage_houses,
     unsafe_country_houses,
 )
 from randomizer_ini import all_section_value_maps, section_lines
 from randomizer_rewards import (
     BUFF_TARGETS,
+    ENGINEER_UNIT_IDS,
     FACTION_ACCESS_RULES,
     REWARD_POOL,
     unit_role_equivalents,
 )
 
 
-MIXED_PRODUCTION_ENGINEER = 'ENGINEER'
-REDUNDANT_ENGINEER_VARIANTS = ('SENGINEER', 'YENGINEER', 'FENGINEER')
+ENGINEER_BY_FAMILY = {
+    'allies': 'ENGINEER',
+    'soviets': 'SENGINEER',
+    'epsilon': 'YENGINEER',
+    'foehn': 'FENGINEER',
+}
+ENGINEER_INSTALLED_FORBIDDEN_HOUSES = {
+    'ENGINEER': 'USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3',
+    'SENGINEER': 'Europeans,UnitedStates,Pacific,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3',
+    'YENGINEER': 'Europeans,UnitedStates,Pacific,USSR,Latin,Chinese,Guild1,Guild2,Guild3',
+    'FENGINEER': 'Europeans,UnitedStates,Pacific,USSR,Chinese,Latin,PsiCorps,Headquaters,ScorpionCell',
+}
+CONYARD_BY_MCV = {
+    'AMCV': 'GACNST',
+    'SMCV': 'NACNST',
+    'PCV': 'YACNST',
+    'FMCV': 'FACNST',
+}
 STALINS_FIST_FACTORY = 'NAFIST'
 STALINS_FIST_FAMILIES = {'soviets', 'epsilon'}
 
@@ -253,6 +271,23 @@ def _mission_production_buildings(lines, house_records):
         })
     eligible_houses.discard('')
 
+    # Base-build missions often begin with an MCV rather than a deployed
+    # Construction Yard. Player/scripted TaskForce ownership proves that this
+    # production family can become available later in the mission.
+    usage_index = build_unit_usage_index(lines)
+    for mcv_id, conyard_id in CONYARD_BY_MCV.items():
+        usage_aliases = set()
+        for house in unit_usage_houses(lines, mcv_id, usage_index):
+            record = house_records.get(house, {})
+            usage_aliases.update({
+                str(house).lower(),
+                str(house).replace(' House', '').lower(),
+                str(record.get('country') or '').lower(),
+            })
+        usage_aliases.discard('')
+        if usage_aliases.intersection(eligible_houses):
+            yield conyard_id
+
     for line in section_lines(lines, 'Structures'):
         owner, building_id = _structure_owner_and_type(line)
         if building_id and str(owner or '').lower() in eligible_houses:
@@ -391,6 +426,97 @@ def _special_factory_alternatives(lines, category, sections=None):
     return tuple(alternatives)
 
 
+def single_engineer_rules(
+    lines,
+    chaos_mode=False,
+    additional_build_houses=(),
+):
+    """Prepare one installed Engineer cameo for any barracks the player gains."""
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
+    production_families = []
+    for building_id in _mission_production_buildings(lines, records):
+        production = PRODUCTION_LOOKUP.get(building_id)
+        if not production or production[1] not in {'base', 'infantry'}:
+            continue
+        family = production[0]
+        if family not in production_families:
+            production_families.append(family)
+
+    special_barracks = list(_special_infantry_factories(sections))
+    player_family = _player_family(lines, records)
+    if chaos_mode:
+        selected_family = (
+            production_families[0]
+            if production_families
+            else player_family
+        )
+    else:
+        selected_family = (
+            player_family
+            if player_family in production_families
+            else (
+                production_families[0]
+                if production_families
+                else player_family
+            )
+        )
+    selected_id = ENGINEER_BY_FAMILY.get(selected_family)
+    if not selected_id:
+        return {}
+
+    player_countries = safe_build_countries(
+        lines,
+        records,
+        additional_build_houses,
+    )
+    owners = ','.join(player_countries)
+    prerequisites = _merged_items(
+        (
+            CHAOS_PRIMARY_PRODUCTION[family]['infantry']
+            for family in production_families
+            if family in CHAOS_PRIMARY_PRODUCTION
+        ),
+        special_barracks,
+    )
+    selected_rule = {
+        'TechLevel': '1',
+        'BuildLimit': None,
+        'Owner': owners,
+        'RequiredHouses': owners,
+        'ForbiddenHouses': 'none',
+    }
+    selected_rule.update(
+        _alternative_prerequisite_rules(prerequisites or ('BARRACKS',))
+    )
+
+    rules = {selected_id: selected_rule}
+    section_by_upper = {
+        str(section).upper(): values for section, values in sections.items()
+    }
+    for engineer_id in sorted(ENGINEER_UNIT_IDS - {selected_id}):
+        # Hide redundant cameos from every player-controlled country without
+        # BuildLimit=0, which could block an AI/scripted Engineer request.
+        # Retain effective installed/map enemy exclusions on the original.
+        map_values = section_by_upper.get(engineer_id, {})
+        forbidden_value = (
+            map_values.get('forbiddenhouses')
+            if 'forbiddenhouses' in map_values
+            else ENGINEER_INSTALLED_FORBIDDEN_HOUSES[engineer_id]
+        )
+        native_forbidden = [
+            item
+            for item in _comma_items(forbidden_value)
+            if item.lower() not in {'none', '<none>'}
+        ]
+        rules[engineer_id] = {
+            'ForbiddenHouses': ','.join(
+                _merged_items(native_forbidden, player_countries)
+            )
+        }
+    return rules
+
+
 def mission_basic_unit_rules(
     lines,
     earned_access_ids=None,
@@ -401,8 +527,8 @@ def mission_basic_unit_rules(
 
     All-Campaign seeds preserve exact earned unit IDs for each physical
     production family. A selected single-faction campaign translates earned
-    access into role-equivalent units for foreign production. One Allied
-    Engineer covers all mixed barracks as a base-operation essential.
+    access into role-equivalent units for foreign production. Exactly one
+    faction-appropriate Engineer remains a base-operation essential.
     """
     sections = all_section_value_maps(lines)
     house_records = map_house_records(lines, sections=sections)
@@ -510,34 +636,6 @@ def mission_basic_unit_rules(
         }
         unlocks.append((tech_id, tech_level, access_rule))
 
-    # Engineers are progression essentials rather than access rewards. Their
-    # faction variants are functionally identical, so expose one Allied
-    # Engineer through the generic barracks prerequisite instead of adding one
-    # duplicate cameo for every captured production family.
-    if special_barracks or any(
-        category in {'base', 'infantry'}
-        for _family, category in expanded_categories
-    ):
-        native_owners = FACTION_ACCESS_RULES['Allies']['houses']
-        owners = _merged_items(_comma_items(native_owners), player_build_countries)
-        engineer_rule = {
-            'TechLevel': '1',
-            'Owner': ','.join(owners),
-            'RequiredHouses': ','.join(owners),
-            'ForbiddenHouses': 'none',
-        }
-        if special_barracks:
-            engineer_rule.update(
-                _alternative_prerequisite_rules(('BARRACKS', *special_barracks))
-            )
-        else:
-            engineer_rule['PrerequisiteOverride'] = 'BARRACKS'
-        unlocks.append((MIXED_PRODUCTION_ENGINEER, '1', engineer_rule))
-        # Block only production of the functionally identical faction variants.
-        # BuildLimit leaves map-placed and scripted Engineers available.
-        for engineer_id in REDUNDANT_ENGINEER_VARIANTS:
-            unlocks.append((engineer_id, '', {'BuildLimit': '0'}))
-
     rules = {}
     seen = set()
     for unlock in unlocks:
@@ -548,6 +646,11 @@ def mission_basic_unit_rules(
         seen.add(tech_id)
         rule = unlock[2] if len(unlock) > 2 else None
         rules[tech_id] = dict(rule or {'TechLevel': tech_level})
+    for section, values in single_engineer_rules(
+        lines,
+        additional_build_houses=additional_build_houses,
+    ).items():
+        rules[section] = values
     return rules
 
 
