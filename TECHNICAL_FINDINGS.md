@@ -232,7 +232,7 @@ Campaign maps can define reusable TeamTypes with `House=Neutral` and assign thei
 
 ### House and country effects
 
-House-supported rewards use map-local country data for production time, construction time, vehicle/aircraft category speed, category cost, category armor, army ROF, and veteran lists. Player-controlled houses always participate. Infantry speed deliberately bypasses `SpeedInfantryMult` so a per-unit hard ceiling can be enforced. `buff_allied_helpers` also targets reviewed helper countries when their country family is not shared with a denied house; clone IDs replace exact originals in affected helper veteran lists.
+House-supported rewards use map-local country data for production time, construction time, vehicle/aircraft category speed, category cost, category armor, and veteran lists. Player-controlled houses always participate. Infantry speed deliberately bypasses `SpeedInfantryMult` so a per-unit hard ceiling can be enforced. `buff_allied_helpers` also targets reviewed helper countries when their country family is not shared with a denied house; clone IDs replace exact originals in affected helper veteran lists. The removed army-wide ROF reward is canonicalized to working per-unit cloned-weapon fire-rate rewards.
 
 Veterancy uses `VeteranInfantry`, `VeteranUnits`, `VeteranAircraft`, and `VeteranBuildings`. Trainable defenses such as the Allied Grand Cannon must use `VeteranBuildings`; `VeteranDefenses` is not an engine key. Empty cinematic/neutral placeholder houses that inherit a player country do not block that country's rewards when they own no placed or scripted TechnoTypes, are allied to the assisted coalition, and have no scripted hostile transition.
 
@@ -327,6 +327,20 @@ Action `129` is not used because it changes the charge of a building-backed inst
 Blasticade is intentionally not replaced by Golden Wind. It is the documented Foehn support superweapon and still needs owned Blast Trench objects to produce a barrier; the access pool already contains a separate Blast Trench reward.
 
 `EliteReservesSpecial` (`100`) is not eligible. Its `UnitDelivery` creates the invisible `F_ERESB` production-state marker through a Soviet advanced lab instead of delivering a normal targetable reinforcement. The 2026-07-14 crash reports consistently ended while action `34` processed Elite Reserves: it was last in the Soviet and Chaos grant lists and second-to-last in the Foehn list, while successful Allied/Epsilon lists did not contain it. Legacy stored rewards are canonicalized to a retired, non-injected entry.
+
+Map-start power grants normally target only authoritative `[Basic] Player`. Reviewed phase-based exceptions target every required human country: `ASIREN` declares Europeans as `[Basic] Player` while its gameplay triggers and second controllable force use UnitedStates, and `SAWAKE` rotates among PlayerEscort, Player, and USSR2. Each reviewed country receives the same isolated clone indices in separately bounded action lists; native mission power sections and triggers remain unchanged. This explicit allowlist avoids empowering unrelated temporary/script houses merely because a map also marks them `PlayerControl=yes`.
+
+The July 2026 mission audit confirmed that `ABMIND`'s `IronCurtainSpecial RechargeTime=.3` is native map data and remains identical in generated output. `FKILL` supplies a Soviet MCV, so Foehn Standard translates earned basic-defense roles to Soviet Sentry/Flak/Tesla/Hammer/Trap/Gap equivalents; no earned defensive-access role intentionally yields no defense cameo. The complete Foehn access audit found no owner, prerequisite, or reward mismatch. `HARB` and `RAVA` remain aid-only payloads. A maximum-pressure `ABADAPPLE` output (all 43 active powers and all current rewards) had unique type IDs, valid action shapes, action lines at most 440 bytes, three 16/16/11 power chunks, and its native Engineer TechLevel action/event chain consistently retargeted to the registered clone. No matching local crash log or structural generator fault was available; a runtime crash still needs the reporter's `debug.log`/exception snapshot to identify the executing engine path.
+
+Multi-house power grants must not replace the single concrete country used by
+objective marker TeamTypes. The first implementation removed the old `house`
+local but left marker generation referencing it. Any mission with pending
+checks then raised `NameError`; launch fallback deliberately ran the untouched
+source map, which looked like a complete loss of buffs and earned production.
+Marker ownership now uses a separate authoritative player-country value while
+power grants retain their reviewed multi-house list. Real-map generation tests
+for `ABADAPPLE` and `SRAVEN` each produced all three objective/victory markers
+and a hooked map containing the reward/access rules.
 
 ## Cameo Pipeline
 

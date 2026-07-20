@@ -4371,8 +4371,8 @@ def unique_section_key(lines, sections, prefix):
 SUPERWEAPON_ACTIONS_PER_TRIGGER = 16
 
 
-def append_superweapon_grant_trigger(lines, house, action_groups):
-    """Grant earned powers without overflowing a campaign action list.
+def append_superweapon_grant_trigger(lines, houses, action_groups):
+    """Grant earned powers to every human-controlled mission house safely.
 
     Mental Omega's installed campaign maps top out at 24 actions in one list.
     Large Chaos inventories previously wrote every power into a single list
@@ -4384,19 +4384,30 @@ def append_superweapon_grant_trigger(lines, house, action_groups):
     if not actions or any(len(group) != 8 for group in actions):
         return ''
 
+    if isinstance(houses, str):
+        houses = [houses]
+    houses = unique_in_order(
+        str(house or '').strip()
+        for house in (houses or ())
+        if str(house or '').strip()
+    )
+    if not houses:
+        return ''
+
     trigger_ids = []
-    for offset in range(0, len(actions), SUPERWEAPON_ACTIONS_PER_TRIGGER):
-        chunk = actions[offset:offset + SUPERWEAPON_ACTIONS_PER_TRIGGER]
-        chunk_number = len(trigger_ids) + 1
-        trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGSW')
-        tag_id = unique_section_key(lines, ('Tags',), 'RNGST')
-        action_tokens = ','.join(action_group_tokens(chunk))
-        name = f'MOR Earned Superweapons {chunk_number}'
-        append_section_entry(lines, 'Events', trigger_id, f'1,13,0,{chunk_number}')
-        append_section_entry(lines, 'Actions', trigger_id, f'{len(chunk)},{action_tokens}')
-        append_section_entry(lines, 'Triggers', trigger_id, f'{house},<none>,{name},0,1,1,1,0')
-        append_section_entry(lines, 'Tags', tag_id, f'0,{name} 1,{trigger_id}')
-        trigger_ids.append(trigger_id)
+    for house_number, house in enumerate(houses, 1):
+        for offset in range(0, len(actions), SUPERWEAPON_ACTIONS_PER_TRIGGER):
+            chunk = actions[offset:offset + SUPERWEAPON_ACTIONS_PER_TRIGGER]
+            chunk_number = (offset // SUPERWEAPON_ACTIONS_PER_TRIGGER) + 1
+            trigger_id = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGSW')
+            tag_id = unique_section_key(lines, ('Tags',), 'RNGST')
+            action_tokens = ','.join(action_group_tokens(chunk))
+            name = f'MOR Earned Superweapons H{house_number} C{chunk_number}'
+            append_section_entry(lines, 'Events', trigger_id, f'1,13,0,{chunk_number}')
+            append_section_entry(lines, 'Actions', trigger_id, f'{len(chunk)},{action_tokens}')
+            append_section_entry(lines, 'Triggers', trigger_id, f'{house},<none>,{name},0,1,1,1,0')
+            append_section_entry(lines, 'Tags', tag_id, f'0,{name} 1,{trigger_id}')
+            trigger_ids.append(trigger_id)
     return trigger_ids[0]
 
 

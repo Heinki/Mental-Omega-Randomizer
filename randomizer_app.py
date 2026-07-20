@@ -44,6 +44,7 @@ from randomizer_missions import (
 )
 from randomizer_mission_houses import (
     mission_house_config,
+    mission_player_power_houses,
     mission_player_production_houses,
 )
 from randomizer_ini import (
@@ -4472,8 +4473,29 @@ throw "Map $name was not found in expandmo*.mix"
                     + '.',
                     error=True,
                 )
-        house = player_country_from_map(lines)
-        superweapon_trigger = append_superweapon_grant_trigger(lines, house, superweapon_actions)
+        configured_power_houses = mission_player_power_houses(code)
+        power_house_names = configured_power_houses or (
+            player_house_from_map(lines, records=records),
+        )
+        power_houses = unique_in_order(
+            records.get(power_house, {}).get('country')
+            or power_house.replace(' House', '')
+            for power_house in power_house_names
+            if power_house
+        )
+        if not power_houses:
+            power_houses = [player_country_from_map(lines)]
+        # Objective marker TeamTypes still need one concrete owner. Keep this
+        # separate from the possibly multi-house superweapon grant list: the
+        # latter replaced the old ``house`` local and accidentally left marker
+        # generation referencing an undefined name, which made the launcher
+        # fall back to the untouched source map (no rewards or access rules).
+        hook_house = player_country_from_map(lines)
+        superweapon_trigger = append_superweapon_grant_trigger(
+            lines,
+            power_houses,
+            superweapon_actions,
+        )
         if superweapon_trigger:
             power_names = [
                 reward_display_name(reward)
@@ -4484,7 +4506,7 @@ throw "Map $name was not found in expandmo*.mix"
                 'Prepared isolated building-free power clones '
                 f'({", ".join(cloned_power_names)}) for: '
                 + ', '.join(power_names)
-                + '.'
+                + f'. Grant houses: {", ".join(power_houses)}.'
             )
 
         unlocked_tech_ids = set(mission_effective_tech_ids)
@@ -4555,7 +4577,14 @@ throw "Map $name was not found in expandmo*.mix"
                         marker,
                     )
             if patched:
-                append_hook_team(lines, team_id, taskforce_id, script_id, marker, house)
+                append_hook_team(
+                    lines,
+                    team_id,
+                    taskforce_id,
+                    script_id,
+                    marker,
+                    hook_house,
+                )
                 markers[marker] = check.get('id')
             else:
                 self.append_log(

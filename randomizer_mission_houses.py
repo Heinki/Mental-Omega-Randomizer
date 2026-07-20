@@ -843,6 +843,16 @@ MISSION_PLAYER_PRODUCTION_HOUSES = {
     'SRAVEN': ('Guild3 House',),
 }
 
+# These missions deliberately split human control across multiple HouseTypes.
+# Building-free powers must exist for each phase/hero house because mission
+# logic can require activation by that exact trigger owner. Other missions keep
+# the authoritative [Basic] Player-only grant to avoid empowering temporary
+# PlayerControl/script houses unnecessarily.
+MISSION_PLAYER_POWER_HOUSES = {
+    'ASIREN': ('Europeans House', 'UnitedStates House'),
+    'SAWAKE': ('PlayerEscort House', 'Player House', 'USSR2 House'),
+}
+
 
 def mission_house_config(code):
     """Return immutable helper/enemy lists for a catalogue mission code."""
@@ -858,3 +868,8 @@ def mission_player_production_houses(code):
     return tuple(
         MISSION_PLAYER_PRODUCTION_HOUSES.get(str(code or '').upper(), ())
     )
+
+
+def mission_player_power_houses(code):
+    """Return reviewed multi-house recipients for building-free powers."""
+    return tuple(MISSION_PLAYER_POWER_HOUSES.get(str(code or '').upper(), ()))
