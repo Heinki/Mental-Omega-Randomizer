@@ -634,9 +634,8 @@ def stacked_house_buff_values(
                 if unit_id in BUFF_TARGETS
             )
         for equivalent_suffix in suffixes:
-            # A country SpeedInfantryMult has no per-unit ceiling and can push
-            # foot infantry beyond the engine-safe roster maximum. Infantry
-            # movement rewards are therefore applied as guarded direct values.
+            # SpeedInfantryMult has no per-unit ceiling. Infantry movement
+            # rewards therefore use guarded direct TechnoType values.
             if buff_type == 'speed' and equivalent_suffix == 'Infantry':
                 continue
             key = (buff_type, equivalent_suffix)
@@ -793,7 +792,7 @@ def mission_assistance_buff_values(base_values, stacks):
     for prefix, multiplier_name in fields:
         for suffix in MISSION_ASSISTANCE_CATEGORIES:
             # Infantry retry speed uses guarded direct TechnoType values so it
-            # can obey the same hard ceiling as normal movement rewards.
+            # obeys the same hard ceiling as normal movement rewards.
             if prefix == 'Speed' and suffix == 'Infantry':
                 continue
             key = f'{prefix}{suffix}Mult'
@@ -1308,6 +1307,7 @@ def _clone_reference_rules(
     taskforce_replacements=None,
     taskforce_allowed_houses=None,
     structure_plan_allowed_houses_by_unit=None,
+    native_trigger_reference_ids=(),
 ):
     """Rewrite friendly placements, base plans, and TaskForce consumers."""
     section_rules = {}
@@ -1328,6 +1328,9 @@ def _clone_reference_rules(
         for unit_id, houses in (
             structure_plan_allowed_houses_by_unit or {}
         ).items()
+    }
+    native_trigger_reference_ids = {
+        str(unit_id).upper() for unit_id in native_trigger_reference_ids
     }
     rewritten = 0
     mixed_taskforces = []
@@ -1373,7 +1376,10 @@ def _clone_reference_rules(
             replaced = False
             for index, token in enumerate(tokens):
                 source_id = token.upper()
-                if source_id not in replacements:
+                if (
+                    source_id not in replacements
+                    or source_id in native_trigger_reference_ids
+                ):
                     continue
                 if (
                     source_id not in globally_friendly_replacement_ids
@@ -2285,6 +2291,7 @@ def player_unit_clone_rules(
     unlimited_build_limit_unit_ids=(),
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
+    native_trigger_reference_ids=(),
 ):
     """Build narrow player-only TechnoType clones for unsafe direct buffs.
 
@@ -3260,6 +3267,7 @@ def player_unit_clone_rules(
         structure_plan_allowed_houses_by_unit=(
             structure_plan_allowed_houses_by_unit
         ),
+        native_trigger_reference_ids=native_trigger_reference_ids,
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)

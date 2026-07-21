@@ -1092,16 +1092,17 @@ LIMITED_HERO_UNIT_IDS = frozenset(LIMITED_HERO_BUILD_LIMITS)
 for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
     BUFF_TARGETS[limited_unit_id]['build_limit'] = build_limit
 
-# Chitzkoi and Libra are the fastest installed ground infantry at Speed=10.
-# Faster InfantryType entries are airborne; their native speed is preserved,
-# but an earned movement buff never increases it further.
-MAX_GROUND_INFANTRY_SPEED = 10
+# Speed 10 proved unsafe for infantry pathfinding on campaign slopes, notably
+# Malver in Singularity. Earned infantry movement buffs use direct TechnoType
+# values capped at this conservative limit. Faster native infantry retain
+# their authored speed but cannot be accelerated.
+MAX_BUFFED_INFANTRY_SPEED = 8
 
 
 def capped_infantry_speed(base_speed, count):
-    """Return a safe earned infantry speed without lowering fast flyers."""
+    """Return safe earned infantry speed without lowering faster native types."""
     base_speed = max(1, int(base_speed))
-    ceiling = max(base_speed, MAX_GROUND_INFANTRY_SPEED)
+    ceiling = max(base_speed, MAX_BUFFED_INFANTRY_SPEED)
     return min(ceiling, max(1, int(round(base_speed * (1.10 ** count)))))
 
 # Westwood-spawn missiles do not expose their real impact damage as a normal
@@ -1344,10 +1345,9 @@ def build_buff_rewards():
             if (
                 buff_type_id == 'speed'
                 and target.get('category') == 'infantry'
-                and int(target.get('speed', 0)) >= MAX_GROUND_INFANTRY_SPEED
+                and int(target.get('speed', 0)) >= MAX_BUFFED_INFANTRY_SPEED
             ):
-                # These infantry are already at the safe ground ceiling or
-                # are faster airborne InfantryTypes. Do not award a no-op.
+                # Already at the safe ceiling or authored faster. No no-op.
                 continue
             if (
                 unit_id in NONCOMBAT_WEAPON_TARGET_IDS
@@ -2237,10 +2237,10 @@ def buff_stack_limit(reward):
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         if target.get('category') == 'infantry':
             base_speed = max(1, int(target.get('speed', 1)))
-            if base_speed >= MAX_GROUND_INFANTRY_SPEED:
+            if base_speed >= MAX_BUFFED_INFANTRY_SPEED:
                 return 1
             for stacks in range(1, 33):
-                if capped_infantry_speed(base_speed, stacks) >= MAX_GROUND_INFANTRY_SPEED:
+                if capped_infantry_speed(base_speed, stacks) >= MAX_BUFFED_INFANTRY_SPEED:
                     return stacks
     if reward.get('buff_type') in {'self_healing', 'cloak', 'sensors'}:
         return 1
@@ -2293,7 +2293,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
             speed = capped_infantry_speed(base_speed, count)
             return [stacked(
                 f'{prefix}Speed {base_speed} -> {speed} '
-                f'(safe ground ceiling {MAX_GROUND_INFANTRY_SPEED})'
+                f'(safe infantry ceiling {MAX_BUFFED_INFANTRY_SPEED})'
             )]
         multiplier = min(1.75, 1.10 ** count)
         faster = int(round((multiplier - 1.0) * 100))

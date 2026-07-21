@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import threading
+import time
 import traceback
 
 from randomizer_config import CONFIG_PATH, load_config, save_config
@@ -219,6 +220,15 @@ DARK_UI_PALETTE = {
     'busy_detail': '#b9c7d4',
 }
 
+# These campaign objects begin outside the player coalition, then become or
+# affect player-owned mission objects through native triggers. Their placed
+# identity stays native, so exact Event/Action references must stay native too.
+MISSION_NATIVE_TRIGGER_REFERENCE_IDS = {
+    'EPEACE': frozenset({'LCRF'}),
+    'ESING': frozenset({'DRIL'}),
+    'EBREED': frozenset({'DISK', 'KAOS'}),
+}
+
 
 class WidgetTooltip:
     def __init__(self, widget, text):
@@ -330,6 +340,7 @@ class LauncherApp(tk.Tk):
         self.grid_tile_widgets = {}
         self.grid_configured_width = 0
         self.grid_configured_height = 0
+        self.settings_panel_visible = True
         self.selected_index = tk.IntVar(value=0)
         difficulty_default = valid_choice(
             self.config.get('difficulty'),
@@ -473,7 +484,6 @@ class LauncherApp(tk.Tk):
         self.rowconfigure(0, weight=1)
 
         self.style = ttk.Style(self)
-        self.light_ttk_theme = self.style.theme_use()
         self.style.configure('Randomizer.TNotebook', tabposition='n')
         self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
         self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
@@ -483,16 +493,28 @@ class LauncherApp(tk.Tk):
             text=f'Mental Omega Randomizer Launcher v{APP_VERSION}',
             font=('Segoe UI', 14, 'bold'),
         )
-        header.grid(row=0, column=0, columnspan=4, sticky='w')
+        header.grid(row=0, column=0, sticky='w')
+        self.settings_toggle_button = ttk.Button(
+            main_frame,
+            text='Hide Settings',
+            command=self.toggle_settings_panel,
+        )
+        self.settings_toggle_button.grid(row=0, column=1, rowspan=2, sticky='ne')
         self.subtitle_label = ttk.Label(
             main_frame,
             text='Choose an open mission, earn randomized upgrades, and let victory tracking update your run.',
             style='Muted.TLabel',
         )
-        self.subtitle_label.grid(row=1, column=0, columnspan=4, sticky='w', pady=(2, 10))
+        self.subtitle_label.grid(row=1, column=0, sticky='w', pady=(2, 10))
+
+        mission_view_frame = ttk.Frame(main_frame)
+        self.mission_view_frame = mission_view_frame
+        mission_view_frame.grid(row=2, column=0, rowspan=5, sticky='nsew', padx=(0, 12))
+        mission_view_frame.columnconfigure(0, weight=1)
+        mission_view_frame.rowconfigure(0, weight=1)
 
         self.missions_tree = ttk.Treeview(
-            main_frame,
+            mission_view_frame,
             columns=('order', 'state', 'checks', 'faction', 'code', 'title'),
             show='headings',
             selectmode='browse',
@@ -523,17 +545,21 @@ class LauncherApp(tk.Tk):
             background='#dff2df',
             foreground='#176b2c',
         )
-        self.missions_tree.grid(row=2, column=0, rowspan=5, sticky='nsew', padx=(0, 8))
+        self.missions_tree.grid(row=0, column=0, sticky='nsew')
         self.missions_tree.bind('<<TreeviewSelect>>', self.on_mission_select, add='+')
         self.mission_tooltip = TreeTooltip(self.missions_tree, self.mission_tooltip_text)
 
-        tree_scrollbar = ttk.Scrollbar(main_frame, orient='vertical', command=self.missions_tree.yview)
-        tree_scrollbar.grid(row=2, column=1, rowspan=5, sticky='ns')
+        tree_scrollbar = ttk.Scrollbar(
+            mission_view_frame,
+            orient='vertical',
+            command=self.missions_tree.yview,
+        )
+        tree_scrollbar.grid(row=0, column=1, sticky='ns')
         self.missions_tree.configure(yscrollcommand=tree_scrollbar.set)
         self.tree_scrollbar = tree_scrollbar
 
-        self.grid_frame = ttk.Frame(main_frame, padding=(4, 4, 4, 4))
-        self.grid_frame.grid(row=2, column=0, columnspan=2, rowspan=5, sticky='nsew', padx=(0, 8))
+        self.grid_frame = ttk.Frame(mission_view_frame, padding=(4, 4, 4, 4))
+        self.grid_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
         self.grid_frame.columnconfigure(0, weight=1)
         self.grid_frame.rowconfigure(0, weight=1)
         self.grid_canvas = tk.Canvas(
@@ -579,7 +605,8 @@ class LauncherApp(tk.Tk):
         )
 
         right_frame = ttk.Frame(main_frame)
-        right_frame.grid(row=2, column=2, rowspan=5, sticky='nsew')
+        self.right_frame = right_frame
+        right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
         right_frame.columnconfigure(0, weight=1)
         right_frame.rowconfigure(4, weight=1)
 
@@ -1016,7 +1043,7 @@ class LauncherApp(tk.Tk):
             text=(
                 'Per stack: faster production and per-unit weapon firing, cheaper units, and higher movement '
                 'speed, health, weapon damage, armor effectiveness, and attack range. Infantry '
-                'movement is capped at the fastest installed ground-infantry speed (10). Applies '
+                'infantry movement is capped at Speed 8. Applies '
                 'to earned units and units supplied by that mission; normal faction rosters '
                 'are used when unit access is not randomized.'
             ),
@@ -1055,10 +1082,10 @@ class LauncherApp(tk.Tk):
         self.refresh_setting_states()
 
         self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
-        self.status_label.grid(row=7, column=0, columnspan=3, sticky='ew', pady=(8, 0))
+        self.status_label.grid(row=7, column=0, columnspan=2, sticky='ew', pady=(8, 0))
 
         log_header = ttk.Frame(main_frame)
-        log_header.grid(row=8, column=0, columnspan=3, sticky='ew', pady=(12, 4))
+        log_header.grid(row=8, column=0, columnspan=2, sticky='ew', pady=(12, 4))
         log_header.columnconfigure(1, weight=1)
         self.log_toggle_button = ttk.Button(
             log_header,
@@ -1089,18 +1116,18 @@ class LauncherApp(tk.Tk):
             background='black',
             foreground='white',
         )
-        self.log_text.grid(row=9, column=0, columnspan=3, sticky='nsew')
+        self.log_text.grid(row=9, column=0, columnspan=2, sticky='nsew')
         self.log_text.grid_remove()
 
         main_frame.rowconfigure(2, weight=1)
         main_frame.rowconfigure(9, weight=0)
-        main_frame.columnconfigure(0, weight=4)
-        main_frame.columnconfigure(2, weight=3)
+        # Uniform sizing makes the mission view reliably wider than settings,
+        # regardless of the settings widgets' requested width.
+        main_frame.columnconfigure(0, weight=5, uniform='content')
+        main_frame.columnconfigure(1, weight=3, uniform='content')
 
-        # Long operations remain synchronous because mission preparation must
-        # finish before the game can start. Cover the window before that work
-        # begins so the launcher never appears frozen or accepts a second
-        # launch/generation request while the first one is still running.
+        # Long seed/map work runs on the single background worker. This overlay
+        # blocks duplicate input while Tk keeps painting progress and elapsed time.
         self.busy_overlay = tk.Frame(main_frame, background='#edf3f8')
         self.busy_card = tk.Frame(
             self.busy_overlay,
@@ -1132,6 +1159,18 @@ class LauncherApp(tk.Tk):
         self.busy_progress = ttk.Progressbar(self.busy_card, mode='indeterminate', length=300)
         self.busy_progress.pack(fill='x')
         self.apply_color_mode()
+
+    def toggle_settings_panel(self):
+        self.settings_panel_visible = not self.settings_panel_visible
+        if self.settings_panel_visible:
+            self.right_frame.grid()
+            self.mission_view_frame.grid_configure(columnspan=1, padx=(0, 12))
+            self.settings_toggle_button.configure(text='Hide Settings')
+        else:
+            self.right_frame.grid_remove()
+            self.mission_view_frame.grid_configure(columnspan=2, padx=0)
+            self.settings_toggle_button.configure(text='Show Settings')
+        self.after_idle(self.resize_grid_canvas_window)
 
     def ui_palette(self):
         return DARK_UI_PALETTE if self.dark_mode_var.get() else LIGHT_UI_PALETTE
@@ -1201,7 +1240,9 @@ class LauncherApp(tk.Tk):
     def apply_color_mode(self):
         palette = self.ui_palette()
         style = self.style
-        target_theme = 'clam' if self.dark_mode_var.get() else self.light_ttk_theme
+        # Native Windows themes ignore several color and state overrides. Clam
+        # honors the complete palette in both modes and keeps tab geometry stable.
+        target_theme = 'clam'
         if target_theme in style.theme_names() and style.theme_use() != target_theme:
             style.theme_use(target_theme)
 
@@ -1260,6 +1301,7 @@ class LauncherApp(tk.Tk):
             'Randomizer.TNotebook.Tab',
             background=[('selected', selected), ('active', palette['canvas'])],
             foreground=[('selected', selected_foreground), ('active', foreground)],
+            padding=[('selected', (16, 7)), ('active', (16, 7))],
         )
         style.configure(
             'Treeview',
@@ -1349,9 +1391,13 @@ class LauncherApp(tk.Tk):
         self.refresh_progress_view()
 
     def show_busy(self, title, detail='Please wait.'):
+        first_busy = self.busy_depth == 0
         self.busy_depth += 1
         self.busy_title.configure(text=title)
-        self.busy_detail.configure(text=detail)
+        self.busy_detail_text = detail
+        if first_busy:
+            self.busy_started_at = time.monotonic()
+            self.update_busy_elapsed()
         self.busy_overlay.place(x=0, y=0, relwidth=1, relheight=1)
         self.busy_overlay.lift()
         self.busy_progress.start(12)
@@ -1360,13 +1406,28 @@ class LauncherApp(tk.Tk):
             self.busy_overlay.grab_set()
         except tk.TclError:
             pass
-        # Paint the message before the following synchronous work begins.
+        # Paint immediately; elapsed text then proves Tk remains responsive.
         self.update_idletasks()
+
+    def update_busy_elapsed(self):
+        if not self.busy_depth:
+            return
+        elapsed = max(0, int(time.monotonic() - self.busy_started_at))
+        self.busy_detail.configure(
+            text=f'{self.busy_detail_text}\nElapsed: {elapsed}s',
+        )
+        self.busy_update_after_id = self.after(250, self.update_busy_elapsed)
 
     def hide_busy(self):
         self.busy_depth = max(0, self.busy_depth - 1)
         if self.busy_depth:
             return
+        busy_after_id = self.__dict__.pop('busy_update_after_id', None)
+        if busy_after_id is not None:
+            try:
+                self.after_cancel(busy_after_id)
+            except tk.TclError:
+                pass
         self.busy_progress.stop()
         try:
             if self.grab_current() == self.busy_overlay:
@@ -1375,18 +1436,6 @@ class LauncherApp(tk.Tk):
             pass
         self.busy_overlay.place_forget()
         self.configure(cursor='')
-
-    def run_with_busy(self, title, detail, callback):
-        self.show_busy(title, detail)
-
-        def run_callback():
-            try:
-                callback()
-            finally:
-                self.hide_busy()
-
-        # Give the window manager one event-loop turn to display the overlay.
-        self.after(50, run_callback)
 
     def run_in_background(self, title, detail, callback, on_success, on_error):
         """Run filesystem/CPU work without blocking Tk's event loop."""
@@ -1950,7 +1999,10 @@ class LauncherApp(tk.Tk):
             rng = random.Random(f'{seed}:starting-tier-one')
             return list(random_chaos_tier_one_unit_ids(rng))
 
-        selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else 'All Campaigns'
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else 'All Campaigns'
         families = {
             'Allies': ('allies',),
             'Soviets': ('soviets',),
@@ -2039,6 +2091,9 @@ class LauncherApp(tk.Tk):
         return True
 
     def active_reward_mode(self):
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        if generation_context.get('reward_mode'):
+            return generation_context['reward_mode']
         if self.__dict__.get('_reward_settings_override') is not None and hasattr(self, 'reward_mode_var'):
             return self.reward_mode_var.get()
         if self.state:
@@ -2129,17 +2184,15 @@ class LauncherApp(tk.Tk):
         return templates
 
     def foehn_standard_bundles_enabled(self):
-        selected = (
-            self.campaign_var.get()
-            if hasattr(self, 'campaign_var')
-            else (self.state or {}).get('campaign_filter', '')
-        )
-        mode = (
-            self.reward_mode_var.get()
-            if hasattr(self, 'reward_mode_var')
-            else self.active_reward_mode()
-        )
-        return selected == 'Foehn' and mode == 'Standard'
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = (
+                self.campaign_var.get()
+                if hasattr(self, 'campaign_var')
+                else (self.state or {}).get('campaign_filter', '')
+            )
+        return selected == 'Foehn' and self.active_reward_mode() == 'Standard'
 
     def active_launch_reward_factions(self):
         """Return factions whose saved rewards may affect this launch.
@@ -2296,11 +2349,14 @@ class LauncherApp(tk.Tk):
         return bundled
 
     def reward_pool_for_code(self, code):
-        reward_mode = self.reward_mode_var.get() if hasattr(self, 'reward_mode_var') else REWARD_MODES[0]
+        reward_mode = self.active_reward_mode()
         if reward_mode == 'Chaos (Experimental)':
             return self.configured_reward_pool()
         factions = self.reward_factions_for_code(code)
-        selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
         pool = [
             reward
             for reward in REWARD_POOL
@@ -2339,10 +2395,7 @@ class LauncherApp(tk.Tk):
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
         if reward_settings.get('unlimited_hero_units'):
             enabled_buff_types.discard('build_limit')
-        chaos_mode = (
-            hasattr(self, 'reward_mode_var')
-            and self.reward_mode_var.get() == 'Chaos (Experimental)'
-        )
+        chaos_mode = self.active_reward_mode() == 'Chaos (Experimental)'
         return [
             reward
             for reward in pool
@@ -2385,7 +2438,10 @@ class LauncherApp(tk.Tk):
         ]
 
     def reward_factions_for_code(self, code):
-        selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
         if selected == 'Foehn':
             return {'Allies', 'Soviets'}
         if selected in {'Allies', 'Soviets', 'Epsilon'}:
@@ -3329,11 +3385,7 @@ class LauncherApp(tk.Tk):
                 return
 
         self.seed_var.set(f'MO-{random.randrange(0x10000000):08X}')
-        self.run_with_busy(
-            'Generating new randomizer run…',
-            'Building the mission order and reward plan. Please wait.',
-            self.generate_seed_from_settings,
-        )
+        self.generate_seed_from_settings()
 
     def generate_seed_from_settings(self, force=False):
         if not self.missions:
@@ -3347,7 +3399,6 @@ class LauncherApp(tk.Tk):
 
         self.clear_log()
         seed = self.seed_var.get().strip() or f'MO-{random.randrange(0x10000000):08X}'
-        rng = random.Random(seed)
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
         reward_settings = self.current_reward_settings()
@@ -3364,12 +3415,54 @@ class LauncherApp(tk.Tk):
             self.append_log('Cannot generate seed: buff rewards are enabled but no buff types are selected.', error=True)
             return
 
+        generation_context = {
+            'campaign_filter': self.campaign_var.get(),
+            'reward_mode': self.reward_mode_var.get(),
+        }
+        self._seed_generation_context = generation_context
         self._reward_settings_override = reward_settings
         starting_unit_ids = self.starting_tier_one_unit_ids_for_seed(seed, reward_settings)
         self._starting_unit_ids_override = starting_unit_ids
+        options = {
+            **generation_context,
+            'seed': seed,
+            'seed_missions': list(seed_missions),
+            'mission_goal': mission_goal,
+            'rewards_per_check': rewards_per_check,
+            'reward_settings': reward_settings,
+            'starting_unit_ids': starting_unit_ids,
+            'progression_mode': self.progression_mode_var.get(),
+            'two_start_positions': bool(self.grid_two_starts_var.get()),
+            'mission_pool_settings': {
+                'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
+                'include_no_build_production_missions': bool(
+                    self.include_no_build_production_missions_var.get()
+                ),
+                'prioritize_no_build_missions': bool(
+                    self.prioritize_no_build_missions_var.get()
+                ),
+            },
+        }
+        self.run_in_background(
+            'Generating new randomizer run…',
+            'Building mission order and reward plan. Large reward pools can take a while.',
+            lambda: self.build_seed_generation(options),
+            self.finish_seed_generation,
+            self.handle_seed_generation_error,
+        )
+
+    def build_seed_generation(self, options):
+        seed = options['seed']
+        seed_missions = options['seed_missions']
+        mission_goal = options['mission_goal']
+        rewards_per_check = options['rewards_per_check']
+        reward_settings = options['reward_settings']
+        starting_unit_ids = options['starting_unit_ids']
+        progression_mode = options['progression_mode']
+        two_start_positions = options['two_start_positions']
+        mission_pool_settings = options['mission_pool_settings']
         campaign_counts = campaign_mission_counts(seed_missions)
-        progression_mode = self.progression_mode_var.get()
-        two_start_positions = bool(self.grid_two_starts_var.get())
+        rng = random.Random(seed)
         if progression_mode == 'Classic':
             mission_codes = classic_mission_order(seed_missions, mission_goal)
             campaign_limits = campaign_mission_counts(seed_missions[:len(mission_codes)])
@@ -3382,11 +3475,7 @@ class LauncherApp(tk.Tk):
                     else LOW_LEVEL_MISSION_COUNT
                 )
             except ValueError as exc:
-                self._reward_settings_override = None
-                self._starting_unit_ids_override = None
-                self.append_log(f'Cannot generate grid: {exc}.', error=True)
-                messagebox.showwarning('Invalid Grid', str(exc))
-                return
+                raise ValueError(f'Cannot generate grid: {exc}.') from exc
             mission_codes = seed_mission_order(
                 seed_missions,
                 rng,
@@ -3394,7 +3483,7 @@ class LauncherApp(tk.Tk):
                 low_level_count=low_level_count,
                 preferred_opening_codes=(
                     NO_BUILD_MISSION_CODES
-                    if self.prioritize_no_build_missions_var.get()
+                    if mission_pool_settings['prioritize_no_build_missions']
                     else None
                 ),
                 excluded_opening_codes=LATE_FOEHN_MISSION_CODES,
@@ -3408,16 +3497,11 @@ class LauncherApp(tk.Tk):
                     protect_opening=True,
                 )
             except ValueError as exc:
-                self._reward_settings_override = None
-                self._starting_unit_ids_override = None
-                self.append_log(f'Cannot generate grid: {exc}.', error=True)
-                messagebox.showwarning('Invalid Grid', str(exc))
-                return
+                raise ValueError(f'Cannot generate grid: {exc}.') from exc
         if not any(self.reward_pool_for_code(code) for code in mission_codes):
-            self._reward_settings_override = None
-            self._starting_unit_ids_override = None
-            self.append_log('Cannot generate seed: the selected reward settings produce no available rewards.', error=True)
-            return
+            raise ValueError(
+                'Cannot generate seed: selected reward settings produce no available rewards.'
+            )
 
         mission_checks = self.build_mission_checks(
             mission_codes,
@@ -3434,12 +3518,12 @@ class LauncherApp(tk.Tk):
         ]
         mission_objectives = self.state_objective_summary(mission_codes)
 
-        self.state = {
+        state = {
             'version': 1,
             'seed': seed,
             'created_at': now_stamp(),
-            'campaign_filter': self.campaign_var.get(),
-            'reward_mode': self.reward_mode_var.get(),
+            'campaign_filter': options['campaign_filter'],
+            'reward_mode': options['reward_mode'],
             'progression_mode': progression_mode,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
@@ -3450,13 +3534,7 @@ class LauncherApp(tk.Tk):
             'mission_order': mission_codes,
             'campaign_mission_counts': campaign_counts,
             'campaign_mission_limits': campaign_limits,
-            'mission_pool_settings': {
-                'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
-                'include_no_build_production_missions': bool(
-                    self.include_no_build_production_missions_var.get()
-                ),
-                'prioritize_no_build_missions': bool(self.prioritize_no_build_missions_var.get()),
-            },
+            'mission_pool_settings': mission_pool_settings,
             'completed_missions': [],
             'started_missions': [],
             'mission_failure_stacks': {},
@@ -3470,9 +3548,36 @@ class LauncherApp(tk.Tk):
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
         if grid is not None:
-            self.state['grid'] = grid
+            state['grid'] = grid
+        return {
+            'state': state,
+            'seed': seed,
+            'mission_goal': mission_goal,
+            'rewards_per_check': rewards_per_check,
+            'starting_unit_ids': starting_unit_ids,
+            'campaign_counts': campaign_counts,
+            'campaign_limits': campaign_limits,
+            'progression_mode': progression_mode,
+            'grid': grid,
+            'campaign_filter': options['campaign_filter'],
+            'reward_mode': options['reward_mode'],
+            'reward_settings': reward_settings,
+            'mission_codes': mission_codes,
+        }
+
+    def finish_seed_generation(self, result):
+        self.state = result['state']
         self._reward_settings_override = None
         self._starting_unit_ids_override = None
+        self._seed_generation_context = None
+        seed = result['seed']
+        mission_goal = result['mission_goal']
+        rewards_per_check = result['rewards_per_check']
+        starting_unit_ids = result['starting_unit_ids']
+        campaign_counts = result['campaign_counts']
+        campaign_limits = result['campaign_limits']
+        progression_mode = result['progression_mode']
+        grid = result['grid']
         self.seed_var.set(seed)
         self.save_state()
         self.save_launcher_config(seed, mission_goal, rewards_per_check)
@@ -3513,18 +3618,30 @@ class LauncherApp(tk.Tk):
         log_event(
             'seed_generated',
             seed=seed,
-            campaign=self.campaign_var.get(),
-            reward_mode=self.reward_mode_var.get(),
+            campaign=result['campaign_filter'],
+            reward_mode=result['reward_mode'],
             progression_mode=progression_mode,
             grid=grid,
             mission_goal=mission_goal,
             rewards_per_check=rewards_per_check,
-            mission_order=mission_codes,
+            mission_order=result['mission_codes'],
             campaign_mission_counts=campaign_counts,
             campaign_mission_limits=campaign_limits,
-            reward_settings=reward_settings,
+            reward_settings=result['reward_settings'],
             starting_unit_ids=starting_unit_ids,
         )
+
+    def handle_seed_generation_error(self, exc, detail):
+        self._reward_settings_override = None
+        self._starting_unit_ids_override = None
+        self._seed_generation_context = None
+        message = str(exc) or 'Seed generation failed.'
+        self.append_log(message, error=True)
+        if isinstance(exc, ValueError):
+            messagebox.showwarning('Cannot Generate Seed', message)
+            return
+        self.append_log(detail, error=True)
+        messagebox.showerror('Generation Failed', 'Seed generation failed. See log for details.')
 
     def unlock_mission_check(self, code, check_id, source):
         if not self.state:
@@ -4400,6 +4517,9 @@ throw "Map $name was not found in expandmo*.mix"
                 ),
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
+                native_trigger_reference_ids=(
+                    MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
+                ),
             )
             if clone_rule_sections:
                 merge_ini_section_values(lines, clone_rule_sections)
@@ -5076,7 +5196,7 @@ throw "Map $name was not found in expandmo*.mix"
             f'production time {round((1 - multipliers["production"]) * 100)}% shorter, '
             f'cost {round((1 - multipliers["cost"]) * 100)}% cheaper, '
             f'movement speed {round((multipliers["speed"] - 1) * 100)}% faster '
-            f'(ground infantry capped at Speed 10), '
+            f'(infantry capped at Speed 8), '
             f'health {round((multipliers["health"] - 1) * 100)}% higher, '
             f'weapon damage {round((multipliers["damage"] - 1) * 100)}% higher, '
             f'damage taken {round((1 - multipliers["armor"]) * 100)}% lower, '
