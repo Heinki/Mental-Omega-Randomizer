@@ -138,6 +138,8 @@ from randomizer_ui import (
     GAME_SPEEDS,
     LIGHT_UI_PALETTE,
     PROGRESSION_MODES,
+    REWARDS_PER_CHECK_MAXIMUM_MESSAGE,
+    REWARDS_PER_CHECK_MESSAGE_THRESHOLDS,
     REWARD_MODES,
 )
 from randomizer_ui_builder import (
@@ -145,14 +147,17 @@ from randomizer_ui_builder import (
     create_widgets as build_launcher_widgets,
     redraw_grid as redraw_launcher_grid,
 )
+from randomizer_tuning import REWARD_PLANNING
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
 CHECK_SCHEMA_VERSION = 16
 HOOK_POLL_MS = 1500
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
-MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
-GLOBAL_BUFF_REWARD_INTERVAL = 10
+MAX_GLOBAL_BUFF_REPEATS_PER_SEED = int(
+    REWARD_PLANNING['maximum_global_buff_repeats_per_seed']
+)
+GLOBAL_BUFF_REWARD_INTERVAL = int(REWARD_PLANNING['global_buff_reward_interval'])
 
 
 
@@ -2771,11 +2776,10 @@ class LauncherApp(tk.Tk):
     @staticmethod
     def rewards_per_check_message(value):
         if value >= MAX_REWARDS_PER_CHECK:
-            return 'Ok that is now enough...'
-        if value >= 20:
-            return "So you don't feel powerful enough?"
-        if value >= 10:
-            return 'Wanting to feel good eh?'
+            return REWARDS_PER_CHECK_MAXIMUM_MESSAGE
+        for threshold, message in REWARDS_PER_CHECK_MESSAGE_THRESHOLDS:
+            if value >= threshold:
+                return message
         return ''
 
     def refresh_rewards_per_check_message(self, *_args):

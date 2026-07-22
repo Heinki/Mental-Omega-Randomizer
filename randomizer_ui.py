@@ -15,6 +15,13 @@ CAMPAIGN_FILTERS = list(_UI_CONFIG['campaign_filters'])
 REWARD_MODES = list(_UI_CONFIG['reward_modes'])
 PROGRESSION_MODES = list(_UI_CONFIG['progression_modes'])
 DEFAULT_PROGRESSION_MODE = str(_UI_CONFIG['default_progression_mode'])
+REWARDS_PER_CHECK_MAXIMUM_MESSAGE = str(
+    _UI_CONFIG['rewards_per_check_messages']['maximum']
+)
+REWARDS_PER_CHECK_MESSAGE_THRESHOLDS = tuple(
+    (int(threshold), str(message))
+    for threshold, message in _UI_CONFIG['rewards_per_check_messages']['thresholds']
+)
 
 FACTION_TILE_COLORS = dict(_UI_CONFIG['faction_tile_colors'])
 LIGHT_UI_PALETTE = dict(_UI_CONFIG['light_palette'])

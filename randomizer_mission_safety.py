@@ -35,6 +35,8 @@ ENGINEER_BY_FAMILY = dict(_FACTION_CONFIG['engineer_by_family'])
 ENGINEER_INSTALLED_FORBIDDEN_HOUSES = dict(_FACTION_CONFIG['engineer_installed_forbidden_houses'])
 CONYARD_BY_MCV = dict(_FACTION_CONFIG['conyard_by_mcv'])
 STALINS_FIST_FACTORY = str(_FACTION_CONFIG['stalins_fist_factory'])
+STALINS_FIST_PLACEMENT_IDS = set(_FACTION_CONFIG['stalins_fist_placement_ids'])
+STALINS_FIST_TASKFORCE_IDS = set(_FACTION_CONFIG['stalins_fist_taskforce_ids'])
 STALINS_FIST_FAMILIES = set(_FACTION_CONFIG['stalins_fist_families'])
 
 # Five guaranteed combat roles for the optional seed-start roster. Standard
@@ -305,7 +307,7 @@ def _map_provides_stalins_fist(lines, sections):
             if '=' not in line:
                 continue
             parts = [part.strip().upper() for part in line.split('=', 1)[1].split(',')]
-            if len(parts) >= 2 and parts[1] in {'MWF', STALINS_FIST_FACTORY}:
+            if len(parts) >= 2 and parts[1] in STALINS_FIST_PLACEMENT_IDS:
                 return True
 
     by_lower = {name.lower(): values for name, values in sections.items()}
@@ -314,7 +316,7 @@ def _map_provides_stalins_fist(lines, sections):
             if not key.isdigit():
                 continue
             parts = [part.strip().upper() for part in value.split(',')]
-            if len(parts) >= 2 and parts[1] == 'MWF':
+            if len(parts) >= 2 and parts[1] in STALINS_FIST_TASKFORCE_IDS:
                 return True
     return False
 

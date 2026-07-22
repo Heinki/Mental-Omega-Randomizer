@@ -47,6 +47,7 @@ from randomizer_mission_overrides import (
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_NATIVE_TRIGGER_REFERENCE_IDS,
+    MISSION_NATIVE_VARIANT_BUFF_RULES,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSION_REWARD_EXCLUDED_PLAYER_HOUSES,
     MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES,
@@ -444,20 +445,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
-        native_variant_buff_config = {
-            'SBLEED': ('MORALES', ('MORALES',)),
-            'EREALITY': (
-                'LIBRA',
-                (
-                    'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
-                    'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
-                ),
-            ),
-            'SRED': ('MORALES', ('MORALES',)),
-            'ETOTAL': ('LIBRA', ('LIBRA',)),
-        }.get(code)
+        native_variant_buff_config = MISSION_NATIVE_VARIANT_BUFF_RULES.get(code)
         if native_variant_buff_config:
-            source_unit_id, native_variant_ids = native_variant_buff_config
+            source_unit_id = native_variant_buff_config['source_unit']
+            native_variant_ids = native_variant_buff_config['native_units']
             native_variant_rules, native_buffed_ids = native_variant_unit_buff_rules(
                 guarded_rewards,
                 installed_rule_sections,

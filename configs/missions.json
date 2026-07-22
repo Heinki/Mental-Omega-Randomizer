@@ -13,6 +13,10 @@
       "starting_unlocked_missions": 3,
       "low_level_mission_count": 5,
       "low_level_stage_max": 6,
+      "operation_stage_score": 9,
+      "fallback_stage_score": 12,
+      "finale_stage_score": 24,
+      "finale_mission_codes": ["SHAND"],
       "late_foehn_mission_codes": [
         "FBEYOND",
         "FCAPSULE",
@@ -1164,6 +1168,27 @@
         "LIBRA7",
         "LIBRA8"
       ]
+    },
+    "native_variant_buff_rules": {
+      "SBLEED": {
+        "source_unit": "MORALES",
+        "native_units": ["MORALES"]
+      },
+      "EREALITY": {
+        "source_unit": "LIBRA",
+        "native_units": [
+          "LIBRA", "LIBRA1", "LIBRA2", "LIBRA3", "LIBRA4",
+          "LIBRA5", "LIBRA6", "LIBRA7", "LIBRA8"
+        ]
+      },
+      "SRED": {
+        "source_unit": "MORALES",
+        "native_units": ["MORALES"]
+      },
+      "ETOTAL": {
+        "source_unit": "LIBRA",
+        "native_units": ["LIBRA"]
+      }
     },
     "native_tech_unlock_ids": {
       "SJUGGER": [

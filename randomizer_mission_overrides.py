@@ -34,6 +34,14 @@ MISSION_TECHNO_BASE_RULES = dict(_MISSION_CONFIG['techno_base_rules'])
 
 MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = _frozenset_mapping('native_direct_buff_exclusions')
 
+MISSION_NATIVE_VARIANT_BUFF_RULES = {
+    code: {
+        'source_unit': values['source_unit'],
+        'native_units': tuple(values['native_units']),
+    }
+    for code, values in _MISSION_CONFIG['native_variant_buff_rules'].items()
+}
+
 MISSION_NATIVE_TECH_UNLOCK_IDS = _frozenset_mapping('native_tech_unlock_ids')
 
 MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES = dict(

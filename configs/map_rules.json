@@ -329,6 +329,7 @@
       ],
       "max_map_action_line_length": 511,
       "max_country_veteran_value_length": 480,
+      "superweapon_actions_per_trigger": 16,
       "randomizer_type_list_key_start": 20000,
       "randomizer_superweapon_prefix": "MOR",
       "max_ares_type_id_length": 24

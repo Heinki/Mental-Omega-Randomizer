@@ -2,6 +2,7 @@
   "schema_version": 1,
   "description": "Faction production, engineers, transports, starter roles, and technology ordering.",
   "sections": {
+    "default_unlock_build_houses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
     "engineer_by_family": {
       "allies": "ENGINEER",
       "soviets": "SENGINEER",
@@ -21,6 +22,8 @@
       "FMCV": "FACNST"
     },
     "stalins_fist_factory": "NAFIST",
+    "stalins_fist_placement_ids": ["MWF", "NAFIST"],
+    "stalins_fist_taskforce_ids": ["MWF"],
     "stalins_fist_families": [
       "epsilon",
       "soviets"

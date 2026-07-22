@@ -44,7 +44,7 @@ The launcher separates defaults from active progress:
 
 | Data | Contents | Mutation rule |
 |---|---|---|
-| `configs/*.json` and `configs/rewards/*.json` | Editable mission, faction, UI, unit, buff, access, superweapon, and aid-power definitions | Read on process startup; never rewritten by launcher |
+| `configs/*.json` and `configs/rewards/*.json` | Editable mission overrides, faction/UI/unit data, clone policy, buff/assistance tuning, access, superweapon, and aid-power definitions | Read on process startup; never rewritten by launcher |
 | `config/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
 | `randomizer_state.json` | Active seed, frozen reward settings, mission order, optional grid/node state, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
 

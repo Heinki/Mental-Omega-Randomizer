@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "description": "Editable reward stacking, clone construction, retry assistance, and reward-planning tuning. Defaults preserve the audited behavior.",
+  "sections": {
+    "buff_effects": {
+      "production": {"factor_per_stack": 0.85, "minimum_multiplier": 0.35},
+      "cost": {"factor_per_stack": 0.8, "minimum_multiplier": 0.3},
+      "speed": {"factor_per_stack": 1.1, "maximum_multiplier": 1.75},
+      "armor": {"factor_per_stack": 0.9, "minimum_multiplier": 0.5},
+      "health": {"factor_per_stack": 1.15, "maximum_multiplier": 2.0},
+      "damage": {"factor_per_stack": 1.15, "maximum_multiplier": 2.0},
+      "reload": {"factor_per_stack": 0.9, "minimum_multiplier": 0.45},
+      "range": {"amount_per_stack": 0.5, "maximum_amount": 3.0},
+      "sight": {"amount_per_stack": 1, "maximum_amount": 4},
+      "ammo": {"amount_per_stack": 1, "maximum_amount": 5},
+      "sensor_sight_bonus": 2,
+      "defense_self_heal_fraction": 0.01,
+      "infantry_speed": {"factor_per_stack": 1.1, "safe_ceiling": 8},
+      "maximum_veterancy_stacks": 1
+    },
+    "clone_policy": {
+      "unit_id_prefix": "MORP",
+      "weapon_id_prefix": "MORW",
+      "production_gate_keys": ["techlevel", "buildlimit", "prerequisite", "prerequisiteoverride", "prerequisite.negative", "prerequisite.stolentechs", "factoryowners", "factoryowners.forbidden", "builtat"],
+      "production_gate_prefixes": ["prerequisite.list"],
+      "required_weapon_fields": ["Projectile", "Warhead"]
+    },
+    "mission_assistance": {
+      "maximum_direct_stacks": 6,
+      "direct_buff_types": ["health", "damage", "range"],
+      "reload_when_weapon_rof_above": 1,
+      "add_safe_infantry_speed": true
+    },
+    "reward_planning": {
+      "default_rewards_per_check": 1,
+      "maximum_rewards_per_check": 30,
+      "maximum_global_buff_repeats_per_seed": 3,
+      "global_buff_reward_interval": 10
+    }
+  }
+}

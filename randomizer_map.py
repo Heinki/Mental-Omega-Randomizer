@@ -39,6 +39,13 @@ from randomizer_rewards import (
 )
 from randomizer_weapon_stats import WEAPON_USER_IDS
 from randomizer_static_config import load_static_config
+from randomizer_tuning import (
+    BUFF_EFFECTS,
+    CLONE_POLICY,
+    MISSION_ASSISTANCE,
+    stacking_amount,
+    stacking_multiplier,
+)
 
 
 _MAP_CONFIG = load_static_config('map_rules.json')
@@ -59,6 +66,9 @@ UNLOCKED_TECH_LEVEL = str(_ENGINE_LIMITS['unlocked_tech_level'])
 MISSION_ASSISTANCE_CATEGORIES = tuple(_ENGINE_LIMITS['mission_assistance_categories'])
 MAX_MAP_ACTION_LINE_LENGTH = int(_ENGINE_LIMITS['max_map_action_line_length'])
 MAX_COUNTRY_VETERAN_VALUE_LENGTH = int(_ENGINE_LIMITS['max_country_veteran_value_length'])
+SUPERWEAPON_ACTIONS_PER_TRIGGER = int(
+    _ENGINE_LIMITS['superweapon_actions_per_trigger']
+)
 
 
 def now_stamp():
@@ -668,16 +678,16 @@ def stacked_house_buff_values(
     for (buff_type, suffix), count in category_counts.items():
         if buff_type == 'production':
             key = f'BuildTime{suffix}Mult'
-            multiplier = max(0.35, 0.85 ** count)
+            multiplier = stacking_multiplier('production', count)
         elif buff_type == 'cost':
             key = f'Cost{suffix}Mult'
-            multiplier = max(0.30, 0.80 ** count)
+            multiplier = stacking_multiplier('cost', count)
         elif buff_type == 'speed':
             key = f'Speed{suffix}Mult'
-            multiplier = min(1.75, 1.10 ** count)
+            multiplier = stacking_multiplier('speed', count)
         elif buff_type == 'armor':
             key = f'Armor{suffix}Mult'
-            multiplier = max(0.50, 0.90 ** count)
+            multiplier = stacking_multiplier('armor', count)
         else:
             continue
         existing_key = next((key_name for key_name in base_values if key_name.lower() == key.lower()), key)
@@ -736,15 +746,15 @@ def mission_assistance_multipliers(stacks):
     except (TypeError, ValueError):
         stacks = 0
     return {
-        'production': max(0.35, 0.85 ** stacks),
-        'cost': max(0.30, 0.80 ** stacks),
-        'speed': min(1.75, 1.10 ** stacks),
-        'armor': max(0.50, 0.90 ** stacks),
+        'production': stacking_multiplier('production', stacks),
+        'cost': stacking_multiplier('cost', stacks),
+        'speed': stacking_multiplier('speed', stacks),
+        'armor': stacking_multiplier('armor', stacks),
         # Display/clone multiplier only. Never write this onto CountryType.
-        'rof': max(0.45, 0.90 ** stacks),
-        'health': min(2.0, 1.15 ** stacks),
-        'damage': min(2.0, 1.15 ** stacks),
-        'range': min(3.0, 0.5 * stacks),
+        'rof': stacking_multiplier('reload', stacks),
+        'health': stacking_multiplier('health', stacks),
+        'damage': stacking_multiplier('damage', stacks),
+        'range': stacking_amount('range', stacks),
     }
 
 
@@ -762,7 +772,7 @@ def mission_assistance_direct_rewards(unit_ids, stacks):
     rewards = []
     if not stacks:
         return rewards
-    direct_stacks = min(stacks, 6)
+    direct_stacks = min(stacks, int(MISSION_ASSISTANCE['maximum_direct_stacks']))
     for unit_id in unique_in_order(
         str(unit_id or '').upper() for unit_id in (unit_ids or [])
     ):
@@ -770,16 +780,19 @@ def mission_assistance_direct_rewards(unit_ids, stacks):
         if not target:
             continue
         for _ in range(direct_stacks):
-            buff_types = ['health', 'damage', 'range']
+            buff_types = list(MISSION_ASSISTANCE['direct_buff_types'])
             # Fire-rate assistance must modify cloned WeaponTypes. Country ROF
             # is a difficulty field, not a supported CountryType multiplier.
             if any(
-                stats.get('rof', 0) > 1
+                stats.get('rof', 0) > float(
+                    MISSION_ASSISTANCE['reload_when_weapon_rof_above']
+                )
                 for stats in target.get('weapons', {}).values()
             ):
                 buff_types.append('reload')
             if (
-                target.get('category') == 'infantry'
+                MISSION_ASSISTANCE['add_safe_infantry_speed']
+                and target.get('category') == 'infantry'
                 and capped_infantry_speed(target.get('speed', 1), 1)
                 > int(target.get('speed', 1))
             ):
@@ -1143,12 +1156,16 @@ SHARED_WEAPON_USER_IDS = {
 
 def apply_unit_buff_value(values, target, buff_type, count):
     if buff_type == 'health':
-        multiplier = min(2.0, 1.15 ** count)
+        multiplier = stacking_multiplier('health', count)
         values['Strength'] = str(max(1, int(round(target['strength'] * multiplier))))
     elif buff_type == 'sight':
-        values['Sight'] = str(int(round(target['sight'] + min(4, count))))
+        values['Sight'] = str(int(round(
+            target['sight'] + stacking_amount('sight', count)
+        )))
     elif buff_type == 'ammo':
-        values['Ammo'] = str(int(round(target['ammo'] + min(5, count))))
+        values['Ammo'] = str(int(round(
+            target['ammo'] + stacking_amount('ammo', count)
+        )))
     elif buff_type == 'self_healing':
         values['SelfHealing'] = 'yes'
         if target.get('category') == 'defenses':
@@ -1156,7 +1173,10 @@ def apply_unit_buff_value(values, target, buff_type, count):
             # with hundreds or thousands of HP that appears non-functional.
             # Keep the normal game interval but heal 1% max strength per tick.
             values['SelfHealing.Amount'] = str(
-                max(1, int(round(target['strength'] * 0.01)))
+                max(1, int(round(
+                    target['strength']
+                    * float(BUFF_EFFECTS['defense_self_heal_fraction'])
+                )))
             )
     elif buff_type == 'cloak':
         values['Cloakable'] = 'yes'
@@ -1165,12 +1185,14 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['CloakSound'] = 'none'
     elif buff_type == 'sensors':
         values['Sensors'] = 'yes'
-        values['SensorsSight'] = str(int(round(target.get('sight', 5) + 2)))
+        values['SensorsSight'] = str(int(round(
+            target.get('sight', 5) + float(BUFF_EFFECTS['sensor_sight_bonus'])
+        )))
     elif buff_type == 'cost':
-        multiplier = max(0.30, 0.80 ** count)
+        multiplier = stacking_multiplier('cost', count)
         values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
     elif buff_type == 'production':
-        multiplier = max(0.35, 0.85 ** count)
+        multiplier = stacking_multiplier('production', count)
         existing_key = next(
             (
                 key
@@ -1185,10 +1207,10 @@ def apply_unit_buff_value(values, target, buff_type, count):
         if target.get('category') == 'infantry':
             values['Speed'] = str(capped_infantry_speed(target['speed'], count))
         else:
-            multiplier = min(1.75, 1.10 ** count)
+            multiplier = stacking_multiplier('speed', count)
             values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
     elif buff_type == 'armor':
-        multiplier = max(0.50, 0.90 ** count)
+        multiplier = stacking_multiplier('armor', count)
         current_strength = int(values.get('Strength', target['strength']))
         values['Strength'] = str(max(1, int(round(current_strength / multiplier))))
     else:
@@ -1198,13 +1220,15 @@ def apply_unit_buff_value(values, target, buff_type, count):
 
 def apply_weapon_buff_value(values, base_stats, buff_type, count):
     if buff_type == 'damage' and base_stats.get('damage', 0) > 0:
-        multiplier = min(2.0, 1.15 ** count)
+        multiplier = stacking_multiplier('damage', count)
         base_damage = int(round(base_stats['damage']))
         values['Damage'] = str(max(base_damage + 1, int(round(base_damage * multiplier))))
     elif buff_type == 'range' and base_stats.get('range', 0) > 0:
-        values['Range'] = format_multiplier(base_stats['range'] + min(3.0, 0.5 * count))
+        values['Range'] = format_multiplier(
+            base_stats['range'] + stacking_amount('range', count)
+        )
     elif buff_type == 'reload' and base_stats.get('rof', 0) > 1:
-        multiplier = max(0.45, 0.90 ** count)
+        multiplier = stacking_multiplier('reload', count)
         values['ROF'] = str(max(1, int(round(base_stats['rof'] * multiplier))))
     else:
         return False
@@ -1651,7 +1675,13 @@ def _friendly_variant_clone_candidates(
         for candidate in registered:
             candidate_id = str(candidate).strip()
             candidate_upper = candidate_id.upper()
-            if not candidate_id or candidate_upper in seen or candidate_upper.startswith('MORP'):
+            if (
+                not candidate_id
+                or candidate_upper in seen
+                or candidate_upper.startswith(
+                    str(CLONE_POLICY['unit_id_prefix']).upper()
+                )
+            ):
                 continue
             installed_name = installed_name_by_lower.get(candidate_id.lower())
             map_name = map_name_by_lower.get(candidate_id.lower())
@@ -2037,7 +2067,7 @@ def helper_ai_autobuild_plan(
         })
 
     def record_native_team_support(team_id, helper_owner):
-        """Make the helper's existing team members buildable as MORP clones."""
+        """Make the helper's existing team members buildable as player clones."""
         _helper_house, helper_country = helper_owner
         team_values = sections_by_lower.get(str(team_id).lower(), {})
         taskforce_id = str(team_values.get('taskforce') or '').strip()
@@ -2865,18 +2895,8 @@ def player_unit_clone_rules(
             for key, value in effective_unit_values.items():
                 lowered = str(key).lower()
                 if (
-                    lowered in {
-                        'techlevel',
-                        'buildlimit',
-                        'prerequisite',
-                        'prerequisiteoverride',
-                        'prerequisite.negative',
-                        'prerequisite.stolentechs',
-                        'factoryowners',
-                        'factoryowners.forbidden',
-                        'builtat',
-                    }
-                    or lowered.startswith('prerequisite.list')
+                    lowered in CLONE_POLICY['production_gate_keys']
+                    or lowered.startswith(tuple(CLONE_POLICY['production_gate_prefixes']))
                 ):
                     _remove_case_insensitive(clone_source_values, key)
                     clone_source_values[key] = value
@@ -2954,7 +2974,9 @@ def player_unit_clone_rules(
             continue
 
         clone_id = _collision_safe_type_id(
-            f'MORP{unit_id}', f'player-unit:{unit_id}', reserved_ids
+            f'{CLONE_POLICY["unit_id_prefix"]}{unit_id}',
+            f'player-unit:{unit_id}',
+            reserved_ids,
         )
         clone_values = dict(clone_source_values)
         prerequisite_override = _value_case_insensitive(
@@ -2968,7 +2990,7 @@ def player_unit_clone_rules(
         ):
             # TechnoType art defaults to its own section ID. A standalone clone
             # therefore needs the original ID explicitly or it would look for a
-            # nonexistent MORP... art section.
+            # nonexistent clone-specific art section.
             clone_values['Image'] = source_unit
         handled_unit_types = set()
         handled_weapon_ids = set()
@@ -3001,7 +3023,7 @@ def player_unit_clone_rules(
                 continue
             missing_core = [
                 required
-                for required in ('Projectile', 'Warhead')
+                for required in CLONE_POLICY['required_weapon_fields']
                 if not any(
                     str(key).lower() == required.lower() and str(value).strip()
                     for key, value in weapon_values.items()
@@ -3024,7 +3046,7 @@ def player_unit_clone_rules(
             if not applied_weapon:
                 continue
             weapon_clone = _collision_safe_type_id(
-                f'MORW{unit_id}{weapon}',
+                f'{CLONE_POLICY["weapon_id_prefix"]}{unit_id}{weapon}',
                 f'player-weapon:{unit_id}:{weapon}',
                 reserved_ids,
             )
@@ -3609,7 +3631,7 @@ def unit_weapon_buff_rules(
                     f'({", ".join(unsafe_unit_houses)})'
                 )
             else:
-                multiplier = min(2.0, 1.15 ** counts['damage'])
+                multiplier = stacking_multiplier('damage', counts['damage'])
                 general_values = rule_sections.setdefault('General', {})
                 for field, base_damage in target['special_damage_fields'].items():
                     general_values[field] = str(
@@ -4596,9 +4618,6 @@ def unique_section_key(lines, sections, prefix):
         if candidate.lower() not in existing:
             return candidate
     raise RuntimeError(f'Could not allocate a unique {prefix} map key.')
-
-
-SUPERWEAPON_ACTIONS_PER_TRIGGER = 16
 
 
 def _waypoint_label(index):

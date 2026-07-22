@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "description": "Editable installed-unit capability and reward-eligibility policy.",
+  "sections": {
+    "existing_capability_ids": {
+      "self_healing": ["AMEDIC", "TTNK", "AKULA", "DRED", "SQD", "MIND", "QUETZ", "RIOT", "SUPR", "TANY", "SIEG", "ARMR", "CMIN", "AMCV", "COMA", "ABRM", "CHRTNK", "THOR", "VCARR", "BFRT", "CRYO", "DLPH", "HCRUIS", "CARRIER", "STORM", "ORCA", "BEAG", "FORTRESS", "HBIRD", "DESO", "DESOR", "CHITZ", "VOLKOV", "MORALES", "YUNRU", "HARV", "SMCV", "RAVA", "WOLF", "MWF", "APOC", "SCHP", "EMPR", "EDRN", "CNTR", "ZEP", "FOX", "DUST", "BRUTE", "YURI", "YURIPR", "SCRG", "STALKER", "LIBRA", "UNDER", "ASSN", "YMIN", "PCV", "DISK", "SCAV", "DEVO", "RUINER", "BASIL", "GOTTER", "NAUT", "BSUB", "BLIGHT", "VENOM", "WASP", "BANE", "SIBFIN", "SICALI", "EUREKA", "URAGAN", "NMIN", "FMCV", "BUZZ", "COND", "MEGA", "MAD", "VIPER", "HURR", "PROME", "GHTNK", "BOID", "LEVI", "FAFILD", "FACONF"],
+      "cloak": ["AKULA", "SUB", "SQD", "DLPH", "STORM", "ORCA", "BEAG", "FORTRESS", "HBIRD", "FOX", "DUST", "UNDER", "YMIN", "SHADOW", "QUAD", "SLED", "NAUT", "BSUB", "BLIGHT", "VENOM", "SHARK", "GACPIL", "GACRYO", "NATRAP", "YAVNMM", "FAFILD", "FACONF", "FAMMIN"],
+      "sensors": ["SHK", "AKULA", "DRED", "SUB", "SQD", "GHOST", "TANY", "SIEG", "ROBO", "DEST", "DLPH", "SHOCK", "VOLKOV", "MORALES", "YUNRU", "BOREK", "ARMA", "LIBRA", "UNDER", "ASSN", "STING", "SHADOW", "SLED", "NAUT", "BSUB", "HUNTR", "SIBFIN", "SICALI", "EUREKA", "MSA", "SWORD", "SHARK", "NASCOM", "FAFILD", "FACONF"]
+    },
+    "noncombat_weapon_target_ids": ["ENGINEER", "SENGINEER", "YENGINEER", "FENGINEER", "SPY", "SBTR", "INTRUDER", "HIJACKER", "MWF", "MSA", "SWPR", "ORCIN"],
+    "nontrainable_unit_ids": ["AMEDIC", "ENGINEER", "SPY", "SUPR", "CMIN", "AMCV", "SHAD", "CRYO", "HBIRD", "SENGINEER", "SBTR", "ARSO", "DRON", "SMCV", "RAVA", "MWF", "FDRON", "EDRN", "DUST", "YENGINEER", "KAOS", "INTRUDER", "HIJACKER", "REPU", "YMIN", "PCV", "DRIL", "COYO", "QUAD", "RUINER", "YHVR", "FENGINEER", "SYNC", "CLAIR", "NMIN", "FMCV", "MSA", "RACC", "COON", "CONF", "DIVER", "MAD", "ORCIN", "BOID", "SEAT", "HARB"],
+    "always_available_core_unit_ids": ["AMCV", "SMCV", "PCV", "FMCV", "CMIN", "HARV", "YMIN", "NMIN"],
+    "always_available_building_ids": ["GACNST", "NACNST", "YACNST", "FACNST", "GAPOWR", "NAPOWR", "YAPOWR", "FATRAP", "GAREFN", "NAREFN", "YAREFN", "FAREFN"],
+    "trainable_defense_ids": ["GAPILL", "NASAM", "GAGUN", "GACPIL", "ATESLA", "GTGCAN", "GAHYPE", "NALASR", "NAFLAK", "TESLA", "NAHAMM", "YAGGUN", "YARAIL", "YAHADE", "YAPSYT", "FASONI", "FAGUAR", "FARAIL", "FACOMP", "FAAVAL"],
+    "naval_unit_ids": ["LCRF", "DEST", "AEGIS", "DLPH", "HCRUIS", "CARRIER", "SIREN", "SAPC", "SUB", "SWLF", "REAP", "DBOAT", "DRED", "AKULA", "YHVR", "SLED", "SQD", "NAUT", "BSUB", "SEAT", "SWORD", "SHARK", "MANTA", "LEVI"],
+    "ammo_display_labels": {
+      "ABRM": "Main-cannon ammo"
+    }
+  }
+}

@@ -218,7 +218,7 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 
 Configuration describes the next seed plus immediate UI preferences. State describes the active seed and must be preserved to continue that run.
 
-Static JSON configuration contains mission classifications, house policy, faction production, unit/defense data, reward definitions, powers, and UI choices. Packaged defaults are copied only when missing; existing edits remain untouched. Restart the launcher after editing. See [configs/README.md](configs/README.md).
+Static JSON configuration contains mission classifications and overrides, house policy, faction production, unit/defense data, reward definitions, clone/buff tuning, powers, and UI choices. Packaged defaults are copied only when missing; existing edits remain untouched. Restart the launcher after editing. See [configs/README.md](configs/README.md).
 
 ## Troubleshooting
 

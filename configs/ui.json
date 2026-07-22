@@ -63,6 +63,13 @@
       "Grid Mode"
     ],
     "default_progression_mode": "Mission List",
+    "rewards_per_check_messages": {
+      "maximum": "Ok that is now enough...",
+      "thresholds": [
+        [20, "So you don't feel powerful enough?"],
+        [10, "Wanting to feel good eh?"]
+      ]
+    },
     "faction_tile_colors": {
       "Allies": "#285f9e",
       "Soviets": "#a53636",

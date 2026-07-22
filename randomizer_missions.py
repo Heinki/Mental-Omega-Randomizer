@@ -18,6 +18,10 @@ FALLBACK_OBJECTIVE_COUNT = int(_MISSION_CATALOGUE['fallback_objective_count'])
 STARTING_UNLOCKED_MISSIONS = int(_MISSION_CATALOGUE['starting_unlocked_missions'])
 LOW_LEVEL_MISSION_COUNT = int(_MISSION_CATALOGUE['low_level_mission_count'])
 LOW_LEVEL_STAGE_MAX = int(_MISSION_CATALOGUE['low_level_stage_max'])
+OPERATION_STAGE_SCORE = int(_MISSION_CATALOGUE['operation_stage_score'])
+FALLBACK_STAGE_SCORE = int(_MISSION_CATALOGUE['fallback_stage_score'])
+FINALE_STAGE_SCORE = int(_MISSION_CATALOGUE['finale_stage_score'])
+FINALE_MISSION_CODES = frozenset(_MISSION_CATALOGUE['finale_mission_codes'])
 
 BASE_BUILD = 'base_build'
 TRUE_NO_BUILD = 'true_no_build'
@@ -158,11 +162,14 @@ def mission_stage_score(mission):
     if match:
         score = int(match.group(1))
     elif re.search(r'\bOp\b', title, flags=re.IGNORECASE):
-        score = 9
+        score = OPERATION_STAGE_SCORE
     else:
-        score = int(mission.get('index') or 12)
-    if re.search(r'\b(finale|final)\b', title, flags=re.IGNORECASE) or code.upper() == 'SHAND':
-        score = max(score, 24)
+        score = int(mission.get('index') or FALLBACK_STAGE_SCORE)
+    if (
+        re.search(r'\b(finale|final)\b', title, flags=re.IGNORECASE)
+        or code.upper() in FINALE_MISSION_CODES
+    ):
+        score = max(score, FINALE_STAGE_SCORE)
     return score
 
 

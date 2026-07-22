@@ -9,20 +9,40 @@ embedded in Python modules. Restart the launcher after changing a file.
   Archipelago settings used when active YAML keys are absent.
 - `missions.json`: mission build classifications, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
-  access rules, and campaign starter families.
+  access rules, native-variant buff forwarding, and campaign starter families.
 - `map_rules.json`: controlled technology locks, TechnoType registry mapping,
   and parser/engine safety limits used by generated maps.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
   buildings, Tier 1 roles, amphibious transports, Chaos production, and tech
-  ordering.
+  ordering, plus default unlock owners and special-factory identities.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
-  faction colors, and light/dark palettes.
+  reward-count messages, faction colors, and light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
   cross-faction role-equivalence groups, buff targets, labels, hero limits, and
   special weapon damage fields.
+- `rewards/unit_policy.json`: installed capabilities, reward exclusions,
+  trainability/naval classification, always-available essentials, trainable
+  defenses, and unit-specific display wording.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power mappings,
   access aliases, and retired reward compatibility entries.
+- `rewards/tuning.json`: stack multipliers and caps, retry-assistance behavior,
+  clone prefixes/production-field policy, reward count limits, and global-buff
+  planning cadence. Display text and generated map values use the same data.
+
+## Mission-specific overrides
+
+Add reviewed map exceptions to `missions.json`; do not add mission-code
+branches to the Python pipeline. Available sections cover player/helper houses,
+native clone exclusions, required access rules, base-section values, native
+unlock preservation, superweapon payload clones, and native variant buff rules.
+An expansion map can use the same sections once its mission code is present in
+the catalogue/classification data.
+
+`rewards/tuning.json` changes newly generated maps and reward plans. Clone ID
+prefixes and production-field lists are advanced engine policy: keep IDs within
+the Ares 24-character limit and retain `Projectile`/`Warhead` requirements
+unless a modified engine has been tested.
 
 ## Load locations
 

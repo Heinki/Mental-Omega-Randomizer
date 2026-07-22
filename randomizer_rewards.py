@@ -6,24 +6,25 @@ from randomizer_weapon_stats import (
     WEAPON_BASE_STATS,
 )
 from randomizer_static_config import load_static_config
+from randomizer_tuning import (
+    BUFF_EFFECTS,
+    REWARD_PLANNING,
+    stacking_amount,
+    stacking_multiplier,
+)
 
 
 _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
 _REWARD_CATALOGUE_CONFIG = load_static_config('rewards/catalogue.json')
+_FACTION_CONFIG = load_static_config('factions.json')
+_UNIT_POLICY_CONFIG = load_static_config('rewards/unit_policy.json')
 
 # This module is intentionally data-heavy. Keeping it separate from the Tk
 # launcher makes future Archipelago item/location work much easier.
 
-ALLIED_BUILD_HOUSES = 'UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER'
-SOVIET_BUILD_HOUSES = 'USSR,Latin,Chinese,MORPLAYER'
-EPSILON_BUILD_HOUSES = 'PsiCorps,Headquaters,ScorpionCell,MORPLAYER'
-FOEHN_BUILD_HOUSES = 'Guild1,Guild2,Guild3,MORPLAYER'
-ALL_BUILD_HOUSES = (
-    ALLIED_BUILD_HOUSES + ',' + SOVIET_BUILD_HOUSES + ','
-    + EPSILON_BUILD_HOUSES + ',' + FOEHN_BUILD_HOUSES
-)
-DEFAULT_REWARDS_PER_CHECK = 1
-MAX_REWARDS_PER_CHECK = 30
+DEFAULT_UNLOCK_BUILD_HOUSES = _FACTION_CONFIG['default_unlock_build_houses']
+DEFAULT_REWARDS_PER_CHECK = int(REWARD_PLANNING['default_rewards_per_check'])
+MAX_REWARDS_PER_CHECK = int(REWARD_PLANNING['maximum_rewards_per_check'])
 
 # Complete playable 3.3.6 faction rosters.  These use the real rulesmo.ini
 # section IDs, which frequently differ from the public-facing unit names.
@@ -81,25 +82,15 @@ ROSTER_WEAPON_STATS = build_roster_weapon_stats()
 # Installed 3.3.6 capability snapshot. Do not offer a one-time enable reward
 # when the TechnoType already has that capability. Explicit ``no`` values are
 # intentionally absent because those units can still gain the capability.
-EXISTING_SELF_HEALING_IDS = frozenset('''
-AMEDIC TTNK AKULA DRED SQD MIND QUETZ RIOT SUPR TANY SIEG ARMR CMIN AMCV COMA
-ABRM CHRTNK THOR VCARR BFRT CRYO DLPH HCRUIS CARRIER STORM ORCA BEAG FORTRESS
-HBIRD DESO DESOR CHITZ VOLKOV MORALES YUNRU HARV SMCV RAVA WOLF MWF APOC SCHP
-EMPR EDRN CNTR ZEP FOX DUST BRUTE YURI YURIPR SCRG STALKER LIBRA UNDER ASSN
-YMIN PCV DISK SCAV DEVO RUINER BASIL GOTTER NAUT BSUB BLIGHT VENOM WASP BANE
-SIBFIN SICALI EUREKA URAGAN NMIN FMCV BUZZ COND MEGA MAD VIPER HURR PROME
-GHTNK BOID LEVI FAFILD FACONF
-'''.split())
-EXISTING_CLOAK_IDS = frozenset('''
-AKULA SUB SQD DLPH STORM ORCA BEAG FORTRESS HBIRD FOX DUST UNDER YMIN SHADOW
-QUAD SLED NAUT BSUB BLIGHT VENOM SHARK GACPIL GACRYO NATRAP YAVNMM FAFILD
-FACONF FAMMIN
-'''.split())
-EXISTING_SENSOR_IDS = frozenset('''
-SHK AKULA DRED SUB SQD GHOST TANY SIEG ROBO DEST DLPH SHOCK VOLKOV MORALES
-YUNRU BOREK ARMA LIBRA UNDER ASSN STING SHADOW SLED NAUT BSUB HUNTR SIBFIN
-SICALI EUREKA MSA SWORD SHARK NASCOM FAFILD FACONF
-'''.split())
+EXISTING_SELF_HEALING_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['self_healing']
+)
+EXISTING_CLOAK_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['cloak']
+)
+EXISTING_SENSOR_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['sensors']
+)
 EXISTING_CAPABILITY_IDS = {
     'self_healing': EXISTING_SELF_HEALING_IDS,
     'cloak': EXISTING_CLOAK_IDS,
@@ -109,40 +100,28 @@ EXISTING_CAPABILITY_IDS = {
 # These types mount disguise, capture/defuse, scanner, or explicit
 # ``NotAWeapon`` helpers. Their WeaponType fields are engine controls rather
 # than attacks, so weapon-stat rewards are misleading or ineffective.
-NONCOMBAT_WEAPON_TARGET_IDS = frozenset({
-    'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
-    'SPY', 'SBTR', 'INTRUDER', 'HIJACKER',
-    'MWF', 'MSA', 'SWPR', 'ORCIN',
-})
+NONCOMBAT_WEAPON_TARGET_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['noncombat_weapon_target_ids']
+)
 
 # Installed 3.3.6 TechnoTypes with ``Trainable=no`` cannot use veterancy.
 # Keep this separate from NONCOMBAT_WEAPON_TARGET_IDS: some support units have
 # meaningful veteran behavior despite lacking an ordinary damaging weapon,
 # while many combat/support types below are simply unable to train.
-NONTRAINABLE_UNIT_IDS = frozenset('''
-AMEDIC ENGINEER SPY SUPR CMIN AMCV SHAD CRYO HBIRD
-SENGINEER SBTR ARSO DRON SMCV RAVA MWF FDRON EDRN DUST
-YENGINEER KAOS INTRUDER HIJACKER REPU YMIN PCV DRIL COYO QUAD RUINER YHVR
-FENGINEER SYNC CLAIR NMIN FMCV MSA RACC COON CONF DIVER MAD ORCIN BOID SEAT HARB
-'''.split())
+NONTRAINABLE_UNIT_IDS = frozenset(_UNIT_POLICY_CONFIG['nontrainable_unit_ids'])
 
 # Economy, base-operation, and mission-transport essentials are deliberately
 # never access items. They remain available regardless of randomizer progress.
-AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset({'LCRF', 'SAPC', 'YHVR', 'SEAT'})
-ENGINEER_UNIT_IDS = frozenset({
-    'ENGINEER', 'SENGINEER', 'YENGINEER', 'FENGINEER',
-})
-ALWAYS_AVAILABLE_UNIT_IDS = {
-    'AMCV', 'SMCV', 'PCV', 'FMCV',
-    'CMIN', 'HARV', 'YMIN', 'NMIN',
-    *ENGINEER_UNIT_IDS,
-    *AMPHIBIOUS_TRANSPORT_UNIT_IDS,
-}
-ALWAYS_AVAILABLE_BUILDING_IDS = {
-    'GACNST', 'NACNST', 'YACNST', 'FACNST',
-    'GAPOWR', 'NAPOWR', 'YAPOWR', 'FATRAP',
-    'GAREFN', 'NAREFN', 'YAREFN', 'FAREFN',
-}
+AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset(
+    values[0] for values in _FACTION_CONFIG['amphibious_transports'].values()
+)
+ENGINEER_UNIT_IDS = frozenset(_FACTION_CONFIG['engineer_by_family'].values())
+ALWAYS_AVAILABLE_UNIT_IDS = set(
+    _UNIT_POLICY_CONFIG['always_available_core_unit_ids']
+) | set(ENGINEER_UNIT_IDS) | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
+ALWAYS_AVAILABLE_BUILDING_IDS = set(
+    _UNIT_POLICY_CONFIG['always_available_building_ids']
+)
 ALWAYS_AVAILABLE_TECH_IDS = ALWAYS_AVAILABLE_UNIT_IDS | ALWAYS_AVAILABLE_BUILDING_IDS
 
 # Explicit cross-faction gameplay roles used only for single-campaign buff
@@ -175,15 +154,15 @@ DEFENSE_WEAPON_STATS = dict(_UNIT_DATA_CONFIG['defense_weapon_stats'])
 # RULESMO.INI explicitly marks these defenses Trainable=yes and gives them
 # veteran/elite behavior.  Support structures and mine-style defenses without
 # that flag must not receive a dead "Veteran start" reward.
-TRAINABLE_DEFENSE_IDS = {
-    'GAPILL', 'NASAM', 'GAGUN', 'GACPIL', 'ATESLA', 'GTGCAN', 'GAHYPE',
-    'NALASR', 'NAFLAK', 'TESLA', 'NAHAMM',
-    'YAGGUN', 'YARAIL', 'YAHADE', 'YAPSYT',
-    'FASONI', 'FAGUAR', 'FARAIL', 'FACOMP', 'FAAVAL',
-}
+TRAINABLE_DEFENSE_IDS = set(_UNIT_POLICY_CONFIG['trainable_defense_ids'])
 
 
-def build_unlock(section, tech_level, prerequisite=None, houses=ALLIED_BUILD_HOUSES):
+def build_unlock(
+    section,
+    tech_level,
+    prerequisite=None,
+    houses=DEFAULT_UNLOCK_BUILD_HOUSES,
+):
     values = {
         'TechLevel': str(tech_level),
         'Owner': houses,
@@ -200,12 +179,7 @@ EXTRA_UNIT_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['extra_unit_unlock_rewards'
 
 FACTION_ACCESS_RULES = _REWARD_CATALOGUE_CONFIG['faction_access_rules']
 
-NAVAL_UNIT_IDS = {
-    'LCRF', 'DEST', 'AEGIS', 'DLPH', 'HCRUIS', 'CARRIER', 'SIREN',
-    'SAPC', 'SUB', 'SWLF', 'REAP', 'DBOAT', 'DRED', 'AKULA',
-    'YHVR', 'SLED', 'SQD', 'NAUT', 'BSUB',
-    'SEAT', 'SWORD', 'SHARK', 'MANTA', 'LEVI',
-}
+NAVAL_UNIT_IDS = set(_UNIT_POLICY_CONFIG['naval_unit_ids'])
 
 
 def access_target_lookup():
@@ -374,14 +348,15 @@ for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
 # Malver in Singularity. Earned infantry movement buffs use direct TechnoType
 # values capped at this conservative limit. Faster native infantry retain
 # their authored speed but cannot be accelerated.
-MAX_BUFFED_INFANTRY_SPEED = 8
+MAX_BUFFED_INFANTRY_SPEED = int(BUFF_EFFECTS['infantry_speed']['safe_ceiling'])
 
 
 def capped_infantry_speed(base_speed, count):
     """Return safe earned infantry speed without lowering faster native types."""
     base_speed = max(1, int(base_speed))
     ceiling = max(base_speed, MAX_BUFFED_INFANTRY_SPEED)
-    return min(ceiling, max(1, int(round(base_speed * (1.10 ** count)))))
+    factor = float(BUFF_EFFECTS['infantry_speed']['factor_per_stack'])
+    return min(ceiling, max(1, int(round(base_speed * (factor ** count)))))
 
 # Westwood-spawn missiles do not expose their real impact damage as a normal
 # WeaponType. These General-section fields are the actual payload damage for
@@ -820,7 +795,7 @@ WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors'}
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit'}
-MAX_VETERANCY_STACKS = 1
+MAX_VETERANCY_STACKS = int(BUFF_EFFECTS['maximum_veterancy_stacks'])
 
 
 def reward_display_name(reward):
@@ -887,7 +862,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         return f'{text} ({stack_label(count)})'
 
     if buff_type == 'production':
-        multiplier = max(0.35, 0.85 ** count)
+        multiplier = stacking_multiplier('production', count)
         shorter = int(round((1.0 - multiplier) * 100))
         effect = (
             'Construction time'
@@ -896,7 +871,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         return [stacked(f'{prefix}{effect} {shorter}% shorter')]
     if buff_type == 'cost':
-        multiplier = max(0.30, 0.80 ** count)
+        multiplier = stacking_multiplier('cost', count)
         cheaper = int(round((1.0 - multiplier) * 100))
         return [stacked(f'{prefix}Cost {cheaper}% cheaper')]
     if buff_type == 'speed':
@@ -907,19 +882,19 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
                 f'{prefix}Speed {base_speed} -> {speed} '
                 f'(safe infantry ceiling {MAX_BUFFED_INFANTRY_SPEED})'
             )]
-        multiplier = min(1.75, 1.10 ** count)
+        multiplier = stacking_multiplier('speed', count)
         faster = int(round((multiplier - 1.0) * 100))
         return [stacked(f'{prefix}Speed {faster}% faster')]
     if buff_type == 'armor':
-        multiplier = max(0.50, 0.90 ** count)
+        multiplier = stacking_multiplier('armor', count)
         tougher = int(round((1.0 - multiplier) * 100))
         return [stacked(f'{prefix}Armor {tougher}% stronger')]
     if buff_type == 'health':
-        multiplier = min(2.0, 1.15 ** count)
+        multiplier = stacking_multiplier('health', count)
         stronger = int(round((multiplier - 1.0) * 100))
         return [stacked(f'{prefix}Health {stronger}% higher')]
     if buff_type == 'sight':
-        increase = min(4, count)
+        increase = int(stacking_amount('sight', count))
         return [stacked(f'{prefix}Vision +{increase}')]
     if buff_type == 'veteran':
         return [stacked(f'{prefix}Veteran start')]
@@ -927,33 +902,36 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         base_limit = int(target.get('build_limit', 1))
         return [stacked(f'{prefix}Simultaneous unit limit {base_limit} -> {base_limit + count}')]
     if buff_type == 'damage':
-        multiplier = min(2.0, 1.15 ** count)
+        multiplier = stacking_multiplier('damage', count)
         stronger = int(round((multiplier - 1.0) * 100))
         return [stacked(f'{prefix}Damage {stronger}% higher')]
     if buff_type == 'reload':
-        multiplier = max(0.45, 0.90 ** count)
+        multiplier = stacking_multiplier('reload', count)
         faster = int(round((1.0 - multiplier) * 100))
         return [stacked(f'{prefix}Fire rate {faster}% faster')]
     if buff_type == 'range':
-        increase = min(3.0, 0.5 * count)
+        increase = stacking_amount('range', count)
         if increase.is_integer():
             increase_text = str(int(increase))
         else:
             increase_text = f'{increase:.1f}'
         return [stacked(f'{prefix}Range +{increase_text}')]
     if buff_type == 'ammo':
-        increase = min(5, count)
+        increase = int(stacking_amount('ammo', count))
         base_ammo = int(target.get('ammo', 0))
         total_ammo = base_ammo + increase
-        if reward.get('unit') == 'ABRM':
-            return [stacked(f'{prefix}Main-cannon ammo {base_ammo} -> {total_ammo}')]
-        return [stacked(f'{prefix}Ammo {base_ammo} -> {total_ammo}')]
+        ammo_label = _UNIT_POLICY_CONFIG['ammo_display_labels'].get(
+            reward.get('unit'), 'Ammo'
+        )
+        return [stacked(f'{prefix}{ammo_label} {base_ammo} -> {total_ammo}')]
     if buff_type == 'self_healing':
         return [stacked(f'{prefix}Self-healing enabled')]
     if buff_type == 'cloak':
         return [stacked(f'{prefix}Cloaking enabled')]
     if buff_type == 'sensors':
-        sensor_range = int(round(target.get('sight', 5) + 2))
+        sensor_range = int(round(
+            target.get('sight', 5) + float(BUFF_EFFECTS['sensor_sight_bonus'])
+        ))
         sensor_text = f'{prefix}Sensors enabled ({sensor_range}-cell range)'
         if include_stack:
             sensor_text = (
