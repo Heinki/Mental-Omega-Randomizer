@@ -1,0 +1,2420 @@
+{
+  "schema_version": 1,
+  "description": "Unit access rewards, buff definitions, superweapon templates, support powers, aid-power mapping, and retired rewards.",
+  "sections": {
+    "unit_unlock_rewards": [
+      {
+        "name": "GI Access",
+        "description": "Allows GIs where the map tech tree permits them.",
+        "rules": {
+          "E1": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Guardian GI Access",
+        "description": "Allows Guardian GIs where the map tech tree permits them.",
+        "rules": {
+          "GGI": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Allied Attack Dog Access",
+        "description": "Allows Allied Attack Dogs where the map tech tree permits them.",
+        "rules": {
+          "ADOG": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Field Medic Access",
+        "description": "Allows Field Medics where the map tech tree permits them.",
+        "rules": {
+          "AMEDIC": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Rocketeer Access",
+        "description": "Allows Rocketeers where the map tech tree permits them.",
+        "rules": {
+          "JUMPJET": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Airborne Humvee Access",
+        "description": "Allows Airborne Humvees where the map tech tree permits them.",
+        "rules": {
+          "AHMV": {
+            "TechLevel": "2",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAWEAP"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Stryker IFV Access",
+        "description": "Allows Stryker IFVs where the map tech tree permits them.",
+        "rules": {
+          "FV": {
+            "TechLevel": "2",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAWEAP"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Chrono Legionnaire Access",
+        "description": "Allows Chrono Legionnaires where the map tech tree permits them.",
+        "rules": {
+          "CLEG": {
+            "TechLevel": "3",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAPILE"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Barracuda Access",
+        "description": "Allows Barracudas where the map tech tree permits them.",
+        "rules": {
+          "FORTRESS": {
+            "TechLevel": "4",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAAIRC"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Soviet Conscript Access",
+        "description": "Allows Soviet Conscripts where the map tech tree permits them.",
+        "rules": {
+          "E2": {
+            "TechLevel": "1",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAHAND"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Flak Trooper Access",
+        "description": "Allows Flak Troopers where the map tech tree permits them.",
+        "rules": {
+          "FLAKT": {
+            "TechLevel": "1",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAHAND"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Soviet Attack Dog Access",
+        "description": "Allows Soviet Attack Dogs where the map tech tree permits them.",
+        "rules": {
+          "DOG": {
+            "TechLevel": "1",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAHAND"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Tesla Trooper Access",
+        "description": "Allows Tesla Troopers where the map tech tree permits them.",
+        "rules": {
+          "SHK": {
+            "TechLevel": "2",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAHAND"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Rhino Heavy Tank Access",
+        "description": "Allows Rhino Heavy Tanks where the map tech tree permits them.",
+        "rules": {
+          "HTNK": {
+            "TechLevel": "2",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAWEAP"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Halftrack Access",
+        "description": "Allows Halftracks where the map tech tree permits them.",
+        "rules": {
+          "HTK": {
+            "TechLevel": "2",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAWEAP"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Tesla Cruiser Access",
+        "description": "Allows Tesla Cruisers where the map tech tree permits them.",
+        "rules": {
+          "TTNK": {
+            "TechLevel": "3",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAWEAP"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Akula Missile Sub Access",
+        "description": "Allows Akula Missile Subs where the map tech tree permits them.",
+        "rules": {
+          "AKULA": {
+            "TechLevel": "3",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAYARD"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Kuznetsov Dreadnought Access",
+        "description": "Allows Kuznetsov Dreadnoughts where the map tech tree permits them.",
+        "rules": {
+          "DRED": {
+            "TechLevel": "4",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAYARD"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Initiate Access",
+        "description": "Allows Initiates where the map tech tree permits them.",
+        "rules": {
+          "INIT": {
+            "TechLevel": "1",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YABRCK"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Lasher Light Tank Access",
+        "description": "Allows Lasher Light Tanks where the map tech tree permits them.",
+        "rules": {
+          "LTNK": {
+            "TechLevel": "2",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YAWEAP"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Gatling Tank Access",
+        "description": "Allows Gatling Tanks where the map tech tree permits them.",
+        "rules": {
+          "YTNK": {
+            "TechLevel": "2",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YAWEAP"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Virus Access",
+        "description": "Allows Viruss where the map tech tree permits them.",
+        "rules": {
+          "VIRUS": {
+            "TechLevel": "3",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YABRCK"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Mastermind Access",
+        "description": "Allows Masterminds where the map tech tree permits them.",
+        "rules": {
+          "MIND": {
+            "TechLevel": "4",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YAWEAP"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Knightframe Access",
+        "description": "Allows Knightframes where the map tech tree permits them.",
+        "rules": {
+          "KNIGHT": {
+            "TechLevel": "1",
+            "Owner": "Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FABARR"
+          }
+        },
+        "factions": [
+          "Foehn"
+        ]
+      },
+      {
+        "name": "Jackal Racer Access",
+        "description": "Allows Jackal Racers where the map tech tree permits them.",
+        "rules": {
+          "JACKAL": {
+            "TechLevel": "2",
+            "Owner": "Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FAWEAP"
+          }
+        },
+        "factions": [
+          "Foehn"
+        ]
+      },
+      {
+        "name": "Cyclops Walker Access",
+        "description": "Allows Cyclops Walkers where the map tech tree permits them.",
+        "rules": {
+          "CYCL": {
+            "TechLevel": "2",
+            "Owner": "Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FAWEAP"
+          }
+        },
+        "factions": [
+          "Foehn"
+        ]
+      },
+      {
+        "name": "Draco Light Tank Access",
+        "description": "Allows Draco Light Tanks where the map tech tree permits them.",
+        "rules": {
+          "DRACO": {
+            "TechLevel": "3",
+            "Owner": "Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FAWEAP"
+          }
+        },
+        "factions": [
+          "Foehn"
+        ]
+      },
+      {
+        "name": "Quetzal Access",
+        "description": "Allows Quetzals where the map tech tree permits them.",
+        "rules": {
+          "QUETZ": {
+            "TechLevel": "4",
+            "Owner": "Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FAWEAP"
+          }
+        },
+        "factions": [
+          "Foehn"
+        ]
+      }
+    ],
+    "extra_unit_unlock_rewards": [
+      {
+        "name": "Horizon Destroyer Access",
+        "description": "Allows Horizon Destroyers where the map tech tree permits them.",
+        "rules": {
+          "DEST": {
+            "TechLevel": "3",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAYARD"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Dolphin Access",
+        "description": "Allows Dolphins where the map tech tree permits them.",
+        "rules": {
+          "DLPH": {
+            "TechLevel": "3",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAYARD"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Aegis Cruiser Access",
+        "description": "Allows Aegis Cruisers where the map tech tree permits them.",
+        "rules": {
+          "AEGIS": {
+            "TechLevel": "4",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAYARD"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Enterprise Aircraft Carrier Access",
+        "description": "Allows Enterprise Aircraft Carriers where the map tech tree permits them.",
+        "rules": {
+          "CARRIER": {
+            "TechLevel": "4",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAYARD"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Trident Battleship Access",
+        "description": "Allows Trident Battleships where the map tech tree permits them.",
+        "rules": {
+          "HCRUIS": {
+            "TechLevel": "4",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "GAYARD"
+          }
+        },
+        "factions": [
+          "Allies"
+        ]
+      },
+      {
+        "name": "Typhoon Attack Sub Access",
+        "description": "Allows Typhoon Attack Subs where the map tech tree permits them.",
+        "rules": {
+          "SUB": {
+            "TechLevel": "3",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAYARD"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Giant Squid Access",
+        "description": "Allows Giant Squids where the map tech tree permits them.",
+        "rules": {
+          "SQD": {
+            "TechLevel": "3",
+            "Owner": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "RequiredHouses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "YAYARD"
+          }
+        },
+        "factions": [
+          "Epsilon"
+        ]
+      },
+      {
+        "name": "Mosquito Demoboat Access",
+        "description": "Allows Mosquito Demoboats where the map tech tree permits them.",
+        "rules": {
+          "DBOAT": {
+            "TechLevel": "3",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAYARD"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      }
+    ],
+    "faction_access_rules": {
+      "Allies": {
+        "houses": "UnitedStates,Europeans,Pacific,Europeans2,MORPLAYER",
+        "infantry": "GAPILE",
+        "units": "GAWEAP",
+        "aircraft": "GAAIRC",
+        "naval": "GAYARD",
+        "defenses": "GACNST"
+      },
+      "Soviets": {
+        "houses": "USSR,Latin,Chinese,MORPLAYER",
+        "infantry": "NAHAND",
+        "units": "NAWEAP",
+        "aircraft": "NAAIR",
+        "naval": "NAYARD",
+        "defenses": "NACNST"
+      },
+      "Epsilon": {
+        "houses": "PsiCorps,Headquaters,ScorpionCell,MORPLAYER",
+        "infantry": "YABRCK",
+        "units": "YAWEAP",
+        "aircraft": "YAAIRF",
+        "naval": "YAYARD",
+        "defenses": "YACNST"
+      },
+      "Foehn": {
+        "houses": "Guild1,Guild2,Guild3,MORPLAYER",
+        "infantry": "FABARR",
+        "units": "FAWEAP",
+        "aircraft": "FAWEAP",
+        "naval": "FAYARD",
+        "defenses": "FACNST"
+      }
+    },
+    "buff_types": [
+      {
+        "id": "production",
+        "name": "Drill",
+        "setting_label": "Production / construction time",
+        "description": "{plural} have 15% shorter build/train times in future launched missions."
+      },
+      {
+        "id": "cost",
+        "name": "Logistics",
+        "setting_label": "Cost reduction",
+        "description": "{plural} cost 20% less in future launched missions."
+      },
+      {
+        "id": "speed",
+        "name": "Mobility",
+        "setting_label": "Movement speed",
+        "description": "{plural} move faster in future launched missions."
+      },
+      {
+        "id": "armor",
+        "name": "Armor Plating",
+        "setting_label": "Armor",
+        "description": "{plural} take less incoming damage in future launched missions."
+      },
+      {
+        "id": "health",
+        "name": "Reinforced Frames",
+        "setting_label": "Health",
+        "description": "{plural} gain more health in future launched missions.",
+        "requires_stat": "strength"
+      },
+      {
+        "id": "sight",
+        "name": "Recon Package",
+        "setting_label": "Vision",
+        "description": "{plural} gain more vision in future launched missions.",
+        "requires_stat": "sight"
+      },
+      {
+        "id": "damage",
+        "name": "Firepower",
+        "setting_label": "Damage",
+        "description": "{plural} deal more weapon damage in future launched missions.",
+        "requires_weapons": true,
+        "requires_weapon_stat": "damage",
+        "requires_clone": true
+      },
+      {
+        "id": "reload",
+        "name": "Weapon Tuning",
+        "setting_label": "Unit fire rate",
+        "description": "{plural} fire their weapons faster in future launched missions.",
+        "requires_weapons": true,
+        "requires_weapon_stat": "rof",
+        "requires_weapon_min": 1,
+        "requires_clone": true
+      },
+      {
+        "id": "range",
+        "name": "Optics",
+        "setting_label": "Attack range",
+        "description": "{plural} gain more weapon range in future launched missions.",
+        "requires_weapons": true,
+        "requires_weapon_stat": "range",
+        "requires_clone": true
+      },
+      {
+        "id": "ammo",
+        "name": "Ammo Reserves",
+        "setting_label": "Ammo",
+        "description": "{plural} gain +1 ammo capacity per stack, allowing more ammo-consuming attacks before reloading or rearming in future launched missions.",
+        "requires_stat": "ammo",
+        "requires_clone": true
+      },
+      {
+        "id": "self_healing",
+        "name": "Repair Systems",
+        "setting_label": "Self-healing",
+        "description": "{plural} gain self-healing in future launched missions.",
+        "requires_clone": true
+      },
+      {
+        "id": "cloak",
+        "name": "Stealth Systems",
+        "setting_label": "Cloaking",
+        "description": "{plural} gain cloaking in future launched missions.",
+        "requires_clone": true
+      },
+      {
+        "id": "sensors",
+        "name": "Sensor Suite",
+        "setting_label": "Sensors",
+        "description": "{plural} gain sensors in future launched missions.",
+        "requires_clone": true
+      },
+      {
+        "id": "veteran",
+        "name": "Veteran Training",
+        "setting_label": "Veteran start",
+        "description": "{plural} start as veterans for the player house in future launched missions."
+      },
+      {
+        "id": "build_limit",
+        "name": "Command Capacity",
+        "setting_label": "Unique / hero unit limit +1",
+        "description": "{plural} can have one additional unit active at the same time in future launched missions.",
+        "requires_stat": "build_limit",
+        "requires_clone": true
+      }
+    ],
+    "lightning_storm_map_rules": {
+      "UIName": "NAME:Storm",
+      "Name": "Lightning Storm",
+      "IsPowered": "false",
+      "RechargeTime": "10",
+      "Type": "LightningStorm",
+      "Action": "LightningStorm",
+      "SidebarPCX": "bolticon.pcx",
+      "ShowTimer": "yes",
+      "DisableableFromShell": "no",
+      "AIDefendAgainst": "yes",
+      "Range": "9",
+      "LineMultiplier": "3",
+      "SW.CreateRadarEvent": "yes",
+      "Message.FirerColor": "yes",
+      "Message.Launch": "NAME:STORMACTIVE",
+      "Message.Abort": "NAME:GREATTEMPESTNO",
+      "Message.Detected": "NAME:STORMDETECT",
+      "EVA.Ready": "EVA_BattlePowerReady",
+      "SW.AutoFire": "no",
+      "SW.ManualFire": "yes",
+      "SW.ShowCameo": "yes",
+      "SW.UseAITargeting": "no",
+      "SW.InitialReady": "no",
+      "SW.AITargeting": "LightningStorm",
+      "SW.RequiredHouses": "",
+      "SW.ForbiddenHouses": "",
+      "SW.AuxBuildings": "",
+      "SW.NegBuildings": "",
+      "SW.Damage": "250",
+      "SW.Warhead": "IonWH",
+      "SW.Range": "10",
+      "SW.Deferment": "250",
+      "SW.ActivationSound": "WeatherIntro",
+      "Lightning.Duration": "210",
+      "Lightning.RadarOutage": "450",
+      "Lightning.RadarOutageAffects": "enemies",
+      "Lightning.HitDelay": "90",
+      "Lightning.ScatterDelay": "5",
+      "Lightning.ScatterCount": "1",
+      "Lightning.Separation": "3",
+      "Lightning.PrintText": "yes",
+      "Lightning.Clouds": "WCCLOUD1,WCCLOUD2,WCCLOUD3",
+      "Lightning.Bolts": "WCLBOLT1,WCLBOLT2,WCLBOLT3",
+      "Lightning.BoltExplosion": "EXPLOLB",
+      "Lightning.Sounds": "WeatherStrike",
+      "Light.Enabled": "yes",
+      "Light.Blue": "75",
+      "Light.Red": "45",
+      "Light.Green": "45",
+      "Light.Ambient": "100",
+      "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+      "Cursor": "Storm",
+      "NoCursor": "NoCanDo"
+    },
+    "chronoshift_map_rules": {
+      "UIName": "NAME:Chrono",
+      "Name": "Chronoshift Pre",
+      "IsPowered": "false",
+      "RechargeTime": "6.5",
+      "Type": "ChronoSphere",
+      "Action": "ChronoSphere",
+      "SidebarPCX": "chroicon.pcx",
+      "ShowTimer": "yes",
+      "DisableableFromShell": "no",
+      "Range": "1",
+      "SW.Range": "3,3",
+      "LineMultiplier": "0",
+      "SW.FireIntoShroud": "no",
+      "Chronosphere.ReconsiderBuildings": "no",
+      "Message.FirerColor": "yes",
+      "Message.Launch": "NAME:CHRONOACTIVE",
+      "Message.Detected": "NAME:CHRONODETECT",
+      "SW.CreateRadarEvent": "yes",
+      "EVA.Ready": "EVA_BattlePowerReady",
+      "EVA.Activated": "none",
+      "EVA.Detected": "EVA_ChronoSphereDetected",
+      "SW.AffectsHouse": "team",
+      "SW.AffectsTarget": "units",
+      "SW.PostDependent": "ChronoWarpSpecial",
+      "SW.AutoFire": "no",
+      "SW.ManualFire": "yes",
+      "SW.ShowCameo": "yes",
+      "SW.UseAITargeting": "no",
+      "SW.InitialReady": "no",
+      "SW.AITargeting": "None",
+      "SW.RequiredHouses": "",
+      "SW.ForbiddenHouses": "",
+      "SW.AuxBuildings": "",
+      "SW.NegBuildings": "",
+      "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+      "Cursor": "Shift",
+      "NoCursor": "NoCanDo"
+    },
+    "chronowarp_map_rules": {
+      "UIName": "NAME:Chrono2",
+      "Name": "Chronoshift Post",
+      "IsPowered": "false",
+      "RechargeTime": "1",
+      "Type": "ChronoWarp",
+      "Action": "ChronoWarp",
+      "Range": "1",
+      "LineMultiplier": "1",
+      "SW.AffectsHouse": "team",
+      "SW.AffectsTarget": "units",
+      "SW.CreateRadarEvent": "yes",
+      "SW.RequiredHouses": "",
+      "SW.ForbiddenHouses": "",
+      "SW.AuxBuildings": "",
+      "SW.NegBuildings": "",
+      "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+      "FlashSidebarTabFrames": "0",
+      "Cursor": "Shift",
+      "NoCursor": "NoCanDo"
+    },
+    "superweapon_unlock_rewards": [
+      {
+        "name": "Lightning Storm Power",
+        "description": "Grants a building-free, repeating Lightning Storm in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Allies"
+        ],
+        "kind": "superweapon",
+        "power_category": "offensive",
+        "superweapon": "LightningStormSpecial",
+        "superweapon_index": 2,
+        "superweapon_rules": {
+          "UIName": "NAME:Storm",
+          "Name": "Lightning Storm",
+          "IsPowered": "false",
+          "RechargeTime": "10",
+          "Type": "LightningStorm",
+          "Action": "LightningStorm",
+          "SidebarPCX": "bolticon.pcx",
+          "ShowTimer": "yes",
+          "DisableableFromShell": "no",
+          "AIDefendAgainst": "yes",
+          "Range": "9",
+          "LineMultiplier": "3",
+          "SW.CreateRadarEvent": "yes",
+          "Message.FirerColor": "yes",
+          "Message.Launch": "NAME:STORMACTIVE",
+          "Message.Abort": "NAME:GREATTEMPESTNO",
+          "Message.Detected": "NAME:STORMDETECT",
+          "EVA.Ready": "EVA_BattlePowerReady",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.InitialReady": "no",
+          "SW.AITargeting": "LightningStorm",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Damage": "250",
+          "SW.Warhead": "IonWH",
+          "SW.Range": "10",
+          "SW.Deferment": "250",
+          "SW.ActivationSound": "WeatherIntro",
+          "Lightning.Duration": "210",
+          "Lightning.RadarOutage": "450",
+          "Lightning.RadarOutageAffects": "enemies",
+          "Lightning.HitDelay": "90",
+          "Lightning.ScatterDelay": "5",
+          "Lightning.ScatterCount": "1",
+          "Lightning.Separation": "3",
+          "Lightning.PrintText": "yes",
+          "Lightning.Clouds": "WCCLOUD1,WCCLOUD2,WCCLOUD3",
+          "Lightning.Bolts": "WCLBOLT1,WCLBOLT2,WCLBOLT3",
+          "Lightning.BoltExplosion": "EXPLOLB",
+          "Lightning.Sounds": "WeatherStrike",
+          "Light.Enabled": "yes",
+          "Light.Blue": "75",
+          "Light.Red": "45",
+          "Light.Green": "45",
+          "Light.Ambient": "100",
+          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+          "Cursor": "Storm",
+          "NoCursor": "NoCanDo"
+        }
+      },
+      {
+        "name": "Nuclear Missile Power",
+        "description": "Grants a building-free, repeating Tactical Nuke in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "superweapon",
+        "power_category": "offensive",
+        "superweapon": "NukeSpecial",
+        "superweapon_index": 0,
+        "superweapon_rules": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "name": "Psychic Dominator Power",
+        "description": "Grants a building-free, repeating Psychic Dominator in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Epsilon"
+        ],
+        "kind": "superweapon",
+        "power_category": "offensive",
+        "superweapon": "PsychicDominatorSpecial",
+        "superweapon_index": 7,
+        "superweapon_rules": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "name": "Great Tempest Power",
+        "description": "Grants a building-free, repeating Great Tempest in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Foehn"
+        ],
+        "kind": "superweapon",
+        "power_category": "offensive",
+        "superweapon": "GreatTempestSpecial",
+        "superweapon_index": 48,
+        "superweapon_rules": {
+          "IsPowered": "false"
+        }
+      }
+    ],
+    "secondary_superweapon_unlock_rewards": [
+      {
+        "name": "Chronoshift Power",
+        "description": "Grants a building-free, repeating Chronoshift in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Allies"
+        ],
+        "kind": "superweapon",
+        "power_category": "secondary",
+        "superweapon": "ChronoSphereSpecial",
+        "superweapon_index": 3,
+        "superweapon_rules": {
+          "UIName": "NAME:Chrono",
+          "Name": "Chronoshift Pre",
+          "IsPowered": "false",
+          "RechargeTime": "6.5",
+          "Type": "ChronoSphere",
+          "Action": "ChronoSphere",
+          "SidebarPCX": "chroicon.pcx",
+          "ShowTimer": "yes",
+          "DisableableFromShell": "no",
+          "Range": "1",
+          "SW.Range": "3,3",
+          "LineMultiplier": "0",
+          "SW.FireIntoShroud": "no",
+          "Chronosphere.ReconsiderBuildings": "no",
+          "Message.FirerColor": "yes",
+          "Message.Launch": "NAME:CHRONOACTIVE",
+          "Message.Detected": "NAME:CHRONODETECT",
+          "SW.CreateRadarEvent": "yes",
+          "EVA.Ready": "EVA_BattlePowerReady",
+          "EVA.Activated": "none",
+          "EVA.Detected": "EVA_ChronoSphereDetected",
+          "SW.AffectsHouse": "team",
+          "SW.AffectsTarget": "units",
+          "SW.PostDependent": "ChronoWarpSpecial",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.InitialReady": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+          "Cursor": "Shift",
+          "NoCursor": "NoCanDo"
+        },
+        "superweapon_rule_sections": {
+          "ChronoWarpSpecial": {
+            "UIName": "NAME:Chrono2",
+            "Name": "Chronoshift Post",
+            "IsPowered": "false",
+            "RechargeTime": "1",
+            "Type": "ChronoWarp",
+            "Action": "ChronoWarp",
+            "Range": "1",
+            "LineMultiplier": "1",
+            "SW.AffectsHouse": "team",
+            "SW.AffectsTarget": "units",
+            "SW.CreateRadarEvent": "yes",
+            "SW.RequiredHouses": "",
+            "SW.ForbiddenHouses": "",
+            "SW.AuxBuildings": "",
+            "SW.NegBuildings": "",
+            "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+            "FlashSidebarTabFrames": "0",
+            "Cursor": "Shift",
+            "NoCursor": "NoCanDo"
+          }
+        }
+      },
+      {
+        "name": "Invulnerability Power",
+        "description": "Grants a building-free, repeating Iron Curtain Invulnerability power in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "superweapon",
+        "power_category": "secondary",
+        "superweapon": "IronCurtainSpecial",
+        "superweapon_index": 1,
+        "superweapon_rules": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "name": "Rage Power",
+        "description": "Grants a building-free, repeating Rage Inductor power in future launched missions.",
+        "rules": {},
+        "factions": [
+          "Epsilon"
+        ],
+        "kind": "superweapon",
+        "power_category": "secondary",
+        "superweapon": "RageInductorSpecial",
+        "superweapon_index": 28,
+        "superweapon_rules": {
+          "IsPowered": "false"
+        }
+      }
+    ],
+    "building_free_support_power_values": {
+      "IsPowered": "false",
+      "SW.FireIntoShroud": "yes",
+      "SW.AutoFire": "no",
+      "SW.ManualFire": "yes",
+      "SW.ShowCameo": "yes",
+      "SW.UseAITargeting": "no",
+      "SW.AITargeting": "None",
+      "SW.RequiredHouses": "",
+      "SW.ForbiddenHouses": "",
+      "SW.AuxBuildings": "",
+      "SW.NegBuildings": "",
+      "SW.Designators": "",
+      "SW.Inhibitors": "",
+      "SW.AnyInhibitor": "no",
+      "SW.RangeMaximum": "-1",
+      "SW.RangeMinimum": "-1"
+    },
+    "aid_power_map_configs": [
+      {
+        "superweapon": "AmericanParaDropSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "BloodhoundsSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "ZephyrBeaconSpecial",
+        "values": {
+          "IsPowered": "false",
+          "RechargeTime": "5.5",
+          "Money.Amount": "-500",
+          "SW.Deferment": "0",
+          "Deliver.Types": "ZTARGET",
+          "Deliver.Owner": "neutral",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.InitialReady": "no",
+          "SW.AITargeting": "None",
+          "SW.FireIntoShroud": "no",
+          "SW.RequiresTarget": "land",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "AuxBuilding": "",
+          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM"
+        }
+      },
+      {
+        "superweapon": "LightningRodSpecial",
+        "values": {}
+      },
+      {
+        "superweapon": "WarpMinersSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "KingsnakesSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "SW.RequiredHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.Designators": ""
+        },
+        "techno_clones": {
+          "F_KSNAK": {
+            "list": "VehicleTypes",
+            "clone": "MORF_KSNAK",
+            "values": {
+              "PoweredBy": ""
+            }
+          }
+        }
+      },
+      {
+        "superweapon": "PaladinAidSpecial",
+        "values": {
+          "Range": "1.5",
+          "SW.Sound": "ChronosphereMove",
+          "EVA.Ready": "EVA_ReinforcementsReady",
+          "IsPowered": "false",
+          "SW.UseAITargeting": "no",
+          "SW.Animation": "CHRONOTG",
+          "SW.Deferment": "20",
+          "Deliver.Owner": "invoker",
+          "Deliver.Types": "PANTHER,PANTHER",
+          "LineMultiplier": "0",
+          "SW.AITargeting": "None",
+          "SW.FireIntoShroud": "no",
+          "SW.RequiresTarget": "land",
+          "Cursor": "Shift",
+          "SW.RequiredHouses": "",
+          "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "RepairDroneSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.NegBuildings": ""
+        }
+      },
+      {
+        "superweapon": "TankDropSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "InstantShelterSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "MotorAmbushSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "NavalMineSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "TerrorDropSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "FlameTowerSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "DrakuvSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.AuxBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "RepairDronesSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "DisruptorSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "RisenMonolithSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "RavenSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "VisionSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "MagnetShiftSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "LibraCloneSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "TickTrapSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "QuickFortSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "RuinerSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.AuxBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "HijackersSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "SpinbladeSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "MegaarenaSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "KnightfallSpecial",
+        "values": {
+          "EVA.Ready": "EVA_BattlePowerReady",
+          "IsPowered": "false",
+          "RechargeTime": "6.5",
+          "SW.Deferment": "0",
+          "Deliver.Owner": "invoker",
+          "LineMultiplier": "2",
+          "SW.AITargeting": "None",
+          "SW.RangeMaximum": "-1"
+        }
+      },
+      {
+        "superweapon": "HarbingerSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "SweeperDropSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "SignalJammerSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "DecoyTeamSpecial",
+        "values": {
+          "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "DecoySquadronSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "MADMineSpecial",
+        "values": {
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "WallbusterSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "9999",
+          "SW.RangeMinimum": "0"
+        },
+        "techno_clones": {
+          "Wallbuster": {
+            "clone": "MORWBWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORWBProjectile",
+              "Warhead": "MORWBWarhead"
+            }
+          },
+          "WallbusterWH": {
+            "clone": "MORWBWarhead",
+            "list": "Warheads"
+          },
+          "WallbusterP": {
+            "clone": "MORWBProjectile",
+            "list": "Projectiles"
+          },
+          "NATEK": {
+            "clone": "MORWBCannon",
+            "list": "BuildingTypes",
+            "startup_count": 4,
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "values": {
+              "Name": "Randomizer Wallbuster Cannon",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "Primary": "MORWBWeapon",
+              "EMPulseCannon": "yes",
+              "Turret": "yes",
+              "SuperWeapon2": null,
+              "SuperWeapons": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "Sight": "0"
+            }
+          }
+        }
+      },
+      {
+        "superweapon": "ForceShieldSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "TargetPainterSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "SonarPulseSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "MercurySpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "SpySatSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "BlackWidowAlphaSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "BlackWidowSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "ChronoboostSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "CryoshotSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "CryospearSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "GlacialScreenSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "CryomineSpawn",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "2.5",
+          "Range": "3",
+          "Cursor": "Mine",
+          "NoCursor": "NoCanDo",
+          "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "SpyPlaneSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "SmokebombsSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "EMPulsSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "IrradiateSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "OverchargeSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "IrradiateBetaSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "RadAttackSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "PackAttackSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "EMPMineSpawn",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "2.5",
+          "Range": "3",
+          "Cursor": "Mine",
+          "NoCursor": "NoCanDo",
+          "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "IllusionSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "KineticBarrierSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "MutationSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "ToxicStrikeSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "RegenDrugsSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "WonderDrugsSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "GenomineSpawn",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "2.5",
+          "Range": "3",
+          "Cursor": "Mine",
+          "NoCursor": "NoCanDo",
+          "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "NanofiberSyncSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "BoidBlitzSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "ReconSortieSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "DevourerSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "ChaosTouchSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        }
+      },
+      {
+        "superweapon": "ConfusionGridSpawn",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "1",
+          "UIName": "NAME:FACONF",
+          "SidebarPCX": "cnfgicon.pcx",
+          "Range": "5",
+          "Cursor": "Paradrop",
+          "NoCursor": "NoCanDo",
+          "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "StasisGridSpawn",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "1",
+          "Range": "5",
+          "Cursor": "Paradrop",
+          "NoCursor": "NoCanDo",
+          "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "ChronoliftSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        },
+        "sections": {
+          "PostliftSpecial": {
+            "IsPowered": "false",
+            "SW.FireIntoShroud": "yes",
+            "SW.AutoFire": "no",
+            "SW.ManualFire": "yes",
+            "SW.ShowCameo": "yes",
+            "SW.UseAITargeting": "no",
+            "SW.AITargeting": "None",
+            "SW.RequiredHouses": "",
+            "SW.ForbiddenHouses": "",
+            "SW.AuxBuildings": "",
+            "SW.NegBuildings": "",
+            "SW.Designators": "",
+            "SW.Inhibitors": "",
+            "SW.AnyInhibitor": "no",
+            "SW.RangeMaximum": "-1",
+            "SW.RangeMinimum": "-1"
+          }
+        }
+      },
+      {
+        "superweapon": "MORV3TestSpecial",
+        "disabled": true,
+        "custom": true,
+        "clone": "MORV3TestSpecial",
+        "cameo_superweapon": "AmericanParaDropSpecial",
+        "values": {
+          "UIName": "NAME:APara",
+          "Name": "V3 Test Drop",
+          "IsPowered": "false",
+          "RechargeTime": "0.5",
+          "Money.Amount": "0",
+          "Type": "UnitDelivery",
+          "Action": "Custom",
+          "SidebarPCX": "aparicon.pcx",
+          "ShowTimer": "no",
+          "DisableableFromShell": "no",
+          "Range": "3",
+          "LineMultiplier": "0",
+          "Cursor": "Paradrop",
+          "NoCursor": "NoCanDo",
+          "EVA.Ready": "EVA_ParatroopersReady",
+          "Deliver.Types": "V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3,V3",
+          "Deliver.Owner": "invoker",
+          "SW.Deferment": "20",
+          "SW.FireIntoShroud": "yes",
+          "SW.RequiresTarget": "land",
+          "SW.AITargeting": "None",
+          "SW.CreateRadarEvent": "no",
+          "SW.Inhibitors": "",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "FlashSidebarTabFrames": "0"
+        }
+      }
+    ],
+    "retired_reward_by_name": {
+      "Drakuv Prison Vehicle Access": {
+        "name": "Drakuv Prison Vehicle Access (retired: aid power only)",
+        "description": "Use the Drakuv Prison Vehicle Power; the payload is not a trainable unit.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Harbinger Access": {
+        "name": "Harbinger Access (retired: aid power only)",
+        "description": "Use the Harbinger Power; the strike aircraft is not a trainable unit.",
+        "rules": {},
+        "factions": [
+          "Foehn"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Harbinger Tower Access": {
+        "name": "Harbinger Tower Access (retired: power has no tower prerequisite)",
+        "description": "Harbinger Power works anywhere without constructing a Harbinger Tower.",
+        "rules": {},
+        "factions": [
+          "Foehn"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "EMP Control Station Access": {
+        "name": "EMP Control Station Access (retired: power has no station prerequisite)",
+        "description": "EM Pulse works anywhere without constructing an EMP Control Station.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Blasticade Power": {
+        "name": "Blasticade Power (retired: requires Blast Trenches)",
+        "description": "Removed because a building-free Blasticade has no effect without owned Blast Trenches.",
+        "rules": {},
+        "factions": [
+          "Foehn"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Elite Reserves Power": {
+        "name": "Elite Reserves Power (retired: unsafe building-free grant)",
+        "description": "Disabled because its internal production marker requires the original Soviet lab source.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "V3 Test Drop Power": {
+        "name": "V3 Test Drop Power (retired: test disabled)",
+        "description": "Custom 20-V3 delivery test is preserved for future use but currently disabled.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      }
+    },
+    "access_reward_aliases": {
+      "Attack Dog Access": "Allied Attack Dog Access",
+      "Humvee Access": "Airborne Humvee Access",
+      "IFV Access": "Stryker IFV Access",
+      "Conscript Access": "Soviet Conscript Access",
+      "Heavy Tank Access": "Rhino Heavy Tank Access",
+      "Flak Track Access": "Halftrack Access",
+      "Tesla Tank Access": "Tesla Cruiser Access",
+      "Akula Access": "Akula Missile Sub Access",
+      "Dreadnought Access": "Kuznetsov Dreadnought Access",
+      "Lasher Tank Access": "Lasher Light Tank Access",
+      "Draco Tank Access": "Draco Light Tank Access",
+      "Destroyer Access": "Horizon Destroyer Access",
+      "Aircraft Carrier Access": "Enterprise Aircraft Carrier Access",
+      "Battlecruiser Access": "Trident Battleship Access",
+      "Typhoon Sub Access": "Typhoon Attack Sub Access",
+      "Squid Access": "Giant Squid Access",
+      "Sea Scorpion Access": "Mosquito Demoboat Access"
+    }
+  }
+}

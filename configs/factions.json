@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "description": "Faction production, engineers, transports, starter roles, and technology ordering.",
+  "sections": {
+    "engineer_by_family": {
+      "allies": "ENGINEER",
+      "soviets": "SENGINEER",
+      "epsilon": "YENGINEER",
+      "foehn": "FENGINEER"
+    },
+    "engineer_installed_forbidden_houses": {
+      "ENGINEER": "USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3",
+      "SENGINEER": "Europeans,UnitedStates,Pacific,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3",
+      "YENGINEER": "Europeans,UnitedStates,Pacific,USSR,Latin,Chinese,Guild1,Guild2,Guild3",
+      "FENGINEER": "Europeans,UnitedStates,Pacific,USSR,Chinese,Latin,PsiCorps,Headquaters,ScorpionCell"
+    },
+    "conyard_by_mcv": {
+      "AMCV": "GACNST",
+      "SMCV": "NACNST",
+      "PCV": "YACNST",
+      "FMCV": "FACNST"
+    },
+    "stalins_fist_factory": "NAFIST",
+    "stalins_fist_families": [
+      "epsilon",
+      "soviets"
+    ],
+    "tier_one_role_units": {
+      "ground_infantry": {
+        "allies": [
+          "E1",
+          "infantry"
+        ],
+        "soviets": [
+          "E2",
+          "infantry"
+        ],
+        "epsilon": [
+          "INIT",
+          "infantry"
+        ],
+        "foehn": [
+          "KNIGHT",
+          "infantry"
+        ]
+      },
+      "anti_air_infantry": {
+        "allies": [
+          "GGI",
+          "infantry"
+        ],
+        "soviets": [
+          "FLAKT",
+          "infantry"
+        ],
+        "epsilon": [
+          "HARP",
+          "infantry"
+        ],
+        "foehn": [
+          "COVE",
+          "infantry"
+        ]
+      },
+      "ground_vehicle": {
+        "allies": [
+          "ETNK",
+          "vehicles"
+        ],
+        "soviets": [
+          "HTNK",
+          "vehicles"
+        ],
+        "epsilon": [
+          "LTNK",
+          "vehicles"
+        ],
+        "foehn": [
+          "DRACO",
+          "vehicles"
+        ]
+      },
+      "anti_air_vehicle": {
+        "allies": [
+          "AHMV",
+          "vehicles"
+        ],
+        "soviets": [
+          "HTK",
+          "vehicles"
+        ],
+        "epsilon": [
+          "YTNK",
+          "vehicles"
+        ],
+        "foehn": [
+          "JACKAL",
+          "vehicles"
+        ]
+      },
+      "basic_aircraft": {
+        "allies": [
+          "STORM",
+          "air"
+        ],
+        "soviets": [
+          "FOX",
+          "air"
+        ],
+        "epsilon": [
+          "BLIGHT",
+          "air"
+        ]
+      }
+    },
+    "tier_one_ground_roles": [
+      "ground_infantry",
+      "anti_air_infantry",
+      "ground_vehicle",
+      "anti_air_vehicle"
+    ],
+    "standard_tier_one_families": [
+      "allies",
+      "soviets",
+      "epsilon"
+    ],
+    "tier_one_airfields": {
+      "allies": "GAAIRC",
+      "soviets": "NAAIR",
+      "epsilon": "YAAIRF"
+    },
+    "amphibious_transports": {
+      "allies": [
+        "LCRF",
+        "GAYARD"
+      ],
+      "soviets": [
+        "SAPC",
+        "NAYARD"
+      ],
+      "epsilon": [
+        "YHVR",
+        "YAYARD"
+      ],
+      "foehn": [
+        "SEAT",
+        "FAYARD"
+      ]
+    },
+    "production_buildings": {
+      "allies": {
+        "base": [
+          "GACNST"
+        ],
+        "infantry": [
+          "GAPILE"
+        ],
+        "vehicles": [
+          "GAWEAP"
+        ],
+        "air": [
+          "GAAIRC"
+        ],
+        "naval": [
+          "GAYARD"
+        ]
+      },
+      "soviets": {
+        "base": [
+          "NACNST"
+        ],
+        "infantry": [
+          "NAHAND"
+        ],
+        "vehicles": [
+          "NAWEAP"
+        ],
+        "air": [
+          "NAAIR"
+        ],
+        "naval": [
+          "NAYARD"
+        ]
+      },
+      "epsilon": {
+        "base": [
+          "YACNST"
+        ],
+        "infantry": [
+          "YABRCK",
+          "YURRAX"
+        ],
+        "vehicles": [
+          "YAWEAP"
+        ],
+        "air": [
+          "YAAIRF"
+        ],
+        "naval": [
+          "YAYARD"
+        ]
+      },
+      "foehn": {
+        "base": [
+          "FACNST"
+        ],
+        "infantry": [
+          "FABARR",
+          "FOERAX"
+        ],
+        "vehicles": [
+          "FAWEAP"
+        ],
+        "naval": [
+          "FAYARD"
+        ]
+      }
+    },
+    "chaos_primary_production": {
+      "allies": {
+        "base": "GACNST",
+        "infantry": "GAPILE",
+        "vehicles": "GAWEAP",
+        "air": "GAAIRC",
+        "naval": "GAYARD"
+      },
+      "soviets": {
+        "base": "NACNST",
+        "infantry": "NAHAND",
+        "vehicles": "NAWEAP",
+        "air": "NAAIR",
+        "naval": "NAYARD"
+      },
+      "epsilon": {
+        "base": "YACNST",
+        "infantry": "YABRCK",
+        "vehicles": "YAWEAP",
+        "air": "YAAIRF",
+        "naval": "YAYARD"
+      },
+      "foehn": {
+        "base": "FACNST",
+        "infantry": "FABARR",
+        "vehicles": "FAWEAP",
+        "air": "FAWEAP",
+        "naval": "FAYARD"
+      }
+    },
+    "tech_order": [
+      "ENGINEER",
+      "E1",
+      "GGI",
+      "JUMPJET",
+      "AHMV",
+      "FV",
+      "LCRF",
+      "DEST",
+      "DLPH",
+      "E2",
+      "FLAKT",
+      "HTNK",
+      "HTK",
+      "SAPC",
+      "SUB",
+      "DBOAT",
+      "YHVR",
+      "INIT",
+      "LTNK",
+      "YTNK",
+      "KNIGHT",
+      "JACKAL",
+      "CYCL",
+      "SEAT"
+    ]
+  }
+}

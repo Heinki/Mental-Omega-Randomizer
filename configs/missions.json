@@ -1,0 +1,1217 @@
+{
+  "schema_version": 1,
+  "description": "Mission catalogue classifications, house policy, and reviewed per-mission overrides.",
+  "sections": {
+    "catalogue": {
+      "faction_order": [
+        "Allies",
+        "Soviets",
+        "Epsilon",
+        "Foehn"
+      ],
+      "fallback_objective_count": 3,
+      "starting_unlocked_missions": 3,
+      "low_level_mission_count": 5,
+      "low_level_stage_max": 6,
+      "late_foehn_mission_codes": [
+        "FBEYOND",
+        "FCAPSULE",
+        "FEMPIRE",
+        "FKILL",
+        "FREMNANT"
+      ]
+    },
+    "build_classifications": {
+      "AREDDAWN": "base_build",
+      "AEAGLESFLY": "base_build",
+      "AROADTRIP": "no_build_production",
+      "AHEAVENHELL": "base_build",
+      "ABADAPPLE": "no_build_production",
+      "ABMIND": "base_build",
+      "AHAMMERFALL": "true_no_build",
+      "AWRONGSIDE": "true_no_build",
+      "AZEROSIGNAL": "no_build_production",
+      "AGARDENER": "true_no_build",
+      "APANIC": "base_build",
+      "ASUNLIGHT": "base_build",
+      "ASIREN": "true_no_build",
+      "APUPPET": "base_build",
+      "ASTONE": "no_build_production",
+      "AGHOST": "base_build",
+      "ABOTTLE": "true_no_build",
+      "AHYST": "base_build",
+      "ASTORM": "base_build",
+      "APARA": "true_no_build",
+      "ARELE": "base_build",
+      "AINSOMNIA": "base_build",
+      "AWITHER": "base_build",
+      "AHAMARTIA": "base_build",
+      "SBLEED": "base_build",
+      "SGGATE": "no_build_production",
+      "SHBD": "base_build",
+      "SSIDE": "base_build",
+      "SPEACE": "no_build_production",
+      "SRECH": "true_no_build",
+      "SIDLE": "base_build",
+      "SDEATH": "base_build",
+      "SROAD": "no_build_production",
+      "SOPEN": "true_no_build",
+      "SMACHINE": "base_build",
+      "SDRAGON": "base_build",
+      "SRAVEN": "base_build",
+      "SAWAKE": "true_no_build",
+      "SEXIST": "base_build",
+      "SFIRE": "base_build",
+      "SJUGGER": "base_build",
+      "SHEART": "true_no_build",
+      "SRED": "base_build",
+      "STHREAD": "base_build",
+      "SMELT": "no_build_production",
+      "SEARTH": "base_build",
+      "SFATAL": "base_build",
+      "SHAND": "base_build",
+      "EPEACE": "true_no_build",
+      "EACCEL": "true_no_build",
+      "ESCRAP": "no_build_production",
+      "ESHIP": "base_build",
+      "EHUMAN": "true_no_build",
+      "ELAND": "true_no_build",
+      "ETHINK": "base_build",
+      "ELORD": "no_build_production",
+      "EFIELDS": "true_no_build",
+      "EFOCUS": "true_no_build",
+      "ESING": "true_no_build",
+      "EMOON": "base_build",
+      "EDILEMMA": "base_build",
+      "EHUEHUE": "true_no_build",
+      "EBREED": "base_build",
+      "EDIVER": "base_build",
+      "EGODSEND": "no_build_production",
+      "ELIZARD": "no_build_production",
+      "EBLOOD": "base_build",
+      "EHEAD": "true_no_build",
+      "ESANDS": "base_build",
+      "ETOTAL": "base_build",
+      "EREALITY": "true_no_build",
+      "EMIGDAL": "base_build",
+      "FNOBODY": "true_no_build",
+      "FKILL": "base_build",
+      "FEMPIRE": "no_build_production",
+      "FBEYOND": "base_build",
+      "FPOINT": "true_no_build",
+      "FREMNANT": "base_build",
+      "ADEMON": "no_build_production",
+      "AOBST": "base_build",
+      "ACONV": "true_no_build",
+      "AFULL": "base_build",
+      "AGRID": "base_build",
+      "ASOMNIA": "base_build",
+      "SARCHE": "true_no_build",
+      "SECLIPSE": "base_build",
+      "STROPH": "no_build_production",
+      "SNOISE": "no_build_production",
+      "SDAWN": "base_build",
+      "SARMS": "base_build",
+      "ETACI": "true_no_build",
+      "EASHES": "no_build_production",
+      "ERAGE": "true_no_build",
+      "ESPLIT": "base_build",
+      "ENIGHT": "no_build_production",
+      "ESURV": "no_build_production",
+      "FCAPSULE": "true_no_build"
+    },
+    "house_config": {
+      "ABOTTLE": {
+        "allies": [
+          "UnitedStates House"
+        ],
+        "enemies": [
+          "PsiCorps House",
+          "USSR House",
+          "ScorpionCell House",
+          "Guild1 House",
+          "Pacific House",
+          "Guild3 House"
+        ]
+      },
+      "ACONV": {
+        "allies": [
+          "Pacific House"
+        ],
+        "enemies": [
+          "Europeans House",
+          "Headquaters House",
+          "PsiCorps House",
+          "Chinese House",
+          "Guild2 House",
+          "Guild3 House",
+          "Latin House",
+          "USSR House",
+          "Guild1 House"
+        ]
+      },
+      "ADEMON": {
+        "allies": [
+          "LocalPF1 House",
+          "LocalPF2 House",
+          "LocalPF3 House"
+        ],
+        "enemies": [
+          "Traitor1 House",
+          "UnitedStates House",
+          "Chinese House",
+          "Guild3 House",
+          "PsiCorps House",
+          "Traitor2 House"
+        ]
+      },
+      "AFULL": {
+        "allies": [
+          "UnitedStates House"
+        ],
+        "enemies": [
+          "PC2 House",
+          "PsiCorps House",
+          "ScorpionCell House",
+          "SC2 House",
+          "UnitedStates2 House",
+          "Headquaters House",
+          "Dominator House",
+          "Block House",
+          "MC_SC House"
+        ]
+      },
+      "AGRID": {
+        "allies": [
+          "Pacific House"
+        ],
+        "enemies": [
+          "PsiCorps House",
+          "PC2 House",
+          "PC3 House",
+          "Latin House",
+          "Guild2 House",
+          "Guild1 House",
+          "ScorpionCell House",
+          "Guild3 House",
+          "Search Iron House",
+          "Obelisk House",
+          "Europeans House",
+          "USSR House"
+        ]
+      },
+      "AHAMARTIA": {
+        "allies": [
+          "Pacific House",
+          "AI_EA2 House",
+          "AI_US2 House",
+          "AttackUS House",
+          "AttackEA House",
+          "AttackPF House",
+          "AI_US House",
+          "AI_EA House",
+          "DefenseEA House",
+          "DefensePF House"
+        ],
+        "enemies": [
+          "Latin House",
+          "AirforceEps House",
+          "Guild3 House",
+          "RaidEps House",
+          "MODBase House",
+          "PsiCorps House",
+          "ScorpionCell House",
+          "Headquaters House",
+          "Guild2 House",
+          "AFW House",
+          "USSR House",
+          "Guild1 House",
+          "Chinese House",
+          "RaidAllied House",
+          "MODBase2 House",
+          "Libra House"
+        ]
+      },
+      "AINSOMNIA": {
+        "allies": [
+          "EA_Attack House",
+          "PF_Attack House"
+        ],
+        "enemies": [
+          "Guild1 House",
+          "Headquaters House",
+          "PsiCorps House",
+          "ScorpionCell House",
+          "Guild3 House",
+          "Europeans House",
+          "Pacific House",
+          "AlliedForward House",
+          "Guild2 House",
+          "DybbukHive House",
+          "TimeKeeper House",
+          "Timekeeper2 House",
+          "Latin House",
+          "Chinese House"
+        ]
+      },
+      "ARELE": {
+        "allies": [
+          "Europeans2 House",
+          "Europeans3 House",
+          "Europeans4 House",
+          "Pacific2 House"
+        ],
+        "enemies": [
+          "PsiCorps House",
+          "PsiCorpsA House",
+          "PsiCorpsB House",
+          "Headquaters House",
+          "PsiCorpsC House",
+          "PsiCorps2 House",
+          "ScorpionCell House",
+          "PsiCorpsD House",
+          "ScorpionCell2 House",
+          "PacificMC House",
+          "EuropeansLF2 House",
+          "Guild3 House",
+          "Latin House",
+          "Guild1 House",
+          "EuropeansLF1 House",
+          "Pacific House",
+          "USSR House",
+          "PsiCorpsE House",
+          "Chinese House",
+          "Guild2 House",
+          "PsiCorpsF House"
+        ]
+      },
+      "ASOMNIA": {
+        "allies": [
+          "Europeans House",
+          "Pacific House",
+          "USAI House",
+          "AlliedFleets House",
+          "Landings House",
+          "Landings2 House"
+        ],
+        "enemies": [
+          "Headquaters House",
+          "HQOutpost House",
+          "Latin House",
+          "Guild3 House",
+          "HQAI2 House",
+          "HQD2 House",
+          "HQAI House",
+          "ScorpionCell House",
+          "PsiCorps House",
+          "Chinese House",
+          "USSR House",
+          "Guild1 House",
+          "Guild2 House"
+        ]
+      },
+      "AWITHER": {
+        "allies": [
+          "Europeans House",
+          "Pacific House",
+          "PF2 House"
+        ],
+        "enemies": [
+          "Headquaters House",
+          "EpsAttack1 House",
+          "EpsAttack5 House",
+          "EpsAttack3 House",
+          "EpsAttack6 House",
+          "EpsOutpost3 House",
+          "EpsAttack2 House",
+          "EpsOutpost2 House",
+          "ScorpionCell House",
+          "EpsOutpost1 House",
+          "PsiCorps House",
+          "EpsAttack4 House",
+          "MODBase House",
+          "Latin House",
+          "Guild3 House",
+          "Guild1 House",
+          "Guild2 House",
+          "Chinese House",
+          "EPSuicide House",
+          "DybbukAA House",
+          "DybbukAP House",
+          "USSR House",
+          "Cyka House",
+          "Timefreeze House"
+        ]
+      },
+      "SBLEED": {
+        "allies": [
+          "Navy House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "Guild3 House",
+          "UnitedStates House",
+          "Guild1 House",
+          "Guild2 House",
+          "Latin House"
+        ]
+      },
+      "SIDLE": {
+        "allies": [
+          "BrainwashedUS House"
+        ],
+        "enemies": [
+          "Europeans House",
+          "UnitedStates House",
+          "Pacific House",
+          "Chinese House"
+        ]
+      },
+      "SROAD": {
+        "allies": [
+          "PsiCorps House"
+        ],
+        "enemies": [
+          "Latin House",
+          "Chinese House",
+          "Pacific House",
+          "Guild2 House",
+          "Europeans House",
+          "UnitedStates House",
+          "Guild1 House",
+          "Guild3 House"
+        ]
+      },
+      "SJUGGER": {
+        "allies": [
+          "China1 House",
+          "China2 House",
+          "China3 House"
+        ],
+        "enemies": [
+          "Latin House",
+          "Chinese House",
+          "PsiCorps House",
+          "ScorpionCell House",
+          "Headquaters House",
+          "UnitedStates House"
+        ]
+      },
+      "SRED": {
+        "allies": [
+          "Latin House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "China4 House",
+          "China2 House",
+          "China3 House",
+          "Europeans House"
+        ]
+      },
+      "SFATAL": {
+        "allies": [
+          "Chinese House",
+          "SupportRU House"
+        ],
+        "enemies": [
+          "Headquaters House",
+          "PsiCorps House",
+          "EpsilonUSSR House",
+          "ScorpionCell House",
+          "SENG House",
+          "PuzzlePost House",
+          "Guild3 House",
+          "SAMT House",
+          "UnitedStates House",
+          "Guild1 House",
+          "NWork House",
+          "RU2 House"
+        ]
+      },
+      "SHAND": {
+        "allies": [
+          "Latin House",
+          "Chinese House",
+          "SovietSW House",
+          "SovietNE House"
+        ],
+        "enemies": [
+          "PsiCorps House",
+          "PCFrontA House",
+          "PCFrontB House",
+          "Pacific House",
+          "ScorpionCell House",
+          "Headquaters House",
+          "PCFrontC House",
+          "Kremlin House",
+          "Guild2 House",
+          "SovietEP House",
+          "EpsilonFront House",
+          "Mystery House",
+          "PDC House",
+          "NonAIBase House",
+          "UnitedStates House",
+          "Europeans House",
+          "PodCount House",
+          "SuperVolkov House",
+          "DHandLeft House",
+          "DHandRight House",
+          "Revive House"
+        ]
+      },
+      "SRAVEN": {
+        "allies": [
+          "USSR1 House",
+          "USSR2 House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "Guild1 House",
+          "Pacific House",
+          "UnitedStates2 House",
+          "UnitedStates House",
+          "Europeans House",
+          "Latin House",
+          "USSR House",
+          "Guild3 House",
+          "PsiCorps House"
+        ]
+      },
+      "SECLIPSE": {
+        "allies": [
+          "Chinese2 House"
+        ],
+        "enemies": [
+          "PF_2 House",
+          "Pacific House",
+          "Latin House",
+          "Guild1 House",
+          "Europeans House",
+          "PsiCorps House",
+          "Headquaters House",
+          "Guild3 House",
+          "ScorpionCell House",
+          "Guild2 House"
+        ]
+      },
+      "SNOISE": {
+        "allies": [
+          "Chinese House",
+          "FriendlyUSSR House",
+          "Drakuv House",
+          "FriendlyTank House",
+          "TrueChina House"
+        ],
+        "enemies": [
+          "BadlyUSSR House",
+          "PsiCorps House",
+          "Ambush House",
+          "ScorpionCell House",
+          "BadTank House",
+          "UnitedStates House"
+        ]
+      },
+      "STROPH": {
+        "allies": [
+          "CN2 House",
+          "CN3 House",
+          "CN4 House",
+          "CN5 House"
+        ],
+        "enemies": [
+          "Latin House",
+          "USSR House",
+          "Guild3 House",
+          "Pacific House",
+          "UnitedStates House"
+        ]
+      },
+      "EACCEL": {
+        "allies": [
+          "USSR House"
+        ],
+        "enemies": [
+          "Europeans House",
+          "Guild1 House"
+        ]
+      },
+      "ESCRAP": {
+        "allies": [
+          "ScorpionCell House"
+        ],
+        "enemies": [
+          "UnitedStates House",
+          "Europeans House",
+          "Pacific House"
+        ]
+      },
+      "EASHES": {
+        "allies": [
+          "PsiCorps House"
+        ],
+        "enemies": [
+          "Latin House",
+          "LC2 House",
+          "LC3 House",
+          "UnitedStates House",
+          "US2 House",
+          "Headquaters House",
+          "Guild1 House",
+          "LC1 House",
+          "USSR House"
+        ]
+      },
+      "EDILEMMA": {
+        "allies": [
+          "ScorpionCell House"
+        ],
+        "enemies": [
+          "UnitedStates House",
+          "USSR1 House",
+          "Chinese House",
+          "Headquaters House",
+          "USSR House",
+          "Latin House",
+          "Guild1 House",
+          "Europeans House",
+          "Topol3 House",
+          "Topol4 House",
+          "Topol2 House",
+          "Topol1 House",
+          "Pacific House"
+        ]
+      },
+      "EDIVER": {
+        "allies": [
+          "PsiCorps2 House"
+        ],
+        "enemies": [
+          "Latin House",
+          "Europeans House",
+          "USSR House",
+          "ScorpionCell House"
+        ]
+      },
+      "EFOCUS": {
+        "allies": [
+          "USSR House"
+        ],
+        "enemies": [
+          "Latin House",
+          "Guild3 House",
+          "UnitedStates House",
+          "Chinese House",
+          "ScorpionCell House",
+          "Guild1 House",
+          "Guild2 House"
+        ]
+      },
+      "ELIZARD": {
+        "allies": [
+          "SC2 House"
+        ],
+        "enemies": [
+          "PsiCorps House",
+          "Europeans House",
+          "Pacific House",
+          "UnitedStates House",
+          "Headquaters House"
+        ]
+      },
+      "ELORD": {
+        "allies": [
+          "PsiCorps House"
+        ],
+        "enemies": [
+          "Headquaters House",
+          "Chinese House",
+          "USSR House",
+          "Guild1 House",
+          "Pacific House"
+        ]
+      },
+      "EMIGDAL": {
+        "allies": [
+          "USSR House",
+          "Guild2 House",
+          "Guild3 House",
+          "MODBase House",
+          "ControlUS House",
+          "EpsReinf1 House",
+          "EpsReinf2 House",
+          "MODBase2 House"
+        ],
+        "enemies": [
+          "Europeans House",
+          "Nest House",
+          "Latin House",
+          "AttackEA House",
+          "Pacific House",
+          "AttackPF2 House",
+          "AttackPF House",
+          "AttackUS House",
+          "AFW2 House",
+          "AFW House",
+          "UnitedStates House",
+          "ScorpionCell House",
+          "Headquaters House",
+          "Chinese House",
+          "Guild1 House",
+          "Paradox House"
+        ]
+      },
+      "ENIGHT": {
+        "allies": [
+          "Headquaters House"
+        ],
+        "enemies": [
+          "Guild3 House",
+          "Guild2 House",
+          "ScorpionCell House",
+          "SC2 House",
+          "USSR House",
+          "Europeans House",
+          "Pacific House",
+          "Chinese House",
+          "Latin House"
+        ]
+      },
+      "EREALITY": {
+        "allies": [
+          "Headquaters House",
+          "Sisters House"
+        ],
+        "enemies": [
+          "US2 House",
+          "Latin House",
+          "EA2 House",
+          "Chinese House",
+          "UnitedStates House",
+          "USSR House",
+          "Production1 House",
+          "Outro1 House",
+          "Guild2 House",
+          "Outro5 House",
+          "Outro4 House",
+          "Outro3 House",
+          "Outro2 House",
+          "Outro6 House",
+          "Europeans House",
+          "Guild1 House",
+          "Pacific House",
+          "Production2 House",
+          "Production3 House"
+        ]
+      },
+      "ESANDS": {
+        "allies": [
+          "PC1 House",
+          "PC2 House"
+        ],
+        "enemies": [
+          "ScorpionCell House",
+          "ScorpionCellB House",
+          "ScorpionCellC House",
+          "Headquaters House",
+          "Chinese House",
+          "USSR House",
+          "Pacific House"
+        ]
+      },
+      "ESPLIT": {
+        "allies": [
+          "PsiCorps House",
+          "Headquaters House",
+          "PsiCorps_AI House",
+          "HQ_AI House",
+          "Epsilon AI House"
+        ],
+        "enemies": [
+          "Europeans House",
+          "UnitedStates House",
+          "Pacific House",
+          "Fake_US House",
+          "Fake_EA House",
+          "Guild1 House",
+          "Latin House",
+          "USSR House",
+          "Chinese House",
+          "Cryocopters House",
+          "Assemblies House",
+          "Guild2 House"
+        ]
+      },
+      "ETOTAL": {
+        "allies": [
+          "PsiCorpsAI House",
+          "HQAI House"
+        ],
+        "enemies": [
+          "ScorpionCell House",
+          "PsiCorps House",
+          "Guild1 House",
+          "SupportBase House",
+          "USSR House",
+          "Guild3 House",
+          "UnitedStates House",
+          "EuroAlliance2 House",
+          "Europeans House",
+          "EuroAlliance3 House",
+          "Pacific House",
+          "Guild2 House",
+          "ChronoTeam House"
+        ]
+      },
+      "FBEYOND": {
+        "allies": [
+          "FoehnNavy House",
+          "China2 House",
+          "China3 House",
+          "China4 House",
+          "Pacific2 House",
+          "Pacific3 House",
+          "Pacific4 House",
+          "SellMCV House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "Pacific House",
+          "Guild2 House",
+          "Latin House",
+          "USSR2 House",
+          "USSR House",
+          "Headquaters House",
+          "PsiCorps House",
+          "EpsilonNavy House",
+          "Guild3 House",
+          "DybbukHive House",
+          "ScorpionCell House",
+          "UnitedStates House"
+        ]
+      },
+      "FCAPSULE": {
+        "allies": [
+          "Guild2 House",
+          "Guild3 House",
+          "Chinese House",
+          "Change House"
+        ],
+        "enemies": [
+          "Guards House",
+          "PsiCorps House",
+          "ScorpionCell House",
+          "Rage House",
+          "Headquaters House",
+          "LastGuard House",
+          "Monster House",
+          "Chess House",
+          "MonsterL House",
+          "Europeans House",
+          "Latin House",
+          "RU2 House",
+          "Tesla House",
+          "Rebels House",
+          "USSR House",
+          "MonsterR House",
+          "Gate House",
+          "RealYunru House",
+          "PSBOM House"
+        ]
+      },
+      "FEMPIRE": {
+        "allies": [
+          "Semi House",
+          "Yunru_AI House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "China_Ob1 House",
+          "China_Front House",
+          "China_S House",
+          "Headquaters House",
+          "PsiCorps House",
+          "PsiCorps_S1 House",
+          "Pacific House",
+          "Pacific_MC3 House",
+          "PsiCorps2 House",
+          "Pacific_MC2 House",
+          "Pacific_MC1 House",
+          "UnitedStates House",
+          "USSR House",
+          "HQ_Clone House",
+          "PsiCorps_S2 House",
+          "PsiCorps_S3 House",
+          "Europeans House"
+        ]
+      },
+      "FKILL": {
+        "allies": [
+          "Guild2 House",
+          "Guild3 House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "USSR House",
+          "UnitedStates House",
+          "ScorpionCell House",
+          "MCV House",
+          "Latin House",
+          "PsiCorps House"
+        ]
+      },
+      "FNOBODY": {
+        "allies": [
+          "Guild3 House"
+        ],
+        "enemies": [
+          "Chinese House",
+          "USSR House",
+          "PsiCorps House",
+          "UnitedStates House"
+        ]
+      },
+      "FPOINT": {
+        "allies": [
+          "Guild1 House",
+          "Guild2 House"
+        ],
+        "enemies": [
+          "PC05 House",
+          "PC06 House",
+          "PC10 House",
+          "PC08 House",
+          "PC07 House",
+          "PsiCorps House",
+          "PC04 House",
+          "PC01 House",
+          "PC09 House",
+          "PC03 House",
+          "Headquaters House",
+          "PC02 House",
+          "UnitedStates House",
+          "ScorpionCell House",
+          "Ending1 House",
+          "Chinese House",
+          "Pacific House",
+          "Ending2 House",
+          "USSR House",
+          "Latin House",
+          "PF1 House",
+          "PF3 House",
+          "Europeans House",
+          "CN3 House",
+          "CN1 House",
+          "CN2 House",
+          "PF2 House"
+        ]
+      },
+      "FREMNANT": {
+        "allies": [
+          "Guild2 House",
+          "Factory House"
+        ],
+        "enemies": [
+          "UnitedStates House",
+          "PsiCorps House",
+          "Europeans House",
+          "Pacific House",
+          "Pacific2 House",
+          "EA2 House",
+          "ScorpionCell House",
+          "Chinese House",
+          "Latin House",
+          "Chinese2 House",
+          "Headquaters House",
+          "Guild1 House",
+          "US2 House",
+          "RU2 House",
+          "LC2 House"
+        ]
+      }
+    },
+    "player_production_houses": {
+      "EBREED": [
+        "PsiCorps2 House"
+      ],
+      "EBLOOD": [
+        "PC-Base House"
+      ],
+      "SRAVEN": [
+        "Guild3 House"
+      ]
+    },
+    "player_power_houses": {
+      "ASIREN": [
+        "Europeans House",
+        "UnitedStates House"
+      ],
+      "SAWAKE": [
+        "PlayerEscort House",
+        "Player House",
+        "USSR2 House"
+      ]
+    },
+    "native_trigger_reference_ids": {
+      "EPEACE": [
+        "LCRF"
+      ],
+      "ESING": [
+        "DRIL"
+      ],
+      "EBREED": [
+        "DISK",
+        "KAOS"
+      ],
+      "ASIREN": [
+        "TANY"
+      ],
+      "AHAMMERFALL": [
+        "SHAD"
+      ],
+      "SBLEED": [
+        "E2",
+        "FLAKT",
+        "FLAMER",
+        "HTNK",
+        "MORALES",
+        "SAPC",
+        "SENGINEER",
+        "SHK"
+      ],
+      "SRED": [
+        "BOREK",
+        "DRIL",
+        "INIT",
+        "MORALES"
+      ],
+      "FKILL": [
+        "YUNRU"
+      ],
+      "ETOTAL": [
+        "ASSN",
+        "LIBRA",
+        "MDUMMY2"
+      ],
+      "EREALITY": [
+        "LIBRA",
+        "LIBRA1",
+        "LIBRA2",
+        "LIBRA3",
+        "LIBRA4",
+        "LIBRA5",
+        "LIBRA6",
+        "LIBRA7",
+        "LIBRA8"
+      ]
+    },
+    "native_techno_clone_exclusions": {
+      "ASIREN": [
+        "TANY"
+      ],
+      "AHAMMERFALL": [
+        "SHAD"
+      ],
+      "SBLEED": [
+        "E2",
+        "FLAKT",
+        "FLAMER",
+        "HTNK",
+        "MORALES",
+        "SAPC",
+        "SENGINEER",
+        "SHK"
+      ],
+      "SRED": [
+        "BOREK",
+        "DRIL",
+        "INIT",
+        "MORALES"
+      ],
+      "FKILL": [
+        "YUNRU"
+      ],
+      "ETOTAL": [
+        "ASSN",
+        "LIBRA",
+        "MDUMMY2"
+      ],
+      "EREALITY": [
+        "LIBRA",
+        "LIBRA1",
+        "LIBRA2",
+        "LIBRA3",
+        "LIBRA4",
+        "LIBRA5",
+        "LIBRA6",
+        "LIBRA7",
+        "LIBRA8"
+      ]
+    },
+    "reward_excluded_player_houses": {
+      "EREALITY": [
+        "ScorpionCell House"
+      ]
+    },
+    "team_house_overrides": {
+      "SBLEED": {
+        "01000468": "USSR"
+      }
+    },
+    "required_access_rules": {
+      "EHEAD": {
+        "FOX": {
+          "TechLevel": "1",
+          "BuildLimit": "-1",
+          "Prerequisite": "NAAIR",
+          "PrerequisiteOverride": "NAAIR",
+          "RequiredHouses": "PsiCorps",
+          "ForbiddenHouses": "none"
+        }
+      },
+      "SJUGGER": {
+        "NAHAMM": {
+          "BuildLimit": "-1"
+        },
+        "NAIRDM": {
+          "BuildLimit": "-1"
+        }
+      },
+      "FKILL": {
+        "SMCV": {
+          "Speed": "16",
+          "Accelerates": "false",
+          "ROT": "10"
+        }
+      },
+      "SRED": {
+        "DRIL": {
+          "TechLevel": "1",
+          "BuildLimit": null,
+          "Prerequisite": "NAWEAP",
+          "PrerequisiteOverride": "NAWEAP",
+          "Owner": "USSR,Latin,Special",
+          "RequiredHouses": "USSR,Latin,Special",
+          "ForbiddenHouses": "none"
+        },
+        "INIT": {
+          "Owner": "USSR,Latin,Special",
+          "RequiredHouses": "USSR,Latin,Special",
+          "ForbiddenHouses": "none"
+        }
+      }
+    },
+    "techno_base_rules": {
+      "EREALITY": {
+        "LIBRA": {
+          "Strength": "7500"
+        },
+        "LIBRA1": {
+          "Strength": "6000"
+        },
+        "LIBRA2": {
+          "Strength": "7500"
+        },
+        "LIBRA3": {
+          "Strength": "7500"
+        },
+        "LIBRA4": {
+          "Strength": "6000"
+        },
+        "LIBRA5": {
+          "Strength": "6000"
+        },
+        "LIBRA6": {
+          "Strength": "6000"
+        },
+        "LIBRA7": {
+          "Strength": "6000"
+        },
+        "LIBRA8": {
+          "Strength": "6000"
+        }
+      }
+    },
+    "native_direct_buff_exclusions": {
+      "SBLEED": [
+        "E2",
+        "FLAKT",
+        "FLAMER",
+        "HTNK",
+        "MORALES",
+        "SAPC",
+        "SENGINEER",
+        "SHK"
+      ],
+      "SRED": [
+        "DRIL",
+        "INIT",
+        "MORALES"
+      ],
+      "ETOTAL": [
+        "ASSN",
+        "LIBRA",
+        "MDUMMY2"
+      ],
+      "EREALITY": [
+        "LIBRA",
+        "LIBRA1",
+        "LIBRA2",
+        "LIBRA3",
+        "LIBRA4",
+        "LIBRA5",
+        "LIBRA6",
+        "LIBRA7",
+        "LIBRA8"
+      ]
+    },
+    "native_tech_unlock_ids": {
+      "SJUGGER": [
+        "NAHAMM",
+        "NAIRDM"
+      ]
+    },
+    "superweapon_techno_clone_overrides": {
+      "SFATAL": {
+        "NukeSpecial": {
+          "NukePayload": {
+            "clone": "MORFNukePayload",
+            "list": "WeaponTypes",
+            "reference_keys": [
+              "Nuke.Payload"
+            ]
+          }
+        }
+      }
+    },
+    "all_conyard_defense_access_missions": [
+      "SJUGGER"
+    ],
+    "standard_starter_families_by_campaign": {
+      "All Campaigns": [
+        "allies",
+        "soviets",
+        "epsilon"
+      ],
+      "Allies": [
+        "allies",
+        "soviets",
+        "epsilon"
+      ],
+      "Soviets": [
+        "allies",
+        "soviets",
+        "epsilon"
+      ],
+      "Epsilon": [
+        "allies",
+        "soviets",
+        "epsilon"
+      ],
+      "Foehn": [
+        "allies",
+        "soviets"
+      ]
+    }
+  }
+}

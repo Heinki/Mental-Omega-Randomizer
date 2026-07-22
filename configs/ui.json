@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "description": "Launcher choices, labels, faction colors, and light/dark palettes.",
+  "sections": {
+    "difficulties": [
+      [
+        "Casual",
+        0
+      ],
+      [
+        "Normal",
+        1
+      ],
+      [
+        "Mental",
+        2
+      ]
+    ],
+    "game_speeds": [
+      [
+        "0 - Slowest",
+        0
+      ],
+      [
+        "1 - Slower",
+        1
+      ],
+      [
+        "2 - Slow",
+        2
+      ],
+      [
+        "3 - Medium",
+        3
+      ],
+      [
+        "4 - Fast",
+        4
+      ],
+      [
+        "5 - Faster",
+        5
+      ],
+      [
+        "6 - Fastest",
+        6
+      ]
+    ],
+    "campaign_filters": [
+      "All Campaigns",
+      "Allies",
+      "Soviets",
+      "Epsilon",
+      "Foehn"
+    ],
+    "reward_modes": [
+      "Standard",
+      "Chaos (Experimental)"
+    ],
+    "progression_modes": [
+      "Classic",
+      "Mission List",
+      "Grid Mode"
+    ],
+    "default_progression_mode": "Mission List",
+    "faction_tile_colors": {
+      "Allies": "#285f9e",
+      "Soviets": "#a53636",
+      "Epsilon": "#70429a",
+      "Foehn": "#16898b"
+    },
+    "light_palette": {
+      "background": "#f0f0f0",
+      "panel": "#ffffff",
+      "canvas": "#e9ecef",
+      "foreground": "#202124",
+      "muted": "#555555",
+      "field": "#ffffff",
+      "border": "#b8bec5",
+      "select": "#3478bd",
+      "select_foreground": "#ffffff",
+      "busy": "#edf3f8",
+      "busy_card": "#f9fcff",
+      "busy_title": "#172a3a",
+      "busy_detail": "#4c6172"
+    },
+    "dark_palette": {
+      "background": "#171a1f",
+      "panel": "#20242b",
+      "canvas": "#12151a",
+      "foreground": "#e8eaed",
+      "muted": "#aeb6c2",
+      "field": "#111419",
+      "border": "#49515c",
+      "select": "#315f91",
+      "select_foreground": "#ffffff",
+      "busy": "#111419",
+      "busy_card": "#202a34",
+      "busy_title": "#f2f7fb",
+      "busy_detail": "#b9c7d4"
+    }
+  }
+}

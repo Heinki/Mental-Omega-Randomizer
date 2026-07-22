@@ -1,0 +1,3086 @@
+{
+  "schema_version": 1,
+  "description": "Faction unit/defense rosters, base stats, weapon stats, and cross-faction role equivalence.",
+  "sections": {
+    "faction_unit_rosters": {
+      "Allies": {
+        "infantry": {
+          "E1": "GI",
+          "GGI": "Guardian GI",
+          "ADOG": "Allied Attack Dog",
+          "ENGINEER": "Allied Engineer",
+          "AMEDIC": "Field Medic",
+          "ENFO": "Siege Cadre",
+          "JUMPJET": "Rocketeer",
+          "GHOST": "Navy SEAL",
+          "SPY": "Spy",
+          "RIOT": "Riot Trooper",
+          "SNIPE": "Sniper",
+          "SUPR": "Suppressor",
+          "CLEG": "Chrono Legionnaire",
+          "TANY": "Tanya",
+          "SIEG": "Siegfried",
+          "ARMR": "Norio"
+        },
+        "units": {
+          "CMIN": "Chrono Miner",
+          "FV": "Stryker IFV",
+          "ETNK": "Bulldog Light Tank",
+          "AMC": "Archon AMC",
+          "MTNK": "Cavalier Medium Tank",
+          "TENGU": "Tsurugi Powersuit",
+          "KTNK": "Kappa Hover Tank",
+          "ROBO": "Robot Tank",
+          "AHMV": "Airborne Humvee",
+          "AMCV": "Allied MCV",
+          "SHAD": "Stallion Transport",
+          "COMA": "Warhawk",
+          "MGTK": "Mirage Tank",
+          "HOWI": "Zephyr Artillery",
+          "BASS": "Athena Cannon",
+          "ABRM": "Abrams Tank",
+          "AERO": "Aeroblaze",
+          "SREF": "Prism Tank",
+          "CHRTNK": "Charon Tank",
+          "THOR": "Thor Gunship",
+          "VCARR": "Hailstorm",
+          "BLZZ": "Blizzard Tank",
+          "BFRT": "Battle Tortoise",
+          "CRYO": "Cryocopter",
+          "LCRF": "Voyager Transport",
+          "DEST": "Horizon Destroyer",
+          "AEGIS": "Aegis Cruiser",
+          "DLPH": "Dolphin",
+          "HCRUIS": "Trident Battleship",
+          "CARRIER": "Enterprise Aircraft Carrier",
+          "SIREN": "Siren Frigate"
+        },
+        "aircraft": {
+          "STORM": "Stormchild",
+          "ORCA": "Harrier",
+          "BEAG": "Black Eagle",
+          "FORTRESS": "Barracuda",
+          "HBIRD": "Hummingbird"
+        }
+      },
+      "Soviets": {
+        "infantry": {
+          "E2": "Soviet Conscript",
+          "FLAKT": "Flak Trooper",
+          "DOG": "Soviet Attack Dog",
+          "SENGINEER": "Soviet Engineer",
+          "FLAMER": "Pyro",
+          "SHK": "Tesla Trooper",
+          "SHOCK": "Shock Trooper",
+          "MOTOR": "Mortar Quad",
+          "GYRO": "Gyrocopter",
+          "DESO": "Desolator",
+          "DESOR": "Eradicator",
+          "SBTR": "Saboteur",
+          "ARSO": "Arsonist",
+          "CHITZ": "Chitzkoi",
+          "VOLKOV": "Volkov",
+          "MORALES": "Morales",
+          "YUNRU": "Yunru"
+        },
+        "units": {
+          "HARV": "War Miner",
+          "HTK": "Halftrack",
+          "SCAR": "Tigr APC",
+          "HTNK": "Rhino Heavy Tank",
+          "JTNK": "Jaguar Battle Tank",
+          "CTNK": "Qilin Assault Tank",
+          "DRON": "Terror Drone",
+          "SMCV": "Soviet MCV",
+          "BOREK": "Borillo",
+          "ARMA": "Armadillo",
+          "DTRUCK": "Demolition Truck",
+          "BGGY": "Bomb Buggy",
+          "TTNK": "Tesla Cruiser",
+          "V3": "Scud Launcher",
+          "WOLF": "Wolfhound",
+          "MWF": "Stalin's Fist",
+          "APOC": "Catastrophe Tank",
+          "BURA": "Buratino",
+          "SCHP": "Vulture",
+          "FDRON": "Fury Drone",
+          "EMPR": "Nuwa Cannon",
+          "EDRN": "Dragonfly",
+          "SENT": "Sentinel",
+          "CNTR": "Centurion Siege Crawler",
+          "ZEP": "Kirov Airship",
+          "SAPC": "Zubr Transport",
+          "SUB": "Typhoon Attack Sub",
+          "SWLF": "Seawolf Gunboat",
+          "REAP": "Reaper Corvette",
+          "DBOAT": "Mosquito Demoboat",
+          "DRED": "Kuznetsov Dreadnought",
+          "AKULA": "Akula Missile Sub"
+        },
+        "aircraft": {
+          "FOX": "Foxtrot",
+          "DUST": "Dustdevil"
+        }
+      },
+      "Epsilon": {
+        "infantry": {
+          "INIT": "Initiate",
+          "HARP": "Archer",
+          "YDOG": "Epsilon Spook",
+          "YENGINEER": "Epsilon Engineer",
+          "BRUTE": "Brute",
+          "KAOS": "Bloatick",
+          "YURI": "Epsilon Adept",
+          "YURIPR": "Epsilon Elite",
+          "INTRUDER": "Infiltrator",
+          "HIJACKER": "Hijacker",
+          "REPU": "Repulsor",
+          "SCRG": "Scourge",
+          "STALKER": "Stalker",
+          "VIRUS": "Virus",
+          "LIBRA": "Libra",
+          "UNDER": "Malver",
+          "ASSN": "Rahn"
+        },
+        "units": {
+          "YMIN": "Ghost Miner",
+          "YTNK": "Gatling Tank",
+          "LTNK": "Lasher Light Tank",
+          "QTNK": "Mantis Scrap Tank",
+          "STNK": "Opus Custom Tank",
+          "STING": "Stinger",
+          "PCV": "Epsilon MCV",
+          "DRIL": "Driller APC",
+          "DISK": "Invader",
+          "MARA": "Marauder",
+          "TRIKE": "Speeder Trike",
+          "SHADOW": "Shadow Tank",
+          "MIND": "Mastermind",
+          "TELE": "Magnetron",
+          "YAHCR": "Gehenna Platform",
+          "SCAV": "Tyrant",
+          "PLAG": "Plague Splatter",
+          "COYO": "Oxidizer",
+          "DEVO": "Colossus",
+          "QUAD": "Hazequad",
+          "RUINER": "Ruiner",
+          "BASIL": "Basilisk",
+          "GOTTER": "Aerial Fortress Irkalla",
+          "YHVR": "Mandjet Transport",
+          "SLED": "Piranha Minisub",
+          "SQD": "Giant Squid",
+          "NAUT": "Nautilus Magnetic Sub",
+          "BSUB": "Resheph Ballistic Sub"
+        },
+        "aircraft": {
+          "BLIGHT": "Dybbuk-Attacker",
+          "VENOM": "Dybbuk-Evolver"
+        }
+      },
+      "Foehn": {
+        "infantry": {
+          "KNIGHT": "Knightframe",
+          "COVE": "Lancer",
+          "FENGINEER": "Foehn Engineer",
+          "HUNTR": "Huntress",
+          "SYNC": "Syncronin",
+          "CLAIR": "Clairvoyant",
+          "WASP": "Neonwasp",
+          "ZORB": "Zorbtrotter",
+          "BANE": "Giantsbane",
+          "SIBFIN": "Fin",
+          "SICALI": "Alize",
+          "EUREKA": "Eureka",
+          "URAGAN": "Uragan"
+        },
+        "units": {
+          "NMIN": "Minermite",
+          "TERA": "Teratorn",
+          "CYCL": "Cyclops Walker",
+          "DRACO": "Draco Light Tank",
+          "ROACH": "Bison Combat Tank",
+          "JACKAL": "Jackal Racer",
+          "FMCV": "Foehn MCV",
+          "MSA": "SODAR Array",
+          "RACC": "Raccoon",
+          "COON": "Hovracoon",
+          "BUZZ": "Buzzard",
+          "COND": "Condor",
+          "CONF": "Irritator",
+          "ROADR": "Roadrunner",
+          "SWPR": "Sweeper",
+          "MEGA": "Megalodon",
+          "SHRAY": "Shadray Torch Tank",
+          "DIVER": "Diverbee",
+          "MAD": "M.A.D.M.A.N.",
+          "VIPER": "Pteranodon",
+          "TARCHIA": "Tarchia Cannon",
+          "HURR": "Alanqa Skystation",
+          "ORCIN": "Orcinus Waveshaper",
+          "PROME": "Mastodon",
+          "GHTNK": "Gharial",
+          "BOID": "Boidmachine",
+          "QUETZ": "Quetzal",
+          "SEAT": "Watercat Transport",
+          "SWORD": "Swordfish",
+          "SHARK": "Angelshark",
+          "MANTA": "Whipray",
+          "LEVI": "Leviathan Helicarrier"
+        },
+        "aircraft": {}
+      }
+    },
+    "unit_base_stats": {
+      "E1": [
+        120,
+        6,
+        135,
+        7,
+        7,
+        null
+      ],
+      "GGI": [
+        250,
+        6,
+        170,
+        6,
+        6,
+        null
+      ],
+      "ADOG": [
+        100,
+        9,
+        75,
+        8,
+        7,
+        null
+      ],
+      "ENGINEER": [
+        300,
+        6,
+        90,
+        6,
+        9,
+        null
+      ],
+      "AMEDIC": [
+        300,
+        7,
+        120,
+        8,
+        6,
+        null
+      ],
+      "ENFO": [
+        450,
+        7,
+        155,
+        6,
+        6,
+        null
+      ],
+      "JUMPJET": [
+        450,
+        34,
+        135,
+        8,
+        8,
+        null
+      ],
+      "GHOST": [
+        600,
+        7,
+        170,
+        7,
+        7,
+        null
+      ],
+      "SPY": [
+        800,
+        6,
+        140,
+        8,
+        8,
+        null
+      ],
+      "RIOT": [
+        950,
+        6,
+        265,
+        7,
+        7,
+        null
+      ],
+      "SNIPE": [
+        650,
+        5,
+        145,
+        8,
+        8,
+        null
+      ],
+      "SUPR": [
+        950,
+        7,
+        340,
+        8,
+        8,
+        null
+      ],
+      "CLEG": [
+        1250,
+        5,
+        210,
+        5,
+        5,
+        null
+      ],
+      "TANY": [
+        1500,
+        9,
+        200,
+        9,
+        9,
+        null
+      ],
+      "SIEG": [
+        1500,
+        5,
+        430,
+        10,
+        10,
+        1
+      ],
+      "ARMR": [
+        1500,
+        45,
+        290,
+        10,
+        10,
+        null
+      ],
+      "CMIN": [
+        1400,
+        4,
+        1100,
+        4,
+        4,
+        null
+      ],
+      "FV": [
+        600,
+        8,
+        275,
+        6,
+        6,
+        null
+      ],
+      "ETNK": [
+        700,
+        7,
+        395,
+        6,
+        6,
+        4
+      ],
+      "AMC": [
+        650,
+        7,
+        330,
+        6,
+        6,
+        null
+      ],
+      "MTNK": [
+        750,
+        6,
+        450,
+        6,
+        6,
+        null
+      ],
+      "TENGU": [
+        550,
+        7,
+        300,
+        7,
+        7,
+        null
+      ],
+      "KTNK": [
+        750,
+        10,
+        420,
+        6,
+        6,
+        null
+      ],
+      "ROBO": [
+        550,
+        10,
+        330,
+        7,
+        7,
+        null
+      ],
+      "AHMV": [
+        500,
+        9,
+        260,
+        6,
+        6,
+        null
+      ],
+      "AMCV": [
+        3000,
+        4,
+        2000,
+        7,
+        7,
+        null
+      ],
+      "SHAD": [
+        1000,
+        40,
+        330,
+        8,
+        8,
+        null
+      ],
+      "COMA": [
+        1200,
+        34,
+        330,
+        7,
+        7,
+        8
+      ],
+      "STORM": [
+        1150,
+        30,
+        220,
+        8,
+        30,
+        1
+      ],
+      "MGTK": [
+        1000,
+        6,
+        440,
+        6,
+        6,
+        null
+      ],
+      "ORCA": [
+        1200,
+        25,
+        230,
+        8,
+        30,
+        1
+      ],
+      "HOWI": [
+        950,
+        5,
+        360,
+        7,
+        14,
+        null
+      ],
+      "BEAG": [
+        1300,
+        26,
+        260,
+        8,
+        30,
+        1
+      ],
+      "BASS": [
+        1600,
+        4,
+        370,
+        6,
+        6,
+        1
+      ],
+      "ABRM": [
+        1500,
+        6,
+        500,
+        6,
+        6,
+        1
+      ],
+      "AERO": [
+        1450,
+        6,
+        355,
+        6,
+        6,
+        null
+      ],
+      "SREF": [
+        1450,
+        6,
+        330,
+        6,
+        6,
+        null
+      ],
+      "CHRTNK": [
+        1700,
+        4,
+        710,
+        6,
+        6,
+        1
+      ],
+      "THOR": [
+        2000,
+        14,
+        820,
+        9,
+        9,
+        1
+      ],
+      "VCARR": [
+        1700,
+        4,
+        650,
+        6,
+        6,
+        null
+      ],
+      "BLZZ": [
+        1300,
+        6,
+        530,
+        6,
+        6,
+        null
+      ],
+      "BFRT": [
+        1900,
+        4,
+        1250,
+        6,
+        6,
+        null
+      ],
+      "FORTRESS": [
+        2000,
+        18,
+        340,
+        5,
+        30,
+        2
+      ],
+      "CRYO": [
+        1400,
+        28,
+        460,
+        7,
+        7,
+        null
+      ],
+      "HBIRD": [
+        1400,
+        36,
+        300,
+        6,
+        30,
+        2
+      ],
+      "LCRF": [
+        1000,
+        7,
+        1000,
+        4,
+        4,
+        null
+      ],
+      "DEST": [
+        1200,
+        6,
+        600,
+        6,
+        6,
+        null
+      ],
+      "AEGIS": [
+        1650,
+        4,
+        720,
+        6,
+        6,
+        null
+      ],
+      "DLPH": [
+        600,
+        12,
+        200,
+        8,
+        4,
+        null
+      ],
+      "HCRUIS": [
+        2800,
+        3,
+        1350,
+        6,
+        15,
+        4
+      ],
+      "CARRIER": [
+        2500,
+        4,
+        1000,
+        6,
+        10,
+        null
+      ],
+      "SIREN": [
+        1500,
+        8,
+        360,
+        6,
+        6,
+        null
+      ],
+      "E2": [
+        60,
+        7,
+        125,
+        7,
+        7,
+        null
+      ],
+      "FLAKT": [
+        150,
+        6,
+        145,
+        6,
+        6,
+        null
+      ],
+      "DOG": [
+        100,
+        9,
+        75,
+        8,
+        7,
+        null
+      ],
+      "SENGINEER": [
+        300,
+        6,
+        90,
+        6,
+        9,
+        null
+      ],
+      "FLAMER": [
+        350,
+        7,
+        225,
+        6,
+        6,
+        null
+      ],
+      "SHK": [
+        450,
+        6,
+        270,
+        7,
+        7,
+        null
+      ],
+      "SHOCK": [
+        500,
+        6,
+        320,
+        7,
+        7,
+        null
+      ],
+      "MOTOR": [
+        600,
+        8,
+        220,
+        7,
+        7,
+        null
+      ],
+      "GYRO": [
+        600,
+        26,
+        275,
+        9,
+        9,
+        null
+      ],
+      "DESO": [
+        950,
+        5,
+        210,
+        5,
+        5,
+        1
+      ],
+      "DESOR": [
+        1100,
+        5,
+        260,
+        5,
+        5,
+        1
+      ],
+      "SBTR": [
+        1000,
+        6,
+        140,
+        8,
+        8,
+        null
+      ],
+      "ARSO": [
+        1000,
+        6,
+        140,
+        8,
+        8,
+        1
+      ],
+      "CHITZ": [
+        1000,
+        10,
+        500,
+        10,
+        10,
+        null
+      ],
+      "VOLKOV": [
+        1500,
+        6,
+        600,
+        9,
+        9,
+        null
+      ],
+      "MORALES": [
+        1500,
+        7,
+        240,
+        9,
+        9,
+        1
+      ],
+      "YUNRU": [
+        1500,
+        6,
+        200,
+        9,
+        9,
+        null
+      ],
+      "HARV": [
+        1400,
+        4,
+        1200,
+        4,
+        4,
+        null
+      ],
+      "HTK": [
+        550,
+        7,
+        330,
+        6,
+        6,
+        null
+      ],
+      "SCAR": [
+        600,
+        6,
+        385,
+        6,
+        6,
+        null
+      ],
+      "HTNK": [
+        850,
+        5,
+        480,
+        6,
+        6,
+        3
+      ],
+      "JTNK": [
+        750,
+        6,
+        435,
+        6,
+        6,
+        null
+      ],
+      "CTNK": [
+        900,
+        4,
+        510,
+        6,
+        6,
+        null
+      ],
+      "DRON": [
+        500,
+        10,
+        140,
+        4,
+        6,
+        null
+      ],
+      "SMCV": [
+        3000,
+        4,
+        2000,
+        6,
+        6,
+        null
+      ],
+      "BOREK": [
+        1000,
+        6,
+        700,
+        6,
+        6,
+        null
+      ],
+      "ARMA": [
+        1200,
+        5,
+        790,
+        6,
+        6,
+        null
+      ],
+      "DTRUCK": [
+        1300,
+        6,
+        350,
+        6,
+        6,
+        null
+      ],
+      "BGGY": [
+        1300,
+        8,
+        225,
+        6,
+        6,
+        null
+      ],
+      "RAVA": [
+        1800,
+        7,
+        1050,
+        6,
+        6,
+        3
+      ],
+      "FOX": [
+        1350,
+        24,
+        230,
+        8,
+        30,
+        2
+      ],
+      "DUST": [
+        1400,
+        26,
+        400,
+        6,
+        30,
+        4
+      ],
+      "TTNK": [
+        1500,
+        6,
+        540,
+        6,
+        6,
+        2
+      ],
+      "V3": [
+        1600,
+        4,
+        360,
+        6,
+        9,
+        null
+      ],
+      "WOLF": [
+        1800,
+        20,
+        450,
+        8,
+        8,
+        4
+      ],
+      "MWF": [
+        2500,
+        5,
+        2000,
+        6,
+        6,
+        null
+      ],
+      "APOC": [
+        1600,
+        4,
+        620,
+        6,
+        6,
+        null
+      ],
+      "BURA": [
+        1350,
+        5,
+        360,
+        6,
+        6,
+        8
+      ],
+      "SCHP": [
+        1450,
+        34,
+        380,
+        8,
+        8,
+        1
+      ],
+      "FDRON": [
+        500,
+        10,
+        180,
+        7,
+        6,
+        null
+      ],
+      "EMPR": [
+        2000,
+        4,
+        1180,
+        6,
+        6,
+        null
+      ],
+      "EDRN": [
+        750,
+        45,
+        230,
+        8,
+        8,
+        null
+      ],
+      "SENT": [
+        1500,
+        5,
+        540,
+        6,
+        6,
+        6
+      ],
+      "CNTR": [
+        3000,
+        3,
+        2250,
+        6,
+        6,
+        null
+      ],
+      "ZEP": [
+        2400,
+        9,
+        2000,
+        8,
+        8,
+        5
+      ],
+      "SAPC": [
+        1000,
+        7,
+        1050,
+        4,
+        4,
+        null
+      ],
+      "SUB": [
+        1100,
+        5,
+        720,
+        6,
+        6,
+        null
+      ],
+      "SWLF": [
+        900,
+        7,
+        450,
+        6,
+        6,
+        null
+      ],
+      "REAP": [
+        1300,
+        8,
+        360,
+        6,
+        6,
+        null
+      ],
+      "DBOAT": [
+        1350,
+        8,
+        540,
+        6,
+        6,
+        1
+      ],
+      "DRED": [
+        2800,
+        4,
+        1200,
+        8,
+        10,
+        null
+      ],
+      "AKULA": [
+        2800,
+        3,
+        1300,
+        5,
+        5,
+        null
+      ],
+      "INIT": [
+        150,
+        6,
+        150,
+        7,
+        7,
+        null
+      ],
+      "HARP": [
+        200,
+        6,
+        150,
+        6,
+        6,
+        null
+      ],
+      "YDOG": [
+        100,
+        9,
+        75,
+        8,
+        7,
+        null
+      ],
+      "YENGINEER": [
+        300,
+        6,
+        90,
+        6,
+        9,
+        null
+      ],
+      "BRUTE": [
+        500,
+        7,
+        365,
+        5,
+        5,
+        null
+      ],
+      "KAOS": [
+        350,
+        10,
+        100,
+        7,
+        7,
+        null
+      ],
+      "YURI": [
+        1000,
+        5,
+        110,
+        8,
+        8,
+        null
+      ],
+      "YURIPR": [
+        1200,
+        6,
+        130,
+        8,
+        8,
+        null
+      ],
+      "INTRUDER": [
+        1200,
+        6,
+        140,
+        8,
+        8,
+        null
+      ],
+      "HIJACKER": [
+        450,
+        7,
+        120,
+        8,
+        8,
+        null
+      ],
+      "REPU": [
+        1250,
+        6,
+        120,
+        7,
+        7,
+        1
+      ],
+      "SCRG": [
+        1050,
+        8,
+        190,
+        5,
+        5,
+        5
+      ],
+      "STALKER": [
+        1400,
+        5,
+        345,
+        6,
+        6,
+        null
+      ],
+      "VIRUS": [
+        1500,
+        4,
+        180,
+        8,
+        8,
+        1
+      ],
+      "LIBRA": [
+        1500,
+        10,
+        300,
+        9,
+        9,
+        3
+      ],
+      "UNDER": [
+        1500,
+        6,
+        230,
+        10,
+        10,
+        null
+      ],
+      "ASSN": [
+        1500,
+        7,
+        410,
+        9,
+        9,
+        null
+      ],
+      "YMIN": [
+        1400,
+        4,
+        1050,
+        4,
+        4,
+        null
+      ],
+      "YTNK": [
+        600,
+        7,
+        300,
+        6,
+        6,
+        null
+      ],
+      "LTNK": [
+        700,
+        6,
+        420,
+        6,
+        6,
+        4
+      ],
+      "QTNK": [
+        600,
+        7,
+        310,
+        6,
+        6,
+        null
+      ],
+      "STNK": [
+        650,
+        6,
+        395,
+        6,
+        6,
+        null
+      ],
+      "STING": [
+        550,
+        8,
+        330,
+        7,
+        7,
+        null
+      ],
+      "PCV": [
+        3000,
+        4,
+        2000,
+        7,
+        7,
+        null
+      ],
+      "DRIL": [
+        1000,
+        4,
+        240,
+        4,
+        8,
+        null
+      ],
+      "DISK": [
+        1000,
+        32,
+        440,
+        6,
+        6,
+        null
+      ],
+      "MARA": [
+        1000,
+        8,
+        240,
+        6,
+        6,
+        null
+      ],
+      "TRIKE": [
+        750,
+        11,
+        150,
+        7,
+        7,
+        null
+      ],
+      "SHADOW": [
+        1000,
+        7,
+        350,
+        7,
+        7,
+        null
+      ],
+      "BLIGHT": [
+        1150,
+        22,
+        260,
+        8,
+        30,
+        6
+      ],
+      "MIND": [
+        1800,
+        4,
+        505,
+        6,
+        6,
+        null
+      ],
+      "TELE": [
+        1500,
+        5,
+        440,
+        7,
+        7,
+        null
+      ],
+      "YAHCR": [
+        1500,
+        4,
+        540,
+        6,
+        18,
+        null
+      ],
+      "SCAV": [
+        1400,
+        7,
+        410,
+        6,
+        6,
+        18
+      ],
+      "PLAG": [
+        750,
+        6,
+        270,
+        6,
+        6,
+        null
+      ],
+      "COYO": [
+        1000,
+        7,
+        300,
+        7,
+        7,
+        null
+      ],
+      "DEVO": [
+        1550,
+        5,
+        670,
+        7,
+        7,
+        8
+      ],
+      "QUAD": [
+        900,
+        10,
+        260,
+        5,
+        5,
+        null
+      ],
+      "RUINER": [
+        1100,
+        30,
+        600,
+        5,
+        5,
+        null
+      ],
+      "BASIL": [
+        1750,
+        25,
+        360,
+        8,
+        8,
+        null
+      ],
+      "GOTTER": [
+        3000,
+        6,
+        1750,
+        10,
+        10,
+        null
+      ],
+      "VENOM": [
+        1700,
+        18,
+        440,
+        6,
+        30,
+        2
+      ],
+      "YHVR": [
+        800,
+        8,
+        950,
+        6,
+        6,
+        null
+      ],
+      "SLED": [
+        800,
+        9,
+        255,
+        4,
+        4,
+        null
+      ],
+      "SQD": [
+        1000,
+        8,
+        440,
+        8,
+        5,
+        null
+      ],
+      "NAUT": [
+        2000,
+        5,
+        1000,
+        6,
+        6,
+        null
+      ],
+      "BSUB": [
+        2800,
+        4,
+        950,
+        4,
+        4,
+        null
+      ],
+      "KNIGHT": [
+        450,
+        6,
+        270,
+        7,
+        7,
+        null
+      ],
+      "COVE": [
+        500,
+        7,
+        300,
+        9,
+        9,
+        null
+      ],
+      "FENGINEER": [
+        300,
+        6,
+        90,
+        6,
+        9,
+        null
+      ],
+      "HUNTR": [
+        800,
+        7,
+        240,
+        7,
+        7,
+        null
+      ],
+      "SYNC": [
+        950,
+        8,
+        220,
+        9,
+        9,
+        null
+      ],
+      "CLAIR": [
+        400,
+        6,
+        200,
+        8,
+        8,
+        null
+      ],
+      "WASP": [
+        1050,
+        30,
+        250,
+        6,
+        6,
+        16
+      ],
+      "ZORB": [
+        1350,
+        7,
+        240,
+        7,
+        7,
+        null
+      ],
+      "BANE": [
+        1300,
+        5,
+        750,
+        8,
+        8,
+        null
+      ],
+      "SIBFIN": [
+        1500,
+        7,
+        260,
+        10,
+        10,
+        15
+      ],
+      "SICALI": [
+        1500,
+        7,
+        260,
+        10,
+        10,
+        1
+      ],
+      "EUREKA": [
+        1500,
+        6,
+        520,
+        9,
+        9,
+        1
+      ],
+      "URAGAN": [
+        1500,
+        9,
+        1050,
+        10,
+        10,
+        null
+      ],
+      "NMIN": [
+        900,
+        6,
+        510,
+        4,
+        4,
+        null
+      ],
+      "TERA": [
+        700,
+        9,
+        260,
+        7,
+        7,
+        null
+      ],
+      "CYCL": [
+        800,
+        6,
+        450,
+        6,
+        7,
+        null
+      ],
+      "DRACO": [
+        750,
+        5,
+        420,
+        6,
+        6,
+        null
+      ],
+      "ROACH": [
+        900,
+        4,
+        530,
+        6,
+        6,
+        null
+      ],
+      "JACKAL": [
+        750,
+        12,
+        360,
+        8,
+        8,
+        null
+      ],
+      "FMCV": [
+        3000,
+        4,
+        2000,
+        7,
+        7,
+        null
+      ],
+      "MSA": [
+        950,
+        7,
+        750,
+        6,
+        6,
+        null
+      ],
+      "RACC": [
+        850,
+        10,
+        240,
+        10,
+        10,
+        null
+      ],
+      "COON": [
+        900,
+        10,
+        280,
+        10,
+        10,
+        null
+      ],
+      "BUZZ": [
+        1300,
+        26,
+        440,
+        7,
+        7,
+        4
+      ],
+      "COND": [
+        1400,
+        24,
+        480,
+        7,
+        7,
+        1
+      ],
+      "CONF": [
+        1200,
+        5,
+        270,
+        7,
+        7,
+        6
+      ],
+      "ROADR": [
+        1250,
+        8,
+        415,
+        4,
+        8,
+        null
+      ],
+      "SWPR": [
+        1050,
+        7,
+        275,
+        7,
+        7,
+        null
+      ],
+      "MEGA": [
+        1700,
+        9,
+        920,
+        6,
+        5,
+        1
+      ],
+      "SHRAY": [
+        1600,
+        4,
+        315,
+        6,
+        6,
+        null
+      ],
+      "DIVER": [
+        900,
+        36,
+        220,
+        5,
+        5,
+        null
+      ],
+      "MAD": [
+        3000,
+        3,
+        2400,
+        6,
+        6,
+        1
+      ],
+      "VIPER": [
+        2000,
+        24,
+        900,
+        8,
+        8,
+        null
+      ],
+      "TARCHIA": [
+        1650,
+        4,
+        650,
+        6,
+        6,
+        3
+      ],
+      "HURR": [
+        2050,
+        15,
+        550,
+        9,
+        9,
+        1
+      ],
+      "ORCIN": [
+        1750,
+        5,
+        1150,
+        7,
+        7,
+        null
+      ],
+      "HARB": [
+        3000,
+        20,
+        2000,
+        0,
+        30,
+        8
+      ],
+      "PROME": [
+        2400,
+        3,
+        1450,
+        6,
+        6,
+        1
+      ],
+      "GHTNK": [
+        2050,
+        5,
+        750,
+        6,
+        6,
+        null
+      ],
+      "BOID": [
+        3000,
+        4,
+        2000,
+        6,
+        6,
+        null
+      ],
+      "QUETZ": [
+        2250,
+        18,
+        510,
+        10,
+        10,
+        null
+      ],
+      "SEAT": [
+        1000,
+        6,
+        900,
+        6,
+        6,
+        null
+      ],
+      "SWORD": [
+        1000,
+        6,
+        470,
+        7,
+        7,
+        null
+      ],
+      "SHARK": [
+        1400,
+        8,
+        460,
+        6,
+        6,
+        2
+      ],
+      "MANTA": [
+        1300,
+        7,
+        650,
+        7,
+        7,
+        null
+      ],
+      "LEVI": [
+        3200,
+        3,
+        1300,
+        8,
+        8,
+        null
+      ]
+    },
+    "unit_role_equivalence_groups": [
+      [
+        "E1",
+        "E2",
+        "INIT",
+        "KNIGHT"
+      ],
+      [
+        "COVE",
+        "FLAKT",
+        "GGI",
+        "HARP"
+      ],
+      [
+        "ADOG",
+        "DOG",
+        "YDOG"
+      ],
+      [
+        "ENGINEER",
+        "FENGINEER",
+        "SENGINEER",
+        "YENGINEER"
+      ],
+      [
+        "GYRO",
+        "JUMPJET",
+        "KAOS",
+        "WASP"
+      ],
+      [
+        "BANE",
+        "BRUTE",
+        "RIOT",
+        "SHK"
+      ],
+      [
+        "ASSN",
+        "EUREKA",
+        "GHOST",
+        "VOLKOV"
+      ],
+      [
+        "INTRUDER",
+        "SBTR",
+        "SPY",
+        "SYNC"
+      ],
+      [
+        "HUNTR",
+        "MORALES",
+        "SNIPE",
+        "VIRUS"
+      ],
+      [
+        "AMEDIC",
+        "CLAIR",
+        "MOTOR",
+        "REPU"
+      ],
+      [
+        "DESO",
+        "SCRG",
+        "SUPR",
+        "ZORB"
+      ],
+      [
+        "LIBRA",
+        "SICALI",
+        "TANY",
+        "YUNRU"
+      ],
+      [
+        "CMIN",
+        "HARV",
+        "NMIN",
+        "YMIN"
+      ],
+      [
+        "AMCV",
+        "FMCV",
+        "PCV",
+        "SMCV"
+      ],
+      [
+        "AHMV",
+        "HTK",
+        "JACKAL",
+        "YTNK"
+      ],
+      [
+        "DRIL",
+        "FV",
+        "RACC",
+        "SCAR"
+      ],
+      [
+        "DRACO",
+        "ETNK",
+        "HTNK",
+        "LTNK"
+      ],
+      [
+        "CYCL",
+        "JTNK",
+        "MTNK",
+        "QTNK"
+      ],
+      [
+        "CTNK",
+        "MGTK",
+        "ROACH",
+        "STNK"
+      ],
+      [
+        "HOWI",
+        "TARCHIA",
+        "V3",
+        "YAHCR"
+      ],
+      [
+        "ABRM",
+        "APOC",
+        "DEVO",
+        "GHTNK"
+      ],
+      [
+        "BFRT",
+        "BOID",
+        "CNTR",
+        "GOTTER"
+      ],
+      [
+        "AMC",
+        "BURA",
+        "PLAG",
+        "SHRAY"
+      ],
+      [
+        "EMPR",
+        "MSA",
+        "SREF",
+        "TELE"
+      ],
+      [
+        "DRON",
+        "MARA",
+        "ROBO",
+        "TERA"
+      ],
+      [
+        "BOREK",
+        "LCRF",
+        "SAPC",
+        "SEAT",
+        "SHAD",
+        "YHVR"
+      ],
+      [
+        "BLIGHT",
+        "FOX",
+        "QUETZ",
+        "STORM"
+      ],
+      [
+        "DUST",
+        "ORCA",
+        "VENOM"
+      ],
+      [
+        "DISK",
+        "DIVER",
+        "SCHP",
+        "THOR"
+      ],
+      [
+        "BASIL",
+        "FORTRESS",
+        "HURR",
+        "ZEP"
+      ],
+      [
+        "DEST",
+        "SLED",
+        "SWLF",
+        "SWORD"
+      ],
+      [
+        "NAUT",
+        "SHARK",
+        "SIREN",
+        "SUB"
+      ],
+      [
+        "DBOAT",
+        "DLPH",
+        "MANTA",
+        "SQD"
+      ],
+      [
+        "BSUB",
+        "DRED",
+        "HCRUIS",
+        "LEVI"
+      ],
+      [
+        "AEGIS",
+        "ORCIN",
+        "REAP"
+      ],
+      [
+        "FASONI",
+        "GAPILL",
+        "NALASR",
+        "NATBNK"
+      ],
+      [
+        "FAGUAR",
+        "NAFLAK",
+        "NASAM",
+        "YAGGUN"
+      ],
+      [
+        "ATESLA",
+        "FARAIL",
+        "TESLA",
+        "YARAIL"
+      ],
+      [
+        "FACOMP",
+        "GTGCAN",
+        "NAHAMM",
+        "YAHADE"
+      ],
+      [
+        "FAMMIN",
+        "GACRYO",
+        "NATRAP",
+        "YAVNMM"
+      ],
+      [
+        "FAINHI",
+        "GAGAP",
+        "NASCOM",
+        "YAMPSI"
+      ]
+    ],
+    "faction_defense_rosters": {
+      "Allies": {
+        "GAPILL": "Allied Pillbox",
+        "NASAM": "Allied Patriot Missiles",
+        "GAGUN": "Allied Gun Turret",
+        "GACPIL": "Camo Pillbox",
+        "ATESLA": "Allied Prism Tower",
+        "GTGCAN": "Allied Grand Cannon",
+        "GASTAS": "Ultra Dome",
+        "GAHYPE": "Hyperion",
+        "GACRYO": "Cryomines",
+        "GAGAP": "Allied Gap Generator",
+        "GAPOST": "Allied Warpnode"
+      },
+      "Soviets": {
+        "NALASR": "Soviet Sentry Gun",
+        "NAFLAK": "Soviet Flak Cannon",
+        "NABNKR": "Soviet Battle Bunker",
+        "TESLA": "Soviet Tesla Coil",
+        "NASCOM": "Soviet Sensor Tower",
+        "NAHAMM": "Soviet Hammer Defense",
+        "NAMORT": "Smoke Turret",
+        "NADRON": "Soviet Repair Crane",
+        "NATRAP": "EMP Mines",
+        "NAIRDM": "Soviet Iron Guard"
+      },
+      "Epsilon": {
+        "YAGGUN": "Epsilon Gatling Cannon",
+        "NATBNK": "Epsilon Tank Bunker",
+        "YARAIL": "Epsilon Inferno Tower",
+        "YAMPSI": "Epsilon Mind Reader",
+        "YARIFT": "Epsilon Chimera Core",
+        "YAHADE": "Epsilon Antares Battery",
+        "YAPSYT": "PsiCorps Psychic Tower",
+        "YAVNMM": "Epsilon Genomines",
+        "YAMREF": "Epsilon War Rig"
+      },
+      "Foehn": {
+        "FASONI": "Foehn Sonic Emitter",
+        "FAGUAR": "Foehn Shrike Nest",
+        "FAFILD": "Foehn Stun Grid",
+        "FACONF": "Foehn Turmoil Grid",
+        "FARAIL": "Foehn Railgun Tower",
+        "FACOAT": "Foehn Nanocoat Regulator",
+        "FACOMP": "Foehn Neutralizer",
+        "FAINHI": "Foehn Signal Inhibitor",
+        "FAAVAL": "Plasmerizer",
+        "FABTRC": "Foehn Blast Trench",
+        "FAMMIN": "M.A.D. Mine"
+      }
+    },
+    "defense_base_stats": {
+      "GAPILL": [
+        400,
+        500,
+        7,
+        7
+      ],
+      "NASAM": [
+        800,
+        900,
+        10,
+        12
+      ],
+      "GAGUN": [
+        600,
+        700,
+        7,
+        7.5
+      ],
+      "GACPIL": [
+        500,
+        375,
+        6,
+        6
+      ],
+      "ATESLA": [
+        1200,
+        850,
+        8,
+        9
+      ],
+      "GTGCAN": [
+        1800,
+        1650,
+        10,
+        14
+      ],
+      "GASTAS": [
+        1000,
+        1800,
+        4,
+        9
+      ],
+      "GAHYPE": [
+        2000,
+        2000,
+        10,
+        15
+      ],
+      "GACRYO": [
+        75,
+        150,
+        4,
+        4
+      ],
+      "GAGAP": [
+        1500,
+        700,
+        5,
+        5
+      ],
+      "GAPOST": [
+        1000,
+        850,
+        7,
+        9
+      ],
+      "NALASR": [
+        400,
+        500,
+        7,
+        7
+      ],
+      "NAFLAK": [
+        700,
+        800,
+        10,
+        12
+      ],
+      "NABNKR": [
+        500,
+        900,
+        6,
+        6
+      ],
+      "TESLA": [
+        1200,
+        850,
+        8,
+        8
+      ],
+      "NASCOM": [
+        800,
+        650,
+        15,
+        10
+      ],
+      "NAHAMM": [
+        1800,
+        1650,
+        10,
+        14
+      ],
+      "NAMORT": [
+        900,
+        750,
+        7,
+        12
+      ],
+      "NADRON": [
+        800,
+        800,
+        4,
+        4
+      ],
+      "NATRAP": [
+        75,
+        150,
+        2,
+        6
+      ],
+      "NAIRDM": [
+        1800,
+        700,
+        6,
+        6
+      ],
+      "YAGGUN": [
+        700,
+        800,
+        10,
+        12
+      ],
+      "NATBNK": [
+        300,
+        975,
+        6,
+        6
+      ],
+      "YARAIL": [
+        1200,
+        850,
+        8,
+        9
+      ],
+      "YAMPSI": [
+        800,
+        600,
+        9,
+        9
+      ],
+      "YARIFT": [
+        1400,
+        600,
+        5,
+        9
+      ],
+      "YAHADE": [
+        1800,
+        1650,
+        10,
+        15
+      ],
+      "YAPSYT": [
+        1500,
+        1050,
+        10,
+        8
+      ],
+      "YAVNMM": [
+        75,
+        150,
+        4,
+        4
+      ],
+      "YAMREF": [
+        2000,
+        1350,
+        5,
+        10
+      ],
+      "FASONI": [
+        500,
+        650,
+        7,
+        6.5
+      ],
+      "FAGUAR": [
+        700,
+        850,
+        8,
+        14
+      ],
+      "FAFILD": [
+        40,
+        120,
+        2,
+        2
+      ],
+      "FACONF": [
+        40,
+        140,
+        2,
+        2
+      ],
+      "FARAIL": [
+        1200,
+        850,
+        8,
+        8
+      ],
+      "FACOAT": [
+        1000,
+        800,
+        7,
+        7
+      ],
+      "FACOMP": [
+        1800,
+        1650,
+        10,
+        14
+      ],
+      "FAINHI": [
+        2500,
+        650,
+        5,
+        9.5
+      ],
+      "FAAVAL": [
+        3000,
+        6000,
+        10,
+        21
+      ],
+      "FABTRC": [
+        150,
+        700,
+        2,
+        8
+      ],
+      "FAMMIN": [
+        300,
+        400,
+        4,
+        4
+      ]
+    },
+    "defense_weapon_stats": {
+      "GAPILL": {
+        "Vulcan2": {
+          "damage": 80,
+          "rof": 30,
+          "range": 6
+        }
+      },
+      "NASAM": {
+        "RedEye2": {
+          "damage": 45,
+          "rof": 40,
+          "range": 12
+        }
+      },
+      "GAGUN": {
+        "TurretGun": {
+          "damage": 80,
+          "rof": 50,
+          "range": 7.5
+        }
+      },
+      "GACPIL": {
+        "CamoVulcan2": {
+          "damage": 120,
+          "rof": 40,
+          "range": 6
+        }
+      },
+      "ATESLA": {
+        "PrismShot": {
+          "damage": 110,
+          "rof": 50,
+          "range": 8
+        },
+        "PrismShotSupport": {
+          "damage": 110,
+          "rof": 50,
+          "range": 9
+        }
+      },
+      "GTGCAN": {
+        "GrandCannonWeapon": {
+          "damage": 145,
+          "rof": 140,
+          "range": 14
+        }
+      },
+      "GAHYPE": {
+        "HyperionBlast": {
+          "damage": 30,
+          "rof": 2,
+          "range": 15
+        }
+      },
+      "GACRYO": {
+        "CryomineBomb": {
+          "damage": 30,
+          "rof": 10,
+          "range": 2
+        }
+      },
+      "NALASR": {
+        "Vulcan": {
+          "damage": 25,
+          "rof": 12,
+          "range": 6
+        }
+      },
+      "NAFLAK": {
+        "FlakWeapon": {
+          "damage": 24,
+          "rof": 20,
+          "range": 12
+        }
+      },
+      "TESLA": {
+        "CoilBolt": {
+          "damage": 200,
+          "rof": 110,
+          "range": 8
+        },
+        "OPCoilBolt": {
+          "damage": 300,
+          "rof": 55,
+          "range": 8
+        }
+      },
+      "NAHAMM": {
+        "HammerWeapon": {
+          "damage": 140,
+          "rof": 140,
+          "range": 14
+        }
+      },
+      "NATRAP": {
+        "MineBomb": {
+          "damage": 150,
+          "rof": 10,
+          "range": 2
+        }
+      },
+      "YAGGUN": {
+        "AGGattling": {
+          "damage": 32,
+          "rof": 15,
+          "range": 6
+        },
+        "AAGattCann": {
+          "damage": 25,
+          "rof": 14,
+          "range": 12
+        },
+        "AGGattling2": {
+          "damage": 32,
+          "rof": 12,
+          "range": 6
+        },
+        "AAGattCann2": {
+          "damage": 25,
+          "rof": 12,
+          "range": 12
+        }
+      },
+      "YARAIL": {
+        "InfernoRailgun": {
+          "damage": 170,
+          "rof": 80,
+          "range": 8
+        },
+        "InfernoRailgunBlue": {
+          "damage": 250,
+          "rof": 80,
+          "range": 9
+        }
+      },
+      "YAHADE": {
+        "AntaresBeam": {
+          "damage": 140,
+          "rof": 140,
+          "range": 14
+        },
+        "AntaresBeamBlue": {
+          "damage": 210,
+          "rof": 140,
+          "range": 15
+        }
+      },
+      "YAVNMM": {
+        "GenomineBomb": {
+          "damage": 200,
+          "rof": 10,
+          "range": 2
+        }
+      },
+      "FASONI": {
+        "EmitterZap": {
+          "damage": 50,
+          "rof": 70,
+          "range": 6.5
+        }
+      },
+      "FARAIL": {
+        "RailgunTowerBlast": {
+          "damage": 125,
+          "rof": 120,
+          "range": 8
+        }
+      },
+      "FACOMP": {
+        "NeutralizerCutter": {
+          "damage": 12,
+          "rof": 1,
+          "range": 14
+        }
+      }
+    },
+    "buff_targets": {
+      "MOR_BUILDINGS": {
+        "label": "Faction Production",
+        "plural": "Faction production queues",
+        "category": "global",
+        "factions": [
+          "Allies",
+          "Soviets",
+          "Epsilon",
+          "Foehn"
+        ],
+        "allowed_buff_types": [
+          "production"
+        ],
+        "buff_descriptions": {
+          "production": "Infantry, vehicles, aircraft, buildings, and defenses have 15% shorter production times for the player faction and enabled allied helpers."
+        },
+        "global_buff": true,
+        "global_production": true
+      },
+      "E1": {
+        "label": "GI",
+        "plural": "GIs",
+        "category": "infantry",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 100,
+        "speed": 6,
+        "strength": 125,
+        "sight": 5,
+        "guard_range": 5,
+        "weapons": {
+          "M60": {
+            "damage": 15,
+            "rof": 20,
+            "range": 4
+          },
+          "M60E": {
+            "damage": 20,
+            "rof": 20,
+            "range": 5
+          },
+          "Para": {
+            "damage": 18,
+            "rof": 20,
+            "range": 5
+          },
+          "ParaE": {
+            "damage": 24,
+            "rof": 20,
+            "range": 6
+          }
+        }
+      },
+      "GGI": {
+        "label": "Guardian GI",
+        "plural": "Guardian GIs",
+        "category": "infantry",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 150,
+        "speed": 6,
+        "strength": 150,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "AMEDIC": {
+        "label": "Field Medic",
+        "plural": "Field Medics",
+        "category": "infantry",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 500,
+        "speed": 6,
+        "strength": 125,
+        "sight": 5,
+        "guard_range": 5
+      },
+      "JUMPJET": {
+        "label": "Rocketeer",
+        "plural": "Rocketeers",
+        "category": "infantry",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 650,
+        "speed": 8,
+        "strength": 150,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "E2": {
+        "label": "Conscript",
+        "plural": "Conscripts",
+        "category": "infantry",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 100,
+        "speed": 7,
+        "strength": 125,
+        "sight": 7,
+        "guard_range": 7,
+        "weapons": {
+          "M1Carbine": {
+            "damage": 16,
+            "rof": 20,
+            "range": 5
+          },
+          "M1CarbineE": {
+            "damage": 16,
+            "rof": 20,
+            "range": 5
+          }
+        }
+      },
+      "FLAKT": {
+        "label": "Flak Trooper",
+        "plural": "Flak Troopers",
+        "category": "infantry",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 300,
+        "speed": 5,
+        "strength": 125,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "DOG": {
+        "label": "Soviet Attack Dog",
+        "plural": "Soviet Attack Dogs",
+        "category": "infantry",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 200,
+        "speed": 8,
+        "strength": 100,
+        "sight": 5,
+        "guard_range": 5
+      },
+      "SHK": {
+        "label": "Tesla Trooper",
+        "plural": "Tesla Troopers",
+        "category": "infantry",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 500,
+        "speed": 4,
+        "strength": 200,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "AHMV": {
+        "label": "Humvee",
+        "plural": "Humvees",
+        "category": "units",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 500,
+        "speed": 9,
+        "strength": 300,
+        "sight": 6,
+        "guard_range": 6,
+        "weapons": {
+          "HumveeGun": {
+            "damage": 60,
+            "rof": 35,
+            "range": 6
+          },
+          "HumveeGunE": {
+            "damage": 75,
+            "rof": 30,
+            "range": 7
+          }
+        }
+      },
+      "FV": {
+        "label": "IFV",
+        "plural": "IFVs",
+        "category": "units",
+        "factions": [
+          "Allies"
+        ],
+        "cost": 800,
+        "speed": 10,
+        "strength": 300,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "HTNK": {
+        "label": "Heavy Tank",
+        "plural": "Heavy Tanks",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 900,
+        "speed": 7,
+        "strength": 500,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "HTK": {
+        "label": "Flak Track",
+        "plural": "Flak Tracks",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 500,
+        "speed": 8,
+        "strength": 250,
+        "sight": 5,
+        "guard_range": 5
+      },
+      "TTNK": {
+        "label": "Tesla Tank",
+        "plural": "Tesla Tanks",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 1200,
+        "speed": 6,
+        "strength": 400,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "AKULA": {
+        "label": "Akula",
+        "plural": "Akulas",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 1200,
+        "speed": 5,
+        "strength": 600,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "DRED": {
+        "label": "Dreadnought",
+        "plural": "Dreadnoughts",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 2000,
+        "speed": 4,
+        "strength": 800,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "SUB": {
+        "label": "Typhoon Sub",
+        "plural": "Typhoon Subs",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 1000,
+        "speed": 4,
+        "strength": 600,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "SQD": {
+        "label": "Giant Squid",
+        "plural": "Giant Squids",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 1000,
+        "speed": 8,
+        "strength": 300,
+        "sight": 5,
+        "guard_range": 5
+      },
+      "DBOAT": {
+        "label": "Sea Scorpion",
+        "plural": "Sea Scorpions",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 600,
+        "speed": 8,
+        "strength": 400,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "SAPC": {
+        "label": "Soviet Transport",
+        "plural": "Soviet Transports",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 900,
+        "speed": 6,
+        "strength": 300,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "INIT": {
+        "label": "Initiate",
+        "plural": "Initiates",
+        "category": "infantry",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 150,
+        "speed": 6,
+        "strength": 150,
+        "sight": 7,
+        "guard_range": 7,
+        "weapons": {
+          "PsychicJab": {
+            "damage": 27,
+            "rof": 18,
+            "range": 5.5
+          },
+          "PsychicJabE": {
+            "damage": 27,
+            "rof": 18,
+            "range": 5.5
+          }
+        }
+      },
+      "LTNK": {
+        "label": "Lasher Tank",
+        "plural": "Lasher Tanks",
+        "category": "units",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 700,
+        "speed": 8,
+        "strength": 350,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "YTNK": {
+        "label": "Gatling Tank",
+        "plural": "Gatling Tanks",
+        "category": "units",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 600,
+        "speed": 8,
+        "strength": 300,
+        "sight": 6,
+        "guard_range": 6
+      },
+      "VIRUS": {
+        "label": "Virus",
+        "plural": "Viruses",
+        "category": "infantry",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 700,
+        "speed": 5,
+        "strength": 100,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "MIND": {
+        "label": "Mastermind",
+        "plural": "Masterminds",
+        "category": "units",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 1500,
+        "speed": 5,
+        "strength": 300,
+        "sight": 8,
+        "guard_range": 8
+      },
+      "KNIGHT": {
+        "label": "Knightframe",
+        "plural": "Knightframes",
+        "category": "infantry",
+        "factions": [
+          "Foehn"
+        ],
+        "cost": 500,
+        "speed": 6,
+        "strength": 270,
+        "sight": 7,
+        "guard_range": 7,
+        "weapons": {
+          "KnightGun": {
+            "damage": 50,
+            "rof": 55,
+            "range": 6
+          },
+          "KnightGunAA": {
+            "damage": 50,
+            "rof": 55,
+            "range": 7
+          },
+          "KnightGunE": {
+            "damage": 50,
+            "rof": 55,
+            "range": 6
+          },
+          "KnightGunAAE": {
+            "damage": 50,
+            "rof": 55,
+            "range": 7
+          }
+        }
+      },
+      "JACKAL": {
+        "label": "Jackal Racer",
+        "plural": "Jackal Racers",
+        "category": "units",
+        "factions": [
+          "Foehn"
+        ],
+        "cost": 600,
+        "speed": 10,
+        "strength": 250,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "CYCL": {
+        "label": "Cyclops Walker",
+        "plural": "Cyclops Walkers",
+        "category": "units",
+        "factions": [
+          "Foehn"
+        ],
+        "cost": 900,
+        "speed": 7,
+        "strength": 450,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "DRACO": {
+        "label": "Draco Tank",
+        "plural": "Draco Tanks",
+        "category": "units",
+        "factions": [
+          "Foehn"
+        ],
+        "cost": 1200,
+        "speed": 7,
+        "strength": 450,
+        "sight": 7,
+        "guard_range": 7
+      },
+      "QUETZ": {
+        "label": "Quetzal",
+        "plural": "Quetzals",
+        "category": "aircraft",
+        "factions": [
+          "Foehn"
+        ],
+        "cost": 1400,
+        "speed": 12,
+        "strength": 300,
+        "sight": 8,
+        "guard_range": 8
+      }
+    },
+    "unit_labels": {
+      "ADOG": "Attack Dog",
+      "AEGIS": "Aegis Cruiser",
+      "AHMV": "Humvee",
+      "AMEDIC": "Field Medic",
+      "CARRIER": "Aircraft Carrier",
+      "CLEG": "Cryo Legionnaire",
+      "DEST": "Destroyer",
+      "DLPH": "Dolphin",
+      "E1": "GI",
+      "E2": "Conscript",
+      "DOG": "Soviet Attack Dog",
+      "ENGINEER": "Engineer",
+      "FORTRESS": "Barracuda",
+      "FV": "IFV",
+      "GGI": "Guardian GI",
+      "HCRUIS": "Trident Battleship",
+      "JUMPJET": "Rocketeer",
+      "LCRF": "Voyager Transport",
+      "AKULA": "Akula",
+      "DBOAT": "Sea Scorpion",
+      "DRED": "Dreadnought",
+      "FLAKT": "Flak Trooper",
+      "HTK": "Flak Track",
+      "HTNK": "Heavy Tank",
+      "SAPC": "Zubr Transport",
+      "SHK": "Tesla Trooper",
+      "SQD": "Giant Squid",
+      "SUB": "Typhoon Sub",
+      "TTNK": "Tesla Tank",
+      "INIT": "Initiate",
+      "LTNK": "Lasher Tank",
+      "MIND": "Mastermind",
+      "VIRUS": "Virus",
+      "YTNK": "Gatling Tank",
+      "CYCL": "Cyclops Walker",
+      "DRACO": "Draco Tank",
+      "JACKAL": "Jackal Racer",
+      "KNIGHT": "Knightframe",
+      "QUETZ": "Quetzal"
+    },
+    "limited_hero_build_limits": {
+      "TANY": 1,
+      "SIEG": 1,
+      "ARMR": 1,
+      "CHITZ": 1,
+      "VOLKOV": 1,
+      "MORALES": 1,
+      "YUNRU": 1,
+      "CNTR": 1,
+      "LIBRA": 1,
+      "UNDER": 1,
+      "ASSN": 1,
+      "GOTTER": 1,
+      "SIBFIN": 1,
+      "SICALI": 1,
+      "EUREKA": 1,
+      "URAGAN": 1
+    },
+    "special_damage_fields": {
+      "V3": {
+        "V3RocketDamage": 250,
+        "V3RocketEliteDamage": 400
+      },
+      "DRED": {
+        "DMislDamage": 300,
+        "DMislEliteDamage": 400
+      },
+      "AKULA": {
+        "CMislDamage": 300,
+        "CMislEliteDamage": 400
+      }
+    }
+  }
+}
