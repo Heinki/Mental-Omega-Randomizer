@@ -52,6 +52,7 @@ from randomizer_ini import (
     all_section_value_maps,
     merge_ini_section_values,
     read_text,
+    section_value_map_preserve,
     set_ini_value_lines,
 )
 from randomizer_rewards import (
@@ -129,6 +130,7 @@ from randomizer_map import (
     mission_assistance_direct_rewards,
     mission_assistance_multipliers,
     mission_assistance_unit_ids,
+    native_variant_unit_buff_rules,
     now_stamp,
     player_controlled_houses,
     player_country_buff_rules,
@@ -227,6 +229,171 @@ MISSION_NATIVE_TRIGGER_REFERENCE_IDS = {
     'EPEACE': frozenset({'LCRF'}),
     'ESING': frozenset({'DRIL'}),
     'EBREED': frozenset({'DISK', 'KAOS'}),
+    'ASIREN': frozenset({'TANY'}),
+    'AHAMMERFALL': frozenset({'SHAD'}),
+    # Bleed Red intentionally defines its Boris hero under the map-local
+    # MORALES ID. Boris House's scripted transports and Rhino escorts must use
+    # their native identities as well, otherwise standalone clones replace
+    # Boris with installed Morales and detach the reinforcement teams.
+    'SBLEED': frozenset({
+        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
+    }),
+    'SRED': frozenset({'MORALES', 'BOREK', 'DRIL', 'INIT'}),
+    'FKILL': frozenset({'YUNRU'}),
+    # Unthinkable's final Driller handoff is an exact map-native team:
+    # MDUMMY2 must accept LIBRA and ASSN (Rahn) before its script starts.
+    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
+    'EREALITY': frozenset({
+        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
+        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
+    }),
+}
+
+# These story objects participate in exact type checks, passenger/operator
+# filters, or scripted ownership changes. They must retain their native type
+# identity in the named mission even when the player owns matching buff
+# rewards; country-scoped buffs still apply normally.
+MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS = {
+    'ASIREN': frozenset({'TANY'}),
+    'AHAMMERFALL': frozenset({'SHAD'}),
+    'SBLEED': frozenset({
+        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
+    }),
+    'SRED': frozenset({'MORALES', 'BOREK', 'DRIL', 'INIT'}),
+    'FKILL': frozenset({'YUNRU'}),
+    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
+    'EREALITY': frozenset({
+        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
+        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
+    }),
+}
+
+# EREALITY marks ScorpionCell as PlayerControl for a later phase, but that
+# house begins allied with the hostile Allied army and hostile to the Basic
+# PsiCorps/Libra house. Treating every future PlayerControl house as currently
+# friendly buffs Libra's opening attackers.
+MISSION_REWARD_EXCLUDED_PLAYER_HOUSES = {
+    'EREALITY': frozenset({'ScorpionCell House'}),
+}
+
+# Bleed Red's transport/escort teams drive the Statue of Liberty mission chain
+# and must retain their authored Boris House. Only Boris himself needs a direct
+# player-house spawn; changing every Boris team prevents the bridge sequence
+# from completing and triggers the Dreadnought-loss fail path.
+MISSION_TEAM_HOUSE_OVERRIDES = {
+    'SBLEED': {'01000468': 'USSR'},
+}
+
+# Mission-only production needed by native objectives. These rules are merged
+# after progression locks, so they never become permanent seed rewards.
+MISSION_REQUIRED_ACCESS_RULES = {
+    'EHEAD': {
+        'FOX': {
+            'TechLevel': '1',
+            'BuildLimit': '-1',
+            'Prerequisite': 'NAAIR',
+            'PrerequisiteOverride': 'NAAIR',
+            'RequiredHouses': 'PsiCorps',
+            'ForbiddenHouses': 'none',
+        },
+    },
+    # These two defenses are introduced by Action 106 later in SJUGGER. Leave
+    # TechLevel locked until the native action runs, but remove the launcher
+    # BuildLimit lock that otherwise keeps their cameos inaccessible.
+    'SJUGGER': {
+        'NAHAMM': {'BuildLimit': '-1'},
+        'NAIRDM': {'BuildLimit': '-1'},
+    },
+    # The scripted MCV must reach its deploy cell before the pursuing tanks
+    # occupy it. The previous 2x speed was still too slow in live play. Give
+    # this one map's native SMCV immediate 4x movement and faster turning.
+    'FKILL': {
+        'SMCV': {
+            'Speed': '16',
+            'Accelerates': 'false',
+            'ROT': '10',
+        },
+    },
+    # Power Hunger's map-local DRIL is the scripted Burillo, not the installed
+    # Driller APC that shares its type ID. Keep the native vehicle available to
+    # every authored friendly country and expose it from the player's War
+    # Factory as a recovery path if the scripted transport is lost or stalls.
+    'SRED': {
+        'DRIL': {
+            'TechLevel': '1',
+            'BuildLimit': None,
+            'Prerequisite': 'NAWEAP',
+            'PrerequisiteOverride': 'NAWEAP',
+            'Owner': 'USSR,Latin,Special',
+            'RequiredHouses': 'USSR,Latin,Special',
+            'ForbiddenHouses': 'none',
+        },
+        # The three scripted "Desolators" are map-local INIT objects. They
+        # and the Burillo begin under Special, later participate in the
+        # USSR/Latin handoff, and must never inherit the normal INIT faction
+        # exclusion or become MORPINIT in the fallback transport team.
+        'INIT': {
+            'Owner': 'USSR,Latin,Special',
+            'RequiredHouses': 'USSR,Latin,Special',
+            'ForbiddenHouses': 'none',
+        },
+    },
+}
+
+# Reality Check defines eight map-local Libra phases. Increase each authored
+# base before mission-native buff construction, retaining the map's stronger
+# LIBRA2/LIBRA3 distinction. Earned health and every other direct buff are then
+# calculated from these mission bases instead of being overwritten by a late
+# survival floor.
+MISSION_TECHNO_BASE_RULES = {
+    'EREALITY': {
+        'LIBRA': {'Strength': '7500'},
+        'LIBRA1': {'Strength': '6000'},
+        'LIBRA2': {'Strength': '7500'},
+        'LIBRA3': {'Strength': '7500'},
+        'LIBRA4': {'Strength': '6000'},
+        'LIBRA5': {'Strength': '6000'},
+        'LIBRA6': {'Strength': '6000'},
+        'LIBRA7': {'Strength': '6000'},
+        'LIBRA8': {'Strength': '6000'},
+    },
+}
+
+# A map-local identity may also reuse an installed ID with unrelated stats and
+# weapons. Such a type must not receive direct buffs derived from the installed
+# catalogue when its standalone clone is deliberately suppressed.
+MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = {
+    'SBLEED': frozenset({
+        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
+    }),
+    'SRED': frozenset({'DRIL', 'INIT', 'MORALES'}),
+    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
+    'EREALITY': frozenset({
+        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
+        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
+    }),
+}
+
+MISSION_NATIVE_TECH_UNLOCK_IDS = {
+    'SJUGGER': frozenset({'NAHAMM', 'NAIRDM'}),
+}
+
+# Fatal Impact replaces the global NukePayload with a scripted map-wide MIDAS
+# death payload. Only this mission redirects the earned normal nuke to a private
+# copy of the installed payload. Every other mission keeps the installed chain.
+MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES = {
+    # Fatal Impact replaces the global NukePayload section with a 5000-damage
+    # objective weapon. Give only the randomizer nuke in this mission a private
+    # copy of the installed 600-damage payload and register it as a WeaponType.
+    'SFATAL': {
+        'NukeSpecial': {
+            'NukePayload': {
+                'clone': 'MORFNukePayload',
+                'list': 'WeaponTypes',
+                'reference_keys': ('Nuke.Payload',),
+            },
+        },
+    },
 }
 
 
@@ -989,17 +1156,17 @@ class LauncherApp(tk.Tk):
         self.include_secondary_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_secondary_superweapon_rewards_check,
-            'Adds Chronoshift, Invulnerability, Rage, and Blasticade as building-free rewards.',
+            'Adds Chronoshift, Invulnerability, and Rage as building-free rewards.',
         )
         self.include_aid_power_rewards_check = ttk.Checkbutton(
             reward_frame,
-            text='Include aid/reinforcement power rewards',
+            text='Include support/aid power rewards',
             variable=self.include_aid_power_rewards_var,
         )
         self.include_aid_power_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
         WidgetTooltip(
             self.include_aid_power_rewards_check,
-            'Adds faction unit drops, temporary reinforcements, deployable towers, mines, and other delivery-based support actions.',
+            'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',
         )
 
         buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
@@ -3985,6 +4152,40 @@ class LauncherApp(tk.Tk):
         production_houses = mission_player_production_houses(
             mission.get('code')
         )
+        mission_required_rules = MISSION_REQUIRED_ACCESS_RULES.get(
+            str(mission.get('code') or '').upper(),
+            {},
+        )
+        mission_code = str(mission.get('code') or '').upper()
+
+        def merge_required_rules(rules):
+            if mission_code == 'SJUGGER':
+                # Juggernaut eventually hands the player an SMCV. Expose every
+                # earned defense through any construction yard, including
+                # cross-faction Chaos rewards; do not reduce this to the two
+                # native Action 106 defenses.
+                earned_defense_rewards = [
+                    reward
+                    for reward in self.active_launch_rewards()
+                    if reward.get('kind') not in {'buff', 'superweapon'}
+                    and any(
+                        BUFF_TARGETS.get(str(tech_id).upper(), {}).get('category')
+                        == 'defenses'
+                        for tech_id in reward.get('rules', {})
+                    )
+                ]
+                defense_rules = chaos_earned_access_rules(
+                    lines,
+                    earned_defense_rewards,
+                    additional_build_houses=(),
+                    additional_production_houses=production_houses,
+                )
+                for section, values in defense_rules.items():
+                    rules.setdefault(section, {}).update(values)
+            for section, values in mission_required_rules.items():
+                rules.setdefault(section, {}).update(values)
+            return rules
+
         if self.active_reward_mode() == 'Chaos (Experimental)':
             rules = chaos_earned_access_rules(
                 lines,
@@ -4017,7 +4218,7 @@ class LauncherApp(tk.Tk):
             )
             for section, values in starter_rules.items():
                 rules.setdefault(section, {}).update(values)
-            return rules
+            return merge_required_rules(rules)
         selected_campaign = self.state.get('campaign_filter', '') if self.state else ''
         translate_equivalents = selected_campaign in {
             'Allies', 'Soviets', 'Epsilon', 'Foehn'
@@ -4059,7 +4260,7 @@ class LauncherApp(tk.Tk):
         )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
-        return rules
+        return merge_required_rules(rules)
 
     def cleanup_generated_root_maps(self):
         for path in list(GAME_ROOT.glob('*.MAP')) + list(GAME_ROOT.glob('*.map')):
@@ -4257,12 +4458,45 @@ throw "Map $name was not found in expandmo*.mix"
         code = mission.get('code')
         if not scenario or not code:
             return None
+        native_techno_exclusions = MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
+            code, ()
+        )
+        excluded_player_houses = MISSION_REWARD_EXCLUDED_PLAYER_HOUSES.get(
+            code, ()
+        )
 
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        team_house_overrides = MISSION_TEAM_HOUSE_OVERRIDES.get(code, {})
+        if team_house_overrides:
+            available_team_ids = {
+                team_id.lower()
+                for team_id in section_value_map_preserve(lines, 'TeamTypes').values()
+            }
+            team_house_rules = {
+                team_id: {'House': target_house}
+                for team_id, target_house in team_house_overrides.items()
+                if team_id.lower() in available_team_ids
+            }
+            if team_house_rules:
+                merge_ini_section_values(lines, team_house_rules)
+                self.append_log(
+                    'Assigned scripted player reinforcements to player house: '
+                    + ', '.join(sorted(team_house_rules))
+                    + '.'
+                )
         # Preserve map-authored AI production fields before launcher access
         # locks and ownership rewrites are merged into this launch copy.
         native_map_sections = all_section_value_maps(lines)
+        mission_base_rules = MISSION_TECHNO_BASE_RULES.get(code, {})
+        native_names_by_lower = {
+            str(section).lower(): section for section in native_map_sections
+        }
+        for section, values in mission_base_rules.items():
+            native_section = native_names_by_lower.get(section.lower(), section)
+            native_values = native_map_sections.setdefault(native_section, {})
+            for key, value in values.items():
+                native_values[str(key).lower()] = value
         house_config = mission_house_config(code)
         records = map_house_records(lines)
         mission_effective_tech_ids = self.mission_effective_unlocked_tech_ids(
@@ -4274,6 +4508,8 @@ throw "Map $name was not found in expandmo*.mix"
             extra_rules,
             allowed_unlocked_tech_ids=mission_effective_tech_ids,
         )
+        for section, values in mission_base_rules.items():
+            rule_sections.setdefault(section, {}).update(values)
         native_helpers, missing_helpers = resolve_configured_helper_houses(
             records,
             house_config['allies'],
@@ -4319,17 +4555,26 @@ throw "Map $name was not found in expandmo*.mix"
             )
         earned_rewards = self.active_launch_rewards() if self.state else []
         launch_power_rewards = list(earned_rewards)
+        mission_power_techno_clone_overrides = (
+            MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.get(
+                code, {}
+            )
+        )
         installed_superweapon_types, installed_rule_sections = installed_rules_registry()
         (
             cloned_power_rules,
             superweapon_actions,
             cloned_power_names,
+            startup_power_buildings,
             missing_power_sources,
         ) = cloned_superweapon_plan(
             lines,
             launch_power_rewards,
             installed_superweapon_types,
             installed_rule_sections,
+            superweapon_techno_clone_overrides=(
+                mission_power_techno_clone_overrides
+            ),
         )
         for section, values in cloned_power_rules.items():
             rule_sections.setdefault(section, {}).update(values)
@@ -4345,6 +4590,10 @@ throw "Map $name was not found in expandmo*.mix"
                 values['Owner'] = safe_owners
                 values['RequiredHouses'] = safe_owners
                 values['ForbiddenHouses'] = denied_owners
+        # Generic randomized ownership must not erase mission-authored recovery
+        # access such as Power Hunger's native Burillo.
+        for section, values in MISSION_REQUIRED_ACCESS_RULES.get(code, {}).items():
+            rule_sections.setdefault(section, {}).update(values)
         if missing_power_sources:
             self.append_log(
                 'Skipped power clone(s) because installed source rules were unavailable: '
@@ -4396,6 +4645,7 @@ throw "Map $name was not found in expandmo*.mix"
                 additional_unlocked_tech_ids=buff_access_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
+                excluded_player_houses=excluded_player_houses,
             )
             if house_rule_sections:
                 merge_ini_section_values(lines, house_rule_sections)
@@ -4435,6 +4685,7 @@ throw "Map $name was not found in expandmo*.mix"
                 lines,
                 assistance_stacks,
                 configured_helper_houses=reward_helpers,
+                excluded_player_houses=excluded_player_houses,
             )
             if assisted_houses:
                 if assistance_rules:
@@ -4520,6 +4771,8 @@ throw "Map $name was not found in expandmo*.mix"
                 native_trigger_reference_ids=(
                     MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
                 ),
+                excluded_unit_ids=native_techno_exclusions,
+                excluded_player_houses=excluded_player_houses,
             )
             if clone_rule_sections:
                 merge_ini_section_values(lines, clone_rule_sections)
@@ -4564,6 +4817,39 @@ throw "Map $name was not found in expandmo*.mix"
                     + '.',
                     error=True,
                 )
+            native_variant_buff_config = {
+                'SBLEED': ('MORALES', ('MORALES',)),
+                'EREALITY': (
+                    'LIBRA',
+                    (
+                        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
+                        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
+                    ),
+                ),
+                'SRED': ('MORALES', ('MORALES',)),
+                'ETOTAL': ('LIBRA', ('LIBRA',)),
+            }.get(code)
+            if native_variant_buff_config:
+                source_unit_id, native_variant_ids = native_variant_buff_config
+                native_variant_rules, native_buffed_ids = native_variant_unit_buff_rules(
+                    guarded_rewards,
+                    installed_rule_sections,
+                    native_map_sections,
+                    source_unit_id,
+                    native_variant_ids,
+                    require_unlocked_access=require_unlocked_access_for_buffs,
+                    additional_unlocked_tech_ids=buff_access_tech_ids,
+                    share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+                    unit_specific_mode=chaos_unit_specific_buffs,
+                )
+                if native_variant_rules:
+                    merge_ini_section_values(lines, native_variant_rules)
+                    self.append_log(
+                        f'Applied earned {source_unit_id} buffs to native '
+                        'mission identities: '
+                        + ', '.join(native_buffed_ids)
+                        + '.'
+                    )
             (
                 weapon_rule_sections,
                 weapon_buffed_units,
@@ -4577,6 +4863,10 @@ throw "Map $name was not found in expandmo*.mix"
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=chaos_unit_specific_buffs,
                 clone_handled=clone_handled,
+                excluded_unit_ids=MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS.get(
+                    code, ()
+                ),
+                excluded_player_houses=excluded_player_houses,
             )
             if weapon_rule_sections:
                 merge_ini_section_values(lines, weapon_rule_sections)
@@ -4615,6 +4905,7 @@ throw "Map $name was not found in expandmo*.mix"
             lines,
             power_houses,
             superweapon_actions,
+            startup_buildings=startup_power_buildings,
         )
         if superweapon_trigger:
             power_names = [
@@ -4630,6 +4921,10 @@ throw "Map $name was not found in expandmo*.mix"
             )
 
         unlocked_tech_ids = set(mission_effective_tech_ids)
+        # Preserve reviewed native Action 106 unlocks. Their initial
+        # TechLevel remains locked; mission_required_launch_rules removes only
+        # BuildLimit so the native action can reveal them at the right time.
+        unlocked_tech_ids.update(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
         randomized_tech_ids = self.randomized_tech_ids()
         removed_techlevel_actions = remove_locked_techlevel_actions(
             lines,

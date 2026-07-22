@@ -432,7 +432,6 @@ FACTION_DEFENSE_ROSTERS = {
         'NAHAMM': 'Soviet Hammer Defense',
         'NAMORT': 'Smoke Turret',
         'NADRON': 'Soviet Repair Crane',
-        'NAEMPS': 'EMP Control Station',
         'NATRAP': 'EMP Mines',
         'NAIRDM': 'Soviet Iron Guard',
     },
@@ -459,7 +458,6 @@ FACTION_DEFENSE_ROSTERS = {
         'FAAVAL': 'Plasmerizer',
         'FABTRC': 'Foehn Blast Trench',
         'FAMMIN': 'M.A.D. Mine',
-        'FAHARB': 'Harbinger Tower',
     },
 }
 
@@ -475,7 +473,7 @@ DEFENSE_BASE_STATS = {
     'NABNKR': (500, 900, 6, 6), 'TESLA': (1200, 850, 8, 8),
     'NASCOM': (800, 650, 15, 10), 'NAHAMM': (1800, 1650, 10, 14),
     'NAMORT': (900, 750, 7, 12), 'NADRON': (800, 800, 4, 4),
-    'NAEMPS': (1000, 1000, 6, 6), 'NATRAP': (75, 150, 2, 6),
+    'NATRAP': (75, 150, 2, 6),
     'NAIRDM': (1800, 700, 6, 6),
     'YAGGUN': (700, 800, 10, 12), 'NATBNK': (300, 975, 6, 6),
     'YARAIL': (1200, 850, 8, 9), 'YAMPSI': (800, 600, 9, 9),
@@ -487,7 +485,7 @@ DEFENSE_BASE_STATS = {
     'FARAIL': (1200, 850, 8, 8), 'FACOAT': (1000, 800, 7, 7),
     'FACOMP': (1800, 1650, 10, 14), 'FAINHI': (2500, 650, 5, 9.5),
     'FAAVAL': (3000, 6000, 10, 21), 'FABTRC': (150, 700, 2, 8),
-    'FAMMIN': (300, 400, 4, 4), 'FAHARB': (2000, 1000, 6, 6),
+    'FAMMIN': (300, 400, 4, 4),
 }
 
 DEFENSE_WEAPON_STATS = {
@@ -1532,6 +1530,9 @@ SUPERWEAPON_UNLOCK_REWARDS = [
         'power_category': 'offensive',
         'superweapon': 'NukeSpecial',
         'superweapon_index': 0,
+        # Keep the installed MultiMissile implementation globally. Fatal
+        # Impact alone receives a private copy of the installed NukePayload in
+        # the launcher because that map replaces the shared payload section.
         'superweapon_rules': {'IsPowered': 'false'},
     },
     {
@@ -1595,18 +1596,33 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = [
         'superweapon_index': 28,
         'superweapon_rules': {'IsPowered': 'false'},
     },
-    {
-        'name': 'Blasticade Power',
-        'description': 'Grants a building-free, repeating Blasticade activation; Foehn Blast Trenches are still required for its barrier.',
-        'rules': {},
-        'factions': ['Foehn'],
-        'kind': 'superweapon',
-        'power_category': 'secondary',
-        'superweapon': 'BlasticadeSpecial',
-        'superweapon_index': 47,
-        'superweapon_rules': {'IsPowered': 'false'},
-    },
 ]
+
+
+BUILDING_FREE_SUPPORT_POWER_VALUES = {
+    'IsPowered': 'false',
+    'SW.FireIntoShroud': 'yes',
+    'SW.AutoFire': 'no',
+    'SW.ManualFire': 'yes',
+    'SW.ShowCameo': 'yes',
+    'SW.UseAITargeting': 'no',
+    'SW.AITargeting': 'None',
+    'SW.RequiredHouses': '',
+    'SW.ForbiddenHouses': '',
+    'SW.AuxBuildings': '',
+    'SW.NegBuildings': '',
+    'SW.Designators': '',
+    'SW.Inhibitors': '',
+    'SW.AnyInhibitor': 'no',
+    'SW.RangeMaximum': '-1',
+    'SW.RangeMinimum': '-1',
+}
+
+
+def building_free_support_values(**overrides):
+    values = dict(BUILDING_FREE_SUPPORT_POWER_VALUES)
+    values.update(overrides)
+    return values
 
 
 AID_POWER_MAP_CONFIGS = [
@@ -1851,7 +1867,7 @@ AID_POWER_MAP_CONFIGS = [
     },
     {
         'superweapon': 'HarbingerSpecial',
-        'values': {'IsPowered': 'false'},
+        'values': building_free_support_values(),
     },
     {
         'superweapon': 'SweeperDropSpecial',
@@ -1885,6 +1901,162 @@ AID_POWER_MAP_CONFIGS = [
             'SW.AnyInhibitor': 'no',
             'SW.RangeMaximum': '-1',
             'SW.RangeMinimum': '-1',
+        },
+    },
+    {
+        'superweapon': 'WallbusterSpecial',
+        # EMPulse requires an owned BuildingType cannon even when Action 34
+        # grants the power directly. Keep the installed EMPulse behavior and
+        # weapon chain, but use a hidden map-start cannon instead of exposing
+        # NATEK in the construction tab. Keep the original turreted EMPulse
+        # cannon mode; range is removed on the superweapon itself.
+        'values': building_free_support_values(**{
+            'SW.RangeMaximum': '9999',
+            'SW.RangeMinimum': '0',
+        }),
+        'techno_clones': {
+            'Wallbuster': {
+                'clone': 'MORWBWeapon',
+                'list': 'WeaponTypes',
+                'values': {
+                    'Projectile': 'MORWBProjectile',
+                    'Warhead': 'MORWBWarhead',
+                },
+            },
+            'WallbusterWH': {
+                'clone': 'MORWBWarhead',
+                'list': 'Warheads',
+            },
+            'WallbusterP': {
+                'clone': 'MORWBProjectile',
+                'list': 'Projectiles',
+            },
+            'NATEK': {
+                'clone': 'MORWBCannon',
+                'list': 'BuildingTypes',
+                'startup_count': 4,
+                'reference_keys': ('EMPulse.Cannons',),
+                'values': {
+                    'Name': 'Randomizer Wallbuster Cannon',
+                    'UIName': 'NAME:DUMMYDUMMY',
+                    'Image': 'DUMMYDUMMY',
+                    'Primary': 'MORWBWeapon',
+                    'EMPulseCannon': 'yes',
+                    'Turret': 'yes',
+                    'SuperWeapon2': None,
+                    'SuperWeapons': None,
+                    'TechLevel': '-1',
+                    'BuildLimit': '0',
+                    'AIBuildThis': 'no',
+                    'Power': '0',
+                    'Powered': 'false',
+                    'Capturable': 'false',
+                    'Selectable': 'no',
+                    'Unsellable': 'yes',
+                    'LegalTarget': 'no',
+                    'Insignificant': 'yes',
+                    'DontScore': 'yes',
+                    'KeepAlive': 'no',
+                    'BaseNormal': 'no',
+                    'AIBaseNormal': 'no',
+                    'IsBaseDefense': 'no',
+                    'RadarInvisible': 'yes',
+                    'Sight': '0',
+                },
+            },
+        },
+    },
+    # Other player-facing support powers. Source-building availability gates
+    # are removed only on map-local reward copies.
+    *[
+        {
+            'superweapon': superweapon,
+            'values': building_free_support_values(**overrides),
+        }
+        for superweapon, overrides in (
+            # Allies
+            ('ForceShieldSpecial', {}),
+            ('TargetPainterSpecial', {}),
+            ('SonarPulseSpecial', {}),
+            ('MercurySpecial', {}),
+            ('SpySatSpecial', {}),
+            ('BlackWidowAlphaSpecial', {}),
+            ('BlackWidowSpecial', {}),
+            ('ChronoboostSpecial', {}),
+            ('CryoshotSpecial', {}),
+            ('CryospearSpecial', {}),
+            ('GlacialScreenSpecial', {}),
+            ('CryomineSpawn', {
+                # The installed 0.01 value is an internal one-shot building
+                # spawner delay. AHAMARTIA's player-facing mine power uses
+                # 2.5 minutes; use that real recharge for repeatable rewards.
+                'RechargeTime': '2.5',
+                'Range': '3',
+                'Cursor': 'Mine',
+                'NoCursor': 'NoCanDo',
+                'SW.RequiresTarget': 'land',
+            }),
+            # Soviets
+            ('SpyPlaneSpecial', {}),
+            ('SmokebombsSpecial', {}),
+            ('EMPulsSpecial', {}),
+            ('IrradiateSpecial', {}),
+            ('OverchargeSpecial', {}),
+            ('IrradiateBetaSpecial', {}),
+            ('RadAttackSpecial', {}),
+            ('PackAttackSpecial', {}),
+            ('EMPMineSpawn', {
+                'RechargeTime': '2.5',
+                'Range': '3',
+                'Cursor': 'Mine',
+                'NoCursor': 'NoCanDo',
+                'SW.RequiresTarget': 'land',
+            }),
+            # Epsilon
+            ('IllusionSpecial', {}),
+            ('KineticBarrierSpecial', {}),
+            ('MutationSpecial', {}),
+            ('ToxicStrikeSpecial', {}),
+            ('RegenDrugsSpecial', {}),
+            ('WonderDrugsSpecial', {}),
+            ('GenomineSpawn', {
+                'RechargeTime': '2.5',
+                'Range': '3',
+                'Cursor': 'Mine',
+                'NoCursor': 'NoCanDo',
+                'SW.RequiresTarget': 'land',
+            }),
+            # Foehn
+            ('NanofiberSyncSpecial', {}),
+            ('BoidBlitzSpecial', {}),
+            ('ReconSortieSpecial', {}),
+            ('DevourerSpecial', {}),
+            ('ChaosTouchSpecial', {}),
+            ('ConfusionGridSpawn', {
+                # AHAMARTIA exposes both grid spawners as player powers with
+                # a one-minute recharge instead of their internal 0.01 delay.
+                'RechargeTime': '1',
+                'UIName': 'NAME:FACONF',
+                'SidebarPCX': 'cnfgicon.pcx',
+                'Range': '5',
+                'Cursor': 'Paradrop',
+                'NoCursor': 'NoCanDo',
+                'SW.RequiresTarget': 'land',
+            }),
+            ('StasisGridSpawn', {
+                'RechargeTime': '1',
+                'Range': '5',
+                'Cursor': 'Paradrop',
+                'NoCursor': 'NoCanDo',
+                'SW.RequiresTarget': 'land',
+            }),
+        )
+    ],
+    {
+        'superweapon': 'ChronoliftSpecial',
+        'values': building_free_support_values(),
+        'sections': {
+            'PostliftSpecial': building_free_support_values(),
         },
     },
     {
@@ -1932,10 +2104,9 @@ AID_POWER_MAP_CONFIG_BY_SUPERWEAPON = {
 
 
 def build_aid_power_rewards():
-    # These are the installed, player-facing delivery/reinforcement powers.
-    # Internal automatic spawn helpers and neutral tech-building powers are
-    # deliberately excluded even though the engine also classifies them as
-    # superweapons.
+    # Installed player-facing support powers plus useful mine/grid spawners.
+    # Neutral tech powers, internal handlers, and powers whose effect requires
+    # a separately owned source object remain excluded.
     definitions = [
         # Allies
         ('Airborne Power', 'Drops 6 G.I.s and 4 Guardian G.I.s at the selected area.', 'Allies', 'AmericanParaDropSpecial', 6),
@@ -1945,6 +2116,19 @@ def build_aid_power_rewards():
         ('Ultra Miner Power', 'Deploys an Ultra Miner at the selected area.', 'Allies', 'WarpMinersSpecial', 61),
         ('Kingsnakes Power', 'Deploys a temporary Kingsnake defense portal at the selected area.', 'Allies', 'KingsnakesSpecial', 126),
         ('Paladin Aid Power', 'Deploys 2 Paladin Tank Hunters for the player.', 'Allies', 'PaladinAidSpecial', 128),
+        ('Force Shield Power', 'Protects friendly units and structures in the selected area.', 'Allies', 'ForceShieldSpecial', 10),
+        ('Target Painter Power', 'Marks enemies in the selected area for increased damage.', 'Allies', 'TargetPainterSpecial', 11),
+        ('Sonar Pulse Power', 'Reveals submerged units in the selected water area.', 'Allies', 'SonarPulseSpecial', 12),
+        ('Mercury Strike Power', 'Calls a Mercury orbital strike on the selected area.', 'Allies', 'MercurySpecial', 22),
+        ('Satellite Scan Power', 'Reveals the selected map area.', 'Allies', 'SpySatSpecial', 24),
+        ('Black Widow Alpha Power', 'Calls a Black Widow Alpha airstrike.', 'Allies', 'BlackWidowAlphaSpecial', 41),
+        ('Black Widow Power', 'Calls a Black Widow airstrike.', 'Allies', 'BlackWidowSpecial', 50),
+        ('Chronoboost Power', 'Boosts friendly units in the selected area.', 'Allies', 'ChronoboostSpecial', 78),
+        ('Cryoshot Power', 'Freezes targets in the selected area.', 'Allies', 'CryoshotSpecial', 103),
+        ('Cryospear Power', 'Calls an upgraded freezing strike on the selected area.', 'Allies', 'CryospearSpecial', 104),
+        ('Glacial Screen Power', 'Protects friendly targets in the selected area with a glacial screen.', 'Allies', 'GlacialScreenSpecial', 127),
+        ('Cryomine Field Power', 'Deploys 4 Cryomines at the selected area.', 'Allies', 'CryomineSpawn', 92),
+        ('Chronolift Power', 'Relocates a friendly structure between selected locations.', 'Allies', 'ChronoliftSpecial', 64),
         # Soviets
         ('Repair Drone Power', 'Drops 1 Repair Drone at the selected area.', 'Soviets', 'RepairDroneSpecial', 13),
         ('Tank Drop Power', 'Drops the Russian Hydra Cannon and Tank Killer contingent at the selected area.', 'Soviets', 'TankDropSpecial', 16),
@@ -1957,6 +2141,16 @@ def build_aid_power_rewards():
         ('Drakuv Prison Vehicle Power', 'Deploys a Drakuv Prison Vehicle for the player.', 'Soviets', 'DrakuvSpecial', 70),
         ('Repair Drones Power', 'Drops the upgraded Repair Drone contingent at the selected area.', 'Soviets', 'RepairDronesSpecial', 124),
         ('Disruptor Power', 'Deploys a Disruptor support unit for the player.', 'Soviets', 'DisruptorSpecial', 125),
+        ('Spy Plane Power', 'Sends a reconnaissance aircraft over the selected area.', 'Soviets', 'SpyPlaneSpecial', 8),
+        ('Smoke Bombs Power', 'Calls a smoke-bomb airstrike on the selected area.', 'Soviets', 'SmokebombsSpecial', 14),
+        ('EM Pulse Power', 'Launches an electromagnetic pulse at the selected area.', 'Soviets', 'EMPulsSpecial', 19),
+        ('Irradiation Gamma Power', 'Irradiates friendly targets in the selected area.', 'Soviets', 'IrradiateSpecial', 25),
+        ('Overcharge Power', 'Overcharges friendly targets in the selected area.', 'Soviets', 'OverchargeSpecial', 42),
+        ('Wallbuster Power', 'Calls a wall-busting strike on the selected area.', 'Soviets', 'WallbusterSpecial', 69),
+        ('Irradiation Beta Power', 'Irradiates friendly targets in the selected area.', 'Soviets', 'IrradiateBetaSpecial', 120),
+        ('Rad Attack Power', 'Calls a radiation airstrike on the selected area.', 'Soviets', 'RadAttackSpecial', 121),
+        ('Pack Attack Power', 'Calls a larger radiation airstrike on the selected area.', 'Soviets', 'PackAttackSpecial', 122),
+        ('EMP Minefield Power', 'Deploys 4 EMP Mines at the selected area.', 'Soviets', 'EMPMineSpawn', 59),
         # Epsilon
         ('Risen Monolith Power', 'Deploys a temporary Risen Monolith at the selected area.', 'Epsilon', 'RisenMonolithSpecial', 15),
         ('Scout Raven Power', 'Deploys a Scout Raven at the selected area.', 'Epsilon', 'RavenSpecial', 18),
@@ -1967,6 +2161,13 @@ def build_aid_power_rewards():
         ('Quick Fort Power', 'Deploys a temporarily strengthened Tank Bunker at the selected area.', 'Epsilon', 'QuickFortSpecial', 86),
         ('Ruiner Power', 'Deploys a Ruiner support unit for the player.', 'Epsilon', 'RuinerSpecial', 93),
         ('Hijackers Power', 'Drops 3 Hijackers at the selected area.', 'Epsilon', 'HijackersSpecial', 108),
+        ('Shadow Ring Power', 'Cloaks friendly targets in the selected area.', 'Epsilon', 'IllusionSpecial', 31),
+        ('Kinetic Barrier Power', 'Protects friendly targets in the selected area.', 'Epsilon', 'KineticBarrierSpecial', 37),
+        ('Geneburst Power', 'Mutates targets in the selected area.', 'Epsilon', 'MutationSpecial', 38),
+        ('Toxic Strike Power', 'Calls a toxic airstrike on the selected area.', 'Epsilon', 'ToxicStrikeSpecial', 44),
+        ('Regen Drugs Power', 'Regenerates friendly infantry in the selected area.', 'Epsilon', 'RegenDrugsSpecial', 105),
+        ('Wonder Drugs Power', 'Applies enhanced regeneration in the selected area.', 'Epsilon', 'WonderDrugsSpecial', 109),
+        ('Genomine Field Power', 'Deploys 4 Genomines at the selected area.', 'Epsilon', 'GenomineSpawn', 84),
         # Foehn
         ('Spinblade Power', 'Deploys a Spinblade support structure at the selected area.', 'Foehn', 'SpinbladeSpecial', 39),
         ('Megaarena Power', 'Deploys a temporary Megaarena Projector at the selected area.', 'Foehn', 'MegaarenaSpecial', 52),
@@ -1976,7 +2177,14 @@ def build_aid_power_rewards():
         ('Signal Jammer Power', 'Deploys a temporary Signal Jammer at the selected area.', 'Foehn', 'SignalJammerSpecial', 77),
         ('Decoy Team Power', 'Deploys a holographic infantry decoy team at the selected area.', 'Foehn', 'DecoyTeamSpecial', 118),
         ('Decoy Squadron Power', 'Deploys a holographic aircraft decoy squadron at the selected area.', 'Foehn', 'DecoySquadronSpecial', 119),
-        ('M.A.D. Mine Power', 'Deploys a M.A.D. Mine at the selected area.', 'Foehn', 'MADMineSpecial', 133),
+        ('M.A.D. Mine Power', 'Deploys exactly 1 M.A.D. Mine at the selected area.', 'Foehn', 'MADMineSpecial', 133),
+        ('Nanofiber Sync Power', 'Strengthens friendly targets in the selected area.', 'Foehn', 'NanofiberSyncSpecial', 40),
+        ('Boid Blitz Power', 'Launches a Boid Blitz at the selected area.', 'Foehn', 'BoidBlitzSpecial', 46),
+        ('Recon Sortie Power', 'Sends reconnaissance aircraft over the selected area.', 'Foehn', 'ReconSortieSpecial', 49),
+        ('Devourer Power', 'Calls a Devourer strike on the selected area.', 'Foehn', 'DevourerSpecial', 74),
+        ('Chaos Touch Power', 'Disorients enemies in the selected area.', 'Foehn', 'ChaosTouchSpecial', 106),
+        ('Confusion Grid Power', 'Deploys a 3 by 3 Confusion Grid at the selected area.', 'Foehn', 'ConfusionGridSpawn', 57),
+        ('Stasis Grid Power', 'Deploys a 3 by 3 Stasis Grid at the selected area.', 'Foehn', 'StasisGridSpawn', 63),
     ]
     rewards = []
     for name, description, faction, superweapon, index in definitions:
@@ -2007,6 +2215,14 @@ def build_aid_power_rewards():
                     for key, value in clone.items()
                 }
                 for section, clone in modified_config['techno_clones'].items()
+            }
+        if modified_config and modified_config.get('auxiliary_clones'):
+            reward['superweapon_auxiliary_clones'] = {
+                section: {
+                    key: dict(value) if key == 'values' else value
+                    for key, value in clone.items()
+                }
+                for section, clone in modified_config['auxiliary_clones'].items()
             }
         if modified_config and modified_config.get('custom'):
             reward['superweapon_custom'] = True
@@ -2049,6 +2265,30 @@ RETIRED_REWARD_BY_NAME = {
     'Harbinger Access': {
         'name': 'Harbinger Access (retired: aid power only)',
         'description': 'Use the Harbinger Power; the strike aircraft is not a trainable unit.',
+        'rules': {},
+        'factions': ['Foehn'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+    'Harbinger Tower Access': {
+        'name': 'Harbinger Tower Access (retired: power has no tower prerequisite)',
+        'description': 'Harbinger Power works anywhere without constructing a Harbinger Tower.',
+        'rules': {},
+        'factions': ['Foehn'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+    'EMP Control Station Access': {
+        'name': 'EMP Control Station Access (retired: power has no station prerequisite)',
+        'description': 'EM Pulse works anywhere without constructing an EMP Control Station.',
+        'rules': {},
+        'factions': ['Soviets'],
+        'kind': 'retired',
+        'retired_reward': True,
+    },
+    'Blasticade Power': {
+        'name': 'Blasticade Power (retired: requires Blast Trenches)',
+        'description': 'Removed because a building-free Blasticade has no effect without owned Blast Trenches.',
         'rules': {},
         'factions': ['Foehn'],
         'kind': 'retired',
