@@ -6,12 +6,18 @@ ordering pure makes seed compatibility testable without starting the launcher.
 
 import re
 
+from randomizer_static_config import load_static_config
 
-FACTION_ORDER = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
-FALLBACK_OBJECTIVE_COUNT = 3
-STARTING_UNLOCKED_MISSIONS = 3
-LOW_LEVEL_MISSION_COUNT = 5
-LOW_LEVEL_STAGE_MAX = 6
+
+_MISSION_CONFIG = load_static_config('missions.json')
+_MISSION_CATALOGUE = _MISSION_CONFIG['catalogue']
+
+
+FACTION_ORDER = tuple(_MISSION_CATALOGUE['faction_order'])
+FALLBACK_OBJECTIVE_COUNT = int(_MISSION_CATALOGUE['fallback_objective_count'])
+STARTING_UNLOCKED_MISSIONS = int(_MISSION_CATALOGUE['starting_unlocked_missions'])
+LOW_LEVEL_MISSION_COUNT = int(_MISSION_CATALOGUE['low_level_mission_count'])
+LOW_LEVEL_STAGE_MAX = int(_MISSION_CATALOGUE['low_level_stage_max'])
 
 BASE_BUILD = 'base_build'
 TRUE_NO_BUILD = 'true_no_build'
@@ -20,105 +26,7 @@ NO_BUILD_PRODUCTION = 'no_build_production'
 # Community-reviewed gameplay classification for all 97 installed campaign
 # maps. Keep every catalogue code explicit: this is player-facing seed data,
 # not a title/stage-name guess.
-MISSION_BUILD_CLASSIFICATIONS = {
-    'AREDDAWN': BASE_BUILD,
-    'AEAGLESFLY': BASE_BUILD,
-    'AROADTRIP': NO_BUILD_PRODUCTION,
-    'AHEAVENHELL': BASE_BUILD,
-    'ABADAPPLE': NO_BUILD_PRODUCTION,
-    'ABMIND': BASE_BUILD,
-    'AHAMMERFALL': TRUE_NO_BUILD,
-    'AWRONGSIDE': TRUE_NO_BUILD,
-    'AZEROSIGNAL': NO_BUILD_PRODUCTION,
-    'AGARDENER': TRUE_NO_BUILD,
-    'APANIC': BASE_BUILD,
-    'ASUNLIGHT': BASE_BUILD,
-    'ASIREN': TRUE_NO_BUILD,
-    'APUPPET': BASE_BUILD,
-    'ASTONE': NO_BUILD_PRODUCTION,
-    'AGHOST': BASE_BUILD,
-    'ABOTTLE': TRUE_NO_BUILD,
-    'AHYST': BASE_BUILD,
-    'ASTORM': BASE_BUILD,
-    'APARA': TRUE_NO_BUILD,
-    'ARELE': BASE_BUILD,
-    'AINSOMNIA': BASE_BUILD,
-    'AWITHER': BASE_BUILD,
-    'AHAMARTIA': BASE_BUILD,
-    'SBLEED': BASE_BUILD,
-    'SGGATE': NO_BUILD_PRODUCTION,
-    'SHBD': BASE_BUILD,
-    'SSIDE': BASE_BUILD,
-    'SPEACE': NO_BUILD_PRODUCTION,
-    'SRECH': TRUE_NO_BUILD,
-    'SIDLE': BASE_BUILD,
-    'SDEATH': BASE_BUILD,
-    'SROAD': NO_BUILD_PRODUCTION,
-    'SOPEN': TRUE_NO_BUILD,
-    'SMACHINE': BASE_BUILD,
-    'SDRAGON': BASE_BUILD,
-    'SRAVEN': BASE_BUILD,
-    'SAWAKE': TRUE_NO_BUILD,
-    'SEXIST': BASE_BUILD,
-    'SFIRE': BASE_BUILD,
-    'SJUGGER': BASE_BUILD,
-    'SHEART': TRUE_NO_BUILD,
-    'SRED': BASE_BUILD,
-    'STHREAD': BASE_BUILD,
-    'SMELT': NO_BUILD_PRODUCTION,
-    'SEARTH': BASE_BUILD,
-    'SFATAL': BASE_BUILD,
-    'SHAND': BASE_BUILD,
-    'EPEACE': TRUE_NO_BUILD,
-    'EACCEL': TRUE_NO_BUILD,
-    'ESCRAP': NO_BUILD_PRODUCTION,
-    'ESHIP': BASE_BUILD,
-    'EHUMAN': TRUE_NO_BUILD,
-    'ELAND': TRUE_NO_BUILD,
-    'ETHINK': BASE_BUILD,
-    'ELORD': NO_BUILD_PRODUCTION,
-    'EFIELDS': TRUE_NO_BUILD,
-    'EFOCUS': TRUE_NO_BUILD,
-    'ESING': TRUE_NO_BUILD,
-    'EMOON': BASE_BUILD,
-    'EDILEMMA': BASE_BUILD,
-    'EHUEHUE': TRUE_NO_BUILD,
-    'EBREED': BASE_BUILD,
-    'EDIVER': BASE_BUILD,
-    'EGODSEND': NO_BUILD_PRODUCTION,
-    'ELIZARD': NO_BUILD_PRODUCTION,
-    'EBLOOD': BASE_BUILD,
-    'EHEAD': TRUE_NO_BUILD,
-    'ESANDS': BASE_BUILD,
-    'ETOTAL': BASE_BUILD,
-    'EREALITY': TRUE_NO_BUILD,
-    'EMIGDAL': BASE_BUILD,
-    'FNOBODY': TRUE_NO_BUILD,
-    'FKILL': BASE_BUILD,
-    'FEMPIRE': NO_BUILD_PRODUCTION,
-    'FBEYOND': BASE_BUILD,
-    'FPOINT': TRUE_NO_BUILD,
-    'FREMNANT': BASE_BUILD,
-    'ADEMON': NO_BUILD_PRODUCTION,
-    'AOBST': BASE_BUILD,
-    'ACONV': TRUE_NO_BUILD,
-    'AFULL': BASE_BUILD,
-    'AGRID': BASE_BUILD,
-    'ASOMNIA': BASE_BUILD,
-    'SARCHE': TRUE_NO_BUILD,
-    'SECLIPSE': BASE_BUILD,
-    'STROPH': NO_BUILD_PRODUCTION,
-    'SNOISE': NO_BUILD_PRODUCTION,
-    'SDAWN': BASE_BUILD,
-    'SARMS': BASE_BUILD,
-    'ETACI': TRUE_NO_BUILD,
-    'EASHES': NO_BUILD_PRODUCTION,
-    'ERAGE': TRUE_NO_BUILD,
-    'ESPLIT': BASE_BUILD,
-    'ENIGHT': NO_BUILD_PRODUCTION,
-    'ESURV': NO_BUILD_PRODUCTION,
-    'FCAPSULE': TRUE_NO_BUILD,
-}
+MISSION_BUILD_CLASSIFICATIONS = dict(_MISSION_CONFIG['build_classifications'])
 
 TRUE_NO_BUILD_MISSION_CODES = frozenset(
     code for code, classification in MISSION_BUILD_CLASSIFICATIONS.items()
@@ -142,9 +50,7 @@ NO_BUILD_MISSION_FLAGS = {
 # User-approved early exceptions are Foehn 01 and 05. Every other Foehn map
 # is kept out of a protected opening while another eligible mission exists,
 # including no-build operation TIME CAPSULE because its difficulty is high.
-LATE_FOEHN_MISSION_CODES = frozenset({
-    'FKILL', 'FEMPIRE', 'FBEYOND', 'FREMNANT', 'FCAPSULE',
-})
+LATE_FOEHN_MISSION_CODES = frozenset(_MISSION_CATALOGUE['late_foehn_mission_codes'])
 
 
 def normalize_faction(side):

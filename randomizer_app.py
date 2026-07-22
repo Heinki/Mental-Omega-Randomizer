@@ -9,11 +9,11 @@ import threading
 import time
 import traceback
 
-from randomizer_config import CONFIG_PATH, load_config, save_config
+from randomizer_config import CONFIG_PATH, DEFAULT_CONFIG, load_config, save_config
+from randomizer_storage import atomic_write_text
 from randomizer_cameos import (
     ensure_superweapon_cameos,
     ensure_unit_cameos,
-    installed_rules_registry,
     mix_reader_assembly_paths,
     powershell_mix_reader_load_script,
 )
@@ -32,9 +32,11 @@ from grid_progression import (
 )
 from randomizer_missions import (
     FACTION_ORDER,
+    FALLBACK_OBJECTIVE_COUNT,
     LATE_FOEHN_MISSION_CODES,
     LOW_LEVEL_MISSION_COUNT,
     NO_BUILD_MISSION_CODES,
+    STARTING_UNLOCKED_MISSIONS,
     campaign_mission_counts,
     classic_mission_order,
     filter_missions_by_build_settings,
@@ -44,15 +46,10 @@ from randomizer_missions import (
     seed_mission_order,
 )
 from randomizer_mission_houses import (
-    mission_house_config,
-    mission_player_power_houses,
     mission_player_production_houses,
 )
 from randomizer_ini import (
-    all_section_value_maps,
-    merge_ini_section_values,
     read_text,
-    section_value_map_preserve,
     set_ini_value_lines,
 )
 from randomizer_rewards import (
@@ -60,7 +57,6 @@ from randomizer_rewards import (
     BUFF_TARGETS,
     BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
-    ENGINEER_UNIT_IDS,
     effective_buff_count,
     buff_stack_limit,
     MAX_REWARDS_PER_CHECK,
@@ -93,7 +89,6 @@ from randomizer_paths import (
     GAME_EXE,
     GAME_LAUNCHER_EXE,
     GAME_ROOT,
-    GENERATED_MAP_DIR,
     LAUNCHER_LOG,
     OPTIONS_INI,
     RULESMO_INI,
@@ -103,375 +98,63 @@ from randomizer_paths import (
     YR_OPTIONS_INI,
 )
 from randomizer_map import (
-    HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
     SCRIPTED_TECH_BUILD_LIMIT,
     SCRIPTED_TECH_LOCK_EXCLUSIONS,
-    action_has_code,
-    action_has_objective_complete,
-    action_line_ids,
-    append_action_to_action_id,
-    append_hook_team,
-    append_parallel_global_hook,
-    append_superweapon_grant_trigger,
-    backup_file_once,
-    cloned_superweapon_plan,
-    clone_player_country_for_house_buffs,
     controlled_tech_ids,
     country_family,
-    hook_marker_name,
-    helper_ai_autobuild_plan,
-    helper_ai_autobuild_rules,
     is_generated_hooked_map,
     is_generated_rules_file,
-    insert_actions_before_codes,
     launch_rules_for_reward,
-    mission_assistance_buff_rules,
-    mission_assistance_direct_rewards,
     mission_assistance_multipliers,
-    mission_assistance_unit_ids,
-    native_variant_unit_buff_rules,
     now_stamp,
-    player_controlled_houses,
-    player_country_buff_rules,
-    player_country_from_map,
     player_house_from_map,
-    player_unit_clone_rules,
     map_house_records,
-    remove_locked_techlevel_actions,
-    resolve_configured_helper_houses,
-    stacked_house_buff_values,
     tech_ids_for_rewards,
     unlocked_reward_tech_ids,
-    trigger_action_ids_by_name,
-    unique_in_order,
-    unit_weapon_buff_rules,
 )
 from randomizer_mission_safety import (
     always_available_transport_rules,
     chaos_earned_access_rules,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
-    safe_build_countries,
     single_engineer_rules,
     starting_tier_one_rules,
     summarize_basic_unit_rules,
     tier_one_unit_ids,
 )
-DIFFICULTIES = [('Casual', 0), ('Normal', 1), ('Mental', 2)]
-GAME_SPEEDS = [
-    # Keep the launcher labels aligned with the engine's option value. The
-    # -SPEEDCONTROL runtime path still needs this value in spawn.ini, but high
-    # values can normalize to the fast end during spawned campaign launches.
-    ('0 - Slowest', 0),
-    ('1 - Slower', 1),
-    ('2 - Slow', 2),
-    ('3 - Medium', 3),
-    ('4 - Fast', 4),
-    ('5 - Faster', 5),
-    ('6 - Fastest', 6),
-]
-CAMPAIGN_FILTERS = ['All Campaigns', 'Allies', 'Soviets', 'Epsilon', 'Foehn']
-REWARD_MODES = ['Standard', 'Chaos (Experimental)']
-PROGRESSION_MODES = ['Classic', 'Mission List', 'Grid Mode']
-DEFAULT_PROGRESSION_MODE = 'Mission List'
+from randomizer_map_pipeline import prepare_hooked_map as prepare_hooked_mission_map
+from randomizer_mission_overrides import (
+    MISSION_REQUIRED_ACCESS_RULES,
+    MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS,
+    STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
+)
+from randomizer_ui import (
+    CAMPAIGN_FILTERS,
+    DARK_UI_PALETTE,
+    DEFAULT_PROGRESSION_MODE,
+    DIFFICULTIES,
+    FACTION_TILE_COLORS,
+    GAME_SPEEDS,
+    LIGHT_UI_PALETTE,
+    PROGRESSION_MODES,
+    REWARD_MODES,
+)
+from randomizer_ui_builder import (
+    apply_color_mode as apply_launcher_color_mode,
+    create_widgets as build_launcher_widgets,
+    redraw_grid as redraw_launcher_grid,
+)
 
-STARTING_UNLOCKED_MISSIONS = 3
-DEFAULT_MISSION_GOAL = 15
-FALLBACK_OBJECTIVE_COUNT = 3
+DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
 CHECK_SCHEMA_VERSION = 16
 HOOK_POLL_MS = 1500
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 MAX_GLOBAL_BUFF_REPEATS_PER_SEED = 3
 GLOBAL_BUFF_REWARD_INTERVAL = 10
-FACTION_TILE_COLORS = {
-    'Allies': '#285f9e',
-    'Soviets': '#a53636',
-    'Epsilon': '#70429a',
-    'Foehn': '#16898b',
-}
-LIGHT_UI_PALETTE = {
-    'background': '#f0f0f0',
-    'panel': '#ffffff',
-    'canvas': '#e9ecef',
-    'foreground': '#202124',
-    'muted': '#555555',
-    'field': '#ffffff',
-    'border': '#b8bec5',
-    'select': '#3478bd',
-    'select_foreground': '#ffffff',
-    'busy': '#edf3f8',
-    'busy_card': '#f9fcff',
-    'busy_title': '#172a3a',
-    'busy_detail': '#4c6172',
-}
-DARK_UI_PALETTE = {
-    'background': '#171a1f',
-    'panel': '#20242b',
-    'canvas': '#12151a',
-    'foreground': '#e8eaed',
-    'muted': '#aeb6c2',
-    'field': '#111419',
-    'border': '#49515c',
-    'select': '#315f91',
-    'select_foreground': '#ffffff',
-    'busy': '#111419',
-    'busy_card': '#202a34',
-    'busy_title': '#f2f7fb',
-    'busy_detail': '#b9c7d4',
-}
-
-# These campaign objects begin outside the player coalition, then become or
-# affect player-owned mission objects through native triggers. Their placed
-# identity stays native, so exact Event/Action references must stay native too.
-MISSION_NATIVE_TRIGGER_REFERENCE_IDS = {
-    'EPEACE': frozenset({'LCRF'}),
-    'ESING': frozenset({'DRIL'}),
-    'EBREED': frozenset({'DISK', 'KAOS'}),
-    'ASIREN': frozenset({'TANY'}),
-    'AHAMMERFALL': frozenset({'SHAD'}),
-    # Bleed Red intentionally defines its Boris hero under the map-local
-    # MORALES ID. Boris House's scripted transports and Rhino escorts must use
-    # their native identities as well, otherwise standalone clones replace
-    # Boris with installed Morales and detach the reinforcement teams.
-    'SBLEED': frozenset({
-        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
-    }),
-    'SRED': frozenset({'MORALES', 'BOREK', 'DRIL', 'INIT'}),
-    'FKILL': frozenset({'YUNRU'}),
-    # Unthinkable's final Driller handoff is an exact map-native team:
-    # MDUMMY2 must accept LIBRA and ASSN (Rahn) before its script starts.
-    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
-    'EREALITY': frozenset({
-        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
-        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
-    }),
-}
-
-# These story objects participate in exact type checks, passenger/operator
-# filters, or scripted ownership changes. They must retain their native type
-# identity in the named mission even when the player owns matching buff
-# rewards; country-scoped buffs still apply normally.
-MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS = {
-    'ASIREN': frozenset({'TANY'}),
-    'AHAMMERFALL': frozenset({'SHAD'}),
-    'SBLEED': frozenset({
-        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
-    }),
-    'SRED': frozenset({'MORALES', 'BOREK', 'DRIL', 'INIT'}),
-    'FKILL': frozenset({'YUNRU'}),
-    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
-    'EREALITY': frozenset({
-        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
-        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
-    }),
-}
-
-# EREALITY marks ScorpionCell as PlayerControl for a later phase, but that
-# house begins allied with the hostile Allied army and hostile to the Basic
-# PsiCorps/Libra house. Treating every future PlayerControl house as currently
-# friendly buffs Libra's opening attackers.
-MISSION_REWARD_EXCLUDED_PLAYER_HOUSES = {
-    'EREALITY': frozenset({'ScorpionCell House'}),
-}
-
-# Bleed Red's transport/escort teams drive the Statue of Liberty mission chain
-# and must retain their authored Boris House. Only Boris himself needs a direct
-# player-house spawn; changing every Boris team prevents the bridge sequence
-# from completing and triggers the Dreadnought-loss fail path.
-MISSION_TEAM_HOUSE_OVERRIDES = {
-    'SBLEED': {'01000468': 'USSR'},
-}
-
-# Mission-only production needed by native objectives. These rules are merged
-# after progression locks, so they never become permanent seed rewards.
-MISSION_REQUIRED_ACCESS_RULES = {
-    'EHEAD': {
-        'FOX': {
-            'TechLevel': '1',
-            'BuildLimit': '-1',
-            'Prerequisite': 'NAAIR',
-            'PrerequisiteOverride': 'NAAIR',
-            'RequiredHouses': 'PsiCorps',
-            'ForbiddenHouses': 'none',
-        },
-    },
-    # These two defenses are introduced by Action 106 later in SJUGGER. Leave
-    # TechLevel locked until the native action runs, but remove the launcher
-    # BuildLimit lock that otherwise keeps their cameos inaccessible.
-    'SJUGGER': {
-        'NAHAMM': {'BuildLimit': '-1'},
-        'NAIRDM': {'BuildLimit': '-1'},
-    },
-    # The scripted MCV must reach its deploy cell before the pursuing tanks
-    # occupy it. The previous 2x speed was still too slow in live play. Give
-    # this one map's native SMCV immediate 4x movement and faster turning.
-    'FKILL': {
-        'SMCV': {
-            'Speed': '16',
-            'Accelerates': 'false',
-            'ROT': '10',
-        },
-    },
-    # Power Hunger's map-local DRIL is the scripted Burillo, not the installed
-    # Driller APC that shares its type ID. Keep the native vehicle available to
-    # every authored friendly country and expose it from the player's War
-    # Factory as a recovery path if the scripted transport is lost or stalls.
-    'SRED': {
-        'DRIL': {
-            'TechLevel': '1',
-            'BuildLimit': None,
-            'Prerequisite': 'NAWEAP',
-            'PrerequisiteOverride': 'NAWEAP',
-            'Owner': 'USSR,Latin,Special',
-            'RequiredHouses': 'USSR,Latin,Special',
-            'ForbiddenHouses': 'none',
-        },
-        # The three scripted "Desolators" are map-local INIT objects. They
-        # and the Burillo begin under Special, later participate in the
-        # USSR/Latin handoff, and must never inherit the normal INIT faction
-        # exclusion or become MORPINIT in the fallback transport team.
-        'INIT': {
-            'Owner': 'USSR,Latin,Special',
-            'RequiredHouses': 'USSR,Latin,Special',
-            'ForbiddenHouses': 'none',
-        },
-    },
-}
-
-# Reality Check defines eight map-local Libra phases. Increase each authored
-# base before mission-native buff construction, retaining the map's stronger
-# LIBRA2/LIBRA3 distinction. Earned health and every other direct buff are then
-# calculated from these mission bases instead of being overwritten by a late
-# survival floor.
-MISSION_TECHNO_BASE_RULES = {
-    'EREALITY': {
-        'LIBRA': {'Strength': '7500'},
-        'LIBRA1': {'Strength': '6000'},
-        'LIBRA2': {'Strength': '7500'},
-        'LIBRA3': {'Strength': '7500'},
-        'LIBRA4': {'Strength': '6000'},
-        'LIBRA5': {'Strength': '6000'},
-        'LIBRA6': {'Strength': '6000'},
-        'LIBRA7': {'Strength': '6000'},
-        'LIBRA8': {'Strength': '6000'},
-    },
-}
-
-# A map-local identity may also reuse an installed ID with unrelated stats and
-# weapons. Such a type must not receive direct buffs derived from the installed
-# catalogue when its standalone clone is deliberately suppressed.
-MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = {
-    'SBLEED': frozenset({
-        'MORALES', 'SAPC', 'SHK', 'FLAKT', 'E2', 'FLAMER', 'SENGINEER', 'HTNK',
-    }),
-    'SRED': frozenset({'DRIL', 'INIT', 'MORALES'}),
-    'ETOTAL': frozenset({'LIBRA', 'MDUMMY2', 'ASSN'}),
-    'EREALITY': frozenset({
-        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
-        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
-    }),
-}
-
-MISSION_NATIVE_TECH_UNLOCK_IDS = {
-    'SJUGGER': frozenset({'NAHAMM', 'NAIRDM'}),
-}
-
-# Fatal Impact replaces the global NukePayload with a scripted map-wide MIDAS
-# death payload. Only this mission redirects the earned normal nuke to a private
-# copy of the installed payload. Every other mission keeps the installed chain.
-MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES = {
-    # Fatal Impact replaces the global NukePayload section with a 5000-damage
-    # objective weapon. Give only the randomizer nuke in this mission a private
-    # copy of the installed 600-damage payload and register it as a WeaponType.
-    'SFATAL': {
-        'NukeSpecial': {
-            'NukePayload': {
-                'clone': 'MORFNukePayload',
-                'list': 'WeaponTypes',
-                'reference_keys': ('Nuke.Payload',),
-            },
-        },
-    },
-}
 
 
-class WidgetTooltip:
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tip = None
-        widget.bind('<Enter>', self.show, add='+')
-        widget.bind('<Leave>', self.hide, add='+')
-        widget.bind('<ButtonPress>', self.hide, add='+')
-
-    def show(self, event=None):
-        if self.tip is not None or not self.text:
-            return
-        self.tip = tk.Toplevel(self.widget)
-        self.tip.wm_overrideredirect(True)
-        label = ttk.Label(
-            self.tip,
-            text=self.text,
-            justify='left',
-            padding=(8, 6, 8, 6),
-            relief='solid',
-            wraplength=380,
-        )
-        label.grid(row=0, column=0)
-        x = self.widget.winfo_rootx() + 18
-        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
-        self.tip.wm_geometry(f'+{x}+{y}')
-
-    def hide(self, event=None):
-        if self.tip is not None:
-            self.tip.destroy()
-            self.tip = None
-
-class TreeTooltip:
-    def __init__(self, tree, text_callback):
-        self.tree = tree
-        self.text_callback = text_callback
-        self.tip = None
-        self.current_row = None
-        tree.bind('<Motion>', self.on_motion, add='+')
-        tree.bind('<Leave>', self.hide, add='+')
-
-    def on_motion(self, event):
-        row = self.tree.identify_row(event.y)
-        if not row:
-            self.hide()
-            return
-
-        text = self.text_callback(row)
-        if not text:
-            self.hide()
-            return
-
-        x = self.tree.winfo_rootx() + event.x + 18
-        y = self.tree.winfo_rooty() + event.y + 12
-        if row != self.current_row:
-            self.hide()
-            self.current_row = row
-            self.tip = tk.Toplevel(self.tree)
-            self.tip.wm_overrideredirect(True)
-            label = ttk.Label(
-                self.tip,
-                text=text,
-                justify='left',
-                padding=(8, 6, 8, 6),
-                relief='solid',
-                wraplength=620,
-            )
-            label.grid(row=0, column=0)
-        self.tip.wm_geometry(f'+{x}+{y}')
-
-    def hide(self, event=None):
-        self.current_row = None
-        if self.tip is not None:
-            self.tip.destroy()
-            self.tip = None
 
 
 class LauncherApp(tk.Tk):
@@ -644,688 +327,7 @@ class LauncherApp(tk.Tk):
         )
 
     def create_widgets(self):
-        main_frame = ttk.Frame(self, padding=(12, 12, 12, 12))
-        self.main_frame = main_frame
-        main_frame.grid(row=0, column=0, sticky='nsew')
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        self.style = ttk.Style(self)
-        self.style.configure('Randomizer.TNotebook', tabposition='n')
-        self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
-        self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
-
-        header = ttk.Label(
-            main_frame,
-            text=f'Mental Omega Randomizer Launcher v{APP_VERSION}',
-            font=('Segoe UI', 14, 'bold'),
-        )
-        header.grid(row=0, column=0, sticky='w')
-        self.settings_toggle_button = ttk.Button(
-            main_frame,
-            text='Hide Settings',
-            command=self.toggle_settings_panel,
-        )
-        self.settings_toggle_button.grid(row=0, column=1, rowspan=2, sticky='ne')
-        self.subtitle_label = ttk.Label(
-            main_frame,
-            text='Choose an open mission, earn randomized upgrades, and let victory tracking update your run.',
-            style='Muted.TLabel',
-        )
-        self.subtitle_label.grid(row=1, column=0, sticky='w', pady=(2, 10))
-
-        mission_view_frame = ttk.Frame(main_frame)
-        self.mission_view_frame = mission_view_frame
-        mission_view_frame.grid(row=2, column=0, rowspan=5, sticky='nsew', padx=(0, 12))
-        mission_view_frame.columnconfigure(0, weight=1)
-        mission_view_frame.rowconfigure(0, weight=1)
-
-        self.missions_tree = ttk.Treeview(
-            mission_view_frame,
-            columns=('order', 'state', 'checks', 'faction', 'code', 'title'),
-            show='headings',
-            selectmode='browse',
-            height=17,
-        )
-        self.mission_heading_labels = {
-            'order': 'No.',
-            'state': 'State',
-            'checks': 'Rewards',
-            'faction': 'Faction',
-            'code': 'Code',
-            'title': 'Mission Title',
-        }
-        for column, label in self.mission_heading_labels.items():
-            self.missions_tree.heading(
-                column,
-                text=label,
-                command=lambda selected=column: self.sort_missions_by(selected),
-            )
-        self.missions_tree.column('order', width=48, anchor='center', stretch=False)
-        self.missions_tree.column('state', width=64, anchor='center', stretch=False)
-        self.missions_tree.column('checks', width=70, anchor='center', stretch=False)
-        self.missions_tree.column('faction', width=78, anchor='w', stretch=False)
-        self.missions_tree.column('code', width=86, anchor='w', stretch=False)
-        self.missions_tree.column('title', width=300, anchor='w', stretch=True)
-        self.missions_tree.tag_configure(
-            'completed',
-            background='#dff2df',
-            foreground='#176b2c',
-        )
-        self.missions_tree.grid(row=0, column=0, sticky='nsew')
-        self.missions_tree.bind('<<TreeviewSelect>>', self.on_mission_select, add='+')
-        self.mission_tooltip = TreeTooltip(self.missions_tree, self.mission_tooltip_text)
-
-        tree_scrollbar = ttk.Scrollbar(
-            mission_view_frame,
-            orient='vertical',
-            command=self.missions_tree.yview,
-        )
-        tree_scrollbar.grid(row=0, column=1, sticky='ns')
-        self.missions_tree.configure(yscrollcommand=tree_scrollbar.set)
-        self.tree_scrollbar = tree_scrollbar
-
-        self.grid_frame = ttk.Frame(mission_view_frame, padding=(4, 4, 4, 4))
-        self.grid_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
-        self.grid_frame.columnconfigure(0, weight=1)
-        self.grid_frame.rowconfigure(0, weight=1)
-        self.grid_canvas = tk.Canvas(
-            self.grid_frame,
-            borderwidth=0,
-            highlightthickness=0,
-            background='#e9ecef',
-        )
-        self.grid_vertical_scrollbar = ttk.Scrollbar(
-            self.grid_frame,
-            orient='vertical',
-            command=self.grid_canvas.yview,
-        )
-        self.grid_horizontal_scrollbar = ttk.Scrollbar(
-            self.grid_frame,
-            orient='horizontal',
-            command=self.grid_canvas.xview,
-        )
-        self.grid_canvas.configure(
-            xscrollcommand=self.grid_horizontal_scrollbar.set,
-            yscrollcommand=self.grid_vertical_scrollbar.set,
-        )
-        self.grid_canvas.grid(row=0, column=0, sticky='nsew')
-        self.grid_vertical_scrollbar.grid(row=0, column=1, sticky='ns')
-        self.grid_horizontal_scrollbar.grid(row=1, column=0, sticky='ew')
-        self.grid_content_frame = ttk.Frame(self.grid_canvas)
-        self.grid_canvas_window = self.grid_canvas.create_window(
-            (0, 0),
-            window=self.grid_content_frame,
-            anchor='nw',
-        )
-        self.grid_content_frame.bind(
-            '<Configure>', self.on_grid_content_configure, add='+'
-        )
-        self.grid_canvas.bind('<Configure>', self.on_grid_canvas_configure, add='+')
-        self.bind_all('<MouseWheel>', self.on_grid_mousewheel, add='+')
-        self.bind_all('<Shift-MouseWheel>', self.on_grid_shift_mousewheel, add='+')
-        self.grid_placeholder = ttk.Label(
-            self.grid_content_frame,
-            text='Generate a Grid Mode seed to create the mission grid.',
-            anchor='center',
-            justify='center',
-        )
-
-        right_frame = ttk.Frame(main_frame)
-        self.right_frame = right_frame
-        right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
-        right_frame.columnconfigure(0, weight=1)
-        right_frame.rowconfigure(4, weight=1)
-
-        ttk.Label(right_frame, text='Seed', font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
-        seed_row = ttk.Frame(right_frame)
-        seed_row.grid(row=1, column=0, sticky='ew', pady=(0, 6))
-        seed_row.columnconfigure(0, weight=1)
-        ttk.Entry(seed_row, textvariable=self.seed_var, width=20).grid(row=0, column=0, sticky='ew', padx=(0, 6))
-        ttk.Button(seed_row, text='Generate New Seed', command=self.on_new_seed).grid(row=0, column=1, sticky='ew')
-
-        options_row = ttk.Frame(right_frame)
-        options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
-        options_row.columnconfigure(1, weight=1)
-        options_row.columnconfigure(3, weight=1)
-        ttk.Label(options_row, text='Missions to finish').grid(row=0, column=0, sticky='w', padx=(0, 8))
-        self.mission_goal_spinbox = ttk.Spinbox(
-            options_row,
-            from_=1,
-            to=max(DEFAULT_MISSION_GOAL, self.mission_goal_var.get()),
-            textvariable=self.mission_goal_var,
-            width=6,
-        )
-        self.mission_goal_spinbox.grid(row=0, column=1, sticky='w')
-        ttk.Label(options_row, text='Game speed').grid(row=0, column=2, sticky='w', padx=(14, 8))
-        self.game_speed_combo = ttk.Combobox(
-            options_row,
-            state='readonly',
-            textvariable=self.game_speed_var,
-            values=[name for name, _ in GAME_SPEEDS],
-            width=10,
-        )
-        self.game_speed_combo.grid(row=0, column=3, sticky='ew')
-
-        self.campaign_label = ttk.Label(options_row, text='Campaign')
-        self.campaign_label.grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
-        self.campaign_combo = ttk.Combobox(
-            options_row,
-            state='readonly',
-            textvariable=self.campaign_var,
-            values=CAMPAIGN_FILTERS,
-            width=12,
-        )
-        self.campaign_combo.grid(row=1, column=1, sticky='ew', pady=(6, 0))
-        self.campaign_combo.bind('<<ComboboxSelected>>', self.on_campaign_filter_changed, add='+')
-
-        ttk.Label(options_row, text='Difficulty').grid(row=1, column=2, sticky='w', pady=(6, 0), padx=(14, 8))
-        self.difficulty_combo = ttk.Combobox(
-            options_row,
-            state='readonly',
-            textvariable=self.difficulty_var,
-            values=[name for name, _ in DIFFICULTIES],
-            width=12,
-        )
-        self.difficulty_combo.grid(row=1, column=3, sticky='ew', pady=(6, 0))
-
-        ttk.Label(options_row, text='Rewards per objective').grid(row=2, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
-        self.rewards_per_check_spinbox = ttk.Spinbox(
-            options_row,
-            from_=1,
-            to=MAX_REWARDS_PER_CHECK,
-            textvariable=self.rewards_per_check_var,
-            width=6,
-            validate='key',
-            validatecommand=(self.register(self.validate_rewards_per_check), '%P'),
-        )
-        self.rewards_per_check_spinbox.grid(row=2, column=1, sticky='w', pady=(6, 0))
-        self.buff_allied_helpers_check = ttk.Checkbutton(
-            options_row,
-            text='Buff allied helpers',
-            variable=self.buff_allied_helpers_var,
-        )
-        self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
-        WidgetTooltip(
-            self.buff_allied_helpers_check,
-            'Gives reviewed allied AI helpers safe country buffs and compatible '
-            'earned unit clones through extra Autocreate teams. Native units, '
-            'TaskForces, timing, and scripts stay intact.',
-        )
-        self.rewards_per_check_message_label = ttk.Label(options_row, text='')
-        self.rewards_per_check_message_label.grid(
-            row=3,
-            column=0,
-            columnspan=4,
-            sticky='w',
-            pady=(4, 0),
-        )
-        self.rewards_per_check_var.trace_add('write', self.refresh_rewards_per_check_message)
-        self.refresh_rewards_per_check_message()
-
-        ttk.Label(options_row, text='Reward mode').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
-        self.reward_mode_combo = ttk.Combobox(
-            options_row,
-            state='readonly',
-            textvariable=self.reward_mode_var,
-            values=REWARD_MODES,
-            width=20,
-        )
-        self.reward_mode_combo.grid(row=4, column=1, columnspan=3, sticky='ew', pady=(6, 0))
-        self.reward_mode_combo.bind('<<ComboboxSelected>>', self.on_reward_mode_changed, add='+')
-        WidgetTooltip(
-            self.reward_mode_combo,
-            'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
-            'Chaos draws units from all four factions, forces randomized access/tech locking, and lets '
-            'earned units use matching production structures that the mission gives the player. It does '
-            'not grant foreign production structures.',
-        )
-
-        ttk.Label(options_row, text='Progression').grid(row=5, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
-        self.progression_mode_combo = ttk.Combobox(
-            options_row,
-            state='readonly',
-            textvariable=self.progression_mode_var,
-            values=PROGRESSION_MODES,
-            width=12,
-        )
-        self.progression_mode_combo.grid(row=5, column=1, sticky='ew', pady=(6, 0))
-        self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
-        WidgetTooltip(
-            self.progression_mode_combo,
-            'Classic follows the installed campaign order and opens one mission at a time. '
-            'Mission List uses a randomized linear order. Grid Mode uses randomized missions '
-            'on an orthogonal-neighbor board.',
-        )
-
-        self.grid_options_frame = ttk.Frame(options_row)
-        self.grid_options_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(6, 0))
-        self.grid_two_starts_check = ttk.Checkbutton(
-            self.grid_options_frame,
-            text='Start with two available missions',
-            variable=self.grid_two_starts_var,
-        )
-        self.grid_two_starts_check.grid(row=0, column=0, sticky='w')
-        WidgetTooltip(
-            self.grid_two_starts_check,
-            'Opens the missions directly right of and below the top-left node at seed start. '
-            'The board dimensions are calculated automatically from Missions to finish.',
-        )
-        button_row = ttk.Frame(right_frame)
-        button_row.grid(row=3, column=0, sticky='ew', pady=(0, 6))
-        button_row.columnconfigure(0, weight=1)
-        ttk.Button(
-            button_row,
-            text='Launch Selected Mission',
-            command=self.on_launch_selected,
-            style='Launch.TButton',
-        ).grid(row=0, column=0, sticky='ew', pady=(0, 4))
-
-        info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
-        self.info_tabs = info_tabs
-        info_tabs.grid(row=4, column=0, sticky='nsew')
-        info_tabs.enable_traversal()
-
-        progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
-        progress_frame.columnconfigure(0, weight=1)
-        progress_frame.rowconfigure(1, weight=1)
-        info_tabs.add(progress_frame, text='Mission Details')
-
-        self.progress_label = ttk.Label(progress_frame, text='No seed generated yet.', anchor='w', justify='left')
-        self.progress_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
-
-        self.rewards_text = scrolledtext.ScrolledText(
-            progress_frame,
-            height=16,
-            wrap='word',
-            state='disabled',
-            font=('Segoe UI', 9),
-        )
-        self.rewards_text.grid(row=1, column=0, sticky='nsew')
-
-        unlocks_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
-        self.unlocks_tab = unlocks_frame
-        unlocks_frame.columnconfigure(0, weight=1)
-        unlocks_frame.rowconfigure(1, weight=1)
-        info_tabs.add(unlocks_frame, text='Unlocks')
-
-        search_row = ttk.Frame(unlocks_frame)
-        search_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
-        search_row.columnconfigure(0, weight=1)
-        self.unlock_search_entry = ttk.Entry(search_row, textvariable=self.unlock_search_var)
-        self.unlock_search_entry.grid(row=0, column=0, sticky='ew', padx=(0, 4))
-        ttk.Button(search_row, text='Prev', command=self.find_unlock_previous, width=8).grid(row=0, column=1, padx=(0, 4))
-        ttk.Button(search_row, text='Next', command=self.find_unlock_next, width=8).grid(row=0, column=2, padx=(0, 4))
-        ttk.Button(search_row, text='Clear', command=self.clear_unlock_search, width=8).grid(row=0, column=3)
-        self.unlock_search_status = ttk.Label(search_row, text='', width=9, anchor='e')
-        self.unlock_search_status.grid(row=0, column=4, padx=(6, 0))
-
-        self.unlocks_text = scrolledtext.ScrolledText(
-            unlocks_frame,
-            height=16,
-            wrap='word',
-            state='disabled',
-            font=('Segoe UI', 9),
-        )
-        self.unlocks_text.grid(row=1, column=0, sticky='nsew')
-        self.unlocks_text.tag_configure('search_match', background='#fff0a6')
-        self.unlocks_text.tag_configure('search_current', background='#ffbf69')
-        self.unlock_search_var.trace_add('write', self.refresh_unlock_search)
-        self.unlock_search_entry.bind('<Return>', self.find_unlock_next)
-        self.unlock_search_entry.bind('<Shift-Return>', self.find_unlock_previous)
-        self.unlock_search_entry.bind('<Escape>', self.clear_unlock_search)
-        self.bind_all('<Control-f>', self.focus_unlock_search, add='+')
-        self.bind_all('<F3>', self.find_unlock_next, add='+')
-        self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
-
-        settings_tab = ttk.Frame(info_tabs)
-        self.settings_tab = settings_tab
-        settings_tab.columnconfigure(0, weight=1)
-        settings_tab.rowconfigure(0, weight=1)
-        info_tabs.add(settings_tab, text='Settings')
-
-        settings_canvas = tk.Canvas(
-            settings_tab,
-            borderwidth=0,
-            highlightthickness=0,
-            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
-        )
-        self.settings_canvas = settings_canvas
-        settings_scrollbar = ttk.Scrollbar(
-            settings_tab,
-            orient='vertical',
-            command=settings_canvas.yview,
-        )
-        settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
-        settings_canvas.grid(row=0, column=0, sticky='nsew')
-        settings_scrollbar.grid(row=0, column=1, sticky='ns')
-
-        settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
-        settings_frame.columnconfigure(0, weight=1)
-        self.settings_frame = settings_frame
-        self.settings_canvas_window = settings_canvas.create_window(
-            (0, 0),
-            window=settings_frame,
-            anchor='nw',
-        )
-        settings_frame.bind('<Configure>', self.on_settings_content_configure, add='+')
-        settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
-        self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
-
-        self.settings_intro_label = ttk.Label(
-            settings_frame,
-            text=(
-                'Gameplay settings are saved for the next generated seed. Existing runs keep '
-                'their generated gameplay settings. Appearance and privacy apply immediately.'
-            ),
-            wraplength=340,
-            style='Muted.TLabel',
-        )
-        self.settings_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 8))
-
-        mission_pool_frame = ttk.LabelFrame(
-            settings_frame,
-            text='Mission Pool',
-            padding=(8, 8, 8, 8),
-        )
-        mission_pool_frame.grid(row=1, column=0, sticky='ew')
-        self.include_no_build_missions_check = ttk.Checkbutton(
-            mission_pool_frame,
-            text='Include true no-build / fixed-unit missions',
-            variable=self.include_no_build_missions_var,
-            command=self.on_mission_pool_settings_changed,
-        )
-        self.include_no_build_missions_check.grid(row=0, column=0, sticky='w')
-        WidgetTooltip(
-            self.include_no_build_missions_check,
-            'Includes missions completed only with fixed units, heroes, or scripted map powers and no player production.',
-        )
-        self.include_no_build_production_missions_check = ttk.Checkbutton(
-            mission_pool_frame,
-            text='Include no-build missions with production',
-            variable=self.include_no_build_production_missions_var,
-            command=self.on_mission_pool_settings_changed,
-        )
-        self.include_no_build_production_missions_check.grid(
-            row=1, column=0, sticky='w', pady=(4, 0)
-        )
-        WidgetTooltip(
-            self.include_no_build_production_missions_check,
-            'Includes missions without normal base building that still provide limited unit production.',
-        )
-        self.prioritize_no_build_missions_check = ttk.Checkbutton(
-            mission_pool_frame,
-            text='Prioritize included no-build missions in opening',
-            variable=self.prioritize_no_build_missions_var,
-        )
-        self.prioritize_no_build_missions_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.prioritize_no_build_missions_check,
-            'Fills protected Mission List/Grid opening positions with easier enabled true-no-build and production-no-build missions first.',
-        )
-
-        reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
-        reward_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
-        reward_frame.columnconfigure(0, weight=1)
-        self.randomize_unit_access_check = ttk.Checkbutton(
-            reward_frame,
-            text='Randomize unit access and lock unearned tech',
-            variable=self.randomize_unit_access_var,
-            command=self.refresh_setting_states,
-        )
-        self.randomize_unit_access_check.grid(row=0, column=0, sticky='w')
-        WidgetTooltip(
-            self.randomize_unit_access_check,
-            'Turns combat units into access rewards. Units not yet earned are removed from production. '
-            'Chaos always requires this option.',
-        )
-        self.start_with_tier_one_units_check = ttk.Checkbutton(
-            reward_frame,
-            text='Start with basic Tier 1 combat units',
-            variable=self.start_with_tier_one_units_var,
-        )
-        self.start_with_tier_one_units_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.start_with_tier_one_units_check,
-            'Standard grants ground/anti-air infantry, vehicles, and one basic aircraft matching each '
-            'Allied, Soviet, or Epsilon production family present in the mission. An available MCV or '
-            'Construction Yard also unlocks the matching airfield. Chaos assigns every faction once '
-            'across the four ground roles, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
-            'Starter units remain buffable.',
-        )
-        self.include_defensive_buildings_check = ttk.Checkbutton(
-            reward_frame,
-            text='Include defensive building rewards',
-            variable=self.include_defensive_buildings_var,
-        )
-        self.include_defensive_buildings_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.include_defensive_buildings_check,
-            'Includes faction defenses such as Pillboxes, Tesla Coils, mines, and support defenses. '
-            'With access randomization they can be locked/unlocked; with buffs enabled they can receive upgrades.',
-        )
-        self.include_buff_rewards_check = ttk.Checkbutton(
-            reward_frame,
-            text='Include buff rewards',
-            variable=self.include_buff_rewards_var,
-            command=self.refresh_setting_states,
-        )
-        self.include_buff_rewards_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.include_buff_rewards_check,
-            'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
-        )
-        self.share_chaos_role_buffs_check = ttk.Checkbutton(
-            reward_frame,
-            text='Share buffs with equivalent units (Chaos only)',
-            variable=self.share_chaos_role_buffs_var,
-        )
-        self.share_chaos_role_buffs_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.share_chaos_role_buffs_check,
-            'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
-            'Initiate, and Knightframe. Shared groups are displayed together in Unlocks.',
-        )
-        self.unlimited_hero_units_check = ttk.Checkbutton(
-            reward_frame,
-            text='Unlimited unique / hero units',
-            variable=self.unlimited_hero_units_var,
-            command=self.refresh_setting_states,
-        )
-        self.unlimited_hero_units_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.unlimited_hero_units_check,
-            'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
-            'Opted-in allied helpers share the same clones. This disables the +1 limit buff.',
-        )
-        self.include_superweapon_rewards_check = ttk.Checkbutton(
-            reward_frame,
-            text='Include offensive superweapon rewards',
-            variable=self.include_superweapon_rewards_var,
-        )
-        self.include_superweapon_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.include_superweapon_rewards_check,
-            'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
-        )
-        self.include_secondary_superweapon_rewards_check = ttk.Checkbutton(
-            reward_frame,
-            text='Include secondary superweapon rewards',
-            variable=self.include_secondary_superweapon_rewards_var,
-        )
-        self.include_secondary_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.include_secondary_superweapon_rewards_check,
-            'Adds Chronoshift, Invulnerability, and Rage as building-free rewards.',
-        )
-        self.include_aid_power_rewards_check = ttk.Checkbutton(
-            reward_frame,
-            text='Include support/aid power rewards',
-            variable=self.include_aid_power_rewards_var,
-        )
-        self.include_aid_power_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.include_aid_power_rewards_check,
-            'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',
-        )
-
-        buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
-        buff_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
-        for column in range(2):
-            buff_frame.columnconfigure(column, weight=1)
-        self.buff_type_checks = []
-        self.buff_type_checks_by_id = {}
-        for index, buff_type in enumerate(BUFF_TYPES):
-            row, column = divmod(index, 2)
-            check = ttk.Checkbutton(
-                buff_frame,
-                text=buff_type.get('setting_label', buff_type['name']),
-                variable=self.buff_type_vars[buff_type['id']],
-                command=self.refresh_setting_states,
-            )
-            check.grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
-            self.buff_type_checks.append(check)
-            self.buff_type_checks_by_id[buff_type['id']] = check
-            description = buff_type.get('description', '').format(plural='Affected units')
-            WidgetTooltip(check, description)
-        assistance_frame = ttk.LabelFrame(
-            settings_frame,
-            text='Mission Assistance',
-            padding=(8, 8, 8, 8),
-        )
-        assistance_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
-        self.failure_assistance_check = ttk.Checkbutton(
-            assistance_frame,
-            text='Strengthen failed missions on retry',
-            variable=self.failure_assistance_var,
-        )
-        self.failure_assistance_check.grid(row=0, column=0, sticky='w')
-        WidgetTooltip(
-            self.failure_assistance_check,
-            'Each unsuccessful attempt adds one assistance stack only to that mission. '
-            'The stack applies on its next launch and is removed when the mission is completed.',
-        )
-        self.assistance_description_label = ttk.Label(
-            assistance_frame,
-            text=(
-                'Per stack: faster production and per-unit weapon firing, cheaper units, and higher movement '
-                'speed, health, weapon damage, armor effectiveness, and attack range. Infantry '
-                'infantry movement is capped at Speed 8. Applies '
-                'to earned units and units supplied by that mission; normal faction rosters '
-                'are used when unit access is not randomized.'
-            ),
-            wraplength=340,
-            justify='left',
-            style='Muted.TLabel',
-        )
-        self.assistance_description_label.grid(row=1, column=0, sticky='ew', pady=(5, 0))
-
-        appearance_frame = ttk.LabelFrame(
-            settings_frame,
-            text='Appearance & Privacy',
-            padding=(8, 8, 8, 8),
-        )
-        appearance_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
-        self.dark_mode_check = ttk.Checkbutton(
-            appearance_frame,
-            text='Dark mode',
-            variable=self.dark_mode_var,
-            command=self.on_dark_mode_changed,
-        )
-        self.dark_mode_check.grid(row=0, column=0, sticky='w')
-        self.hide_reward_details_check = ttk.Checkbutton(
-            appearance_frame,
-            text='Hide reward names in Mission Details',
-            variable=self.hide_reward_details_var,
-            command=self.on_hide_reward_details_changed,
-        )
-        self.hide_reward_details_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
-        WidgetTooltip(
-            self.hide_reward_details_check,
-            'Shows ????? for assigned rewards in Mission Details and mission-row hover text. '
-            'Earned rewards remain visible in Unlocks.',
-        )
-
-        self.refresh_setting_states()
-
-        self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
-        self.status_label.grid(row=7, column=0, columnspan=2, sticky='ew', pady=(8, 0))
-
-        log_header = ttk.Frame(main_frame)
-        log_header.grid(row=8, column=0, columnspan=2, sticky='ew', pady=(12, 4))
-        log_header.columnconfigure(1, weight=1)
-        self.log_toggle_button = ttk.Button(
-            log_header,
-            text='Show Launcher Log',
-            command=self.toggle_log,
-            width=18,
-        )
-        self.log_toggle_button.grid(row=0, column=0, sticky='w')
-        ttk.Label(log_header, text=f'Persistent diagnostics: {LAUNCHER_LOG}').grid(
-            row=0,
-            column=1,
-            sticky='w',
-            padx=(8, 0),
-        )
-        self.debug_complete_button = ttk.Button(
-            log_header,
-            text='Debug: Mark Complete',
-            command=self.on_debug_mark_complete,
-        )
-        self.debug_complete_button.grid(row=0, column=2, sticky='e', padx=(8, 0))
-        self.debug_complete_button.grid_remove()
-
-        self.log_text = scrolledtext.ScrolledText(
-            main_frame,
-            height=10,
-            wrap='word',
-            state='disabled',
-            background='black',
-            foreground='white',
-        )
-        self.log_text.grid(row=9, column=0, columnspan=2, sticky='nsew')
-        self.log_text.grid_remove()
-
-        main_frame.rowconfigure(2, weight=1)
-        main_frame.rowconfigure(9, weight=0)
-        # Uniform sizing makes the mission view reliably wider than settings,
-        # regardless of the settings widgets' requested width.
-        main_frame.columnconfigure(0, weight=5, uniform='content')
-        main_frame.columnconfigure(1, weight=3, uniform='content')
-
-        # Long seed/map work runs on the single background worker. This overlay
-        # blocks duplicate input while Tk keeps painting progress and elapsed time.
-        self.busy_overlay = tk.Frame(main_frame, background='#edf3f8')
-        self.busy_card = tk.Frame(
-            self.busy_overlay,
-            background='#f9fcff',
-            highlightbackground='#79cfff',
-            highlightthickness=3,
-            padx=34,
-            pady=26,
-        )
-        self.busy_card.place(relx=0.5, rely=0.5, anchor='center')
-        self.busy_title = tk.Label(
-            self.busy_card,
-            text='',
-            background='#f9fcff',
-            foreground='#172a3a',
-            font=('Segoe UI', 13, 'bold'),
-        )
-        self.busy_title.pack()
-        self.busy_detail = tk.Label(
-            self.busy_card,
-            text='',
-            background='#f9fcff',
-            foreground='#4c6172',
-            font=('Segoe UI', 9),
-            wraplength=380,
-            justify='center',
-        )
-        self.busy_detail.pack(pady=(8, 14))
-        self.busy_progress = ttk.Progressbar(self.busy_card, mode='indeterminate', length=300)
-        self.busy_progress.pack(fill='x')
-        self.apply_color_mode()
+        build_launcher_widgets(self)
 
     def toggle_settings_panel(self):
         self.settings_panel_visible = not self.settings_panel_visible
@@ -1405,141 +407,7 @@ class LauncherApp(tk.Tk):
         )
 
     def apply_color_mode(self):
-        palette = self.ui_palette()
-        style = self.style
-        # Native Windows themes ignore several color and state overrides. Clam
-        # honors the complete palette in both modes and keeps tab geometry stable.
-        target_theme = 'clam'
-        if target_theme in style.theme_names() and style.theme_use() != target_theme:
-            style.theme_use(target_theme)
-
-        background = palette['background']
-        panel = palette['panel']
-        foreground = palette['foreground']
-        field = palette['field']
-        border = palette['border']
-        selected = palette['select']
-        selected_foreground = palette['select_foreground']
-        self.configure(background=background)
-
-        style.configure('TFrame', background=background)
-        style.configure('TLabel', background=background, foreground=foreground)
-        style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
-        # ttk's canonical style name uses a lowercase "f". The old spelling
-        # configured an unused style and left Settings group interiors light.
-        style.configure('TLabelframe', background=background, bordercolor=border)
-        style.configure('TLabelframe.Label', background=background, foreground=foreground)
-        style.configure('TCheckbutton', background=background, foreground=foreground)
-        self.ensure_checkbutton_indicator()
-        style.configure('TRadiobutton', background=background, foreground=foreground)
-        style.configure('TButton', background=panel, foreground=foreground, bordercolor=border)
-        style.configure('Launch.TButton', background=panel, foreground=foreground, bordercolor=border)
-        style.map(
-            'TButton',
-            background=[('active', selected), ('pressed', selected)],
-            foreground=[('active', selected_foreground), ('pressed', selected_foreground)],
-        )
-        style.map(
-            'TCheckbutton',
-            background=[('active', background)],
-            foreground=[('disabled', palette['muted']), ('active', foreground)],
-        )
-        style.configure('TEntry', fieldbackground=field, foreground=foreground, insertcolor=foreground)
-        style.configure('TSpinbox', fieldbackground=field, foreground=foreground, arrowcolor=foreground)
-        style.configure('TCombobox', fieldbackground=field, background=panel, foreground=foreground, arrowcolor=foreground)
-        style.map(
-            'TCombobox',
-            fieldbackground=[('readonly', field)],
-            foreground=[('readonly', foreground)],
-            selectbackground=[('readonly', selected)],
-            selectforeground=[('readonly', selected_foreground)],
-        )
-        style.configure('TNotebook', background=background, bordercolor=border)
-        style.configure('TNotebook.Tab', background=panel, foreground=foreground)
-        style.configure('Randomizer.TNotebook', background=background, bordercolor=border, tabposition='n')
-        style.configure(
-            'Randomizer.TNotebook.Tab',
-            background=panel,
-            foreground=foreground,
-            padding=(16, 7),
-            font=('Segoe UI', 10, 'bold'),
-        )
-        style.map(
-            'Randomizer.TNotebook.Tab',
-            background=[('selected', selected), ('active', palette['canvas'])],
-            foreground=[('selected', selected_foreground), ('active', foreground)],
-            padding=[('selected', (16, 7)), ('active', (16, 7))],
-        )
-        style.configure(
-            'Treeview',
-            background=field,
-            fieldbackground=field,
-            foreground=foreground,
-            bordercolor=border,
-        )
-        style.map(
-            'Treeview',
-            background=[('selected', selected)],
-            foreground=[('selected', selected_foreground)],
-        )
-        style.configure('Treeview.Heading', background=panel, foreground=foreground, bordercolor=border)
-        style.map('Treeview.Heading', background=[('active', palette['canvas'])])
-        style.configure('TScrollbar', background=panel, troughcolor=background, bordercolor=border, arrowcolor=foreground)
-
-        if hasattr(self, 'missions_tree'):
-            self.missions_tree.tag_configure(
-                'completed',
-                background='#244a32' if self.dark_mode_var.get() else '#dff2df',
-                foreground='#b8efc5' if self.dark_mode_var.get() else '#176b2c',
-            )
-        for canvas_name in ('settings_canvas', 'grid_canvas'):
-            canvas = getattr(self, canvas_name, None)
-            if canvas is not None:
-                canvas.configure(background=palette['canvas'])
-        for text_name in ('rewards_text', 'unlocks_text'):
-            text_widget = getattr(self, text_name, None)
-            if text_widget is not None:
-                text_widget.configure(
-                    background=field,
-                    foreground=foreground,
-                    insertbackground=foreground,
-                    selectbackground=selected,
-                    selectforeground=selected_foreground,
-                )
-        if hasattr(self, 'unlocks_text'):
-            self.unlocks_text.tag_configure(
-                'search_match',
-                background='#665c20' if self.dark_mode_var.get() else '#fff0a6',
-                foreground=foreground,
-            )
-            self.unlocks_text.tag_configure(
-                'search_current',
-                background='#9b5d1f' if self.dark_mode_var.get() else '#ffbf69',
-                foreground=foreground,
-            )
-        if hasattr(self, 'log_text'):
-            self.log_text.configure(
-                background=field,
-                foreground=foreground,
-                insertbackground=foreground,
-                selectbackground=selected,
-                selectforeground=selected_foreground,
-            )
-            self.log_text.tag_config('error', foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020')
-        if hasattr(self, 'busy_overlay'):
-            self.busy_overlay.configure(background=palette['busy'])
-            self.busy_card.configure(
-                background=palette['busy_card'],
-                highlightbackground=selected,
-            )
-            self.busy_title.configure(
-                background=palette['busy_card'],
-                foreground=palette['busy_title'],
-            )
-            self.busy_detail.configure(
-                background=palette['busy_card'],
-                foreground=palette['busy_detail'],
-            )
+        apply_launcher_color_mode(self)
 
     def save_ui_preferences(self):
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
@@ -2008,8 +876,7 @@ class LauncherApp(tk.Tk):
             self.save_state()
 
     def save_state(self):
-        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        STATE_PATH.write_text(json.dumps(self.state, indent=2), encoding='utf-8')
+        atomic_write_text(STATE_PATH, json.dumps(self.state, indent=2))
 
     def config_reward_settings(self):
         generation_config = self.config.get('generation', {})
@@ -3151,154 +2018,7 @@ class LauncherApp(tk.Tk):
             self.tree_scrollbar.grid()
 
     def redraw_grid(self):
-        grid = self.state.get('grid') if self.state else None
-        content_frame = self.grid_content_frame
-        if not isinstance(grid, dict) or not grid.get('nodes'):
-            if self.grid_render_signature != ('empty',):
-                for child in content_frame.winfo_children():
-                    child.destroy()
-                for column in range(self.grid_configured_width):
-                    content_frame.columnconfigure(
-                        column, weight=0, minsize=0, uniform=''
-                    )
-                for row in range(self.grid_configured_height):
-                    content_frame.rowconfigure(
-                        row, weight=0, minsize=0, uniform=''
-                    )
-                self.grid_configured_width = 1
-                self.grid_configured_height = 1
-                self.grid_tile_widgets = {}
-                self.grid_render_signature = ('empty',)
-                ttk.Label(
-                    content_frame,
-                    text='Generate a Grid Mode seed to create the mission grid.',
-                    anchor='center',
-                    justify='center',
-                ).grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
-                content_frame.columnconfigure(0, weight=1)
-                content_frame.rowconfigure(0, weight=1)
-                self.grid_canvas.xview_moveto(0)
-                self.grid_canvas.yview_moveto(0)
-                self.after_idle(self.resize_grid_canvas_window)
-            return
-
-        index_by_code = {mission['code']: idx for idx, mission in enumerate(self.missions)}
-        width = int(grid.get('width', 1))
-        height = int(grid.get('height', 1))
-        signature = (
-            'grid',
-            width,
-            height,
-            tuple(sorted(
-                (code, int(node['x']), int(node['y']))
-                for code, node in grid['nodes'].items()
-            )),
-        )
-        if signature == self.grid_render_signature:
-            self.refresh_grid_tiles()
-            return
-
-        for child in content_frame.winfo_children():
-            child.destroy()
-        self.grid_tile_widgets = {}
-        self.grid_render_signature = signature
-        for column in range(max(width, self.grid_configured_width)):
-            content_frame.columnconfigure(column, weight=0, minsize=0, uniform='')
-        for row in range(max(height, self.grid_configured_height)):
-            content_frame.rowconfigure(row, weight=0, minsize=0, uniform='')
-        self.grid_configured_width = width
-        self.grid_configured_height = height
-        for column in range(width):
-            content_frame.columnconfigure(
-                column,
-                weight=1,
-                minsize=105,
-                uniform='grid-column',
-            )
-        for row in range(height):
-            content_frame.rowconfigure(row, weight=1, minsize=88, uniform='grid-row')
-
-        positions = {
-            (node['x'], node['y']): code
-            for code, node in grid['nodes'].items()
-        }
-        # Create every coordinate slot, including a quiet background for a
-        # trimmed corner. This keeps rows and columns visually aligned as a
-        # board instead of allowing an irregular set of widgets to collapse.
-        for row in range(height):
-            for column in range(width):
-                if (column, row) in positions:
-                    continue
-                spacer = tk.Frame(
-                    content_frame,
-                    background=self.ui_palette()['canvas'],
-                    borderwidth=0,
-                )
-                spacer.grid(row=row, column=column, sticky='nsew', padx=3, pady=3)
-
-        for code, node in grid['nodes'].items():
-            tile = tk.Frame(
-                content_frame,
-                relief='flat',
-                borderwidth=0,
-                cursor='hand2',
-            )
-            tile.mission_code = code
-            tile.columnconfigure(0, weight=1)
-            tile.rowconfigure(0, weight=1)
-            selection_frame = tk.Frame(
-                tile,
-                relief='flat',
-                borderwidth=0,
-                cursor='hand2',
-            )
-            selection_frame.columnconfigure(0, weight=1)
-            selection_frame.rowconfigure(1, weight=1)
-            is_goal = code == grid.get('goal')
-            selection_frame.grid(
-                row=0,
-                column=0,
-                sticky='nsew',
-                padx=3 if is_goal else 0,
-                pady=3 if is_goal else 0,
-            )
-            banner = tk.Label(
-                selection_frame,
-                font=('Segoe UI', 7, 'bold'),
-                anchor='center',
-                justify='center',
-                wraplength=max(74, 520 // max(1, width)),
-                padx=3,
-                pady=3,
-            )
-            banner.grid(row=0, column=0, sticky='ew', padx=4, pady=(4, 0))
-            body = tk.Label(
-                selection_frame,
-                font=('Segoe UI', 9, 'bold'),
-                justify='center',
-                anchor='center',
-                wraplength=max(80, 560 // max(1, width)),
-                padx=5,
-                pady=6,
-            )
-            body.grid(row=1, column=0, sticky='nsew', padx=4, pady=(0, 4))
-            mission_index = index_by_code.get(code, 0)
-            for widget in (tile, selection_frame, banner, body):
-                widget.bind(
-                    '<Button-1>',
-                    lambda event, index=mission_index: self.select_grid_mission(index),
-                )
-            tile.grid(row=node['y'], column=node['x'], sticky='nsew', padx=3, pady=3)
-            self.grid_tile_widgets[code] = {
-                'tile': tile,
-                'selection': selection_frame,
-                'banner': banner,
-                'body': body,
-            }
-        self.grid_canvas.xview_moveto(0)
-        self.grid_canvas.yview_moveto(0)
-        self.after_idle(self.resize_grid_canvas_window)
-        self.refresh_grid_tiles()
+        redraw_launcher_grid(self)
 
     def refresh_grid_tiles(self, mission_codes=None):
         if not self.grid_tile_widgets or not self.state:
@@ -4159,7 +2879,7 @@ class LauncherApp(tk.Tk):
         mission_code = str(mission.get('code') or '').upper()
 
         def merge_required_rules(rules):
-            if mission_code == 'SJUGGER':
+            if mission_code in MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS:
                 # Juggernaut eventually hands the player an SMCV. Expose every
                 # earned defense through any construction yard, including
                 # cross-faction Chaos rewards; do not reduce this to the two
@@ -4243,14 +2963,9 @@ class LauncherApp(tk.Tk):
         )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
-        standard_starter_families = {
-            'All Campaigns': ('allies', 'soviets', 'epsilon'),
-            'Allies': ('allies', 'soviets', 'epsilon'),
-            'Soviets': ('allies', 'soviets', 'epsilon'),
-            'Epsilon': ('allies', 'soviets', 'epsilon'),
-            # Foehn Standard deliberately operates Allied/Soviet technology.
-            'Foehn': ('allies', 'soviets'),
-        }.get(selected_campaign, ())
+        standard_starter_families = STANDARD_STARTER_FAMILIES_BY_CAMPAIGN.get(
+            selected_campaign, ()
+        )
         starter_rules = starting_tier_one_rules(
             lines,
             starting_unit_ids,
@@ -4438,616 +3153,7 @@ throw "Map $name was not found in expandmo*.mix"
         return rule_sections
 
     def prepare_hooked_map(self, mission, extra_rules=None):
-        fallback_tech_ids = {
-            section.upper()
-            for section, values in (extra_rules or {}).items()
-            if any(key.lower() == 'techlevel' for key in values)
-        }
-        share_basic_equivalent_buffs = bool(
-            (
-                self.state
-                and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-                and self.active_reward_mode() != 'Chaos (Experimental)'
-            )
-            or self.share_chaos_role_buffs_enabled()
-        )
-        chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos (Experimental)'
-        buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
-
-        scenario = mission.get('scenario')
-        code = mission.get('code')
-        if not scenario or not code:
-            return None
-        native_techno_exclusions = MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
-            code, ()
-        )
-        excluded_player_houses = MISSION_REWARD_EXCLUDED_PLAYER_HOUSES.get(
-            code, ()
-        )
-
-        source_path = self.extract_campaign_map(scenario)
-        lines = read_text(source_path).splitlines()
-        team_house_overrides = MISSION_TEAM_HOUSE_OVERRIDES.get(code, {})
-        if team_house_overrides:
-            available_team_ids = {
-                team_id.lower()
-                for team_id in section_value_map_preserve(lines, 'TeamTypes').values()
-            }
-            team_house_rules = {
-                team_id: {'House': target_house}
-                for team_id, target_house in team_house_overrides.items()
-                if team_id.lower() in available_team_ids
-            }
-            if team_house_rules:
-                merge_ini_section_values(lines, team_house_rules)
-                self.append_log(
-                    'Assigned scripted player reinforcements to player house: '
-                    + ', '.join(sorted(team_house_rules))
-                    + '.'
-                )
-        # Preserve map-authored AI production fields before launcher access
-        # locks and ownership rewrites are merged into this launch copy.
-        native_map_sections = all_section_value_maps(lines)
-        mission_base_rules = MISSION_TECHNO_BASE_RULES.get(code, {})
-        native_names_by_lower = {
-            str(section).lower(): section for section in native_map_sections
-        }
-        for section, values in mission_base_rules.items():
-            native_section = native_names_by_lower.get(section.lower(), section)
-            native_values = native_map_sections.setdefault(native_section, {})
-            for key, value in values.items():
-                native_values[str(key).lower()] = value
-        house_config = mission_house_config(code)
-        records = map_house_records(lines)
-        mission_effective_tech_ids = self.mission_effective_unlocked_tech_ids(
-            mission,
-            lines,
-            fallback_tech_ids,
-        )
-        rule_sections = self.map_rules_for_launch(
-            extra_rules,
-            allowed_unlocked_tech_ids=mission_effective_tech_ids,
-        )
-        for section, values in mission_base_rules.items():
-            rule_sections.setdefault(section, {}).update(values)
-        native_helpers, missing_helpers = resolve_configured_helper_houses(
-            records,
-            house_config['allies'],
-            player_controlled_houses(lines, records=records),
-        )
-        configured_enemies, missing_enemies = resolve_configured_helper_houses(
-            records,
-            house_config['enemies'],
-            (),
-        )
-        enemy_names = {house.lower() for house in configured_enemies}
-        native_helpers = [
-            house for house in native_helpers if house.lower() not in enemy_names
-        ]
-        # Native helper timing, scripts, and triggers stay intact. Compatible
-        # TaskForce slots use buffed clones, while native unit IDs remain
-        # buildable for dynamic AI requests outside those TaskForces.
-        reward_helpers = tuple(native_helpers) if buff_allied_helpers else ()
-        country_safety_helpers = tuple(unique_in_order(
-            list(reward_helpers)
-            + [
-                house for house in records
-                if house.lower() == 'sellmcv house'
-            ]
-        ))
-        enemy_country_ids = unique_in_order(
-            records.get(house, {}).get('country') or house.replace(' House', '')
-            for house in configured_enemies
-        )
-        missing_config = unique_in_order(missing_helpers + missing_enemies)
-        if missing_config:
-            self.append_log(
-                f'{code} house config contains names absent from this map: '
-                + ', '.join(missing_config)
-                + '.',
-                error=True,
-            )
-        if buff_allied_helpers and house_config['allies']:
-            self.append_log(
-                f'{code} configured allied helper allowlist: '
-                + (', '.join(reward_helpers) if reward_helpers else 'none')
-                + '. Helper teams use buffed clones; native IDs remain buildable queue fallbacks.'
-            )
-        earned_rewards = self.active_launch_rewards() if self.state else []
-        launch_power_rewards = list(earned_rewards)
-        mission_power_techno_clone_overrides = (
-            MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.get(
-                code, {}
-            )
-        )
-        installed_superweapon_types, installed_rule_sections = installed_rules_registry()
-        (
-            cloned_power_rules,
-            superweapon_actions,
-            cloned_power_names,
-            startup_power_buildings,
-            missing_power_sources,
-        ) = cloned_superweapon_plan(
-            lines,
-            launch_power_rewards,
-            installed_superweapon_types,
-            installed_rule_sections,
-            superweapon_techno_clone_overrides=(
-                mission_power_techno_clone_overrides
-            ),
-        )
-        for section, values in cloned_power_rules.items():
-            rule_sections.setdefault(section, {}).update(values)
-        if self.randomized_tech_ids():
-            safe_owners = ','.join(
-                safe_build_countries(lines, records, ())
-            )
-            denied_owners = ','.join(enemy_country_ids) if enemy_country_ids else 'none'
-            for section in self.randomized_tech_ids():
-                values = rule_sections.get(section)
-                if not values:
-                    continue
-                values['Owner'] = safe_owners
-                values['RequiredHouses'] = safe_owners
-                values['ForbiddenHouses'] = denied_owners
-        # Generic randomized ownership must not erase mission-authored recovery
-        # access such as Power Hunger's native Burillo.
-        for section, values in MISSION_REQUIRED_ACCESS_RULES.get(code, {}).items():
-            rule_sections.setdefault(section, {}).update(values)
-        if missing_power_sources:
-            self.append_log(
-                'Skipped power clone(s) because installed source rules were unavailable: '
-                + ', '.join(sorted(set(missing_power_sources)))
-                + '.',
-                error=True,
-            )
-        assistance_unit_ids = []
-        mission_buff_unit_ids = []
-        if self.state:
-            mission_buff_unit_ids = mission_assistance_unit_ids(
-                lines,
-                unlocked_unit_ids=mission_effective_tech_ids,
-                additional_unit_ids=fallback_tech_ids,
-                randomized_access=self.randomize_unit_access_enabled(),
-                fallback_faction=normalize_faction(mission.get('side', '')),
-                configured_helper_houses=reward_helpers,
-            )
-        if self.state and self.failure_assistance_enabled():
-            assistance_unit_ids = mission_buff_unit_ids
-            self.cache_mission_assistance_units(code, assistance_unit_ids)
-        if rule_sections:
-            merge_ini_section_values(lines, rule_sections)
-            self.append_log(f'Injected {len(rule_sections)} map rule section(s) into {scenario}.')
-
-        generation_config = self.config.get('generation', {})
-        experimental_house_buffs = bool(generation_config.get('experimental_house_buffs', False))
-        safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
-        require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
-        buff_access_tech_ids = set(fallback_tech_ids) | set(mission_buff_unit_ids)
-        if self.state and experimental_house_buffs:
-            player_house, house_buffs = clone_player_country_for_house_buffs(
-                lines,
-                earned_rewards,
-                require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=buff_access_tech_ids,
-                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                unit_specific_mode=chaos_unit_specific_buffs,
-            )
-            if house_buffs:
-                buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
-                self.append_log(f'Applied trigger-safe player-country buffs to {player_house}: {buff_summary}')
-        elif self.state and safe_player_country_buffs:
-            player_house, player_country, house_rule_sections, shared_houses, buffed_allies, skipped_allies = player_country_buff_rules(
-                lines,
-                earned_rewards,
-                configured_helper_houses=country_safety_helpers,
-                require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=buff_access_tech_ids,
-                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                unit_specific_mode=chaos_unit_specific_buffs,
-                excluded_player_houses=excluded_player_houses,
-            )
-            if house_rule_sections:
-                merge_ini_section_values(lines, house_rule_sections)
-                house_buffs = next(iter(house_rule_sections.values()))
-                buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
-                shared_note = f' Shared country houses: {", ".join(shared_houses)}.' if shared_houses else ''
-                helper_note = f' Allied player/helper houses buffed: {", ".join(buffed_allies)}.' if buffed_allies else ''
-                skipped_note = f' Allied player/helper houses skipped: {", ".join(skipped_allies)}.' if skipped_allies else ''
-                if player_country in house_rule_sections:
-                    lead = f'Applied map-local player-country buffs for {player_house}/{player_country}'
-                else:
-                    lead = f'Skipped shared player country {player_house}/{player_country}; applied safe allied country buffs'
-                self.append_log(f'{lead}: {buff_summary}.{shared_note}{helper_note}{skipped_note}')
-            elif shared_houses:
-                self.append_log(
-                    f'Skipped player-country buffs for {player_house}/{player_country}: '
-                    f'non-player house(s) share that country ({", ".join(shared_houses)}).'
-                )
-        elif self.state:
-            pending_house_buffs = stacked_house_buff_values(
-                earned_rewards,
-                require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=buff_access_tech_ids,
-                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                unit_specific_mode=chaos_unit_specific_buffs,
-            )
-            if pending_house_buffs:
-                self.append_log(
-                    'Experimental player-house buffs are disabled for mission stability; '
-                    'earned buff rewards are tracked but not injected into this map.'
-                )
-
-        assistance_stacks = self.mission_failure_stack(code)
-        assistance_direct_rewards = []
-        if self.failure_assistance_enabled() and assistance_stacks:
-            assistance_rules, assisted_houses, skipped_assistance_countries = mission_assistance_buff_rules(
-                lines,
-                assistance_stacks,
-                configured_helper_houses=reward_helpers,
-                excluded_player_houses=excluded_player_houses,
-            )
-            if assisted_houses:
-                if assistance_rules:
-                    merge_ini_section_values(lines, assistance_rules)
-                skip_note = ''
-                if skipped_assistance_countries:
-                    skip_note = ' Country-level bonuses skipped where enemies share the country: ' + ', '.join(
-                        f'{country} ({", ".join(shared)})'
-                        for country, _, shared in skipped_assistance_countries
-                    ) + '.'
-                self.append_log(
-                    f'Applied {assistance_stacks} retry assistance stack(s) to {code} for '
-                    f'{", ".join(assisted_houses)} across {len(assistance_unit_ids)} currently '
-                    f'accessible or mission-provided unit type(s).{skip_note}'
-                )
-                # Direct health/damage/range rewards still pass through the
-                # global type/weapon ownership guard even when a shared
-                # country makes category multipliers unsafe.
-                assistance_direct_rewards = mission_assistance_direct_rewards(
-                    assistance_unit_ids,
-                    assistance_stacks,
-                )
-            else:
-                self.append_log(
-                    f'Could not find a player house for {code}; retry assistance was not injected.',
-                    error=True,
-                )
-
-        if self.state:
-            guarded_rewards = list(earned_rewards)
-            guarded_rewards.extend(assistance_direct_rewards)
-            buildable_clone_ids = set(fallback_tech_ids)
-            buildable_clone_ids.update(mission_effective_tech_ids)
-            if not require_unlocked_access_for_buffs:
-                buildable_clone_ids.update(
-                    unit_id
-                    for unit_id, target in BUFF_TARGETS.items()
-                    if target.get('category') in {
-                        'infantry', 'units', 'aircraft', 'defenses',
-                    }
-                )
-            helper_autobuild = (
-                helper_ai_autobuild_plan(
-                    lines,
-                    reward_helpers,
-                    buildable_clone_ids,
-                    guarded_rewards,
-                    installed_rule_sections,
-                    native_map_sections=native_map_sections,
-                    allow_cross_faction=chaos_unit_specific_buffs,
-                )
-                if reward_helpers
-                else {'variants': [], 'support': {}}
-            )
-            (
-                clone_rule_sections,
-                _cloned_source_unit_ids,
-                clone_handled,
-                cloned_unit_names,
-                clone_warnings,
-            ) = player_unit_clone_rules(
-                lines,
-                guarded_rewards,
-                installed_rule_sections,
-                native_ai_helper_houses=native_helpers,
-                buffed_helper_houses=reward_helpers,
-                native_map_sections=native_map_sections,
-                require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=buff_access_tech_ids,
-                buildable_tech_ids=buildable_clone_ids,
-                build_owner_ids=safe_build_countries(lines, records, ()),
-                helper_autobuild_support=helper_autobuild.get('support'),
-                forced_buildable_clone_ids=(
-                    fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
-                ),
-                unlimited_build_limit_unit_ids=(
-                    mission_buff_unit_ids
-                    if self.active_reward_settings().get('unlimited_hero_units', False)
-                    else ()
-                ),
-                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                unit_specific_mode=chaos_unit_specific_buffs,
-                native_trigger_reference_ids=(
-                    MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
-                ),
-                excluded_unit_ids=native_techno_exclusions,
-                excluded_player_houses=excluded_player_houses,
-            )
-            if clone_rule_sections:
-                merge_ini_section_values(lines, clone_rule_sections)
-                self.append_log(
-                    'Prepared isolated standalone player unit/defense clones for: '
-                    + ', '.join(cloned_unit_names)
-                    + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
-                )
-            if clone_warnings:
-                self.append_log(
-                    'Player unit/defense clone limitations: '
-                    + '; '.join(clone_warnings)
-                    + '.',
-                    error=True,
-                )
-            (
-                helper_ai_rules,
-                helper_built_units,
-                helper_ai_skipped,
-            ) = helper_ai_autobuild_rules(
-                lines,
-                helper_autobuild,
-                clone_handled,
-                installed_rule_sections,
-            )
-            if helper_ai_rules:
-                merge_ini_section_values(lines, helper_ai_rules)
-                self.append_log(
-                    'Added parallel allied-helper Autocreate teams for unlocked units: '
-                    + ', '.join(helper_built_units)
-                    + '. Native timing/scripts remain active and dynamic native-ID production stays valid.'
-                )
-            elif reward_helpers:
-                self.append_log(
-                    'No compatible parallel allied-helper unlock variants were found; '
-                    'native helper timing remains active.'
-                )
-            if helper_ai_skipped:
-                self.append_log(
-                    'Skipped allied-helper unit clones without a complete player clone: '
-                    + ', '.join(helper_ai_skipped)
-                    + '.',
-                    error=True,
-                )
-            native_variant_buff_config = {
-                'SBLEED': ('MORALES', ('MORALES',)),
-                'EREALITY': (
-                    'LIBRA',
-                    (
-                        'LIBRA', 'LIBRA1', 'LIBRA2', 'LIBRA3', 'LIBRA4',
-                        'LIBRA5', 'LIBRA6', 'LIBRA7', 'LIBRA8',
-                    ),
-                ),
-                'SRED': ('MORALES', ('MORALES',)),
-                'ETOTAL': ('LIBRA', ('LIBRA',)),
-            }.get(code)
-            if native_variant_buff_config:
-                source_unit_id, native_variant_ids = native_variant_buff_config
-                native_variant_rules, native_buffed_ids = native_variant_unit_buff_rules(
-                    guarded_rewards,
-                    installed_rule_sections,
-                    native_map_sections,
-                    source_unit_id,
-                    native_variant_ids,
-                    require_unlocked_access=require_unlocked_access_for_buffs,
-                    additional_unlocked_tech_ids=buff_access_tech_ids,
-                    share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                    unit_specific_mode=chaos_unit_specific_buffs,
-                )
-                if native_variant_rules:
-                    merge_ini_section_values(lines, native_variant_rules)
-                    self.append_log(
-                        f'Applied earned {source_unit_id} buffs to native '
-                        'mission identities: '
-                        + ', '.join(native_buffed_ids)
-                        + '.'
-                    )
-            (
-                weapon_rule_sections,
-                weapon_buffed_units,
-                weapon_skipped_units,
-            ) = unit_weapon_buff_rules(
-                lines,
-                guarded_rewards,
-                configured_helper_houses=reward_helpers,
-                require_unlocked_access=require_unlocked_access_for_buffs,
-                additional_unlocked_tech_ids=buff_access_tech_ids,
-                share_basic_equivalent_buffs=share_basic_equivalent_buffs,
-                unit_specific_mode=chaos_unit_specific_buffs,
-                clone_handled=clone_handled,
-                excluded_unit_ids=MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS.get(
-                    code, ()
-                ),
-                excluded_player_houses=excluded_player_houses,
-            )
-            if weapon_rule_sections:
-                merge_ini_section_values(lines, weapon_rule_sections)
-                self.append_log(
-                    'Applied guarded unit/weapon buffs for: '
-                    + ', '.join(weapon_buffed_units)
-                    + '.'
-                )
-            if weapon_skipped_units:
-                self.append_log(
-                    'Skipped guarded unit/weapon buffs because unsafe houses use the affected '
-                    'unit or a shared weapon: '
-                    + '; '.join(weapon_skipped_units)
-                    + '.',
-                    error=True,
-                )
-        configured_power_houses = mission_player_power_houses(code)
-        power_house_names = configured_power_houses or (
-            player_house_from_map(lines, records=records),
-        )
-        power_houses = unique_in_order(
-            records.get(power_house, {}).get('country')
-            or power_house.replace(' House', '')
-            for power_house in power_house_names
-            if power_house
-        )
-        if not power_houses:
-            power_houses = [player_country_from_map(lines)]
-        # Objective marker TeamTypes still need one concrete owner. Keep this
-        # separate from the possibly multi-house superweapon grant list: the
-        # latter replaced the old ``house`` local and accidentally left marker
-        # generation referencing an undefined name, which made the launcher
-        # fall back to the untouched source map (no rewards or access rules).
-        hook_house = player_country_from_map(lines)
-        superweapon_trigger = append_superweapon_grant_trigger(
-            lines,
-            power_houses,
-            superweapon_actions,
-            startup_buildings=startup_power_buildings,
-        )
-        if superweapon_trigger:
-            power_names = [
-                reward_display_name(reward)
-                for reward in canonical_rewards(launch_power_rewards)
-                if reward.get('kind') == 'superweapon'
-            ]
-            self.append_log(
-                'Prepared isolated building-free power clones '
-                f'({", ".join(cloned_power_names)}) for: '
-                + ', '.join(power_names)
-                + f'. Grant houses: {", ".join(power_houses)}.'
-            )
-
-        unlocked_tech_ids = set(mission_effective_tech_ids)
-        # Preserve reviewed native Action 106 unlocks. Their initial
-        # TechLevel remains locked; mission_required_launch_rules removes only
-        # BuildLimit so the native action can reveal them at the right time.
-        unlocked_tech_ids.update(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
-        randomized_tech_ids = self.randomized_tech_ids()
-        removed_techlevel_actions = remove_locked_techlevel_actions(
-            lines,
-            unlocked_tech_ids,
-            randomized_tech_ids=randomized_tech_ids,
-        )
-        if removed_techlevel_actions:
-            self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
-        objective_action_ids = action_line_ids(
-            lines,
-            lambda groups: action_has_objective_complete(groups) and not action_has_code(groups, 1) and not action_has_code(groups, 67),
-        )
-        # Prefer a real Winner action over Announce Win. Some missions contain
-        # both, and choosing whichever appears first can fire the marker during
-        # an earlier victory announcement instead of the terminal win action.
-        victory_action_ids = unique_in_order(
-            action_line_ids(lines, lambda groups: action_has_code(groups, 1))
-            + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
-            + trigger_action_ids_by_name(lines, ['[win]', '/win', 'mission victory', 'mission successful'])
-        )
-        checks = self.mission_checks(code) if self.state else []
-
-        patch_plan = []
-        objective_checks = [check for check in checks if check.get('id') != 'victory']
-        for check, action_id in zip(objective_checks, objective_action_ids):
-            if not check.get('unlocked'):
-                patch_plan.append((check, action_id))
-
-        victory_check = next((check for check in checks if check.get('id') == 'victory'), None)
-        if victory_check and not victory_check.get('unlocked') and victory_action_ids:
-            patch_plan.append((victory_check, victory_action_ids[0]))
-        elif victory_check and not victory_check.get('unlocked'):
-            self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
-
-        if not patch_plan and not rule_sections and not superweapon_trigger:
-            self.append_log(f'No hookable objective/victory triggers found for {scenario}. Progress may not be recorded.')
-            return None
-
-        markers = {}
-        for index, (check, action_id) in enumerate(patch_plan, start=1):
-            marker = hook_marker_name(code, check.get('id', f'check_{index}'))
-            team_id = f'RND{index:05d}'
-            taskforce_id = f'RNT{index:05d}'
-            script_id = f'RNS{index:05d}'
-            marker_action = ['4', '1', team_id, '0', '0', '0', '0', 'A']
-            if check.get('id') == 'victory':
-                patched = insert_actions_before_codes(
-                    lines,
-                    action_id,
-                    [marker_action],
-                    before_codes=('1', '67', '69'),
-                )
-                # A name-based fallback may identify a victory action list
-                # without one of the standard terminal codes. Preserve the
-                # previous append behavior for those unusual maps.
-                if not patched:
-                    patched = append_action_to_action_id(lines, action_id, marker_action)
-            else:
-                patched = append_action_to_action_id(lines, action_id, marker_action)
-                if not patched:
-                    patched = append_parallel_global_hook(
-                        lines,
-                        action_id,
-                        marker_action,
-                        marker,
-                    )
-            if patched:
-                append_hook_team(
-                    lines,
-                    team_id,
-                    taskforce_id,
-                    script_id,
-                    marker,
-                    hook_house,
-                )
-                markers[marker] = check.get('id')
-            else:
-                self.append_log(
-                    f'Skipped automatic {check.get("name", check.get("id", "check"))} hook for '
-                    f'{scenario}: action {action_id} has no safe room for a marker.',
-                    error=True,
-                )
-
-        if patch_plan and not markers:
-            self.append_log(f'Hook map generation found triggers for {scenario}, but patching actions failed.', error=True)
-            return None
-
-        # Hook insertion can expose or rewrite action groups in unusual
-        # campaign action lists. Run the native unlock filter again so a map
-        # cannot restore access that is still locked by launcher state.
-        removed_after_patching = remove_locked_techlevel_actions(
-            lines,
-            unlocked_tech_ids,
-            randomized_tech_ids=randomized_tech_ids,
-        )
-        if removed_after_patching:
-            self.append_log(
-                f'Removed {removed_after_patching} additional native tech unlock action(s) after hook patching.'
-            )
-
-        GENERATED_MAP_DIR.mkdir(parents=True, exist_ok=True)
-        generated_path = GENERATED_MAP_DIR / scenario.upper()
-        generated_text = HOOKED_MAP_MARKER + '\r\n' + '\r\n'.join(lines) + '\r\n'
-        # Path.write_text translates every ``\n`` on Windows. Because the map
-        # text already uses CRLF, that produced CRCRLF and inserted a blank
-        # line after every source line. Write bytes so campaign INI formatting
-        # remains byte-for-byte conventional.
-        generated_path.write_bytes(generated_text.encode('utf-8'))
-
-        root_map = GAME_ROOT / scenario
-        if root_map.exists() and not is_generated_hooked_map(root_map):
-            backup_file_once(root_map, 'before-randomizer-hook')
-        root_map.write_bytes(generated_text.encode('utf-8'))
-        self.append_log(f'Prepared generated map {scenario}: {len(markers)} marker trigger(s).')
-
-        return {
-            'mission_code': code,
-            'scenario': scenario,
-            'markers': markers,
-            'seen': set(),
-            'offset': DEBUG_LOG.stat().st_size if DEBUG_LOG.exists() else 0,
-            'root_map': root_map,
-        }
+        return prepare_hooked_mission_map(self, mission, extra_rules=extra_rules)
 
     def write_spawn_ini(self, scenario, difficulty_value, game_speed_value):
         try:
@@ -5499,51 +3605,20 @@ throw "Map $name was not found in expandmo*.mix"
             f'attack range +{range_cells:g} {range_unit}'
         )
 
-    def current_unlocks_text(self):
-        if not self.state:
-            return 'No randomizer seed generated yet.'
-
-        lines = []
-        starting_unit_ids = self.active_starting_tier_one_unit_ids()
-        if starting_unit_ids:
-            heading = 'Starting Tier 1 Units'
-            lines.extend([heading, '=' * len(heading)])
-            for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
-                lines.append(unit_display_label(unit_id))
-            lines.append('')
-        selected = self.selected_mission()
-        if selected and self.failure_assistance_enabled():
-            code = selected['code']
-            stacks = self.mission_failure_stack(code)
-            if stacks:
-                heading = f'Retry Assistance — {selected["title"]}'
-                lines.extend([
-                    heading,
-                    '=' * len(heading),
-                    f'{stacks} stack(s), for this mission only',
-                    self.mission_assistance_effect_text(stacks).capitalize() + '.',
-                    '',
-                ])
-
-        earned = [canonical_reward(reward) for reward in self.earned_rewards_from_checks()]
-        if not earned:
-            if lines:
-                return '\n'.join(lines).rstrip()
-            return 'No unlocks or buffs earned yet.'
-
+    def build_unlock_display_groups(self, earned):
+        """Group canonical earned rewards for Unlocks text rendering."""
         groups = {}
         shared_groups = {}
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
 
         def group_for(tech_id):
-            group = groups.setdefault(tech_id, {
+            return groups.setdefault(tech_id, {
                 'label': self.reward_group_label(tech_id),
                 'access': {},
                 'buffs': {},
                 'other': [],
             })
-            return group
 
         for reward in earned:
             bundle_units = reward.get('bundle_units') or []
@@ -5610,6 +3685,44 @@ throw "Map $name was not found in expandmo*.mix"
                     'buffs': {},
                     'other': [],
                 })['other'].append(reward)
+
+        return groups, shared_groups
+
+    def current_unlocks_text(self):
+        if not self.state:
+            return 'No randomizer seed generated yet.'
+
+        lines = []
+        starting_unit_ids = self.active_starting_tier_one_unit_ids()
+        if starting_unit_ids:
+            heading = 'Starting Tier 1 Units'
+            lines.extend([heading, '=' * len(heading)])
+            for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
+                lines.append(unit_display_label(unit_id))
+            lines.append('')
+        selected = self.selected_mission()
+        if selected and self.failure_assistance_enabled():
+            code = selected['code']
+            stacks = self.mission_failure_stack(code)
+            if stacks:
+                heading = f'Retry Assistance — {selected["title"]}'
+                lines.extend([
+                    heading,
+                    '=' * len(heading),
+                    f'{stacks} stack(s), for this mission only',
+                    self.mission_assistance_effect_text(stacks).capitalize() + '.',
+                    '',
+                ])
+
+        earned = [canonical_reward(reward) for reward in self.earned_rewards_from_checks()]
+        if not earned:
+            if lines:
+                return '\n'.join(lines).rstrip()
+            return 'No unlocks or buffs earned yet.'
+
+        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
+        share_foehn_roles = self.foehn_standard_bundles_enabled()
+        groups, shared_groups = self.build_unlock_display_groups(earned)
 
         if shared_groups:
             heading = (

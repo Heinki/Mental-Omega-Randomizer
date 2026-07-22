@@ -1,9 +1,11 @@
 """Extract and decode Mental Omega unit cameo PCX files for the Tk UI."""
 
 import json
+import os
 import re
 import struct
 import subprocess
+import threading
 import zlib
 from pathlib import Path
 
@@ -13,12 +15,12 @@ from randomizer_paths import CAMEO_CACHE_DIR, GAME_ROOT, MAP_RENDERER_DIR
 
 ART_CACHE_PATH = CAMEO_CACHE_DIR / 'artmo.ini'
 RULES_CACHE_PATH = CAMEO_CACHE_DIR / 'rulesmo.ini'
-EXTRACT_REQUEST_PATH = CAMEO_CACHE_DIR / 'extract_requests.json'
 SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None
 _RULES_SIDEBAR_NAMES = None
 _RULES_SECTION_VALUES = None
+_EXTRACTION_LOCK = threading.Lock()
 MIX_READER_ASSEMBLY_NAMES = (
     'NLog.dll',
     'CNCMaps.Shared.dll',
@@ -46,6 +48,14 @@ def powershell_mix_reader_load_script():
 
 def extract_mix_files(requests):
     """Extract requested MIX members using the renderer's bundled MIX reader."""
+    # Requests use one shared handoff file. Cache construction and UI cameo
+    # loading can run on background threads, so serialize the complete handoff
+    # and PowerShell read rather than only protecting the JSON write.
+    with _EXTRACTION_LOCK:
+        return _extract_mix_files(requests)
+
+
+def _extract_mix_files(requests):
     pending = []
     for source_name, output_path in requests:
         source_name = Path(source_name).name
@@ -67,12 +77,15 @@ def extract_mix_files(requests):
         return False
 
     CAMEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    EXTRACT_REQUEST_PATH.write_text(json.dumps(pending), encoding='utf-8')
+    request_path = CAMEO_CACHE_DIR / (
+        f'extract_requests-{os.getpid()}-{threading.get_ident()}.json'
+    )
+    request_path.write_text(json.dumps(pending), encoding='utf-8')
     script = f"""
 $ErrorActionPreference = 'Stop'
 {powershell_mix_reader_load_script()}
 $pending = [Collections.Generic.List[object]]::new()
-$decodedRequests = Get-Content -Raw {powershell_literal(EXTRACT_REQUEST_PATH)} | ConvertFrom-Json
+$decodedRequests = Get-Content -Raw {powershell_literal(request_path)} | ConvertFrom-Json
 foreach($request in $decodedRequests) {{
     $pending.Add($request)
 }}
@@ -117,13 +130,16 @@ if($pending.Count -gt 0) {{
     Write-Output ('Missing MIX assets: ' + (($pending | ForEach-Object {{ $_.name }}) -join ', '))
 }}
 """
-    result = subprocess.run(
-        ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
-        cwd=GAME_ROOT,
-        capture_output=True,
-        text=True,
-        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
-    )
+    try:
+        result = subprocess.run(
+            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+            cwd=GAME_ROOT,
+            capture_output=True,
+            text=True,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
+    finally:
+        request_path.unlink(missing_ok=True)
     log_event(
         'cameo_extraction_finished',
         requested=[item['name'] for item in pending],
@@ -132,6 +148,54 @@ if($pending.Count -gt 0) {{
         stderr=result.stderr.strip(),
     )
     return result.returncode == 0
+
+
+def _iter_ini_records(path, strict_sections=False):
+    """Yield section and value records from an installed INI-like file."""
+    for raw_line in path.read_text(encoding='utf-8', errors='ignore').splitlines():
+        line = raw_line.strip()
+        section_pattern = r'^\[([^]]+)\]$' if strict_sections else r'^\[([^]]+)\]'
+        section_match = re.match(section_pattern, line)
+        if section_match:
+            yield 'section', section_match.group(1).strip(), None
+            continue
+        if not line or line.startswith(';') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        yield 'value', key.strip(), value.split(';', 1)[0].strip()
+
+
+def _read_ini_sections(path):
+    """Read complete installed INI sections, retaining prior registry behavior."""
+    sections = {}
+    current_values = None
+    for record_type, key, value in _iter_ini_records(path, strict_sections=True):
+        if record_type == 'section':
+            current_values = {}
+            sections[key] = current_values
+        elif current_values is not None:
+            current_values[key] = value
+    return sections
+
+
+def _extract_ini_key_mapping(cache_path, source_name, key_name, upper_value=False):
+    """Return safe values for one INI key, indexed by upper-case section."""
+    if not cache_path.exists():
+        extract_mix_files([(source_name, cache_path)])
+    if not cache_path.exists():
+        return {}
+
+    mapping = {}
+    section = ''
+    for record_type, key, value in _iter_ini_records(cache_path):
+        if record_type == 'section':
+            section = key.upper()
+            continue
+        if not section or key.lower() != key_name.lower():
+            continue
+        if SAFE_ASSET_NAME.fullmatch(value):
+            mapping[section] = value.upper() if upper_value else value
+    return mapping
 
 
 def installed_rules_registry():
@@ -148,22 +212,7 @@ def installed_rules_registry():
         if not RULES_CACHE_PATH.exists():
             return (), {}
 
-        sections = {}
-        current_values = None
-        for raw_line in RULES_CACHE_PATH.read_text(
-            encoding='utf-8', errors='ignore'
-        ).splitlines():
-            line = raw_line.strip()
-            section_match = re.match(r'^\[([^]]+)\]$', line)
-            if section_match:
-                current_values = {}
-                sections[section_match.group(1).strip()] = current_values
-                continue
-            if current_values is None or not line or line.startswith(';') or '=' not in line:
-                continue
-            key, value = line.split('=', 1)
-            current_values[key.strip()] = value.split(';', 1)[0].strip()
-        _RULES_SECTION_VALUES = sections
+        _RULES_SECTION_VALUES = _read_ini_sections(RULES_CACHE_PATH)
 
     sections = {
         section: dict(values)
@@ -177,58 +226,20 @@ def art_cameo_names():
     global _ART_CAMEO_NAMES
     if _ART_CAMEO_NAMES is not None:
         return _ART_CAMEO_NAMES
-    if not ART_CACHE_PATH.exists():
-        extract_mix_files([('ARTMO.INI', ART_CACHE_PATH)])
-    if not ART_CACHE_PATH.exists():
-        return {}
-
-    mapping = {}
-    section = ''
-    for raw_line in ART_CACHE_PATH.read_text(encoding='utf-8', errors='ignore').splitlines():
-        line = raw_line.strip()
-        section_match = re.match(r'^\[([^]]+)\]', line)
-        if section_match:
-            section = section_match.group(1).strip().upper()
-            continue
-        if not section or '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        if key.strip().lower() != 'cameopcx':
-            continue
-        filename = value.split(';', 1)[0].strip()
-        if SAFE_ASSET_NAME.fullmatch(filename):
-            mapping[section] = filename
-    _ART_CAMEO_NAMES = mapping
-    return mapping
+    _ART_CAMEO_NAMES = _extract_ini_key_mapping(
+        ART_CACHE_PATH, 'ARTMO.INI', 'CameoPCX'
+    )
+    return _ART_CAMEO_NAMES
 
 
 def rules_art_names():
     global _RULES_ART_NAMES
     if _RULES_ART_NAMES is not None:
         return _RULES_ART_NAMES
-    if not RULES_CACHE_PATH.exists():
-        extract_mix_files([('RULESMO.INI', RULES_CACHE_PATH)])
-    if not RULES_CACHE_PATH.exists():
-        return {}
-
-    mapping = {}
-    section = ''
-    for raw_line in RULES_CACHE_PATH.read_text(encoding='utf-8', errors='ignore').splitlines():
-        line = raw_line.strip()
-        section_match = re.match(r'^\[([^]]+)\]', line)
-        if section_match:
-            section = section_match.group(1).strip().upper()
-            continue
-        if not section or '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        if key.strip().lower() != 'image':
-            continue
-        art_name = value.split(';', 1)[0].strip()
-        if SAFE_ASSET_NAME.fullmatch(art_name):
-            mapping[section] = art_name.upper()
-    _RULES_ART_NAMES = mapping
-    return mapping
+    _RULES_ART_NAMES = _extract_ini_key_mapping(
+        RULES_CACHE_PATH, 'RULESMO.INI', 'Image', upper_value=True
+    )
+    return _RULES_ART_NAMES
 
 
 def rules_sidebar_names():
@@ -236,29 +247,10 @@ def rules_sidebar_names():
     global _RULES_SIDEBAR_NAMES
     if _RULES_SIDEBAR_NAMES is not None:
         return _RULES_SIDEBAR_NAMES
-    if not RULES_CACHE_PATH.exists():
-        extract_mix_files([('RULESMO.INI', RULES_CACHE_PATH)])
-    if not RULES_CACHE_PATH.exists():
-        return {}
-
-    mapping = {}
-    section = ''
-    for raw_line in RULES_CACHE_PATH.read_text(encoding='utf-8', errors='ignore').splitlines():
-        line = raw_line.strip()
-        section_match = re.match(r'^\[([^]]+)\]', line)
-        if section_match:
-            section = section_match.group(1).strip().upper()
-            continue
-        if not section or '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        if key.strip().lower() != 'sidebarpcx':
-            continue
-        filename = value.split(';', 1)[0].strip()
-        if SAFE_ASSET_NAME.fullmatch(filename):
-            mapping[section] = filename
-    _RULES_SIDEBAR_NAMES = mapping
-    return mapping
+    _RULES_SIDEBAR_NAMES = _extract_ini_key_mapping(
+        RULES_CACHE_PATH, 'RULESMO.INI', 'SidebarPCX'
+    )
+    return _RULES_SIDEBAR_NAMES
 
 
 def png_chunk(kind, payload):
@@ -270,10 +262,15 @@ def png_chunk(kind, payload):
     )
 
 
+def _reject_pcx(pcx_path, reason):
+    log_event('cameo_decode_rejected', path=str(pcx_path), reason=reason)
+    return False
+
+
 def decode_pcx_to_png(pcx_path, png_path):
     data = Path(pcx_path).read_bytes()
     if len(data) < 897 or data[0] != 0x0A or data[2] != 1 or data[3] != 8:
-        return False
+        return _reject_pcx(pcx_path, 'unsupported_header_or_encoding')
 
     x_min = int.from_bytes(data[4:6], 'little')
     y_min = int.from_bytes(data[6:8], 'little')
@@ -284,9 +281,9 @@ def decode_pcx_to_png(pcx_path, png_path):
     planes = data[65]
     bytes_per_line = int.from_bytes(data[66:68], 'little')
     if width <= 0 or height <= 0 or planes != 1 or bytes_per_line < width:
-        return False
+        return _reject_pcx(pcx_path, 'invalid_dimensions_or_plane_layout')
     if data[-769] != 0x0C:
-        return False
+        return _reject_pcx(pcx_path, 'missing_256_color_palette')
 
     expected = bytes_per_line * height
     decoded = bytearray()
@@ -298,14 +295,14 @@ def decode_pcx_to_png(pcx_path, png_path):
         if value & 0xC0 == 0xC0:
             run = value & 0x3F
             if cursor >= data_end:
-                return False
+                return _reject_pcx(pcx_path, 'truncated_rle_run')
             value = data[cursor]
             cursor += 1
             decoded.extend([value] * run)
         else:
             decoded.append(value)
     if len(decoded) < expected:
-        return False
+        return _reject_pcx(pcx_path, 'truncated_pixel_data')
 
     palette = data[-768:]
     rgb = bytearray(width * height * 3)

@@ -209,6 +209,7 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 
 | Data | Source mode | Packaged mode |
 |---|---|---|
+| Static gameplay/UI configuration | `RandomizerLauncher\configs` | `RandomizerLauncherData\configs` |
 | Config defaults | `RandomizerLauncher\config\mental_omega_randomizer.yaml` | `RandomizerLauncherData\config\mental_omega_randomizer.yaml` |
 | Active seed/progress | `RandomizerLauncher\randomizer_state.json` | `RandomizerLauncherData\randomizer_state.json` |
 | Launcher diagnostics | `RandomizerLauncher\logs\launcher.log` | `RandomizerLauncherData\logs\launcher.log` |
@@ -216,6 +217,8 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 | Generated/extracted maps and cameos | Under `RandomizerLauncher` | Under `RandomizerLauncherData` |
 
 Configuration describes the next seed plus immediate UI preferences. State describes the active seed and must be preserved to continue that run.
+
+Static JSON configuration contains mission classifications, house policy, faction production, unit/defense data, reward definitions, powers, and UI choices. Packaged defaults are copied only when missing; existing edits remain untouched. Restart the launcher after editing. See [configs/README.md](configs/README.md).
 
 ## Troubleshooting
 

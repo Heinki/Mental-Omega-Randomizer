@@ -5,7 +5,6 @@ import random
 import sys
 import traceback
 
-from randomizer_app import main
 from randomizer_cameos import ensure_superweapon_cameos, ensure_unit_cameos
 from randomizer_diagnostics import event as log_event
 from randomizer_paths import (
@@ -18,6 +17,33 @@ from randomizer_paths import (
     WINDOW_ICON_PATH,
 )
 from randomizer_version import APP_VERSION
+from randomizer_static_config import REQUIRED_STATIC_CONFIGS, validate_static_configs
+
+
+def run_launcher():
+    """Load config-dependent application modules with visible startup errors."""
+    try:
+        from randomizer_app import main
+        main()
+        return 0
+    except Exception:
+        detail = traceback.format_exc()
+        log_event('launcher_startup_failed', traceback=detail)
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                'Mental Omega Randomizer Startup Failed',
+                'The launcher could not load its configuration or runtime.\n\n'
+                f'{detail.splitlines()[-1]}\n\nSee {LAUNCHER_LOG} for details.',
+            )
+            root.destroy()
+        except Exception:
+            pass
+        return 1
 
 
 def run_self_check():
@@ -27,6 +53,8 @@ def run_self_check():
         APP_DIR.mkdir(parents=True, exist_ok=True)
         cameos = ensure_unit_cameos(['ABRM'])
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
+        static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
+        __import__('randomizer_app')
         checks = {
             'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),
@@ -39,6 +67,9 @@ def run_self_check():
             'abrams_cameo_path': str(cameos.get('ABRM', '')),
             'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
             'lightning_storm_cameo_path': str(power_cameos.get('LIGHTNINGSTORMSPECIAL', '')),
+            'static_configs_valid': len(static_config_paths) == len(REQUIRED_STATIC_CONFIGS),
+            'static_config_paths': [str(path) for path in static_config_paths],
+            'application_imported': True,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
         }
@@ -52,6 +83,8 @@ def run_self_check():
                 'window_icon_exists',
                 'abrams_cameo_extracted',
                 'lightning_storm_cameo_extracted',
+                'static_configs_valid',
+                'application_imported',
                 'deterministic_seed_rng_works',
             )
         )
@@ -69,4 +102,4 @@ def run_self_check():
 if __name__ == '__main__':
     if '--self-check' in sys.argv:
         raise SystemExit(run_self_check())
-    main()
+    raise SystemExit(run_launcher())

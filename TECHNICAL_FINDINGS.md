@@ -7,14 +7,20 @@ This document is the authoritative implementation reference. Player-facing optio
 | Component | Responsibility |
 |---|---|
 | `launcher_gui.py` | Entry point and packaged `--self-check` |
-| `randomizer_app.py` | UI, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
+| `randomizer_app.py` | Tk state, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
+| `randomizer_ui_builder.py` | Widget construction, palette application, and Grid Mode rendering |
 | `grid_progression.py` | Pure grid topology, corner trimming, explicit node states, unlock queries, and completion rules |
 | `randomizer_missions.py` | Pure BattleClient parsing, faction normalization, mission staging, campaign caps, and deterministic ordering |
 | `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass bulk section merging |
 | `randomizer_map.py` | Generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
+| `randomizer_map_pipeline.py` | Ordered per-launch map preparation and hook injection pipeline |
 | `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
-| `randomizer_rewards.py` | Installed roster metadata, reward catalogue, role equivalence, stack limits, and display names |
+| `randomizer_mission_overrides.py` | Typed adapter for reviewed mission exceptions loaded from JSON |
+| `randomizer_rewards.py` | Reward derivation, canonicalization, stack limits, and display behavior |
 | `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
+| `randomizer_ui.py` | Typed adapter for choices and palettes loaded from JSON |
+| `randomizer_static_config.py` | Validated source/frozen JSON loading and visible packaged overrides |
+| `randomizer_storage.py` | Atomic text replacement for persistent config and seed state |
 
 The launcher does not patch the original campaign MIX archives. It extracts and caches source maps, writes a temporary loose root map for the selected scenario, and removes only files carrying the randomizer hook marker.
 
@@ -38,10 +44,15 @@ The launcher separates defaults from active progress:
 
 | Data | Contents | Mutation rule |
 |---|---|---|
+| `configs/*.json` and `configs/rewards/*.json` | Editable mission, faction, UI, unit, buff, access, superweapon, and aid-power definitions | Read on process startup; never rewritten by launcher |
 | `config/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
 | `randomizer_state.json` | Active seed, frozen reward settings, mission order, optional grid/node state, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
 
 This split is important for a future Archipelago client: option values generate a slot/seed once, while received locations/items update progress. The current `archipelago.*` keys are placeholders and have no network behavior.
+
+Config and state keep their existing source/package paths and file formats. Writes use a complete sibling temporary file followed by same-directory atomic replacement, preventing a crash or power loss from leaving partially written YAML or JSON.
+
+Source runs load static data directly from `configs`. One-file builds bundle those defaults and copy each missing document to visible `RandomizerLauncherData/configs`; existing external files are never overwritten. Restart is required after editing. Every document uses a validated `schema_version` and required-section envelope. See [configs/README.md](configs/README.md).
 
 ## Mission Discovery and Seed Construction
 
@@ -348,7 +359,7 @@ and a hooked map containing the reward/access rules.
 
 ## Cameo Pipeline
 
-The Unlocks view resolves unit `Image` and `CameoPCX` values from installed `rulesmo.ini` and `artmo.ini` files inside Mental Omega MIX archives. Superpower rewards use the `SidebarPCX` value from their installed superweapon section, covering offensive, secondary, and aid/reinforcement powers without a manually maintained filename table. Only requested PCX members are extracted. A standard-library decoder converts indexed PCX data to cached PNG files, so Pillow and replacement artwork are unnecessary.
+The Unlocks view resolves unit `Image` and `CameoPCX` values from installed `rulesmo.ini` and `artmo.ini` files inside Mental Omega MIX archives. Superpower rewards use the `SidebarPCX` value from their installed superweapon section, covering offensive, secondary, and aid/reinforcement powers without a manually maintained filename table. Only requested PCX members are extracted. A standard-library decoder converts indexed PCX data to cached PNG files, so Pillow and replacement artwork are unnecessary. Extraction is serialized in-process and uses a per-process/per-thread request file, preventing concurrent background work or multiple launcher processes from overwriting another request. Decoder rejections log their exact format/truncation reason.
 
 Map and cameo extraction load `NLog.dll`, `CNCMaps.Shared.dll`, and `CNCMaps.FileFormats.dll` from byte arrays in dependency order. This avoids .NET error `0x80131515` when a freshly copied/downloaded Mental Omega folder retains Windows `Zone.Identifier` markers. The launcher does not unblock, rewrite, or remove alternate streams from the installed renderer DLLs or MIX archives.
 

@@ -10,6 +10,7 @@ $runtimePath = [IO.Path]::GetFullPath((Join-Path $outputDir "RandomizerLauncherR
 $distDir = Join-Path $scriptDir "dist"
 $workDir = Join-Path $scriptDir "build"
 $iconPath = Join-Path $scriptDir "mo-logo-puzzle-icon.ico"
+$staticConfigPath = Join-Path $scriptDir "configs"
 $versionInfoPath = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-version.txt"
 
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
@@ -19,6 +20,9 @@ if (-not (python -m PyInstaller --version 2>$null)) {
 }
 if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
     throw "Launcher icon is missing: $iconPath"
+}
+if (-not (Test-Path -LiteralPath $staticConfigPath -PathType Container)) {
+    throw "Static config directory is missing: $staticConfigPath"
 }
 
 $appVersion = (& python -c "from randomizer_version import APP_VERSION; print(APP_VERSION)").Trim()
@@ -76,6 +80,7 @@ try {
         --icon $iconPath `
         --version-file $versionInfoPath `
         --add-data "$iconPath;." `
+        --add-data "$staticConfigPath;configs" `
         --exclude-module logging.handlers `
         --exclude-module ssl `
         --exclude-module _ssl `

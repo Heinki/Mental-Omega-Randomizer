@@ -22,152 +22,51 @@ from randomizer_ini import all_section_value_maps, section_lines
 from randomizer_rewards import (
     BUFF_TARGETS,
     ENGINEER_UNIT_IDS,
-    FACTION_ACCESS_RULES,
     REWARD_POOL,
     unit_role_equivalents,
 )
+from randomizer_static_config import load_static_config
 
 
-ENGINEER_BY_FAMILY = {
-    'allies': 'ENGINEER',
-    'soviets': 'SENGINEER',
-    'epsilon': 'YENGINEER',
-    'foehn': 'FENGINEER',
-}
-ENGINEER_INSTALLED_FORBIDDEN_HOUSES = {
-    'ENGINEER': 'USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3',
-    'SENGINEER': 'Europeans,UnitedStates,Pacific,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3',
-    'YENGINEER': 'Europeans,UnitedStates,Pacific,USSR,Latin,Chinese,Guild1,Guild2,Guild3',
-    'FENGINEER': 'Europeans,UnitedStates,Pacific,USSR,Chinese,Latin,PsiCorps,Headquaters,ScorpionCell',
-}
-CONYARD_BY_MCV = {
-    'AMCV': 'GACNST',
-    'SMCV': 'NACNST',
-    'PCV': 'YACNST',
-    'FMCV': 'FACNST',
-}
-STALINS_FIST_FACTORY = 'NAFIST'
-STALINS_FIST_FAMILIES = {'soviets', 'epsilon'}
+_FACTION_CONFIG = load_static_config('factions.json')
+
+
+ENGINEER_BY_FAMILY = dict(_FACTION_CONFIG['engineer_by_family'])
+ENGINEER_INSTALLED_FORBIDDEN_HOUSES = dict(_FACTION_CONFIG['engineer_installed_forbidden_houses'])
+CONYARD_BY_MCV = dict(_FACTION_CONFIG['conyard_by_mcv'])
+STALINS_FIST_FACTORY = str(_FACTION_CONFIG['stalins_fist_factory'])
+STALINS_FIST_FAMILIES = set(_FACTION_CONFIG['stalins_fist_families'])
 
 # Five guaranteed combat roles for the optional seed-start roster. Standard
 # translates each role to the physical production families present in a map.
 # Chaos assigns every faction once across the four ground roles, then selects
 # one true AircraftType from the three factions that own an airfield.
 TIER_ONE_ROLE_UNITS = {
-    'ground_infantry': {
-        'allies': ('E1', 'infantry'),
-        'soviets': ('E2', 'infantry'),
-        'epsilon': ('INIT', 'infantry'),
-        'foehn': ('KNIGHT', 'infantry'),
-    },
-    'anti_air_infantry': {
-        'allies': ('GGI', 'infantry'),
-        'soviets': ('FLAKT', 'infantry'),
-        'epsilon': ('HARP', 'infantry'),
-        'foehn': ('COVE', 'infantry'),
-    },
-    'ground_vehicle': {
-        'allies': ('ETNK', 'vehicles'),
-        'soviets': ('HTNK', 'vehicles'),
-        'epsilon': ('LTNK', 'vehicles'),
-        'foehn': ('DRACO', 'vehicles'),
-    },
-    'anti_air_vehicle': {
-        'allies': ('AHMV', 'vehicles'),
-        'soviets': ('HTK', 'vehicles'),
-        'epsilon': ('YTNK', 'vehicles'),
-        'foehn': ('JACKAL', 'vehicles'),
-    },
-    'basic_aircraft': {
-        'allies': ('STORM', 'air'),
-        'soviets': ('FOX', 'air'),
-        'epsilon': ('BLIGHT', 'air'),
-    },
+    role: {family: tuple(values) for family, values in families.items()}
+    for role, families in _FACTION_CONFIG['tier_one_role_units'].items()
 }
-TIER_ONE_GROUND_ROLES = (
-    'ground_infantry',
-    'anti_air_infantry',
-    'ground_vehicle',
-    'anti_air_vehicle',
-)
+TIER_ONE_GROUND_ROLES = tuple(_FACTION_CONFIG['tier_one_ground_roles'])
 
-STANDARD_TIER_ONE_FAMILIES = ('allies', 'soviets', 'epsilon')
+STANDARD_TIER_ONE_FAMILIES = tuple(_FACTION_CONFIG['standard_tier_one_families'])
 
-TIER_ONE_AIRFIELDS = {
-    'allies': 'GAAIRC',
-    'soviets': 'NAAIR',
-    'epsilon': 'YAAIRF',
-}
+TIER_ONE_AIRFIELDS = dict(_FACTION_CONFIG['tier_one_airfields'])
 
 AMPHIBIOUS_TRANSPORTS = {
-    'allies': ('LCRF', 'GAYARD'),
-    'soviets': ('SAPC', 'NAYARD'),
-    'epsilon': ('YHVR', 'YAYARD'),
-    'foehn': ('SEAT', 'FAYARD'),
+    family: tuple(values)
+    for family, values in _FACTION_CONFIG['amphibious_transports'].items()
 }
 
 PRODUCTION_BUILDINGS = {
-    'allies': {
-        'base': {'GACNST'},
-        'infantry': {'GAPILE'},
-        'vehicles': {'GAWEAP'},
-        'air': {'GAAIRC'},
-        'naval': {'GAYARD'},
-    },
-    'soviets': {
-        'base': {'NACNST'},
-        'infantry': {'NAHAND'},
-        'vehicles': {'NAWEAP'},
-        'air': {'NAAIR'},
-        'naval': {'NAYARD'},
-    },
-    'epsilon': {
-        'base': {'YACNST'},
-        'infantry': {'YURRAX', 'YABRCK'},
-        'vehicles': {'YAWEAP'},
-        'air': {'YAAIRF'},
-        'naval': {'YAYARD'},
-    },
-    'foehn': {
-        'base': {'FACNST'},
-        'infantry': {'FOERAX', 'FABARR'},
-        'vehicles': {'FAWEAP'},
-        'naval': {'FAYARD'},
-    },
+    family: {category: set(ids) for category, ids in categories.items()}
+    for family, categories in _FACTION_CONFIG['production_buildings'].items()
 }
 
 # Physical factories used as the shared Chaos sidebar for each player faction.
 # Some names in PRODUCTION_BUILDINGS (such as YURRAX and FOERAX) are generic
 # prerequisite aliases, so keep the actual buildable structure explicit here.
 CHAOS_PRIMARY_PRODUCTION = {
-    'allies': {
-        'base': 'GACNST',
-        'infantry': 'GAPILE',
-        'vehicles': 'GAWEAP',
-        'air': 'GAAIRC',
-        'naval': 'GAYARD',
-    },
-    'soviets': {
-        'base': 'NACNST',
-        'infantry': 'NAHAND',
-        'vehicles': 'NAWEAP',
-        'air': 'NAAIR',
-        'naval': 'NAYARD',
-    },
-    'epsilon': {
-        'base': 'YACNST',
-        'infantry': 'YABRCK',
-        'vehicles': 'YAWEAP',
-        'air': 'YAAIRF',
-        'naval': 'YAYARD',
-    },
-    'foehn': {
-        'base': 'FACNST',
-        'infantry': 'FABARR',
-        'vehicles': 'FAWEAP',
-        'air': 'FAWEAP',
-        'naval': 'FAYARD',
-    },
+    family: dict(categories)
+    for family, categories in _FACTION_CONFIG['chaos_primary_production'].items()
 }
 
 CHAOS_PRODUCTION_ALTERNATIVES = {
@@ -179,32 +78,7 @@ CHAOS_PRODUCTION_ALTERNATIVES = {
     for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
 }
 
-TECH_ORDER = [
-    'ENGINEER',
-    'E1',
-    'GGI',
-    'JUMPJET',
-    'AHMV',
-    'FV',
-    'LCRF',
-    'DEST',
-    'DLPH',
-    'E2',
-    'FLAKT',
-    'HTNK',
-    'HTK',
-    'SAPC',
-    'SUB',
-    'DBOAT',
-    'YHVR',
-    'INIT',
-    'LTNK',
-    'YTNK',
-    'KNIGHT',
-    'JACKAL',
-    'CYCL',
-    'SEAT',
-]
+TECH_ORDER = list(_FACTION_CONFIG['tech_order'])
 
 
 def _building_variants(building_id):
@@ -554,6 +428,38 @@ def single_engineer_rules(
     return rules
 
 
+def _build_access_rule(
+    lines,
+    sections,
+    player_build_countries,
+    tech_level,
+    native_owners,
+    prerequisite_alternatives=(),
+    prerequisite_override=None,
+):
+    """Build common ownership and prerequisite fields for earned access."""
+    owners = _merged_items(
+        _comma_items(native_owners),
+        production_owner_countries(
+            lines, player_build_countries, sections=sections
+        ),
+    )
+    required_houses = _merged_items(
+        _comma_items(native_owners), player_build_countries
+    )
+    rule = {
+        'TechLevel': tech_level,
+        'Owner': ','.join(owners),
+        'RequiredHouses': ','.join(required_houses),
+        'ForbiddenHouses': 'none',
+    }
+    if prerequisite_override is not None:
+        rule['PrerequisiteOverride'] = prerequisite_override
+    if prerequisite_alternatives:
+        rule.update(_alternative_prerequisite_rules(prerequisite_alternatives))
+    return rule
+
+
 def mission_basic_unit_rules(
     lines,
     earned_access_ids=None,
@@ -620,23 +526,13 @@ def mission_basic_unit_rules(
         for tech_id, tech_level, _family, category, prerequisite, native_owners in ACCESS_CATALOG:
             if category != 'infantry' or tech_id not in available_access:
                 continue
-            owners = _merged_items(
-                _comma_items(native_owners),
-                production_owner_countries(
-                    lines, player_build_countries, sections=sections
-                ),
-            )
-            required_houses = _merged_items(
-                _comma_items(native_owners), player_build_countries
-            )
-            access_rule = {
-                'TechLevel': tech_level,
-                'Owner': ','.join(owners),
-                'RequiredHouses': ','.join(required_houses),
-                'ForbiddenHouses': 'none',
-            }
-            access_rule.update(
-                _alternative_prerequisite_rules((prerequisite, *special_barracks))
+            access_rule = _build_access_rule(
+                lines,
+                sections,
+                player_build_countries,
+                tech_level,
+                native_owners,
+                prerequisite_alternatives=(prerequisite, *special_barracks),
             )
             unlocks.append((tech_id, tech_level, access_rule))
 
@@ -654,23 +550,13 @@ def mission_basic_unit_rules(
                 or tech_id not in available_access
             ):
                 continue
-            owners = _merged_items(
-                _comma_items(native_owners),
-                production_owner_countries(
-                    lines, player_build_countries, sections=sections
-                ),
-            )
-            required_houses = _merged_items(
-                _comma_items(native_owners), player_build_countries
-            )
-            access_rule = {
-                'TechLevel': tech_level,
-                'Owner': ','.join(owners),
-                'RequiredHouses': ','.join(required_houses),
-                'ForbiddenHouses': 'none',
-            }
-            access_rule.update(
-                _alternative_prerequisite_rules((prerequisite, STALINS_FIST_FACTORY))
+            access_rule = _build_access_rule(
+                lines,
+                sections,
+                player_build_countries,
+                tech_level,
+                native_owners,
+                prerequisite_alternatives=(prerequisite, STALINS_FIST_FACTORY),
             )
             unlocks.append((tech_id, tech_level, access_rule))
 
@@ -684,22 +570,14 @@ def mission_basic_unit_rules(
         )
         if not has_access:
             continue
-        owners = _merged_items(
-            _comma_items(native_owners),
-            production_owner_countries(
-                lines, player_build_countries, sections=sections
-            ),
+        access_rule = _build_access_rule(
+            lines,
+            sections,
+            player_build_countries,
+            tech_level,
+            native_owners,
+            prerequisite_override=prerequisite,
         )
-        required_houses = _merged_items(
-            _comma_items(native_owners), player_build_countries
-        )
-        access_rule = {
-            'TechLevel': tech_level,
-            'Owner': ','.join(owners),
-            'RequiredHouses': ','.join(required_houses),
-            'ForbiddenHouses': 'none',
-            'PrerequisiteOverride': prerequisite,
-        }
         unlocks.append((tech_id, tech_level, access_rule))
 
     rules = {}

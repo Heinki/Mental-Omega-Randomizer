@@ -1,73 +1,13 @@
 from randomizer_paths import CONFIG_DIR
+from randomizer_storage import atomic_write_text
+from randomizer_static_config import static_config_section
 
 
 CONFIG_PATH = CONFIG_DIR / 'mental_omega_randomizer.yaml'
 
-DEFAULT_CONFIG = {
-    'player_name': 'Commander',
-    'game': 'Mental Omega',
-    'dark_mode': False,
-    'hide_reward_details': False,
-    'seed': '',
-    'campaign_filter': 'All Campaigns',
-    'mission_goal': 15,
-    'progression_mode': 'Mission List',
-    'grid_two_start_positions': False,
-    'rewards_per_objective': 1,
-    'difficulty': 'Normal',
-    'game_speed': '3 - Medium',
-    'archipelago': {
-        'enabled': False,
-        'server': '',
-        'slot_name': 'Commander',
-        'password': '',
-        'future_world_name': 'Mental Omega',
-    },
-    'generation': {
-        'reward_mode': 'Standard',
-        'starting_unlocked_missions': 3,
-        'include_no_build_missions': True,
-        'include_no_build_production_missions': True,
-        'prioritize_no_build_missions': False,
-        'enabled_reward_types': [
-            'access',
-            'buff',
-            'superweapon',
-            'secondary_superweapon',
-            'aid_power',
-        ],
-        'randomize_unit_access': True,
-        'start_with_tier_one_units': False,
-        'include_defensive_buildings': True,
-        'unlimited_hero_units': False,
-        'share_chaos_role_buffs': False,
-        'include_buff_rewards': True,
-        'include_superweapon_rewards': True,
-        'include_secondary_superweapon_rewards': True,
-        'include_aid_power_rewards': True,
-        'enabled_buff_types': [
-            'production',
-            'cost',
-            'speed',
-            'armor',
-            'health',
-            'sight',
-            'damage',
-            'reload',
-            'range',
-            'ammo',
-            'self_healing',
-            'cloak',
-            'sensors',
-            'veteran',
-            'build_limit',
-        ],
-        'safe_player_country_buffs': True,
-        'buff_allied_helpers': False,
-        'failure_assistance': False,
-        'experimental_house_buffs': False,
-    },
-}
+DEFAULT_CONFIG = static_config_section(
+    'default_player_config.json', 'defaults', dict
+)
 
 
 def deep_copy(value):
@@ -187,8 +127,7 @@ def write_simple_yaml(path, data):
                 lines.append(f'{prefix}{key}: {scalar_to_yaml(value)}')
 
     append_mapping(data)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    atomic_write_text(path, '\n'.join(lines) + '\n')
 
 
 def load_config():
