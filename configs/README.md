@@ -52,6 +52,24 @@ Aid reward identity and display data live in `catalogue.json` under
 Map injection behavior for each matching `superweapon` remains under
 `aid_power_map_configs`.
 
+Custom power artwork uses `sidebar_image` with a plain PNG filename from
+`assets/`; its matching `values.SidebarPCX` supplies the loose PCX filename
+referenced by the generated map. The launcher converts the PNG to the game's
+required 60×48 indexed PCX format on launch and uses the same PNG for its
+Unlocks preview. Packaged defaults become visible under
+`RandomizerLauncherData/assets` so replacement artwork remains editable.
+For a custom power, copy `my_power.png` into that `assets` directory and set:
+
+```json
+"sidebar_image": "my_power.png",
+"values": {
+  "SidebarPCX": "mormypwr.pcx"
+}
+```
+
+Use a plain PNG filename and a unique PCX filename beginning with `mor`; no
+manual image conversion or `cameo_superweapon` fallback is needed.
+
 `rewards/buff_exceptions.json` section `excluded_buff_type_ids` maps each buff type
 to TechnoType IDs that must not receive it. Use `all` for complete exclusions.
 These entries affect newly planned rewards; retired items in old saves stay in

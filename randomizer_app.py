@@ -18,6 +18,7 @@ from randomizer_cameos import (
     powershell_mix_reader_load_script,
 )
 from randomizer_diagnostics import event as log_event
+from randomizer_custom_assets import custom_sidebar_preview
 from randomizer_version import APP_VERSION
 from grid_progression import (
     COMPLETED as GRID_COMPLETED,
@@ -160,6 +161,17 @@ MAX_GLOBAL_BUFF_REPEATS_PER_SEED = int(
     REWARD_PLANNING['maximum_global_buff_repeats_per_seed']
 )
 GLOBAL_BUFF_REWARD_INTERVAL = int(REWARD_PLANNING['global_buff_reward_interval'])
+
+
+def reward_cameo_token(reward):
+    """Return Unlocks placeholder, preferring configured custom artwork."""
+    if reward.get('kind') != 'superweapon' or not reward.get('superweapon'):
+        return ''
+    sidebar_image = reward.get('superweapon_sidebar_image')
+    if sidebar_image:
+        return f'[[MOR_ASSET:{sidebar_image}]]'
+    cameo_superweapon = reward.get('cameo_superweapon', reward['superweapon'])
+    return f'[[MOR_POWER:{cameo_superweapon}]]'
 
 
 
@@ -3870,10 +3882,7 @@ throw "Map $name was not found in expandmo*.mix"
                         lines.append(f'  {summary}')
 
             for reward in group['other']:
-                power_token = ''
-                if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
-                    cameo_superweapon = reward.get('cameo_superweapon', reward['superweapon'])
-                    power_token = f'[[MOR_POWER:{cameo_superweapon}]]'
+                power_token = reward_cameo_token(reward)
                 lines.append(f'{power_token}Reward: {reward_display_name(reward)}')
                 for summary in reward_rule_summary(reward):
                     lines.append(f'  {summary}')
@@ -4163,6 +4172,50 @@ throw "Map $name was not found in expandmo*.mix"
                         stopindex='end',
                         exact=True,
                     )
+        asset_names = sorted(set(re.findall(
+            r'\[\[MOR_ASSET:([A-Za-z0-9_.-]+\.png)\]\]',
+            text,
+            flags=re.IGNORECASE,
+        )))
+        for asset_name in asset_names:
+            token = f'[[MOR_ASSET:{asset_name}]]'
+            try:
+                preview_path = custom_sidebar_preview(asset_name)
+            except Exception:
+                preview_path = None
+                log_event(
+                    'custom_sidebar_preview_failed',
+                    level=logging.ERROR,
+                    asset=asset_name,
+                    traceback=traceback.format_exc(),
+                )
+            position = self.unlocks_text.search(token, '1.0', stopindex='end', exact=True)
+            while position:
+                self.unlocks_text.delete(position, f'{position}+{len(token)}c')
+                cache_key = f'asset:{asset_name.lower()}'
+                photo = self.cameo_photo_cache.get(cache_key)
+                if photo is None and preview_path:
+                    try:
+                        photo = tk.PhotoImage(file=str(preview_path))
+                    except tk.TclError:
+                        photo = None
+                    if photo is not None:
+                        self.cameo_photo_cache[cache_key] = photo
+                if photo is not None:
+                    self.unlocks_text.image_create(
+                        position,
+                        image=photo,
+                        align='center',
+                        padx=5,
+                        pady=2,
+                    )
+                    self.unlock_cameo_images[cache_key] = photo
+                position = self.unlocks_text.search(
+                    token,
+                    position,
+                    stopindex='end',
+                    exact=True,
+                )
         self.unlocks_text.configure(state='disabled')
         self.refresh_unlock_search()
 

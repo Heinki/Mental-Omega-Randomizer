@@ -359,6 +359,24 @@ def _validate_sections(relative_path, sections, path):
             for buff_type, values in sections['excluded_buff_type_ids'].items()
         ):
             raise StaticConfigError(f'Invalid buff exclusion policy in {path}')
+    if str(Path(relative_path)).replace('\\', '/') == 'rewards/catalogue.json':
+        for config in sections['aid_power_map_configs']:
+            image_name = config.get('sidebar_image')
+            if not image_name:
+                continue
+            image_path = Path(str(image_name))
+            sidebar_pcx = Path(str((config.get('values') or {}).get('SidebarPCX', '')))
+            if (
+                image_path.name != str(image_name)
+                or image_path.suffix.lower() != '.png'
+                or sidebar_pcx.name != str(sidebar_pcx)
+                or sidebar_pcx.suffix.lower() != '.pcx'
+                or not sidebar_pcx.name.lower().startswith('mor')
+            ):
+                raise StaticConfigError(
+                    f'Invalid custom sidebar image mapping for '
+                    f'{config.get("superweapon")!r} in {path}'
+                )
 
 
 @lru_cache(maxsize=None)

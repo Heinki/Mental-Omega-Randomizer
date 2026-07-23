@@ -1,6 +1,7 @@
 """Generated mission-map pipeline separated from Tk orchestration."""
 
 from randomizer_cameos import installed_rules_registry
+from randomizer_custom_assets import deploy_superweapon_sidebar_assets
 from randomizer_ini import (
     all_section_value_maps,
     merge_ini_section_values,
@@ -183,6 +184,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
     earned_rewards = self.active_launch_rewards() if self.state else []
     launch_power_rewards = list(earned_rewards)
+    deployed_sidebar_assets = deploy_superweapon_sidebar_assets(
+        canonical_rewards(launch_power_rewards)
+    )
+    if deployed_sidebar_assets:
+        self.append_log(
+            'Deployed custom superpower sidebar image(s): '
+            + ', '.join(path.name for path in deployed_sidebar_assets)
+            + '.'
+        )
     configured_power_houses = mission_player_power_houses(code)
     power_house_names = configured_power_houses or (
         player_house_from_map(lines, records=records),

@@ -18,6 +18,7 @@ This document is the authoritative implementation reference. Player-facing optio
 | `randomizer_mission_overrides.py` | Typed adapter for reviewed mission exceptions loaded from JSON |
 | `randomizer_rewards.py` | Reward derivation, canonicalization, stack limits, and display behavior |
 | `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
+| `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and game-root deployment |
 | `randomizer_ui.py` | Typed adapter for choices and palettes loaded from JSON |
 | `randomizer_static_config.py` | Validated source/frozen JSON loading and visible packaged overrides |
 | `randomizer_storage.py` | Atomic text replacement for persistent config and seed state |
@@ -313,7 +314,7 @@ All 73 active player-facing support/aid definitions have an entry in `AID_POWER_
 
 Offensive and secondary copies also set `IsPowered=false`. Chronoshift uses copied `MORChronoWarp`; Chronolift uses copied `MORPostlift`. Their installed two-stage targeting stays intact. Ten campaigns override shared lightning globals, so copied Lightning Storm receives explicit installed 3.3.6 effect values without rewriting mission storm definitions. `MORNuke` globally remains installed `Type=MultiMissile`, `Action=Nuke`, `WeaponType=NukeCarrier`; changing Type/Action in a map copy is unsupported and broke the power in every mission. Fatal Impact alone registers a private `MORFNukePayload` copied from the installed `NukePayload` (Damage `600`, Warhead `NUKE`) and points only `MORNuke` at it, leaving the map's Damage `5000`/`MIDASDeathWH` objective payload untouched. Wallbuster likewise remains installed `Type=EMPulse`, because GenericWarhead conversion did not discharge. Its copied 320-damage WeaponType, projectile, and warhead are isolated from map overrides and registered respectively in `WeaponTypes`, `Projectiles`, and `Warheads`. Four invisible `MORWBCannon` BuildingTypes are created for each granted player house by map-start Action 125; `EMPulse.Cannons=MORWBCannon`, original `EMPulseCannon=yes`/turret firing, maximum range `9999`, minimum `0` make the listed cannon fire anywhere without exposing `NATEK`. Startup actions share the existing 16-action chunk limit.
 
-`MORV3TestSpecial` proves a power can be wholly new rather than copied. Its preserved config uses `UnitDelivery`, the Airborne icon, zero cost, a 0.5-minute recharge, and delivers 20 player-owned `V3` types on land. The config is currently disabled and omitted from new reward pools; legacy test rewards canonicalize to a retired non-injected entry.
+`MORV3TestSpecial` proves a power can be wholly new rather than copied. Its disabled template uses `UnitDelivery`, zero cost, a 0.5-minute recharge, and delivers 20 player-owned `V3` types on land when enabled. `sidebar_image=yuri_shocked.png` supplies both the launcher Unlocks preview and the configured 60×48 indexed `SidebarPCX=moryv3.pcx` loose game asset. PNG is configuration input only; Mental Omega consumes the generated PCX.
 
 `ZephyrBeaconSpecial` delivers neutral `ZTARGET`; it is a targeting beacon for already-owned `HOWI` Zephyr Artillery, not a standalone bombardment. A guaranteed minimum barrage would require a custom weapon/projectile/warhead helper or a materially different delivery power, not a safe one-key override.
 
@@ -335,13 +336,15 @@ Installed delivery/reinforcement indices are:
 | Epsilon | Risen Monolith `15`; Scout Raven `18`; Vision `21`; Magnetic Beam `30`; Libra Clones `33`; Bloatick Trap `36`; Quick Fort `86`; Ruiner `93`; Hijackers `108` |
 | Foehn | Spinblade `39`; Megaarena `52`; Knightfall `72`; Harbinger `75`; Sweeper Drop `76`; Signal Jammer `77`; Decoy Team `118`; Decoy Squadron `119`; M.A.D. Mine `133` |
 
+`MORV3TestSpecial` is wholly custom and therefore has no installed index; when enabled, it is appended to each generated map's runtime `SuperWeaponTypes` list before action `34` receives its calculated index.
+
 Additional eligible standalone support indices are Allies `10,11,12,22,24,41,50,64,78,92,103,104,127`; Soviets `8,14,19,25,42,59,69,120,121,122`; Epsilon `31,37,38,44,84,105,109`; Foehn `40,46,49,57,63,74,106`.
 
 Action `129` is not used because it changes the charge of a building-backed instance. A constructed matching building may consolidate with the granted instance; independent duplicate cameos are not guaranteed.
 
 Blasticade is not a reward because it needs owned Blast Trench objects to produce any effect. Golden Wind is also source-object dependent and is not a replacement.
 
-`EliteReservesSpecial` (`100`) cannot be granted through action `34`. Its `UnitDelivery` creates the invisible `F_ERESB` production-state marker; 2026-07-14 crash reports consistently ended while action `34` processed it. The active reward instead registers `MOREliteReserves`, attaches it through `SuperWeapons` to `GAPILE/B`, `NAHAND/B`, `YABRCK/B`, and `FABARR/B`, clears the native lab auxiliary gate, and restricts the copy to player countries. Focused full-inventory validation produced 80 primary clones but only the proven 79 action grants.
+`EliteReservesSpecial` (`100`) cannot be granted through action `34`. Its `UnitDelivery` creates the invisible `F_ERESB` production-state marker; 2026-07-14 crash reports consistently ended while action `34` processed it. The active reward instead registers `MOREliteReserves`, attaches it through `SuperWeapons` to `GAPILE/B`, `NAHAND/B`, `YABRCK/B`, and `FABARR/B`, clears the native lab auxiliary gate, and restricts the copy to player countries. Focused full-inventory validation produced 80 primary clones and 79 action grants.
 
 Map-start power grants normally target only authoritative `[Basic] Player`. Reviewed phase-based exceptions target every required human country: `ASIREN` declares Europeans as `[Basic] Player` while its gameplay triggers and second controllable force use UnitedStates, and `SAWAKE` rotates among PlayerEscort, Player, and USSR2. Each reviewed country receives the same isolated clone indices in separately bounded action lists; native mission power sections and triggers remain unchanged. This explicit allowlist avoids empowering unrelated temporary/script houses merely because a map also marks them `PlayerControl=yes`.
 

@@ -11,6 +11,7 @@ $distDir = Join-Path $scriptDir "dist"
 $workDir = Join-Path $scriptDir "build"
 $iconPath = Join-Path $scriptDir "mo-logo-puzzle-icon.ico"
 $staticConfigPath = Join-Path $scriptDir "configs"
+$assetPath = Join-Path $scriptDir "assets"
 $versionInfoPath = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-version.txt"
 
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
@@ -23,6 +24,9 @@ if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $staticConfigPath -PathType Container)) {
     throw "Static config directory is missing: $staticConfigPath"
+}
+if (-not (Test-Path -LiteralPath $assetPath -PathType Container)) {
+    throw "Launcher asset directory is missing: $assetPath"
 }
 
 $appVersion = (& python -c "from randomizer_version import APP_VERSION; print(APP_VERSION)").Trim()
@@ -81,6 +85,7 @@ try {
         --version-file $versionInfoPath `
         --add-data "$iconPath;." `
         --add-data "$staticConfigPath;configs" `
+        --add-data "$assetPath;assets" `
         --exclude-module logging.handlers `
         --exclude-module ssl `
         --exclude-module _ssl `

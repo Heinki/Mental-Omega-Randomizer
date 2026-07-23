@@ -133,6 +133,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `randomizer_mission_safety.py` | Mixed-faction and Chaos production access |
 | `randomizer_rewards.py` | Reward catalogue, equivalence groups, stacking, and display helpers |
 | `randomizer_cameos.py` | Installed MIX cameo extraction and PCX-to-PNG decoding |
+| `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and loose game-asset deployment |
 | `randomizer_config.py` | YAML-compatible configuration defaults and persistence |
 | `randomizer_diagnostics.py` | Bounded structured launcher logging for support and debugging |
 | `randomizer_paths.py` | Source and packaged runtime paths |

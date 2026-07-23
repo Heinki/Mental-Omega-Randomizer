@@ -594,6 +594,8 @@ def build_aid_power_rewards():
             reward['superweapon_clone'] = modified_config['clone']
         if modified_config and modified_config.get('cameo_superweapon'):
             reward['cameo_superweapon'] = modified_config['cameo_superweapon']
+        if modified_config and modified_config.get('sidebar_image'):
+            reward['superweapon_sidebar_image'] = modified_config['sidebar_image']
         rewards.append(reward)
     return rewards
 

@@ -2823,7 +2823,7 @@
         "disabled": true,
         "custom": true,
         "clone": "MORV3TestSpecial",
-        "cameo_superweapon": "AmericanParaDropSpecial",
+        "sidebar_image": "yuri_shocked.png",
         "values": {
           "UIName": "NAME:APara",
           "Name": "V3 Test Drop",
@@ -2832,7 +2832,7 @@
           "Money.Amount": "0",
           "Type": "UnitDelivery",
           "Action": "Custom",
-          "SidebarPCX": "aparicon.pcx",
+          "SidebarPCX": "moryv3.pcx",
           "ShowTimer": "no",
           "DisableableFromShell": "no",
           "Range": "3",
@@ -2895,22 +2895,22 @@
         "kind": "retired",
         "retired_reward": true
       },
+      "V3 Test Drop Power": {
+        "name": "V3 Test Drop Power (retired: test disabled)",
+        "description": "Custom 20-V3 delivery and PNG-to-PCX artwork test is preserved as a disabled template.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
       "Blasticade Power": {
         "name": "Blasticade Power (retired: requires Blast Trenches)",
         "description": "Removed because a building-free Blasticade has no effect without owned Blast Trenches.",
         "rules": {},
         "factions": [
           "Foehn"
-        ],
-        "kind": "retired",
-        "retired_reward": true
-      },
-      "V3 Test Drop Power": {
-        "name": "V3 Test Drop Power (retired: test disabled)",
-        "description": "Custom 20-V3 delivery test is preserved for future use but currently disabled.",
-        "rules": {},
-        "factions": [
-          "Soviets"
         ],
         "kind": "retired",
         "retired_reward": true
