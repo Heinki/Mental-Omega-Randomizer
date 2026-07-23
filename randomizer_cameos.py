@@ -31,6 +31,12 @@ MIX_READER_ASSEMBLY_NAMES = (
 )
 
 
+def cameo_extraction_pending():
+    """Return whether a background MIX extraction is still running."""
+    with _PENDING_LOCK:
+        return bool(_PENDING_EXTRACTIONS)
+
+
 def powershell_literal(value):
     return "'" + str(value).replace("'", "''") + "'"
 

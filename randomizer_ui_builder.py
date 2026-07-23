@@ -812,18 +812,18 @@ def create_widgets(self):
     )
     self.settings_intro_label.grid(row=1, column=0, sticky='ew', pady=(8, 8))
 
-    appearance_frame = ttk.LabelFrame(
+    map_colors_frame = ttk.LabelFrame(
         settings_frame,
         text='Map Colors',
         padding=(8, 8, 8, 8),
     )
-    appearance_frame.grid(row=2, column=0, sticky='ew')
-    appearance_frame.columnconfigure(1, weight=1)
-    ttk.Label(appearance_frame, text='Player color').grid(
+    map_colors_frame.grid(row=2, column=0, sticky='ew')
+    map_colors_frame.columnconfigure(1, weight=1)
+    ttk.Label(map_colors_frame, text='Player color').grid(
         row=0, column=0, sticky='w', padx=(0, 8)
     )
     self.player_color_combo = ttk.Combobox(
-        appearance_frame,
+        map_colors_frame,
         state='readonly',
         textvariable=self.player_color_var,
         values=PLAYER_COLORS,
@@ -834,7 +834,7 @@ def create_widgets(self):
         '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
     )
     self.rainbowizer_check = ttk.Checkbutton(
-        appearance_frame,
+        map_colors_frame,
         text='Rainbowizer: randomize allied and enemy AI colors',
         variable=self.rainbowizer_var,
     )
@@ -1051,7 +1051,7 @@ def create_widgets(self):
         text='Mission Assistance',
         padding=(8, 8, 8, 8),
     )
-    assistance_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+    assistance_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
         text='Strengthen failed missions on retry',
@@ -1083,7 +1083,7 @@ def create_widgets(self):
         text='Appearance & Privacy',
         padding=(8, 8, 8, 8),
     )
-    appearance_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
+    appearance_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
         text='Dark mode',

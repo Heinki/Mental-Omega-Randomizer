@@ -13,6 +13,7 @@ import traceback
 from randomizer_config import CONFIG_PATH, DEFAULT_CONFIG, load_config, save_config
 from randomizer_storage import atomic_write_text
 from randomizer_cameos import (
+    cameo_extraction_pending,
     ensure_superweapon_cameos,
     ensure_unit_cameos,
     mix_reader_assembly_paths,
@@ -368,6 +369,8 @@ class LauncherApp(tk.Tk):
         self.cameo_photo_cache = {}
         self.unlock_cameo_images = {}
         self.advanced_pool_images = {}
+        self.cameo_retry_count = 0
+        self.cameo_retry_after_id = None
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
         self.cleanup_generated_root_maps()
@@ -5189,6 +5192,24 @@ throw "Map $name was not found in expandmo*.mix"
                 lines.extend(f'• {line}' for line in dict.fromkeys(potential))
         return '\n'.join(lines)
 
+    def schedule_cameo_refresh_retry(self):
+        """Redraw image consumers after asynchronous MIX extraction finishes."""
+        if self.cameo_retry_after_id is not None or self.cameo_retry_count >= 20:
+            return
+        self.cameo_retry_count += 1
+
+        def retry():
+            self.cameo_retry_after_id = None
+            if not self.winfo_exists():
+                return
+            self.advanced_unit_cameo_paths = None
+            self.unlock_dashboard_signature = None
+            self.unlock_dashboard_structure_signature = None
+            self.refresh_advanced_pool_views()
+            self.refresh_progress_view()
+
+        self.cameo_retry_after_id = self.after(1000, retry)
+
     def refresh_unlock_dashboard(self):
         if not hasattr(self, 'unlock_icon_frames'):
             return
@@ -5396,6 +5417,11 @@ throw "Map $name was not found in expandmo*.mix"
             self.layout_unlock_dashboard_faction(faction)
             content.update_idletasks()
             canvas.configure(background=field, scrollregion=canvas.bbox('all'))
+
+        if entries and len(photos) < len(entries) and cameo_extraction_pending():
+            self.schedule_cameo_refresh_retry()
+        else:
+            self.cameo_retry_count = 0
 
     def refresh_progress_view(self):
         if not self.state:

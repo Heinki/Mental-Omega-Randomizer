@@ -29,6 +29,11 @@ if (-not (Test-Path -LiteralPath $assetPath -PathType Container)) {
     throw "Launcher asset directory is missing: $assetPath"
 }
 
+python -c "from randomizer_static_config import REQUIRED_STATIC_CONFIGS, validate_static_configs; validate_static_configs(REQUIRED_STATIC_CONFIGS); print('Static config preflight passed.')"
+if ($LASTEXITCODE -ne 0) {
+    throw "Static config preflight failed; EXE was not built."
+}
+
 $appVersion = (& python -c "from randomizer_version import APP_VERSION; print(APP_VERSION)").Trim()
 if ($LASTEXITCODE -ne 0 -or $appVersion -notmatch '^\d+\.\d+(\.\d+)?$') {
     throw "Invalid APP_VERSION in randomizer_version.py: $appVersion"

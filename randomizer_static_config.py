@@ -503,6 +503,25 @@ def _validate_sections(relative_path, sections, path):
 def _load_static_config_cached(relative_path):
     """Load one static JSON document and validate its common envelope."""
     path = _ensure_visible_config(relative_path)
+    try:
+        return _load_static_config_sections(relative_path, path)
+    except StaticConfigError:
+        # Frozen upgrades keep editable configs in RandomizerLauncherData.
+        # If an older/user-edited copy no longer satisfies the current
+        # schema, preserve it and recover from the validated bundled copy.
+        bundled = BUNDLED_CONFIG_DIR / Path(relative_path)
+        if not FROZEN or not bundled.is_file() or path == bundled:
+            raise
+        bundled_sections = _load_static_config_sections(relative_path, bundled)
+        backup = path.with_name(path.name + '.invalid-backup')
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, backup)
+        shutil.copy2(bundled, path)
+        return bundled_sections
+
+
+def _load_static_config_sections(relative_path, path):
+    """Read and validate one resolved static-config file."""
     if not path.is_file():
         raise StaticConfigError(f'Required static config is missing: {path}')
     try:
