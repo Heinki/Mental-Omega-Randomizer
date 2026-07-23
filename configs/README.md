@@ -5,16 +5,18 @@ embedded in Python modules. Restart the launcher after changing a file.
 
 ## Files
 
-- `default_player_config.json`: fallback player, generation, launch, and future
-  Archipelago settings used when active YAML keys are absent.
+- `default_player_config.json`: fallback player, generation, launch, privacy,
+  and future Archipelago settings used when active YAML keys are absent.
 - `missions.json`: mission build classifications, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
   access rules, native-variant buff forwarding, and campaign starter families.
 - `map_rules.json`: controlled technology locks, TechnoType registry mapping,
   and parser/engine safety limits used by generated maps.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
-  buildings, Tier 1 roles, amphibious transports, Chaos production, and tech
+  buildings, amphibious transports, Chaos production, and tech
   ordering, plus default unlock owners and special-factory identities.
+- `tier_one.json`: subfaction-specific starter units, abstract saved role
+  markers, aircraft factories, and installed GenericPrerequisite aliases.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   reward-count messages, faction colors, and light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
@@ -23,9 +25,10 @@ embedded in Python modules. Restart the launcher after changing a file.
 - `rewards/unit_policy.json`: installed capabilities, reward exclusions,
   trainability/naval classification, always-available essentials, trainable
   defenses, and unit-specific display wording.
+- `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
-  definitions, superweapon templates/rewards, support and aid-power mappings,
-  access aliases, and retired reward compatibility entries.
+  definitions, superweapon templates/rewards, support and aid-power definitions
+  and mappings, access aliases, and retired reward compatibility entries.
 - `rewards/tuning.json`: stack multipliers and caps, retry-assistance behavior,
   clone prefixes/production-field policy, reward count limits, and global-buff
   planning cadence. Display text and generated map values use the same data.
@@ -43,6 +46,16 @@ the catalogue/classification data.
 prefixes and production-field lists are advanced engine policy: keep IDs within
 the Ares 24-character limit and retain `Projectile`/`Warhead` requirements
 unless a modified engine has been tested.
+
+Aid reward identity and display data live in `catalogue.json` under
+`aid_power_rewards` (`name`, `description`, `faction`, `superweapon`, `index`).
+Map injection behavior for each matching `superweapon` remains under
+`aid_power_map_configs`.
+
+`rewards/buff_exceptions.json` section `excluded_buff_type_ids` maps each buff type
+to TechnoType IDs that must not receive it. Use `all` for complete exclusions.
+These entries affect newly planned rewards; retired items in old saves stay in
+state for compatibility but are omitted from the Unlocks list.
 
 ## Load locations
 

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "description": "Editable reviewed exclusions for redundant, misleading, or ineffective unit buffs.",
+  "sections": {
+    "excluded_buff_type_ids": {
+      "all": ["ENGINEER", "SENGINEER", "YENGINEER", "FENGINEER", "CMIN", "HARV", "YMIN", "NMIN", "AMCV", "SMCV", "PCV", "FMCV", "GAGAP", "FABTRC"],
+      "production": ["HIJACKER", "RUINER"],
+      "speed": ["CLEG"],
+      "damage": ["GASTAS", "GAPOST", "SPY", "SUPR", "SHAD", "CHRTNK", "CRYO", "HBIRD", "NASCOM", "NAMORT", "NAIRDM", "DUST", "MWF", "EDRN", "YAMPSI", "YARIFT", "YAPSYT", "HIJACKER", "RUINER", "INTRUDER", "REPU", "DRIL", "MIND", "COYO", "QUAD", "YHVR", "FACONF", "FACOAT", "FAINHI", "SYNC", "MSA", "RACC", "COON", "CONF", "ORCIN", "SEAT", "SHARK"],
+      "reload": ["GASTAS", "GACRYO", "SPY", "SHAD", "STORM", "ORCA", "BEAG", "FORTRESS", "CRYO", "HBIRD", "NABNKR", "NASCOM", "NAMORT", "NADRON", "NATRAP", "NAIRDM", "SBTR", "DTRUCK", "BGGY", "FOX", "DUST", "MWF", "FDRON", "DBOAT", "NATBNK", "YAMPSI", "YARIFT", "YAVNMM", "HIJACKER", "KAOS", "DRIL", "BLIGHT", "COYO", "QUAD", "VENOM", "YHVR", "FAFILD", "FACONF", "FACOAT", "FAAVAL", "FAINHI", "FAMMIN", "SYNC", "CLAIR", "MSA", "RACC", "COON", "ROADR", "DIVER", "MAD", "ORCIN", "BOID", "SEAT"],
+      "range": ["GACRYO", "SPY", "SHAD", "NADRON", "NATRAP", "NAIRDM", "SBTR", "DTRUCK", "BGGY", "MWF", "DBOAT", "YAMPSI", "YARIFT", "YAVNMM", "HIJACKER", "KAOS", "INTRUDER", "DRIL", "QUAD", "VENOM", "YHVR", "FACOAT", "FAINHI", "FAMMIN", "MSA", "MAD", "ORCIN", "SEAT"],
+      "ammo": ["GASTAS", "GACRYO", "GAPOST", "ADOG", "SPY", "SUPR", "CLEG", "SHAD", "CRYO", "CARRIER", "SIREN", "NABNKR", "NASCOM", "NAMORT", "NADRON", "NATRAP", "NAIRDM", "DOG", "SBTR", "CHITZ", "DRON", "DTRUCK", "BGGY", "MWF", "FDRON", "EDRN", "DBOAT", "NATBNK", "YAMPSI", "YARIFT", "YAVNMM", "HIJACKER", "RUINER", "YDOG", "KAOS", "YURI", "YURIPR", "INTRUDER", "DRIL", "MIND", "COYO", "QUAD", "YHVR", "FAFILD", "FACONF", "FACOAT", "FAINHI", "FAMMIN", "SYNC", "CLAIR", "MSA", "RACC", "COON", "ROADR", "DIVER", "MAD", "ORCIN", "BOID", "SEAT"],
+      "self_healing": ["GACRYO", "NATRAP", "FAFILD", "FACONF", "FAMMIN"],
+      "veteran": ["GASTAS", "GACRYO", "GAPOST", "AMEDIC", "SPY", "SUPR", "SHAD", "CRYO", "NABNKR", "NASCOM", "NAMORT", "NADRON", "NATRAP", "NAIRDM", "SBTR", "ARSO", "DRON", "DUST", "MWF", "FDRON", "EDRN", "NATBNK", "YAMPSI", "YARIFT", "YAVNMM", "YAMREF", "HIJACKER", "RUINER", "KAOS", "INTRUDER", "REPU", "DRIL", "COYO", "QUAD", "YHVR", "FAFILD", "FACONF", "FACOAT", "FAINHI", "FAMMIN", "CLAIR", "MSA", "RACC", "COON", "CONF", "DIVER", "MAD", "ORCIN", "BOID", "SEAT"]
+    }
+  }
+}

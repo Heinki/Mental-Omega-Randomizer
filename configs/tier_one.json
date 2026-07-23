@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "description": "Subfaction-aware Tier 1 starter roles and production aliases.",
+  "sections": {
+    "role_units": {
+      "ground_infantry": {
+        "allies": ["E1", "infantry"],
+        "soviets": ["E2", "infantry"],
+        "epsilon": ["INIT", "infantry"],
+        "foehn": ["COVE", "infantry"]
+      },
+      "anti_air_infantry": {
+        "allies": ["GGI", "infantry"],
+        "soviets": ["FLAKT", "infantry"],
+        "epsilon": ["HARP", "infantry"],
+        "foehn": ["KNIGHT", "infantry"]
+      },
+      "ground_vehicle": {
+        "allies": ["ETNK", "vehicles"],
+        "soviets": ["HTNK", "vehicles"],
+        "epsilon": ["LTNK", "vehicles"],
+        "foehn": ["ROACH", "vehicles"]
+      },
+      "anti_air_vehicle": {
+        "allies": ["FV", "vehicles"],
+        "soviets": ["SCAR", "vehicles"],
+        "epsilon": ["YTNK", "vehicles"],
+        "foehn": ["TERA", "vehicles"]
+      },
+      "basic_aircraft": {
+        "allies": ["STORM", "air"],
+        "soviets": ["FOX", "air"],
+        "epsilon": ["BLIGHT", "air"]
+      }
+    },
+    "role_markers": {
+      "ground_infantry": "T1_GROUND_INFANTRY",
+      "anti_air_infantry": "T1_ANTI_AIR_INFANTRY",
+      "ground_vehicle": "T1_GROUND_VEHICLE",
+      "anti_air_vehicle": "T1_ANTI_AIR_VEHICLE",
+      "basic_aircraft": "T1_BASIC_AIRCRAFT"
+    },
+    "subfaction_units": {
+      "ground_vehicle": {
+        "UnitedStates": ["ETNK", "vehicles"],
+        "Europeans": ["MTNK", "vehicles"],
+        "Pacific": ["KTNK", "vehicles"],
+        "USSR": ["HTNK", "vehicles"],
+        "Chinese": ["CTNK", "vehicles"],
+        "Latin": ["JTNK", "vehicles"],
+        "PsiCorps": ["LTNK", "vehicles"],
+        "ScorpionCell": ["QTNK", "vehicles"],
+        "Headquaters": ["STNK", "vehicles"],
+        "Guild1": ["CYCL", "vehicles"],
+        "Guild2": ["DRACO", "vehicles"],
+        "Guild3": ["ROACH", "vehicles"]
+      },
+      "anti_air_vehicle": {
+        "UnitedStates": ["FV", "vehicles"],
+        "Europeans": ["AMC", "vehicles"],
+        "Pacific": ["TENGU", "vehicles"],
+        "USSR": ["SCAR", "vehicles"],
+        "Chinese": ["HTK", "vehicles"],
+        "Latin": ["HTK", "vehicles"],
+        "PsiCorps": ["YTNK", "vehicles"],
+        "ScorpionCell": ["YTNK", "vehicles"],
+        "Headquaters": ["YTNK", "vehicles"],
+        "Guild1": ["TERA", "vehicles"],
+        "Guild2": ["TERA", "vehicles"],
+        "Guild3": ["TERA", "vehicles"]
+      },
+      "basic_aircraft": {
+        "UnitedStates": ["STORM", "air"],
+        "Europeans": ["ORCA", "air"],
+        "Pacific": ["BEAG", "air"],
+        "USSR": ["FOX", "air"],
+        "Chinese": ["FOX", "air"],
+        "Latin": ["FOX", "air"],
+        "PsiCorps": ["BLIGHT", "air"],
+        "ScorpionCell": ["BLIGHT", "air"],
+        "Headquaters": ["BLIGHT", "air"]
+      }
+    },
+    "ground_roles": ["ground_infantry", "anti_air_infantry", "ground_vehicle", "anti_air_vehicle"],
+    "standard_families": ["allies", "soviets", "epsilon"],
+    "airfields": {
+      "allies": "GAAIRC",
+      "soviets": "NAAIR",
+      "epsilon": "YAAIRF"
+    },
+    "production_aliases": {
+      "allies": {"infantry": ["ALLRAX"]},
+      "soviets": {"infantry": ["SOVRAX"]},
+      "epsilon": {"infantry": ["YURRAX"]},
+      "foehn": {"infantry": ["FOERAX"]}
+    }
+  }
+}

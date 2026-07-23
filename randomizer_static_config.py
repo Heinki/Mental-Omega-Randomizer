@@ -17,11 +17,13 @@ REQUIRED_STATIC_CONFIGS = (
     'missions.json',
     'map_rules.json',
     'factions.json',
+    'tier_one.json',
     'ui.json',
     'rewards/unit_data.json',
     'rewards/catalogue.json',
     'rewards/tuning.json',
     'rewards/unit_policy.json',
+    'rewards/buff_exceptions.json',
 )
 REQUIRED_SECTIONS = {
     'default_player_config.json': {
@@ -62,14 +64,19 @@ REQUIRED_SECTIONS = {
         'stalins_fist_placement_ids': list,
         'stalins_fist_taskforce_ids': list,
         'stalins_fist_families': list,
-        'tier_one_role_units': dict,
-        'tier_one_ground_roles': list,
-        'standard_tier_one_families': list,
-        'tier_one_airfields': dict,
         'amphibious_transports': dict,
         'production_buildings': dict,
         'chaos_primary_production': dict,
         'tech_order': list,
+    },
+    'tier_one.json': {
+        'role_units': dict,
+        'role_markers': dict,
+        'subfaction_units': dict,
+        'ground_roles': list,
+        'standard_families': list,
+        'airfields': dict,
+        'production_aliases': dict,
     },
     'ui.json': {
         'difficulties': list,
@@ -106,6 +113,7 @@ REQUIRED_SECTIONS = {
         'superweapon_unlock_rewards': list,
         'secondary_superweapon_unlock_rewards': list,
         'building_free_support_power_values': dict,
+        'aid_power_rewards': list,
         'aid_power_map_configs': list,
         'retired_reward_by_name': dict,
         'access_reward_aliases': dict,
@@ -125,6 +133,9 @@ REQUIRED_SECTIONS = {
         'trainable_defense_ids': list,
         'naval_unit_ids': list,
         'ammo_display_labels': dict,
+    },
+    'rewards/buff_exceptions.json': {
+        'excluded_buff_type_ids': dict,
     },
 }
 
@@ -299,6 +310,27 @@ def _validate_sections(relative_path, sections, path):
             > planning['maximum_rewards_per_check']
         ):
             raise StaticConfigError(f'Default rewards exceed maximum in {path}')
+    if str(Path(relative_path)).replace('\\', '/') == 'tier_one.json':
+        roles = sections['role_units']
+        markers = sections['role_markers']
+        if set(roles) != set(markers) or not all(
+            isinstance(marker, str) and marker
+            for marker in markers.values()
+        ):
+            raise StaticConfigError(f'Invalid Tier 1 role markers in {path}')
+        entry_groups = [roles]
+        entry_groups.extend(sections['subfaction_units'].values())
+        if not all(
+            isinstance(entry, list)
+            and len(entry) == 2
+            and all(isinstance(value, str) and value for value in entry)
+            for group in entry_groups
+            for entries in group.values()
+            for entry in (entries.values() if isinstance(entries, dict) else [entries])
+        ):
+            raise StaticConfigError(f'Invalid Tier 1 unit mapping in {path}')
+        if not set(sections['ground_roles']).issubset(roles):
+            raise StaticConfigError(f'Invalid Tier 1 ground roles in {path}')
     if str(Path(relative_path)).replace('\\', '/') == 'rewards/unit_policy.json':
         policy_lists = (
             'noncombat_weapon_target_ids', 'nontrainable_unit_ids',
@@ -319,6 +351,14 @@ def _validate_sections(relative_path, sections, path):
             for values in sections['existing_capability_ids'].values()
         ):
             raise StaticConfigError(f'Invalid capability policy in {path}')
+    if str(Path(relative_path)).replace('\\', '/') == 'rewards/buff_exceptions.json':
+        if not all(
+            isinstance(buff_type, str) and buff_type
+            and isinstance(values, list)
+            and all(isinstance(value, str) and value for value in values)
+            for buff_type, values in sections['excluded_buff_type_ids'].items()
+        ):
+            raise StaticConfigError(f'Invalid buff exclusion policy in {path}')
 
 
 @lru_cache(maxsize=None)

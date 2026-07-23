@@ -116,12 +116,14 @@ from randomizer_map import (
 from randomizer_mission_safety import (
     always_available_transport_rules,
     chaos_earned_access_rules,
+    expanded_tier_one_unit_ids,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
     single_engineer_rules,
     starting_tier_one_rules,
     summarize_basic_unit_rules,
     tier_one_unit_ids,
+    tier_one_role_label,
 )
 from randomizer_map_pipeline import prepare_hooked_map as prepare_hooked_mission_map
 from randomizer_mission_overrides import (
@@ -181,6 +183,9 @@ class LauncherApp(tk.Tk):
         self.dark_mode_var = tk.BooleanVar(value=bool(self.config.get('dark_mode', False)))
         self.hide_reward_details_var = tk.BooleanVar(
             value=bool(self.config.get('hide_reward_details', False))
+        )
+        self.hide_locked_grid_missions_var = tk.BooleanVar(
+            value=bool(self.config.get('hide_locked_grid_missions', False))
         )
         self.state = self.load_state()
         self.migrate_state()
@@ -417,6 +422,9 @@ class LauncherApp(tk.Tk):
     def save_ui_preferences(self):
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
         self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
+        self.config['hide_locked_grid_missions'] = bool(
+            self.hide_locked_grid_missions_var.get()
+        )
         save_config(self.config)
 
     def on_dark_mode_changed(self):
@@ -428,6 +436,34 @@ class LauncherApp(tk.Tk):
 
     def on_hide_reward_details_changed(self):
         self.save_ui_preferences()
+        self.refresh_progress_view()
+
+    def on_hide_locked_grid_missions_changed(self):
+        self.save_ui_preferences()
+        if (
+            self.hide_locked_grid_missions_var.get()
+            and self.active_progression_mode() == 'Grid Mode'
+            and self.state
+        ):
+            states = self.sync_grid_progression()
+            selected_code = self.selected_mission_code()
+            if states.get(selected_code) == GRID_LOCKED:
+                visible_code = next(
+                    (code for code, state in states.items() if state != GRID_LOCKED),
+                    None,
+                )
+                if visible_code:
+                    visible_index = next(
+                        (
+                            index
+                            for index, mission in enumerate(self.missions)
+                            if mission.get('code') == visible_code
+                        ),
+                        None,
+                    )
+                    if visible_index is not None:
+                        self.selected_index.set(visible_index)
+        self.refresh_grid_tiles()
         self.refresh_progress_view()
 
     def show_busy(self, title, detail='Please wait.'):
@@ -1144,6 +1180,9 @@ class LauncherApp(tk.Tk):
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
         self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
+        self.config['hide_locked_grid_missions'] = bool(
+            self.hide_locked_grid_missions_var.get()
+        )
         self.config['seed'] = seed
         self.config['campaign_filter'] = self.campaign_var.get()
         self.config['mission_goal'] = mission_goal
@@ -1422,7 +1461,9 @@ class LauncherApp(tk.Tk):
 
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
-        starting_unit_ids = set(self.active_starting_tier_one_unit_ids())
+        starting_unit_ids = expanded_tier_one_unit_ids(
+            self.active_starting_tier_one_unit_ids()
+        )
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
@@ -1629,7 +1670,7 @@ class LauncherApp(tk.Tk):
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         used_access_names = set()
         seed_unlocked_tech_ids = (
-            set(self.active_starting_tier_one_unit_ids())
+            expanded_tier_one_unit_ids(self.active_starting_tier_one_unit_ids())
             | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
         )
         buff_counts = {}
@@ -2039,6 +2080,24 @@ class LauncherApp(tk.Tk):
                 continue
             mission = lookup.get(code, {})
             state = states.get(code, GRID_LOCKED)
+            if self.hide_locked_grid_missions_var.get() and state == GRID_LOCKED:
+                widgets['tile'].grid()
+                background, foreground = '#3f454b', '#d4d8dc'
+                for widget in widgets.values():
+                    widget.configure(cursor='arrow')
+                widgets['tile'].configure(background=background)
+                widgets['selection'].configure(background=background)
+                widgets['banner'].grid_remove()
+                widgets['body'].grid_configure(pady=4)
+                widgets['body'].configure(
+                    text='?',
+                    background=background,
+                    foreground=foreground,
+                )
+                continue
+            widgets['tile'].grid()
+            for widget in widgets.values():
+                widget.configure(cursor='hand2')
             faction = normalize_faction(mission.get('side', ''))
             faction_color = FACTION_TILE_COLORS.get(faction, '#315b82')
             started = self.is_mission_started(code)
@@ -2091,6 +2150,13 @@ class LauncherApp(tk.Tk):
             )
 
     def select_grid_mission(self, index):
+        if self.hide_locked_grid_missions_var.get() and self.state:
+            try:
+                code = self.missions[index]['code']
+            except (IndexError, TypeError):
+                return
+            if self.sync_grid_progression().get(code) == GRID_LOCKED:
+                return
         previous_code = self.selected_mission_code()
         self.selected_index.set(index)
         current_code = self.selected_mission_code()
@@ -2229,13 +2295,18 @@ class LauncherApp(tk.Tk):
             rewards = check_rewards(check)
             lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
             for reward in rewards:
-                reward_name = (
-                    '?????'
-                    if self.hide_reward_details_var.get()
-                    else reward_display_name(reward)
-                )
+                reward_name = self.mission_check_reward_name(check, reward)
                 lines.append(f'    • {reward_name}')
         return '\n'.join(lines)
+
+    def mission_check_reward_name(self, check, reward):
+        if (
+            self.hide_reward_details_var.get()
+            and not check.get('unlocked')
+            and not check.get('released')
+        ):
+            return '?????'
+        return reward_display_name(reward)
 
     def on_launch_selected(self):
         mission = self.selected_mission()
@@ -2493,7 +2564,10 @@ class LauncherApp(tk.Tk):
         if starting_unit_ids:
             self.append_log(
                 'Starting Tier 1 units: '
-                + ', '.join(unit_display_label(unit_id) for unit_id in starting_unit_ids)
+                + ', '.join(
+                    tier_one_role_label(unit_id) or unit_display_label(unit_id)
+                    for unit_id in starting_unit_ids
+                )
                 + '.'
             )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
@@ -3702,7 +3776,7 @@ throw "Map $name was not found in expandmo*.mix"
             heading = 'Starting Tier 1 Units'
             lines.extend([heading, '=' * len(heading)])
             for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
-                lines.append(unit_display_label(unit_id))
+                lines.append(tier_one_role_label(unit_id) or unit_display_label(unit_id))
             lines.append('')
         selected = self.selected_mission()
         if selected and self.failure_assistance_enabled():
@@ -3718,7 +3792,11 @@ throw "Map $name was not found in expandmo*.mix"
                     '',
                 ])
 
-        earned = [canonical_reward(reward) for reward in self.earned_rewards_from_checks()]
+        earned = []
+        for reward in self.earned_rewards_from_checks():
+            canonical = canonical_reward(reward)
+            if not canonical.get('retired_reward'):
+                earned.append(canonical)
         if not earned:
             if lines:
                 return '\n'.join(lines).rstrip()
@@ -3807,7 +3885,11 @@ throw "Map $name was not found in expandmo*.mix"
     def current_unlock_unit_ids(self):
         if not self.state:
             return []
-        unit_ids = set(self.active_starting_tier_one_unit_ids())
+        unit_ids = {
+            unit_id
+            for unit_id in self.active_starting_tier_one_unit_ids()
+            if not tier_one_role_label(unit_id)
+        }
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         for reward in self.earned_rewards_from_checks():
@@ -3887,9 +3969,14 @@ throw "Map $name was not found in expandmo*.mix"
                         'pending reward, and unlocks every unfinished grid mission.'
                     )
                 elif unlocks:
-                    lookup = self.mission_lookup()
-                    labels = [lookup.get(item, {}).get('title', item) for item in unlocks]
-                    lines.append('Completing this node unlocks: ' + ', '.join(labels))
+                    if self.hide_locked_grid_missions_var.get():
+                        lines.append(
+                            f'Completing this node reveals {len(unlocks)} neighboring mission(s).'
+                        )
+                    else:
+                        lookup = self.mission_lookup()
+                        labels = [lookup.get(item, {}).get('title', item) for item in unlocks]
+                        lines.append('Completing this node unlocks: ' + ', '.join(labels))
                 elif node.get('state') == GRID_COMPLETED:
                     lines.append('This node is complete; its neighbors are already open.')
                 else:
@@ -3927,11 +4014,7 @@ throw "Map $name was not found in expandmo*.mix"
                     lines.append(f'   {hint}')
                 if rewards:
                     for reward in rewards:
-                        reward_name = (
-                            '?????'
-                            if self.hide_reward_details_var.get()
-                            else reward_display_name(reward)
-                        )
+                        reward_name = self.mission_check_reward_name(check, reward)
                         lines.append(f'   • {reward_name}')
                 else:
                     lines.append('   • No reward assigned')

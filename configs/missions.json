@@ -992,6 +992,9 @@
       "FKILL": [
         "YUNRU"
       ],
+      "EHEAD": [
+        "LIBRA"
+      ],
       "ETOTAL": [
         "ASSN",
         "LIBRA",
@@ -1034,6 +1037,9 @@
       ],
       "FKILL": [
         "YUNRU"
+      ],
+      "EHEAD": [
+        "LIBRA"
       ],
       "ETOTAL": [
         "ASSN",

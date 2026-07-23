@@ -1080,6 +1080,526 @@
       "SW.RangeMaximum": "-1",
       "SW.RangeMinimum": "-1"
     },
+    "aid_power_rewards": [
+      {
+        "name": "Airborne Power",
+        "description": "Drops 6 G.I.s and 4 Guardian G.I.s at the selected area.",
+        "faction": "Allies",
+        "superweapon": "AmericanParaDropSpecial",
+        "index": 6
+      },
+      {
+        "name": "Bloodhounds Power",
+        "description": "Drops 3 Airborne Humvees and 2 Stryker I.F.V.s at the selected area.",
+        "faction": "Allies",
+        "superweapon": "BloodhoundsSpecial",
+        "index": 26
+      },
+      {
+        "name": "Zephyrobot Power",
+        "description": "Deploys a targeting beacon for Zephyr Artillery units you already own.",
+        "faction": "Allies",
+        "superweapon": "ZephyrBeaconSpecial",
+        "index": 34
+      },
+      {
+        "name": "Lightning Rod Power",
+        "description": "Deploys a temporary Lightning Rod at the selected area.",
+        "faction": "Allies",
+        "superweapon": "LightningRodSpecial",
+        "index": 51
+      },
+      {
+        "name": "Ultra Miner Power",
+        "description": "Deploys an Ultra Miner at the selected area.",
+        "faction": "Allies",
+        "superweapon": "WarpMinersSpecial",
+        "index": 61
+      },
+      {
+        "name": "Kingsnakes Power",
+        "description": "Deploys a temporary Kingsnake defense portal at the selected area.",
+        "faction": "Allies",
+        "superweapon": "KingsnakesSpecial",
+        "index": 126
+      },
+      {
+        "name": "Paladin Aid Power",
+        "description": "Deploys 2 Paladin Tank Hunters for the player.",
+        "faction": "Allies",
+        "superweapon": "PaladinAidSpecial",
+        "index": 128
+      },
+      {
+        "name": "Force Shield Power",
+        "description": "Protects friendly units and structures in the selected area.",
+        "faction": "Allies",
+        "superweapon": "ForceShieldSpecial",
+        "index": 10
+      },
+      {
+        "name": "Target Painter Power",
+        "description": "Marks enemies in the selected area for increased damage.",
+        "faction": "Allies",
+        "superweapon": "TargetPainterSpecial",
+        "index": 11
+      },
+      {
+        "name": "Sonar Pulse Power",
+        "description": "Reveals submerged units in the selected water area.",
+        "faction": "Allies",
+        "superweapon": "SonarPulseSpecial",
+        "index": 12
+      },
+      {
+        "name": "Mercury Strike Power",
+        "description": "Calls a Mercury orbital strike on the selected area.",
+        "faction": "Allies",
+        "superweapon": "MercurySpecial",
+        "index": 22
+      },
+      {
+        "name": "Satellite Scan Power",
+        "description": "Reveals the selected map area.",
+        "faction": "Allies",
+        "superweapon": "SpySatSpecial",
+        "index": 24
+      },
+      {
+        "name": "Black Widow Alpha Power",
+        "description": "Calls a Black Widow Alpha airstrike.",
+        "faction": "Allies",
+        "superweapon": "BlackWidowAlphaSpecial",
+        "index": 41
+      },
+      {
+        "name": "Black Widow Power",
+        "description": "Calls a Black Widow airstrike.",
+        "faction": "Allies",
+        "superweapon": "BlackWidowSpecial",
+        "index": 50
+      },
+      {
+        "name": "Chronoboost Power",
+        "description": "Boosts friendly units in the selected area.",
+        "faction": "Allies",
+        "superweapon": "ChronoboostSpecial",
+        "index": 78
+      },
+      {
+        "name": "Cryoshot Power",
+        "description": "Freezes targets in the selected area.",
+        "faction": "Allies",
+        "superweapon": "CryoshotSpecial",
+        "index": 103
+      },
+      {
+        "name": "Cryospear Power",
+        "description": "Calls an upgraded freezing strike on the selected area.",
+        "faction": "Allies",
+        "superweapon": "CryospearSpecial",
+        "index": 104
+      },
+      {
+        "name": "Glacial Screen Power",
+        "description": "Protects friendly targets in the selected area with a glacial screen.",
+        "faction": "Allies",
+        "superweapon": "GlacialScreenSpecial",
+        "index": 127
+      },
+      {
+        "name": "Cryomine Field Power",
+        "description": "Deploys 4 Cryomines at the selected area.",
+        "faction": "Allies",
+        "superweapon": "CryomineSpawn",
+        "index": 92
+      },
+      {
+        "name": "Chronolift Power",
+        "description": "Relocates a friendly structure between selected locations.",
+        "faction": "Allies",
+        "superweapon": "ChronoliftSpecial",
+        "index": 64
+      },
+      {
+        "name": "Repair Drone Power",
+        "description": "Drops 1 Repair Drone at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "RepairDroneSpecial",
+        "index": 13
+      },
+      {
+        "name": "Tank Drop Power",
+        "description": "Drops the Russian Hydra Cannon and Tank Killer contingent at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "TankDropSpecial",
+        "index": 16
+      },
+      {
+        "name": "Instant Shelter Power",
+        "description": "Deploys a Battle Bunker with 2 Conscripts at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "InstantShelterSpecial",
+        "index": 29
+      },
+      {
+        "name": "Motor Ambush Power",
+        "description": "Deploys 3 Mortar Quads at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "MotorAmbushSpecial",
+        "index": 32
+      },
+      {
+        "name": "Naval Mine Power",
+        "description": "Deploys a Naval Mine at the selected water area.",
+        "faction": "Soviets",
+        "superweapon": "NavalMineSpecial",
+        "index": 60
+      },
+      {
+        "name": "V3 Test Drop Power",
+        "description": "Drops 20 V3 Launchers using an isolated test power.",
+        "faction": "Soviets",
+        "superweapon": "MORV3TestSpecial",
+        "index": -1
+      },
+      {
+        "name": "Terror Drop Power",
+        "description": "Drops 2 Terror Drones at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "TerrorDropSpecial",
+        "index": 62
+      },
+      {
+        "name": "Flame Tower Power",
+        "description": "Deploys a temporary Flame Tower at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "FlameTowerSpecial",
+        "index": 68
+      },
+      {
+        "name": "Drakuv Prison Vehicle Power",
+        "description": "Deploys a Drakuv Prison Vehicle for the player.",
+        "faction": "Soviets",
+        "superweapon": "DrakuvSpecial",
+        "index": 70
+      },
+      {
+        "name": "Repair Drones Power",
+        "description": "Drops the upgraded Repair Drone contingent at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "RepairDronesSpecial",
+        "index": 124
+      },
+      {
+        "name": "Elite Reserves Power",
+        "description": "Makes newly produced Soviet Tier 1 units elite while the granting Barracks exists.",
+        "faction": "Soviets",
+        "superweapon": "EliteReservesSpecial",
+        "index": 100
+      },
+      {
+        "name": "Disruptor Power",
+        "description": "Deploys a Disruptor support unit for the player.",
+        "faction": "Soviets",
+        "superweapon": "DisruptorSpecial",
+        "index": 125
+      },
+      {
+        "name": "Spy Plane Power",
+        "description": "Sends a reconnaissance aircraft over the selected area.",
+        "faction": "Soviets",
+        "superweapon": "SpyPlaneSpecial",
+        "index": 8
+      },
+      {
+        "name": "Smoke Bombs Power",
+        "description": "Calls a smoke-bomb airstrike on the selected area.",
+        "faction": "Soviets",
+        "superweapon": "SmokebombsSpecial",
+        "index": 14
+      },
+      {
+        "name": "EM Pulse Power",
+        "description": "Launches an electromagnetic pulse at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "EMPulsSpecial",
+        "index": 19
+      },
+      {
+        "name": "Irradiation Gamma Power",
+        "description": "Irradiates friendly targets in the selected area.",
+        "faction": "Soviets",
+        "superweapon": "IrradiateSpecial",
+        "index": 25
+      },
+      {
+        "name": "Overcharge Power",
+        "description": "Overcharges friendly targets in the selected area.",
+        "faction": "Soviets",
+        "superweapon": "OverchargeSpecial",
+        "index": 42
+      },
+      {
+        "name": "Wallbuster Power",
+        "description": "Calls a wall-busting strike on the selected area.",
+        "faction": "Soviets",
+        "superweapon": "WallbusterSpecial",
+        "index": 69
+      },
+      {
+        "name": "Irradiation Beta Power",
+        "description": "Irradiates friendly targets in the selected area.",
+        "faction": "Soviets",
+        "superweapon": "IrradiateBetaSpecial",
+        "index": 120
+      },
+      {
+        "name": "Rad Attack Power",
+        "description": "Calls a radiation airstrike on the selected area.",
+        "faction": "Soviets",
+        "superweapon": "RadAttackSpecial",
+        "index": 121
+      },
+      {
+        "name": "Pack Attack Power",
+        "description": "Calls a larger radiation airstrike on the selected area.",
+        "faction": "Soviets",
+        "superweapon": "PackAttackSpecial",
+        "index": 122
+      },
+      {
+        "name": "EMP Minefield Power",
+        "description": "Deploys 4 EMP Mines at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "EMPMineSpawn",
+        "index": 59
+      },
+      {
+        "name": "Risen Monolith Power",
+        "description": "Deploys a temporary Risen Monolith at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "RisenMonolithSpecial",
+        "index": 15
+      },
+      {
+        "name": "Scout Raven Power",
+        "description": "Deploys a Scout Raven at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "RavenSpecial",
+        "index": 18
+      },
+      {
+        "name": "Vision Power",
+        "description": "Deploys an Epsilon Vision scout at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "VisionSpecial",
+        "index": 21
+      },
+      {
+        "name": "Magnetic Beam Power",
+        "description": "Deploys the Magnetic Beam support object at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "MagnetShiftSpecial",
+        "index": 30
+      },
+      {
+        "name": "Libra Clones Power",
+        "description": "Drops 3 Libra Clones at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "LibraCloneSpecial",
+        "index": 33
+      },
+      {
+        "name": "Bloatick Trap Power",
+        "description": "Deploys a Bloatick Trap at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "TickTrapSpecial",
+        "index": 36
+      },
+      {
+        "name": "Quick Fort Power",
+        "description": "Deploys a temporarily strengthened Tank Bunker at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "QuickFortSpecial",
+        "index": 86
+      },
+      {
+        "name": "Ruiner Power",
+        "description": "Deploys a Ruiner support unit for the player.",
+        "faction": "Epsilon",
+        "superweapon": "RuinerSpecial",
+        "index": 93
+      },
+      {
+        "name": "Hijackers Power",
+        "description": "Drops 3 Hijackers at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "HijackersSpecial",
+        "index": 108
+      },
+      {
+        "name": "Shadow Ring Power",
+        "description": "Cloaks friendly targets in the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "IllusionSpecial",
+        "index": 31
+      },
+      {
+        "name": "Kinetic Barrier Power",
+        "description": "Protects friendly targets in the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "KineticBarrierSpecial",
+        "index": 37
+      },
+      {
+        "name": "Geneburst Power",
+        "description": "Mutates targets in the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "MutationSpecial",
+        "index": 38
+      },
+      {
+        "name": "Toxic Strike Power",
+        "description": "Calls a toxic airstrike on the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "ToxicStrikeSpecial",
+        "index": 44
+      },
+      {
+        "name": "Regen Drugs Power",
+        "description": "Regenerates friendly infantry in the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "RegenDrugsSpecial",
+        "index": 105
+      },
+      {
+        "name": "Wonder Drugs Power",
+        "description": "Applies enhanced regeneration in the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "WonderDrugsSpecial",
+        "index": 109
+      },
+      {
+        "name": "Genomine Field Power",
+        "description": "Deploys 4 Genomines at the selected area.",
+        "faction": "Epsilon",
+        "superweapon": "GenomineSpawn",
+        "index": 84
+      },
+      {
+        "name": "Spinblade Power",
+        "description": "Deploys a Spinblade support structure at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "SpinbladeSpecial",
+        "index": 39
+      },
+      {
+        "name": "Megaarena Power",
+        "description": "Deploys a temporary Megaarena Projector at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "MegaarenaSpecial",
+        "index": 52
+      },
+      {
+        "name": "Knightfall Power",
+        "description": "Deploys a Knightfall reinforcement beacon at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "KnightfallSpecial",
+        "index": 72
+      },
+      {
+        "name": "Harbinger Power",
+        "description": "Calls a Harbinger strike aircraft over the selected area.",
+        "faction": "Foehn",
+        "superweapon": "HarbingerSpecial",
+        "index": 75
+      },
+      {
+        "name": "Sweeper Drop Power",
+        "description": "Drops 2 Sweepers at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "SweeperDropSpecial",
+        "index": 76
+      },
+      {
+        "name": "Signal Jammer Power",
+        "description": "Deploys a temporary Signal Jammer at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "SignalJammerSpecial",
+        "index": 77
+      },
+      {
+        "name": "Decoy Team Power",
+        "description": "Deploys a holographic infantry decoy team at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "DecoyTeamSpecial",
+        "index": 118
+      },
+      {
+        "name": "Decoy Squadron Power",
+        "description": "Deploys a holographic aircraft decoy squadron at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "DecoySquadronSpecial",
+        "index": 119
+      },
+      {
+        "name": "M.A.D. Mine Power",
+        "description": "Deploys exactly 1 M.A.D. Mine at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "MADMineSpecial",
+        "index": 133
+      },
+      {
+        "name": "Nanofiber Sync Power",
+        "description": "Strengthens friendly targets in the selected area.",
+        "faction": "Foehn",
+        "superweapon": "NanofiberSyncSpecial",
+        "index": 40
+      },
+      {
+        "name": "Boid Blitz Power",
+        "description": "Launches a Boid Blitz at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "BoidBlitzSpecial",
+        "index": 46
+      },
+      {
+        "name": "Recon Sortie Power",
+        "description": "Sends reconnaissance aircraft over the selected area.",
+        "faction": "Foehn",
+        "superweapon": "ReconSortieSpecial",
+        "index": 49
+      },
+      {
+        "name": "Devourer Power",
+        "description": "Calls a Devourer strike on the selected area.",
+        "faction": "Foehn",
+        "superweapon": "DevourerSpecial",
+        "index": 74
+      },
+      {
+        "name": "Chaos Touch Power",
+        "description": "Disorients enemies in the selected area.",
+        "faction": "Foehn",
+        "superweapon": "ChaosTouchSpecial",
+        "index": 106
+      },
+      {
+        "name": "Confusion Grid Power",
+        "description": "Deploys a 3 by 3 Confusion Grid at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "ConfusionGridSpawn",
+        "index": 57
+      },
+      {
+        "name": "Stasis Grid Power",
+        "description": "Deploys a 3 by 3 Stasis Grid at the selected area.",
+        "faction": "Foehn",
+        "superweapon": "StasisGridSpawn",
+        "index": 63
+      }
+    ],
     "aid_power_map_configs": [
       {
         "superweapon": "AmericanParaDropSpecial",
@@ -1252,6 +1772,15 @@
         "values": {
           "IsPowered": "false",
           "SW.AuxBuildings": ""
+        }
+      },
+      {
+        "superweapon": "EliteReservesSpecial",
+        "grant_buildings": ["GAPILE", "GAPILEB", "NAHAND", "NAHANDB", "YABRCK", "YABRCKB", "FABARR", "FABARRB"],
+        "values": {
+          "SW.AuxBuildings": "",
+          "SW.AllowPlayer": "yes",
+          "SW.AllowAI": "no"
         }
       },
       {
@@ -2372,16 +2901,6 @@
         "rules": {},
         "factions": [
           "Foehn"
-        ],
-        "kind": "retired",
-        "retired_reward": true
-      },
-      "Elite Reserves Power": {
-        "name": "Elite Reserves Power (retired: unsafe building-free grant)",
-        "description": "Disabled because its internal production marker requires the original Soviet lab source.",
-        "rules": {},
-        "factions": [
-          "Soviets"
         ],
         "kind": "retired",
         "retired_reward": true

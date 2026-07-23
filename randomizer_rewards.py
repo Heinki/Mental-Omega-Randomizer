@@ -18,6 +18,7 @@ _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
 _REWARD_CATALOGUE_CONFIG = load_static_config('rewards/catalogue.json')
 _FACTION_CONFIG = load_static_config('factions.json')
 _UNIT_POLICY_CONFIG = load_static_config('rewards/unit_policy.json')
+_BUFF_EXCEPTION_CONFIG = load_static_config('rewards/buff_exceptions.json')
 
 # This module is intentionally data-heavy. Keeping it separate from the Tk
 # launcher makes future Archipelago item/location work much easier.
@@ -95,6 +96,14 @@ EXISTING_CAPABILITY_IDS = {
     'self_healing': EXISTING_SELF_HEALING_IDS,
     'cloak': EXISTING_CLOAK_IDS,
     'sensors': EXISTING_SENSOR_IDS,
+}
+
+# Reviewed gameplay exclusions for buffs that are technically constructible
+# but redundant, misleading, or ineffective for a specific TechnoType. Keep
+# this policy editable beside the installed capability snapshot.
+EXCLUDED_BUFF_TYPE_IDS = {
+    buff_type: frozenset(str(unit_id).upper() for unit_id in unit_ids)
+    for buff_type, unit_ids in _BUFF_EXCEPTION_CONFIG['excluded_buff_type_ids'].items()
 }
 
 # These types mount disguise, capture/defuse, scanner, or explicit
@@ -425,6 +434,11 @@ def build_buff_rewards():
     for unit_id, target in BUFF_TARGETS.items():
         for buff_type in BUFF_TYPES:
             buff_type_id = buff_type['id']
+            if unit_id in (
+                EXCLUDED_BUFF_TYPE_IDS.get('all', frozenset())
+                | EXCLUDED_BUFF_TYPE_IDS.get(buff_type_id, frozenset())
+            ):
+                continue
             allowed_types = target.get('allowed_buff_types')
             if allowed_types and buff_type_id not in allowed_types:
                 continue
@@ -519,93 +533,27 @@ def build_aid_power_rewards():
     # Installed player-facing support powers plus useful mine/grid spawners.
     # Neutral tech powers, internal handlers, and powers whose effect requires
     # a separately owned source object remain excluded.
-    definitions = [
-        # Allies
-        ('Airborne Power', 'Drops 6 G.I.s and 4 Guardian G.I.s at the selected area.', 'Allies', 'AmericanParaDropSpecial', 6),
-        ('Bloodhounds Power', 'Drops 3 Airborne Humvees and 2 Stryker I.F.V.s at the selected area.', 'Allies', 'BloodhoundsSpecial', 26),
-        ('Zephyrobot Power', 'Deploys a targeting beacon for Zephyr Artillery units you already own.', 'Allies', 'ZephyrBeaconSpecial', 34),
-        ('Lightning Rod Power', 'Deploys a temporary Lightning Rod at the selected area.', 'Allies', 'LightningRodSpecial', 51),
-        ('Ultra Miner Power', 'Deploys an Ultra Miner at the selected area.', 'Allies', 'WarpMinersSpecial', 61),
-        ('Kingsnakes Power', 'Deploys a temporary Kingsnake defense portal at the selected area.', 'Allies', 'KingsnakesSpecial', 126),
-        ('Paladin Aid Power', 'Deploys 2 Paladin Tank Hunters for the player.', 'Allies', 'PaladinAidSpecial', 128),
-        ('Force Shield Power', 'Protects friendly units and structures in the selected area.', 'Allies', 'ForceShieldSpecial', 10),
-        ('Target Painter Power', 'Marks enemies in the selected area for increased damage.', 'Allies', 'TargetPainterSpecial', 11),
-        ('Sonar Pulse Power', 'Reveals submerged units in the selected water area.', 'Allies', 'SonarPulseSpecial', 12),
-        ('Mercury Strike Power', 'Calls a Mercury orbital strike on the selected area.', 'Allies', 'MercurySpecial', 22),
-        ('Satellite Scan Power', 'Reveals the selected map area.', 'Allies', 'SpySatSpecial', 24),
-        ('Black Widow Alpha Power', 'Calls a Black Widow Alpha airstrike.', 'Allies', 'BlackWidowAlphaSpecial', 41),
-        ('Black Widow Power', 'Calls a Black Widow airstrike.', 'Allies', 'BlackWidowSpecial', 50),
-        ('Chronoboost Power', 'Boosts friendly units in the selected area.', 'Allies', 'ChronoboostSpecial', 78),
-        ('Cryoshot Power', 'Freezes targets in the selected area.', 'Allies', 'CryoshotSpecial', 103),
-        ('Cryospear Power', 'Calls an upgraded freezing strike on the selected area.', 'Allies', 'CryospearSpecial', 104),
-        ('Glacial Screen Power', 'Protects friendly targets in the selected area with a glacial screen.', 'Allies', 'GlacialScreenSpecial', 127),
-        ('Cryomine Field Power', 'Deploys 4 Cryomines at the selected area.', 'Allies', 'CryomineSpawn', 92),
-        ('Chronolift Power', 'Relocates a friendly structure between selected locations.', 'Allies', 'ChronoliftSpecial', 64),
-        # Soviets
-        ('Repair Drone Power', 'Drops 1 Repair Drone at the selected area.', 'Soviets', 'RepairDroneSpecial', 13),
-        ('Tank Drop Power', 'Drops the Russian Hydra Cannon and Tank Killer contingent at the selected area.', 'Soviets', 'TankDropSpecial', 16),
-        ('Instant Shelter Power', 'Deploys a Battle Bunker with 2 Conscripts at the selected area.', 'Soviets', 'InstantShelterSpecial', 29),
-        ('Motor Ambush Power', 'Deploys 3 Mortar Quads at the selected area.', 'Soviets', 'MotorAmbushSpecial', 32),
-        ('Naval Mine Power', 'Deploys a Naval Mine at the selected water area.', 'Soviets', 'NavalMineSpecial', 60),
-        ('V3 Test Drop Power', 'Drops 20 V3 Launchers using an isolated test power.', 'Soviets', 'MORV3TestSpecial', -1),
-        ('Terror Drop Power', 'Drops 2 Terror Drones at the selected area.', 'Soviets', 'TerrorDropSpecial', 62),
-        ('Flame Tower Power', 'Deploys a temporary Flame Tower at the selected area.', 'Soviets', 'FlameTowerSpecial', 68),
-        ('Drakuv Prison Vehicle Power', 'Deploys a Drakuv Prison Vehicle for the player.', 'Soviets', 'DrakuvSpecial', 70),
-        ('Repair Drones Power', 'Drops the upgraded Repair Drone contingent at the selected area.', 'Soviets', 'RepairDronesSpecial', 124),
-        ('Disruptor Power', 'Deploys a Disruptor support unit for the player.', 'Soviets', 'DisruptorSpecial', 125),
-        ('Spy Plane Power', 'Sends a reconnaissance aircraft over the selected area.', 'Soviets', 'SpyPlaneSpecial', 8),
-        ('Smoke Bombs Power', 'Calls a smoke-bomb airstrike on the selected area.', 'Soviets', 'SmokebombsSpecial', 14),
-        ('EM Pulse Power', 'Launches an electromagnetic pulse at the selected area.', 'Soviets', 'EMPulsSpecial', 19),
-        ('Irradiation Gamma Power', 'Irradiates friendly targets in the selected area.', 'Soviets', 'IrradiateSpecial', 25),
-        ('Overcharge Power', 'Overcharges friendly targets in the selected area.', 'Soviets', 'OverchargeSpecial', 42),
-        ('Wallbuster Power', 'Calls a wall-busting strike on the selected area.', 'Soviets', 'WallbusterSpecial', 69),
-        ('Irradiation Beta Power', 'Irradiates friendly targets in the selected area.', 'Soviets', 'IrradiateBetaSpecial', 120),
-        ('Rad Attack Power', 'Calls a radiation airstrike on the selected area.', 'Soviets', 'RadAttackSpecial', 121),
-        ('Pack Attack Power', 'Calls a larger radiation airstrike on the selected area.', 'Soviets', 'PackAttackSpecial', 122),
-        ('EMP Minefield Power', 'Deploys 4 EMP Mines at the selected area.', 'Soviets', 'EMPMineSpawn', 59),
-        # Epsilon
-        ('Risen Monolith Power', 'Deploys a temporary Risen Monolith at the selected area.', 'Epsilon', 'RisenMonolithSpecial', 15),
-        ('Scout Raven Power', 'Deploys a Scout Raven at the selected area.', 'Epsilon', 'RavenSpecial', 18),
-        ('Vision Power', 'Deploys an Epsilon Vision scout at the selected area.', 'Epsilon', 'VisionSpecial', 21),
-        ('Magnetic Beam Power', 'Deploys the Magnetic Beam support object at the selected area.', 'Epsilon', 'MagnetShiftSpecial', 30),
-        ('Libra Clones Power', 'Drops 3 Libra Clones at the selected area.', 'Epsilon', 'LibraCloneSpecial', 33),
-        ('Bloatick Trap Power', 'Deploys a Bloatick Trap at the selected area.', 'Epsilon', 'TickTrapSpecial', 36),
-        ('Quick Fort Power', 'Deploys a temporarily strengthened Tank Bunker at the selected area.', 'Epsilon', 'QuickFortSpecial', 86),
-        ('Ruiner Power', 'Deploys a Ruiner support unit for the player.', 'Epsilon', 'RuinerSpecial', 93),
-        ('Hijackers Power', 'Drops 3 Hijackers at the selected area.', 'Epsilon', 'HijackersSpecial', 108),
-        ('Shadow Ring Power', 'Cloaks friendly targets in the selected area.', 'Epsilon', 'IllusionSpecial', 31),
-        ('Kinetic Barrier Power', 'Protects friendly targets in the selected area.', 'Epsilon', 'KineticBarrierSpecial', 37),
-        ('Geneburst Power', 'Mutates targets in the selected area.', 'Epsilon', 'MutationSpecial', 38),
-        ('Toxic Strike Power', 'Calls a toxic airstrike on the selected area.', 'Epsilon', 'ToxicStrikeSpecial', 44),
-        ('Regen Drugs Power', 'Regenerates friendly infantry in the selected area.', 'Epsilon', 'RegenDrugsSpecial', 105),
-        ('Wonder Drugs Power', 'Applies enhanced regeneration in the selected area.', 'Epsilon', 'WonderDrugsSpecial', 109),
-        ('Genomine Field Power', 'Deploys 4 Genomines at the selected area.', 'Epsilon', 'GenomineSpawn', 84),
-        # Foehn
-        ('Spinblade Power', 'Deploys a Spinblade support structure at the selected area.', 'Foehn', 'SpinbladeSpecial', 39),
-        ('Megaarena Power', 'Deploys a temporary Megaarena Projector at the selected area.', 'Foehn', 'MegaarenaSpecial', 52),
-        ('Knightfall Power', 'Deploys a Knightfall reinforcement beacon at the selected area.', 'Foehn', 'KnightfallSpecial', 72),
-        ('Harbinger Power', 'Calls a Harbinger strike aircraft over the selected area.', 'Foehn', 'HarbingerSpecial', 75),
-        ('Sweeper Drop Power', 'Drops 2 Sweepers at the selected area.', 'Foehn', 'SweeperDropSpecial', 76),
-        ('Signal Jammer Power', 'Deploys a temporary Signal Jammer at the selected area.', 'Foehn', 'SignalJammerSpecial', 77),
-        ('Decoy Team Power', 'Deploys a holographic infantry decoy team at the selected area.', 'Foehn', 'DecoyTeamSpecial', 118),
-        ('Decoy Squadron Power', 'Deploys a holographic aircraft decoy squadron at the selected area.', 'Foehn', 'DecoySquadronSpecial', 119),
-        ('M.A.D. Mine Power', 'Deploys exactly 1 M.A.D. Mine at the selected area.', 'Foehn', 'MADMineSpecial', 133),
-        ('Nanofiber Sync Power', 'Strengthens friendly targets in the selected area.', 'Foehn', 'NanofiberSyncSpecial', 40),
-        ('Boid Blitz Power', 'Launches a Boid Blitz at the selected area.', 'Foehn', 'BoidBlitzSpecial', 46),
-        ('Recon Sortie Power', 'Sends reconnaissance aircraft over the selected area.', 'Foehn', 'ReconSortieSpecial', 49),
-        ('Devourer Power', 'Calls a Devourer strike on the selected area.', 'Foehn', 'DevourerSpecial', 74),
-        ('Chaos Touch Power', 'Disorients enemies in the selected area.', 'Foehn', 'ChaosTouchSpecial', 106),
-        ('Confusion Grid Power', 'Deploys a 3 by 3 Confusion Grid at the selected area.', 'Foehn', 'ConfusionGridSpawn', 57),
-        ('Stasis Grid Power', 'Deploys a 3 by 3 Stasis Grid at the selected area.', 'Foehn', 'StasisGridSpawn', 63),
-    ]
+    definitions = _REWARD_CATALOGUE_CONFIG['aid_power_rewards']
     rewards = []
-    for name, description, faction, superweapon, index in definitions:
+    for definition in definitions:
+        name = definition['name']
+        description = definition['description']
+        faction = definition['faction']
+        superweapon = definition['superweapon']
+        index = definition['index']
         modified_config = AID_POWER_MAP_CONFIG_BY_SUPERWEAPON.get(superweapon)
         if modified_config and modified_config.get('disabled'):
             continue
+        building_bound = bool(
+            modified_config and modified_config.get('grant_buildings')
+        )
         reward = {
             'name': name,
-            'description': description + ' Restored at the start of future missions without its normal source building.',
+            'description': (
+                description
+                if building_bound
+                else description + ' Restored at the start of future missions without its normal source building.'
+            ),
             'rules': {},
             'factions': [faction],
             'kind': 'superweapon',
@@ -613,6 +561,10 @@ def build_aid_power_rewards():
             'superweapon': superweapon,
             'superweapon_index': index,
         }
+        if building_bound:
+            reward['superweapon_grant_buildings'] = list(
+                modified_config['grant_buildings']
+            )
         if modified_config and modified_config['values']:
             reward['superweapon_rules'] = dict(modified_config['values'])
         if modified_config and modified_config.get('sections'):

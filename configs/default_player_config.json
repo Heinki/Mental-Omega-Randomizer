@@ -7,6 +7,7 @@
       "game": "Mental Omega",
       "dark_mode": false,
       "hide_reward_details": false,
+      "hide_locked_grid_missions": false,
       "seed": "",
       "campaign_filter": "All Campaigns",
       "mission_goal": 15,

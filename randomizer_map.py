@@ -296,8 +296,9 @@ def cloned_superweapon_plan(
     installed_sections,
     superweapon_rule_overrides=None,
     superweapon_techno_clone_overrides=None,
+    superweapon_required_houses=(),
 ):
-    """Create isolated map-local copies and action-34 grants.
+    """Create isolated map-local copies and safe grants.
 
     Scenario SuperWeaponTypes are allocated after installed types regardless
     of their numeric INI labels. Existing campaign additions are therefore
@@ -511,10 +512,37 @@ def cloned_superweapon_plan(
                     if str(value).lower() == str(dependent_source).lower():
                         clone_values[key] = dependent_clone
 
+        grant_buildings = tuple(reward.get('superweapon_grant_buildings') or ())
+        if grant_buildings and superweapon_required_houses:
+            clone_values['SW.RequiredHouses'] = ','.join(
+                unique_in_order(superweapon_required_houses)
+            )
         runtime_index = register_superweapon(clone_type, clone_values)
         if runtime_index in granted_indices:
             continue
         granted_indices.add(runtime_index)
+        if grant_buildings:
+            for building_id in grant_buildings:
+                building_id = str(building_id or '').strip()
+                if not building_id:
+                    continue
+                pending = section_rules.setdefault(building_id, {})
+                existing = _value_case_insensitive(pending, 'SuperWeapons')
+                if existing is None:
+                    existing = _value_case_insensitive(
+                        section_value_map_preserve(lines, building_id),
+                        'SuperWeapons',
+                    )
+                if existing is None:
+                    existing = _value_case_insensitive(
+                        installed_sections.get(building_id, {}),
+                        'SuperWeapons',
+                    )
+                attached = unique_in_order(comma_items(existing) + [clone_type])
+                _remove_case_insensitive(pending, 'SuperWeapons')
+                pending['SuperWeapons'] = ','.join(attached)
+            clone_names.append(clone_type)
+            continue
         clone_names.append(clone_type)
         actions.append(['34', '0', str(runtime_index), '0', '0', '0', '0', 'A'])
 
@@ -2900,6 +2928,15 @@ def player_unit_clone_rules(
                 ):
                     _remove_case_insensitive(clone_source_values, key)
                     clone_source_values[key] = value
+            # Chaos access rules set faction bands on the map-local original.
+            # Buildable clones otherwise restart from installed values and lose
+            # that band, interleaving factions in Infantry/Units/Defenses tabs.
+            if unit_specific_mode:
+                cameo_priority = _value_case_insensitive(
+                    effective_unit_values, 'CameoPriority'
+                )
+                if cameo_priority is not None:
+                    clone_source_values['CameoPriority'] = cameo_priority
         effective_target = _target_with_effective_unit_stats(
             target, clone_source_values
         )

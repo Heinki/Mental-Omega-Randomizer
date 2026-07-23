@@ -541,9 +541,9 @@ def create_widgets(self):
     WidgetTooltip(
         self.start_with_tier_one_units_check,
         'Standard grants ground/anti-air infantry, vehicles, and one basic aircraft matching each '
-        'Allied, Soviet, or Epsilon production family present in the mission. An available MCV or '
+        'Allied, Soviet, or Epsilon production family and player subfaction in the mission. An available MCV or '
         'Construction Yard also unlocks the matching airfield. Chaos assigns every faction once '
-        'across the four ground roles, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
+        'across the four ground roles using valid subfaction variants, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
         'Starter units remain buffable.',
     )
     self.include_defensive_buildings_check = ttk.Checkbutton(
@@ -695,8 +695,20 @@ def create_widgets(self):
     self.hide_reward_details_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.hide_reward_details_check,
-        'Shows ????? for assigned rewards in Mission Details and mission-row hover text. '
-        'Earned rewards remain visible in Unlocks.',
+        'Shows ????? for pending rewards in Mission Details and mission-row hover text. '
+        'Completed or released rewards reveal their names.',
+    )
+    self.hide_locked_grid_missions_check = ttk.Checkbutton(
+        appearance_frame,
+        text='Hide locked Grid Mode mission names',
+        variable=self.hide_locked_grid_missions_var,
+        command=self.on_hide_locked_grid_missions_changed,
+    )
+    self.hide_locked_grid_missions_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
+    WidgetTooltip(
+        self.hide_locked_grid_missions_check,
+        'Shows locked grid nodes as ? tiles. Completing a visible mission reveals '
+        'newly unlocked mission names and faction colors.',
     )
 
     self.refresh_setting_states()

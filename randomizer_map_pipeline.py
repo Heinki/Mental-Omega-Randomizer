@@ -183,6 +183,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
     earned_rewards = self.active_launch_rewards() if self.state else []
     launch_power_rewards = list(earned_rewards)
+    configured_power_houses = mission_player_power_houses(code)
+    power_house_names = configured_power_houses or (
+        player_house_from_map(lines, records=records),
+    )
+    power_houses = unique_in_order(
+        records.get(power_house, {}).get('country')
+        or power_house.replace(' House', '')
+        for power_house in power_house_names
+        if power_house
+    )
+    if not power_houses:
+        power_houses = [player_country_from_map(lines)]
     mission_power_techno_clone_overrides = (
         MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.get(
             code, {}
@@ -192,7 +204,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     (
         cloned_power_rules,
         superweapon_actions,
-        cloned_power_names,
+        _cloned_power_names,
         startup_power_buildings,
         missing_power_sources,
     ) = cloned_superweapon_plan(
@@ -203,9 +215,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         superweapon_techno_clone_overrides=(
             mission_power_techno_clone_overrides
         ),
+        superweapon_required_houses=power_houses,
     )
     for section, values in cloned_power_rules.items():
         rule_sections.setdefault(section, {}).update(values)
+    building_bound_power_names = [
+        reward_display_name(reward)
+        for reward in canonical_rewards(launch_power_rewards)
+        if reward.get('kind') == 'superweapon'
+        and reward.get('superweapon_grant_buildings')
+    ]
+    if building_bound_power_names:
+        self.append_log(
+            'Prepared isolated Barracks-bound power clone(s): '
+            + ', '.join(building_bound_power_names)
+            + '. These powers are not granted through map-start action 34.'
+        )
     if self.randomized_tech_ids():
         safe_owners = ','.join(
             safe_build_countries(lines, records, ())
@@ -501,18 +526,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
-    configured_power_houses = mission_player_power_houses(code)
-    power_house_names = configured_power_houses or (
-        player_house_from_map(lines, records=records),
-    )
-    power_houses = unique_in_order(
-        records.get(power_house, {}).get('country')
-        or power_house.replace(' House', '')
-        for power_house in power_house_names
-        if power_house
-    )
-    if not power_houses:
-        power_houses = [player_country_from_map(lines)]
     # Objective marker TeamTypes still need one concrete owner. Keep this
     # separate from the possibly multi-house superweapon grant list: the
     # latter replaced the old ``house`` local and accidentally left marker
@@ -530,10 +543,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             reward_display_name(reward)
             for reward in canonical_rewards(launch_power_rewards)
             if reward.get('kind') == 'superweapon'
+            and not reward.get('superweapon_grant_buildings')
         ]
         self.append_log(
-            'Prepared isolated building-free power clones '
-            f'({", ".join(cloned_power_names)}) for: '
+            'Prepared isolated building-free power rewards for: '
             + ', '.join(power_names)
             + f'. Grant houses: {", ".join(power_houses)}.'
         )
