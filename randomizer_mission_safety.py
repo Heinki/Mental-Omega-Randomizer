@@ -740,7 +740,7 @@ def _tier_one_variant_entries(role, family=None):
 
 
 def expanded_tier_one_unit_ids(starting_unit_ids):
-    """Expand role markers for reward filtering; preserve old exact-ID saves."""
+    """Expand Standard role markers without granting Chaos-only Foehn units."""
     expanded = set()
     for value in starting_unit_ids or ():
         unit_id = str(value or '').upper()
@@ -751,7 +751,7 @@ def expanded_tier_one_unit_ids(starting_unit_ids):
             continue
         expanded.update(
             entry[0]
-            for family in STANDARD_TIER_ONE_FAMILIES + ('foehn',)
+            for family in STANDARD_TIER_ONE_FAMILIES
             for entry in _tier_one_variant_entries(role, family)
         )
     return expanded

@@ -36,13 +36,22 @@ class WidgetTooltip:
             self.tip,
             text=self.text,
             justify='left',
+            font=('Segoe UI', 10),
             padding=(8, 6, 8, 6),
             relief='solid',
             wraplength=380,
         )
         label.grid(row=0, column=0)
+        self.tip.update_idletasks()
         x = self.widget.winfo_rootx() + 18
         y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+        tip_width = self.tip.winfo_reqwidth()
+        tip_height = self.tip.winfo_reqheight()
+        screen_width = self.widget.winfo_screenwidth()
+        screen_height = self.widget.winfo_screenheight()
+        x = max(0, min(x, screen_width - tip_width - 4))
+        if y + tip_height > screen_height:
+            y = max(0, self.widget.winfo_rooty() - tip_height - 4)
         self.tip.wm_geometry(f'+{x}+{y}')
 
     def hide(self, event=None):
@@ -106,6 +115,8 @@ def create_widgets(self):
     self.style = ttk.Style(self)
     self.style.configure('Randomizer.TNotebook', tabposition='n')
     self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
+    self.style.configure('Unlocks.TNotebook', tabposition='n')
+    self.style.configure('Unlocks.TNotebook.Tab', padding=(7, 7), font=('Segoe UI', 9, 'bold'))
     self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
 
     header = ttk.Label(
@@ -116,7 +127,7 @@ def create_widgets(self):
     header.grid(row=0, column=0, sticky='w')
     self.settings_toggle_button = ttk.Button(
         main_frame,
-        text='Hide Settings',
+        text='Hide Details',
         command=self.toggle_settings_panel,
     )
     self.settings_toggle_button.grid(row=0, column=1, rowspan=2, sticky='ne')
@@ -224,23 +235,90 @@ def create_widgets(self):
         justify='center',
     )
 
+    self.compact_action_row = ttk.Frame(mission_view_frame)
+    self.compact_action_row.columnconfigure(0, weight=1)
+    self.compact_action_row.columnconfigure(1, weight=1)
+    ttk.Button(
+        self.compact_action_row,
+        text='Launch Selected Mission',
+        command=self.on_launch_selected,
+        style='Launch.TButton',
+    ).grid(row=0, column=0, sticky='ew', padx=(0, 4), pady=(6, 0))
+    compact_complete_button = ttk.Button(
+        self.compact_action_row,
+        text='Mark Mission Complete',
+        command=self.on_debug_mark_complete,
+    )
+    compact_complete_button.grid(row=0, column=1, sticky='ew', padx=(4, 0), pady=(6, 0))
+    WidgetTooltip(
+        compact_complete_button,
+        'Recovery only: use when a completed mission was not detected.',
+    )
+    self.compact_action_row.grid(row=1, column=0, columnspan=2, sticky='ew')
+    self.compact_action_row.grid_remove()
+
     right_frame = ttk.Frame(main_frame)
     self.right_frame = right_frame
     right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
     right_frame.columnconfigure(0, weight=1)
-    right_frame.rowconfigure(4, weight=1)
+    right_frame.rowconfigure(1, weight=1)
 
-    ttk.Label(right_frame, text='Seed', font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
-    seed_row = ttk.Frame(right_frame)
+    info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
+    self.info_tabs = info_tabs
+    info_tabs.grid(row=1, column=0, sticky='nsew')
+    info_tabs.enable_traversal()
+
+    # Build Settings now so every seed/run control can be parented inside its
+    # scrollable tab. The tab itself is added after Mission Details/Unlocks.
+    settings_tab = ttk.Frame(info_tabs)
+    self.settings_tab = settings_tab
+    settings_tab.columnconfigure(0, weight=1)
+    settings_tab.rowconfigure(0, weight=1)
+    settings_canvas = tk.Canvas(
+        settings_tab,
+        borderwidth=0,
+        highlightthickness=0,
+        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+    )
+    self.settings_canvas = settings_canvas
+    settings_scrollbar = ttk.Scrollbar(
+        settings_tab,
+        orient='vertical',
+        command=settings_canvas.yview,
+    )
+    settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
+    settings_canvas.grid(row=0, column=0, sticky='nsew')
+    settings_scrollbar.grid(row=0, column=1, sticky='ns')
+    settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
+    settings_frame.columnconfigure(0, weight=1)
+    self.settings_frame = settings_frame
+    self.settings_canvas_window = settings_canvas.create_window(
+        (0, 0),
+        window=settings_frame,
+        anchor='nw',
+    )
+    settings_frame.bind('<Configure>', self.on_settings_content_configure, add='+')
+    settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
+    self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
+
+    seed_settings_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Seed & Run',
+        padding=(8, 8, 8, 8),
+    )
+    seed_settings_frame.grid(row=0, column=0, sticky='ew')
+    seed_settings_frame.columnconfigure(0, weight=1)
+
+    ttk.Label(seed_settings_frame, text='Seed', font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
+    seed_row = ttk.Frame(seed_settings_frame)
     seed_row.grid(row=1, column=0, sticky='ew', pady=(0, 6))
     seed_row.columnconfigure(0, weight=1)
     ttk.Entry(seed_row, textvariable=self.seed_var, width=20).grid(row=0, column=0, sticky='ew', padx=(0, 6))
     ttk.Button(seed_row, text='Generate New Seed', command=self.on_new_seed).grid(row=0, column=1, sticky='ew')
 
-    options_row = ttk.Frame(right_frame)
+    options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
     options_row.columnconfigure(1, weight=1)
-    options_row.columnconfigure(3, weight=1)
     ttk.Label(options_row, text='Missions to finish').grid(row=0, column=0, sticky='w', padx=(0, 8))
     self.mission_goal_spinbox = ttk.Spinbox(
         options_row,
@@ -250,7 +328,7 @@ def create_widgets(self):
         width=6,
     )
     self.mission_goal_spinbox.grid(row=0, column=1, sticky='w')
-    ttk.Label(options_row, text='Game speed').grid(row=0, column=2, sticky='w', padx=(14, 8))
+    ttk.Label(options_row, text='Game speed').grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.game_speed_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -258,10 +336,10 @@ def create_widgets(self):
         values=[name for name, _ in GAME_SPEEDS],
         width=10,
     )
-    self.game_speed_combo.grid(row=0, column=3, sticky='ew')
+    self.game_speed_combo.grid(row=1, column=1, sticky='ew', pady=(6, 0))
 
     self.campaign_label = ttk.Label(options_row, text='Campaign')
-    self.campaign_label.grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    self.campaign_label.grid(row=2, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.campaign_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -269,10 +347,10 @@ def create_widgets(self):
         values=CAMPAIGN_FILTERS,
         width=12,
     )
-    self.campaign_combo.grid(row=1, column=1, sticky='ew', pady=(6, 0))
+    self.campaign_combo.grid(row=2, column=1, sticky='ew', pady=(6, 0))
     self.campaign_combo.bind('<<ComboboxSelected>>', self.on_campaign_filter_changed, add='+')
 
-    ttk.Label(options_row, text='Difficulty').grid(row=1, column=2, sticky='w', pady=(6, 0), padx=(14, 8))
+    ttk.Label(options_row, text='Difficulty').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.difficulty_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -280,9 +358,9 @@ def create_widgets(self):
         values=[name for name, _ in DIFFICULTIES],
         width=12,
     )
-    self.difficulty_combo.grid(row=1, column=3, sticky='ew', pady=(6, 0))
+    self.difficulty_combo.grid(row=3, column=1, sticky='ew', pady=(6, 0))
 
-    ttk.Label(options_row, text='Rewards per objective').grid(row=2, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Rewards per objective').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.rewards_per_check_spinbox = ttk.Spinbox(
         options_row,
         from_=1,
@@ -292,13 +370,13 @@ def create_widgets(self):
         validate='key',
         validatecommand=(self.register(self.validate_rewards_per_check), '%P'),
     )
-    self.rewards_per_check_spinbox.grid(row=2, column=1, sticky='w', pady=(6, 0))
+    self.rewards_per_check_spinbox.grid(row=4, column=1, sticky='w', pady=(6, 0))
     self.buff_allied_helpers_check = ttk.Checkbutton(
         options_row,
         text='Buff allied helpers',
         variable=self.buff_allied_helpers_var,
     )
-    self.buff_allied_helpers_check.grid(row=2, column=2, columnspan=2, sticky='w', pady=(6, 0), padx=(14, 0))
+    self.buff_allied_helpers_check.grid(row=5, column=0, columnspan=2, sticky='w', pady=(6, 0))
     WidgetTooltip(
         self.buff_allied_helpers_check,
         'Gives reviewed allied AI helpers safe country buffs and compatible '
@@ -307,16 +385,16 @@ def create_widgets(self):
     )
     self.rewards_per_check_message_label = ttk.Label(options_row, text='')
     self.rewards_per_check_message_label.grid(
-        row=3,
+        row=6,
         column=0,
-        columnspan=4,
+        columnspan=2,
         sticky='w',
         pady=(4, 0),
     )
     self.rewards_per_check_var.trace_add('write', self.refresh_rewards_per_check_message)
     self.refresh_rewards_per_check_message()
 
-    ttk.Label(options_row, text='Reward mode').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Reward mode').grid(row=7, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.reward_mode_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -324,7 +402,7 @@ def create_widgets(self):
         values=REWARD_MODES,
         width=20,
     )
-    self.reward_mode_combo.grid(row=4, column=1, columnspan=3, sticky='ew', pady=(6, 0))
+    self.reward_mode_combo.grid(row=7, column=1, sticky='ew', pady=(6, 0))
     self.reward_mode_combo.bind('<<ComboboxSelected>>', self.on_reward_mode_changed, add='+')
     WidgetTooltip(
         self.reward_mode_combo,
@@ -334,7 +412,7 @@ def create_widgets(self):
         'not grant foreign production structures.',
     )
 
-    ttk.Label(options_row, text='Progression').grid(row=5, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Progression').grid(row=8, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.progression_mode_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -342,7 +420,7 @@ def create_widgets(self):
         values=PROGRESSION_MODES,
         width=12,
     )
-    self.progression_mode_combo.grid(row=5, column=1, sticky='ew', pady=(6, 0))
+    self.progression_mode_combo.grid(row=8, column=1, sticky='ew', pady=(6, 0))
     self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
     WidgetTooltip(
         self.progression_mode_combo,
@@ -352,7 +430,7 @@ def create_widgets(self):
     )
 
     self.grid_options_frame = ttk.Frame(options_row)
-    self.grid_options_frame.grid(row=6, column=0, columnspan=4, sticky='ew', pady=(6, 0))
+    self.grid_options_frame.grid(row=9, column=0, columnspan=2, sticky='ew', pady=(6, 0))
     self.grid_two_starts_check = ttk.Checkbutton(
         self.grid_options_frame,
         text='Start with two available missions',
@@ -365,7 +443,7 @@ def create_widgets(self):
         'The board dimensions are calculated automatically from Missions to finish.',
     )
     button_row = ttk.Frame(right_frame)
-    button_row.grid(row=3, column=0, sticky='ew', pady=(0, 6))
+    button_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     button_row.columnconfigure(0, weight=1)
     ttk.Button(
         button_row,
@@ -373,11 +451,16 @@ def create_widgets(self):
         command=self.on_launch_selected,
         style='Launch.TButton',
     ).grid(row=0, column=0, sticky='ew', pady=(0, 4))
-
-    info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
-    self.info_tabs = info_tabs
-    info_tabs.grid(row=4, column=0, sticky='nsew')
-    info_tabs.enable_traversal()
+    self.debug_complete_button = ttk.Button(
+        button_row,
+        text='Mark Mission Complete',
+        command=self.on_debug_mark_complete,
+    )
+    self.debug_complete_button.grid(row=1, column=0, sticky='ew', pady=(0, 3))
+    WidgetTooltip(
+        self.debug_complete_button,
+        'Recovery only: use when a completed mission was not detected.',
+    )
 
     progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     progress_frame.columnconfigure(0, weight=1)
@@ -402,7 +485,63 @@ def create_widgets(self):
     unlocks_frame.rowconfigure(1, weight=1)
     info_tabs.add(unlocks_frame, text='Unlocks')
 
-    search_row = ttk.Frame(unlocks_frame)
+    self.unlock_legend_label = ttk.Label(
+        unlocks_frame,
+        text='Normal: unlocked   Green: playable reward   Gray: locked   Black: unavailable',
+        style='Muted.TLabel',
+        wraplength=330,
+        justify='left',
+    )
+    self.unlock_legend_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+
+    unlocks_notebook = ttk.Notebook(unlocks_frame, style='Unlocks.TNotebook')
+    self.unlocks_notebook = unlocks_notebook
+    unlocks_notebook.grid(row=1, column=0, sticky='nsew')
+    self.unlock_icon_canvases = {}
+    self.unlock_icon_frames = {}
+    for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
+        faction_page = ttk.Frame(unlocks_notebook)
+        faction_page.columnconfigure(0, weight=1)
+        faction_page.rowconfigure(0, weight=1)
+        unlocks_notebook.add(faction_page, text=faction)
+        canvas = tk.Canvas(
+            faction_page,
+            borderwidth=0,
+            highlightthickness=0,
+            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+        )
+        scrollbar = ttk.Scrollbar(faction_page, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=0, column=0, sticky='nsew')
+        scrollbar.grid(row=0, column=1, sticky='ns')
+        content = ttk.Frame(canvas, padding=(4, 4, 4, 4))
+        window = canvas.create_window((0, 0), window=content, anchor='nw')
+        content.bind(
+            '<Configure>',
+            lambda _event, target=canvas: target.configure(scrollregion=target.bbox('all')),
+        )
+        canvas.bind(
+            '<Configure>',
+            lambda event, selected=faction, target=canvas, item=window: (
+                self.on_unlock_canvas_configure(selected, target, item, event.width)
+            ),
+        )
+        canvas.bind(
+            '<MouseWheel>',
+            lambda event, target=canvas: self.on_unlock_mousewheel(event, target),
+        )
+        content.bind(
+            '<MouseWheel>',
+            lambda event, target=canvas: self.on_unlock_mousewheel(event, target),
+        )
+        self.unlock_icon_canvases[faction] = canvas
+        self.unlock_icon_frames[faction] = content
+
+    summary_page = ttk.Frame(unlocks_notebook)
+    summary_page.columnconfigure(0, weight=1)
+    summary_page.rowconfigure(1, weight=1)
+    unlocks_notebook.add(summary_page, text='Summary')
+    search_row = ttk.Frame(summary_page)
     search_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     search_row.columnconfigure(0, weight=1)
     self.unlock_search_entry = ttk.Entry(search_row, textvariable=self.unlock_search_var)
@@ -412,9 +551,8 @@ def create_widgets(self):
     ttk.Button(search_row, text='Clear', command=self.clear_unlock_search, width=8).grid(row=0, column=3)
     self.unlock_search_status = ttk.Label(search_row, text='', width=9, anchor='e')
     self.unlock_search_status.grid(row=0, column=4, padx=(6, 0))
-
     self.unlocks_text = scrolledtext.ScrolledText(
-        unlocks_frame,
+        summary_page,
         height=16,
         wrap='word',
         state='disabled',
@@ -431,39 +569,7 @@ def create_widgets(self):
     self.bind_all('<F3>', self.find_unlock_next, add='+')
     self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
 
-    settings_tab = ttk.Frame(info_tabs)
-    self.settings_tab = settings_tab
-    settings_tab.columnconfigure(0, weight=1)
-    settings_tab.rowconfigure(0, weight=1)
     info_tabs.add(settings_tab, text='Settings')
-
-    settings_canvas = tk.Canvas(
-        settings_tab,
-        borderwidth=0,
-        highlightthickness=0,
-        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
-    )
-    self.settings_canvas = settings_canvas
-    settings_scrollbar = ttk.Scrollbar(
-        settings_tab,
-        orient='vertical',
-        command=settings_canvas.yview,
-    )
-    settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
-    settings_canvas.grid(row=0, column=0, sticky='nsew')
-    settings_scrollbar.grid(row=0, column=1, sticky='ns')
-
-    settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
-    settings_frame.columnconfigure(0, weight=1)
-    self.settings_frame = settings_frame
-    self.settings_canvas_window = settings_canvas.create_window(
-        (0, 0),
-        window=settings_frame,
-        anchor='nw',
-    )
-    settings_frame.bind('<Configure>', self.on_settings_content_configure, add='+')
-    settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
-    self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
 
     self.settings_intro_label = ttk.Label(
         settings_frame,
@@ -474,14 +580,14 @@ def create_widgets(self):
         wraplength=340,
         style='Muted.TLabel',
     )
-    self.settings_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 8))
+    self.settings_intro_label.grid(row=1, column=0, sticky='ew', pady=(8, 8))
 
     mission_pool_frame = ttk.LabelFrame(
         settings_frame,
         text='Mission Pool',
         padding=(8, 8, 8, 8),
     )
-    mission_pool_frame.grid(row=1, column=0, sticky='ew')
+    mission_pool_frame.grid(row=2, column=0, sticky='ew')
     self.include_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
         text='Include true no-build / fixed-unit missions',
@@ -518,7 +624,7 @@ def create_widgets(self):
     )
 
     reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
-    reward_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+    reward_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
     reward_frame.columnconfigure(0, weight=1)
     self.randomize_unit_access_check = ttk.Checkbutton(
         reward_frame,
@@ -623,7 +729,7 @@ def create_widgets(self):
     )
 
     buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
-    buff_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+    buff_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
         buff_frame.columnconfigure(column, weight=1)
     self.buff_type_checks = []
@@ -646,7 +752,7 @@ def create_widgets(self):
         text='Mission Assistance',
         padding=(8, 8, 8, 8),
     )
-    assistance_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
+    assistance_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
         text='Strengthen failed missions on retry',
@@ -678,7 +784,7 @@ def create_widgets(self):
         text='Appearance & Privacy',
         padding=(8, 8, 8, 8),
     )
-    appearance_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+    appearance_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
         text='Dark mode',
@@ -732,14 +838,6 @@ def create_widgets(self):
         sticky='w',
         padx=(8, 0),
     )
-    self.debug_complete_button = ttk.Button(
-        log_header,
-        text='Debug: Mark Complete',
-        command=self.on_debug_mark_complete,
-    )
-    self.debug_complete_button.grid(row=0, column=2, sticky='e', padx=(8, 0))
-    self.debug_complete_button.grid_remove()
-
     self.log_text = scrolledtext.ScrolledText(
         main_frame,
         height=10,
@@ -755,8 +853,8 @@ def create_widgets(self):
     main_frame.rowconfigure(9, weight=0)
     # Uniform sizing makes the mission view reliably wider than settings,
     # regardless of the settings widgets' requested width.
-    main_frame.columnconfigure(0, weight=5, uniform='content')
-    main_frame.columnconfigure(1, weight=3, uniform='content')
+    main_frame.columnconfigure(0, weight=13, uniform='content')
+    main_frame.columnconfigure(1, weight=6, minsize=396, uniform='content')
 
     # Long seed/map work runs on the single background worker. This overlay
     # blocks duplicate input while Tk keeps painting progress and elapsed time.
@@ -859,6 +957,20 @@ def apply_color_mode(self):
         foreground=[('selected', selected_foreground), ('active', foreground)],
         padding=[('selected', (16, 7)), ('active', (16, 7))],
     )
+    style.configure('Unlocks.TNotebook', background=background, bordercolor=border, tabposition='n')
+    style.configure(
+        'Unlocks.TNotebook.Tab',
+        background=panel,
+        foreground=foreground,
+        padding=(7, 7),
+        font=('Segoe UI', 9, 'bold'),
+    )
+    style.map(
+        'Unlocks.TNotebook.Tab',
+        background=[('selected', selected), ('active', palette['canvas'])],
+        foreground=[('selected', selected_foreground), ('active', foreground)],
+        padding=[('selected', (7, 7)), ('active', (7, 7))],
+    )
     style.configure(
         'Treeview',
         background=field,
@@ -880,6 +992,11 @@ def apply_color_mode(self):
             'completed',
             background='#244a32' if self.dark_mode_var.get() else '#dff2df',
             foreground='#b8efc5' if self.dark_mode_var.get() else '#176b2c',
+        )
+        self.missions_tree.tag_configure(
+            'unlock_available',
+            foreground='#65f58c' if self.dark_mode_var.get() else '#087a2f',
+            font=('Segoe UI', 9, 'bold underline'),
         )
     for canvas_name in ('settings_canvas', 'grid_canvas'):
         canvas = getattr(self, canvas_name, None)
@@ -1022,6 +1139,8 @@ def redraw_grid(self):
             content_frame,
             relief='flat',
             borderwidth=0,
+            highlightthickness=3,
+            highlightbackground=self.ui_palette()['canvas'],
             cursor='hand2',
         )
         tile.mission_code = code

@@ -54,6 +54,7 @@ from randomizer_ini import (
     set_ini_value_lines,
 )
 from randomizer_rewards import (
+    ALWAYS_AVAILABLE_TECH_IDS,
     AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     BUFF_TYPES,
@@ -146,6 +147,7 @@ from randomizer_ui import (
     REWARD_MODES,
 )
 from randomizer_ui_builder import (
+    WidgetTooltip,
     apply_color_mode as apply_launcher_color_mode,
     create_widgets as build_launcher_widgets,
     redraw_grid as redraw_launcher_grid,
@@ -352,15 +354,18 @@ class LauncherApp(tk.Tk):
         build_launcher_widgets(self)
 
     def toggle_settings_panel(self):
+        self.set_unlock_grid_highlights(())
         self.settings_panel_visible = not self.settings_panel_visible
         if self.settings_panel_visible:
             self.right_frame.grid()
             self.mission_view_frame.grid_configure(columnspan=1, padx=(0, 12))
-            self.settings_toggle_button.configure(text='Hide Settings')
+            self.compact_action_row.grid_remove()
+            self.settings_toggle_button.configure(text='Hide Details')
         else:
             self.right_frame.grid_remove()
             self.mission_view_frame.grid_configure(columnspan=2, padx=0)
-            self.settings_toggle_button.configure(text='Show Settings')
+            self.compact_action_row.grid()
+            self.settings_toggle_button.configure(text='Show Details')
         self.after_idle(self.resize_grid_canvas_window)
 
     def ui_palette(self):
@@ -445,6 +450,8 @@ class LauncherApp(tk.Tk):
         if hasattr(self, 'grid_content_frame'):
             self.grid_render_signature = None
             self.redraw_grid()
+        self.unlock_dashboard_signature = None
+        self.refresh_progress_view()
 
     def on_hide_reward_details_changed(self):
         self.save_ui_preferences()
@@ -656,9 +663,85 @@ class LauncherApp(tk.Tk):
         self.grid_canvas.xview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
+    @staticmethod
+    def on_unlock_mousewheel(event, canvas):
+        canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
+        return 'break'
+
+    def on_unlock_canvas_configure(self, faction, canvas, window, width):
+        canvas.itemconfigure(window, width=max(1, width))
+        self.after_idle(
+            lambda selected=faction: self.layout_unlock_dashboard_faction(selected)
+        )
+
+    def layout_unlock_dashboard_faction(self, faction):
+        sections = getattr(self, 'unlock_dashboard_sections', {}).get(faction)
+        canvas = getattr(self, 'unlock_icon_canvases', {}).get(faction)
+        if not sections or canvas is None:
+            return
+        columns = max(2, min(4, max(1, canvas.winfo_width() - 8) // 84))
+        column_cache = getattr(self, 'unlock_dashboard_columns', {})
+        if column_cache.get(faction) == columns:
+            return
+        column_cache[faction] = columns
+        self.unlock_dashboard_columns = column_cache
+        row = 0
+        for heading, cards in sections:
+            heading.grid_configure(row=row, column=0, columnspan=columns)
+            row += 1
+            for index, card in enumerate(cards):
+                card.grid_configure(
+                    row=row + index // columns,
+                    column=index % columns,
+                )
+            row += (len(cards) + columns - 1) // columns
+
+    def set_unlock_grid_highlights(self, mission_codes):
+        previous = set(getattr(self, 'unlock_hover_grid_codes', set()))
+        current = set(mission_codes or ())
+        if previous == current:
+            return
+        self.unlock_hover_grid_codes = current
+        if self.active_progression_mode() == 'Grid Mode':
+            self.refresh_grid_tiles(previous | current)
+        else:
+            self.refresh_mission_tree_unlock_highlights(previous | current)
+
+    def refresh_mission_tree_unlock_highlights(self, mission_codes=None):
+        current = set(getattr(self, 'unlock_hover_grid_codes', set()))
+        codes = set(mission_codes or current)
+        for item in self.missions_tree.get_children():
+            try:
+                code = self.missions[int(item)]['code']
+            except (IndexError, TypeError, ValueError):
+                continue
+            if mission_codes is not None and code not in codes:
+                continue
+            tags = [tag for tag in self.missions_tree.item(item, 'tags')
+                    if tag != 'unlock_available']
+            if code in current:
+                tags.append('unlock_available')
+            self.missions_tree.item(item, tags=tuple(tags))
+
+    def on_unlock_card_enter(self, card, entry):
+        card.configure(cursor='hand2')
+        mission_codes = (
+            entry['sources'].get('available_codes', ())
+            if entry.get('status') == 'available' and not entry.get('privacy')
+            else ()
+        )
+        self.set_unlock_grid_highlights(mission_codes)
+
+    def on_unlock_card_leave(self, _event=None):
+        self.set_unlock_grid_highlights(())
+
     def focus_unlock_search(self, event=None):
         if hasattr(self, 'info_tabs') and hasattr(self, 'unlocks_tab'):
             self.info_tabs.select(self.unlocks_tab)
+        if hasattr(self, 'unlocks_notebook'):
+            tabs = self.unlocks_notebook.tabs()
+            if tabs:
+                self.unlocks_notebook.select(tabs[-1])
         if hasattr(self, 'unlock_search_entry'):
             self.unlock_search_entry.focus_set()
             self.unlock_search_entry.select_range(0, 'end')
@@ -719,6 +802,10 @@ class LauncherApp(tk.Tk):
     def find_unlock_match(self, forward=True):
         if not hasattr(self, 'unlocks_text'):
             return 'break'
+        if hasattr(self, 'unlocks_notebook'):
+            tabs = self.unlocks_notebook.tabs()
+            if tabs:
+                self.unlocks_notebook.select(tabs[-1])
 
         term = self.unlock_search_var.get().strip()
         if not term:
@@ -744,13 +831,11 @@ class LauncherApp(tk.Tk):
     def toggle_log(self):
         if self.log_visible_var.get():
             self.log_text.grid_remove()
-            self.debug_complete_button.grid_remove()
             self.main_frame.rowconfigure(9, weight=0)
             self.log_toggle_button.configure(text='Show Launcher Log')
             self.log_visible_var.set(False)
         else:
             self.log_text.grid()
-            self.debug_complete_button.grid()
             self.main_frame.rowconfigure(9, weight=1)
             self.log_toggle_button.configure(text='Hide Launcher Log')
             self.log_visible_var.set(True)
@@ -1300,12 +1385,28 @@ class LauncherApp(tk.Tk):
             return {'Allies', 'Soviets', 'Foehn'}
         if selected in {'Allies', 'Soviets', 'Epsilon'}:
             return {selected}
+        if selected == 'All Campaigns':
+            return {'Allies', 'Soviets', 'Epsilon'}
         return None
+
+    def standard_foehn_unit_reward(self, reward):
+        """Keep native Foehn unit access exclusive to Chaos reward mode."""
+        reward = canonical_reward(reward)
+        return bool(
+            self.active_reward_mode() != 'Chaos (Experimental)'
+            and reward.get('kind') != 'superweapon'
+            and set(reward.get('factions') or ()) == {'Foehn'}
+        )
 
     def active_launch_rewards(self):
         rewards = canonical_rewards(
             self.earned_rewards_from_checks() if self.state else []
         )
+        rewards = [
+            reward
+            for reward in rewards
+            if not self.standard_foehn_unit_reward(reward)
+        ]
         allowed_factions = self.active_launch_reward_factions()
         if allowed_factions is None:
             return rewards
@@ -2097,7 +2198,10 @@ class LauncherApp(tk.Tk):
                 background, foreground = '#3f454b', '#d4d8dc'
                 for widget in widgets.values():
                     widget.configure(cursor='arrow')
-                widgets['tile'].configure(background=background)
+                widgets['tile'].configure(
+                    background=background,
+                    highlightbackground=self.ui_palette()['canvas'],
+                )
                 widgets['selection'].configure(background=background)
                 widgets['banner'].grid_remove()
                 widgets['body'].grid_configure(pady=4)
@@ -2138,8 +2242,14 @@ class LauncherApp(tk.Tk):
                 state_label = ''
                 banner_color = faction_color
             is_goal = code == grid.get('goal')
+            hover_highlight = code in getattr(self, 'unlock_hover_grid_codes', set())
             widgets['tile'].configure(
                 background='#d6ad37' if is_goal else background,
+                highlightbackground=(
+                    '#45ef7a'
+                    if hover_highlight
+                    else self.ui_palette()['canvas']
+                ),
             )
             widgets['selection'].configure(
                 background='#86cdf7' if code == selected_code else background,
@@ -2197,13 +2307,17 @@ class LauncherApp(tk.Tk):
                 state = 'Locked'
             checks_label = '' if not self.state else f'{checks_done}/{checks_total}'
             order = order_map.get(code, idx + 1)
-            tags = ('completed',) if self.is_mission_complete(code) else ()
+            tags = []
+            if self.is_mission_complete(code):
+                tags.append('completed')
+            if code in getattr(self, 'unlock_hover_grid_codes', set()):
+                tags.append('unlock_available')
             self.missions_tree.insert(
                 '',
                 'end',
                 iid=str(idx),
                 values=(f'{order:03}', state, checks_label, side, code, title),
-                tags=tags,
+                tags=tuple(tags),
             )
 
         children = self.missions_tree.get_children()
@@ -3783,12 +3897,12 @@ throw "Map $name was not found in expandmo*.mix"
             return 'No randomizer seed generated yet.'
 
         lines = []
-        starting_unit_ids = self.active_starting_tier_one_unit_ids()
+        starting_unit_ids = self.display_starting_tier_one_unit_ids()
         if starting_unit_ids:
             heading = 'Starting Tier 1 Units'
             lines.extend([heading, '=' * len(heading)])
             for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
-                lines.append(tier_one_role_label(unit_id) or unit_display_label(unit_id))
+                lines.append(unit_display_label(unit_id))
             lines.append('')
         selected = self.selected_mission()
         if selected and self.failure_assistance_enabled():
@@ -3807,7 +3921,10 @@ throw "Map $name was not found in expandmo*.mix"
         earned = []
         for reward in self.earned_rewards_from_checks():
             canonical = canonical_reward(reward)
-            if not canonical.get('retired_reward'):
+            if (
+                not canonical.get('retired_reward')
+                and not self.standard_foehn_unit_reward(canonical)
+            ):
                 earned.append(canonical)
         if not earned:
             if lines:
@@ -3894,15 +4011,13 @@ throw "Map $name was not found in expandmo*.mix"
     def current_unlock_unit_ids(self):
         if not self.state:
             return []
-        unit_ids = {
-            unit_id
-            for unit_id in self.active_starting_tier_one_unit_ids()
-            if not tier_one_role_label(unit_id)
-        }
+        unit_ids = set(self.display_starting_tier_one_unit_ids())
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         for reward in self.earned_rewards_from_checks():
             reward = canonical_reward(reward)
+            if self.standard_foehn_unit_reward(reward):
+                continue
             if reward.get('kind') == 'buff' and reward.get('unit'):
                 if reward['unit'] != 'MOR_BUILDINGS':
                     if (
@@ -3922,6 +4037,440 @@ throw "Map $name was not found in expandmo*.mix"
                 continue
             unit_ids.update(tech_ids_for_rewards([reward]))
         return sorted(unit_ids, key=self.unit_faction_sort_key)
+
+    def display_starting_tier_one_unit_ids(self):
+        """Return concrete starter variants represented by saved role markers."""
+        unit_ids = expanded_tier_one_unit_ids(
+            self.active_starting_tier_one_unit_ids()
+        )
+        if self.active_reward_mode() != 'Chaos (Experimental)':
+            unit_ids = {
+                unit_id
+                for unit_id in unit_ids
+                if self.unit_faction(unit_id) != 'Foehn'
+            }
+        return sorted(unit_ids, key=self.unit_faction_sort_key)
+
+    def unlock_dashboard_reward_keys(self, reward):
+        """Return catalogue icons affected by one serialized reward."""
+        reward = canonical_reward(reward)
+        keys = set()
+        unit_id = str(reward.get('unit') or '').upper()
+        if reward.get('kind') == 'buff' and unit_id and unit_id != 'MOR_BUILDINGS':
+            keys.add(f'unit:{unit_id}')
+            if (
+                not reward.get('global_buff')
+                and (self.share_chaos_role_buffs_enabled() or self.foehn_standard_bundles_enabled())
+            ):
+                equivalents = unit_role_equivalents(unit_id)
+                if self.foehn_standard_bundles_enabled():
+                    equivalents = {
+                        equivalent
+                        for equivalent in equivalents
+                        if self.unit_faction(equivalent) in {'Allies', 'Soviets'}
+                    }
+                keys.update(f'unit:{equivalent}' for equivalent in equivalents)
+        for tech_id in tech_ids_for_rewards([reward]):
+            if tech_id in BUFF_TARGETS and tech_id != 'MOR_BUILDINGS':
+                keys.add(f'unit:{tech_id}')
+        if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
+            keys.add(f'power:{reward["superweapon"]}')
+        return keys
+
+    def unlock_dashboard_sources(self):
+        """Index assigned, earned, and presently playable rewards by icon."""
+        indexed = {}
+        if not self.state:
+            return indexed
+        playable = {
+            code
+            for code in self.unlocked_mission_codes()
+            if not self.is_mission_complete(code)
+        }
+        mission_lookup = self.mission_lookup()
+        for code in self.state.get('mission_order', []):
+            mission_title = mission_lookup.get(code, {}).get('title', code)
+            for check in self.mission_checks(code):
+                earned = bool(check.get('unlocked') or check.get('released'))
+                source = f'{mission_title} — {check.get("name", "Check")}'
+                for reward in check_rewards(check):
+                    reward = canonical_reward(reward)
+                    if reward.get('retired_reward'):
+                        continue
+                    for key in self.unlock_dashboard_reward_keys(reward):
+                        entry = indexed.setdefault(
+                            key,
+                            {
+                                'assigned': [],
+                                'earned': [],
+                                'available': [],
+                                'available_unlocks': [],
+                                'available_codes': [],
+                            },
+                        )
+                        item = (source, reward)
+                        entry['assigned'].append(item)
+                        if earned:
+                            entry['earned'].append(item)
+                        elif code in playable:
+                            entry['available'].append(item)
+                            if reward.get('kind') != 'buff':
+                                entry['available_unlocks'].append(item)
+                                if code not in entry['available_codes']:
+                                    entry['available_codes'].append(code)
+        return indexed
+
+    def unlock_dashboard_entries(self):
+        """Build privacy-aware icon states without changing seed data."""
+        sources = self.unlock_dashboard_sources()
+        privacy = bool(
+            self.state
+            and self.active_progression_mode() == 'Grid Mode'
+            and self.hide_locked_grid_missions_var.get()
+        )
+        earned_rewards = [
+            canonical_reward(reward)
+            for reward in (self.earned_rewards_from_checks() if self.state else [])
+        ]
+        earned_access = tech_ids_for_rewards(earned_rewards)
+        starting_access = expanded_tier_one_unit_ids(
+            self.active_starting_tier_one_unit_ids()
+        )
+        randomize_access = self.randomize_unit_access_enabled()
+        foehn_units_available = self.active_reward_mode() == 'Chaos (Experimental)'
+
+        entries = []
+        category_labels = {
+            'infantry': 'Infantry',
+            'units': 'Vehicles / Naval',
+            'aircraft': 'Aircraft',
+            'defenses': 'Defenses',
+        }
+        for unit_id, target in BUFF_TARGETS.items():
+            category = target.get('category')
+            if category not in category_labels:
+                continue
+            factions = list(target.get('factions') or [])
+            if len(factions) != 1 or factions[0] not in FACTION_ORDER:
+                continue
+            key = f'unit:{unit_id}'
+            source_data = sources.get(
+                key, {
+                    'assigned': [], 'earned': [], 'available': [],
+                    'available_unlocks': [], 'available_codes': [],
+                }
+            )
+            if factions[0] == 'Foehn' and not foehn_units_available:
+                source_data = {
+                    'assigned': [], 'earned': [], 'available': [],
+                    'available_unlocks': [], 'available_codes': [],
+                }
+            unlocked = bool(
+                (factions[0] != 'Foehn' or foehn_units_available)
+                and (
+                    not randomize_access
+                    or unit_id in ALWAYS_AVAILABLE_TECH_IDS
+                    or unit_id in starting_access
+                    or unit_id in earned_access
+                )
+            )
+            status = (
+                'unlocked'
+                if unlocked
+                else 'available'
+                if source_data['available_unlocks'] and not privacy
+                else 'locked'
+                if source_data['assigned']
+                else 'unavailable'
+            )
+            if unit_id in starting_access:
+                condition = 'Pre-generation settings'
+            elif unit_id in ALWAYS_AVAILABLE_TECH_IDS or not randomize_access:
+                condition = 'Pre-generation settings'
+            else:
+                condition = ''
+            entries.append({
+                'key': key,
+                'kind': 'unit',
+                'id': unit_id,
+                'label': target.get('label', unit_id),
+                'faction': factions[0],
+                'category': category_labels[category],
+                'status': status,
+                'condition': condition,
+                'sources': source_data,
+                'privacy': privacy,
+            })
+
+        seen_powers = set()
+        for reward in REWARD_POOL:
+            if reward.get('kind') != 'superweapon' or not reward.get('superweapon'):
+                continue
+            reward = canonical_reward(reward)
+            power_id = reward['superweapon']
+            if power_id in seen_powers:
+                continue
+            factions = list(reward.get('factions') or [])
+            if len(factions) != 1 or factions[0] not in FACTION_ORDER:
+                continue
+            seen_powers.add(power_id)
+            key = f'power:{power_id}'
+            source_data = sources.get(
+                key, {
+                    'assigned': [], 'earned': [], 'available': [],
+                    'available_unlocks': [], 'available_codes': [],
+                }
+            )
+            status = (
+                'unlocked'
+                if source_data['earned']
+                else 'available'
+                if source_data['available_unlocks'] and not privacy
+                else 'locked'
+                if source_data['assigned']
+                else 'unavailable'
+            )
+            entries.append({
+                'key': key,
+                'kind': 'power',
+                'id': power_id,
+                'label': reward_display_name(reward),
+                'faction': factions[0],
+                'category': 'Superweapons',
+                'status': status,
+                'condition': '',
+                'sources': source_data,
+                'privacy': privacy,
+                'reward': reward,
+            })
+        return entries
+
+    def unlock_dashboard_tooltip(self, entry):
+        status_labels = {
+            'unlocked': 'Unlocked',
+            'available': 'Available now',
+            'locked': 'Locked',
+            'unavailable': 'Unavailable in this seed',
+        }
+        lines = [
+            f'{entry["label"]} — {status_labels[entry["status"]]}',
+            '─' * min(48, max(12, len(entry['label']) + 12)),
+        ]
+        sources = entry['sources']
+        earned_source_names = list(dict.fromkeys(source for source, _ in sources['earned']))
+        available_source_names = list(dict.fromkeys(
+            source for source, _ in sources['available_unlocks']
+        ))
+
+        def compact_sources(names):
+            visible = names[:3]
+            text = '; '.join(visible)
+            if len(names) > len(visible):
+                text += f'; +{len(names) - len(visible)} more'
+            return text
+
+        if entry.get('condition'):
+            lines.append(f'Condition: {entry["condition"]}')
+        if earned_source_names:
+            lines.append('Earned from: ' + compact_sources(earned_source_names))
+        if entry['status'] == 'available' and available_source_names:
+            lines.append('Available from: ' + compact_sources(available_source_names))
+        elif entry['status'] == 'locked':
+            lines.append(
+                'Assigned later in this seed.'
+                if not entry['privacy']
+                else 'Access not currently available.'
+            )
+        elif entry['status'] == 'unavailable':
+            lines.append('Not assigned by this seed and current reward settings.')
+
+        earned = [reward for _, reward in sources['earned']]
+        buffs = {}
+        for reward in earned:
+            if reward.get('kind') == 'buff':
+                key = (reward.get('unit'), reward.get('buff_type'))
+                buffs.setdefault(key, {'reward': reward, 'count': 0})['count'] += 1
+        effect_lines = []
+        for buff in buffs.values():
+            effect_lines.extend(buff_effect_lines(
+                buff['reward'], count=buff['count'], include_label=False
+            ))
+        if entry['kind'] == 'power' and entry['status'] == 'unlocked':
+            effect_lines.extend(reward_rule_summary(entry['reward']))
+        if effect_lines:
+            lines.extend(['', 'Current effects:'])
+            lines.extend(f'• {line}' for line in effect_lines)
+
+        if entry['status'] == 'available':
+            potential = []
+            for _source, reward in sources['available_unlocks']:
+                if reward.get('kind') == 'buff':
+                    potential.extend(buff_effect_lines(
+                        reward, include_label=False, include_stack=False
+                    ))
+                else:
+                    potential.append(reward_display_name(reward))
+            if potential:
+                lines.extend(['', 'Potential reward:'])
+                lines.extend(f'• {line}' for line in dict.fromkeys(potential))
+        return '\n'.join(lines)
+
+    def refresh_unlock_dashboard(self):
+        if not hasattr(self, 'unlock_icon_frames'):
+            return
+        entries = self.unlock_dashboard_entries()
+        signature = (
+            bool(self.dark_mode_var.get()),
+            tuple(
+                (
+                    entry['key'], entry['status'], entry['condition'], entry['privacy'],
+                    tuple(source for source, _ in entry['sources']['earned']),
+                    tuple(source for source, _ in entry['sources']['available']),
+                    tuple(source for source, _ in entry['sources']['available_unlocks']),
+                    tuple(entry['sources']['available_codes']),
+                )
+                for entry in entries
+            ),
+        )
+        if signature == getattr(self, 'unlock_dashboard_signature', None):
+            return
+        self.unlock_dashboard_signature = signature
+        self.set_unlock_grid_highlights(())
+
+        unit_ids = [entry['id'] for entry in entries if entry['kind'] == 'unit']
+        power_entries = [entry for entry in entries if entry['kind'] == 'power']
+        try:
+            unit_paths = ensure_unit_cameos(unit_ids)
+        except Exception:
+            unit_paths = {}
+            log_event('unlock_dashboard_unit_cameos_failed', level=logging.ERROR,
+                      traceback=traceback.format_exc())
+        normal_power_ids = [
+            entry['reward'].get('cameo_superweapon', entry['id'])
+            for entry in power_entries
+            if not entry['reward'].get('superweapon_sidebar_image')
+        ]
+        try:
+            power_paths = ensure_superweapon_cameos(normal_power_ids)
+        except Exception:
+            power_paths = {}
+            log_event('unlock_dashboard_power_cameos_failed', level=logging.ERROR,
+                      traceback=traceback.format_exc())
+
+        photos = {}
+        for entry in entries:
+            cache_key = entry['id'] if entry['kind'] == 'unit' else entry['key']
+            photo = self.cameo_photo_cache.get(cache_key)
+            path = None
+            if entry['kind'] == 'unit':
+                path = unit_paths.get(entry['id'])
+            else:
+                asset_name = entry['reward'].get('superweapon_sidebar_image')
+                if asset_name:
+                    try:
+                        path = custom_sidebar_preview(asset_name)
+                    except Exception:
+                        path = None
+                else:
+                    cameo_id = entry['reward'].get('cameo_superweapon', entry['id'])
+                    path = power_paths.get(str(cameo_id).upper())
+            if photo is None and path:
+                try:
+                    photo = tk.PhotoImage(file=str(path))
+                except tk.TclError:
+                    photo = None
+                if photo is not None:
+                    self.cameo_photo_cache[cache_key] = photo
+            if photo is not None:
+                scale_key = f'dashboard-scale:{cache_key}'
+                scaled_photo = self.cameo_photo_cache.get(scale_key)
+                if scaled_photo is None:
+                    scaled_photo = photo.zoom(4, 4).subsample(3, 3)
+                    self.cameo_photo_cache[scale_key] = scaled_photo
+                photos[entry['key']] = scaled_photo
+        self.unlock_dashboard_images = photos
+
+        field = '#20242b' if self.dark_mode_var.get() else '#ffffff'
+        foreground = '#f2f4f8' if self.dark_mode_var.get() else '#202124'
+        overlays = {
+            'unlocked': (None, '#4f86c6'),
+            'available': ('#15a34a', '#40d36d'),
+            'locked': ('#6b7280', '#858b95'),
+            'unavailable': ('#050505', '#343434'),
+        }
+        order = {'Infantry': 0, 'Vehicles / Naval': 1, 'Aircraft': 2,
+                 'Defenses': 3, 'Superweapons': 4}
+        self.unlock_dashboard_sections = {}
+        self.unlock_dashboard_columns = {}
+        for faction, content in self.unlock_icon_frames.items():
+            canvas = self.unlock_icon_canvases[faction]
+            for child in content.winfo_children():
+                child.destroy()
+            faction_entries = sorted(
+                (entry for entry in entries if entry['faction'] == faction),
+                key=lambda entry: (order[entry['category']], entry['label'].casefold()),
+            )
+            row = 0
+            layout_sections = []
+            for category in sorted(
+                {entry['category'] for entry in faction_entries}, key=order.get
+            ):
+                heading = ttk.Label(
+                    content, text=category, font=('Segoe UI', 11, 'bold')
+                )
+                heading.grid(row=row, column=0, columnspan=4, sticky='w', pady=(8, 4))
+                row += 1
+                category_entries = [
+                    entry for entry in faction_entries if entry['category'] == category
+                ]
+                cards = []
+                for index, entry in enumerate(category_entries):
+                    card_row = row + index // 4
+                    card_column = index % 4
+                    card = tk.Canvas(
+                        content, width=82, height=68, borderwidth=0,
+                        highlightthickness=0, background=field,
+                    )
+                    card.grid(row=card_row, column=card_column, padx=1, pady=2)
+                    cards.append(card)
+                    photo = photos.get(entry['key'])
+                    if photo is not None:
+                        card.create_image(41, 34, image=photo, anchor='center')
+                    else:
+                        card.create_text(
+                            41, 34, text=entry['label'], fill=foreground,
+                            width=76, font=('Segoe UI', 9), justify='center',
+                        )
+                    fill, outline = overlays[entry['status']]
+                    if fill:
+                        card.create_rectangle(
+                            1, 1, 81, 67, fill=fill,
+                            stipple='gray50' if entry['status'] != 'unavailable' else 'gray75',
+                            outline=outline, width=2,
+                        )
+                    else:
+                        card.create_rectangle(1, 1, 81, 67, outline=outline, width=2)
+                    card.bind(
+                        '<Enter>',
+                        lambda _event, target=card, item=entry: self.on_unlock_card_enter(
+                            target, item
+                        ),
+                        add='+',
+                    )
+                    card.bind('<Leave>', self.on_unlock_card_leave, add='+')
+                    card.bind(
+                        '<MouseWheel>',
+                        lambda event, target=canvas: self.on_unlock_mousewheel(
+                            event, target
+                        ),
+                    )
+                    WidgetTooltip(card, self.unlock_dashboard_tooltip(entry))
+                row += (len(category_entries) + 3) // 4
+                layout_sections.append((heading, cards))
+            self.unlock_dashboard_sections[faction] = layout_sections
+            self.layout_unlock_dashboard_faction(faction)
+            content.update_idletasks()
+            canvas.configure(background=field, scrollregion=canvas.bbox('all'))
 
     def refresh_progress_view(self):
         if not self.state:
@@ -4218,6 +4767,7 @@ throw "Map $name was not found in expandmo*.mix"
                 )
         self.unlocks_text.configure(state='disabled')
         self.refresh_unlock_search()
+        self.refresh_unlock_dashboard()
 
 
 def main():
