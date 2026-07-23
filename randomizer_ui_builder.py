@@ -6,10 +6,12 @@ from tkinter import scrolledtext, ttk
 from randomizer_config import DEFAULT_CONFIG
 from randomizer_paths import LAUNCHER_LOG
 from randomizer_rewards import BUFF_TYPES, MAX_REWARDS_PER_CHECK
+from randomizer_tuning import stacking_amount, stacking_multiplier
 from randomizer_ui import (
     CAMPAIGN_FILTERS,
     DIFFICULTIES,
     GAME_SPEEDS,
+    PLAYER_COLORS,
     PROGRESSION_MODES,
     REWARD_MODES,
 )
@@ -18,20 +20,67 @@ from randomizer_version import APP_VERSION
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
 
 
+def buff_setting_amount_text(buff_type):
+    buff_id = buff_type['id']
+    if buff_id in {'production', 'cost'}:
+        amount = round((1.0 - stacking_multiplier(buff_id, 1)) * 100)
+        name = 'Production' if buff_id == 'production' else 'Cost'
+        return f'{name} (-{amount}%)'
+    if buff_id == 'reload':
+        amount = round((1.0 - stacking_multiplier(buff_id, 1)) * 100)
+        return f'Fire rate (+{amount}%)'
+    if buff_id in {'speed', 'health', 'damage'}:
+        amount = round((stacking_multiplier(buff_id, 1) - 1.0) * 100)
+        name = {'speed': 'Speed', 'health': 'Health', 'damage': 'Damage'}[buff_id]
+        return f'{name} (+{amount}%)'
+    if buff_id == 'armor':
+        multiplier = stacking_multiplier('armor', 1)
+        amount = round(((1.0 / multiplier) - 1.0) * 100)
+        return f'Armor (+{amount}% durability)'
+    if buff_id in {'sight', 'ammo'}:
+        amount = int(stacking_amount(buff_id, 1))
+        return f'{buff_type["setting_label"]} (+{amount})'
+    if buff_id == 'range':
+        amount = stacking_amount('range', 1)
+        return f'{buff_type["setting_label"]} (+{amount:g})'
+    return buff_type['setting_label']
+
+
 class WidgetTooltip:
     def __init__(self, widget, text):
         self.widget = widget
         self.text = text
         self.tip = None
-        widget.bind('<Enter>', self.show, add='+')
+        self.pending_show = None
+        widget.bind('<Enter>', self.schedule_show, add='+')
         widget.bind('<Leave>', self.hide, add='+')
         widget.bind('<ButtonPress>', self.hide, add='+')
 
+    def schedule_show(self, event=None):
+        self.cancel_pending_show()
+        self.pending_show = self.widget.after(250, self.show)
+
+    def cancel_pending_show(self):
+        if self.pending_show is not None:
+            try:
+                self.widget.after_cancel(self.pending_show)
+            except tk.TclError:
+                pass
+            self.pending_show = None
+
     def show(self, event=None):
+        self.pending_show = None
         if self.tip is not None or not self.text:
             return
         self.tip = tk.Toplevel(self.widget)
         self.tip.wm_overrideredirect(True)
+        # A tooltip must not become the pointer target. On Windows an active
+        # borderless Toplevel can otherwise emit Leave/Enter repeatedly for
+        # the card beneath it, producing the observed cursor flicker.
+        try:
+            self.tip.wm_attributes('-disabled', True)
+        except tk.TclError:
+            pass
         label = ttk.Label(
             self.tip,
             text=self.text,
@@ -43,18 +92,25 @@ class WidgetTooltip:
         )
         label.grid(row=0, column=0)
         self.tip.update_idletasks()
-        x = self.widget.winfo_rootx() + 18
-        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
         tip_width = self.tip.winfo_reqwidth()
         tip_height = self.tip.winfo_reqheight()
         screen_width = self.widget.winfo_screenwidth()
         screen_height = self.widget.winfo_screenheight()
-        x = max(0, min(x, screen_width - tip_width - 4))
-        if y + tip_height > screen_height:
-            y = max(0, self.widget.winfo_rooty() - tip_height - 4)
+        pointer_x = self.widget.winfo_pointerx()
+        pointer_y = self.widget.winfo_pointery()
+        gap = 24
+        # Keep the tooltip wholly to one side of the pointer. Vertical
+        # clamping alone is insufficient for tall unlock summaries: it can
+        # place the Toplevel directly under the cursor and trigger flicker.
+        if pointer_x + gap + tip_width <= screen_width - 4:
+            x = pointer_x + gap
+        else:
+            x = max(4, pointer_x - gap - tip_width)
+        y = max(4, min(pointer_y + 12, screen_height - tip_height - 4))
         self.tip.wm_geometry(f'+{x}+{y}')
 
     def hide(self, event=None):
+        self.cancel_pending_show()
         if self.tip is not None:
             self.tip.destroy()
             self.tip = None
@@ -133,10 +189,19 @@ def create_widgets(self):
     self.settings_toggle_button.grid(row=0, column=1, rowspan=2, sticky='ne')
     self.subtitle_label = ttk.Label(
         main_frame,
-        text='Choose an open mission, earn randomized upgrades, and let victory tracking update your run.',
+        textvariable=self.header_summary_var,
         style='Muted.TLabel',
     )
     self.subtitle_label.grid(row=1, column=0, sticky='w', pady=(2, 10))
+    for variable in (
+        self.campaign_var,
+        self.reward_mode_var,
+        self.progression_mode_var,
+        self.difficulty_var,
+        self.game_speed_var,
+    ):
+        variable.trace_add('write', self.update_header_summary)
+    self.update_header_summary()
 
     mission_view_frame = ttk.Frame(main_frame)
     self.mission_view_frame = mission_view_frame
@@ -383,12 +448,17 @@ def create_widgets(self):
         'earned unit clones through extra Autocreate teams. Native units, '
         'TaskForces, timing, and scripts stay intact.',
     )
-    self.rewards_per_check_message_label = ttk.Label(options_row, text='')
+    self.rewards_per_check_message_label = ttk.Label(
+        options_row,
+        text='',
+        justify='left',
+        wraplength=300,
+    )
     self.rewards_per_check_message_label.grid(
         row=6,
         column=0,
         columnspan=2,
-        sticky='w',
+        sticky='ew',
         pady=(4, 0),
     )
     self.rewards_per_check_var.trace_add('write', self.refresh_rewards_per_check_message)
@@ -428,6 +498,17 @@ def create_widgets(self):
         'Mission List uses a randomized linear order. Grid Mode uses randomized missions '
         'on an orthogonal-neighbor board.',
     )
+    # Read-only ttk comboboxes retain focus after selection and their class
+    # binding consumes the mouse wheel before bind_all sees it. Bind directly
+    # so scrolling Settings never changes a previously focused option.
+    for combo in (
+        self.game_speed_combo,
+        self.campaign_combo,
+        self.difficulty_combo,
+        self.reward_mode_combo,
+        self.progression_mode_combo,
+    ):
+        combo.bind('<MouseWheel>', self.on_settings_control_mousewheel, add='+')
 
     self.grid_options_frame = ttk.Frame(options_row)
     self.grid_options_frame.grid(row=9, column=0, columnspan=2, sticky='ew', pady=(6, 0))
@@ -465,7 +546,7 @@ def create_widgets(self):
     progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     progress_frame.columnconfigure(0, weight=1)
     progress_frame.rowconfigure(1, weight=1)
-    info_tabs.add(progress_frame, text='Mission Details')
+    info_tabs.add(progress_frame, text='Details')
 
     self.progress_label = ttk.Label(progress_frame, text='No seed generated yet.', anchor='w', justify='left')
     self.progress_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
@@ -571,6 +652,155 @@ def create_widgets(self):
 
     info_tabs.add(settings_tab, text='Settings')
 
+    advanced_tab = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
+    self.advanced_tab = advanced_tab
+    advanced_tab.columnconfigure(0, weight=1)
+    advanced_tab.rowconfigure(2, weight=1)
+    info_tabs.add(advanced_tab, text='Advanced')
+    self.advanced_pool_intro_label = ttk.Label(
+        advanced_tab,
+        text=(
+            'Choose what may appear in the next generated seed. Click an image to exclude it; '
+            'excluded units lose both access and unit-specific buff rewards. Always-available '
+            'essentials remain available. The current run is never changed.'
+        ),
+        wraplength=340,
+        style='Muted.TLabel',
+        justify='left',
+    )
+    self.advanced_pool_intro_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+    self.advanced_pool_status_label = ttk.Label(
+        advanced_tab, text='', style='Muted.TLabel', wraplength=340, justify='left'
+    )
+    self.advanced_pool_status_label.grid(row=1, column=0, sticky='ew', pady=(0, 6))
+    advanced_notebook = ttk.Notebook(advanced_tab, style='Unlocks.TNotebook')
+    self.advanced_notebook = advanced_notebook
+    advanced_notebook.grid(row=2, column=0, sticky='nsew')
+    self.advanced_pool_canvases = {}
+    self.advanced_pool_frames = {}
+    for pool_key, pool_label in (
+        ('missions', 'Missions'),
+        ('units', 'Units / Buildings'),
+        ('powers', 'Superpowers'),
+    ):
+        page = ttk.Frame(advanced_notebook)
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(1, weight=1)
+        advanced_notebook.add(page, text=pool_label)
+        controls = ttk.Frame(page)
+        controls.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 6))
+        controls.columnconfigure(0, weight=1)
+        ttk.Button(
+            controls,
+            text='Include All',
+            command=lambda key=pool_key: self.set_advanced_pool_all(key, True),
+        ).grid(row=0, column=1, padx=(4, 0))
+        ttk.Button(
+            controls,
+            text='Exclude All',
+            command=lambda key=pool_key: self.set_advanced_pool_all(key, False),
+        ).grid(row=0, column=2, padx=(4, 0))
+        canvas = tk.Canvas(
+            page,
+            borderwidth=0,
+            highlightthickness=0,
+            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+        )
+        scrollbar = ttk.Scrollbar(page, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=1, column=0, sticky='nsew')
+        scrollbar.grid(row=1, column=1, sticky='ns')
+        content = ttk.Frame(canvas, padding=(4, 4, 4, 4))
+        window = canvas.create_window((0, 0), window=content, anchor='nw')
+        content.bind(
+            '<Configure>',
+            lambda _event, target=canvas: target.configure(scrollregion=target.bbox('all')),
+        )
+        canvas.bind(
+            '<Configure>',
+            lambda event, target=canvas, item=window: target.itemconfigure(item, width=event.width),
+        )
+        canvas.bind(
+            '<MouseWheel>',
+            lambda event, target=canvas: self.on_unlock_mousewheel(event, target),
+        )
+        content.bind(
+            '<MouseWheel>',
+            lambda event, target=canvas: self.on_unlock_mousewheel(event, target),
+        )
+        self.advanced_pool_canvases[pool_key] = canvas
+        self.advanced_pool_frames[pool_key] = content
+
+    buff_page = ttk.Frame(advanced_notebook)
+    buff_page.columnconfigure(0, weight=1)
+    buff_page.rowconfigure(2, weight=1)
+    advanced_notebook.add(buff_page, text='Unit Buffs')
+    buff_controls = ttk.Frame(buff_page)
+    buff_controls.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 4))
+    buff_controls.columnconfigure(0, weight=1)
+    self.advanced_buff_unit_label = ttk.Label(
+        buff_controls,
+        text='Select an included unit below.',
+        style='Muted.TLabel',
+        wraplength=210,
+    )
+    self.advanced_buff_unit_label.grid(row=0, column=0, sticky='w')
+    ttk.Button(
+        buff_controls, text='All', width=6,
+        command=lambda: self.set_advanced_unit_buffs(True),
+    ).grid(row=0, column=1, padx=(4, 0))
+    ttk.Button(
+        buff_controls, text='None', width=6,
+        command=lambda: self.set_advanced_unit_buffs(False),
+    ).grid(row=0, column=2, padx=(4, 0))
+    buff_options = ttk.Frame(buff_page)
+    buff_options.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(0, 6))
+    buff_options.columnconfigure(0, weight=1)
+    buff_options.columnconfigure(1, weight=1)
+    self.advanced_unit_buff_vars = {}
+    self.advanced_unit_buff_checks = {}
+    for index, buff_type in enumerate(BUFF_TYPES):
+        buff_id = buff_type['id']
+        variable = tk.BooleanVar(value=True)
+        check = ttk.Checkbutton(
+            buff_options,
+            text=buff_setting_amount_text(buff_type),
+            variable=variable,
+            command=lambda item=buff_id: self.on_advanced_unit_buff_changed(item),
+        )
+        check.grid(row=index // 2, column=index % 2, sticky='w', padx=(0, 4))
+        self.advanced_unit_buff_vars[buff_id] = variable
+        self.advanced_unit_buff_checks[buff_id] = check
+    buff_canvas = tk.Canvas(
+        buff_page,
+        borderwidth=0,
+        highlightthickness=0,
+        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+    )
+    buff_scrollbar = ttk.Scrollbar(buff_page, orient='vertical', command=buff_canvas.yview)
+    buff_canvas.configure(yscrollcommand=buff_scrollbar.set)
+    buff_canvas.grid(row=2, column=0, sticky='nsew')
+    buff_scrollbar.grid(row=2, column=1, sticky='ns')
+    buff_content = ttk.Frame(buff_canvas, padding=(4, 4, 4, 4))
+    buff_window = buff_canvas.create_window((0, 0), window=buff_content, anchor='nw')
+    buff_content.bind(
+        '<Configure>',
+        lambda _event, target=buff_canvas: target.configure(scrollregion=target.bbox('all')),
+    )
+    buff_canvas.bind(
+        '<Configure>',
+        lambda event, target=buff_canvas, item=buff_window: target.itemconfigure(
+            item, width=event.width
+        ),
+    )
+    for widget in (buff_canvas, buff_content):
+        widget.bind(
+            '<MouseWheel>',
+            lambda event, target=buff_canvas: self.on_unlock_mousewheel(event, target),
+        )
+    self.advanced_pool_canvases['unit_buffs'] = buff_canvas
+    self.advanced_pool_frames['unit_buffs'] = buff_content
+
     self.settings_intro_label = ttk.Label(
         settings_frame,
         text=(
@@ -582,12 +812,47 @@ def create_widgets(self):
     )
     self.settings_intro_label.grid(row=1, column=0, sticky='ew', pady=(8, 8))
 
+    appearance_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Map Colors',
+        padding=(8, 8, 8, 8),
+    )
+    appearance_frame.grid(row=2, column=0, sticky='ew')
+    appearance_frame.columnconfigure(1, weight=1)
+    ttk.Label(appearance_frame, text='Player color').grid(
+        row=0, column=0, sticky='w', padx=(0, 8)
+    )
+    self.player_color_combo = ttk.Combobox(
+        appearance_frame,
+        state='readonly',
+        textvariable=self.player_color_var,
+        values=PLAYER_COLORS,
+        width=15,
+    )
+    self.player_color_combo.grid(row=0, column=1, sticky='ew')
+    self.player_color_combo.bind(
+        '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
+    )
+    self.rainbowizer_check = ttk.Checkbutton(
+        appearance_frame,
+        text='Rainbowizer: randomize allied and enemy AI colors',
+        variable=self.rainbowizer_var,
+    )
+    self.rainbowizer_check.grid(
+        row=1, column=0, columnspan=2, sticky='w', pady=(5, 0)
+    )
+    WidgetTooltip(
+        self.rainbowizer_check,
+        'Assigns deterministic random colors to non-neutral allied and enemy AI houses. '
+        'Civilian, neutral, and script-only neutral houses keep their authored colors.',
+    )
+
     mission_pool_frame = ttk.LabelFrame(
         settings_frame,
         text='Mission Pool',
         padding=(8, 8, 8, 8),
     )
-    mission_pool_frame.grid(row=2, column=0, sticky='ew')
+    mission_pool_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
     self.include_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
         text='Include true no-build / fixed-unit missions',
@@ -612,19 +877,33 @@ def create_widgets(self):
         self.include_no_build_production_missions_check,
         'Includes missions without normal base building that still provide limited unit production.',
     )
+    self.include_operation_missions_check = ttk.Checkbutton(
+        mission_pool_frame,
+        text='Include optional Special Operation missions',
+        variable=self.include_operation_missions_var,
+        command=self.on_mission_pool_settings_changed,
+    )
+    self.include_operation_missions_check.grid(
+        row=2, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.include_operation_missions_check,
+        'Includes the Allied, Soviet, Epsilon, and Foehn missions labelled “Op”. '
+        'These optional missions are excluded from both the next mission seed and Advanced Pool when disabled.',
+    )
     self.prioritize_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
         text='Prioritize included no-build missions in opening',
         variable=self.prioritize_no_build_missions_var,
     )
-    self.prioritize_no_build_missions_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
+    self.prioritize_no_build_missions_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.prioritize_no_build_missions_check,
         'Fills protected Mission List/Grid opening positions with easier enabled true-no-build and production-no-build missions first.',
     )
 
     reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
-    reward_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+    reward_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
     reward_frame.columnconfigure(0, weight=1)
     self.randomize_unit_access_check = ttk.Checkbutton(
         reward_frame,
@@ -663,13 +942,25 @@ def create_widgets(self):
         'Includes faction defenses such as Pillboxes, Tesla Coils, mines, and support defenses. '
         'With access randomization they can be locked/unlocked; with buffs enabled they can receive upgrades.',
     )
+    self.include_special_buildings_check = ttk.Checkbutton(
+        reward_frame,
+        text='Include special economy building rewards',
+        variable=self.include_special_buildings_var,
+        command=self.refresh_setting_states,
+    )
+    self.include_special_buildings_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+    WidgetTooltip(
+        self.include_special_buildings_check,
+        'Includes Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor access, '
+        'plus repeatable +1 structure-limit rewards when that buff type is enabled.',
+    )
     self.include_buff_rewards_check = ttk.Checkbutton(
         reward_frame,
         text='Include buff rewards',
         variable=self.include_buff_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_buff_rewards_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+    self.include_buff_rewards_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_buff_rewards_check,
         'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
@@ -679,7 +970,7 @@ def create_widgets(self):
         text='Share buffs with equivalent units (Chaos only)',
         variable=self.share_chaos_role_buffs_var,
     )
-    self.share_chaos_role_buffs_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
+    self.share_chaos_role_buffs_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.share_chaos_role_buffs_check,
         'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
@@ -691,18 +982,20 @@ def create_widgets(self):
         variable=self.unlimited_hero_units_var,
         command=self.refresh_setting_states,
     )
-    self.unlimited_hero_units_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+    self.unlimited_hero_units_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.unlimited_hero_units_check,
         'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
-        'Opted-in allied helpers share the same clones. This disables the +1 limit buff.',
+        'Opted-in allied helpers share the same clones. Hero +1 rewards are omitted; '
+        'special-building capacity rewards can remain enabled.',
     )
     self.include_superweapon_rewards_check = ttk.Checkbutton(
         reward_frame,
         text='Include offensive superweapon rewards',
         variable=self.include_superweapon_rewards_var,
+        command=self.on_unlimited_hero_units_changed,
     )
-    self.include_superweapon_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+    self.include_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_superweapon_rewards_check,
         'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
@@ -711,8 +1004,9 @@ def create_widgets(self):
         reward_frame,
         text='Include secondary superweapon rewards',
         variable=self.include_secondary_superweapon_rewards_var,
+        command=self.refresh_setting_states,
     )
-    self.include_secondary_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
+    self.include_secondary_superweapon_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_secondary_superweapon_rewards_check,
         'Adds Chronoshift, Invulnerability, and Rage as building-free rewards.',
@@ -721,15 +1015,16 @@ def create_widgets(self):
         reward_frame,
         text='Include support/aid power rewards',
         variable=self.include_aid_power_rewards_var,
+        command=self.refresh_setting_states,
     )
-    self.include_aid_power_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
+    self.include_aid_power_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_aid_power_rewards_check,
         'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',
     )
 
     buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
-    buff_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
+    buff_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
         buff_frame.columnconfigure(column, weight=1)
     self.buff_type_checks = []
@@ -740,7 +1035,11 @@ def create_widgets(self):
             buff_frame,
             text=buff_type.get('setting_label', buff_type['name']),
             variable=self.buff_type_vars[buff_type['id']],
-            command=self.refresh_setting_states,
+            command=(
+                self.on_hero_limit_buff_changed
+                if buff_type['id'] == 'build_limit'
+                else self.refresh_setting_states
+            ),
         )
         check.grid(row=row, column=column, sticky='w', padx=(0, 10), pady=(0, 3))
         self.buff_type_checks.append(check)
@@ -1002,6 +1301,8 @@ def apply_color_mode(self):
         canvas = getattr(self, canvas_name, None)
         if canvas is not None:
             canvas.configure(background=palette['canvas'])
+    for canvas in getattr(self, 'advanced_pool_canvases', {}).values():
+        canvas.configure(background=palette['canvas'])
     for text_name in ('rewards_text', 'unlocks_text'):
         text_widget = getattr(self, text_name, None)
         if text_widget is not None:

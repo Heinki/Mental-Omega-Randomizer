@@ -5,6 +5,7 @@ import random
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import traceback
@@ -37,6 +38,7 @@ from randomizer_missions import (
     LATE_FOEHN_MISSION_CODES,
     LOW_LEVEL_MISSION_COUNT,
     NO_BUILD_MISSION_CODES,
+    OPERATION_MISSION_CODES,
     STARTING_UNLOCKED_MISSIONS,
     campaign_mission_counts,
     classic_mission_order,
@@ -63,6 +65,7 @@ from randomizer_rewards import (
     buff_stack_limit,
     MAX_REWARDS_PER_CHECK,
     REWARD_POOL,
+    SPECIAL_BUILDING_DEFINITIONS,
     buff_effect_lines,
     canonical_reward,
     canonical_rewards,
@@ -72,6 +75,7 @@ from randomizer_rewards import (
     reward_names,
     reward_rule_summary,
     unit_display_label,
+    linked_buff_variant_ids,
     unit_role_equivalents,
     valid_choice,
 )
@@ -141,7 +145,9 @@ from randomizer_ui import (
     FACTION_TILE_COLORS,
     GAME_SPEEDS,
     LIGHT_UI_PALETTE,
+    PLAYER_COLORS,
     PROGRESSION_MODES,
+    RAINBOWIZER_COLORS,
     REWARDS_PER_CHECK_MAXIMUM_MESSAGE,
     REWARDS_PER_CHECK_MESSAGE_THRESHOLDS,
     REWARD_MODES,
@@ -234,6 +240,12 @@ class LauncherApp(tk.Tk):
         self.difficulty_var = tk.StringVar(value=difficulty_default)
         self.game_speed_var = tk.StringVar(value=game_speed_default)
         self.campaign_var = tk.StringVar(value=campaign_default)
+        self.player_color_var = tk.StringVar(value=valid_choice(
+            self.config.get('player_color'), PLAYER_COLORS, PLAYER_COLORS[0]
+        ))
+        self.rainbowizer_var = tk.BooleanVar(
+            value=bool(self.config.get('rainbowizer', False))
+        )
         self.seed_var = tk.StringVar(value=self.state.get('seed', self.config.get('seed', '')))
         default_goal = self.state.get('mission_goal', self.config.get('mission_goal', DEFAULT_MISSION_GOAL))
         self.mission_goal_var = tk.IntVar(value=int(default_goal or DEFAULT_MISSION_GOAL))
@@ -245,6 +257,35 @@ class LauncherApp(tk.Tk):
         )
         self.rewards_per_check_var = tk.IntVar(value=default_rewards_per_check)
         generation_config = self.config.get('generation', {})
+        self.excluded_mission_codes = {
+            str(code).upper()
+            for code in generation_config.get('excluded_mission_codes', [])
+            if str(code).strip()
+        }
+        self.excluded_unit_access_ids = {
+            str(unit_id).upper()
+            for unit_id in generation_config.get('excluded_unit_access_ids', [])
+            if str(unit_id).strip()
+        }
+        self.excluded_superweapon_ids = {
+            str(power_id).upper()
+            for power_id in generation_config.get('excluded_superweapon_ids', [])
+            if str(power_id).strip()
+        }
+        raw_buff_exclusions = generation_config.get('excluded_unit_buff_types', {})
+        self.excluded_unit_buff_types = {
+            str(unit_id).upper(): {
+                str(buff_type)
+                for buff_type in buff_types
+                if str(buff_type).strip()
+            }
+            for unit_id, buff_types in (
+                raw_buff_exclusions.items()
+                if isinstance(raw_buff_exclusions, dict) else ()
+            )
+            if str(unit_id).strip() and isinstance(buff_types, list)
+        }
+        self.advanced_buff_unit_id = ''
         reward_mode_default = valid_choice(
             self.state.get('reward_mode', generation_config.get('reward_mode')),
             REWARD_MODES,
@@ -270,6 +311,9 @@ class LauncherApp(tk.Tk):
         self.include_no_build_production_missions_var = tk.BooleanVar(
             value=bool(generation_config.get('include_no_build_production_missions', True))
         )
+        self.include_operation_missions_var = tk.BooleanVar(
+            value=bool(generation_config.get('include_operation_missions', True))
+        )
         self.prioritize_no_build_missions_var = tk.BooleanVar(
             value=bool(generation_config.get('prioritize_no_build_missions', False))
         )
@@ -289,6 +333,9 @@ class LauncherApp(tk.Tk):
         )
         self.include_defensive_buildings_var = tk.BooleanVar(
             value=reward_settings['include_defensive_buildings']
+        )
+        self.include_special_buildings_var = tk.BooleanVar(
+            value=reward_settings['include_special_buildings']
         )
         self.unlimited_hero_units_var = tk.BooleanVar(
             value=reward_settings['unlimited_hero_units']
@@ -312,11 +359,15 @@ class LauncherApp(tk.Tk):
             buff_type['id']: tk.BooleanVar(value=buff_type['id'] in enabled_buff_types)
             for buff_type in BUFF_TYPES
         }
+        if self.unlimited_hero_units_var.get():
+            self.buff_type_vars['build_limit'].set(False)
         self.log_visible_var = tk.BooleanVar(value=False)
         self.unlock_search_var = tk.StringVar(value='')
+        self.header_summary_var = tk.StringVar(value='')
         self.unlock_search_current = None
         self.cameo_photo_cache = {}
         self.unlock_cameo_images = {}
+        self.advanced_pool_images = {}
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
         self.cleanup_generated_root_maps()
@@ -352,6 +403,16 @@ class LauncherApp(tk.Tk):
 
     def create_widgets(self):
         build_launcher_widgets(self)
+
+    def update_header_summary(self, *_args):
+        """Show the core selected run settings beneath the launcher title."""
+        self.header_summary_var.set(' • '.join((
+            self.campaign_var.get(),
+            self.reward_mode_var.get(),
+            self.progression_mode_var.get(),
+            self.difficulty_var.get(),
+            self.game_speed_var.get(),
+        )))
 
     def toggle_settings_panel(self):
         self.set_unlock_grid_highlights(())
@@ -537,25 +598,36 @@ class LauncherApp(tk.Tk):
         self.show_busy(title, detail)
 
         def worker():
+            previous_switch_interval = sys.getswitchinterval()
+            # Reward planning is Python-heavy. A shorter handoff interval keeps
+            # Tk's elapsed label and indeterminate bar repainting smoothly.
+            sys.setswitchinterval(min(previous_switch_interval, 0.001))
             try:
                 result = callback()
             except Exception as exc:
                 error_detail = traceback.format_exc()
 
                 def deliver_error(exc=exc, error_detail=error_detail):
+                    self.hide_busy()
                     try:
                         on_error(exc, error_detail)
-                    finally:
-                        self.hide_busy()
+                    except Exception:
+                        self.append_log(traceback.format_exc(), error=True)
 
                 self.ui_queue.put(('callback', deliver_error))
                 return
+            finally:
+                sys.setswitchinterval(previous_switch_interval)
 
             def deliver_result(result=result):
+                # The background phase is finished. Remove the animated
+                # overlay before the main-thread UI refresh so it cannot look
+                # like a frozen loading screen while cards/grid are painted.
+                self.hide_busy()
                 try:
                     on_success(result)
-                finally:
-                    self.hide_busy()
+                except Exception as exc:
+                    on_error(exc, traceback.format_exc())
 
             self.ui_queue.put(('callback', deliver_result))
 
@@ -592,6 +664,10 @@ class LauncherApp(tk.Tk):
             self.settings_canvas.itemconfigure(self.settings_canvas_window, width=event.width)
         if hasattr(self, 'settings_intro_label'):
             self.settings_intro_label.configure(wraplength=max(220, event.width - 32))
+        if hasattr(self, 'rewards_per_check_message_label'):
+            self.rewards_per_check_message_label.configure(
+                wraplength=max(180, event.width - 64)
+            )
 
     def on_settings_mousewheel(self, event):
         if not hasattr(self, 'settings_canvas') or not hasattr(self, 'settings_tab'):
@@ -608,6 +684,12 @@ class LauncherApp(tk.Tk):
             return None
         steps = -1 if event.delta > 0 else 1
         self.settings_canvas.yview_scroll(steps, 'units')
+        return 'break'
+
+    def on_settings_control_mousewheel(self, event):
+        """Scroll Settings without changing the focused readonly control."""
+        if hasattr(self, 'settings_canvas'):
+            self.settings_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
     def on_grid_content_configure(self, event=None):
@@ -723,8 +805,8 @@ class LauncherApp(tk.Tk):
                 tags.append('unlock_available')
             self.missions_tree.item(item, tags=tuple(tags))
 
-    def on_unlock_card_enter(self, card, entry):
-        card.configure(cursor='hand2')
+    def on_unlock_card_enter(self, card, entry=None):
+        entry = entry or getattr(card, 'unlock_entry', {})
         mission_codes = (
             entry['sources'].get('available_codes', ())
             if entry.get('status') == 'available' and not entry.get('privacy')
@@ -732,8 +814,18 @@ class LauncherApp(tk.Tk):
         )
         self.set_unlock_grid_highlights(mission_codes)
 
-    def on_unlock_card_leave(self, _event=None):
-        self.set_unlock_grid_highlights(())
+    def on_unlock_card_leave(self, card=None):
+        # Tk can briefly report Leave while creating a tooltip Toplevel. Wait
+        # one event turn and clear only when the pointer truly left the card.
+        def clear_if_outside():
+            if card is not None and card.winfo_exists():
+                x, y = self.winfo_pointerx(), self.winfo_pointery()
+                left, top = card.winfo_rootx(), card.winfo_rooty()
+                if left <= x < left + card.winfo_width() and top <= y < top + card.winfo_height():
+                    return
+            self.set_unlock_grid_highlights(())
+
+        self.after(20, clear_if_outside)
 
     def focus_unlock_search(self, event=None):
         if hasattr(self, 'info_tabs') and hasattr(self, 'unlocks_tab'):
@@ -1036,12 +1128,8 @@ class LauncherApp(tk.Tk):
         )
         include_aid_powers = bool(generation_config.get('include_aid_power_rewards', True))
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
+        include_special_buildings = bool(generation_config.get('include_special_buildings', True))
         unlimited_hero_units = bool(generation_config.get('unlimited_hero_units', False))
-        if unlimited_hero_units:
-            enabled_buff_types = [
-                buff_type for buff_type in enabled_buff_types
-                if buff_type != 'build_limit'
-            ]
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
         failure_assistance = bool(generation_config.get('failure_assistance', False))
@@ -1051,6 +1139,7 @@ class LauncherApp(tk.Tk):
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
+            'include_special_buildings': include_special_buildings,
             'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -1071,6 +1160,25 @@ class LauncherApp(tk.Tk):
                 if enabled
             ],
             'enabled_buff_types': enabled_buff_types,
+            'excluded_unit_access_ids': sorted({
+                str(unit_id).upper()
+                for unit_id in generation_config.get('excluded_unit_access_ids', [])
+                if str(unit_id).strip()
+            }),
+            'excluded_superweapon_ids': sorted({
+                str(power_id).upper()
+                for power_id in generation_config.get('excluded_superweapon_ids', [])
+                if str(power_id).strip()
+            }),
+            'excluded_unit_buff_types': {
+                str(unit_id).upper(): sorted({str(item) for item in buff_types})
+                for unit_id, buff_types in generation_config.get(
+                    'excluded_unit_buff_types', {}
+                ).items()
+                if isinstance(buff_types, list)
+            } if isinstance(
+                generation_config.get('excluded_unit_buff_types', {}), dict
+            ) else {},
         }
 
     def current_reward_settings(self):
@@ -1080,6 +1188,7 @@ class LauncherApp(tk.Tk):
         randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
         start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
+        include_special_buildings = bool(self.include_special_buildings_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
@@ -1093,15 +1202,11 @@ class LauncherApp(tk.Tk):
             for buff_type in BUFF_TYPES
             if self.buff_type_vars[buff_type['id']].get()
         ]
-        if unlimited_hero_units:
-            enabled_buff_types = [
-                buff_type for buff_type in enabled_buff_types
-                if buff_type != 'build_limit'
-            ]
         return {
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'include_defensive_buildings': include_defensive_buildings,
+            'include_special_buildings': include_special_buildings,
             'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -1122,6 +1227,13 @@ class LauncherApp(tk.Tk):
                 if enabled
             ],
             'enabled_buff_types': enabled_buff_types,
+            'excluded_unit_access_ids': sorted(self.excluded_unit_access_ids),
+            'excluded_superweapon_ids': sorted(self.excluded_superweapon_ids),
+            'excluded_unit_buff_types': {
+                unit_id: sorted(buff_types)
+                for unit_id, buff_types in sorted(self.excluded_unit_buff_types.items())
+                if buff_types
+            },
         }
 
     def active_reward_settings(self):
@@ -1135,6 +1247,7 @@ class LauncherApp(tk.Tk):
         settings.setdefault('randomize_unit_access', True)
         settings.setdefault('start_with_tier_one_units', False)
         settings.setdefault('include_defensive_buildings', True)
+        settings.setdefault('include_special_buildings', True)
         settings.setdefault('unlimited_hero_units', False)
         settings.setdefault('share_chaos_role_buffs', False)
         settings.setdefault(
@@ -1151,13 +1264,11 @@ class LauncherApp(tk.Tk):
         settings.setdefault('include_superweapon_rewards', False)
         settings.setdefault('include_secondary_superweapon_rewards', False)
         settings.setdefault('include_aid_power_rewards', False)
+        settings.setdefault('excluded_unit_access_ids', [])
+        settings.setdefault('excluded_superweapon_ids', [])
+        settings.setdefault('excluded_unit_buff_types', {})
         if not isinstance(settings.get('enabled_buff_types'), list):
             settings['enabled_buff_types'] = [buff_type['id'] for buff_type in BUFF_TYPES]
-        if settings['unlimited_hero_units']:
-            settings['enabled_buff_types'] = [
-                buff_type for buff_type in settings['enabled_buff_types']
-                if buff_type != 'build_limit'
-            ]
         return settings
 
     def randomize_unit_access_enabled(self):
@@ -1167,9 +1278,17 @@ class LauncherApp(tk.Tk):
         settings = reward_settings or self.active_reward_settings()
         if not settings.get('start_with_tier_one_units', False):
             return []
+        excluded_ids = {
+            str(unit_id).upper()
+            for unit_id in settings.get('excluded_unit_access_ids', [])
+        }
         if self.active_reward_mode() == 'Chaos (Experimental)':
             rng = random.Random(f'{seed}:starting-tier-one')
-            return list(random_chaos_tier_one_unit_ids(rng))
+            return [
+                unit_id
+                for unit_id in random_chaos_tier_one_unit_ids(rng)
+                if not linked_buff_variant_ids(unit_id).intersection(excluded_ids)
+            ]
 
         generation_context = self.__dict__.get('_seed_generation_context') or {}
         selected = generation_context.get('campaign_filter')
@@ -1182,7 +1301,11 @@ class LauncherApp(tk.Tk):
             'Foehn': ('allies', 'soviets'),
             'All Campaigns': ('allies', 'soviets', 'epsilon'),
         }.get(selected, ('allies', 'soviets', 'epsilon'))
-        return list(tier_one_unit_ids(families))
+        return [
+            marker
+            for marker in tier_one_unit_ids(families)
+            if expanded_tier_one_unit_ids([marker]) - excluded_ids
+        ]
 
     def active_starting_tier_one_unit_ids(self):
         override = self.__dict__.get('_starting_unit_ids_override')
@@ -1197,6 +1320,18 @@ class LauncherApp(tk.Tk):
         return self.starting_tier_one_unit_ids_for_seed(
             self.seed_var.get() if hasattr(self, 'seed_var') else '',
         )
+
+    def active_starting_tier_one_expanded_ids(self):
+        """Resolve starter markers after authoritative Advanced Pool exclusions."""
+        excluded_ids = {
+            str(unit_id).upper()
+            for unit_id in self.active_reward_settings().get(
+                'excluded_unit_access_ids', []
+            )
+        }
+        return expanded_tier_one_unit_ids(
+            self.active_starting_tier_one_unit_ids()
+        ) - excluded_ids
 
     def share_chaos_role_buffs_enabled(self):
         return bool(
@@ -1290,6 +1425,8 @@ class LauncherApp(tk.Tk):
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['difficulty'] = self.difficulty_var.get()
         self.config['game_speed'] = self.game_speed_var.get()
+        self.config['player_color'] = self.player_color_var.get()
+        self.config['rainbowizer'] = bool(self.rainbowizer_var.get())
         reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
         self.config['generation']['include_no_build_missions'] = bool(
@@ -1298,9 +1435,24 @@ class LauncherApp(tk.Tk):
         self.config['generation']['include_no_build_production_missions'] = bool(
             self.include_no_build_production_missions_var.get()
         )
+        self.config['generation']['include_operation_missions'] = bool(
+            self.include_operation_missions_var.get()
+        )
         self.config['generation']['prioritize_no_build_missions'] = bool(
             self.prioritize_no_build_missions_var.get()
         )
+        self.config['generation']['excluded_mission_codes'] = sorted(self.excluded_mission_codes)
+        self.config['generation']['excluded_unit_access_ids'] = sorted(
+            self.excluded_unit_access_ids
+        )
+        self.config['generation']['excluded_superweapon_ids'] = sorted(
+            self.excluded_superweapon_ids
+        )
+        self.config['generation']['excluded_unit_buff_types'] = {
+            unit_id: sorted(buff_types)
+            for unit_id, buff_types in sorted(self.excluded_unit_buff_types.items())
+            if buff_types
+        }
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
         self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation'].pop('experimental_player_unit_clones', None)
@@ -1308,6 +1460,7 @@ class LauncherApp(tk.Tk):
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
+        self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
         self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
@@ -1395,6 +1548,8 @@ class LauncherApp(tk.Tk):
         return bool(
             self.active_reward_mode() != 'Chaos (Experimental)'
             and reward.get('kind') != 'superweapon'
+            and reward.get('access_category') != 'special_building'
+            and not self.reward_is_special_building(reward)
             and set(reward.get('factions') or ()) == {'Foehn'}
         )
 
@@ -1556,7 +1711,11 @@ class LauncherApp(tk.Tk):
                 or factions.intersection(reward.get('factions', []))
                 or (
                     selected == 'Foehn'
-                    and reward.get('kind') == 'superweapon'
+                    and (
+                        reward.get('kind') == 'superweapon'
+                        or reward.get('access_category') == 'special_building'
+                        or self.reward_is_special_building(reward)
+                    )
                     and 'Foehn' in reward.get('factions', [])
                 )
             )
@@ -1572,11 +1731,26 @@ class LauncherApp(tk.Tk):
         unit_id = reward.get('unit')
         return bool(unit_id and BUFF_TARGETS.get(unit_id, {}).get('category') == 'defenses')
 
+    def reward_is_special_building(self, reward):
+        if reward.get('access_category') == 'special_building':
+            return True
+        unit_id = str(reward.get('unit') or '').upper()
+        return bool(
+            unit_id
+            and BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings'
+        )
+
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
-        starting_unit_ids = expanded_tier_one_unit_ids(
-            self.active_starting_tier_one_unit_ids()
-        )
+        excluded_access_ids = {
+            str(unit_id).upper()
+            for unit_id in reward_settings.get('excluded_unit_access_ids', [])
+        }
+        excluded_superweapon_ids = {
+            str(power_id).upper()
+            for power_id in reward_settings.get('excluded_superweapon_ids', [])
+        }
+        starting_unit_ids = self.active_starting_tier_one_expanded_ids()
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
@@ -1585,10 +1759,25 @@ class LauncherApp(tk.Tk):
         )
         include_aid_powers = bool(reward_settings.get('include_aid_power_rewards', False))
         include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
+        include_special_buildings = bool(reward_settings.get('include_special_buildings', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
-        if reward_settings.get('unlimited_hero_units'):
-            enabled_buff_types.discard('build_limit')
+        excluded_unit_buff_types = {
+            str(unit_id).upper(): {str(buff_type) for buff_type in buff_types}
+            for unit_id, buff_types in reward_settings.get(
+                'excluded_unit_buff_types', {}
+            ).items()
+            if isinstance(buff_types, (list, tuple, set))
+        }
         chaos_mode = self.active_reward_mode() == 'Chaos (Experimental)'
+
+        def buff_unit_is_allowed(reward):
+            unit_id = str(reward.get('unit') or '').upper()
+            if not unit_id or unit_id in ALWAYS_AVAILABLE_TECH_IDS:
+                return True
+            return not linked_buff_variant_ids(unit_id).intersection(
+                excluded_access_ids
+            )
+
         return [
             reward
             for reward in pool
@@ -1597,7 +1786,17 @@ class LauncherApp(tk.Tk):
                     reward.get('kind') == 'buff'
                     and include_buffs
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                    and (include_special_buildings or not self.reward_is_special_building(reward))
                     and reward.get('buff_type') in enabled_buff_types
+                    and reward.get('buff_type') not in excluded_unit_buff_types.get(
+                        str(reward.get('unit') or '').upper(), set()
+                    )
+                    and buff_unit_is_allowed(reward)
+                    and not (
+                        reward_settings.get('unlimited_hero_units')
+                        and reward.get('buff_type') == 'build_limit'
+                        and not self.reward_is_special_building(reward)
+                    )
                     and not (
                         chaos_mode
                         and reward.get('buff_type') == 'production'
@@ -1620,12 +1819,16 @@ class LauncherApp(tk.Tk):
                             and include_aid_powers
                         )
                     )
+                    and str(reward.get('superweapon') or '').upper()
+                    not in excluded_superweapon_ids
                 )
                 or (
                     reward.get('kind') not in {'buff', 'superweapon'}
                     and randomize_access
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                    and (include_special_buildings or not self.reward_is_special_building(reward))
                     and not tech_ids_for_rewards([reward]).intersection(starting_unit_ids)
+                    and not tech_ids_for_rewards([reward]).intersection(excluded_access_ids)
                 )
             )
         ]
@@ -1783,7 +1986,7 @@ class LauncherApp(tk.Tk):
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         used_access_names = set()
         seed_unlocked_tech_ids = (
-            expanded_tier_one_unit_ids(self.active_starting_tier_one_unit_ids())
+            self.active_starting_tier_one_expanded_ids()
             | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
         )
         buff_counts = {}
@@ -2059,6 +2262,7 @@ class LauncherApp(tk.Tk):
         self.update_mission_goal_limit()
         self.sync_state_mission_objectives()
         self.redraw_mission_tree()
+        self.refresh_advanced_pool_views()
 
         if not self.missions:
             self.append_log('No missions found. Check INI/BattleClient.ini and game root paths.', error=True)
@@ -2070,14 +2274,580 @@ class LauncherApp(tk.Tk):
             self.selected_index.set(int(children[0]))
         self.append_log(f'Loaded {len(self.missions)} missions.')
 
+    def advanced_unit_pool_entries(self):
+        """Return combat-unit access targets represented by the reward pool."""
+        entries = {}
+        for reward in REWARD_POOL:
+            if reward.get('kind') in {'buff', 'superweapon'}:
+                continue
+            factions = tuple(reward.get('factions') or ('Other',))
+            for unit_id in tech_ids_for_rewards([reward]):
+                linked_ids = linked_buff_variant_ids(unit_id)
+                unit_id = next(
+                    (
+                        candidate
+                        for candidate in linked_ids
+                        if not BUFF_TARGETS.get(candidate, {}).get('linked_buff_source')
+                    ),
+                    unit_id,
+                )
+                target = BUFF_TARGETS.get(unit_id, {})
+                if target.get('category') not in {
+                    'infantry', 'units', 'aircraft', 'defenses',
+                    'special_buildings',
+                }:
+                    continue
+                entries.setdefault(unit_id, {
+                    'id': unit_id,
+                    'label': unit_display_label(unit_id),
+                    'faction': factions[0],
+                })
+        faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
+        return sorted(
+            entries.values(),
+            key=lambda entry: (
+                faction_rank.get(entry['faction'], 4),
+                entry['label'].casefold(),
+                entry['id'],
+            ),
+        )
+
+    def advanced_buff_unit_entries(self):
+        """Return units that can receive at least one configured buff reward."""
+        entries = {}
+        for reward in REWARD_POOL:
+            if reward.get('kind') != 'buff' or not reward.get('unit'):
+                continue
+            unit_id = str(reward['unit']).upper()
+            target = BUFF_TARGETS.get(unit_id, {})
+            if target.get('category') not in {
+                'infantry', 'units', 'aircraft', 'defenses', 'special_buildings',
+            }:
+                continue
+            entry = entries.setdefault(unit_id, {
+                'id': unit_id,
+                'label': unit_display_label(unit_id),
+                'faction': self.unit_faction(unit_id),
+                'buff_types': set(),
+            })
+            entry['buff_types'].add(str(reward.get('buff_type') or ''))
+        faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
+        return sorted(
+            entries.values(),
+            key=lambda entry: (
+                faction_rank.get(entry['faction'], 4),
+                entry['label'].casefold(),
+                entry['id'],
+            ),
+        )
+
+    def advanced_buff_unit_is_visible(self, entry):
+        unit_id = entry['id']
+        if (
+            not self.include_special_buildings_var.get()
+            and BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings'
+        ):
+            return False
+        if unit_id not in ALWAYS_AVAILABLE_TECH_IDS and linked_buff_variant_ids(
+            unit_id
+        ).intersection(self.excluded_unit_access_ids):
+            return False
+        selected_campaign = self.campaign_var.get()
+        return (
+            selected_campaign == CAMPAIGN_FILTERS[0]
+            or entry.get('faction') == selected_campaign
+        )
+
+    def draw_advanced_buff_unit_card(self, parent, row, column, entry, photo=None):
+        unit_id = entry['id']
+        selected = unit_id == self.advanced_buff_unit_id
+        possible = set(entry['buff_types'])
+        excluded = self.excluded_unit_buff_types.get(unit_id, set())
+        enabled_count = len(possible - excluded)
+        border = '#73d673' if selected else '#4d92d8'
+        card = tk.Canvas(
+            parent, width=130, height=112, highlightthickness=3 if selected else 2,
+            highlightbackground=border, highlightcolor=border,
+            background=FACTION_TILE_COLORS.get(entry.get('faction'), '#315b82'),
+            cursor='hand2',
+        )
+        card.grid(row=row, column=column, padx=4, pady=4, sticky='nw')
+        if photo is not None:
+            card.create_image(65, 35, image=photo, anchor='center')
+        else:
+            card.create_text(
+                65, 35, text=entry.get('faction') or '?', fill='#ffffff',
+                font=('Segoe UI', 10, 'bold'), width=122, justify='center',
+            )
+        card.create_rectangle(0, 72, 130, 112, fill='#151a20', outline='')
+        card.create_text(
+            65, 87, text=entry['label'], fill='#ffffff',
+            font=('Segoe UI', 9, 'bold'), width=122, justify='center',
+        )
+        card.create_text(
+            65, 105, text=f'{enabled_count}/{len(possible)} buffs',
+            fill='#73d673' if enabled_count else '#aeb4bb',
+            font=('Segoe UI', 8), width=122, justify='center',
+        )
+        card.bind(
+            '<Button-1>',
+            lambda _event, item_id=unit_id: self.select_advanced_buff_unit(item_id),
+        )
+        card.bind(
+            '<MouseWheel>',
+            lambda event, target=self.advanced_pool_canvases['unit_buffs']: (
+                self.on_unlock_mousewheel(event, target)
+            ),
+        )
+        WidgetTooltip(
+            card,
+            f'{entry["label"]} ({unit_id})\n{enabled_count} of {len(possible)} buff types enabled',
+        )
+
+    def refresh_advanced_buff_view(self):
+        if 'unit_buffs' not in getattr(self, 'advanced_pool_frames', {}):
+            return
+        frame = self.advanced_pool_frames['unit_buffs']
+        for child in frame.winfo_children():
+            child.destroy()
+        entries = [
+            entry for entry in self.advanced_buff_unit_entries()
+            if self.advanced_buff_unit_is_visible(entry)
+        ]
+        if not entries:
+            self.advanced_buff_unit_id = ''
+        elif self.advanced_buff_unit_id not in {entry['id'] for entry in entries}:
+            self.advanced_buff_unit_id = entries[0]['id']
+
+        cameo_paths = getattr(self, 'advanced_unit_cameo_paths', {}) or {}
+        missing_ids = [entry['id'] for entry in entries if entry['id'] not in cameo_paths]
+        if missing_ids:
+            try:
+                cameo_paths.update(ensure_unit_cameos(missing_ids))
+            except Exception:
+                log_event(
+                    'advanced_buff_cameos_failed', level=logging.ERROR,
+                    traceback=traceback.format_exc(),
+                )
+            self.advanced_unit_cameo_paths = cameo_paths
+        for index, entry in enumerate(entries):
+            photo = self.advanced_pool_photo(
+                f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
+            )
+            if photo is not None:
+                large_key = f'advanced:buff-large:{entry["id"]}'
+                large_photo = self.advanced_pool_images.get(large_key)
+                if large_photo is None:
+                    large_photo = photo.zoom(6, 6).subsample(5, 5)
+                    self.advanced_pool_images[large_key] = large_photo
+                photo = large_photo
+            self.draw_advanced_buff_unit_card(
+                frame, index // 3, index % 3, entry, photo
+            )
+        self.refresh_advanced_buff_controls(entries)
+
+    def refresh_advanced_buff_controls(self, entries=None):
+        if not hasattr(self, 'advanced_unit_buff_vars'):
+            return
+        entries = entries if entries is not None else [
+            entry for entry in self.advanced_buff_unit_entries()
+            if self.advanced_buff_unit_is_visible(entry)
+        ]
+        selected = next(
+            (entry for entry in entries if entry['id'] == self.advanced_buff_unit_id),
+            None,
+        )
+        possible = set(selected['buff_types']) if selected else set()
+        excluded = self.excluded_unit_buff_types.get(
+            self.advanced_buff_unit_id, set()
+        )
+        enabled_count = len(possible - excluded)
+        self.advanced_buff_unit_label.configure(
+            text=(
+                f'{selected["label"]}: {enabled_count}/{len(possible)} default buff types enabled. Values shown per stack.'
+                if selected else 'No included buffable units in this campaign.'
+            )
+        )
+        for buff_type in BUFF_TYPES:
+            buff_id = buff_type['id']
+            self.advanced_unit_buff_vars[buff_id].set(
+                buff_id in possible and buff_id not in excluded
+            )
+            self.advanced_unit_buff_checks[buff_id].configure(
+                state='normal' if buff_id in possible else 'disabled'
+            )
+
+    def select_advanced_buff_unit(self, unit_id):
+        self.advanced_buff_unit_id = str(unit_id).upper()
+        self.refresh_advanced_buff_view()
+
+    def on_advanced_unit_buff_changed(self, buff_id):
+        unit_id = self.advanced_buff_unit_id
+        if not unit_id:
+            return
+        excluded = self.excluded_unit_buff_types.setdefault(unit_id, set())
+        if self.advanced_unit_buff_vars[buff_id].get():
+            excluded.discard(buff_id)
+        else:
+            excluded.add(buff_id)
+        if not excluded:
+            self.excluded_unit_buff_types.pop(unit_id, None)
+        self.save_current_launcher_config()
+        self.refresh_advanced_buff_view()
+
+    def set_advanced_unit_buffs(self, include):
+        unit_id = self.advanced_buff_unit_id
+        if not unit_id:
+            return
+        entry = next(
+            (item for item in self.advanced_buff_unit_entries() if item['id'] == unit_id),
+            None,
+        )
+        if not entry:
+            return
+        if include:
+            self.excluded_unit_buff_types.pop(unit_id, None)
+        else:
+            self.excluded_unit_buff_types[unit_id] = set(entry['buff_types'])
+        self.save_current_launcher_config()
+        self.refresh_advanced_buff_view()
+
+    def advanced_power_pool_entries(self):
+        entries = {}
+        for reward in REWARD_POOL:
+            if reward.get('kind') != 'superweapon' or not reward.get('superweapon'):
+                continue
+            factions = tuple(reward.get('factions') or ('Other',))
+            if len(factions) != 1:
+                continue
+            power_id = str(reward['superweapon']).upper()
+            entries.setdefault(power_id, {
+                'id': power_id,
+                'label': reward_display_name(reward),
+                'faction': factions[0],
+                'reward': reward,
+            })
+        faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
+        return sorted(
+            entries.values(),
+            key=lambda entry: (
+                faction_rank.get(entry['faction'], 4),
+                entry['label'].casefold(),
+            ),
+        )
+
+    def advanced_pool_photo(self, key, path):
+        if not path:
+            return None
+        cache_key = f'advanced:{key}'
+        if cache_key in self.advanced_pool_images:
+            return self.advanced_pool_images[cache_key]
+        try:
+            photo = tk.PhotoImage(file=str(path))
+            if photo.width() <= 70 and photo.height() <= 55:
+                photo = photo.zoom(4, 4).subsample(3, 3)
+            else:
+                factor = max(1, (photo.width() + 87) // 88, (photo.height() + 55) // 56)
+                if factor > 1:
+                    photo = photo.subsample(factor, factor)
+        except (OSError, tk.TclError):
+            return None
+        self.advanced_pool_images[cache_key] = photo
+        return photo
+
+    def draw_advanced_pool_card(self, parent, row, column, entry, pool_key, photo=None):
+        excluded_sets = {
+            'missions': self.excluded_mission_codes,
+            'units': self.excluded_unit_access_ids,
+            'powers': self.excluded_superweapon_ids,
+        }
+        excluded = entry['id'] in excluded_sets[pool_key]
+        faction = entry.get('faction', '')
+        base_color = FACTION_TILE_COLORS.get(faction, '#315b82')
+        border = '#777777' if excluded else '#4d92d8'
+        card = tk.Canvas(
+            parent,
+            width=102,
+            height=90,
+            highlightthickness=2,
+            highlightbackground=border,
+            highlightcolor=border,
+            background=base_color,
+            cursor='hand2',
+        )
+        card.grid(row=row, column=column, padx=4, pady=4, sticky='nw')
+        if photo is not None:
+            card.create_image(51, 31, image=photo, anchor='center')
+        else:
+            card.create_text(
+                51, 31, text=faction or '?', fill='#ffffff',
+                font=('Segoe UI', 10, 'bold'), width=94, justify='center',
+            )
+        card.create_rectangle(0, 62, 102, 90, fill='#151a20', outline='')
+        card.create_text(
+            51, 76,
+            text=entry['label'],
+            fill='#aeb4bb' if excluded else '#ffffff',
+            font=('Segoe UI', 8, 'bold'),
+            width=96,
+            justify='center',
+        )
+        if excluded:
+            card.create_rectangle(
+                0, 0, 102, 90, fill='#777777', outline='', stipple='gray50'
+            )
+            card.create_text(
+                51, 44, text='EXCLUDED', fill='#ffffff',
+                font=('Segoe UI', 8, 'bold'),
+            )
+        card.bind(
+            '<Button-1>',
+            lambda _event, key=pool_key, item_id=entry['id']: (
+                self.toggle_advanced_pool_entry(key, item_id)
+            ),
+        )
+        card.bind(
+            '<MouseWheel>',
+            lambda event, target=self.advanced_pool_canvases[pool_key]: (
+                self.on_unlock_mousewheel(event, target)
+            ),
+        )
+        status = 'Excluded from next seeds' if excluded else 'Included in next seeds'
+        WidgetTooltip(card, f'{entry["label"]} ({entry["id"]})\n{status}')
+
+    def refresh_advanced_pool_views(self):
+        if not hasattr(self, 'advanced_pool_frames'):
+            return
+        for frame in self.advanced_pool_frames.values():
+            for child in frame.winfo_children():
+                child.destroy()
+
+        selected_campaign = self.campaign_var.get()
+
+        def visible_for_campaign(entry):
+            return (
+                selected_campaign == CAMPAIGN_FILTERS[0]
+                or entry.get('faction') == selected_campaign
+            )
+
+        mission_frame = self.advanced_pool_frames['missions']
+        mission_icons = {}
+        for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
+            path = GAME_ROOT / 'Resources' / f'{faction}icon.png'
+            mission_icons[faction] = self.advanced_pool_photo(f'mission:{faction}', path)
+        campaign_missions = [
+            mission for mission in self.missions
+            if selected_campaign == CAMPAIGN_FILTERS[0]
+            or normalize_faction(mission.get('side', '')) == selected_campaign
+        ]
+        visible_missions = filter_missions_by_build_settings(
+            campaign_missions,
+            include_true_no_build=self.include_no_build_missions_var.get(),
+            include_no_build_production=(
+                self.include_no_build_production_missions_var.get()
+            ),
+            include_operation_missions=self.include_operation_missions_var.get(),
+        )
+        for index, mission in enumerate(visible_missions):
+            faction = normalize_faction(mission.get('side', ''))
+            self.draw_advanced_pool_card(
+                mission_frame,
+                index // 3,
+                index % 3,
+                {
+                    'id': mission['code'].upper(),
+                    'label': mission.get('title') or mission['code'],
+                    'faction': faction,
+                },
+                'missions',
+                mission_icons.get(faction),
+            )
+
+        all_unit_entries = self.advanced_unit_pool_entries()
+        unit_entries = [
+            entry for entry in all_unit_entries
+            if visible_for_campaign(entry)
+            and (
+                self.include_special_buildings_var.get()
+                or BUFF_TARGETS.get(entry['id'], {}).get('category')
+                != 'special_buildings'
+            )
+        ]
+        unit_ids = [entry['id'] for entry in all_unit_entries]
+        cameo_paths = getattr(self, 'advanced_unit_cameo_paths', None)
+        if cameo_paths is None:
+            try:
+                cameo_paths = ensure_unit_cameos(unit_ids)
+            except Exception:
+                cameo_paths = {}
+                log_event(
+                    'advanced_pool_cameos_failed',
+                    level=logging.ERROR,
+                    traceback=traceback.format_exc(),
+                )
+            self.advanced_unit_cameo_paths = cameo_paths
+        unit_frame = self.advanced_pool_frames['units']
+        for index, entry in enumerate(unit_entries):
+            photo = self.advanced_pool_photo(
+                f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
+            )
+            self.draw_advanced_pool_card(
+                unit_frame, index // 3, index % 3, entry, 'units', photo
+            )
+
+        all_power_entries = self.advanced_power_pool_entries()
+        enabled_power_categories = {
+            category
+            for category, enabled in (
+                ('offensive', self.include_superweapon_rewards_var.get()),
+                ('secondary', self.include_secondary_superweapon_rewards_var.get()),
+                ('aid', self.include_aid_power_rewards_var.get()),
+            )
+            if enabled
+        }
+        power_entries = [
+            entry for entry in all_power_entries
+            if visible_for_campaign(entry)
+            and entry['reward'].get('power_category', 'offensive')
+            in enabled_power_categories
+        ]
+        normal_power_ids = [
+            entry['reward'].get('cameo_superweapon', entry['id'])
+            for entry in power_entries
+            if not entry['reward'].get('superweapon_sidebar_image')
+        ]
+        try:
+            power_paths = ensure_superweapon_cameos(normal_power_ids)
+        except Exception:
+            power_paths = {}
+            log_event(
+                'advanced_pool_power_cameos_failed',
+                level=logging.ERROR,
+                traceback=traceback.format_exc(),
+            )
+        power_frame = self.advanced_pool_frames['powers']
+        for index, entry in enumerate(power_entries):
+            reward = entry['reward']
+            asset_name = reward.get('superweapon_sidebar_image')
+            if asset_name:
+                try:
+                    path = custom_sidebar_preview(asset_name)
+                except Exception:
+                    path = None
+            else:
+                path = power_paths.get(
+                    str(reward.get('cameo_superweapon', entry['id'])).upper()
+                )
+            photo = self.advanced_pool_photo(f'power:{entry["id"]}', path)
+            self.draw_advanced_pool_card(
+                power_frame, index // 3, index % 3, entry, 'powers', photo
+            )
+
+        self.refresh_advanced_buff_view()
+
+        included_missions = len(visible_missions) - len(
+            {mission['code'].upper() for mission in visible_missions}
+            & self.excluded_mission_codes
+        )
+        visible_unit_ids = {entry['id'] for entry in unit_entries}
+        included_units = len(visible_unit_ids - self.excluded_unit_access_ids)
+        visible_power_ids = {entry['id'] for entry in power_entries}
+        included_powers = len(visible_power_ids - self.excluded_superweapon_ids)
+        self.advanced_pool_status_label.configure(
+            text=(
+                f'{selected_campaign}: missions {included_missions}/{len(visible_missions)}, '
+                f'units/buildings {included_units}/{len(visible_unit_ids)}, '
+                f'superpowers {included_powers}/{len(visible_power_ids)} included'
+            )
+        )
+
+    def toggle_advanced_pool_entry(self, pool_key, item_id):
+        target = {
+            'missions': self.excluded_mission_codes,
+            'units': self.excluded_unit_access_ids,
+            'powers': self.excluded_superweapon_ids,
+        }[pool_key]
+        item_id = str(item_id).upper()
+        if item_id in target:
+            target.remove(item_id)
+        else:
+            target.add(item_id)
+        self.save_current_launcher_config()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+
+    def set_advanced_pool_all(self, pool_key, include):
+        selected_campaign = self.campaign_var.get()
+        if pool_key == 'missions':
+            mission_entries = [
+                {'id': mission['code'].upper(), 'faction': normalize_faction(mission.get('side', ''))}
+                for mission in filter_missions_by_build_settings(
+                    self.missions,
+                    include_true_no_build=self.include_no_build_missions_var.get(),
+                    include_no_build_production=(
+                        self.include_no_build_production_missions_var.get()
+                    ),
+                    include_operation_missions=self.include_operation_missions_var.get(),
+                )
+            ]
+            entries = mission_entries
+            target = self.excluded_mission_codes
+        elif pool_key == 'units':
+            entries = [
+                entry for entry in self.advanced_unit_pool_entries()
+                if self.include_special_buildings_var.get()
+                or BUFF_TARGETS.get(entry['id'], {}).get('category')
+                != 'special_buildings'
+            ]
+            target = self.excluded_unit_access_ids
+        else:
+            enabled_categories = {
+                category
+                for category, enabled in (
+                    ('offensive', self.include_superweapon_rewards_var.get()),
+                    ('secondary', self.include_secondary_superweapon_rewards_var.get()),
+                    ('aid', self.include_aid_power_rewards_var.get()),
+                )
+                if enabled
+            }
+            entries = [
+                entry for entry in self.advanced_power_pool_entries()
+                if entry['reward'].get('power_category', 'offensive')
+                in enabled_categories
+            ]
+            target = self.excluded_superweapon_ids
+        all_ids = {
+            entry['id'] for entry in entries
+            if selected_campaign == CAMPAIGN_FILTERS[0]
+            or entry.get('faction') == selected_campaign
+        }
+        if include:
+            target.difference_update(all_ids)
+        else:
+            target.update(all_ids)
+        self.save_current_launcher_config()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+
     def on_campaign_filter_changed(self, event=None):
         self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
 
     def on_mission_pool_settings_changed(self):
         self.refresh_setting_states()
         self.update_mission_goal_limit()
 
     def on_reward_mode_changed(self, event=None):
+        self.refresh_setting_states()
+
+    def on_unlimited_hero_units_changed(self):
+        if self.unlimited_hero_units_var.get():
+            self.buff_type_vars['build_limit'].set(False)
+        self.refresh_setting_states()
+
+    def on_hero_limit_buff_changed(self):
+        if self.buff_type_vars['build_limit'].get():
+            self.unlimited_hero_units_var.set(False)
         self.refresh_setting_states()
 
     def on_progression_mode_changed(self, event=None):
@@ -2099,8 +2869,7 @@ class LauncherApp(tk.Tk):
         chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
         buffs_enabled = bool(self.include_buff_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
-        if unlimited_hero_units:
-            self.buff_type_vars['build_limit'].set(False)
+        special_buildings_enabled = bool(self.include_special_buildings_var.get())
         if chaos_mode:
             self.randomize_unit_access_var.set(True)
             self.randomize_unit_access_check.configure(state='disabled')
@@ -2118,9 +2887,23 @@ class LauncherApp(tk.Tk):
         build_limit_check = getattr(self, 'buff_type_checks_by_id', {}).get('build_limit')
         if build_limit_check is not None:
             build_limit_check.configure(
-                state='disabled' if unlimited_hero_units or not buffs_enabled else 'normal'
+                state='normal' if buffs_enabled and not unlimited_hero_units else 'disabled'
+            )
+        building_limit_check = getattr(
+            self, 'buff_type_checks_by_id', {}
+        ).get('building_limit')
+        if building_limit_check is not None:
+            building_limit_check.configure(
+                state=(
+                    'normal'
+                    if buffs_enabled and special_buildings_enabled
+                    else 'disabled'
+                )
             )
         self.include_defensive_buildings_check.configure(
+            state='normal' if reward_source_enabled else 'disabled'
+        )
+        self.include_special_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
         )
         self.prioritize_no_build_missions_check.configure(
@@ -2134,6 +2917,7 @@ class LauncherApp(tk.Tk):
             )
         )
         self.refresh_progression_setting_states()
+        self.refresh_advanced_pool_views()
 
     def update_mission_goal_limit(self):
         if not self.missions:
@@ -2527,6 +3311,9 @@ class LauncherApp(tk.Tk):
                 'include_no_build_production_missions': bool(
                     self.include_no_build_production_missions_var.get()
                 ),
+                'include_operation_missions': bool(
+                    self.include_operation_missions_var.get()
+                ),
                 'prioritize_no_build_missions': bool(
                     self.prioritize_no_build_missions_var.get()
                 ),
@@ -2890,12 +3677,17 @@ class LauncherApp(tk.Tk):
             for mission in self.missions
             if normalize_faction(mission.get('side', '')) == selected
         ]
+        missions = [
+            mission for mission in missions
+            if mission.get('code', '').upper() not in self.excluded_mission_codes
+        ]
         return filter_missions_by_build_settings(
             missions,
             include_true_no_build=self.include_no_build_missions_var.get(),
             include_no_build_production=(
                 self.include_no_build_production_missions_var.get()
             ),
+            include_operation_missions=self.include_operation_missions_var.get(),
         )
 
     def randomizer_order_map(self):
@@ -3139,6 +3931,9 @@ class LauncherApp(tk.Tk):
                 chaos_mode=True,
                 additional_build_houses=(),
                 additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
             )
             for section, values in starter_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -3152,7 +3947,7 @@ class LauncherApp(tk.Tk):
             if self.randomize_unit_access_enabled()
             else controlled_tech_ids()
         )
-        earned_access_ids.update(starting_unit_ids)
+        earned_access_ids.update(self.active_starting_tier_one_expanded_ids())
         rules = mission_basic_unit_rules(
             lines,
             earned_access_ids=earned_access_ids,
@@ -3176,6 +3971,9 @@ class LauncherApp(tk.Tk):
             standard_families=standard_starter_families,
             additional_build_houses=(),
             additional_production_houses=production_houses,
+            excluded_unit_ids=self.active_reward_settings().get(
+                'excluded_unit_access_ids', []
+            ),
         )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -3275,10 +4073,21 @@ throw "Map $name was not found in expandmo*.mix"
         include_defenses = bool(
             self.active_reward_settings().get('include_defensive_buildings', True)
         )
+        include_special_buildings = bool(
+            self.active_reward_settings().get('include_special_buildings', True)
+        )
         return {
             section.upper()
             for section in controlled_tech_ids()
-            if include_defenses or BUFF_TARGETS.get(section.upper(), {}).get('category') != 'defenses'
+            if (
+                include_defenses
+                or BUFF_TARGETS.get(section.upper(), {}).get('category') != 'defenses'
+            )
+            and (
+                include_special_buildings
+                or BUFF_TARGETS.get(section.upper(), {}).get('category')
+                != 'special_buildings'
+            )
         }
 
     def map_rules_for_launch(
@@ -3969,13 +4778,27 @@ throw "Map $name was not found in expandmo*.mix"
                 lines.append('')
 
         current_faction = None
-        for tech_id in sorted(groups, key=self.unit_faction_sort_key):
+        def summary_section(unit_id):
+            if BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings':
+                return 'Special Buildings'
+            return self.unit_faction(unit_id)
+
+        for tech_id in sorted(
+            groups,
+            key=lambda unit_id: (
+                summary_section(unit_id) == 'Special Buildings',
+                self.unit_faction_sort_key(unit_id),
+            ),
+        ):
             group = groups[tech_id]
-            faction = self.unit_faction(tech_id)
+            faction = summary_section(tech_id)
             if faction != current_faction:
                 if lines and lines[-1] != '':
                     lines.append('')
                 heading = (
+                    faction
+                    if faction == 'Special Buildings'
+                    else
                     f'{faction} Units'
                     if faction in FACTION_ORDER
                     else f'{faction} Rewards'
@@ -4040,9 +4863,7 @@ throw "Map $name was not found in expandmo*.mix"
 
     def display_starting_tier_one_unit_ids(self):
         """Return concrete starter variants represented by saved role markers."""
-        unit_ids = expanded_tier_one_unit_ids(
-            self.active_starting_tier_one_unit_ids()
-        )
+        unit_ids = self.active_starting_tier_one_expanded_ids()
         if self.active_reward_mode() != 'Chaos (Experimental)':
             unit_ids = {
                 unit_id
@@ -4072,6 +4893,8 @@ throw "Map $name was not found in expandmo*.mix"
                 keys.update(f'unit:{equivalent}' for equivalent in equivalents)
         for tech_id in tech_ids_for_rewards([reward]):
             if tech_id in BUFF_TARGETS and tech_id != 'MOR_BUILDINGS':
+                keys.add(f'unit:{tech_id}')
+            elif reward.get('access_category') == 'special_building':
                 keys.add(f'unit:{tech_id}')
         if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
             keys.add(f'power:{reward["superweapon"]}')
@@ -4133,9 +4956,7 @@ throw "Map $name was not found in expandmo*.mix"
             for reward in (self.earned_rewards_from_checks() if self.state else [])
         ]
         earned_access = tech_ids_for_rewards(earned_rewards)
-        starting_access = expanded_tier_one_unit_ids(
-            self.active_starting_tier_one_unit_ids()
-        )
+        starting_access = self.active_starting_tier_one_expanded_ids()
         randomize_access = self.randomize_unit_access_enabled()
         foehn_units_available = self.active_reward_mode() == 'Chaos (Experimental)'
 
@@ -4147,6 +4968,8 @@ throw "Map $name was not found in expandmo*.mix"
             'defenses': 'Defenses',
         }
         for unit_id, target in BUFF_TARGETS.items():
+            if target.get('linked_buff_source'):
+                continue
             category = target.get('category')
             if category not in category_labels:
                 continue
@@ -4172,6 +4995,7 @@ throw "Map $name was not found in expandmo*.mix"
                     or unit_id in ALWAYS_AVAILABLE_TECH_IDS
                     or unit_id in starting_access
                     or unit_id in earned_access
+                    or bool(source_data['earned'])
                 )
             )
             status = (
@@ -4200,6 +5024,47 @@ throw "Map $name was not found in expandmo*.mix"
                 'condition': condition,
                 'sources': source_data,
                 'privacy': privacy,
+            })
+
+        special_rewards = {
+            next(iter(tech_ids_for_rewards([reward])), ''): reward
+            for reward in REWARD_POOL
+            if reward.get('access_category') == 'special_building'
+        }
+        for definition in SPECIAL_BUILDING_DEFINITIONS:
+            building_id = str(definition['id']).upper()
+            faction = str(definition['faction'])
+            reward = special_rewards.get(building_id)
+            if not reward or faction not in FACTION_ORDER:
+                continue
+            key = f'unit:{building_id}'
+            source_data = sources.get(
+                key, {
+                    'assigned': [], 'earned': [], 'available': [],
+                    'available_unlocks': [], 'available_codes': [],
+                }
+            )
+            status = (
+                'unlocked'
+                if building_id in earned_access
+                else 'available'
+                if source_data['available_unlocks'] and not privacy
+                else 'locked'
+                if source_data['assigned']
+                else 'unavailable'
+            )
+            entries.append({
+                'key': key,
+                'kind': 'unit',
+                'id': building_id,
+                'label': str(definition['name']),
+                'faction': faction,
+                'category': 'Special Buildings',
+                'status': status,
+                'condition': '',
+                'sources': source_data,
+                'privacy': privacy,
+                'reward': reward,
             })
 
         seen_powers = set()
@@ -4288,14 +5153,23 @@ throw "Map $name was not found in expandmo*.mix"
         buffs = {}
         for reward in earned:
             if reward.get('kind') == 'buff':
-                key = (reward.get('unit'), reward.get('buff_type'))
-                buffs.setdefault(key, {'reward': reward, 'count': 0})['count'] += 1
+                key = reward.get('buff_type')
+                display_reward = dict(reward)
+                if entry.get('kind') == 'unit':
+                    display_reward['unit'] = entry['id']
+                buffs.setdefault(
+                    key, {'reward': display_reward, 'count': 0}
+                )['count'] += 1
         effect_lines = []
         for buff in buffs.values():
             effect_lines.extend(buff_effect_lines(
                 buff['reward'], count=buff['count'], include_label=False
             ))
-        if entry['kind'] == 'power' and entry['status'] == 'unlocked':
+        if (
+            entry.get('reward')
+            and entry['status'] == 'unlocked'
+            and entry['reward'].get('access_category') != 'special_building'
+        ):
             effect_lines.extend(reward_rule_summary(entry['reward']))
         if effect_lines:
             lines.extend(['', 'Current effects:'])
@@ -4336,6 +5210,52 @@ throw "Map $name was not found in expandmo*.mix"
             return
         self.unlock_dashboard_signature = signature
         self.set_unlock_grid_highlights(())
+
+        overlays = {
+            'unlocked': (None, '#4f86c6'),
+            'available': ('#15a34a', '#40d36d'),
+            'locked': ('#6b7280', '#858b95'),
+            'unavailable': ('#050505', '#343434'),
+        }
+        structure_signature = (
+            bool(self.dark_mode_var.get()),
+            tuple(
+                (
+                    entry['key'], entry['faction'], entry['category'],
+                    entry['label'], entry['kind'], entry['id'],
+                    str((entry.get('reward') or {}).get('superweapon_sidebar_image', '')),
+                )
+                for entry in entries
+            ),
+        )
+        cards = getattr(self, 'unlock_dashboard_cards', {})
+        if (
+            structure_signature == getattr(self, 'unlock_dashboard_structure_signature', None)
+            and set(cards) == {entry['key'] for entry in entries}
+        ):
+            # Completion changes statuses and tooltips, not catalogue layout.
+            # Updating four canvas rectangles is dramatically cheaper than
+            # destroying/recreating hundreds of widgets and reloading cameos.
+            for entry in entries:
+                record = cards[entry['key']]
+                card = record['card']
+                card.unlock_entry = entry
+                record['tooltip'].text = self.unlock_dashboard_tooltip(entry)
+                fill, outline = overlays[entry['status']]
+                card.itemconfigure(
+                    record['overlay'],
+                    fill=fill or '',
+                    outline=outline,
+                    stipple=(
+                        'gray75'
+                        if entry['status'] == 'unavailable'
+                        else 'gray50'
+                        if fill else ''
+                    ),
+                )
+            return
+
+        self.unlock_dashboard_structure_signature = structure_signature
 
         unit_ids = [entry['id'] for entry in entries if entry['kind'] == 'unit']
         power_entries = [entry for entry in entries if entry['kind'] == 'power']
@@ -4392,16 +5312,11 @@ throw "Map $name was not found in expandmo*.mix"
 
         field = '#20242b' if self.dark_mode_var.get() else '#ffffff'
         foreground = '#f2f4f8' if self.dark_mode_var.get() else '#202124'
-        overlays = {
-            'unlocked': (None, '#4f86c6'),
-            'available': ('#15a34a', '#40d36d'),
-            'locked': ('#6b7280', '#858b95'),
-            'unavailable': ('#050505', '#343434'),
-        }
         order = {'Infantry': 0, 'Vehicles / Naval': 1, 'Aircraft': 2,
-                 'Defenses': 3, 'Superweapons': 4}
+                 'Defenses': 3, 'Special Buildings': 4, 'Superweapons': 5}
         self.unlock_dashboard_sections = {}
         self.unlock_dashboard_columns = {}
+        self.unlock_dashboard_cards = {}
         for faction, content in self.unlock_icon_frames.items():
             canvas = self.unlock_icon_canvases[faction]
             for child in content.winfo_children():
@@ -4429,7 +5344,7 @@ throw "Map $name was not found in expandmo*.mix"
                     card_column = index % 4
                     card = tk.Canvas(
                         content, width=82, height=68, borderwidth=0,
-                        highlightthickness=0, background=field,
+                        highlightthickness=0, background=field, cursor='hand2',
                     )
                     card.grid(row=card_row, column=card_column, padx=1, pady=2)
                     cards.append(card)
@@ -4443,28 +5358,38 @@ throw "Map $name was not found in expandmo*.mix"
                         )
                     fill, outline = overlays[entry['status']]
                     if fill:
-                        card.create_rectangle(
+                        overlay_id = card.create_rectangle(
                             1, 1, 81, 67, fill=fill,
                             stipple='gray50' if entry['status'] != 'unavailable' else 'gray75',
                             outline=outline, width=2,
                         )
                     else:
-                        card.create_rectangle(1, 1, 81, 67, outline=outline, width=2)
+                        overlay_id = card.create_rectangle(
+                            1, 1, 81, 67, outline=outline, width=2
+                        )
+                    card.unlock_entry = entry
                     card.bind(
                         '<Enter>',
-                        lambda _event, target=card, item=entry: self.on_unlock_card_enter(
-                            target, item
-                        ),
+                        lambda _event, target=card: self.on_unlock_card_enter(target),
                         add='+',
                     )
-                    card.bind('<Leave>', self.on_unlock_card_leave, add='+')
+                    card.bind(
+                        '<Leave>',
+                        lambda _event, target=card: self.on_unlock_card_leave(target),
+                        add='+',
+                    )
                     card.bind(
                         '<MouseWheel>',
                         lambda event, target=canvas: self.on_unlock_mousewheel(
                             event, target
                         ),
                     )
-                    WidgetTooltip(card, self.unlock_dashboard_tooltip(entry))
+                    tooltip = WidgetTooltip(card, self.unlock_dashboard_tooltip(entry))
+                    self.unlock_dashboard_cards[entry['key']] = {
+                        'card': card,
+                        'overlay': overlay_id,
+                        'tooltip': tooltip,
+                    }
                 row += (len(category_entries) + 3) // 4
                 layout_sections.append((heading, cards))
             self.unlock_dashboard_sections[faction] = layout_sections

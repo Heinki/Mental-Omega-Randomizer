@@ -10,6 +10,7 @@ from randomizer_ini import (
 )
 from randomizer_map import (
     HOOKED_MAP_MARKER,
+    LOCKED_TECH_LEVEL,
     action_has_code,
     action_has_objective_complete,
     action_line_ids,
@@ -29,6 +30,7 @@ from randomizer_map import (
     mission_assistance_buff_rules,
     mission_assistance_direct_rewards,
     mission_assistance_unit_ids,
+    mission_house_color_rules,
     native_variant_unit_buff_rules,
     player_controlled_houses,
     player_country_buff_rules,
@@ -38,12 +40,14 @@ from randomizer_map import (
     remove_locked_techlevel_actions,
     resolve_configured_helper_houses,
     stacked_house_buff_values,
+    suppressed_superweapon_building_ids,
     trigger_action_ids_by_name,
     unique_in_order,
     unit_weapon_buff_rules,
 )
 from randomizer_mission_houses import mission_house_config, mission_player_power_houses
 from randomizer_mission_overrides import (
+    MISSION_DISABLED_TRIGGERS,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
@@ -64,6 +68,7 @@ from randomizer_rewards import (
     canonical_rewards,
     reward_display_name,
 )
+from randomizer_ui import RAINBOWIZER_COLORS
 
 
 def prepare_hooked_map(self, mission, extra_rules=None):
@@ -96,6 +101,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
 
     source_path = self.extract_campaign_map(scenario)
     lines = read_text(source_path).splitlines()
+    color_rules = mission_house_color_rules(
+        lines,
+        player_color=self.player_color_var.get(),
+        rainbowizer=bool(self.rainbowizer_var.get()),
+        rainbow_colors=RAINBOWIZER_COLORS,
+        random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
+    )
+    if color_rules:
+        merge_ini_section_values(lines, color_rules)
+        self.append_log(
+            f'Applied map color settings to {len(color_rules)} house(s).'
+        )
     team_house_overrides = MISSION_TEAM_HOUSE_OVERRIDES.get(code, {})
     if team_house_overrides:
         available_team_ids = {
@@ -139,6 +156,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     for section, values in mission_base_rules.items():
         rule_sections.setdefault(section, {}).update(values)
+    reward_settings = self.active_reward_settings()
+    suppressed_power_buildings = suppressed_superweapon_building_ids(
+        reward_settings
+    )
+    for building_id in suppressed_power_buildings:
+        rule_sections.setdefault(building_id, {})['TechLevel'] = LOCKED_TECH_LEVEL
+
+    source_triggers = section_value_map_preserve(lines, 'Triggers')
+    for trigger_id in MISSION_DISABLED_TRIGGERS.get(code, ()):
+        trigger_value = source_triggers.get(trigger_id)
+        if trigger_value is None:
+            continue
+        tokens = str(trigger_value).split(',')
+        if len(tokens) > 3:
+            tokens[3] = '1'
+            rule_sections.setdefault('Triggers', {})[trigger_id] = ','.join(tokens)
     native_helpers, missing_helpers = resolve_configured_helper_houses(
         records,
         house_config['allies'],
@@ -480,8 +513,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
-        native_variant_buff_config = MISSION_NATIVE_VARIANT_BUFF_RULES.get(code)
-        if native_variant_buff_config:
+        for native_variant_buff_config in MISSION_NATIVE_VARIANT_BUFF_RULES.get(code, ()):
             source_unit_id = native_variant_buff_config['source_unit']
             native_variant_ids = native_variant_buff_config['native_units']
             native_variant_rules, native_buffed_ids = native_variant_unit_buff_rules(
@@ -566,7 +598,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # TechLevel remains locked; mission_required_launch_rules removes only
     # BuildLimit so the native action can reveal them at the right time.
     unlocked_tech_ids.update(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
-    randomized_tech_ids = self.randomized_tech_ids()
+    randomized_tech_ids = self.randomized_tech_ids() | suppressed_power_buildings
+    unlocked_tech_ids.difference_update(suppressed_power_buildings)
     removed_techlevel_actions = remove_locked_techlevel_actions(
         lines,
         unlocked_tech_ids,

@@ -16,6 +16,8 @@
       "rewards_per_objective": 1,
       "difficulty": "Normal",
       "game_speed": "3 - Medium",
+      "player_color": "Default",
+      "rainbowizer": false,
       "archipelago": {
         "enabled": false,
         "server": "",
@@ -28,7 +30,12 @@
         "starting_unlocked_missions": 3,
         "include_no_build_missions": true,
         "include_no_build_production_missions": true,
+        "include_operation_missions": true,
         "prioritize_no_build_missions": false,
+        "excluded_mission_codes": [],
+        "excluded_unit_access_ids": [],
+        "excluded_superweapon_ids": [],
+        "excluded_unit_buff_types": {},
         "enabled_reward_types": [
           "access",
           "buff",
@@ -39,6 +46,7 @@
         "randomize_unit_access": true,
         "start_with_tier_one_units": false,
         "include_defensive_buildings": true,
+        "include_special_buildings": true,
         "unlimited_hero_units": false,
         "share_chaos_role_buffs": false,
         "include_buff_rewards": true,
@@ -60,7 +68,8 @@
           "cloak",
           "sensors",
           "veteran",
-          "build_limit"
+          "build_limit",
+          "building_limit"
         ],
         "safe_player_country_buffs": true,
         "buff_allied_helpers": false,

@@ -7,7 +7,7 @@ embedded in Python modules. Restart the launcher after changing a file.
 
 - `default_player_config.json`: fallback player, generation, launch, privacy,
   and future Archipelago settings used when active YAML keys are absent.
-- `missions.json`: mission build classifications, helper/enemy house policy,
+- `missions.json`: mission build classifications, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
   access rules, native-variant buff forwarding, and campaign starter families.
 - `map_rules.json`: controlled technology locks, TechnoType registry mapping,
@@ -20,11 +20,18 @@ embedded in Python modules. Restart the launcher after changing a file.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   reward-count messages, faction colors, and light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
-  cross-faction role-equivalence groups, buff targets, labels, hero limits, and
+  cross-faction role-equivalence groups, linked land/water buff identities,
+  buff targets, labels, hero limits, and
   special weapon damage fields.
 - `rewards/unit_policy.json`: installed capabilities, reward exclusions,
   trainability/naval classification, always-available essentials, trainable
-  defenses, and unit-specific display wording.
+  defenses, alternative production facilities, linked land/water access
+  identities, and unit-specific display wording.
+- `rewards/special_buildings.json`: editable faction economy/special-building
+  access rewards, including labels, native Construction Yards, tech levels,
+  build limits, sidebar build category/priority, and whether repeatable +1
+  capacity rewards are generated. Chaos translates these to every faction
+  Construction Yard.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions

@@ -23,6 +23,7 @@ REQUIRED_STATIC_CONFIGS = (
     'rewards/catalogue.json',
     'rewards/tuning.json',
     'rewards/unit_policy.json',
+    'rewards/special_buildings.json',
     'rewards/buff_exceptions.json',
 )
 REQUIRED_SECTIONS = {
@@ -85,6 +86,8 @@ REQUIRED_SECTIONS = {
         'reward_modes': list,
         'progression_modes': list,
         'default_progression_mode': str,
+        'player_colors': list,
+        'rainbowizer_colors': list,
         'rewards_per_check_messages': dict,
         'faction_tile_colors': dict,
         'light_palette': dict,
@@ -94,6 +97,7 @@ REQUIRED_SECTIONS = {
         'faction_unit_rosters': dict,
         'unit_base_stats': dict,
         'unit_role_equivalence_groups': list,
+        'linked_buff_variants': dict,
         'faction_defense_rosters': dict,
         'defense_base_stats': dict,
         'defense_weapon_stats': dict,
@@ -132,7 +136,12 @@ REQUIRED_SECTIONS = {
         'always_available_building_ids': list,
         'trainable_defense_ids': list,
         'naval_unit_ids': list,
+        'additional_production_prerequisites': dict,
+        'linked_access_variants': dict,
         'ammo_display_labels': dict,
+    },
+    'rewards/special_buildings.json': {
+        'buildings': list,
     },
     'rewards/buff_exceptions.json': {
         'excluded_buff_type_ids': dict,
@@ -185,21 +194,41 @@ def _validate_sections(relative_path, sections, path):
             raise StaticConfigError(
                 f'Invalid mission build classifications in {path}: {invalid}'
             )
-        for code, rule in sections['native_variant_buff_rules'].items():
-            if not isinstance(rule, dict) or not isinstance(
-                rule.get('source_unit'), str
-            ):
+        operation_codes = sections['catalogue'].get('operation_mission_codes')
+        if not isinstance(operation_codes, list) or not all(
+            isinstance(code, str) and code in sections['build_classifications']
+            for code in operation_codes
+        ):
+            raise StaticConfigError(f'Invalid operation mission codes in {path}')
+        for code, configured_rules in sections['native_variant_buff_rules'].items():
+            rules = configured_rules if isinstance(configured_rules, list) else [configured_rules]
+            if not rules:
                 raise StaticConfigError(
                     f'Invalid native variant rule for {code} in {path}'
                 )
-            if not isinstance(rule.get('native_units'), list) or not all(
-                isinstance(unit_id, str) and unit_id
-                for unit_id in rule['native_units']
-            ):
-                raise StaticConfigError(
-                    f'Invalid native variant units for {code} in {path}'
-                )
+            for rule in rules:
+                if not isinstance(rule, dict) or not isinstance(
+                    rule.get('source_unit'), str
+                ):
+                    raise StaticConfigError(
+                        f'Invalid native variant rule for {code} in {path}'
+                    )
+                if not isinstance(rule.get('native_units'), list) or not all(
+                    isinstance(unit_id, str) and unit_id
+                    for unit_id in rule['native_units']
+                ):
+                    raise StaticConfigError(
+                        f'Invalid native variant units for {code} in {path}'
+                    )
     if str(Path(relative_path)).replace('\\', '/') == 'rewards/unit_data.json':
+        seen_equivalence_ids = set()
+        known_equivalence_ids = {
+            str(unit_id).upper()
+            for unit_id in (
+                set(sections['unit_base_stats'])
+                | set(sections['defense_base_stats'])
+            )
+        }
         for index, group in enumerate(sections['unit_role_equivalence_groups']):
             if not isinstance(group, list) or not group or not all(
                 isinstance(unit_id, str) and unit_id for unit_id in group
@@ -207,6 +236,97 @@ def _validate_sections(relative_path, sections, path):
                 raise StaticConfigError(
                     f'Invalid unit role equivalence group {index} in {path}'
                 )
+            duplicates = seen_equivalence_ids.intersection(group)
+            if duplicates:
+                raise StaticConfigError(
+                    f'Unit role equivalence IDs occur in multiple groups in {path}: '
+                    + ', '.join(sorted(duplicates))
+                )
+            unknown = {
+                str(unit_id).upper() for unit_id in group
+            } - known_equivalence_ids
+            if unknown:
+                raise StaticConfigError(
+                    f'Unknown unit role equivalence IDs in {path}: '
+                    + ', '.join(sorted(unknown))
+                )
+            seen_equivalence_ids.update(group)
+        for source_id, variants in sections['linked_buff_variants'].items():
+            if (
+                source_id not in sections['unit_base_stats']
+                or not isinstance(variants, dict)
+                or not variants
+            ):
+                raise StaticConfigError(
+                    f'Invalid linked buff variants for {source_id!r} in {path}'
+                )
+            for variant_id, variant in variants.items():
+                weapons = variant.get('weapons') if isinstance(variant, dict) else None
+                if not isinstance(variant_id, str) or not variant_id or not isinstance(weapons, dict):
+                    raise StaticConfigError(
+                        f'Invalid linked buff variant {variant_id!r} in {path}'
+                    )
+                for weapon_id, stats in weapons.items():
+                    if (
+                        not isinstance(weapon_id, str) or not weapon_id
+                        or not isinstance(stats, dict)
+                        or not set(stats).issubset({'damage', 'rof', 'range'})
+                        or not all(isinstance(value, (int, float)) and value > 0 for value in stats.values())
+                    ):
+                        raise StaticConfigError(
+                            f'Invalid linked variant weapon {weapon_id!r} in {path}'
+                        )
+    if str(Path(relative_path)).replace('\\', '/') == 'rewards/unit_policy.json':
+        for unit_id, prerequisites in sections[
+            'additional_production_prerequisites'
+        ].items():
+            if not isinstance(unit_id, str) or not unit_id or not isinstance(
+                prerequisites, list
+            ) or not prerequisites or not all(
+                isinstance(building_id, str) and building_id
+                for building_id in prerequisites
+            ):
+                raise StaticConfigError(
+                    f'Invalid additional production prerequisites for {unit_id!r} in {path}'
+                )
+        for unit_id, variants in sections['linked_access_variants'].items():
+            if (
+                not isinstance(unit_id, str) or not unit_id
+                or not isinstance(variants, dict) or not variants
+                or not all(
+                    isinstance(variant_id, str) and variant_id
+                    and isinstance(prerequisite, str) and prerequisite
+                    for variant_id, prerequisite in variants.items()
+                )
+            ):
+                raise StaticConfigError(
+                    f'Invalid linked access variants for {unit_id!r} in {path}'
+                )
+    if str(Path(relative_path)).replace('\\', '/') == 'rewards/special_buildings.json':
+        required_fields = {'id', 'name', 'faction', 'prerequisite'}
+        valid_factions = {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+        seen_ids = set()
+        for index, building in enumerate(sections['buildings']):
+            if not isinstance(building, dict) or not required_fields.issubset(building):
+                raise StaticConfigError(
+                    f'Invalid special building entry {index} in {path}'
+                )
+            building_id = building['id']
+            if (
+                not isinstance(building_id, str)
+                or not building_id
+                or building_id.upper() in seen_ids
+                or building.get('faction') not in valid_factions
+                or not isinstance(building.get('name'), str)
+                or not isinstance(building.get('prerequisite'), str)
+                or not isinstance(building.get('capacity_rewards', False), bool)
+                or not isinstance(building.get('build_category', 'Tech'), str)
+                or not isinstance(building.get('cameo_priority', -1000), int)
+            ):
+                raise StaticConfigError(
+                    f'Invalid special building entry {index} in {path}'
+                )
+            seen_ids.add(building_id.upper())
     if str(Path(relative_path)).replace('\\', '/') == 'ui.json':
         messages = sections['rewards_per_check_messages']
         if not isinstance(messages.get('maximum'), str) or not isinstance(

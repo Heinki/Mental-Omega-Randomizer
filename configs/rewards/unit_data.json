@@ -128,6 +128,7 @@
           "HARP": "Archer",
           "YDOG": "Epsilon Spook",
           "YENGINEER": "Epsilon Engineer",
+          "DUNE": "Dunerider",
           "BRUTE": "Brute",
           "KAOS": "Bloatick",
           "YURI": "Epsilon Adept",
@@ -1095,6 +1096,14 @@
         9,
         null
       ],
+      "DUNE": [
+        600,
+        9,
+        150,
+        7,
+        7,
+        null
+      ],
       "BRUTE": [
         500,
         7,
@@ -1835,50 +1844,43 @@
       [
         "GYRO",
         "JUMPJET",
-        "KAOS",
         "WASP"
       ],
       [
-        "BANE",
-        "BRUTE",
-        "RIOT",
-        "SHK"
-      ],
-      [
-        "ASSN",
-        "EUREKA",
         "GHOST",
-        "VOLKOV"
+        "SHK",
+        "BRUTE",
+        "HUNTR"
       ],
       [
-        "INTRUDER",
-        "SBTR",
-        "SPY",
-        "SYNC"
+        "ENFO",
+        "FLAMER",
+        "DUNE",
+        "KAOS"
       ],
       [
-        "HUNTR",
-        "MORALES",
         "SNIPE",
-        "VIRUS"
-      ],
-      [
-        "AMEDIC",
-        "CLAIR",
-        "MOTOR",
-        "REPU"
-      ],
-      [
         "DESO",
-        "SCRG",
-        "SUPR",
+        "VIRUS",
         "ZORB"
       ],
       [
-        "LIBRA",
-        "SICALI",
-        "TANY",
-        "YUNRU"
+        "RIOT",
+        "DESOR",
+        "SCRG",
+        "BANE"
+      ],
+      [
+        "SUPR",
+        "ARSO",
+        "REPU",
+        "SYNC"
+      ],
+      [
+        "SPY",
+        "SBTR",
+        "INTRUDER",
+        "CLAIR"
       ],
       [
         "CMIN",
@@ -1893,130 +1895,140 @@
         "SMCV"
       ],
       [
-        "AHMV",
-        "HTK",
-        "JACKAL",
-        "YTNK"
+        "LCRF",
+        "SAPC",
+        "YHVR",
+        "SEAT"
       ],
       [
-        "DRIL",
+        "ROBO",
+        "DRON",
+        "STING",
+        "MSA"
+      ],
+      [
         "FV",
-        "RACC",
-        "SCAR"
+        "AMC",
+        "TENGU",
+        "HTK",
+        "SCAR",
+        "YTNK",
+        "TERA"
       ],
       [
-        "DRACO",
         "ETNK",
-        "HTNK",
-        "LTNK"
-      ],
-      [
-        "CYCL",
         "JTNK",
+        "QTNK",
+        "DRACO"
+      ],
+      [
         "MTNK",
-        "QTNK"
+        "HTNK",
+        "LTNK",
+        "CYCL"
       ],
       [
+        "KTNK",
         "CTNK",
-        "MGTK",
-        "ROACH",
-        "STNK"
+        "STNK",
+        "ROACH"
       ],
       [
-        "HOWI",
-        "TARCHIA",
-        "V3",
-        "YAHCR"
+        "COMA",
+        "SCHP",
+        "DISK",
+        "BUZZ"
+      ],
+      [
+        "MGTK",
+        "BGGY",
+        "SHADOW",
+        "ROADR"
       ],
       [
         "ABRM",
         "APOC",
-        "DEVO",
-        "GHTNK"
+        "SCAV",
+        "MEGA"
       ],
       [
         "BFRT",
-        "BOID",
-        "CNTR",
-        "GOTTER"
+        "EMPR",
+        "DEVO",
+        "PROME"
       ],
       [
-        "AMC",
+        "SREF",
         "BURA",
         "PLAG",
-        "SHRAY"
+        "GHTNK"
       ],
       [
-        "EMPR",
-        "MSA",
-        "SREF",
-        "TELE"
+        "VCARR",
+        "V3",
+        "TELE",
+        "TARCHIA"
       ],
       [
-        "DRON",
-        "MARA",
-        "ROBO",
-        "TERA"
+        "CNTR",
+        "GOTTER",
+        "BOID"
+      ],
+      [
+        "AERO",
+        "SENT",
+        "YAHCR",
+        "HURR"
       ],
       [
         "BOREK",
-        "LCRF",
-        "SAPC",
-        "SEAT",
         "SHAD",
-        "YHVR"
+        "DRIL",
+        "JACKAL"
       ],
       [
-        "BLIGHT",
-        "FOX",
-        "QUETZ",
-        "STORM"
-      ],
-      [
-        "DUST",
+        "STORM",
         "ORCA",
-        "VENOM"
+        "BEAG",
+        "FOX",
+        "BLIGHT",
+        "COND"
       ],
       [
-        "DISK",
-        "DIVER",
-        "SCHP",
-        "THOR"
+        "HBIRD",
+        "DUST",
+        "VENOM",
+        "DIVER"
       ],
       [
         "BASIL",
         "FORTRESS",
-        "HURR",
+        "QUETZ",
         "ZEP"
       ],
       [
         "DEST",
+        "SUB",
         "SLED",
-        "SWLF",
         "SWORD"
       ],
       [
-        "NAUT",
-        "SHARK",
-        "SIREN",
-        "SUB"
+        "AEGIS",
+        "SWLF",
+        "COYO",
+        "MANTA"
       ],
       [
-        "DBOAT",
-        "DLPH",
-        "MANTA",
-        "SQD"
-      ],
-      [
-        "BSUB",
+        "CARRIER",
         "DRED",
-        "HCRUIS",
+        "BSUB",
         "LEVI"
       ],
       [
-        "AEGIS",
-        "ORCIN",
-        "REAP"
+        "SIREN",
+        "REAP",
+        "SQD",
+        "SHARK"
       ],
       [
         "FASONI",
@@ -2053,8 +2065,32 @@
         "GAGAP",
         "NASCOM",
         "YAMPSI"
+      ],
+      [
+        "GAPOST",
+        "NAIRDM",
+        "YARIFT",
+        "FACOAT"
       ]
     ],
+    "linked_buff_variants": {
+      "ROBO": {
+        "ROBOW": {
+          "weapons": {
+            "ROBOGUNW": {
+              "damage": 45,
+              "rof": 20,
+              "range": 6
+            },
+            "ROBOTORPEDO": {
+              "damage": 45,
+              "rof": 3,
+              "range": 6.5
+            }
+          }
+        }
+      }
+    },
     "faction_defense_rosters": {
       "Allies": {
         "GAPILL": "Allied Pillbox",
@@ -2532,6 +2568,20 @@
       }
     },
     "buff_targets": {
+      "DUNE": {
+        "weapons": {
+          "HoverGrenade": {
+            "damage": 70,
+            "rof": 70,
+            "range": 8
+          },
+          "HoverGrenadeE": {
+            "damage": 40,
+            "rof": 70,
+            "range": 8
+          }
+        }
+      },
       "MOR_BUILDINGS": {
         "label": "Faction Production",
         "plural": "Faction production queues",

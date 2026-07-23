@@ -19,6 +19,10 @@ _REWARD_CATALOGUE_CONFIG = load_static_config('rewards/catalogue.json')
 _FACTION_CONFIG = load_static_config('factions.json')
 _UNIT_POLICY_CONFIG = load_static_config('rewards/unit_policy.json')
 _BUFF_EXCEPTION_CONFIG = load_static_config('rewards/buff_exceptions.json')
+_SPECIAL_BUILDING_CONFIG = load_static_config('rewards/special_buildings.json')
+SPECIAL_BUILDING_DEFINITIONS = tuple(
+    dict(definition) for definition in _SPECIAL_BUILDING_CONFIG['buildings']
+)
 
 # This module is intentionally data-heavy. Keeping it separate from the Tk
 # launcher makes future Archipelago item/location work much easier.
@@ -178,8 +182,22 @@ def build_unlock(
         'RequiredHouses': houses,
         'ForbiddenHouses': 'none',
     }
-    if prerequisite:
-        values['PrerequisiteOverride'] = prerequisite
+    prerequisites = (
+        [prerequisite]
+        if isinstance(prerequisite, str)
+        else list(prerequisite or ())
+    )
+    prerequisites = list(dict.fromkeys(
+        str(item).upper() for item in prerequisites if str(item).strip()
+    ))
+    if len(prerequisites) == 1:
+        values['PrerequisiteOverride'] = prerequisites[0]
+    elif prerequisites:
+        values['PrerequisiteOverride'] = 'none'
+        values['Prerequisite.List0'] = prerequisites[0]
+        values['Prerequisite.Lists'] = str(len(prerequisites) - 1)
+        for index, building_id in enumerate(prerequisites[1:], start=1):
+            values[f'Prerequisite.List{index}'] = building_id
     return {section: values}
 
 UNIT_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['unit_unlock_rewards']
@@ -189,6 +207,47 @@ EXTRA_UNIT_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['extra_unit_unlock_rewards'
 FACTION_ACCESS_RULES = _REWARD_CATALOGUE_CONFIG['faction_access_rules']
 
 NAVAL_UNIT_IDS = set(_UNIT_POLICY_CONFIG['naval_unit_ids'])
+ADDITIONAL_PRODUCTION_PREREQUISITES = {
+    str(unit_id).upper(): tuple(str(value).upper() for value in values)
+    for unit_id, values in _UNIT_POLICY_CONFIG[
+        'additional_production_prerequisites'
+    ].items()
+}
+LINKED_ACCESS_VARIANTS = {
+    str(unit_id).upper(): {
+        str(variant_id).upper(): str(prerequisite).upper()
+        for variant_id, prerequisite in variants.items()
+    }
+    for unit_id, variants in _UNIT_POLICY_CONFIG['linked_access_variants'].items()
+}
+LINKED_BUFF_VARIANTS = {
+    str(unit_id).upper(): {
+        str(variant_id).upper(): dict(definition)
+        for variant_id, definition in variants.items()
+    }
+    for unit_id, variants in _UNIT_DATA_CONFIG['linked_buff_variants'].items()
+}
+
+
+def linked_buff_variant_ids(unit_id):
+    """Return one gameplay identity and its land/water presentation variants."""
+    unit_id = str(unit_id or '').upper()
+    if not unit_id:
+        return frozenset()
+    identities = {unit_id}
+    identities.update(LINKED_BUFF_VARIANTS.get(unit_id, {}))
+    for source_id, variants in LINKED_BUFF_VARIANTS.items():
+        if unit_id in variants:
+            identities.add(source_id)
+            identities.update(variants)
+    return frozenset(identities)
+
+
+def unit_production_prerequisites(unit_id, primary):
+    return tuple(dict.fromkeys((
+        str(primary).upper(),
+        *ADDITIONAL_PRODUCTION_PREREQUISITES.get(str(unit_id).upper(), ()),
+    )))
 
 
 def access_target_lookup():
@@ -217,10 +276,25 @@ def build_missing_roster_unlock_rewards(existing_rewards):
             continue
         access = FACTION_ACCESS_RULES[faction]
         prerequisite = access['naval'] if unit_id in NAVAL_UNIT_IDS else access[category]
+        rules = build_unlock(
+            unit_id,
+            1,
+            unit_production_prerequisites(unit_id, prerequisite),
+            access['houses'],
+        )
+        for variant_id, variant_prerequisite in LINKED_ACCESS_VARIANTS.get(
+            unit_id, {}
+        ).items():
+            rules.update(build_unlock(
+                variant_id,
+                1,
+                variant_prerequisite,
+                access['houses'],
+            ))
         rewards.append({
             'name': f'{label} Access',
             'description': f'Allows {label} production from the earliest matching faction facility.',
-            'rules': build_unlock(unit_id, 1, prerequisite, access['houses']),
+            'rules': rules,
             'factions': [faction],
         })
     return rewards
@@ -241,6 +315,39 @@ def build_defense_unlock_rewards():
     return rewards
 
 
+def build_special_building_unlock_rewards():
+    rewards = []
+    for definition in SPECIAL_BUILDING_DEFINITIONS:
+        building_id = str(definition['id']).upper()
+        faction = str(definition['faction'])
+        label = str(definition['name'])
+        access = FACTION_ACCESS_RULES[faction]
+        rules = build_unlock(
+            building_id,
+            definition.get('tech_level', 1),
+            str(definition['prerequisite']).upper(),
+            access['houses'],
+        )
+        build_limit = definition.get('build_limit')
+        if build_limit is not None:
+            rules[building_id]['BuildLimit'] = str(build_limit)
+        if definition.get('build_category'):
+            rules[building_id]['BuildCat'] = str(definition['build_category'])
+        if definition.get('cameo_priority') is not None:
+            rules[building_id]['CameoPriority'] = str(definition['cameo_priority'])
+        rewards.append({
+            'name': f'{label} Access',
+            'description': (
+                f'Allows construction of the {label} directly from the '
+                'faction Construction Yard, without its normal tech structure.'
+            ),
+            'access_category': 'special_building',
+            'rules': rules,
+            'factions': [faction],
+        })
+    return rewards
+
+
 def normalize_roster_unlock_rules(rewards):
     lookup = access_target_lookup()
     for reward in rewards:
@@ -252,11 +359,24 @@ def normalize_roster_unlock_rules(rewards):
             faction, category, _ = target
             access = FACTION_ACCESS_RULES[faction]
             prerequisite = access['naval'] if unit_id in NAVAL_UNIT_IDS else access[category]
+            normalized = build_unlock(
+                unit_id,
+                values.get('TechLevel', values.get('techlevel', 1)),
+                unit_production_prerequisites(unit_id, prerequisite),
+                access['houses'],
+            )[unit_id]
+            for key in list(values):
+                if key.lower().startswith('prerequisite'):
+                    values.pop(key)
             values.update({
                 'Owner': access['houses'],
                 'RequiredHouses': access['houses'],
                 'ForbiddenHouses': 'none',
-                'PrerequisiteOverride': prerequisite,
+            })
+            values.update({
+                key: value
+                for key, value in normalized.items()
+                if key.lower().startswith('prerequisite')
             })
 
 
@@ -264,6 +384,7 @@ ROSTER_UNIT_UNLOCK_REWARDS = build_missing_roster_unlock_rewards(
     UNIT_UNLOCK_REWARDS + EXTRA_UNIT_UNLOCK_REWARDS
 )
 DEFENSE_UNLOCK_REWARDS = build_defense_unlock_rewards()
+SPECIAL_BUILDING_UNLOCK_REWARDS = build_special_building_unlock_rewards()
 normalize_roster_unlock_rules(
     UNIT_UNLOCK_REWARDS + EXTRA_UNIT_UNLOCK_REWARDS + ROSTER_UNIT_UNLOCK_REWARDS
 )
@@ -353,6 +474,24 @@ LIMITED_HERO_UNIT_IDS = frozenset(LIMITED_HERO_BUILD_LIMITS)
 for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
     BUFF_TARGETS[limited_unit_id]['build_limit'] = build_limit
 
+for definition in SPECIAL_BUILDING_DEFINITIONS:
+    if not definition.get('capacity_rewards'):
+        continue
+    building_id = str(definition['id']).upper()
+    label = str(definition['name'])
+    BUFF_TARGETS[building_id] = {
+        'label': label,
+        'plural': default_plural(label),
+        'category': 'special_buildings',
+        'factions': [str(definition['faction'])],
+        'build_limit': int(definition.get('build_limit', 1)),
+        'capacity_stack_limit': int(definition.get('capacity_stack_limit', 4)),
+        'build_category': str(definition.get('build_category', 'Tech')),
+        'cameo_priority': int(definition.get('cameo_priority', -1000)),
+        'allowed_buff_types': ['building_limit'],
+        'trainable': False,
+    }
+
 # Speed 10 proved unsafe for infantry pathfinding on campaign slopes, notably
 # Malver in Singularity. Earned infantry movement buffs use direct TechnoType
 # values capped at this conservative limit. Faster native infantry retain
@@ -375,6 +514,10 @@ for special_unit_id, damage_fields in SPECIAL_DAMAGE_FIELDS.items():
     BUFF_TARGETS[special_unit_id]['special_damage_fields'] = damage_fields
 
 UNIT_LABELS = dict(_UNIT_DATA_CONFIG['unit_labels'])
+UNIT_LABELS.update({
+    str(definition['id']).upper(): str(definition['name'])
+    for definition in SPECIAL_BUILDING_DEFINITIONS
+})
 
 for faction_categories in FACTION_UNIT_ROSTERS.values():
     for roster_units in faction_categories.values():
@@ -400,6 +543,7 @@ def normalize_access_reward_display_names():
         + EXTRA_UNIT_UNLOCK_REWARDS
         + ROSTER_UNIT_UNLOCK_REWARDS
         + DEFENSE_UNLOCK_REWARDS
+        + SPECIAL_BUILDING_UNLOCK_REWARDS
     )
     for reward in access_rewards:
         unlocked_ids = [
@@ -492,6 +636,21 @@ def build_buff_rewards():
 
 
 UNIT_BUFF_REWARDS = build_buff_rewards()
+
+# Linked land/water identities share one visible access item and one set of
+# rewards. Their separate map clones still need variant-specific weapons so a
+# Robot Tank buff affects both the War Factory and Naval Yard forms safely.
+for source_id, variants in LINKED_BUFF_VARIANTS.items():
+    source_target = BUFF_TARGETS[source_id]
+    for variant_id, definition in variants.items():
+        variant_target = dict(source_target)
+        variant_target['weapons'] = {
+            str(weapon_id).upper(): dict(stats)
+            for weapon_id, stats in definition.get('weapons', {}).items()
+        }
+        variant_target['linked_buff_source'] = source_id
+        BUFF_TARGETS[variant_id] = variant_target
+        UNIT_LABELS[variant_id] = source_target['label']
 
 
 # Keep the normal Allied storm independent from mission-local [General]
@@ -607,6 +766,7 @@ REWARD_POOL = (
     + EXTRA_UNIT_UNLOCK_REWARDS
     + ROSTER_UNIT_UNLOCK_REWARDS
     + DEFENSE_UNLOCK_REWARDS
+    + SPECIAL_BUILDING_UNLOCK_REWARDS
     + SUPERWEAPON_UNLOCK_REWARDS
     + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
     + AID_POWER_UNLOCK_REWARDS
@@ -630,6 +790,11 @@ REWARD_ALIASES = {
     'Base Construction Drill I': 'Faction Production Drill I',
     'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
 }
+for definition in SPECIAL_BUILDING_DEFINITIONS:
+    building_name = str(definition['name'])
+    REWARD_ALIASES[
+        f'{building_name} Command Capacity I'
+    ] = f'{building_name} Structure Capacity I'
 for target in BUFF_TARGETS.values():
     # Existing seeds may contain the removed GuardRange reward. Convert it to
     # the same unit's useful vision reward instead of applying behavior that
@@ -748,7 +913,7 @@ HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'veteran'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors'}
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
-CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit'}
+CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit', 'building_limit'}
 MAX_VETERANCY_STACKS = int(BUFF_EFFECTS['maximum_veterancy_stacks'])
 
 
@@ -774,6 +939,9 @@ def buff_stack_limit(reward):
         return None
     if reward.get('buff_type') == 'veteran':
         return MAX_VETERANCY_STACKS
+    if reward.get('buff_type') == 'building_limit':
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        return max(1, int(target.get('capacity_stack_limit', 4)))
     if reward.get('buff_type') == 'speed':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         if target.get('category') == 'infantry':
@@ -841,7 +1009,9 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         return [stacked(f'{prefix}Speed {faster}% faster')]
     if buff_type == 'armor':
         multiplier = stacking_multiplier('armor', count)
-        tougher = int(round((1.0 - multiplier) * 100))
+        # Armor is a received-damage multiplier. Express its inverse as
+        # effective durability so values can truthfully grow beyond 100%.
+        tougher = int(round(((1.0 / multiplier) - 1.0) * 100))
         return [stacked(f'{prefix}Armor {tougher}% stronger')]
     if buff_type == 'health':
         multiplier = stacking_multiplier('health', count)
@@ -852,9 +1022,14 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         return [stacked(f'{prefix}Vision +{increase}')]
     if buff_type == 'veteran':
         return [stacked(f'{prefix}Veteran start')]
-    if buff_type == 'build_limit':
+    if buff_type in {'build_limit', 'building_limit'}:
         base_limit = int(target.get('build_limit', 1))
-        return [stacked(f'{prefix}Simultaneous unit limit {base_limit} -> {base_limit + count}')]
+        subject = (
+            'Simultaneous structure limit'
+            if target.get('category') == 'special_buildings'
+            else 'Simultaneous unit limit'
+        )
+        return [stacked(f'{prefix}{subject} {base_limit} -> {base_limit + count}')]
     if buff_type == 'damage':
         multiplier = stacking_multiplier('damage', count)
         stronger = int(round((multiplier - 1.0) * 100))

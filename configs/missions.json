@@ -17,6 +17,27 @@
       "fallback_stage_score": 12,
       "finale_stage_score": 24,
       "finale_mission_codes": ["SHAND"],
+      "operation_mission_codes": [
+        "ADEMON",
+        "AOBST",
+        "ACONV",
+        "AFULL",
+        "AGRID",
+        "ASOMNIA",
+        "SARCHE",
+        "SECLIPSE",
+        "STROPH",
+        "SNOISE",
+        "SDAWN",
+        "SARMS",
+        "ETACI",
+        "EASHES",
+        "ERAGE",
+        "ESPLIT",
+        "ENIGHT",
+        "ESURV",
+        "FCAPSULE"
+      ],
       "late_foehn_mission_codes": [
         "FBEYOND",
         "FCAPSULE",
@@ -935,11 +956,20 @@
       }
     },
     "player_production_houses": {
+      "AHYST": [
+        "PsiCorps House"
+      ],
+      "EDIVER": [
+        "PsiCorps2 House"
+      ],
       "EBREED": [
         "PsiCorps2 House"
       ],
       "EBLOOD": [
         "PC-Base House"
+      ],
+      "ESURV": [
+        "SC1 House"
       ],
       "SRAVEN": [
         "Guild3 House"
@@ -957,6 +987,12 @@
       ]
     },
     "native_trigger_reference_ids": {
+      "AOBST": [
+        "SHAD"
+      ],
+      "ELIZARD": [
+        "BASIL"
+      ],
       "EPEACE": [
         "LCRF"
       ],
@@ -973,6 +1009,10 @@
       "AHAMMERFALL": [
         "SHAD",
         "TANY"
+      ],
+      "EHUEHUE": [
+        "INTRUDER",
+        "SHAD"
       ],
       "SBLEED": [
         "E2",
@@ -1013,13 +1053,28 @@
         "LIBRA8"
       ]
     },
+    "disabled_triggers": {
+      "AOBST": [
+        "01000269"
+      ]
+    },
     "native_techno_clone_exclusions": {
+      "AOBST": [
+        "SHAD"
+      ],
+      "ELIZARD": [
+        "BASIL"
+      ],
       "ASIREN": [
         "TANY"
       ],
       "AHAMMERFALL": [
         "SHAD",
         "TANY"
+      ],
+      "EHUEHUE": [
+        "INTRUDER",
+        "SHAD"
       ],
       "SBLEED": [
         "E2",
@@ -1081,6 +1136,19 @@
           "ForbiddenHouses": "none"
         }
       },
+      "ESURV": {
+        "YENGINEER": {
+          "TechLevel": "1",
+          "BuildLimit": null,
+          "PrerequisiteOverride": "none",
+          "Prerequisite.List0": "CAMINE",
+          "Prerequisite.List1": "YABRCK",
+          "Prerequisite.Lists": "1",
+          "Owner": "ScorpionCell,MORPLAYER",
+          "RequiredHouses": "ScorpionCell,MORPLAYER",
+          "ForbiddenHouses": "none"
+        }
+      },
       "SJUGGER": {
         "NAHAMM": {
           "BuildLimit": "-1"
@@ -1114,6 +1182,14 @@
       }
     },
     "techno_base_rules": {
+      "ASIREN": {
+        "CLEG": {
+          "Strength": "1500"
+        },
+        "TANY": {
+          "Strength": "1500"
+        }
+      },
       "AHAMMERFALL": {
         "TANY": {
           "Strength": "320"
@@ -1150,6 +1226,15 @@
       }
     },
     "native_direct_buff_exclusions": {
+      "AOBST": [
+        "SHAD"
+      ],
+      "ELIZARD": [
+        "BASIL"
+      ],
+      "ASIREN": [
+        "TANY"
+      ],
       "AHAMMERFALL": [
         "TANY"
       ],
@@ -1186,6 +1271,16 @@
       ]
     },
     "native_variant_buff_rules": {
+      "ASIREN": [
+        {
+          "source_unit": "TANY",
+          "native_units": ["TANY"]
+        },
+        {
+          "source_unit": "SIEG",
+          "native_units": ["CLEG"]
+        }
+      ],
       "AHAMMERFALL": {
         "source_unit": "TANY",
         "native_units": ["TANY"]

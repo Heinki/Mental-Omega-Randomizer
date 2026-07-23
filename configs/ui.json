@@ -63,6 +63,18 @@
       "Grid Mode"
     ],
     "default_progression_mode": "Mission List",
+    "player_colors": [
+      "Default", "Gold", "Red", "DarkBlue", "Green", "Orange", "Sky",
+      "Purple", "Pink", "Teal", "Aqua", "Lime", "Magenta", "Crimson",
+      "Brown2", "DarkGreen", "DarkRed", "LightBlue", "NeonGreen", "Olive",
+      "Purple2", "Purple3", "Russet", "Yellow"
+    ],
+    "rainbowizer_colors": [
+      "Gold", "Red", "DarkBlue", "Green", "Orange", "Sky", "Purple", "Pink",
+      "Teal", "Aqua", "Lime", "Magenta", "Crimson", "Brown2", "DarkGreen",
+      "DarkRed", "LightBlue", "NeonGreen", "Olive", "Purple2", "Purple3",
+      "Russet", "Yellow"
+    ],
     "rewards_per_check_messages": {
       "maximum": "Ok that is now enough...",
       "thresholds": [

@@ -20,6 +20,11 @@ def _frozenset_mapping(section):
 # player-owned mission objects through exact native triggers.
 MISSION_NATIVE_TRIGGER_REFERENCE_IDS = _frozenset_mapping('native_trigger_reference_ids')
 
+MISSION_DISABLED_TRIGGERS = {
+    code: frozenset(trigger_ids)
+    for code, trigger_ids in _MISSION_CONFIG.get('disabled_triggers', {}).items()
+}
+
 MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS = _frozenset_mapping('native_techno_clone_exclusions')
 
 MISSION_REWARD_EXCLUDED_PLAYER_HOUSES = _frozenset_mapping('reward_excluded_player_houses')
@@ -35,10 +40,13 @@ MISSION_TECHNO_BASE_RULES = dict(_MISSION_CONFIG['techno_base_rules'])
 MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = _frozenset_mapping('native_direct_buff_exclusions')
 
 MISSION_NATIVE_VARIANT_BUFF_RULES = {
-    code: {
-        'source_unit': values['source_unit'],
-        'native_units': tuple(values['native_units']),
-    }
+    code: tuple(
+        {
+            'source_unit': rule['source_unit'],
+            'native_units': tuple(rule['native_units']),
+        }
+        for rule in (values if isinstance(values, list) else [values])
+    )
     for code, values in _MISSION_CONFIG['native_variant_buff_rules'].items()
 }
 

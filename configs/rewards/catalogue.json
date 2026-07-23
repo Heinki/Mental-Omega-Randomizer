@@ -725,6 +725,14 @@
         "description": "{plural} can have one additional unit active at the same time in future launched missions.",
         "requires_stat": "build_limit",
         "requires_clone": true
+      },
+      {
+        "id": "building_limit",
+        "name": "Structure Capacity",
+        "setting_label": "Special building limit +1",
+        "description": "{plural} can have one additional structure active at the same time in future launched missions.",
+        "requires_stat": "build_limit",
+        "requires_clone": true
       }
     ],
     "lightning_storm_map_rules": {

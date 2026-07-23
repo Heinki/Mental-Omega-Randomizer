@@ -22,6 +22,7 @@ OPERATION_STAGE_SCORE = int(_MISSION_CATALOGUE['operation_stage_score'])
 FALLBACK_STAGE_SCORE = int(_MISSION_CATALOGUE['fallback_stage_score'])
 FINALE_STAGE_SCORE = int(_MISSION_CATALOGUE['finale_stage_score'])
 FINALE_MISSION_CODES = frozenset(_MISSION_CATALOGUE['finale_mission_codes'])
+OPERATION_MISSION_CODES = frozenset(_MISSION_CATALOGUE['operation_mission_codes'])
 
 BASE_BUILD = 'base_build'
 TRUE_NO_BUILD = 'true_no_build'
@@ -74,18 +75,21 @@ def filter_missions_by_build_settings(
     missions,
     include_true_no_build=True,
     include_no_build_production=True,
+    include_operation_missions=True,
 ):
-    """Apply the two independent no-build category inclusion settings."""
+    """Apply independent no-build and optional-operation pool settings."""
     excluded = set()
     if not include_true_no_build:
         excluded.add(TRUE_NO_BUILD)
     if not include_no_build_production:
         excluded.add(NO_BUILD_PRODUCTION)
-    if not excluded:
-        return list(missions)
     return [
         mission for mission in missions
         if mission.get('build_classification', BASE_BUILD) not in excluded
+        and (
+            include_operation_missions
+            or mission.get('code', '').upper() not in OPERATION_MISSION_CODES
+        )
     ]
 
 
@@ -151,6 +155,7 @@ def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
             'no_build': bool(NO_BUILD_MISSION_FLAGS.get(code, False)),
             'true_no_build': code in TRUE_NO_BUILD_MISSION_CODES,
             'no_build_production': code in NO_BUILD_PRODUCTION_MISSION_CODES,
+            'operation': code in OPERATION_MISSION_CODES,
         })
     return missions
 

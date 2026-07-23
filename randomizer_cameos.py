@@ -21,6 +21,9 @@ _RULES_ART_NAMES = None
 _RULES_SIDEBAR_NAMES = None
 _RULES_SECTION_VALUES = None
 _EXTRACTION_LOCK = threading.Lock()
+_PENDING_LOCK = threading.Lock()
+_ATTEMPTED_CAMEOS = set()
+_PENDING_EXTRACTIONS = set()
 MIX_READER_ASSEMBLY_NAMES = (
     'NLog.dll',
     'CNCMaps.Shared.dll',
@@ -48,6 +51,31 @@ def powershell_mix_reader_load_script():
 
 def extract_mix_files(requests):
     """Extract requested MIX members using the renderer's bundled MIX reader."""
+    normalized = tuple(sorted(
+        (str(Path(source).name).upper(), str(Path(output)))
+        for source, output in requests
+    ))
+    if threading.current_thread() is threading.main_thread():
+        # MIX scans can take several seconds on large installations. Never run
+        # one in Tk's event thread; the next ordinary refresh will consume the
+        # completed cache files.
+        with _PENDING_LOCK:
+            if normalized in _PENDING_EXTRACTIONS:
+                return False
+            _PENDING_EXTRACTIONS.add(normalized)
+
+        def worker():
+            try:
+                with _EXTRACTION_LOCK:
+                    _extract_mix_files(requests)
+            finally:
+                with _PENDING_LOCK:
+                    _PENDING_EXTRACTIONS.discard(normalized)
+
+        threading.Thread(
+            target=worker, name='MentalOmegaCameoExtractor', daemon=True
+        ).start()
+        return False
     # Requests use one shared handoff file. Cache construction and UI cameo
     # loading can run on background threads, so serialize the complete handoff
     # and PowerShell read rather than only protecting the JSON write.
@@ -94,9 +122,16 @@ foreach($mixPath in (Get-ChildItem {powershell_literal(GAME_ROOT / '*.mix')} | S
     $foundHere = [Collections.Generic.List[object]]::new()
     $stream = [IO.File]::OpenRead($mixPath.FullName)
     try {{
-        $mix = New-Object CNCMaps.FileFormats.MixFile($stream, $mixPath.Name, $false)
-        foreach($request in @($pending.ToArray())) {{
-            if($mix.ContainsFile([string]$request.name)) {{ $foundHere.Add($request) }}
+        try {{
+            $mix = New-Object CNCMaps.FileFormats.MixFile($stream, $mixPath.Name, $false)
+            foreach($request in @($pending.ToArray())) {{
+                if($mix.ContainsFile([string]$request.name)) {{ $foundHere.Add($request) }}
+            }}
+        }} catch {{
+            # Some installations contain MIX-like archives unsupported by the
+            # renderer reader. Skip that file instead of aborting the complete
+            # cameo scan and freezing every later UI refresh.
+            continue
         }}
     }} finally {{
         $stream.Dispose()
@@ -226,20 +261,24 @@ def art_cameo_names():
     global _ART_CAMEO_NAMES
     if _ART_CAMEO_NAMES is not None:
         return _ART_CAMEO_NAMES
-    _ART_CAMEO_NAMES = _extract_ini_key_mapping(
+    mapping = _extract_ini_key_mapping(
         ART_CACHE_PATH, 'ARTMO.INI', 'CameoPCX'
     )
-    return _ART_CAMEO_NAMES
+    if mapping or ART_CACHE_PATH.exists():
+        _ART_CAMEO_NAMES = mapping
+    return mapping
 
 
 def rules_art_names():
     global _RULES_ART_NAMES
     if _RULES_ART_NAMES is not None:
         return _RULES_ART_NAMES
-    _RULES_ART_NAMES = _extract_ini_key_mapping(
+    mapping = _extract_ini_key_mapping(
         RULES_CACHE_PATH, 'RULESMO.INI', 'Image', upper_value=True
     )
-    return _RULES_ART_NAMES
+    if mapping or RULES_CACHE_PATH.exists():
+        _RULES_ART_NAMES = mapping
+    return mapping
 
 
 def rules_sidebar_names():
@@ -247,10 +286,12 @@ def rules_sidebar_names():
     global _RULES_SIDEBAR_NAMES
     if _RULES_SIDEBAR_NAMES is not None:
         return _RULES_SIDEBAR_NAMES
-    _RULES_SIDEBAR_NAMES = _extract_ini_key_mapping(
+    mapping = _extract_ini_key_mapping(
         RULES_CACHE_PATH, 'RULESMO.INI', 'SidebarPCX'
     )
-    return _RULES_SIDEBAR_NAMES
+    if mapping or RULES_CACHE_PATH.exists():
+        _RULES_SIDEBAR_NAMES = mapping
+    return mapping
 
 
 def png_chunk(kind, payload):
@@ -336,9 +377,15 @@ def ensure_requested_cameos(requested):
     for cameo_name in set(requested.values()):
         pcx_path = CAMEO_CACHE_DIR / cameo_name.lower()
         png_path = pcx_path.with_suffix('.png')
-        if (not pcx_path.exists() or pcx_path.stat().st_size == 0) and not png_path.exists():
+        if (
+            cameo_name.upper() not in _ATTEMPTED_CAMEOS
+            and (not pcx_path.exists() or pcx_path.stat().st_size == 0)
+            and not png_path.exists()
+        ):
             missing_pcxs.append((cameo_name, pcx_path))
-    extract_mix_files(missing_pcxs)
+    if missing_pcxs:
+        _ATTEMPTED_CAMEOS.update(name.upper() for name, _path in missing_pcxs)
+        extract_mix_files(missing_pcxs)
 
     result = {}
     for asset_id, cameo_name in requested.items():

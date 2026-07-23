@@ -15,6 +15,7 @@ from randomizer_map import (
     player_transfer_houses,
     production_owner_countries,
     resolve_configured_helper_houses,
+    safe_engineer_identity_values,
     unit_usage_houses,
     unsafe_country_houses,
 )
@@ -117,12 +118,14 @@ def _production_lookup():
 
 
 PRODUCTION_LOOKUP = _production_lookup()
+ACCESS_PREREQUISITES = {}
 
 
 def _access_catalog():
     """Index access rewards by their target faction production category."""
     catalog = []
     seen = set()
+    ACCESS_PREREQUISITES.clear()
     for reward in REWARD_POOL:
         if reward.get('kind') in {'buff', 'superweapon'}:
             continue
@@ -132,27 +135,49 @@ def _access_catalog():
                 (str(value) for key, value in values.items() if key.lower() == 'techlevel'),
                 '',
             )
-            prerequisite = next(
-                (str(value).upper() for key, value in values.items() if key.lower() == 'prerequisiteoverride'),
+            prerequisite_override = next(
+                (
+                    str(value).upper()
+                    for key, value in values.items()
+                    if key.lower() == 'prerequisiteoverride'
+                ),
                 '',
             )
-            production = PRODUCTION_LOOKUP.get(prerequisite)
-            if not tech_level or not production:
+            prerequisites = []
+            if prerequisite_override and prerequisite_override != 'NONE':
+                prerequisites.append(prerequisite_override)
+            prerequisites.extend(
+                str(value).upper()
+                for key, value in values.items()
+                if key.lower().startswith('prerequisite.list')
+                and key.lower() != 'prerequisite.lists'
+            )
+            prerequisites = list(dict.fromkeys(prerequisites))
+            if not tech_level or not prerequisites:
                 continue
-            family, category = production
+            ACCESS_PREREQUISITES[tech_id] = tuple(prerequisites)
             owner = next(
                 (str(value) for key, value in values.items() if key.lower() == 'owner'),
                 '',
             )
-            key = (tech_id, family, category)
-            if key in seen:
-                continue
-            seen.add(key)
-            catalog.append((tech_id, tech_level, family, category, prerequisite, owner))
+            for prerequisite in prerequisites:
+                production = PRODUCTION_LOOKUP.get(prerequisite)
+                if not production:
+                    continue
+                family, category = production
+                key = (tech_id, family, category)
+                if key in seen:
+                    continue
+                seen.add(key)
+                catalog.append((tech_id, tech_level, family, category, prerequisite, owner))
     return catalog
 
 
 ACCESS_CATALOG = _access_catalog()
+
+
+def _native_access_prerequisites(tech_id, fallback):
+    return ACCESS_PREREQUISITES.get(str(tech_id).upper(), (fallback,))
 
 
 def _structure_owner_and_type(line):
@@ -351,7 +376,7 @@ def single_engineer_rules(
     additional_build_houses=(),
     additional_production_houses=(),
 ):
-    """Prepare one installed Engineer cameo for any barracks the player gains."""
+    """Prepare the native Engineer for every barracks family the player gains."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     production_families = []
@@ -369,24 +394,10 @@ def single_engineer_rules(
 
     special_barracks = list(_special_infantry_factories(sections))
     player_family = _player_family(lines, records)
-    if chaos_mode:
-        selected_family = (
-            production_families[0]
-            if production_families
-            else player_family
-        )
-    else:
-        selected_family = (
-            player_family
-            if player_family in production_families
-            else (
-                production_families[0]
-                if production_families
-                else player_family
-            )
-        )
-    selected_id = ENGINEER_BY_FAMILY.get(selected_family)
-    if not selected_id:
+    active_families = list(production_families)
+    if not active_families and player_family:
+        active_families.append(player_family)
+    if not any(ENGINEER_BY_FAMILY.get(family) for family in active_families):
         return {}
 
     player_countries = safe_build_countries(
@@ -398,30 +409,39 @@ def single_engineer_rules(
         production_owner_countries(lines, player_countries, sections=sections)
     )
     required_houses = ','.join(player_countries)
-    prerequisites = _merged_items(
-        (
-            CHAOS_PRIMARY_PRODUCTION[family]['infantry']
-            for family in production_families
-            if family in CHAOS_PRIMARY_PRODUCTION
-        ),
-        special_barracks,
-    )
-    selected_rule = {
-        'TechLevel': '1',
-        'BuildLimit': None,
-        'Owner': owners,
-        'RequiredHouses': required_houses,
-        'ForbiddenHouses': 'none',
-    }
-    selected_rule.update(
-        _alternative_prerequisite_rules(prerequisites or ('BARRACKS',))
-    )
+    rules = {}
+    active_engineer_ids = set()
+    for family in active_families:
+        engineer_id = ENGINEER_BY_FAMILY.get(family)
+        production = CHAOS_PRIMARY_PRODUCTION.get(family, {})
+        native_barracks = production.get('infantry')
+        if not engineer_id or not native_barracks:
+            continue
+        prerequisites = [native_barracks]
+        # Map-local generic infantry factories serve the player's native
+        # Engineer. Foreign captured barracks retain their own Engineer.
+        if family == player_family:
+            prerequisites.extend(special_barracks)
+        rule = {
+            'TechLevel': '1',
+            'BuildLimit': None,
+            'Owner': owners,
+            'RequiredHouses': required_houses,
+            'ForbiddenHouses': 'none',
+        }
+        # Every fallback must remain a normal Engineer. Some maps or stale
+        # installed caches redefine one as a 1-health Chrono infantry.
+        rule.update(safe_engineer_identity_values(
+            BUFF_TARGETS[engineer_id], remove_unsafe=True
+        ))
+        rule.update(_alternative_prerequisite_rules(prerequisites))
+        rules[engineer_id] = rule
+        active_engineer_ids.add(engineer_id)
 
-    rules = {selected_id: selected_rule}
     section_by_upper = {
         str(section).upper(): values for section, values in sections.items()
     }
-    for engineer_id in sorted(ENGINEER_UNIT_IDS - {selected_id}):
+    for engineer_id in sorted(ENGINEER_UNIT_IDS - active_engineer_ids):
         # Hide redundant cameos from every player-controlled country without
         # BuildLimit=0, which could block an AI/scripted Engineer request.
         # Retain effective installed/map enemy exclusions on the original.
@@ -548,7 +568,10 @@ def mission_basic_unit_rules(
                 player_build_countries,
                 tech_level,
                 native_owners,
-                prerequisite_alternatives=(prerequisite, *special_barracks),
+                prerequisite_alternatives=(
+                    *_native_access_prerequisites(tech_id, prerequisite),
+                    *special_barracks,
+                ),
             )
             unlocks.append((tech_id, tech_level, access_rule))
 
@@ -572,7 +595,10 @@ def mission_basic_unit_rules(
                 player_build_countries,
                 tech_level,
                 native_owners,
-                prerequisite_alternatives=(prerequisite, STALINS_FIST_FACTORY),
+                prerequisite_alternatives=(
+                    *_native_access_prerequisites(tech_id, prerequisite),
+                    STALINS_FIST_FACTORY,
+                ),
             )
             unlocks.append((tech_id, tech_level, access_rule))
 
@@ -592,7 +618,9 @@ def mission_basic_unit_rules(
             player_build_countries,
             tech_level,
             native_owners,
-            prerequisite_override=prerequisite,
+            prerequisite_alternatives=_native_access_prerequisites(
+                tech_id, prerequisite
+            ),
         )
         unlocks.append((tech_id, tech_level, access_rule))
 
@@ -629,6 +657,11 @@ def chaos_cameo_priority_rules(player_family):
 
     rules = {}
     for tech_id, target in BUFF_TARGETS.items():
+        if target.get('category') == 'special_buildings':
+            rules[tech_id] = {
+                'CameoPriority': str(target.get('cameo_priority', -1000))
+            }
+            continue
         factions = target.get('factions') or []
         if len(factions) != 1:
             continue
@@ -682,17 +715,6 @@ def always_available_transport_rules(
     allowed_families = set(AMPHIBIOUS_TRANSPORTS) if chaos_mode else {
         _player_family(lines, records)
     }
-    if not chaos_mode:
-        allowed_families.update(
-            family
-            for building_id in _mission_production_buildings(
-                lines,
-                records,
-                additional_production_houses,
-            )
-            for family, category in [PRODUCTION_LOOKUP.get(building_id, ('', ''))]
-            if family and category in {'base', 'naval'}
-        )
     rules = {}
     for family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
         if family not in allowed_families:
@@ -821,13 +843,11 @@ def _tier_one_airfield_rules(
         return {}
 
     if chaos_mode:
-        # Chaos aircraft may belong to another faction. Any detected MCV/
-        # Construction Yard can therefore place the selected native airfield.
-        conyards = tuple(
-            CHAOS_PRIMARY_PRODUCTION[family]['base']
-            for family in sorted(base_families)
-        )
-        airfield_families = set(aircraft_families)
+        # Foreign Chaos aircraft already accept any matching AircraftType
+        # factory. Unlock the player's native airfield, never the aircraft's
+        # foreign airfield (for example YAAIRF in an Allied base).
+        conyards = ()
+        airfield_families = set(base_families) if aircraft_families else set()
     else:
         conyards = ()
         airfield_families = set(base_families).intersection(aircraft_families)
@@ -857,6 +877,7 @@ def starting_tier_one_rules(
     standard_families=STANDARD_TIER_ONE_FAMILIES,
     additional_build_houses=(),
     additional_production_houses=(),
+    excluded_unit_ids=(),
 ):
     """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
     selected_ids = {
@@ -866,6 +887,11 @@ def starting_tier_one_rules(
     }
     if not selected_ids:
         return {}
+    excluded_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (excluded_unit_ids or ())
+        if unit_id
+    }
 
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
@@ -898,6 +924,8 @@ def starting_tier_one_rules(
             for family in STANDARD_TIER_ONE_FAMILIES + ('foehn',):
                 for tech_id, category in _tier_one_variant_entries(role, family):
                     if tech_id not in selected_ids:
+                        continue
+                    if tech_id in excluded_ids:
                         continue
                     if category == 'air':
                         selected_aircraft_families.add(family)
@@ -947,6 +975,8 @@ def starting_tier_one_rules(
             tech_id, category = _standard_tier_one_entry(
                 role, family, player_countries
             )
+            if tech_id in excluded_ids:
+                continue
             if (family, category) not in available_categories:
                 continue
             prerequisite = CHAOS_PRIMARY_PRODUCTION[family][category]
@@ -1008,26 +1038,46 @@ def chaos_earned_access_rules(
                 (str(value) for key, value in values.items() if key.lower() == 'techlevel'),
                 '',
             )
-            prerequisite = next(
-                (str(value).upper() for key, value in values.items() if key.lower() == 'prerequisiteoverride'),
+            prerequisite_override = next(
+                (
+                    str(value).upper()
+                    for key, value in values.items()
+                    if key.lower() == 'prerequisiteoverride'
+                ),
                 '',
             )
-            production = PRODUCTION_LOOKUP.get(prerequisite)
-            if not tech_level or not production:
+            prerequisites = []
+            if prerequisite_override and prerequisite_override != 'NONE':
+                prerequisites.append(prerequisite_override)
+            prerequisites.extend(
+                str(value).upper()
+                for key, value in values.items()
+                if key.lower().startswith('prerequisite.list')
+                and key.lower() != 'prerequisite.lists'
+            )
+            prerequisites = list(dict.fromkeys(prerequisites))
+            productions = [
+                PRODUCTION_LOOKUP[prerequisite]
+                for prerequisite in prerequisites
+                if prerequisite in PRODUCTION_LOOKUP
+            ]
+            if not tech_level or not productions:
                 continue
-            _, category = production
+            categories = list(dict.fromkeys(category for _, category in productions))
             rules[tech_id.upper()] = {
                 'TechLevel': tech_level,
                 'Owner': owners,
                 'RequiredHouses': required_houses,
                 'ForbiddenHouses': 'none',
             }
+            alternatives = []
+            for category in categories:
+                alternatives.extend(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+                alternatives.extend(special_alternatives[category])
+            if not alternatives:
+                alternatives.extend(prerequisites)
             rules[tech_id.upper()].update(
-                _chaos_prerequisite_rules(
-                    category,
-                    prerequisite,
-                    special_alternatives[category],
-                )
+                _alternative_prerequisite_rules(alternatives)
             )
     for section, values in chaos_cameo_priority_rules(player_family).items():
         rules.setdefault(section, {}).update(values)

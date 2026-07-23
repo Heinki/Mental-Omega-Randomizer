@@ -167,7 +167,6 @@
       "NAHAMM",
       "NAINDP",
       "NAIRDM",
-      "NAMISL",
       "NASCOM",
       "ORCA",
       "PHNT",
@@ -316,7 +315,38 @@
       "infantry": "InfantryTypes",
       "units": "VehicleTypes",
       "aircraft": "AircraftTypes",
-      "defenses": "BuildingTypes"
+      "defenses": "BuildingTypes",
+      "special_buildings": "BuildingTypes"
+    },
+    "engineer_clone_safety": {
+      "identity_fields": {
+        "Primary": "DefuseKit",
+        "Secondary": "EngineerScanner",
+        "Locomotor": "{4A582744-9839-11d1-B709-00A024DDAFD1}",
+        "MovementZone": "Infantry",
+        "SpeedType": "Foot"
+      },
+      "removed_fields": [
+        "Teleporter",
+        "ChronoInSound",
+        "ChronoOutSound",
+        "ChronoTrigger",
+        "Chronoshift.Allow",
+        "Chronoshift.IsVehicle"
+      ]
+    },
+    "randomized_superweapon_buildings": {
+      "offensive": [
+        "GAWEAT",
+        "NAMISL",
+        "YAPPET",
+        "FAELEV"
+      ],
+      "secondary": [
+        "GACSPH",
+        "NAIRON",
+        "YAGNTC"
+      ]
     },
     "engine_limits": {
       "scripted_tech_build_limit": "0",
