@@ -971,7 +971,8 @@
         "TANY"
       ],
       "AHAMMERFALL": [
-        "SHAD"
+        "SHAD",
+        "TANY"
       ],
       "SBLEED": [
         "E2",
@@ -1017,7 +1018,8 @@
         "TANY"
       ],
       "AHAMMERFALL": [
-        "SHAD"
+        "SHAD",
+        "TANY"
       ],
       "SBLEED": [
         "E2",
@@ -1112,6 +1114,11 @@
       }
     },
     "techno_base_rules": {
+      "AHAMMERFALL": {
+        "TANY": {
+          "Strength": "320"
+        }
+      },
       "EREALITY": {
         "LIBRA": {
           "Strength": "7500"
@@ -1143,6 +1150,9 @@
       }
     },
     "native_direct_buff_exclusions": {
+      "AHAMMERFALL": [
+        "TANY"
+      ],
       "SBLEED": [
         "E2",
         "FLAKT",
@@ -1176,6 +1186,10 @@
       ]
     },
     "native_variant_buff_rules": {
+      "AHAMMERFALL": {
+        "source_unit": "TANY",
+        "native_units": ["TANY"]
+      },
       "SBLEED": {
         "source_unit": "MORALES",
         "native_units": ["MORALES"]
