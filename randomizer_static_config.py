@@ -73,6 +73,8 @@ REQUIRED_SECTIONS = {
     'tier_one.json': {
         'role_units': dict,
         'role_markers': dict,
+        'defense_marker': str,
+        'defense_units': dict,
         'subfaction_units': dict,
         'ground_roles': list,
         'standard_families': list,
@@ -451,6 +453,18 @@ def _validate_sections(relative_path, sections, path):
             raise StaticConfigError(f'Invalid Tier 1 unit mapping in {path}')
         if not set(sections['ground_roles']).issubset(roles):
             raise StaticConfigError(f'Invalid Tier 1 ground roles in {path}')
+        if (
+            not sections['defense_marker']
+            or set(sections['defense_units'])
+            != set(sections['standard_families']) | {'foehn'}
+            or not all(
+                isinstance(unit_ids, list)
+                and unit_ids
+                and all(isinstance(unit_id, str) and unit_id for unit_id in unit_ids)
+                for unit_ids in sections['defense_units'].values()
+            )
+        ):
+            raise StaticConfigError(f'Invalid Tier 1 defense mapping in {path}')
     if str(Path(relative_path)).replace('\\', '/') == 'rewards/unit_policy.json':
         policy_lists = (
             'noncombat_weapon_target_ids', 'nontrainable_unit_ids',

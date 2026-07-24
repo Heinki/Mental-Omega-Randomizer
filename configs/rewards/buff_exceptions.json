@@ -3,7 +3,7 @@
   "description": "Editable reviewed exclusions for redundant, misleading, or ineffective unit buffs.",
   "sections": {
     "excluded_buff_type_ids": {
-      "all": ["ENGINEER", "SENGINEER", "YENGINEER", "FENGINEER", "CMIN", "HARV", "YMIN", "NMIN", "AMCV", "SMCV", "PCV", "FMCV", "GAGAP", "FABTRC"],
+      "all": ["CMIN", "HARV", "YMIN", "NMIN", "AMCV", "SMCV", "PCV", "FMCV", "GAGAP", "FABTRC"],
       "production": ["HIJACKER", "RUINER"],
       "speed": ["CLEG"],
       "damage": ["GASTAS", "GAPOST", "SPY", "SUPR", "SHAD", "CHRTNK", "CRYO", "HBIRD", "NASCOM", "NAMORT", "NAIRDM", "DUST", "MWF", "EDRN", "YAMPSI", "YARIFT", "YAPSYT", "HIJACKER", "RUINER", "INTRUDER", "REPU", "DRIL", "MIND", "COYO", "QUAD", "YHVR", "FACONF", "FACOAT", "FAINHI", "SYNC", "MSA", "RACC", "COON", "CONF", "ORCIN", "SEAT", "SHARK"],

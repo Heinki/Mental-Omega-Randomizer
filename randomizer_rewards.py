@@ -465,6 +465,11 @@ def add_complete_faction_buff_targets():
 
 add_complete_faction_buff_targets()
 
+# Engineers are always-accessible base essentials. Cloaking is their only
+# reward-pool buff for now; direct player clones keep it off enemy Engineers.
+for engineer_id in ENGINEER_UNIT_IDS:
+    BUFF_TARGETS[engineer_id]['allowed_buff_types'] = ['cloak']
+
 # Installed Mental Omega 3.3.6 trainable hero/unique units whose positive
 # BuildLimit is a live simultaneous-unit cap. Script-only mobile types and
 # capped defenses are deliberately absent: changing those limits can break

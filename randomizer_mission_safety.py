@@ -53,6 +53,11 @@ TIER_ONE_ROLE_MARKERS = dict(_TIER_ONE_CONFIG['role_markers'])
 TIER_ONE_ROLE_BY_MARKER = {
     marker.upper(): role for role, marker in TIER_ONE_ROLE_MARKERS.items()
 }
+TIER_ONE_DEFENSE_MARKER = str(_TIER_ONE_CONFIG['defense_marker']).upper()
+TIER_ONE_DEFENSE_UNITS = {
+    family: tuple(str(unit_id).upper() for unit_id in unit_ids)
+    for family, unit_ids in _TIER_ONE_CONFIG['defense_units'].items()
+}
 TIER_ONE_SUBFACTION_UNITS = {
     role: {country: tuple(values) for country, values in countries.items()}
     for role, countries in _TIER_ONE_CONFIG['subfaction_units'].items()
@@ -376,41 +381,34 @@ def single_engineer_rules(
     additional_build_houses=(),
     additional_production_houses=(),
 ):
-    """Prepare the native Engineer for every barracks family the player gains."""
+    """Prepare every faction Engineer behind its matching barracks."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    production_families = []
-    for building_id in _mission_production_buildings(
-        lines,
-        records,
-        additional_production_houses,
-    ):
-        production = PRODUCTION_LOOKUP.get(building_id)
-        if not production or production[1] not in {'base', 'infantry'}:
-            continue
-        family = production[0]
-        if family not in production_families:
-            production_families.append(family)
-
     special_barracks = list(_special_infantry_factories(sections))
     player_family = _player_family(lines, records)
-    active_families = list(production_families)
-    if not active_families and player_family:
-        active_families.append(player_family)
-    if not any(ENGINEER_BY_FAMILY.get(family) for family in active_families):
-        return {}
+    # Standard campaigns contain only the three original factions. Chaos also
+    # installs Foehn's Engineer. A foreign Engineer remains
+    # unavailable until the player captures or constructs that faction's
+    # barracks, then appears without mission-specific capture allowlists.
+    active_families = [
+        family
+        for family in ENGINEER_BY_FAMILY
+        if chaos_mode or family != 'foehn'
+    ]
 
     player_countries = safe_build_countries(
         lines,
         records,
         additional_build_houses,
     )
-    owners = ','.join(
-        production_owner_countries(lines, player_countries, sections=sections)
+    player_owners = production_owner_countries(
+        lines, player_countries, sections=sections
     )
-    required_houses = ','.join(player_countries)
+    engineer_country_universe = _merged_items(*(
+        _comma_items(forbidden)
+        for forbidden in ENGINEER_INSTALLED_FORBIDDEN_HOUSES.values()
+    ))
     rules = {}
-    active_engineer_ids = set()
     for family in active_families:
         engineer_id = ENGINEER_BY_FAMILY.get(family)
         production = CHAOS_PRIMARY_PRODUCTION.get(family, {})
@@ -422,11 +420,26 @@ def single_engineer_rules(
         # Engineer. Foreign captured barracks retain their own Engineer.
         if family == player_family:
             prerequisites.extend(special_barracks)
+        forbidden_native_owners = {
+            item.lower()
+            for item in _comma_items(
+                ENGINEER_INSTALLED_FORBIDDEN_HOUSES[engineer_id]
+            )
+        }
+        native_owners = [
+            country
+            for country in engineer_country_universe
+            if country.lower() not in forbidden_native_owners
+        ]
         rule = {
             'TechLevel': '1',
             'BuildLimit': None,
-            'Owner': owners,
-            'RequiredHouses': required_houses,
+            'Owner': ','.join(_merged_items(
+                native_owners, player_owners
+            )),
+            'RequiredHouses': ','.join(_merged_items(
+                native_owners, player_countries
+            )),
             'ForbiddenHouses': 'none',
         }
         # Every fallback must remain a normal Engineer. Some maps or stale
@@ -436,31 +449,7 @@ def single_engineer_rules(
         ))
         rule.update(_alternative_prerequisite_rules(prerequisites))
         rules[engineer_id] = rule
-        active_engineer_ids.add(engineer_id)
 
-    section_by_upper = {
-        str(section).upper(): values for section, values in sections.items()
-    }
-    for engineer_id in sorted(ENGINEER_UNIT_IDS - active_engineer_ids):
-        # Hide redundant cameos from every player-controlled country without
-        # BuildLimit=0, which could block an AI/scripted Engineer request.
-        # Retain effective installed/map enemy exclusions on the original.
-        map_values = section_by_upper.get(engineer_id, {})
-        forbidden_value = (
-            map_values.get('forbiddenhouses')
-            if 'forbiddenhouses' in map_values
-            else ENGINEER_INSTALLED_FORBIDDEN_HOUSES[engineer_id]
-        )
-        native_forbidden = [
-            item
-            for item in _comma_items(forbidden_value)
-            if item.lower() not in {'none', '<none>'}
-        ]
-        rules[engineer_id] = {
-            'ForbiddenHouses': ','.join(
-                _merged_items(native_forbidden, player_countries)
-            )
-        }
     return rules
 
 
@@ -519,11 +508,23 @@ def mission_basic_unit_rules(
     player_family = _player_family(lines, house_records)
     allowed_families = _allowed_safety_families(player_family)
 
-    for building_id in _mission_production_buildings(
+    production_buildings = list(_mission_production_buildings(
         lines,
         house_records,
         additional_production_houses,
-    ):
+    ))
+    if translate_equivalents:
+        # Single-campaign seeds translate earned roles for any foreign factory
+        # physically present in the mission. Prerequisites keep access dormant
+        # until that building is captured; All Campaigns keeps prior behavior.
+        production_buildings.extend(
+            building_id
+            for line in section_lines(lines, 'Structures')
+            for _owner, building_id in [_structure_owner_and_type(line)]
+            if building_id
+        )
+
+    for building_id in _merged_items(production_buildings):
         building_match = PRODUCTION_LOOKUP.get(building_id)
         if not building_match:
             continue
@@ -676,11 +677,17 @@ def _alternative_prerequisite_rules(alternatives):
     alternatives = _merged_items(alternatives)
     if not alternatives:
         return {}
+    if len(alternatives) == 1:
+        # Standard captured-factory access must remain gated by that exact
+        # faction building. A concrete override also survives player-clone
+        # generation; `none` plus List0 was stripped from cloned units and
+        # could expose Allied peers before an Allied factory was captured.
+        return {'PrerequisiteOverride': alternatives[0]}
 
     rules = {
         'PrerequisiteOverride': 'none',
         'Prerequisite.List0': alternatives[0],
-        'Prerequisite.Lists': str(max(0, len(alternatives) - 1)),
+        'Prerequisite.Lists': str(len(alternatives)),
     }
     for index, building_id in enumerate(alternatives[1:], start=1):
         rules[f'Prerequisite.List{index}'] = building_id
@@ -779,6 +786,42 @@ def expanded_tier_one_unit_ids(starting_unit_ids):
     return expanded
 
 
+def tier_one_defense_ids(families):
+    """Return the abstract starter-defense marker for eligible seed pools."""
+    requested = {str(family or '').lower() for family in families}
+    return (TIER_ONE_DEFENSE_MARKER,) if requested else ()
+
+
+def expanded_tier_one_defense_ids(
+    starting_defense_ids,
+    include_foehn=False,
+    families=None,
+):
+    """Expand the saved defense marker to concrete construction identities."""
+    available_families = [
+        str(family or '').lower()
+        for family in (
+            STANDARD_TIER_ONE_FAMILIES if families is None else families
+        )
+        if str(family or '').lower() in STANDARD_TIER_ONE_FAMILIES
+    ]
+    if include_foehn:
+        available_families.append('foehn')
+    available_ids = {
+        unit_id
+        for family in available_families
+        for unit_id in TIER_ONE_DEFENSE_UNITS.get(family, ())
+    }
+    expanded = set()
+    for value in starting_defense_ids or ():
+        unit_id = str(value or '').upper()
+        if unit_id == TIER_ONE_DEFENSE_MARKER:
+            expanded.update(available_ids)
+        elif unit_id in available_ids:
+            expanded.add(unit_id)
+    return expanded
+
+
 def _random_tier_one_variant(rng, role, family):
     variants = _tier_one_variant_entries(role, family)
     if not variants:
@@ -867,6 +910,106 @@ def _tier_one_airfield_rules(
         }
         values.update(_alternative_prerequisite_rules(prerequisites))
         rules[airfield] = values
+    return rules
+
+
+def starting_tier_one_defense_rules(
+    lines,
+    starting_defense_ids,
+    chaos_mode=False,
+    standard_families=STANDARD_TIER_ONE_FAMILIES,
+    additional_build_houses=(),
+    additional_production_houses=(),
+    excluded_unit_ids=(),
+):
+    """Make basic ground/anti-air defenses available behind matching yards."""
+    selected_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (starting_defense_ids or ())
+        if unit_id
+    }
+    if not selected_ids:
+        return {}
+    excluded_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (excluded_unit_ids or ())
+        if unit_id
+    }
+    marker_selected = TIER_ONE_DEFENSE_MARKER in selected_ids
+
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
+    player_countries = safe_build_countries(lines, records, additional_build_houses)
+    rules = {}
+
+    if chaos_mode:
+        eligible_families = tuple(TIER_ONE_DEFENSE_UNITS)
+    else:
+        allowed_families = {
+            str(family or '').lower()
+            for family in standard_families
+            if str(family or '').lower() in STANDARD_TIER_ONE_FAMILIES
+        }
+        production_categories = {
+            PRODUCTION_LOOKUP[building_id]
+            for building_id in _mission_production_buildings(
+                lines,
+                records,
+                additional_production_houses,
+            )
+            if building_id in PRODUCTION_LOOKUP
+        }
+        base_families = {
+            family for family, category in production_categories
+            if category == 'base'
+        }
+        eligible_families = tuple(
+            family
+            for family in STANDARD_TIER_ONE_FAMILIES
+            if family in allowed_families and family in base_families
+        )
+
+    catalog_by_id = {
+        tech_id: (tech_level, family, category, prerequisite, native_owners)
+        for tech_id, tech_level, family, category, prerequisite, native_owners
+        in ACCESS_CATALOG
+        if tech_id in {
+            starter_id
+            for family_ids in TIER_ONE_DEFENSE_UNITS.values()
+            for starter_id in family_ids
+        }
+        and category == 'base'
+    }
+    for family in eligible_families:
+        for tech_id in TIER_ONE_DEFENSE_UNITS.get(family, ()):
+            if tech_id in excluded_ids:
+                continue
+            if not marker_selected and tech_id not in selected_ids:
+                continue
+            catalog_entry = catalog_by_id.get(tech_id)
+            if not catalog_entry:
+                continue
+            tech_level, _native_family, _category, prerequisite, native_owners = (
+                catalog_entry
+            )
+            if chaos_mode:
+                rules[tech_id] = _build_access_rule(
+                    lines,
+                    sections,
+                    player_countries,
+                    tech_level,
+                    native_owners,
+                    prerequisite_alternatives=CHAOS_PRODUCTION_ALTERNATIVES['base'],
+                )
+            else:
+                rules[tech_id] = _build_access_rule(
+                    lines,
+                    sections,
+                    player_countries,
+                    tech_level,
+                    native_owners,
+                    prerequisite_override=prerequisite,
+                )
     return rules
 
 

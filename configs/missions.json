@@ -959,6 +959,9 @@
       "AHYST": [
         "PsiCorps House"
       ],
+      "ETHINK": [
+        "Chinese House"
+      ],
       "EDIVER": [
         "PsiCorps2 House"
       ],
@@ -993,8 +996,15 @@
       "ELIZARD": [
         "BASIL"
       ],
+      "ETHINK": [
+        "SENGINEER"
+      ],
       "EPEACE": [
         "LCRF"
+      ],
+      "AHAMARTIA": [
+        "ATANY",
+        "TANY"
       ],
       "ESING": [
         "DRIL"
@@ -1072,6 +1082,10 @@
         "SHAD",
         "TANY"
       ],
+      "AHAMARTIA": [
+        "ATANY",
+        "TANY"
+      ],
       "EHUEHUE": [
         "INTRUDER",
         "SHAD"
@@ -1143,7 +1157,7 @@
           "PrerequisiteOverride": "none",
           "Prerequisite.List0": "CAMINE",
           "Prerequisite.List1": "YABRCK",
-          "Prerequisite.Lists": "1",
+          "Prerequisite.Lists": "2",
           "Owner": "ScorpionCell,MORPLAYER",
           "RequiredHouses": "ScorpionCell,MORPLAYER",
           "ForbiddenHouses": "none"
@@ -1195,6 +1209,14 @@
           "Strength": "320"
         }
       },
+      "AHAMARTIA": {
+        "ATANY": {
+          "Strength": "600"
+        },
+        "TANY": {
+          "Strength": "600"
+        }
+      },
       "EREALITY": {
         "LIBRA": {
           "Strength": "7500"
@@ -1236,6 +1258,10 @@
         "TANY"
       ],
       "AHAMMERFALL": [
+        "TANY"
+      ],
+      "AHAMARTIA": [
+        "ATANY",
         "TANY"
       ],
       "SBLEED": [
@@ -1284,6 +1310,10 @@
       "AHAMMERFALL": {
         "source_unit": "TANY",
         "native_units": ["TANY"]
+      },
+      "AHAMARTIA": {
+        "source_unit": "TANY",
+        "native_units": ["TANY", "ATANY"]
       },
       "SBLEED": {
         "source_unit": "MORALES",

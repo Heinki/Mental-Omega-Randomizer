@@ -58,7 +58,6 @@ from randomizer_ini import (
 )
 from randomizer_rewards import (
     ALWAYS_AVAILABLE_TECH_IDS,
-    AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
@@ -123,12 +122,15 @@ from randomizer_map import (
 from randomizer_mission_safety import (
     always_available_transport_rules,
     chaos_earned_access_rules,
+    expanded_tier_one_defense_ids,
     expanded_tier_one_unit_ids,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
     single_engineer_rules,
+    starting_tier_one_defense_rules,
     starting_tier_one_rules,
     summarize_basic_unit_rules,
+    tier_one_defense_ids,
     tier_one_unit_ids,
     tier_one_role_label,
 )
@@ -211,6 +213,7 @@ class LauncherApp(tk.Tk):
         self.state = self.load_state()
         self.migrate_state()
         self._reward_settings_override = None
+        self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
         self.active_game_process = None
         self.active_hook = None
@@ -332,6 +335,9 @@ class LauncherApp(tk.Tk):
         self.start_with_tier_one_units_var = tk.BooleanVar(
             value=reward_settings['start_with_tier_one_units']
         )
+        self.start_with_tier_one_defenses_var = tk.BooleanVar(
+            value=reward_settings['start_with_tier_one_defenses']
+        )
         self.include_defensive_buildings_var = tk.BooleanVar(
             value=reward_settings['include_defensive_buildings']
         )
@@ -418,6 +424,7 @@ class LauncherApp(tk.Tk):
         )))
 
     def toggle_settings_panel(self):
+        self.unlock_hover_card_key = None
         self.set_unlock_grid_highlights(())
         self.settings_panel_visible = not self.settings_panel_visible
         if self.settings_panel_visible:
@@ -810,6 +817,7 @@ class LauncherApp(tk.Tk):
 
     def on_unlock_card_enter(self, card, entry=None):
         entry = entry or getattr(card, 'unlock_entry', {})
+        self.unlock_hover_card_key = entry.get('key')
         mission_codes = (
             entry['sources'].get('available_codes', ())
             if entry.get('status') == 'available' and not entry.get('privacy')
@@ -821,11 +829,23 @@ class LauncherApp(tk.Tk):
         # Tk can briefly report Leave while creating a tooltip Toplevel. Wait
         # one event turn and clear only when the pointer truly left the card.
         def clear_if_outside():
+            entry = getattr(card, 'unlock_entry', {}) if card is not None else {}
+            card_key = entry.get('key')
+            if card_key != getattr(self, 'unlock_hover_card_key', None):
+                return
+            current_card = getattr(self, 'unlock_dashboard_cards', {}).get(
+                card_key, {}
+            ).get('card')
+            # A cameo refresh may replace the widget beneath a stationary
+            # pointer. The replacement still represents the hovered reward.
+            if current_card is not None and current_card is not card:
+                return
             if card is not None and card.winfo_exists():
                 x, y = self.winfo_pointerx(), self.winfo_pointery()
                 left, top = card.winfo_rootx(), card.winfo_rooty()
                 if left <= x < left + card.winfo_width() and top <= y < top + card.winfo_height():
                     return
+            self.unlock_hover_card_key = None
             self.set_unlock_grid_highlights(())
 
         self.after(20, clear_if_outside)
@@ -1124,6 +1144,9 @@ class LauncherApp(tk.Tk):
         ]
         randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
         start_with_tier_one_units = bool(generation_config.get('start_with_tier_one_units', False))
+        start_with_tier_one_defenses = bool(
+            generation_config.get('start_with_tier_one_defenses', False)
+        )
         include_buffs = bool(generation_config.get('include_buff_rewards', 'buff' in enabled_reward_types))
         include_superweapons = bool(generation_config.get('include_superweapon_rewards', True))
         include_secondary_superweapons = bool(
@@ -1141,6 +1164,7 @@ class LauncherApp(tk.Tk):
         return {
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
+            'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
             'unlimited_hero_units': unlimited_hero_units,
@@ -1190,6 +1214,9 @@ class LauncherApp(tk.Tk):
         chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
         randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
         start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
+        start_with_tier_one_defenses = bool(
+            self.start_with_tier_one_defenses_var.get()
+        )
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
         include_special_buildings = bool(self.include_special_buildings_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
@@ -1208,6 +1235,7 @@ class LauncherApp(tk.Tk):
         return {
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
+            'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
             'unlimited_hero_units': unlimited_hero_units,
@@ -1249,6 +1277,7 @@ class LauncherApp(tk.Tk):
             settings = self.current_reward_settings()
         settings.setdefault('randomize_unit_access', True)
         settings.setdefault('start_with_tier_one_units', False)
+        settings.setdefault('start_with_tier_one_defenses', False)
         settings.setdefault('include_defensive_buildings', True)
         settings.setdefault('include_special_buildings', True)
         settings.setdefault('unlimited_hero_units', False)
@@ -1335,6 +1364,76 @@ class LauncherApp(tk.Tk):
         return expanded_tier_one_unit_ids(
             self.active_starting_tier_one_unit_ids()
         ) - excluded_ids
+
+    def active_standard_starter_families(self):
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = (self.state or {}).get('campaign_filter')
+        if not selected:
+            selected = (
+                self.campaign_var.get()
+                if hasattr(self, 'campaign_var')
+                else self.config.get('campaign_filter', 'All Campaigns')
+            )
+        return tuple(
+            STANDARD_STARTER_FAMILIES_BY_CAMPAIGN.get(
+                selected,
+                ('allies', 'soviets', 'epsilon'),
+            )
+        )
+
+    def starting_tier_one_defense_ids_for_seed(self, reward_settings=None):
+        settings = reward_settings or self.active_reward_settings()
+        if not settings.get('start_with_tier_one_defenses', False):
+            return []
+        excluded_ids = {
+            str(unit_id).upper()
+            for unit_id in settings.get('excluded_unit_access_ids', [])
+        }
+        families = self.active_standard_starter_families()
+        marker = tier_one_defense_ids(families)
+        eligible_ids = expanded_tier_one_defense_ids(
+            marker,
+            include_foehn=(
+                self.active_reward_mode() == 'Chaos (Experimental)'
+            ),
+            families=families,
+        )
+        return list(marker) if eligible_ids - excluded_ids else []
+
+    def active_starting_tier_one_defense_ids(self):
+        override = self.__dict__.get('_starting_defense_ids_override')
+        if override is not None:
+            return list(override)
+        if self.state:
+            return [
+                str(unit_id).upper()
+                for unit_id in self.state.get('starting_defense_ids', [])
+                if unit_id
+            ]
+        return self.starting_tier_one_defense_ids_for_seed()
+
+    def active_starting_tier_one_defense_expanded_ids(self):
+        excluded_ids = {
+            str(unit_id).upper()
+            for unit_id in self.active_reward_settings().get(
+                'excluded_unit_access_ids', []
+            )
+        }
+        return expanded_tier_one_defense_ids(
+            self.active_starting_tier_one_defense_ids(),
+            include_foehn=(
+                self.active_reward_mode() == 'Chaos (Experimental)'
+            ),
+            families=self.active_standard_starter_families(),
+        ) - excluded_ids
+
+    def active_starting_tier_one_access_ids(self):
+        return (
+            self.active_starting_tier_one_expanded_ids()
+            | self.active_starting_tier_one_defense_expanded_ids()
+        )
 
     def share_chaos_role_buffs_enabled(self):
         return bool(
@@ -1462,6 +1561,7 @@ class LauncherApp(tk.Tk):
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
+        self.config['generation']['start_with_tier_one_defenses'] = reward_settings['start_with_tier_one_defenses']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
         self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
         self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
@@ -1753,7 +1853,7 @@ class LauncherApp(tk.Tk):
             str(power_id).upper()
             for power_id in reward_settings.get('excluded_superweapon_ids', [])
         }
-        starting_unit_ids = self.active_starting_tier_one_expanded_ids()
+        starting_access_ids = self.active_starting_tier_one_access_ids()
         randomize_access = bool(reward_settings.get('randomize_unit_access', True))
         include_buffs = bool(reward_settings.get('include_buff_rewards', True))
         include_superweapons = bool(reward_settings.get('include_superweapon_rewards', False))
@@ -1830,7 +1930,7 @@ class LauncherApp(tk.Tk):
                     and randomize_access
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                     and (include_special_buildings or not self.reward_is_special_building(reward))
-                    and not tech_ids_for_rewards([reward]).intersection(starting_unit_ids)
+                    and not tech_ids_for_rewards([reward]).intersection(starting_access_ids)
                     and not tech_ids_for_rewards([reward]).intersection(excluded_access_ids)
                 )
             )
@@ -1989,8 +2089,8 @@ class LauncherApp(tk.Tk):
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         used_access_names = set()
         seed_unlocked_tech_ids = (
-            self.active_starting_tier_one_expanded_ids()
-            | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
+            self.active_starting_tier_one_access_ids()
+            | set(ALWAYS_AVAILABLE_TECH_IDS)
         )
         buff_counts = {}
         unit_buff_counts = {}
@@ -3298,7 +3398,11 @@ class LauncherApp(tk.Tk):
         self._seed_generation_context = generation_context
         self._reward_settings_override = reward_settings
         starting_unit_ids = self.starting_tier_one_unit_ids_for_seed(seed, reward_settings)
+        starting_defense_ids = self.starting_tier_one_defense_ids_for_seed(
+            reward_settings
+        )
         self._starting_unit_ids_override = starting_unit_ids
+        self._starting_defense_ids_override = starting_defense_ids
         options = {
             **generation_context,
             'seed': seed,
@@ -3306,6 +3410,7 @@ class LauncherApp(tk.Tk):
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'reward_settings': reward_settings,
+            'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'progression_mode': self.progression_mode_var.get(),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
@@ -3336,6 +3441,7 @@ class LauncherApp(tk.Tk):
         mission_goal = options['mission_goal']
         rewards_per_check = options['rewards_per_check']
         reward_settings = options['reward_settings']
+        starting_defense_ids = options['starting_defense_ids']
         starting_unit_ids = options['starting_unit_ids']
         progression_mode = options['progression_mode']
         two_start_positions = options['two_start_positions']
@@ -3419,6 +3525,7 @@ class LauncherApp(tk.Tk):
             'mission_failure_stacks': {},
             'mission_assistance_units': {},
             'earned_rewards': [],
+            'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'reward_queue': rewards,
             'mission_checks': mission_checks,
@@ -3433,6 +3540,7 @@ class LauncherApp(tk.Tk):
             'seed': seed,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
+            'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'campaign_counts': campaign_counts,
             'campaign_limits': campaign_limits,
@@ -3447,11 +3555,13 @@ class LauncherApp(tk.Tk):
     def finish_seed_generation(self, result):
         self.state = result['state']
         self._reward_settings_override = None
+        self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
         self._seed_generation_context = None
         seed = result['seed']
         mission_goal = result['mission_goal']
         rewards_per_check = result['rewards_per_check']
+        starting_defense_ids = result['starting_defense_ids']
         starting_unit_ids = result['starting_unit_ids']
         campaign_counts = result['campaign_counts']
         campaign_limits = result['campaign_limits']
@@ -3486,6 +3596,15 @@ class LauncherApp(tk.Tk):
                 )
                 + '.'
             )
+        if starting_defense_ids:
+            self.append_log(
+                'Starting Tier 1 defenses: '
+                + ', '.join(
+                    unit_display_label(unit_id)
+                    for unit_id in self.display_starting_tier_one_defense_ids()
+                )
+                + '.'
+            )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
             if progression_mode == 'Classic':
                 self.append_log(
@@ -3510,11 +3629,13 @@ class LauncherApp(tk.Tk):
             campaign_mission_counts=campaign_counts,
             campaign_mission_limits=campaign_limits,
             reward_settings=result['reward_settings'],
+            starting_defense_ids=starting_defense_ids,
             starting_unit_ids=starting_unit_ids,
         )
 
     def handle_seed_generation_error(self, exc, detail):
         self._reward_settings_override = None
+        self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
         self._seed_generation_context = None
         message = str(exc) or 'Seed generation failed.'
@@ -3867,6 +3988,7 @@ class LauncherApp(tk.Tk):
             return {}
         source_path = self.extract_campaign_map(scenario)
         lines = read_text(source_path).splitlines()
+        starting_defense_ids = self.active_starting_tier_one_defense_ids()
         starting_unit_ids = self.active_starting_tier_one_unit_ids()
         production_houses = mission_player_production_houses(
             mission.get('code')
@@ -3940,6 +4062,18 @@ class LauncherApp(tk.Tk):
             )
             for section, values in starter_rules.items():
                 rules.setdefault(section, {}).update(values)
+            starter_defense_rules = starting_tier_one_defense_rules(
+                lines,
+                starting_defense_ids,
+                chaos_mode=True,
+                additional_build_houses=(),
+                additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
+            )
+            for section, values in starter_defense_rules.items():
+                rules.setdefault(section, {}).update(values)
             return merge_required_rules(rules)
         selected_campaign = self.state.get('campaign_filter', '') if self.state else ''
         translate_equivalents = selected_campaign in {
@@ -3979,6 +4113,18 @@ class LauncherApp(tk.Tk):
             ),
         )
         for section, values in starter_rules.items():
+            rules.setdefault(section, {}).update(values)
+        starter_defense_rules = starting_tier_one_defense_rules(
+            lines,
+            starting_defense_ids,
+            standard_families=standard_starter_families,
+            additional_build_houses=(),
+            additional_production_houses=production_houses,
+            excluded_unit_ids=self.active_reward_settings().get(
+                'excluded_unit_access_ids', []
+            ),
+        )
+        for section, values in starter_defense_rules.items():
             rules.setdefault(section, {}).update(values)
         return merge_required_rules(rules)
 
@@ -4716,6 +4862,13 @@ throw "Map $name was not found in expandmo*.mix"
             for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
                 lines.append(unit_display_label(unit_id))
             lines.append('')
+        starting_defense_ids = self.display_starting_tier_one_defense_ids()
+        if starting_defense_ids:
+            heading = 'Starting Tier 1 Defenses'
+            lines.extend([heading, '=' * len(heading)])
+            for unit_id in starting_defense_ids:
+                lines.append(unit_display_label(unit_id))
+            lines.append('')
         selected = self.selected_mission()
         if selected and self.failure_assistance_enabled():
             code = selected['code']
@@ -4838,6 +4991,7 @@ throw "Map $name was not found in expandmo*.mix"
         if not self.state:
             return []
         unit_ids = set(self.display_starting_tier_one_unit_ids())
+        unit_ids.update(self.display_starting_tier_one_defense_ids())
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         for reward in self.earned_rewards_from_checks():
@@ -4874,6 +5028,12 @@ throw "Map $name was not found in expandmo*.mix"
                 if self.unit_faction(unit_id) != 'Foehn'
             }
         return sorted(unit_ids, key=self.unit_faction_sort_key)
+
+    def display_starting_tier_one_defense_ids(self):
+        return sorted(
+            self.active_starting_tier_one_defense_expanded_ids(),
+            key=self.unit_faction_sort_key,
+        )
 
     def unlock_dashboard_reward_keys(self, reward):
         """Return catalogue icons affected by one serialized reward."""
@@ -4958,8 +5118,10 @@ throw "Map $name was not found in expandmo*.mix"
             canonical_reward(reward)
             for reward in (self.earned_rewards_from_checks() if self.state else [])
         ]
-        earned_access = tech_ids_for_rewards(earned_rewards)
-        starting_access = self.active_starting_tier_one_expanded_ids()
+        # Buff rules can contain TechLevel for clone construction but do not
+        # grant access. Only non-buff rewards may make a card "unlocked".
+        earned_access = unlocked_reward_tech_ids(earned_rewards)
+        starting_access = self.active_starting_tier_one_access_ids()
         randomize_access = self.randomize_unit_access_enabled()
         foehn_units_available = self.active_reward_mode() == 'Chaos (Experimental)'
 
@@ -4998,7 +5160,10 @@ throw "Map $name was not found in expandmo*.mix"
                     or unit_id in ALWAYS_AVAILABLE_TECH_IDS
                     or unit_id in starting_access
                     or unit_id in earned_access
-                    or bool(source_data['earned'])
+                    or any(
+                        reward.get('kind') != 'buff'
+                        for _source, reward in source_data['earned']
+                    )
                 )
             )
             status = (
@@ -5230,7 +5395,22 @@ throw "Map $name was not found in expandmo*.mix"
         if signature == getattr(self, 'unlock_dashboard_signature', None):
             return
         self.unlock_dashboard_signature = signature
-        self.set_unlock_grid_highlights(())
+        hovered_key = getattr(self, 'unlock_hover_card_key', None)
+        hovered_entry = next(
+            (entry for entry in entries if entry['key'] == hovered_key),
+            None,
+        )
+        if hovered_entry is not None:
+            hovered_codes = (
+                hovered_entry['sources'].get('available_codes', ())
+                if hovered_entry.get('status') == 'available'
+                and not hovered_entry.get('privacy')
+                else ()
+            )
+            self.set_unlock_grid_highlights(hovered_codes)
+        elif hovered_key is not None:
+            self.unlock_hover_card_key = None
+            self.set_unlock_grid_highlights(())
 
         overlays = {
             'unlocked': (None, '#4f86c6'),

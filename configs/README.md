@@ -15,8 +15,9 @@ embedded in Python modules. Restart the launcher after changing a file.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
   buildings, amphibious transports, Chaos production, and tech
   ordering, plus default unlock owners and special-factory identities.
-- `tier_one.json`: subfaction-specific starter units, abstract saved role
-  markers, aircraft factories, and installed GenericPrerequisite aliases.
+- `tier_one.json`: subfaction-specific starter units, fixed faction Tier 1
+  defensive structures, abstract saved markers, aircraft factories, and
+  installed GenericPrerequisite aliases.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   reward-count messages, faction colors, and light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,

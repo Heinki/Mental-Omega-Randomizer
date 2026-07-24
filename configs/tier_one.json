@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Subfaction-aware Tier 1 starter roles and production aliases.",
+  "description": "Subfaction-aware Tier 1 unit and defensive-structure starters.",
   "sections": {
     "role_units": {
       "ground_infantry": {
@@ -39,6 +39,13 @@
       "ground_vehicle": "T1_GROUND_VEHICLE",
       "anti_air_vehicle": "T1_ANTI_AIR_VEHICLE",
       "basic_aircraft": "T1_BASIC_AIRCRAFT"
+    },
+    "defense_marker": "T1_BASIC_DEFENSES",
+    "defense_units": {
+      "allies": ["GAPILL", "NASAM"],
+      "soviets": ["NALASR", "NAFLAK"],
+      "epsilon": ["YAGGUN"],
+      "foehn": ["FASONI", "FAGUAR"]
     },
     "subfaction_units": {
       "ground_vehicle": {

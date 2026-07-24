@@ -214,10 +214,15 @@ def buffs_with_unlocked_access(
     return filtered
 
 
-def expand_equivalent_role_buffs(rewards, enabled=False):
+def expand_equivalent_role_buffs(rewards, enabled=False, allowed_unit_ids=None):
     """Apply each active unit buff to explicit cross-faction role peers."""
     if not enabled:
         return list(rewards)
+    allowed = (
+        None
+        if allowed_unit_ids is None
+        else {str(unit_id).upper() for unit_id in allowed_unit_ids}
+    )
     expanded = []
     for reward in rewards:
         expanded.append(reward)
@@ -225,6 +230,8 @@ def expand_equivalent_role_buffs(rewards, enabled=False):
             continue
         for unit_id in sorted(unit_role_equivalents(reward.get('unit'))):
             if unit_id == reward.get('unit'):
+                continue
+            if allowed is not None and unit_id.upper() not in allowed:
                 continue
             equivalent = dict(reward)
             equivalent['unit'] = unit_id
@@ -3891,6 +3898,65 @@ def native_variant_unit_buff_rules(
             rule_sections.setdefault(weapon_id, {}).update(weapon_values)
 
     return rule_sections, applied_ids
+
+
+def native_variant_veterancy_rules(lines, source_unit_id, native_unit_ids):
+    """Extend an earned native-unit veterancy entry to scripted variants.
+
+    Country Veteran* lists are the engine mechanism that promotes freshly
+    created units.  Mission variants such as AHAMARTIA's ATANY keep exact
+    identities for loss and respawn triggers, so they cannot inherit a cloned
+    TANY identity.  Only extend a list that already contains the earned source
+    ID; this preserves the normal country-safety decision made earlier.
+    """
+    source_unit_id = str(source_unit_id or '').upper()
+    target = BUFF_TARGETS.get(source_unit_id, {})
+    category = target.get('category')
+    if category not in {'infantry', 'units', 'aircraft', 'defenses'}:
+        return {}, []
+    suffix = (
+        'Buildings'
+        if category == 'defenses'
+        else house_category_suffix(target)
+    )
+    field = f'Veteran{suffix}'
+    variants = unique_in_order(
+        str(unit_id or '').upper() for unit_id in native_unit_ids if unit_id
+    )
+    if not variants:
+        return {}, []
+
+    records = map_house_records(lines)
+    player_houses = player_controlled_houses(lines, records=records)
+    countries = unique_in_order(
+        str(records.get(house, {}).get('country') or house.replace(' House', ''))
+        for house in player_houses
+        if house
+    )
+    rules = {}
+    applied = []
+    for country in countries:
+        current = str(
+            _value_case_insensitive(
+                section_value_map_preserve(lines, country), field, ''
+            )
+            or ''
+        )
+        current_ids = {item.upper() for item in comma_items(current)}
+        if source_unit_id not in current_ids:
+            continue
+        updated = merge_unique_csv_bounded(
+            current,
+            variants,
+            MAX_COUNTRY_VETERAN_VALUE_LENGTH,
+        )
+        if updated == current:
+            continue
+        rules.setdefault(country, {})[field] = updated
+        applied.extend(
+            unit_id for unit_id in variants if unit_id not in current_ids
+        )
+    return rules, unique_in_order(applied)
 
 
 def controlled_tech_ids():

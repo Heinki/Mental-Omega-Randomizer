@@ -45,6 +45,7 @@
         ],
         "randomize_unit_access": true,
         "start_with_tier_one_units": false,
+        "start_with_tier_one_defenses": false,
         "include_defensive_buildings": true,
         "include_special_buildings": true,
         "unlimited_hero_units": false,

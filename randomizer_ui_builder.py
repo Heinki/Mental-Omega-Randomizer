@@ -52,11 +52,13 @@ class WidgetTooltip:
         self.text = text
         self.tip = None
         self.pending_show = None
+        self.pending_hide = None
         widget.bind('<Enter>', self.schedule_show, add='+')
-        widget.bind('<Leave>', self.hide, add='+')
+        widget.bind('<Leave>', self.schedule_hide, add='+')
         widget.bind('<ButtonPress>', self.hide, add='+')
 
     def schedule_show(self, event=None):
+        self.cancel_pending_hide()
         self.cancel_pending_show()
         self.pending_show = self.widget.after(250, self.show)
 
@@ -67,6 +69,35 @@ class WidgetTooltip:
             except tk.TclError:
                 pass
             self.pending_show = None
+
+    def cancel_pending_hide(self):
+        if self.pending_hide is not None:
+            try:
+                self.widget.after_cancel(self.pending_hide)
+            except tk.TclError:
+                pass
+            self.pending_hide = None
+
+    def schedule_hide(self, event=None):
+        self.cancel_pending_hide()
+
+        def hide_if_outside():
+            self.pending_hide = None
+            try:
+                pointer_x = self.widget.winfo_pointerx()
+                pointer_y = self.widget.winfo_pointery()
+                left = self.widget.winfo_rootx()
+                top = self.widget.winfo_rooty()
+                inside = (
+                    left <= pointer_x < left + self.widget.winfo_width()
+                    and top <= pointer_y < top + self.widget.winfo_height()
+                )
+            except tk.TclError:
+                inside = False
+            if not inside:
+                self.hide()
+
+        self.pending_hide = self.widget.after(30, hide_if_outside)
 
     def show(self, event=None):
         self.pending_show = None
@@ -111,6 +142,7 @@ class WidgetTooltip:
 
     def hide(self, event=None):
         self.cancel_pending_show()
+        self.cancel_pending_hide()
         if self.tip is not None:
             self.tip.destroy()
             self.tip = None
@@ -931,12 +963,27 @@ def create_widgets(self):
         'across the four ground roles using valid subfaction variants, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
         'Starter units remain buffable.',
     )
+    self.start_with_tier_one_defenses_check = ttk.Checkbutton(
+        reward_frame,
+        text='Start with basic Tier 1 defensive structures',
+        variable=self.start_with_tier_one_defenses_var,
+    )
+    self.start_with_tier_one_defenses_check.grid(
+        row=2, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.start_with_tier_one_defenses_check,
+        'Unlocks the basic ground and anti-air defenses for each Construction Yard family available to the player. '
+        'Allies receive Pillbox and Patriot; Soviets Sentry Gun and Flak Cannon; Epsilon Gatling Cannon. '
+        'Chaos also includes Foehn Sonic Emitter and Shrike Nest. Structures remain gated by a matching Construction Yard. '
+        'When defensive-building rewards are enabled, starter access rewards are removed while buffs remain eligible.',
+    )
     self.include_defensive_buildings_check = ttk.Checkbutton(
         reward_frame,
         text='Include defensive building rewards',
         variable=self.include_defensive_buildings_var,
     )
-    self.include_defensive_buildings_check.grid(row=2, column=0, sticky='w', pady=(4, 0))
+    self.include_defensive_buildings_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_defensive_buildings_check,
         'Includes faction defenses such as Pillboxes, Tesla Coils, mines, and support defenses. '
@@ -948,7 +995,7 @@ def create_widgets(self):
         variable=self.include_special_buildings_var,
         command=self.refresh_setting_states,
     )
-    self.include_special_buildings_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+    self.include_special_buildings_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_special_buildings_check,
         'Includes Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor access, '
@@ -960,7 +1007,7 @@ def create_widgets(self):
         variable=self.include_buff_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_buff_rewards_check.grid(row=4, column=0, sticky='w', pady=(4, 0))
+    self.include_buff_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_buff_rewards_check,
         'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
@@ -970,7 +1017,7 @@ def create_widgets(self):
         text='Share buffs with equivalent units (Chaos only)',
         variable=self.share_chaos_role_buffs_var,
     )
-    self.share_chaos_role_buffs_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+    self.share_chaos_role_buffs_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.share_chaos_role_buffs_check,
         'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
@@ -982,7 +1029,7 @@ def create_widgets(self):
         variable=self.unlimited_hero_units_var,
         command=self.refresh_setting_states,
     )
-    self.unlimited_hero_units_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+    self.unlimited_hero_units_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.unlimited_hero_units_check,
         'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
@@ -995,7 +1042,7 @@ def create_widgets(self):
         variable=self.include_superweapon_rewards_var,
         command=self.on_unlimited_hero_units_changed,
     )
-    self.include_superweapon_rewards_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
+    self.include_superweapon_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_superweapon_rewards_check,
         'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
@@ -1006,7 +1053,7 @@ def create_widgets(self):
         variable=self.include_secondary_superweapon_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_secondary_superweapon_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
+    self.include_secondary_superweapon_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_secondary_superweapon_rewards_check,
         'Adds Chronoshift, Invulnerability, and Rage as building-free rewards.',
@@ -1017,7 +1064,7 @@ def create_widgets(self):
         variable=self.include_aid_power_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_aid_power_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
+    self.include_aid_power_rewards_check.grid(row=10, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_aid_power_rewards_check,
         'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',

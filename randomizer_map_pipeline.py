@@ -21,6 +21,7 @@ from randomizer_map import (
     backup_file_once,
     clone_player_country_for_house_buffs,
     cloned_superweapon_plan,
+    expand_equivalent_role_buffs,
     helper_ai_autobuild_plan,
     helper_ai_autobuild_rules,
     hook_marker_name,
@@ -32,6 +33,7 @@ from randomizer_map import (
     mission_assistance_unit_ids,
     mission_house_color_rules,
     native_variant_unit_buff_rules,
+    native_variant_veterancy_rules,
     player_controlled_houses,
     player_country_buff_rules,
     player_country_from_map,
@@ -216,6 +218,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             + '. Helper teams use buffed clones; native IDs remain buildable queue fallbacks.'
         )
     earned_rewards = self.active_launch_rewards() if self.state else []
+    standard_single_campaign = bool(
+        self.state
+        and self.state.get('campaign_filter')
+        in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+        and self.active_reward_mode() != 'Chaos (Experimental)'
+    )
+    if standard_single_campaign:
+        # Translate a buff only to role peers the current mission can actually
+        # produce. This prevents every faction peer (and Foehn) leaking into
+        # Standard while still buffing a captured foreign factory's unit.
+        earned_rewards = expand_equivalent_role_buffs(
+            earned_rewards,
+            enabled=True,
+            allowed_unit_ids=mission_effective_tech_ids,
+        )
+        share_basic_equivalent_buffs = False
     launch_power_rewards = list(earned_rewards)
     deployed_sidebar_assets = deploy_superweapon_sidebar_assets(
         canonical_rewards(launch_power_rewards)
@@ -533,6 +551,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     f'Applied earned {source_unit_id} buffs to native '
                     'mission identities: '
                     + ', '.join(native_buffed_ids)
+                    + '.'
+                )
+            native_veterancy_rules, native_veteran_ids = (
+                native_variant_veterancy_rules(
+                    lines,
+                    source_unit_id,
+                    native_variant_ids,
+                )
+            )
+            if native_veterancy_rules:
+                merge_ini_section_values(lines, native_veterancy_rules)
+                self.append_log(
+                    f'Applied earned {source_unit_id} veterancy to native '
+                    'mission identities: '
+                    + ', '.join(native_veteran_ids)
                     + '.'
                 )
         (
