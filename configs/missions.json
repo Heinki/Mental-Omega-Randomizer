@@ -1066,6 +1066,9 @@
     "disabled_triggers": {
       "AOBST": [
         "01000269"
+      ],
+      "ESCRAP": [
+        "01000258"
       ]
     },
     "native_techno_clone_exclusions": {
