@@ -3,6 +3,16 @@
 These JSON files contain editable gameplay and presentation data previously
 embedded in Python modules. Restart the launcher after changing a file.
 
+The six `Randomizer*.ini` files do not replace these documents. INI files are
+complete player-owned TechnoType templates. JSON files define randomizer
+policy, reward identity/display, mission exceptions, cross-faction roles,
+stacking, compatibility aliases, and building-free power conversion. The main
+intentional overlap is `rewards/unit_data.json`: roster/base-stat snapshots
+could eventually be derived from static INI templates, but current reward
+construction and old-save compatibility still consume its labels, categories,
+role groups, linked identities, and special damage metadata. Remove or migrate
+that overlap only with full reward-plan and 97-map parity coverage.
+
 ## Files
 
 - `default_player_config.json`: fallback player, generation, launch, privacy,
@@ -41,6 +51,15 @@ embedded in Python modules. Restart the launcher after changing a file.
 - `rewards/tuning.json`: stack multipliers and caps, retry-assistance behavior,
   clone prefixes/production-field policy, reward count limits, and global-buff
   planning cadence. Display text and generated map values use the same data.
+- `RandomizerInfantry.ini`, `RandomizerHeroes.ini`,
+  `RandomizerVehicles.ini`, `RandomizerShips.ini`,
+  `RandomizerAircraft.ini`, and
+  `RandomizerDefensesAndSpecialBuildings.ini`: split static `MORP*` player
+  roster. Infantry definitions come from mapper-reviewed `InfantryList.txt`;
+  remaining definitions are Mental Omega 3.3.6 identity snapshots. Ships still
+  register under engine `VehicleTypes`. Hero file contains capped reward heroes
+  plus mapper infantry extras. Mission generation buffs these owned types while
+  native IDs remain reserved for campaign AI and scripts.
 
 ## Mission-specific overrides
 
@@ -78,6 +97,12 @@ Aid reward identity and display data live in `catalogue.json` under
 `aid_power_rewards` (`name`, `description`, `faction`, `superweapon`, `index`).
 Map injection behavior for each matching `superweapon` remains under
 `aid_power_map_configs`.
+
+`techno_clones` may provide private weapons, projectiles, warheads, delivered
+academy markers, or hidden EMPulse cannon buildings. A BuildingType with
+`startup_count` is created for each power-grant country; runtime replaces its
+inherited ownership with that country and splits map-start action lists by both
+the configured action-count ceiling and the engine's byte limit.
 
 Custom power artwork uses `sidebar_image` with a plain PNG filename from
 `assets/`; its matching `values.SidebarPCX` supplies the loose PCX filename

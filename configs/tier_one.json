@@ -41,6 +41,21 @@
       "basic_aircraft": "T1_BASIC_AIRCRAFT"
     },
     "defense_marker": "T1_BASIC_DEFENSES",
+    "defense_role_units": {
+      "ground_defense": {
+        "allies": "GAPILL",
+        "soviets": "NALASR",
+        "epsilon": "YAGGUN",
+        "foehn": "FASONI"
+      },
+      "anti_air_defense": {
+        "allies": "NASAM",
+        "soviets": "NAFLAK",
+        "epsilon": "YAGGUN",
+        "foehn": "FAGUAR"
+      }
+    },
+    "defense_roles": ["ground_defense", "anti_air_defense"],
     "defense_units": {
       "allies": ["GAPILL", "NASAM"],
       "soviets": ["NALASR", "NAFLAK"],

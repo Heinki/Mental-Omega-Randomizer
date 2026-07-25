@@ -19,6 +19,20 @@ from randomizer_ui import (
 from randomizer_version import APP_VERSION
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
+_active_tooltip = None
+
+
+def _activate_tooltip(owner):
+    global _active_tooltip
+    if _active_tooltip is not None and _active_tooltip is not owner:
+        _active_tooltip.hide()
+    _active_tooltip = owner
+
+
+def _deactivate_tooltip(owner):
+    global _active_tooltip
+    if _active_tooltip is owner:
+        _active_tooltip = None
 
 
 def buff_setting_amount_text(buff_type):
@@ -57,6 +71,8 @@ class WidgetTooltip:
         widget.bind('<Enter>', self.schedule_show, add='+')
         widget.bind('<Leave>', self.schedule_hide, add='+')
         widget.bind('<ButtonPress>', self.hide, add='+')
+        widget.bind('<Unmap>', self.hide, add='+')
+        widget.bind('<Destroy>', self.hide, add='+')
 
     def schedule_show(self, event=None):
         self.cancel_pending_hide()
@@ -104,6 +120,7 @@ class WidgetTooltip:
         self.pending_show = None
         if self.tip is not None or not self.text:
             return
+        _activate_tooltip(self)
         self.tip = tk.Toplevel(self.widget)
         self.tip.wm_overrideredirect(True)
         # A tooltip must not become the pointer target. On Windows an active
@@ -145,8 +162,12 @@ class WidgetTooltip:
         self.cancel_pending_show()
         self.cancel_pending_hide()
         if self.tip is not None:
-            self.tip.destroy()
+            try:
+                self.tip.destroy()
+            except tk.TclError:
+                pass
             self.tip = None
+        _deactivate_tooltip(self)
 
 
 class TreeTooltip:
@@ -157,6 +178,8 @@ class TreeTooltip:
         self.current_row = None
         tree.bind('<Motion>', self.on_motion, add='+')
         tree.bind('<Leave>', self.hide, add='+')
+        tree.bind('<Unmap>', self.hide, add='+')
+        tree.bind('<Destroy>', self.hide, add='+')
 
     def on_motion(self, event):
         row = self.tree.identify_row(event.y)
@@ -174,6 +197,7 @@ class TreeTooltip:
         if row != self.current_row:
             self.hide()
             self.current_row = row
+            _activate_tooltip(self)
             self.tip = tk.Toplevel(self.tree)
             self.tip.wm_overrideredirect(True)
             label = ttk.Label(
@@ -190,8 +214,12 @@ class TreeTooltip:
     def hide(self, event=None):
         self.current_row = None
         if self.tip is not None:
-            self.tip.destroy()
+            try:
+                self.tip.destroy()
+            except tk.TclError:
+                pass
             self.tip = None
+        _deactivate_tooltip(self)
 
 
 def create_widgets(self):

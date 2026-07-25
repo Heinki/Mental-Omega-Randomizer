@@ -40,6 +40,7 @@ from randomizer_map import (
     player_country_from_map,
     player_house_from_map,
     player_unit_clone_rules,
+    resolved_academy_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
     resolve_configured_helper_houses,
@@ -74,6 +75,7 @@ from randomizer_rewards import (
     reward_display_name,
 )
 from randomizer_ui import EVA_VOICE_TAGS, RAINBOWIZER_COLORS
+from randomizer_unit_roster import randomizer_unit_roster
 
 
 def prepare_hooked_map(self, mission, extra_rules=None):
@@ -147,6 +149,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Preserve map-authored AI production fields before launcher access
     # locks and ownership rewrites are merged into this launch copy.
     native_map_sections = all_section_value_maps(lines)
+    installed_superweapon_types, installed_rule_sections = installed_rules_registry()
+    (
+        _unit_roster_path,
+        owned_clone_ids,
+        owned_clone_templates,
+    ) = randomizer_unit_roster()
     mission_base_rules = MISSION_TECHNO_BASE_RULES.get(code, {})
     native_names_by_lower = {
         str(section).lower(): section for section in native_map_sections
@@ -167,6 +175,41 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         extra_rules,
         allowed_unlocked_tech_ids=mission_effective_tech_ids,
     )
+    iron_guard_clone = owned_clone_ids.get('NAIRDM')
+    if iron_guard_clone and 'NAIRDM' in {
+        str(tech_id).upper() for tech_id in mission_effective_tech_ids
+    }:
+        iron_guard_values = section_value_map_preserve(lines, 'IronGuardSpecial')
+        if not iron_guard_values:
+            iron_guard_values = installed_rule_sections.get('IronGuardSpecial', {})
+        iron_guard_cannons = next(
+            (
+                value
+                for key, value in iron_guard_values.items()
+                if str(key).lower() == 'empulse.cannons'
+            ),
+            'NAIRDM',
+        )
+        rule_sections.setdefault('IronGuardSpecial', {})[
+            'EMPulse.Cannons'
+        ] = ','.join(unique_in_order(
+            [
+                cannon.strip()
+                for cannon in str(iron_guard_cannons or 'NAIRDM').split(',')
+                if cannon.strip()
+            ]
+            + [iron_guard_clone]
+        ))
+    owned_clone_rule_overlays = {}
+    for section in list(rule_sections):
+        section_upper = str(section).upper()
+        if (
+            section_upper in owned_clone_ids
+            and section_upper not in native_techno_exclusions
+        ):
+            owned_clone_rule_overlays.setdefault(section_upper, {}).update(
+                rule_sections.pop(section)
+            )
     for section, values in mission_base_rules.items():
         rule_sections.setdefault(section, {}).update(values)
     mission_map_rules = resolved_map_section_rules(
@@ -283,7 +326,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             code, {}
         )
     )
-    installed_superweapon_types, installed_rule_sections = installed_rules_registry()
     (
         cloned_power_rules,
         superweapon_actions,
@@ -320,7 +362,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
         denied_owners = ','.join(enemy_country_ids) if enemy_country_ids else 'none'
         for section in self.randomized_tech_ids():
-            values = rule_sections.get(section)
+            values = owned_clone_rule_overlays.get(section)
             if not values:
                 continue
             values['Owner'] = safe_owners
@@ -329,7 +371,51 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Generic randomized ownership must not erase mission-authored recovery
     # access such as Power Hunger's native Burillo.
     for section, values in MISSION_REQUIRED_ACCESS_RULES.get(code, {}).items():
-        rule_sections.setdefault(section, {}).update(values)
+        if (
+            section.upper() in owned_clone_ids
+            and section.upper() not in native_techno_exclusions
+        ):
+            owned_clone_rule_overlays.setdefault(section.upper(), {}).update(values)
+        else:
+            rule_sections.setdefault(section, {}).update(values)
+
+    # Hide native cameos from player countries without rewriting AI production
+    # fields. Unregistered MORP sections enforce unearned access; registered
+    # MORP sections carry earned/mission production rules.
+    player_native_exclusions = safe_build_countries(lines, records, ())
+    isolated_native_ids = set(owned_clone_rule_overlays)
+    isolated_native_ids.update(
+        section.upper()
+        for section in self.randomized_tech_ids()
+        if section.upper() in owned_clone_ids
+    )
+    installed_names = {
+        str(section).lower(): section for section in installed_rule_sections
+    }
+    native_names = {
+        str(section).lower(): section for section in native_map_sections
+    }
+    for source_id in sorted(isolated_native_ids - set(native_techno_exclusions)):
+        forbidden = []
+        for source_values in (
+            installed_rule_sections.get(
+                installed_names.get(source_id.lower()), {}
+            ),
+            native_map_sections.get(native_names.get(source_id.lower()), {}),
+        ):
+            for key, value in source_values.items():
+                if str(key).lower() != 'forbiddenhouses':
+                    continue
+                forbidden.extend(
+                    item.strip()
+                    for item in str(value).split(',')
+                    if item.strip().lower() not in {'', 'none', '<none>'}
+                )
+        forbidden = unique_in_order(forbidden + list(player_native_exclusions))
+        if forbidden:
+            rule_sections.setdefault(source_id, {})['ForbiddenHouses'] = ','.join(
+                forbidden
+            )
     if missing_power_sources:
         self.append_log(
             'Skipped power clone(s) because installed source rules were unavailable: '
@@ -518,6 +604,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             ),
             excluded_unit_ids=native_techno_exclusions,
             excluded_player_houses=excluded_player_houses,
+            owned_clone_ids=owned_clone_ids,
+            owned_clone_templates=owned_clone_templates,
+            owned_clone_rule_overlays=owned_clone_rule_overlays,
         )
         if clone_rule_sections:
             merge_ini_section_values(lines, clone_rule_sections)
@@ -525,6 +614,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 'Prepared isolated standalone player unit/defense clones for: '
                 + ', '.join(cloned_unit_names)
                 + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
+            )
+        academy_clone_rules = resolved_academy_clone_rules(
+            cloned_power_rules,
+            clone_handled,
+            owned_clone_ids,
+        )
+        if academy_clone_rules:
+            merge_ini_section_values(lines, academy_clone_rules)
+            self.append_log(
+                'Resolved delivered Academy targets to current player clone IDs.'
             )
         if clone_warnings:
             self.append_log(

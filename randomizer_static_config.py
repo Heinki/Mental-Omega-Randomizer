@@ -75,6 +75,8 @@ REQUIRED_SECTIONS = {
         'role_units': dict,
         'role_markers': dict,
         'defense_marker': str,
+        'defense_role_units': dict,
+        'defense_roles': list,
         'defense_units': dict,
         'subfaction_units': dict,
         'ground_roles': list,
@@ -486,6 +488,19 @@ def _validate_sections(relative_path, sections, path):
             raise StaticConfigError(f'Invalid Tier 1 ground roles in {path}')
         if (
             not sections['defense_marker']
+            or not sections['defense_roles']
+            or set(sections['defense_roles'])
+            != set(sections['defense_role_units'])
+            or any(
+                set(families)
+                != set(sections['standard_families']) | {'foehn'}
+                for families in sections['defense_role_units'].values()
+            )
+            or any(
+                not isinstance(unit_id, str) or not unit_id
+                for families in sections['defense_role_units'].values()
+                for unit_id in families.values()
+            )
             or set(sections['defense_units'])
             != set(sections['standard_families']) | {'foehn'}
             or not all(

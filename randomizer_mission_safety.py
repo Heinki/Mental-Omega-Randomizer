@@ -54,6 +54,14 @@ TIER_ONE_ROLE_BY_MARKER = {
     marker.upper(): role for role, marker in TIER_ONE_ROLE_MARKERS.items()
 }
 TIER_ONE_DEFENSE_MARKER = str(_TIER_ONE_CONFIG['defense_marker']).upper()
+TIER_ONE_DEFENSE_ROLE_UNITS = {
+    role: {
+        family: str(unit_id).upper()
+        for family, unit_id in families.items()
+    }
+    for role, families in _TIER_ONE_CONFIG['defense_role_units'].items()
+}
+TIER_ONE_DEFENSE_ROLES = tuple(_TIER_ONE_CONFIG['defense_roles'])
 TIER_ONE_DEFENSE_UNITS = {
     family: tuple(str(unit_id).upper() for unit_id in unit_ids)
     for family, unit_ids in _TIER_ONE_CONFIG['defense_units'].items()
@@ -844,6 +852,16 @@ def random_chaos_tier_one_unit_ids(rng):
     return tuple(units)
 
 
+def random_chaos_tier_one_defense_ids(rng):
+    """Select one ground and one anti-air defense from distinct factions."""
+    families = list(STANDARD_TIER_ONE_FAMILIES) + ['foehn']
+    rng.shuffle(families)
+    return tuple(
+        TIER_ONE_DEFENSE_ROLE_UNITS[role][family]
+        for role, family in zip(TIER_ONE_DEFENSE_ROLES, families)
+    )
+
+
 def _selected_tier_one_roles(selected_ids):
     roles = {
         TIER_ONE_ROLE_BY_MARKER[unit_id]
@@ -921,6 +939,7 @@ def starting_tier_one_defense_rules(
     additional_build_houses=(),
     additional_production_houses=(),
     excluded_unit_ids=(),
+    allow_player_family_fallback=False,
 ):
     """Make basic ground/anti-air defenses available behind matching yards."""
     selected_ids = {
@@ -963,6 +982,24 @@ def starting_tier_one_defense_rules(
             family for family, category in production_categories
             if category == 'base'
         }
+        if not base_families and allow_player_family_fallback:
+            # Many ordinary campaign base missions spawn or transfer the MCV
+            # only after scripted opening events. Their source map therefore
+            # has no physical Construction Yard to detect at launch. Falling
+            # back to the current player house family exposes the matching
+            # defense behind that family's yard without granting another
+            # faction's structures.
+            player_families = {
+                country_family(records.get(house, {}))
+                for house in player_controlled_houses(lines, records=records)
+            }
+            base_families.update(player_families.intersection(allowed_families))
+            if not base_families:
+                base_families.update(
+                    family
+                    for family, _category in production_categories
+                    if family in allowed_families
+                )
         eligible_families = tuple(
             family
             for family in STANDARD_TIER_ONE_FAMILIES

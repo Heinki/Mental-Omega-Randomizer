@@ -18,6 +18,7 @@ from randomizer_paths import (
 )
 from randomizer_version import APP_VERSION
 from randomizer_static_config import REQUIRED_STATIC_CONFIGS, validate_static_configs
+from randomizer_unit_roster import ROSTER_FILENAMES, validate_randomizer_unit_roster
 
 
 def run_launcher():
@@ -54,6 +55,7 @@ def run_self_check():
         cameos = ensure_unit_cameos(['ABRM'])
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
+        unit_roster = validate_randomizer_unit_roster()
         __import__('randomizer_app')
         checks = {
             'app_version': APP_VERSION,
@@ -68,6 +70,11 @@ def run_self_check():
             'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
             'lightning_storm_cameo_path': str(power_cameos.get('LIGHTNINGSTORMSPECIAL', '')),
             'static_configs_valid': len(static_config_paths) == len(REQUIRED_STATIC_CONFIGS),
+            'randomizer_unit_roster_valid': (
+                unit_roster['files'] == len(ROSTER_FILENAMES)
+                and unit_roster['types'] > 0
+            ),
+            'randomizer_unit_roster_paths': unit_roster['paths'],
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
             'diagnostic_log': str(LAUNCHER_LOG),
@@ -84,6 +91,7 @@ def run_self_check():
                 'abrams_cameo_extracted',
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
+                'randomizer_unit_roster_valid',
                 'application_imported',
                 'deterministic_seed_rng_works',
             )

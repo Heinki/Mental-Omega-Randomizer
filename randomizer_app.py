@@ -126,6 +126,7 @@ from randomizer_mission_safety import (
     expanded_tier_one_unit_ids,
     mission_basic_unit_rules,
     random_chaos_tier_one_unit_ids,
+    random_chaos_tier_one_defense_ids,
     single_engineer_rules,
     starting_tier_one_defense_rules,
     starting_tier_one_rules,
@@ -1389,7 +1390,11 @@ class LauncherApp(tk.Tk):
             )
         )
 
-    def starting_tier_one_defense_ids_for_seed(self, reward_settings=None):
+    def starting_tier_one_defense_ids_for_seed(
+        self,
+        reward_settings=None,
+        seed=None,
+    ):
         settings = reward_settings or self.active_reward_settings()
         if not settings.get('start_with_tier_one_defenses', False):
             return []
@@ -1397,6 +1402,15 @@ class LauncherApp(tk.Tk):
             str(unit_id).upper()
             for unit_id in settings.get('excluded_unit_access_ids', [])
         }
+        if self.active_reward_mode() == 'Chaos (Experimental)':
+            if seed is None:
+                seed = self.seed_var.get() if hasattr(self, 'seed_var') else ''
+            rng = random.Random(f'{seed}:starting-tier-one-defenses')
+            return [
+                unit_id
+                for unit_id in random_chaos_tier_one_defense_ids(rng)
+                if unit_id not in excluded_ids
+            ]
         families = self.active_standard_starter_families()
         marker = tier_one_defense_ids(families)
         eligible_ids = expanded_tier_one_defense_ids(
@@ -3406,7 +3420,8 @@ class LauncherApp(tk.Tk):
         self._reward_settings_override = reward_settings
         starting_unit_ids = self.starting_tier_one_unit_ids_for_seed(seed, reward_settings)
         starting_defense_ids = self.starting_tier_one_defense_ids_for_seed(
-            reward_settings
+            reward_settings,
+            seed=seed,
         )
         self._starting_unit_ids_override = starting_unit_ids
         self._starting_defense_ids_override = starting_defense_ids
@@ -4129,6 +4144,9 @@ class LauncherApp(tk.Tk):
             additional_production_houses=production_houses,
             excluded_unit_ids=self.active_reward_settings().get(
                 'excluded_unit_access_ids', []
+            ),
+            allow_player_family_fallback=(
+                mission_code not in NO_BUILD_MISSION_CODES
             ),
         )
         for section, values in starter_defense_rules.items():
