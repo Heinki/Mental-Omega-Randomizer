@@ -145,6 +145,7 @@ from randomizer_ui import (
     DARK_UI_PALETTE,
     DEFAULT_PROGRESSION_MODE,
     DIFFICULTIES,
+    EVA_VOICE_CHOICES,
     FACTION_TILE_COLORS,
     GAME_SPEEDS,
     LIGHT_UI_PALETTE,
@@ -250,6 +251,11 @@ class LauncherApp(tk.Tk):
         self.rainbowizer_var = tk.BooleanVar(
             value=bool(self.config.get('rainbowizer', False))
         )
+        self.eva_voice_var = tk.StringVar(value=valid_choice(
+            self.config.get('eva_voice'),
+            EVA_VOICE_CHOICES,
+            EVA_VOICE_CHOICES[0],
+        ))
         self.seed_var = tk.StringVar(value=self.state.get('seed', self.config.get('seed', '')))
         default_goal = self.state.get('mission_goal', self.config.get('mission_goal', DEFAULT_MISSION_GOAL))
         self.mission_goal_var = tk.IntVar(value=int(default_goal or DEFAULT_MISSION_GOAL))
@@ -1529,6 +1535,7 @@ class LauncherApp(tk.Tk):
         self.config['game_speed'] = self.game_speed_var.get()
         self.config['player_color'] = self.player_color_var.get()
         self.config['rainbowizer'] = bool(self.rainbowizer_var.get())
+        self.config['eva_voice'] = self.eva_voice_var.get()
         reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
         self.config['generation']['include_no_build_missions'] = bool(

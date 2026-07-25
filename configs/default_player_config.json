@@ -18,6 +18,7 @@
       "game_speed": "3 - Medium",
       "player_color": "Default",
       "rainbowizer": false,
+      "eva_voice": "Mission default",
       "archipelago": {
         "enabled": false,
         "server": "",

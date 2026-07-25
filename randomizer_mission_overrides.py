@@ -37,6 +37,10 @@ MISSION_REQUIRED_ACCESS_RULES = dict(_MISSION_CONFIG['required_access_rules'])
 
 MISSION_TECHNO_BASE_RULES = dict(_MISSION_CONFIG['techno_base_rules'])
 
+# Final map-section edits. Values may be literals/null or CSV add/remove
+# patches resolved against the extracted mission map before bulk injection.
+MISSION_MAP_SECTION_RULES = dict(_MISSION_CONFIG['map_section_rules'])
+
 MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = _frozenset_mapping('native_direct_buff_exclusions')
 
 MISSION_NATIVE_VARIANT_BUFF_RULES = {

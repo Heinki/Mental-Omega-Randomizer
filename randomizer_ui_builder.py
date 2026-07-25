@@ -10,6 +10,7 @@ from randomizer_tuning import stacking_amount, stacking_multiplier
 from randomizer_ui import (
     CAMPAIGN_FILTERS,
     DIFFICULTIES,
+    EVA_VOICE_CHOICES,
     GAME_SPEEDS,
     PLAYER_COLORS,
     PROGRESSION_MODES,
@@ -846,7 +847,7 @@ def create_widgets(self):
 
     map_colors_frame = ttk.LabelFrame(
         settings_frame,
-        text='Map Colors',
+        text='Mission Appearance',
         padding=(8, 8, 8, 8),
     )
     map_colors_frame.grid(row=2, column=0, sticky='ew')
@@ -877,6 +878,24 @@ def create_widgets(self):
         self.rainbowizer_check,
         'Assigns deterministic random colors to non-neutral allied and enemy AI houses. '
         'Civilian, neutral, and script-only neutral houses keep their authored colors.',
+    )
+    ttk.Label(map_colors_frame, text='EVA voice').grid(
+        row=2, column=0, sticky='w', padx=(0, 8), pady=(5, 0)
+    )
+    self.eva_voice_combo = ttk.Combobox(
+        map_colors_frame,
+        state='readonly',
+        textvariable=self.eva_voice_var,
+        values=EVA_VOICE_CHOICES,
+        width=15,
+    )
+    self.eva_voice_combo.grid(row=2, column=1, sticky='ew', pady=(5, 0))
+    self.eva_voice_combo.bind(
+        '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
+    )
+    WidgetTooltip(
+        self.eva_voice_combo,
+        'Uses one announcer for the whole mission. Random is deterministic for the seed and mission.',
     )
 
     mission_pool_frame = ttk.LabelFrame(

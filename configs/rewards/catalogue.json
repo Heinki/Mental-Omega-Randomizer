@@ -731,7 +731,7 @@
         "name": "Structure Capacity",
         "setting_label": "Special building limit +1",
         "description": "{plural} can have one additional structure active at the same time in future launched missions.",
-        "requires_stat": "build_limit",
+        "requires_stat": "building_limit",
         "requires_clone": true
       }
     ],
@@ -1974,6 +1974,7 @@
             "clone": "MORWBWeapon",
             "list": "WeaponTypes",
             "values": {
+              "MinimumRange": "0",
               "Projectile": "MORWBProjectile",
               "Warhead": "MORWBWarhead"
             }
@@ -2103,8 +2104,80 @@
           "SW.Designators": "",
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
-          "SW.RangeMaximum": "-1",
-          "SW.RangeMinimum": "-1"
+          "SW.RangeMaximum": "9999",
+          "SW.RangeMinimum": "0"
+        },
+        "techno_clones": {
+          "MercuryOverdrive": {
+            "clone": "MORMercuryWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORMercuryProjectile",
+              "Warhead": "MORMercuryStrikeWH"
+            }
+          },
+          "MercuryP": {
+            "clone": "MORMercuryProjectile",
+            "list": "Projectiles",
+            "values": {
+              "AirburstWeapon": "MORMercuryLaser"
+            }
+          },
+          "MercuryLaser": {
+            "clone": "MORMercuryLaser",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORMercuryLaserP",
+              "Warhead": "MORMercuryLaserWH"
+            }
+          },
+          "InvisibleMerc": {
+            "clone": "MORMercuryLaserP",
+            "list": "Projectiles"
+          },
+          "MercuryStrikeWH": {
+            "clone": "MORMercuryStrikeWH",
+            "list": "Warheads"
+          },
+          "MercuryLaserWH": {
+            "clone": "MORMercuryLaserWH",
+            "list": "Warheads"
+          },
+          "GAMERC": {
+            "clone": "MORMercuryCannon",
+            "list": "BuildingTypes",
+            "startup_count": 4,
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "values": {
+              "Name": "Randomizer Mercury Cannon",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "Primary": "MORMercuryWeapon",
+              "EMPulseCannon": "yes",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "SuperWeapons": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "Sight": "0"
+            }
+          }
         }
       },
       {
@@ -2803,7 +2876,8 @@
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
           "SW.RangeMaximum": "-1",
-          "SW.RangeMinimum": "-1"
+          "SW.RangeMinimum": "-1",
+          "RechargeTime": "1"
         },
         "sections": {
           "PostliftSpecial": {
@@ -2822,7 +2896,8 @@
             "SW.Inhibitors": "",
             "SW.AnyInhibitor": "no",
             "SW.RangeMaximum": "-1",
-            "SW.RangeMinimum": "-1"
+            "SW.RangeMinimum": "-1",
+            "RechargeTime": "1"
           }
         }
       },

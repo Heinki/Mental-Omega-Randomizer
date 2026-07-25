@@ -490,6 +490,7 @@ for definition in SPECIAL_BUILDING_DEFINITIONS:
         'category': 'special_buildings',
         'factions': [str(definition['faction'])],
         'build_limit': int(definition.get('build_limit', 1)),
+        'building_limit': int(definition.get('build_limit', 1)),
         'capacity_stack_limit': int(definition.get('capacity_stack_limit', 4)),
         'build_category': str(definition.get('build_category', 'Tech')),
         'cameo_priority': int(definition.get('cameo_priority', -1000)),
@@ -800,6 +801,14 @@ for definition in SPECIAL_BUILDING_DEFINITIONS:
     REWARD_ALIASES[
         f'{building_name} Command Capacity I'
     ] = f'{building_name} Structure Capacity I'
+for limited_unit_id in LIMITED_HERO_UNIT_IDS:
+    target = BUFF_TARGETS[limited_unit_id]
+    # Seeds made before the structure/unit capacity split could assign the
+    # structure-only reward to a hero. Preserve the earned stack by migrating
+    # it to that hero's valid unit-capacity reward at load/launch time.
+    REWARD_ALIASES[
+        f'{target["label"]} Structure Capacity I'
+    ] = f'{target["label"]} Command Capacity I'
 for target in BUFF_TARGETS.values():
     # Existing seeds may contain the removed GuardRange reward. Convert it to
     # the same unit's useful vision reward instead of applying behavior that

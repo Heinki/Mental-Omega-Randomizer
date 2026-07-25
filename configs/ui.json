@@ -75,6 +75,15 @@
       "DarkRed", "LightBlue", "NeonGreen", "Olive", "Purple2", "Purple3",
       "Russet", "Yellow"
     ],
+    "eva_voice_choices": [
+      "Mission default", "Allied", "Soviet", "Epsilon", "Foehn", "Random"
+    ],
+    "eva_voice_tags": {
+      "Allied": "Allied",
+      "Soviet": "Russian",
+      "Epsilon": "Yuri",
+      "Foehn": "Foehn"
+    },
     "rewards_per_check_messages": {
       "maximum": "Ok that is now enough...",
       "thresholds": [

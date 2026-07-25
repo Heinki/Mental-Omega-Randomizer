@@ -21,8 +21,18 @@ BUGS AND IMPROVEMENTS
 
 - increased buff difficultie for enemys after x objectives have been done
 - check ini implementation instead of copying infos into the .map files
-- Check updater for randomizer
-- Make robot tanks for allies available, for some reason it is not there for navalyard and war factory
+- Give buffs to super weapons/Aid powerups
+- Enemy AI not working and building (Check with buff difficultie in one go)
+
+- iron guard not working
+- Default T1 defensive Structures not available in Standard mission for ALL Campaigns
+- After morales extract enemy attacks with stingers only :KEKW: :KEKW: :KEKW: , easy peasy, also the cloning of morales on this won't work, if you build him he disappears
+Standerd, not chaos as well, on mental difficulty
+- @Heinki I have a lead on what might be causing the issue with AI production
+BuildLimit=0
+TechLevel=11
+Owner=<player's country>,MORPLAYER
+I'm seeing some cases where this is on non-cloned units
 
 These are just the ones I could find by doing a very quick wiki search before I go off to bed- these all should have unique sidebar icons
 - Soviets: Boris, Krukov, Reznov, Cyborg Vanguard, (Gharial Prototype, Mastodon Prototype, Infector Tank), Cosmonaut, Perun Flagship, Soviet Psychic Sensor(?), Soviet Cloning Lab(?), 

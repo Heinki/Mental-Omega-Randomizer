@@ -42,6 +42,7 @@ REQUIRED_SECTIONS = {
         'team_house_overrides': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
+        'map_section_rules': dict,
         'native_direct_buff_exclusions': dict,
         'native_variant_buff_rules': dict,
         'native_tech_unlock_ids': dict,
@@ -222,6 +223,36 @@ def _validate_sections(relative_path, sections, path):
                     raise StaticConfigError(
                         f'Invalid native variant units for {code} in {path}'
                     )
+        for code, section_rules in sections['map_section_rules'].items():
+            if not isinstance(code, str) or not code or not isinstance(section_rules, dict):
+                raise StaticConfigError(
+                    f'Invalid map section rules for {code!r} in {path}'
+                )
+            for section, values in section_rules.items():
+                if not isinstance(section, str) or not section or not isinstance(values, dict):
+                    raise StaticConfigError(
+                        f'Invalid map section {section!r} for {code} in {path}'
+                    )
+                for key, value in values.items():
+                    if not isinstance(key, str) or not key:
+                        raise StaticConfigError(
+                            f'Invalid map key {key!r} for {code}:{section} in {path}'
+                        )
+                    if not isinstance(value, dict):
+                        continue
+                    if not value or not set(value).issubset({'add', 'remove'}):
+                        raise StaticConfigError(
+                            f'Invalid CSV patch for {code}:{section}:{key} in {path}'
+                        )
+                    for operation in ('add', 'remove'):
+                        items = value.get(operation, [])
+                        if not isinstance(items, list) or not all(
+                            isinstance(item, str) and item for item in items
+                        ):
+                            raise StaticConfigError(
+                                f'Invalid CSV {operation} list for '
+                                f'{code}:{section}:{key} in {path}'
+                            )
     if str(Path(relative_path)).replace('\\', '/') == 'rewards/unit_data.json':
         seen_equivalence_ids = set()
         known_equivalence_ids = {

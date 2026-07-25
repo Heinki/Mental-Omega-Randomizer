@@ -658,6 +658,29 @@ def merge_unique_csv(existing, additions):
     return ','.join(merged)
 
 
+def resolved_map_section_rules(lines, configured_rules):
+    """Resolve editable per-mission literals and CSV patches."""
+    resolved = {}
+    for section, values in (configured_rules or {}).items():
+        source_values = section_value_map_preserve(lines, section)
+        source_by_lower = {
+            str(key).lower(): value for key, value in source_values.items()
+        }
+        for key, value in values.items():
+            if not isinstance(value, dict):
+                resolved.setdefault(section, {})[key] = value
+                continue
+            existing = comma_items(source_by_lower.get(str(key).lower(), ''))
+            removals = {
+                str(item).upper() for item in value.get('remove', ())
+            }
+            kept = [item for item in existing if item.upper() not in removals]
+            resolved.setdefault(section, {})[key] = merge_unique_csv(
+                ','.join(kept), value.get('add', ())
+            )
+    return resolved
+
+
 def merge_unique_csv_bounded(existing, additions, max_length):
     """Merge CSV IDs without crossing the engine's single-value parser limit."""
     merged = []
@@ -846,7 +869,11 @@ def mission_assistance_multipliers(stacks):
     }
 
 
-def mission_assistance_direct_rewards(unit_ids, stacks):
+def mission_assistance_direct_rewards(
+    unit_ids,
+    stacks,
+    include_house_scoped=False,
+):
     """Build guarded direct buffs for accessible retry units.
 
     These stats live on global TechnoType/WeaponType sections rather than a
@@ -869,6 +896,11 @@ def mission_assistance_direct_rewards(unit_ids, stacks):
             continue
         for _ in range(direct_stacks):
             buff_types = list(MISSION_ASSISTANCE['direct_buff_types'])
+            if include_house_scoped:
+                # A shared player CountryType cannot safely receive the normal
+                # category values. Force these four effects onto isolated
+                # player clones so retry help does not silently disappear.
+                buff_types.extend(('production', 'cost', 'speed', 'armor'))
             # Fire-rate assistance must modify cloned WeaponTypes. Country ROF
             # is a difficulty field, not a supported CountryType multiplier.
             if any(
@@ -885,13 +917,14 @@ def mission_assistance_direct_rewards(unit_ids, stacks):
                 > int(target.get('speed', 1))
             ):
                 buff_types.append('speed')
-            for buff_type in buff_types:
+            for buff_type in unique_in_order(buff_types):
                 rewards.append({
                     'kind': 'buff',
                     'unit': unit_id,
                     'buff_type': buff_type,
                     'global_buff': True,
                     'mission_assistance': True,
+                    'force_direct_unit_buff': include_house_scoped,
                 })
     return rewards
 
@@ -1374,6 +1407,10 @@ def _active_direct_buff_counts(
             if unit_specific_mode
             else set()
         )
+        if reward.get('force_direct_unit_buff'):
+            direct_chaos_types.update(
+                {'production', 'cost', 'speed', 'armor'}
+            )
         if include_house_scoped_fallback:
             direct_chaos_types.update(
                 {'production', 'cost', 'speed', 'armor'}
@@ -2537,9 +2574,11 @@ def player_unit_clone_rules(
     usage_index = build_unit_usage_index(lines)
     # Some campaign child countries share their ParentCountry with scripted
     # enemies. Country/category multipliers are then intentionally skipped to
-    # prevent leakage. With no buffed helper sharing these clones, bake the
-    # four TechnoType-compatible multipliers into isolated player clones so
-    # earned production/cost/speed/armor rewards do not silently disappear.
+    # prevent leakage. Bake the four TechnoType-compatible multipliers into
+    # isolated player clones so earned production/cost/speed/armor rewards do
+    # not silently disappear. This remains necessary when allied helpers are
+    # enabled: their safe countries do not make the player's shared country
+    # safe.
     player_country_buff_unsafe = any(
         unsafe_country_houses(
             lines,
@@ -2551,9 +2590,7 @@ def player_unit_clone_rules(
         )
         for house in player_houses
     )
-    direct_house_scoped_fallback = bool(
-        player_country_buff_unsafe and not buffed_helper_houses
-    )
+    direct_house_scoped_fallback = bool(player_country_buff_unsafe)
     counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -2688,6 +2725,7 @@ def player_unit_clone_rules(
             )
     section_rules = {}
     replacements = {}
+    cloned_source_ids = set()
     taskforce_replacements = {}
     structure_plan_allowed_houses_by_unit = {}
     player_veterancy_replacements = {}
@@ -2944,7 +2982,11 @@ def player_unit_clone_rules(
         if unit_id in excluded_unit_ids:
             continue
         target = BUFF_TARGETS.get(target_unit_id, {})
-        if unit_id in ambiguous_mission_event_ids:
+        build_only_clone = (
+            unit_id in ambiguous_mission_event_ids
+            and unit_id in buildable_ids
+        )
+        if unit_id in ambiguous_mission_event_ids and not build_only_clone:
             unsupported.append(
                 f'{target.get("label", target_unit_id)} shared mission event kept native'
             )
@@ -3019,17 +3061,62 @@ def player_unit_clone_rules(
         effective_target = _target_with_effective_unit_stats(
             target, clone_source_values
         )
+        weapon_targets = dict(target.get('weapons', {}))
+        if target.get('category') == 'defenses':
+            # Trainable defenses switch to ElitePrimary/EliteWeapon* after
+            # promotion.  Curated rookie weapon lists alone made a heavily
+            # buffed rookie tower stronger than its veteran/elite form.  Pull
+            # every direct defense weapon from installed/map rules so all
+            # promotion stages receive the same earned weapon stacks.
+            for key, value in clone_source_values.items():
+                lowered_key = str(key).lower()
+                if not (
+                    lowered_key in {
+                        'primary', 'secondary', 'eliteprimary',
+                        'elitesecondary',
+                    }
+                    or re.fullmatch(r'(?:elite)?weapon\d+', lowered_key)
+                ):
+                    continue
+                weapon = str(value or '').strip()
+                if (
+                    not weapon
+                    or weapon.lower() in {'none', '<none>'}
+                    or weapon in weapon_targets
+                ):
+                    continue
+                installed_weapon = installed_name_by_lower.get(weapon.lower())
+                map_weapon = map_name_by_lower.get(weapon.lower())
+                weapon_values = _standalone_clone_values(
+                    lines,
+                    installed_sections,
+                    installed_weapon,
+                    map_weapon,
+                )
+                if not weapon_values:
+                    continue
+                weapon_targets[weapon] = {
+                    'damage': parse_float(
+                        _value_case_insensitive(weapon_values, 'Damage', 0), 0
+                    ),
+                    'range': parse_float(
+                        _value_case_insensitive(weapon_values, 'Range', 0), 0
+                    ),
+                    'rof': parse_float(
+                        _value_case_insensitive(weapon_values, 'ROF', 0), 0
+                    ),
+                }
         direct_weapon_keys = {
             weapon.upper(): [
                 key
                 for key, value in clone_source_values.items()
                 if str(value).strip().lower() == weapon.lower()
             ]
-            for weapon in target.get('weapons', {})
+            for weapon in weapon_targets
         }
         weapon_unsafe = False
         if weapon_buff_types:
-            for weapon in target.get('weapons', {}):
+            for weapon in weapon_targets:
                 if not direct_weapon_keys.get(weapon.upper()):
                     continue
                 weapon_users = SHARED_WEAPON_USER_IDS.get(weapon.upper(), {unit_id})
@@ -3059,7 +3146,7 @@ def player_unit_clone_rules(
         )
         variant_has_effect = bool(direct_types) or any(
             direct_weapon_keys.get(weapon.upper())
-            for weapon in target.get('weapons', {})
+            for weapon in weapon_targets
             if weapon_buff_types
         )
         needs_direct_house_fallback = bool(
@@ -3103,7 +3190,15 @@ def player_unit_clone_rules(
         prerequisite_override = _value_case_insensitive(
             clone_values, 'PrerequisiteOverride', ''
         )
-        if str(prerequisite_override or '').strip().lower() in {'none', '<none>'}:
+        has_prerequisite_lists = bool(
+            comma_items(_value_case_insensitive(
+                clone_values, 'Prerequisite.Lists', ''
+            ))
+        )
+        if (
+            str(prerequisite_override or '').strip().lower() in {'none', '<none>'}
+            and not has_prerequisite_lists
+        ):
             _remove_case_insensitive(clone_values, 'PrerequisiteOverride')
         if not any(
             str(key).lower() == 'image' and str(value).strip()
@@ -3123,7 +3218,7 @@ def player_unit_clone_rules(
                 clone_values, effective_target, buff_type, counts[buff_type]
             ):
                 handled_unit_types.add(buff_type)
-        for weapon, base_stats in target.get('weapons', {}).items():
+        for weapon, base_stats in weapon_targets.items():
             reference_keys = direct_weapon_keys.get(weapon.upper(), [])
             if not reference_keys:
                 continue
@@ -3342,14 +3437,21 @@ def player_unit_clone_rules(
             section_rules, lines, installed_sections, list_section, clone_id
         )
         section_rules[clone_id] = clone_values
-        replacements[unit_id] = clone_id
+        cloned_source_ids.add(unit_id)
+        if not build_only_clone:
+            replacements[unit_id] = clone_id
         # Scripted teams must follow every friendly clone, including locked
         # map-local hero variants. Otherwise exact loss triggers can watch the
         # clone while a reinforcement TaskForce still creates the native ID,
         # causing an immediate false mission failure (SNOISE Drakuv escorts).
         # _clone_reference_rules keeps enemy consumers native and splits shared
         # TaskForces, so reference-only clones are safe here.
-        taskforce_replacements[unit_id] = clone_id
+        if not build_only_clone:
+            taskforce_replacements[unit_id] = clone_id
+        else:
+            unsupported.append(
+                f'{target.get("label", target_unit_id)} build-only clone kept native mission references'
+            )
         handled_by_unit[unit_id] = {
             'unit_buff_types': handled_unit_types,
             'weapon_ids': handled_weapon_ids,
@@ -3408,7 +3510,7 @@ def player_unit_clone_rules(
             )
             if country:
                 ai_owner_ids.append(country)
-        if unit_id in buildable_ids and unit_id not in replacements:
+        if unit_id in buildable_ids and unit_id not in cloned_source_ids:
             # No player clone exists for this helper-used source. Keep its
             # earned player access alongside native AI access; no cloned buff
             # is attached to this original type.
@@ -3418,7 +3520,7 @@ def player_unit_clone_rules(
             item for item in ai_owner_ids
             if item and (
                 item.lower() not in player_owner_names
-                or (unit_id in buildable_ids and unit_id not in replacements)
+                or (unit_id in buildable_ids and unit_id not in cloned_source_ids)
             )
         )
         if not ai_owner_ids:
@@ -3461,7 +3563,7 @@ def player_unit_clone_rules(
             lowered = str(key).lower()
             if (
                 lowered == 'techlevel'
-                and unit_id in replacements
+                and unit_id in cloned_source_ids
                 and unit_id in buildable_ids
             ):
                 continue
@@ -3602,7 +3704,7 @@ def player_unit_clone_rules(
         )
     return (
         section_rules,
-        sorted(replacements),
+        sorted(cloned_source_ids),
         handled_by_unit,
         unique_in_order(cloned_labels),
         unique_in_order(unsupported + [f'missing source {item}' for item in missing]),
@@ -4321,6 +4423,38 @@ def mission_house_color_rules(
     return rules
 
 
+def mission_eva_voice_rules(selection, voice_tags, random_key=''):
+    """Return one map-wide EVA announcer override for all playable sides."""
+    selection = str(selection or '').strip()
+    tags = {
+        str(label): str(tag)
+        for label, tag in (voice_tags or {}).items()
+        if str(label).strip() and str(tag).strip()
+    }
+    if selection.lower() in {'', 'mission default'}:
+        return {}, 'Mission default'
+    if selection.lower() == 'random':
+        labels = sorted(
+            tags,
+            key=lambda label: hashlib.sha256(
+                f'{random_key}|eva|{label.lower()}'.encode('utf-8')
+            ).digest(),
+        )
+        if not labels:
+            return {}, 'Mission default'
+        selection = labels[0]
+    tag = tags.get(selection)
+    if not tag:
+        return {}, 'Mission default'
+    return (
+        {
+            side: {'EVA.Tag': tag}
+            for side in ('GDI', 'Nod', 'ThirdSide', 'FourthSide')
+        },
+        selection,
+    )
+
+
 def canonical_house_name(records, value):
     """Resolve FinalAlert's House/Country aliases without guessing.
 
@@ -4972,14 +5106,36 @@ def _startup_building_actions(
             (radius, -radius), (-radius, -radius),
         ))
 
+    map_size = comma_items(_value_case_insensitive(
+        section_value_map_preserve(lines, 'Map'), 'Size', ''
+    ))
+    try:
+        map_center = (
+            int(map_size[0]) + (int(map_size[2]) + int(map_size[3])) / 2,
+            int(map_size[1]) + (int(map_size[2]) + int(map_size[3])) / 2,
+        )
+    except (IndexError, TypeError, ValueError):
+        map_center = (
+            sum(cell[0] for cell in anchors) / len(anchors),
+            sum(cell[1] for cell in anchors) / len(anchors),
+        )
+
     next_waypoint = next_numeric_section_index(lines, 'Waypoints')
     actions = []
     for building_number, building_id in enumerate(building_ids):
         chosen = None
         for anchor_number in range(len(anchors)):
             anchor = anchors[(building_number + anchor_number) % len(anchors)]
-            for offset_number in range(len(offsets)):
-                dx, dy = offsets[(building_number * 7 + offset_number) % len(offsets)]
+            inward_offsets = sorted(
+                offsets,
+                key=lambda offset: (
+                    abs(anchor[0] + offset[0] - map_center[0])
+                    + abs(anchor[1] + offset[1] - map_center[1]),
+                    abs(offset[0]) + abs(offset[1]),
+                    offset,
+                ),
+            )
+            for dx, dy in inward_offsets:
                 candidate = (anchor[0] + dx, anchor[1] + dy)
                 if candidate[0] <= 0 or candidate[1] <= 0 or candidate in occupied:
                     continue

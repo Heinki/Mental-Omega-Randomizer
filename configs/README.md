@@ -19,7 +19,8 @@ embedded in Python modules. Restart the launcher after changing a file.
   defensive structures, abstract saved markers, aircraft factories, and
   installed GenericPrerequisite aliases.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
-  reward-count messages, faction colors, and light/dark palettes.
+  EVA announcer choices/tags, reward-count messages, faction colors, and
+  light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
   cross-faction role-equivalence groups, linked land/water buff identities,
   buff targets, labels, hero limits, and
@@ -46,9 +47,27 @@ embedded in Python modules. Restart the launcher after changing a file.
 Add reviewed map exceptions to `missions.json`; do not add mission-code
 branches to the Python pipeline. Available sections cover player/helper houses,
 native clone exclusions, required access rules, base-section values, native
-unlock preservation, superweapon payload clones, and native variant buff rules.
+unlock preservation, arbitrary map-section values, superweapon payload clones,
+and native variant buff rules.
 An expansion map can use the same sections once its mission code is present in
 the catalogue/classification data.
+
+`map_section_rules` can patch any INI section in any configured mission. A
+literal replaces a value, `null` removes its key, and `add`/`remove` edits a
+comma-separated ID list without copying the map's complete original value:
+
+```json
+"map_section_rules": {
+  "SFATAL": {
+    "YTUNNEL": {
+      "Passengers.Allowed": {
+        "add": ["MORPSVOLKOV"],
+        "remove": []
+      }
+    }
+  }
+}
+```
 
 `rewards/tuning.json` changes newly generated maps and reward plans. Clone ID
 prefixes and production-field lists are advanced engine policy: keep IDs within

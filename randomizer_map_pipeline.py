@@ -32,6 +32,7 @@ from randomizer_map import (
     mission_assistance_direct_rewards,
     mission_assistance_unit_ids,
     mission_house_color_rules,
+    mission_eva_voice_rules,
     native_variant_unit_buff_rules,
     native_variant_veterancy_rules,
     player_controlled_houses,
@@ -39,6 +40,7 @@ from randomizer_map import (
     player_country_from_map,
     player_house_from_map,
     player_unit_clone_rules,
+    resolved_map_section_rules,
     remove_locked_techlevel_actions,
     resolve_configured_helper_houses,
     stacked_house_buff_values,
@@ -57,6 +59,7 @@ from randomizer_mission_overrides import (
     MISSION_NATIVE_VARIANT_BUFF_RULES,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSION_REWARD_EXCLUDED_PLAYER_HOUSES,
+    MISSION_MAP_SECTION_RULES,
     MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES,
     MISSION_TEAM_HOUSE_OVERRIDES,
     MISSION_TECHNO_BASE_RULES,
@@ -70,7 +73,7 @@ from randomizer_rewards import (
     canonical_rewards,
     reward_display_name,
 )
-from randomizer_ui import RAINBOWIZER_COLORS
+from randomizer_ui import EVA_VOICE_TAGS, RAINBOWIZER_COLORS
 
 
 def prepare_hooked_map(self, mission, extra_rules=None):
@@ -115,6 +118,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.append_log(
             f'Applied map color settings to {len(color_rules)} house(s).'
         )
+    eva_rules, eva_label = mission_eva_voice_rules(
+        self.eva_voice_var.get(),
+        EVA_VOICE_TAGS,
+        random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
+    )
+    if eva_rules:
+        merge_ini_section_values(lines, eva_rules)
+        self.append_log(f'Applied {eva_label} EVA voice for this mission.')
     team_house_overrides = MISSION_TEAM_HOUSE_OVERRIDES.get(code, {})
     if team_house_overrides:
         available_team_ids = {
@@ -158,6 +169,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     for section, values in mission_base_rules.items():
         rule_sections.setdefault(section, {}).update(values)
+    mission_map_rules = resolved_map_section_rules(
+        lines, MISSION_MAP_SECTION_RULES.get(code, {})
+    )
+    for section, values in mission_map_rules.items():
+        rule_sections.setdefault(section, {}).update(values)
+    if mission_map_rules:
+        self.append_log(
+            f'Applied reviewed map section overrides for {code}: '
+            + ', '.join(sorted(mission_map_rules))
+            + '.'
+        )
     reward_settings = self.active_reward_settings()
     suppressed_power_buildings = suppressed_superweapon_building_ids(
         reward_settings
@@ -416,11 +438,20 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 f'accessible or mission-provided unit type(s).{skip_note}'
             )
             # Direct health/damage/range rewards still pass through the
-            # global type/weapon ownership guard even when a shared
-            # country makes category multipliers unsafe.
+            # global type/weapon ownership guard. If the player's country is
+            # one of the skipped shared countries, force category-compatible
+            # assistance onto isolated clones as well.
             assistance_direct_rewards = mission_assistance_direct_rewards(
                 assistance_unit_ids,
                 assistance_stacks,
+                include_house_scoped=(
+                    player_country_from_map(lines).lower()
+                    in {
+                        str(country).lower()
+                        for country, _houses, _shared
+                        in skipped_assistance_countries
+                    }
+                ),
             )
         else:
             self.append_log(

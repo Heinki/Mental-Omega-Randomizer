@@ -990,6 +990,10 @@
       ]
     },
     "native_trigger_reference_ids": {
+      "AINSOMNIA": [
+        "SIEG",
+        "TANY"
+      ],
       "AOBST": [
         "SHAD"
       ],
@@ -1072,6 +1076,10 @@
       ]
     },
     "native_techno_clone_exclusions": {
+      "AINSOMNIA": [
+        "SIEG",
+        "TANY"
+      ],
       "AOBST": [
         "SHAD"
       ],
@@ -1254,7 +1262,22 @@
         }
       }
     },
+    "map_section_rules": {
+      "SFATAL": {
+        "YTUNNEL": {
+          "Passengers.Allowed": {
+            "add": [
+              "MORPSVOLKOV"
+            ]
+          }
+        }
+      }
+    },
     "native_direct_buff_exclusions": {
+      "AINSOMNIA": [
+        "SIEG",
+        "TANY"
+      ],
       "AOBST": [
         "SHAD"
       ],
@@ -1304,6 +1327,16 @@
       ]
     },
     "native_variant_buff_rules": {
+      "AINSOMNIA": [
+        {
+          "source_unit": "TANY",
+          "native_units": ["TANY"]
+        },
+        {
+          "source_unit": "SIEG",
+          "native_units": ["SIEG"]
+        }
+      ],
       "ASIREN": [
         {
           "source_unit": "TANY",

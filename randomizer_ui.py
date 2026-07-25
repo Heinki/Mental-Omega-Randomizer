@@ -17,6 +17,16 @@ PROGRESSION_MODES = list(_UI_CONFIG['progression_modes'])
 DEFAULT_PROGRESSION_MODE = str(_UI_CONFIG['default_progression_mode'])
 PLAYER_COLORS = list(_UI_CONFIG['player_colors'])
 RAINBOWIZER_COLORS = list(_UI_CONFIG['rainbowizer_colors'])
+EVA_VOICE_CHOICES = list(_UI_CONFIG.get(
+    'eva_voice_choices',
+    ['Mission default', 'Allied', 'Soviet', 'Epsilon', 'Foehn', 'Random'],
+))
+EVA_VOICE_TAGS = dict(_UI_CONFIG.get('eva_voice_tags', {
+    'Allied': 'Allied',
+    'Soviet': 'Russian',
+    'Epsilon': 'Yuri',
+    'Foehn': 'Foehn',
+}))
 REWARDS_PER_CHECK_MAXIMUM_MESSAGE = str(
     _UI_CONFIG['rewards_per_check_messages']['maximum']
 )
