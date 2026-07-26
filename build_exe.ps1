@@ -29,14 +29,14 @@ if (-not (Test-Path -LiteralPath $assetPath -PathType Container)) {
     throw "Launcher asset directory is missing: $assetPath"
 }
 
-python -c "from randomizer_static_config import REQUIRED_STATIC_CONFIGS, validate_static_configs; validate_static_configs(REQUIRED_STATIC_CONFIGS); print('Static config preflight passed.')"
+python -c "from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs; validate_static_configs(REQUIRED_STATIC_CONFIGS); print('Static config preflight passed.')"
 if ($LASTEXITCODE -ne 0) {
     throw "Static config preflight failed; EXE was not built."
 }
 
-$appVersion = (& python -c "from randomizer_version import APP_VERSION; print(APP_VERSION)").Trim()
+$appVersion = (& python -c "from randomizer.core.version import APP_VERSION; print(APP_VERSION)").Trim()
 if ($LASTEXITCODE -ne 0 -or $appVersion -notmatch '^\d+\.\d+(\.\d+)?$') {
-    throw "Invalid APP_VERSION in randomizer_version.py: $appVersion"
+    throw "Invalid APP_VERSION in randomizer/core/version.py: $appVersion"
 }
 $versionParts = @($appVersion.Split('.') | ForEach-Object { [int]$_ })
 while ($versionParts.Count -lt 4) {
@@ -89,7 +89,10 @@ try {
         --icon $iconPath `
         --version-file $versionInfoPath `
         --add-data "$iconPath;." `
-        --add-data "$staticConfigPath;configs" `
+        --add-data "$staticConfigPath\*.json;configs" `
+        --add-data "$staticConfigPath\*.ini;configs" `
+        --add-data "$staticConfigPath\README.md;configs" `
+        --add-data "$staticConfigPath\rewards;configs\rewards" `
         --add-data "$assetPath;assets" `
         --exclude-module logging.handlers `
         --exclude-module ssl `

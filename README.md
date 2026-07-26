@@ -59,9 +59,11 @@ Using a dedicated clean installation is the same isolation normally recommended 
 
 ## Early Development Stage
 
-The current code is still a hot mess, since this is the first version I am releasing before doing more cleanup. It was also written with the help of ChatGPT so there might be even more code parts that need further cleanup.
-Features may be incomplete, behave incorrectly, or cause crashes. 
-The Randomizer was mostly tested with the Allied Faction, a bit of Soviets and barely with Epsilon and Foehn
+The launcher remains an early release. Source is organized as a domain package
+with focused modules, but gameplay still needs broader live campaign coverage.
+Features may be incomplete, behave incorrectly, or cause crashes.
+Testing has focused most heavily on Allied missions, with less Soviet, Epsilon,
+and Foehn live-play coverage.
 For the Foehn faction the player will get Soviet/Allied tech instead as the Foehn Campaign does not have their own faction units.
 In Chaos Mode you can get Foehn unit however.
 Please report reproducible problems through the repository's [issue tracker](https://github.com/Heinki/Mental-Omega-Randomizer/issues).
@@ -81,7 +83,7 @@ Each document has one purpose so the same behavior is not maintained in several 
 | [README_RANDOMIZER.md](README_RANDOMIZER.md) | Players and future Archipelago option authors | Complete settings tables, reward display, game modes, seed lifecycle, and user-facing limitations |
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
 | [configs/README.md](configs/README.md) | Maintainers and advanced users | Editable static mission, faction, reward, unit, and UI JSON configuration |
-| `config/mental_omega_randomizer.yaml` | Launcher/runtime | Saved standalone option values; it is data, not a second source of documentation |
+| `configs/player/mental_omega_randomizer.yaml` | Launcher/runtime | Saved standalone option values; it is data, not a second source of documentation |
 
 ## Developer Workflow
 
@@ -123,43 +125,26 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 
 ## Source Layout
 
-| File | Responsibility |
+| Path | Responsibility |
 |---|---|
 | `launcher_gui.py` | Packaged/source entry point and self-check |
-| `randomizer_app.py` | Tk state, orchestration, game launch, and log watcher |
-| `randomizer_ui_builder.py` | Widget construction |
-| `randomizer_ui_theme.py` | Tk palette and style application |
-| `randomizer_ui_grid.py` | Grid Mode widget rendering |
-| `randomizer_ui_tooltips.py` | Shared widget/tree tooltip lifecycle |
-| `grid_progression.py` | Grid construction, corner trimming, node state, neighbor unlocks, and exit rules |
-| `randomizer_missions.py` | Pure campaign parsing, faction normalization, stage scoring, and deterministic mission ordering |
-| `randomizer_seed_rewards.py` | Pure deterministic reward-slot planning |
-| `randomizer_reward_rules.py` | Reward access IDs and role-buff scope |
-| `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass section merging |
-| `randomizer_map_pipeline.py` | Ordered generated-map preparation |
-| `randomizer_map_houses.py` | House/country discovery |
-| `randomizer_map_ownership.py` | Placed/scripted ownership safety |
-| `randomizer_map_hooks.py` | Bounded map Action and marker mechanics |
-| `randomizer_map_progress_hooks.py` | Check/action pairing and marker injection |
-| `randomizer_map_settings.py` | Launch-time map color/EVA settings |
-| `randomizer_map.py` | Player clones, buffs, helper production, and power construction |
-| `randomizer_mission_safety.py` | Mixed-faction and Chaos production access |
-| `randomizer_rewards.py` | Reward catalogue, equivalence groups, stacking, and display helpers |
-| `randomizer_cameos.py` | Installed MIX cameo extraction and PCX-to-PNG decoding |
-| `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and loose game-asset deployment |
-| `randomizer_config.py` | YAML-compatible configuration defaults and persistence |
-| `randomizer_config_schema.py` | Static JSON schemas and focused validators |
-| `randomizer_static_config.py` | Static JSON path/loading/cache behavior |
-| `randomizer_launch_options.py` | Spawn and option INI mechanics |
-| `randomizer_storage.py` | Atomic text/JSON persistence |
-| `randomizer_state.py` | Pure persisted-state normalization and migration helpers |
-| `randomizer_diagnostics.py` | Bounded structured launcher logging for support and debugging |
-| `randomizer_paths.py` | Source and packaged runtime paths |
-| `randomizer_weapon_stats.py` | Documented imports for the installed weapon registry snapshot |
-| `randomizer_weapon_stats_data.py` | Generated packed Mental Omega 3.3.6 weapon data |
-| `build_exe.ps1` | PyInstaller build and packaged self-check workflow |
+| `randomizer/application/` | Tk application composition; state, seed, progression, launch, and Unlocks controllers |
+| `randomizer/config/` | Player YAML, static JSON loading, schema validation, and tuning adapters |
+| `randomizer/core/` | Paths, storage, diagnostics, version, and collection primitives |
+| `randomizer/launch/` | Spawn and option INI mechanics |
+| `randomizer/maps/` | INI parsing, map pipeline, ownership, clones, buffs, hooks, settings, and powers |
+| `randomizer/missions/` | Mission catalogue, house policy, access safety, and Tier 1 starters |
+| `randomizer/progression/` | Grid topology and persisted progression normalization |
+| `randomizer/rewards/` | Reward definitions, display, planning, roster, and weapon data |
+| `randomizer/ui/` | Widget layout, settings panels, themes, tooltips, Grid rendering, and cameos |
+| `configs/` | Editable static policy/templates plus ignored `player/` runtime YAML |
+| `tools/` | Maintainer-only data generation |
+| `build_exe.ps1` | PyInstaller build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
+Every Python module stays below 1,000 lines. Public facades such as
+`randomizer.maps.rules`, `randomizer.missions.safety`, and
+`randomizer.rewards.catalogue` keep callers independent from internal splits.
 
 ## Troubleshooting and Bug Reports
 

@@ -100,7 +100,7 @@ def main():
     # Import after resolving project root so direct script execution works.
     import sys
     sys.path.insert(0, str(ROOT))
-    from randomizer_rewards import (
+    from randomizer.rewards.catalogue import (
         BUFF_TARGETS,
         LIMITED_HERO_UNIT_IDS,
         NAVAL_UNIT_IDS,

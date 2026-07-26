@@ -5,9 +5,9 @@ import random
 import sys
 import traceback
 
-from randomizer_cameos import ensure_superweapon_cameos, ensure_unit_cameos
-from randomizer_diagnostics import event as log_event
-from randomizer_paths import (
+from randomizer.ui.cameos import ensure_superweapon_cameos, ensure_unit_cameos
+from randomizer.core.diagnostics import event as log_event
+from randomizer.core.paths import (
     APP_DIR,
     GAME_EXE,
     GAME_LAUNCHER_EXE,
@@ -16,15 +16,15 @@ from randomizer_paths import (
     MAP_RENDERER_DIR,
     WINDOW_ICON_PATH,
 )
-from randomizer_version import APP_VERSION
-from randomizer_static_config import REQUIRED_STATIC_CONFIGS, validate_static_configs
-from randomizer_unit_roster import ROSTER_FILENAMES, validate_randomizer_unit_roster
+from randomizer.core.version import APP_VERSION
+from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs
+from randomizer.rewards.roster import ROSTER_FILENAMES, validate_randomizer_unit_roster
 
 
 def run_launcher():
     """Load config-dependent application modules with visible startup errors."""
     try:
-        from randomizer_app import main
+        from randomizer.application.app import main
         main()
         return 0
     except Exception:
@@ -56,7 +56,7 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
-        __import__('randomizer_app')
+        __import__('randomizer.application.app')
         checks = {
             'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),

@@ -19,5 +19,7 @@ release/
 AGENTS.md
 
 # Local player setup. Keep templates/docs in source, not personal seeds.
+configs/player/mental_omega_randomizer.yaml
+# Legacy path retained only so older source checkouts remain private during migration.
 config/mental_omega_randomizer.yaml
 PROJECT_CONTEXT.md

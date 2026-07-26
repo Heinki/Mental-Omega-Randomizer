@@ -7,34 +7,20 @@ This document is the authoritative implementation reference. Player-facing optio
 | Component | Responsibility |
 |---|---|
 | `launcher_gui.py` | Entry point and packaged `--self-check` |
-| `randomizer_app.py` | Tk state, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
-| `randomizer_ui_builder.py` | Widget construction |
-| `randomizer_ui_theme.py` | Tk palette and style application |
-| `randomizer_ui_grid.py` | Grid Mode widget rendering |
-| `randomizer_ui_tooltips.py` | Shared widget/tree tooltip lifecycle and active-tooltip ownership |
-| `grid_progression.py` | Pure grid topology, corner trimming, explicit node states, unlock queries, and completion rules |
-| `randomizer_missions.py` | Pure BattleClient parsing, faction normalization, mission staging, campaign caps, and deterministic ordering |
-| `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass bulk section merging |
-| `randomizer_map.py` | Generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
-| `randomizer_map_pipeline.py` | Ordered per-launch map preparation and hook injection pipeline |
-| `randomizer_map_houses.py` | Pure map house/country discovery and production-family classification |
-| `randomizer_map_ownership.py` | Placed/TaskForce/AITrigger ownership and helper/enemy safety |
-| `randomizer_map_hooks.py` | Parser-bounded Action editing and marker TeamType construction |
-| `randomizer_map_progress_hooks.py` | Pure check/action pairing and objective/victory marker injection |
-| `randomizer_map_settings.py` | Deterministic launch-time House color and EVA overrides |
-| `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
-| `randomizer_mission_overrides.py` | Typed adapter for reviewed mission exceptions loaded from JSON |
-| `randomizer_rewards.py` | Reward derivation, canonicalization, stack limits, and display behavior |
-| `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
-| `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and game-root deployment |
-| `randomizer_ui.py` | Typed adapter for choices and palettes loaded from JSON |
-| `randomizer_config_schema.py` | Required static JSON shapes and per-file validators |
-| `randomizer_static_config.py` | Source/frozen JSON loading, caching, and visible packaged overrides |
-| `randomizer_seed_rewards.py` | Pure deterministic reward-slot planning |
-| `randomizer_reward_rules.py` | Reward-to-TechnoType access and equivalent-buff scope |
-| `randomizer_launch_options.py` | Spawn/option INI serialization and oversized-file patching |
-| `randomizer_storage.py` | Atomic text/JSON replacement for persistent config and seed state |
-| `randomizer_state.py` | Pure persisted-state normalization for checks, failure stacks, and assistance units |
+| `randomizer/application/` | Tk composition plus focused state, reward, progression, launch, and Unlocks controllers |
+| `randomizer/config/` | Player YAML persistence, static JSON loading, schema validation, and tuning |
+| `randomizer/core/` | Paths, atomic storage, diagnostics, version, and collection primitives |
+| `randomizer/launch/` | Spawn/option INI serialization and oversized-file patching |
+| `randomizer/maps/` | Ordered map pipeline, INI mechanics, ownership, hooks, clone isolation, buffs, helper AI, settings, and powers |
+| `randomizer/missions/` | BattleClient catalogue, house policy, production access, mission exceptions, and Tier 1 starters |
+| `randomizer/progression/` | Pure Grid topology and persisted-state normalization |
+| `randomizer/rewards/` | Reward definitions, canonical display, deterministic planning, owned roster, and weapon snapshot |
+| `randomizer/ui/` | Widget construction, palettes, Grid rendering, tooltips, cameos, and custom presentation |
+
+Every Python module is kept below 1,000 lines. Stable facades
+(`randomizer.maps.rules`, `randomizer.missions.safety`,
+`randomizer.rewards.catalogue`, and `randomizer.ui.builder`) isolate callers
+from responsibility-based implementation splits.
 
 The launcher does not patch the original campaign MIX archives. It extracts and caches source maps, writes a temporary loose root map for the selected scenario, and removes only files carrying the randomizer hook marker.
 
@@ -59,12 +45,18 @@ The launcher separates defaults from active progress:
 | Data | Contents | Mutation rule |
 |---|---|---|
 | `configs/*.json` and `configs/rewards/*.json` | Editable mission overrides, faction/UI/unit data, clone policy, buff/assistance tuning, access, superweapon, and aid-power definitions | Read on process startup; never rewritten by launcher |
-| `config/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
+| `configs/player/mental_omega_randomizer.yaml` | Next-seed defaults, launch settings, and reserved Archipelago fields | Updated from current UI choices |
 | `randomizer_state.json` | Active seed, frozen reward settings, mission order, optional grid/node state, checks, assigned rewards, completed checks/missions, and earned rewards | Updated only by seed generation or progress events |
 
 This split is important for a future Archipelago client: option values generate a slot/seed once, while received locations/items update progress. The current `archipelago.*` keys are placeholders and have no network behavior.
 
-Config and state keep their existing source/package paths and file formats. Writes use a complete sibling temporary file followed by same-directory atomic replacement, preventing a crash or power loss from leaving partially written YAML or JSON.
+Player YAML keeps its file format but now lives with other configuration under
+`configs/player/` in source and `RandomizerLauncherData/configs/player/` when
+packaged. On first load, an old `config/mental_omega_randomizer.yaml` is moved
+to the new path when no new-path file exists. State paths remain unchanged.
+Writes use a complete sibling temporary file followed by same-directory atomic
+replacement, preventing a crash or power loss from leaving partially written
+YAML or JSON.
 
 Source runs load static data directly from `configs`. One-file builds bundle those defaults and copy each missing document to visible `RandomizerLauncherData/configs`; existing external files are never overwritten. Restart is required after editing. Every document uses a validated `schema_version` and required-section envelope. See [configs/README.md](configs/README.md).
 

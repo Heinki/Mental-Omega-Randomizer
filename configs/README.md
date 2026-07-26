@@ -3,6 +3,12 @@
 These JSON files contain editable gameplay and presentation data previously
 embedded in Python modules. Restart the launcher after changing a file.
 
+`player/mental_omega_randomizer.yaml` is different: it is ignored local runtime
+state containing next-seed and launcher choices. Source runs create it here so
+all configuration is grouped under `configs/`. Packaged runs create the same
+relative path under `RandomizerLauncherData/configs/player/`. Do not commit a
+personal player YAML.
+
 The six `Randomizer*.ini` files do not replace these documents. INI files are
 complete player-owned TechnoType templates. JSON files define randomizer
 policy, reward identity/display, mission exceptions, cross-faction roles,
@@ -129,10 +135,12 @@ state for compatibility but are omitted from the Unlocks list.
 
 ## Load locations
 
-Source runs load this directory directly. A packaged EXE bundles these defaults
-and copies each missing file to `RandomizerLauncherData/configs` beside the game.
-Existing external files are never overwritten, so local edits survive launcher
-updates.
+Source runs load static files from this directory directly. A packaged EXE
+bundles these defaults and copies each missing static file to
+`RandomizerLauncherData/configs` beside the game. Existing external files are
+never overwritten, so local edits survive launcher updates. Player YAML lives
+in the separate `configs/player/` child, is always launcher-managed, and is
+excluded from packaged build inputs.
 
 EVA voice labels and engine tags have one source under `ui.json`:
 `eva_voice_tags`. Object order controls menu order. Add, remove, or rename one

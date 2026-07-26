@@ -8,22 +8,25 @@ Start here when changing code. Player settings belong in
 
 ### Seed and progression
 
-- `randomizer_missions.py`: installed mission parsing, filtering, deterministic
+- `randomizer/missions/catalogue.py`: installed mission parsing, filtering, deterministic
   mission ordering.
-- `grid_progression.py`: pure Grid topology and unlock state.
-- `randomizer_seed_rewards.py`: pure deterministic reward-slot planning.
-- `randomizer_reward_rules.py`: reward-to-TechnoType access and role-buff scope.
-- `randomizer_rewards.py`: reward catalogue derivation, canonicalization,
-  stacking, display.
+- `randomizer/progression/grid.py`: pure Grid topology and unlock state.
+- `randomizer/rewards/planning.py`: pure deterministic reward-slot planning.
+- `randomizer/rewards/rules.py`: reward-to-TechnoType access and role-buff scope.
+- `randomizer/rewards/definitions.py`: catalogue construction and immutable
+  reward data.
+- `randomizer/rewards/display.py`: canonicalization, stacking, and display.
+- `randomizer/rewards/catalogue.py`: stable public reward facade.
 
 ### Static configuration
 
-- `randomizer_static_config.py`: paths, packaged override recovery, JSON loading,
+- `randomizer/config/static.py`: paths, packaged override recovery, JSON loading,
   caching.
-- `randomizer_config_schema.py`: required sections and focused per-file
+- `randomizer/config/schema.py`: required sections and focused per-file
   validation.
-- `randomizer_ui.py`, `randomizer_tuning.py`,
-  `randomizer_mission_overrides.py`: small typed adapters used by runtime code.
+- `randomizer/config/player.py`: active player YAML and legacy-path migration.
+- `randomizer/ui/config.py`, `randomizer/config/tuning.py`, and
+  `randomizer/missions/overrides.py`: small typed adapters used by runtime code.
 - `configs/`: editable policy/data. Read `configs/README.md` before adding data.
 
 `ui.json` uses `eva_voice_tags` as one source of truth. Mapping order controls
@@ -33,48 +36,55 @@ use 3 onward in mapping order.
 
 ### Generated maps
 
-- `randomizer_map_pipeline.py`: ordered launch pipeline only.
-- `randomizer_map_houses.py`: house/country discovery and faction families.
-- `randomizer_map_ownership.py`: placed/TaskForce/AITrigger ownership and helper
+- `randomizer/maps/pipeline.py`: ordered launch pipeline only.
+- `randomizer/maps/houses.py`: house/country discovery and faction families.
+- `randomizer/maps/ownership.py`: placed/TaskForce/AITrigger ownership and helper
   safety.
-- `randomizer_map_settings.py`: color and EVA map overrides.
-- `randomizer_map_hooks.py`: bounded Action editing and marker structures.
-- `randomizer_map_progress_hooks.py`: check-to-action pairing and marker
+- `randomizer/maps/settings.py`: color and EVA map overrides.
+- `randomizer/maps/hooks.py`: bounded Action editing and marker structures.
+- `randomizer/maps/progress_hooks.py`: check-to-action pairing and marker
   injection.
-- `randomizer_map.py`: remaining reward rules, player clones, direct buffs,
-  helper production, building-free power construction.
-- `randomizer_mission_safety.py`: Standard/Chaos production access translation.
-- `randomizer_ini.py`: order-preserving INI mechanics. Never replace with
+- `randomizer/maps/rules.py`: stable public facade for generated-map rules.
+- `randomizer/maps/base.py`, `assistance.py`, `buff_values.py`,
+  `clone_references.py`, `helper_ai.py`, `player_clones.py`,
+  `clone_builder.py`, `weapon_buffs.py`, `country_buffs.py`, and `powers.py`:
+  focused generated-rule stages.
+- `randomizer/missions/access.py`: Standard/Chaos production access translation.
+- `randomizer/missions/tier_one.py`: starter selection and launch rules.
+- `randomizer/missions/safety.py`: stable public mission-safety facade.
+- `randomizer/maps/ini.py`: order-preserving INI mechanics. Never replace with
   `ConfigParser`.
 
 ### Launcher and files
 
 - `launcher_gui.py`: entry point and packaged self-check.
-- `randomizer_app.py`: Tk state and orchestration. Keep new pure behavior out of
-  this class; add a focused module and call it.
-- `randomizer_ui_builder.py`: widget construction.
-- `randomizer_ui_theme.py`: Tk palette/style application.
-- `randomizer_ui_grid.py`: Grid Mode widget rendering.
-- `randomizer_ui_tooltips.py`: shared widget/tree tooltip lifecycle.
-- `randomizer_launch_options.py`: spawn/option INI reading and writing.
-- `randomizer_storage.py`: atomic JSON/text persistence.
-- `randomizer_state.py`: pure normalization for persisted mission checks,
+- `randomizer/application/app.py`: Tk composition and initialization only.
+- `randomizer/application/*_controller.py`, `window.py`,
+  `advanced_settings.py`, `unlock_data.py`, and `unlock_view.py`: focused UI
+  orchestration controllers. Keep pure behavior outside these classes.
+- `randomizer/ui/builder.py`: stable widget-construction facade.
+- `randomizer/ui/layout.py`, `settings.py`, and `overlay.py`: focused widget
+  builders.
+- `randomizer/ui/theme.py`, `grid.py`, and `tooltips.py`: presentation behavior.
+- `randomizer/launch/options.py`: spawn/option INI reading and writing.
+- `randomizer/core/storage.py`: atomic JSON/text persistence.
+- `randomizer/progression/state.py`: pure normalization for persisted mission checks,
   failure stacks, and assistance units.
-- `randomizer_paths.py`: source/frozen path resolution.
+- `randomizer/core/paths.py`: source/frozen path resolution.
 
 ## Runtime flow
 
 1. `launcher_gui.py` validates startup and imports `LauncherApp`.
-2. `randomizer_missions.py` builds eligible mission order.
-3. `randomizer_seed_rewards.py` assigns every stored reward using the named seed
+2. `randomizer/missions/catalogue.py` builds eligible mission order.
+3. `randomizer/rewards/planning.py` assigns every stored reward using the named seed
    RNG stream.
-4. `randomizer_app.py` persists complete seed/check state.
-5. Launch calls `randomizer_map_pipeline.py`.
+4. Application controllers persist complete seed/check state.
+5. Launch calls `randomizer/maps/pipeline.py`.
 6. Pipeline reads fresh extracted source, discovers ownership, applies
    access/clones/buffs/powers, injects progress markers, writes one loose map.
 7. Debug-log watcher unlocks stored checks exactly once.
 
-No pure module imports `randomizer_app.py`. Tk variables stay on UI thread.
+No pure module imports `randomizer/application/`. Tk variables stay on UI thread.
 Workers receive frozen plain Python data.
 
 ## Change rules
@@ -92,6 +102,10 @@ Workers receive frozen plain Python data.
   thin.
 - Delete only after whole-repository reference checks plus relevant build/runtime
   audit.
+- Keep modules below 1,000 lines. Split at domain/stage boundaries; never by
+  arbitrary line count.
+- Preserve facade imports when splitting a public subsystem so callers do not
+  depend on implementation layout.
 
 ## Validation
 

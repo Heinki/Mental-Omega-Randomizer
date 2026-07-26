@@ -228,7 +228,7 @@ For action codes, trigger selection, marker construction, ordering guarantees, c
 | Data | Source mode | Packaged mode |
 |---|---|---|
 | Static gameplay/UI configuration | `RandomizerLauncher\configs` | `RandomizerLauncherData\configs` |
-| Config defaults | `RandomizerLauncher\config\mental_omega_randomizer.yaml` | `RandomizerLauncherData\config\mental_omega_randomizer.yaml` |
+| Config defaults | `RandomizerLauncher\configs\player\mental_omega_randomizer.yaml` | `RandomizerLauncherData\configs\player\mental_omega_randomizer.yaml` |
 | Active seed/progress | `RandomizerLauncher\randomizer_state.json` | `RandomizerLauncherData\randomizer_state.json` |
 | Launcher diagnostics | `RandomizerLauncher\logs\launcher.log` | `RandomizerLauncherData\logs\launcher.log` |
 | Self-check report | `RandomizerLauncher\self_check.json` | `RandomizerLauncherData\self_check.json` |

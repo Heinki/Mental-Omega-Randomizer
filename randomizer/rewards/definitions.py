@@ -1,0 +1,829 @@
+"""Reward catalogue and display helpers for the Mental Omega randomizer."""
+
+from randomizer.rewards.weapon_stats import (
+    ROSTER_DAMAGE_WEAPON_REFS,
+    ROSTER_WEAPON_REFS,
+    WEAPON_BASE_STATS,
+)
+from randomizer.config.static import load_static_config
+from randomizer.config.tuning import (
+    BUFF_EFFECTS,
+    REWARD_PLANNING,
+)
+
+
+_UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
+_REWARD_CATALOGUE_CONFIG = load_static_config('rewards/catalogue.json')
+_FACTION_CONFIG = load_static_config('factions.json')
+_UNIT_POLICY_CONFIG = load_static_config('rewards/unit_policy.json')
+_BUFF_EXCEPTION_CONFIG = load_static_config('rewards/buff_exceptions.json')
+_SPECIAL_BUILDING_CONFIG = load_static_config('rewards/special_buildings.json')
+SPECIAL_BUILDING_DEFINITIONS = tuple(
+    dict(definition) for definition in _SPECIAL_BUILDING_CONFIG['buildings']
+)
+
+# This module is intentionally data-heavy. Keeping it separate from the Tk
+# launcher makes future Archipelago item/location work much easier.
+
+DEFAULT_UNLOCK_BUILD_HOUSES = _FACTION_CONFIG['default_unlock_build_houses']
+DEFAULT_REWARDS_PER_CHECK = int(REWARD_PLANNING['default_rewards_per_check'])
+MAX_REWARDS_PER_CHECK = int(REWARD_PLANNING['maximum_rewards_per_check'])
+
+# Complete playable 3.3.6 faction rosters.  These use the real rulesmo.ini
+# section IDs, which frequently differ from the public-facing unit names.
+# Keep economy, construction, support and hero units here too: a buffs-only
+# seed must be able to improve every player-owned faction unit, not merely the
+# small subset that also has an access reward.
+FACTION_UNIT_ROSTERS = dict(_UNIT_DATA_CONFIG['faction_unit_rosters'])
+
+# Snapshot of the installed 3.3.6 rules values used by map-local stat buffs.
+# Tuple order: Cost, Speed, Strength, Sight, GuardRange, Ammo.  GuardRange
+# falls back to Sight when the base rules inherit/omit it.
+UNIT_BASE_STATS = {
+    unit_id: tuple(values)
+    for unit_id, values in _UNIT_DATA_CONFIG['unit_base_stats'].items()
+}
+
+def build_roster_weapon_stats():
+    """Expand the generated rules registry into the normal reward format."""
+    roster = {}
+    field_names = ('damage', 'rof', 'range')
+    for unit_id, weapon_ids in ROSTER_WEAPON_REFS.items():
+        weapons = {}
+        for weapon_id in weapon_ids:
+            values = WEAPON_BASE_STATS.get(weapon_id)
+            if not values:
+                continue
+            stats = {}
+            for field, value in zip(field_names, values):
+                if value is None or value <= 0:
+                    continue
+                # Damage=1 is commonly a launcher/scanner control value. The
+                # real damaging payload is registered separately below.
+                if field == 'damage' and value <= 1:
+                    continue
+                # ROF=1 is already the engine minimum and cannot be reduced
+                # to make the weapon fire faster.
+                if field == 'rof' and value <= 1:
+                    continue
+                stats[field] = value
+            if stats:
+                weapons[weapon_id] = stats
+        for weapon_id in ROSTER_DAMAGE_WEAPON_REFS.get(unit_id, ()):
+            values = WEAPON_BASE_STATS.get(weapon_id)
+            damage = values[0] if values else None
+            if damage is not None and damage > 1:
+                weapons.setdefault(weapon_id, {})['damage'] = damage
+        if weapons:
+            roster[unit_id] = weapons
+    return roster
+
+
+# Complete playable 3.3.6 weapon baselines extracted from RULESMO.INI.
+ROSTER_WEAPON_STATS = build_roster_weapon_stats()
+
+# Installed 3.3.6 capability snapshot. Do not offer a one-time enable reward
+# when the TechnoType already has that capability. Explicit ``no`` values are
+# intentionally absent because those units can still gain the capability.
+EXISTING_SELF_HEALING_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['self_healing']
+)
+EXISTING_CLOAK_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['cloak']
+)
+EXISTING_SENSOR_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['existing_capability_ids']['sensors']
+)
+EXISTING_CAPABILITY_IDS = {
+    'self_healing': EXISTING_SELF_HEALING_IDS,
+    'cloak': EXISTING_CLOAK_IDS,
+    'sensors': EXISTING_SENSOR_IDS,
+}
+
+# Reviewed gameplay exclusions for buffs that are technically constructible
+# but redundant, misleading, or ineffective for a specific TechnoType. Keep
+# this policy editable beside the installed capability snapshot.
+EXCLUDED_BUFF_TYPE_IDS = {
+    buff_type: frozenset(str(unit_id).upper() for unit_id in unit_ids)
+    for buff_type, unit_ids in _BUFF_EXCEPTION_CONFIG['excluded_buff_type_ids'].items()
+}
+
+# These types mount disguise, capture/defuse, scanner, or explicit
+# ``NotAWeapon`` helpers. Their WeaponType fields are engine controls rather
+# than attacks, so weapon-stat rewards are misleading or ineffective.
+NONCOMBAT_WEAPON_TARGET_IDS = frozenset(
+    _UNIT_POLICY_CONFIG['noncombat_weapon_target_ids']
+)
+
+# Installed 3.3.6 TechnoTypes with ``Trainable=no`` cannot use veterancy.
+# Keep this separate from NONCOMBAT_WEAPON_TARGET_IDS: some support units have
+# meaningful veteran behavior despite lacking an ordinary damaging weapon,
+# while many combat/support types below are simply unable to train.
+NONTRAINABLE_UNIT_IDS = frozenset(_UNIT_POLICY_CONFIG['nontrainable_unit_ids'])
+
+# Economy, base-operation, and mission-transport essentials are deliberately
+# never access items. They remain available regardless of randomizer progress.
+AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset(
+    values[0] for values in _FACTION_CONFIG['amphibious_transports'].values()
+)
+ENGINEER_UNIT_IDS = frozenset(_FACTION_CONFIG['engineer_by_family'].values())
+ALWAYS_AVAILABLE_UNIT_IDS = set(
+    _UNIT_POLICY_CONFIG['always_available_core_unit_ids']
+) | set(ENGINEER_UNIT_IDS) | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
+ALWAYS_AVAILABLE_BUILDING_IDS = set(
+    _UNIT_POLICY_CONFIG['always_available_building_ids']
+)
+ALWAYS_AVAILABLE_TECH_IDS = ALWAYS_AVAILABLE_UNIT_IDS | ALWAYS_AVAILABLE_BUILDING_IDS
+
+# Explicit cross-faction gameplay roles used only for single-campaign buff
+# sharing. Unique units remain independent; they are never forced into a weak
+# equivalence merely because their broad sidebar category matches.
+UNIT_ROLE_EQUIVALENCE_GROUPS = tuple(
+    frozenset(group)
+    for group in _UNIT_DATA_CONFIG['unit_role_equivalence_groups']
+)
+
+
+def unit_role_equivalents(unit_id):
+    unit_id = str(unit_id or '').upper()
+    equivalents = {unit_id} if unit_id else set()
+    for group in UNIT_ROLE_EQUIVALENCE_GROUPS:
+        if unit_id in group:
+            equivalents.update(group)
+    return frozenset(equivalents)
+
+FACTION_DEFENSE_ROSTERS = dict(_UNIT_DATA_CONFIG['faction_defense_rosters'])
+
+# Tuple order: Cost, Strength, Sight, GuardRange.
+DEFENSE_BASE_STATS = {
+    unit_id: tuple(values)
+    for unit_id, values in _UNIT_DATA_CONFIG['defense_base_stats'].items()
+}
+
+DEFENSE_WEAPON_STATS = dict(_UNIT_DATA_CONFIG['defense_weapon_stats'])
+
+# RULESMO.INI explicitly marks these defenses Trainable=yes and gives them
+# veteran/elite behavior.  Support structures and mine-style defenses without
+# that flag must not receive a dead "Veteran start" reward.
+TRAINABLE_DEFENSE_IDS = set(_UNIT_POLICY_CONFIG['trainable_defense_ids'])
+
+
+def build_unlock(
+    section,
+    tech_level,
+    prerequisite=None,
+    houses=DEFAULT_UNLOCK_BUILD_HOUSES,
+):
+    values = {
+        'TechLevel': str(tech_level),
+        'Owner': houses,
+        'RequiredHouses': houses,
+        'ForbiddenHouses': 'none',
+    }
+    prerequisites = (
+        [prerequisite]
+        if isinstance(prerequisite, str)
+        else list(prerequisite or ())
+    )
+    prerequisites = list(dict.fromkeys(
+        str(item).upper() for item in prerequisites if str(item).strip()
+    ))
+    if len(prerequisites) == 1:
+        values['PrerequisiteOverride'] = prerequisites[0]
+    elif prerequisites:
+        values['PrerequisiteOverride'] = 'none'
+        values['Prerequisite.List0'] = prerequisites[0]
+        values['Prerequisite.Lists'] = str(len(prerequisites) - 1)
+        for index, building_id in enumerate(prerequisites[1:], start=1):
+            values[f'Prerequisite.List{index}'] = building_id
+    return {section: values}
+
+UNIT_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['unit_unlock_rewards']
+
+EXTRA_UNIT_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['extra_unit_unlock_rewards']
+
+FACTION_ACCESS_RULES = _REWARD_CATALOGUE_CONFIG['faction_access_rules']
+
+NAVAL_UNIT_IDS = set(_UNIT_POLICY_CONFIG['naval_unit_ids'])
+ADDITIONAL_PRODUCTION_PREREQUISITES = {
+    str(unit_id).upper(): tuple(str(value).upper() for value in values)
+    for unit_id, values in _UNIT_POLICY_CONFIG[
+        'additional_production_prerequisites'
+    ].items()
+}
+LINKED_ACCESS_VARIANTS = {
+    str(unit_id).upper(): {
+        str(variant_id).upper(): str(prerequisite).upper()
+        for variant_id, prerequisite in variants.items()
+    }
+    for unit_id, variants in _UNIT_POLICY_CONFIG['linked_access_variants'].items()
+}
+LINKED_BUFF_VARIANTS = {
+    str(unit_id).upper(): {
+        str(variant_id).upper(): dict(definition)
+        for variant_id, definition in variants.items()
+    }
+    for unit_id, variants in _UNIT_DATA_CONFIG['linked_buff_variants'].items()
+}
+
+
+def linked_buff_variant_ids(unit_id):
+    """Return one gameplay identity and its land/water presentation variants."""
+    unit_id = str(unit_id or '').upper()
+    if not unit_id:
+        return frozenset()
+    identities = {unit_id}
+    identities.update(LINKED_BUFF_VARIANTS.get(unit_id, {}))
+    for source_id, variants in LINKED_BUFF_VARIANTS.items():
+        if unit_id in variants:
+            identities.add(source_id)
+            identities.update(variants)
+    return frozenset(identities)
+
+
+def unit_production_prerequisites(unit_id, primary):
+    return tuple(dict.fromkeys((
+        str(primary).upper(),
+        *ADDITIONAL_PRODUCTION_PREREQUISITES.get(str(unit_id).upper(), ()),
+    )))
+
+
+def access_target_lookup():
+    lookup = {}
+    for faction, categories in FACTION_UNIT_ROSTERS.items():
+        for category, units in categories.items():
+            for unit_id, label in units.items():
+                lookup[unit_id] = (faction, category, label)
+    return lookup
+
+
+def reward_tech_ids(rewards):
+    return {
+        section.upper()
+        for reward in rewards
+        for section, values in reward.get('rules', {}).items()
+        if any(key.lower() == 'techlevel' for key in values)
+    }
+
+
+def build_missing_roster_unlock_rewards(existing_rewards):
+    existing_ids = reward_tech_ids(existing_rewards)
+    rewards = []
+    for unit_id, (faction, category, label) in access_target_lookup().items():
+        if unit_id in ALWAYS_AVAILABLE_UNIT_IDS or unit_id in existing_ids:
+            continue
+        access = FACTION_ACCESS_RULES[faction]
+        prerequisite = access['naval'] if unit_id in NAVAL_UNIT_IDS else access[category]
+        rules = build_unlock(
+            unit_id,
+            1,
+            unit_production_prerequisites(unit_id, prerequisite),
+            access['houses'],
+        )
+        for variant_id, variant_prerequisite in LINKED_ACCESS_VARIANTS.get(
+            unit_id, {}
+        ).items():
+            rules.update(build_unlock(
+                variant_id,
+                1,
+                variant_prerequisite,
+                access['houses'],
+            ))
+        rewards.append({
+            'name': f'{label} Access',
+            'description': f'Allows {label} production from the earliest matching faction facility.',
+            'rules': rules,
+            'factions': [faction],
+        })
+    return rewards
+
+
+def build_defense_unlock_rewards():
+    rewards = []
+    for faction, defenses in FACTION_DEFENSE_ROSTERS.items():
+        access = FACTION_ACCESS_RULES[faction]
+        for defense_id, label in defenses.items():
+            rewards.append({
+                'name': f'{label} Access',
+                'description': f'Allows {label} construction from the faction Construction Yard.',
+                'access_category': 'defense',
+                'rules': build_unlock(defense_id, 1, access['defenses'], access['houses']),
+                'factions': [faction],
+            })
+    return rewards
+
+
+def build_special_building_unlock_rewards():
+    rewards = []
+    for definition in SPECIAL_BUILDING_DEFINITIONS:
+        building_id = str(definition['id']).upper()
+        faction = str(definition['faction'])
+        label = str(definition['name'])
+        access = FACTION_ACCESS_RULES[faction]
+        rules = build_unlock(
+            building_id,
+            definition.get('tech_level', 1),
+            str(definition['prerequisite']).upper(),
+            access['houses'],
+        )
+        build_limit = definition.get('build_limit')
+        if build_limit is not None:
+            rules[building_id]['BuildLimit'] = str(build_limit)
+        if definition.get('build_category'):
+            rules[building_id]['BuildCat'] = str(definition['build_category'])
+        if definition.get('cameo_priority') is not None:
+            rules[building_id]['CameoPriority'] = str(definition['cameo_priority'])
+        rewards.append({
+            'name': f'{label} Access',
+            'description': (
+                f'Allows construction of the {label} directly from the '
+                'faction Construction Yard, without its normal tech structure.'
+            ),
+            'access_category': 'special_building',
+            'rules': rules,
+            'factions': [faction],
+        })
+    return rewards
+
+
+def normalize_roster_unlock_rules(rewards):
+    lookup = access_target_lookup()
+    for reward in rewards:
+        for section, values in reward.get('rules', {}).items():
+            unit_id = section.upper()
+            target = lookup.get(unit_id)
+            if not target or unit_id in ALWAYS_AVAILABLE_UNIT_IDS:
+                continue
+            faction, category, _ = target
+            access = FACTION_ACCESS_RULES[faction]
+            prerequisite = access['naval'] if unit_id in NAVAL_UNIT_IDS else access[category]
+            normalized = build_unlock(
+                unit_id,
+                values.get('TechLevel', values.get('techlevel', 1)),
+                unit_production_prerequisites(unit_id, prerequisite),
+                access['houses'],
+            )[unit_id]
+            for key in list(values):
+                if key.lower().startswith('prerequisite'):
+                    values.pop(key)
+            values.update({
+                'Owner': access['houses'],
+                'RequiredHouses': access['houses'],
+                'ForbiddenHouses': 'none',
+            })
+            values.update({
+                key: value
+                for key, value in normalized.items()
+                if key.lower().startswith('prerequisite')
+            })
+
+
+ROSTER_UNIT_UNLOCK_REWARDS = build_missing_roster_unlock_rewards(
+    UNIT_UNLOCK_REWARDS + EXTRA_UNIT_UNLOCK_REWARDS
+)
+DEFENSE_UNLOCK_REWARDS = build_defense_unlock_rewards()
+SPECIAL_BUILDING_UNLOCK_REWARDS = build_special_building_unlock_rewards()
+normalize_roster_unlock_rules(
+    UNIT_UNLOCK_REWARDS + EXTRA_UNIT_UNLOCK_REWARDS + ROSTER_UNIT_UNLOCK_REWARDS
+)
+
+BUFF_TARGETS = dict(_UNIT_DATA_CONFIG['buff_targets'])
+
+
+def default_plural(label):
+    special = {
+        'Infantry': 'Infantry',
+        'Navy SEAL': 'Navy SEALs',
+        'Stryker IFV': 'Stryker IFVs',
+        'Archon AMC': 'Archon AMCs',
+        'Allied MCV': 'Allied MCVs',
+        'Soviet MCV': 'Soviet MCVs',
+        'Epsilon MCV': 'Epsilon MCVs',
+        'Foehn MCV': 'Foehn MCVs',
+        'Stalin\'s Fist': 'Stalin\'s Fists',
+    }
+    return special.get(label, f'{label}s')
+
+
+def add_complete_faction_buff_targets():
+    for faction, categories in FACTION_UNIT_ROSTERS.items():
+        for category, units in categories.items():
+            for unit_id, label in units.items():
+                cost, speed, strength, sight, guard_range, ammo = UNIT_BASE_STATS[unit_id]
+                target = BUFF_TARGETS.setdefault(unit_id, {})
+                # Preserve any hand-authored weapon tables while replacing the
+                # old placeholder labels/stats with the installed 3.3.6 data.
+                target.update({
+                    'label': label,
+                    'plural': default_plural(label),
+                    'category': category,
+                    'factions': [faction],
+                    'cost': cost,
+                    'speed': speed,
+                    'strength': strength,
+                    'sight': sight,
+                    'guard_range': guard_range,
+                    'trainable': unit_id not in NONTRAINABLE_UNIT_IDS,
+                })
+                if ammo is not None:
+                    target['ammo'] = ammo
+                else:
+                    target.pop('ammo', None)
+                if unit_id in ROSTER_WEAPON_STATS:
+                    target['weapons'] = ROSTER_WEAPON_STATS[unit_id]
+
+    defense_buff_types = [
+        'production', 'cost', 'armor', 'health', 'sight',
+        'damage', 'reload', 'range',
+        'self_healing', 'cloak', 'sensors', 'veteran',
+    ]
+    for faction, defenses in FACTION_DEFENSE_ROSTERS.items():
+        for defense_id, label in defenses.items():
+            cost, strength, sight, guard_range = DEFENSE_BASE_STATS[defense_id]
+            target = {
+                'label': label,
+                'plural': default_plural(label),
+                'category': 'defenses',
+                'factions': [faction],
+                'cost': cost,
+                'strength': strength,
+                'sight': sight,
+                'guard_range': guard_range,
+                'allowed_buff_types': defense_buff_types,
+                'trainable': defense_id in TRAINABLE_DEFENSE_IDS,
+            }
+            if not target['trainable']:
+                target['allowed_buff_types'] = [
+                    buff_type for buff_type in defense_buff_types if buff_type != 'veteran'
+                ]
+            if defense_id in DEFENSE_WEAPON_STATS:
+                target['weapons'] = DEFENSE_WEAPON_STATS[defense_id]
+            BUFF_TARGETS[defense_id] = target
+
+
+add_complete_faction_buff_targets()
+
+# Engineers are always-accessible base essentials. Cloaking is their only
+# reward-pool buff for now; direct player clones keep it off enemy Engineers.
+for engineer_id in ENGINEER_UNIT_IDS:
+    BUFF_TARGETS[engineer_id]['allowed_buff_types'] = ['cloak']
+
+# Installed Mental Omega 3.3.6 trainable hero/unique units whose positive
+# BuildLimit is a live simultaneous-unit cap. Script-only mobile types and
+# capped defenses are deliberately absent: changing those limits can break
+# campaign teams, loss conditions, or base plans.
+LIMITED_HERO_BUILD_LIMITS = dict(_UNIT_DATA_CONFIG['limited_hero_build_limits'])
+LIMITED_HERO_UNIT_IDS = frozenset(LIMITED_HERO_BUILD_LIMITS)
+for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
+    BUFF_TARGETS[limited_unit_id]['build_limit'] = build_limit
+
+for definition in SPECIAL_BUILDING_DEFINITIONS:
+    if not definition.get('capacity_rewards'):
+        continue
+    building_id = str(definition['id']).upper()
+    label = str(definition['name'])
+    BUFF_TARGETS[building_id] = {
+        'label': label,
+        'plural': default_plural(label),
+        'category': 'special_buildings',
+        'factions': [str(definition['faction'])],
+        'build_limit': int(definition.get('build_limit', 1)),
+        'building_limit': int(definition.get('build_limit', 1)),
+        'capacity_stack_limit': int(definition.get('capacity_stack_limit', 4)),
+        'build_category': str(definition.get('build_category', 'Tech')),
+        'cameo_priority': int(definition.get('cameo_priority', -1000)),
+        'allowed_buff_types': ['building_limit'],
+        'trainable': False,
+    }
+
+# Speed 10 proved unsafe for infantry pathfinding on campaign slopes, notably
+# Malver in Singularity. Earned infantry movement buffs use direct TechnoType
+# values capped at this conservative limit. Faster native infantry retain
+# their authored speed but cannot be accelerated.
+MAX_BUFFED_INFANTRY_SPEED = int(BUFF_EFFECTS['infantry_speed']['safe_ceiling'])
+
+
+def capped_infantry_speed(base_speed, count):
+    """Return safe earned infantry speed without lowering faster native types."""
+    base_speed = max(1, int(base_speed))
+    ceiling = max(base_speed, MAX_BUFFED_INFANTRY_SPEED)
+    factor = float(BUFF_EFFECTS['infantry_speed']['factor_per_stack'])
+    return min(ceiling, max(1, int(round(base_speed * (factor ** count)))))
+
+# Westwood-spawn missiles do not expose their real impact damage as a normal
+# WeaponType. These General-section fields are the actual payload damage for
+# the corresponding playable launchers.
+SPECIAL_DAMAGE_FIELDS = dict(_UNIT_DATA_CONFIG['special_damage_fields'])
+for special_unit_id, damage_fields in SPECIAL_DAMAGE_FIELDS.items():
+    BUFF_TARGETS[special_unit_id]['special_damage_fields'] = damage_fields
+
+UNIT_LABELS = dict(_UNIT_DATA_CONFIG['unit_labels'])
+UNIT_LABELS.update({
+    str(definition['id']).upper(): str(definition['name'])
+    for definition in SPECIAL_BUILDING_DEFINITIONS
+})
+
+for faction_categories in FACTION_UNIT_ROSTERS.values():
+    for roster_units in faction_categories.values():
+        UNIT_LABELS.update(roster_units)
+for faction_defenses in FACTION_DEFENSE_ROSTERS.values():
+    UNIT_LABELS.update(faction_defenses)
+
+
+def unit_display_label(unit_id):
+    target = BUFF_TARGETS.get(unit_id)
+    if target:
+        return target.get('label', unit_id)
+    return UNIT_LABELS.get((unit_id or '').upper(), unit_id)
+
+
+ACCESS_REWARD_ALIASES = dict(_REWARD_CATALOGUE_CONFIG['access_reward_aliases'])
+
+
+def normalize_access_reward_display_names():
+    """Use the installed playable name for every single-unit access item."""
+    access_rewards = (
+        UNIT_UNLOCK_REWARDS
+        + EXTRA_UNIT_UNLOCK_REWARDS
+        + ROSTER_UNIT_UNLOCK_REWARDS
+        + DEFENSE_UNLOCK_REWARDS
+        + SPECIAL_BUILDING_UNLOCK_REWARDS
+    )
+    for reward in access_rewards:
+        unlocked_ids = [
+            section
+            for section, values in reward.get('rules', {}).items()
+            if any(key.lower() == 'techlevel' for key in values)
+        ]
+        if len(unlocked_ids) != 1:
+            continue
+        unit_id = unlocked_ids[0].upper()
+        target = BUFF_TARGETS.get(unit_id)
+        if not target:
+            continue
+        old_name = reward.get('name', '')
+        new_name = f'{target["label"]} Access'
+        if old_name and old_name != new_name:
+            ACCESS_REWARD_ALIASES[old_name] = new_name
+        reward['name'] = new_name
+        reward['description'] = (
+            f'Allows {target["plural"]} where the map tech tree permits them.'
+        )
+
+
+normalize_access_reward_display_names()
+
+
+BUFF_TYPES = _REWARD_CATALOGUE_CONFIG['buff_types']
+
+
+def build_buff_rewards():
+    rewards = []
+    for unit_id, target in BUFF_TARGETS.items():
+        for buff_type in BUFF_TYPES:
+            buff_type_id = buff_type['id']
+            if unit_id in (
+                EXCLUDED_BUFF_TYPE_IDS.get('all', frozenset())
+                | EXCLUDED_BUFF_TYPE_IDS.get(buff_type_id, frozenset())
+            ):
+                continue
+            allowed_types = target.get('allowed_buff_types')
+            if allowed_types and buff_type_id not in allowed_types:
+                continue
+            if unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ()):
+                continue
+            if buff_type_id == 'veteran' and not target.get('trainable', True):
+                continue
+            if (
+                buff_type_id == 'speed'
+                and target.get('category') == 'infantry'
+                and int(target.get('speed', 0)) >= MAX_BUFFED_INFANTRY_SPEED
+            ):
+                # Already at the safe ceiling or authored faster. No no-op.
+                continue
+            if (
+                unit_id in NONCOMBAT_WEAPON_TARGET_IDS
+                and buff_type_id in {'damage', 'reload', 'range'}
+            ):
+                continue
+            if buff_type.get('requires_stat') and buff_type.get('requires_stat') not in target:
+                continue
+            if buff_type.get('requires_weapons') and not target.get('weapons'):
+                continue
+            required_weapon_stat = buff_type.get('requires_weapon_stat')
+            if required_weapon_stat:
+                required_weapon_min = buff_type.get('requires_weapon_min', 0)
+                has_weapon_stat = any(
+                    stats.get(required_weapon_stat, 0) > required_weapon_min
+                    for stats in target.get('weapons', {}).values()
+                )
+                has_special_damage = (
+                    required_weapon_stat == 'damage'
+                    and bool(target.get('special_damage_fields'))
+                )
+                if not has_weapon_stat and not has_special_damage:
+                    continue
+            rewards.append({
+                'name': f'{target["label"]} {buff_type["name"]} I',
+                'description': target.get('buff_descriptions', {}).get(
+                    buff_type['id'],
+                    buff_type['description'].format(plural=target['plural']),
+                ),
+                'rules': {},
+                'factions': target['factions'],
+                'kind': 'buff',
+                'unit': unit_id,
+                'buff_type': buff_type['id'],
+                'global_buff': bool(target.get('global_buff')),
+            })
+    return rewards
+
+
+UNIT_BUFF_REWARDS = build_buff_rewards()
+
+# Linked land/water identities share one visible access item and one set of
+# rewards. Their separate map clones still need variant-specific weapons so a
+# Robot Tank buff affects both the War Factory and Naval Yard forms safely.
+for source_id, variants in LINKED_BUFF_VARIANTS.items():
+    source_target = BUFF_TARGETS[source_id]
+    for variant_id, definition in variants.items():
+        variant_target = dict(source_target)
+        variant_target['weapons'] = {
+            str(weapon_id).upper(): dict(stats)
+            for weapon_id, stats in definition.get('weapons', {}).items()
+        }
+        variant_target['linked_buff_source'] = source_id
+        BUFF_TARGETS[variant_id] = variant_target
+        UNIT_LABELS[variant_id] = source_target['label']
+
+
+# Keep the normal Allied storm independent from mission-local [General]
+# settings. SFIRE reduces shared lightning values for its scripted Ion Storm.
+LIGHTNING_STORM_MAP_RULES = _REWARD_CATALOGUE_CONFIG['lightning_storm_map_rules']
+
+CHRONOSHIFT_MAP_RULES = _REWARD_CATALOGUE_CONFIG['chronoshift_map_rules']
+
+CHRONOWARP_MAP_RULES = _REWARD_CATALOGUE_CONFIG['chronowarp_map_rules']
+
+
+SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['superweapon_unlock_rewards']
+
+SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_superweapon_unlock_rewards']
+
+
+AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
+for aid_config in AID_POWER_MAP_CONFIGS:
+    for clone_group in ('techno_clones', 'auxiliary_clones'):
+        for clone in aid_config.get(clone_group, {}).values():
+            if 'reference_keys' in clone:
+                clone['reference_keys'] = tuple(clone['reference_keys'])
+AID_POWER_MAP_CONFIG_BY_SUPERWEAPON = {
+    config['superweapon']: config
+    for config in AID_POWER_MAP_CONFIGS
+}
+
+
+def build_aid_power_rewards():
+    # Installed player-facing support powers plus useful mine/grid spawners.
+    # Neutral tech powers, internal handlers, and powers whose effect requires
+    # a separately owned source object remain excluded.
+    definitions = _REWARD_CATALOGUE_CONFIG['aid_power_rewards']
+    rewards = []
+    for definition in definitions:
+        name = definition['name']
+        description = definition['description']
+        faction = definition['faction']
+        superweapon = definition['superweapon']
+        index = definition['index']
+        modified_config = AID_POWER_MAP_CONFIG_BY_SUPERWEAPON.get(superweapon)
+        if modified_config and modified_config.get('disabled'):
+            continue
+        building_bound = bool(
+            modified_config and modified_config.get('grant_buildings')
+        )
+        reward = {
+            'name': name,
+            'description': (
+                description
+                if building_bound
+                else description + ' Restored at the start of future missions without its normal source building.'
+            ),
+            'rules': {},
+            'factions': [faction],
+            'kind': 'superweapon',
+            'power_category': 'aid',
+            'superweapon': superweapon,
+            'superweapon_index': index,
+        }
+        if building_bound:
+            reward['superweapon_grant_buildings'] = list(
+                modified_config['grant_buildings']
+            )
+        if modified_config and modified_config['values']:
+            reward['superweapon_rules'] = dict(modified_config['values'])
+        if modified_config and modified_config.get('sections'):
+            reward['superweapon_rule_sections'] = {
+                section: dict(values)
+                for section, values in modified_config['sections'].items()
+            }
+        if modified_config and modified_config.get('techno_clones'):
+            reward['superweapon_techno_clones'] = {
+                section: {
+                    key: dict(value) if key == 'values' else value
+                    for key, value in clone.items()
+                }
+                for section, clone in modified_config['techno_clones'].items()
+            }
+        if modified_config and modified_config.get('auxiliary_clones'):
+            reward['superweapon_auxiliary_clones'] = {
+                section: {
+                    key: dict(value) if key == 'values' else value
+                    for key, value in clone.items()
+                }
+                for section, clone in modified_config['auxiliary_clones'].items()
+            }
+        if modified_config and modified_config.get('custom'):
+            reward['superweapon_custom'] = True
+        if modified_config and modified_config.get('clone'):
+            reward['superweapon_clone'] = modified_config['clone']
+        if modified_config and modified_config.get('cameo_superweapon'):
+            reward['cameo_superweapon'] = modified_config['cameo_superweapon']
+        if modified_config and modified_config.get('sidebar_image'):
+            reward['superweapon_sidebar_image'] = modified_config['sidebar_image']
+        rewards.append(reward)
+    return rewards
+
+
+AID_POWER_UNLOCK_REWARDS = build_aid_power_rewards()
+
+REWARD_POOL = (
+    UNIT_UNLOCK_REWARDS
+    + EXTRA_UNIT_UNLOCK_REWARDS
+    + ROSTER_UNIT_UNLOCK_REWARDS
+    + DEFENSE_UNLOCK_REWARDS
+    + SPECIAL_BUILDING_UNLOCK_REWARDS
+    + SUPERWEAPON_UNLOCK_REWARDS
+    + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
+    + AID_POWER_UNLOCK_REWARDS
+    + UNIT_BUFF_REWARDS
+)
+REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
+REWARD_BY_BUFF_KEY = {
+    (reward.get('unit'), reward.get('buff_type')): reward
+    for reward in UNIT_BUFF_REWARDS
+}
+RETIRED_REWARD_BY_NAME = _REWARD_CATALOGUE_CONFIG['retired_reward_by_name']
+REWARD_ALIASES = {
+    **ACCESS_REWARD_ALIASES,
+    'Medic Drill I': 'Field Medic Drill I',
+    'Humvee Assembly I': 'Humvee Drill I',
+    'IFV Assembly I': 'IFV Drill I',
+    'Cryo Legionnaires': 'Chrono Legionnaire Access',
+    'Chrono Legionnaires': 'Chrono Legionnaire Access',
+    'Battle Fortress Access': 'Barracuda Access',
+    'Mind Control Access': 'Mastermind Access',
+    'Base Construction Drill I': 'Faction Production Drill I',
+    'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
+}
+for definition in SPECIAL_BUILDING_DEFINITIONS:
+    building_name = str(definition['name'])
+    REWARD_ALIASES[
+        f'{building_name} Command Capacity I'
+    ] = f'{building_name} Structure Capacity I'
+for limited_unit_id in LIMITED_HERO_UNIT_IDS:
+    target = BUFF_TARGETS[limited_unit_id]
+    # Seeds made before the structure/unit capacity split could assign the
+    # structure-only reward to a hero. Preserve the earned stack by migrating
+    # it to that hero's valid unit-capacity reward at load/launch time.
+    REWARD_ALIASES[
+        f'{target["label"]} Structure Capacity I'
+    ] = f'{target["label"]} Command Capacity I'
+for target in BUFF_TARGETS.values():
+    # Existing seeds may contain the removed GuardRange reward. Convert it to
+    # the same unit's useful vision reward instead of applying behavior that
+    # can pull units out of position or leaving the old location reward empty.
+    old_name = f'{target["label"]} Targeting Package I'
+    replacement_name = f'{target["label"]} Recon Package I'
+    if replacement_name in REWARD_BY_NAME:
+        REWARD_ALIASES[old_name] = replacement_name
+    # CountryType has no functional army-wide ROF multiplier in this engine.
+    # Preserve old seeds by converting each former Rapid Fire item into the
+    # same target's working cloned-weapon fire-rate reward.
+    old_rof_name = f'{target["label"]} Rapid Fire I'
+    replacement_rof_name = f'{target["label"]} Weapon Tuning I'
+    if replacement_rof_name in REWARD_BY_NAME:
+        REWARD_ALIASES[old_rof_name] = replacement_rof_name
+for defense_id, target in BUFF_TARGETS.items():
+    if target.get('category') == 'defenses' and not target.get('trainable'):
+        REWARD_ALIASES[
+            f'{target["label"]} Veteran Training I'
+        ] = f'{target["label"]} Armor Plating I'
+for unit_id in NONTRAINABLE_UNIT_IDS:
+    target = BUFF_TARGETS.get(unit_id)
+    if target:
+        REWARD_ALIASES[
+            f'{target["label"]} Veteran Training I'
+        ] = f'{target["label"]} Armor Plating I'
+
+for buff_type in BUFF_TYPES:
+    REWARD_ALIASES[f'Mind Control Unit {buff_type["name"]} I'] = f'Mastermind {buff_type["name"]} I'
