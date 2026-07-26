@@ -2998,8 +2998,38 @@ def player_unit_clone_rules(
             else None
         )
         clone_source_values = dict(owned_template or effective_unit_values)
+        mission_player_override = bool(
+            owned_template is not None
+            and any(house.lower() in allowed_houses for house in unit_usage)
+        )
+        native_override_values = {}
+        if mission_player_override:
+            # Campaign maps commonly strengthen, weaken, rearm, or otherwise
+            # retune player units. Starting from only the installed/static
+            # template discarded those authored values before rewards were
+            # applied (SRECH Volkov: 1350 -> 600). Layer the player's map
+            # identity onto its isolated clone, while leaving production and
+            # ownership gates to the normal clone-safety path below. Enemy-only
+            # map identities never satisfy this ownership guard.
+            native_override_values = native_map_sections.get(
+                native_map_name_by_lower.get(unit_id.lower()), {}
+            )
+            for key, value in native_override_values.items():
+                lowered = str(key).lower()
+                if (
+                    lowered in CLONE_POLICY['production_gate_keys']
+                    or lowered.startswith(tuple(
+                        CLONE_POLICY['production_gate_prefixes']
+                    ))
+                    or lowered in {
+                        'owner', 'requiredhouses', 'forbiddenhouses',
+                    }
+                ):
+                    continue
+                _remove_case_insensitive(clone_source_values, key)
+                clone_source_values[key] = value
         if unit_id in buildable_ids and installed_unit:
-            if owned_template is None:
+            if owned_template is None and unit_id == target_unit_id:
                 clone_source_values = dict(installed_sections.get(installed_unit, {}))
             for key, value in effective_unit_values.items():
                 lowered = str(key).lower()
@@ -3027,16 +3057,25 @@ def player_unit_clone_rules(
             clone_source_values = _sanitize_engineer_clone_values(
                 clone_source_values, target
             )
+            # Engineer sanitization removes unsafe cached Chrono mutations, but
+            # a campaign-authored player Engineer may deliberately have more
+            # health. Keep that safe mission value as the reward baseline.
+            mission_strength = _value_case_insensitive(
+                native_override_values, 'Strength'
+            )
+            if mission_strength is not None:
+                _remove_case_insensitive(clone_source_values, 'Strength')
+                clone_source_values['Strength'] = mission_strength
         effective_target = _target_with_effective_unit_stats(
             target, clone_source_values
         )
         weapon_targets = dict(target.get('weapons', {}))
-        if target.get('category') == 'defenses':
-            # Trainable defenses switch to ElitePrimary/EliteWeapon* after
-            # promotion.  Curated rookie weapon lists alone made a heavily
-            # buffed rookie tower stronger than its veteran/elite form.  Pull
-            # every direct defense weapon from installed/map rules so all
-            # promotion stages receive the same earned weapon stacks.
+        if target.get('category') == 'defenses' or mission_player_override:
+            # Trainable defenses switch weapons after promotion, and mission
+            # heroes may replace or disable installed weapons. Pull every
+            # direct weapon from the effective clone so earned weapon buffs
+            # follow the actual mission identity rather than a stale roster
+            # weapon. Missing/disabled placeholders are ignored below.
             for key, value in clone_source_values.items():
                 lowered_key = str(key).lower()
                 if not (
@@ -3051,6 +3090,7 @@ def player_unit_clone_rules(
                 if (
                     not weapon
                     or weapon.lower() in {'none', '<none>'}
+                    or weapon.lower().startswith('nota')
                     or weapon in weapon_targets
                 ):
                     continue

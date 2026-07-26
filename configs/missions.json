@@ -1138,6 +1138,9 @@
         "LIBRA6",
         "LIBRA7",
         "LIBRA8"
+      ],
+      "FEMPIRE": [
+        "YUNRU"
       ]
     },
     "reward_excluded_player_houses": {
@@ -1230,6 +1233,14 @@
         },
         "TANY": {
           "Strength": "600"
+        }
+      },
+      "SRECH": {
+        "CHITZ": {
+          "Strength": "1650"
+        },
+        "VOLKOV": {
+          "Strength": "1350"
         }
       },
       "EREALITY": {
@@ -1329,6 +1340,9 @@
         "LIBRA6",
         "LIBRA7",
         "LIBRA8"
+      ],
+      "FEMPIRE": [
+        "YUNRU"
       ]
     },
     "native_variant_buff_rules": {
@@ -1375,9 +1389,31 @@
         "source_unit": "MORALES",
         "native_units": ["MORALES"]
       },
-      "ETOTAL": {
+      "ETOTAL": [
+        {
+          "source_unit": "LIBRA",
+          "native_units": ["LIBRA"]
+        },
+        {
+          "source_unit": "ASSN",
+          "native_units": ["ASSN"]
+        }
+      ],
+      "AWITHER": {
+        "source_unit": "TANY",
+        "native_units": ["ATANY"]
+      },
+      "SJUGGER": {
+        "source_unit": "VOLKOV",
+        "native_units": ["CYCOM"]
+      },
+      "EMIGDAL": {
         "source_unit": "LIBRA",
-        "native_units": ["LIBRA"]
+        "native_units": ["LIBRA2", "LIBRA4"]
+      },
+      "FEMPIRE": {
+        "source_unit": "YUNRU",
+        "native_units": ["YUNRU"]
       }
     },
     "native_tech_unlock_ids": {
