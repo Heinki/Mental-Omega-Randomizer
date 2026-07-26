@@ -168,17 +168,12 @@ from randomizer.ui.builder import create_widgets as build_launcher_widgets
 from randomizer.ui.grid import redraw_grid as redraw_launcher_grid
 from randomizer.ui.theme import apply_color_mode as apply_launcher_color_mode
 from randomizer.ui.tooltips import WidgetTooltip
-from randomizer.config.tuning import REWARD_PLANNING
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
 CHECK_SCHEMA_VERSION = 16
 HOOK_POLL_MS = 1500
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
-MAX_GLOBAL_BUFF_REPEATS_PER_SEED = int(
-    REWARD_PLANNING['maximum_global_buff_repeats_per_seed']
-)
-GLOBAL_BUFF_REWARD_INTERVAL = int(REWARD_PLANNING['global_buff_reward_interval'])
 
 
 def reward_cameo_token(reward):

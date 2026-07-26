@@ -226,7 +226,7 @@ class ProgressionController:
             self.missions_tree.heading(heading, text=label + suffix)
         self.redraw_mission_tree()
 
-    def on_mission_select(self, event):
+    def on_mission_select(self, _event):
         selection = self.missions_tree.selection()
         if selection:
             self.selected_index.set(int(selection[0]))

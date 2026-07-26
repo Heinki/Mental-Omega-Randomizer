@@ -382,7 +382,7 @@ class RewardController:
             )
         ]
 
-    def reward_factions_for_code(self, code):
+    def reward_factions_for_code(self, _code):
         generation_context = self.__dict__.get('_seed_generation_context') or {}
         selected = generation_context.get('campaign_filter')
         if selected is None:

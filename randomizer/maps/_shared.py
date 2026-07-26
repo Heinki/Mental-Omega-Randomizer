@@ -121,8 +121,6 @@ RANDOMIZER_SUPERWEAPON_CAMEO_PRIORITY = '10000'
 
 MAX_ARES_TYPE_ID_LENGTH = int(_ENGINE_LIMITS['max_ares_type_id_length'])
 
-COMMON_BUILD_TAB_TECH_LOCKS = set(_MAP_CONFIG['common_build_tab_tech_locks'])
-
 EXTRA_TECH_LOCKS = set(_MAP_CONFIG['extra_tech_locks'])
 
 SCRIPTED_TECH_LOCK_EXCLUSIONS = set(_MAP_CONFIG['scripted_tech_lock_exclusions'])

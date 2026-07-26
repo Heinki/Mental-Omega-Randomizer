@@ -11,7 +11,6 @@ from __future__ import annotations
 LOCKED = 'locked'
 UNLOCKED = 'unlocked'
 COMPLETED = 'completed'
-VALID_STATES = {LOCKED, UNLOCKED, COMPLETED}
 
 
 def _positive_int(value, name):

@@ -470,7 +470,6 @@ def chaos_earned_access_rules(
     lines,
     earned_rewards,
     additional_build_houses=(),
-    additional_production_houses=(),
 ):
     """Adapt every earned access item to player-controlled production."""
     player_houses = set(player_controlled_houses(lines))

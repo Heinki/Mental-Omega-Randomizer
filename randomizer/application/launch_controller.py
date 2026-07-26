@@ -139,7 +139,6 @@ class LaunchController:
                     lines,
                     earned_defense_rewards,
                     additional_build_houses=(),
-                    additional_production_houses=production_houses,
                 )
                 for section, values in defense_rules.items():
                     rules.setdefault(section, {}).update(values)
@@ -152,13 +151,11 @@ class LaunchController:
                 lines,
                 self.active_launch_rewards(),
                 additional_build_houses=(),
-                additional_production_houses=production_houses,
             )
             transport_rules = always_available_transport_rules(
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
-                additional_production_houses=production_houses,
             )
             for section, values in transport_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -166,7 +163,6 @@ class LaunchController:
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
-                additional_production_houses=production_houses,
             )
             for section, values in engineer_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -215,7 +211,6 @@ class LaunchController:
         transport_rules = always_available_transport_rules(
             lines,
             additional_build_houses=(),
-            additional_production_houses=production_houses,
         )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -691,7 +686,7 @@ throw "Map $name was not found in expandmo*.mix"
             self.handle_mission_prepare_error,
         )
 
-    def handle_mission_prepare_error(self, exc, detail):
+    def handle_mission_prepare_error(self, _exc, detail):
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
         self.append_log(detail, error=True)

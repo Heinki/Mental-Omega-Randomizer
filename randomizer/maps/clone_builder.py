@@ -450,7 +450,6 @@ def build_player_clone_sections(
                 native_map_name_by_lower.get(unit_id.lower()), {}
             ),
         )
-        native_build_limit = _positive_build_limit(native_unit_values)
         # A map may reuse an installed ID for a different scripted hero (for
         # example SHAND [SUPR]=Reznov with BuildLimit=1). Earned buildable
         # clones copy the installed identity, so their cap must also come from

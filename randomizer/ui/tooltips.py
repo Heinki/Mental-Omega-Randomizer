@@ -35,7 +35,7 @@ class WidgetTooltip:
         widget.bind('<Unmap>', self.hide, add='+')
         widget.bind('<Destroy>', self.hide, add='+')
 
-    def schedule_show(self, event=None):
+    def schedule_show(self, _event=None):
         self.cancel_pending_hide()
         self.cancel_pending_show()
         self.pending_show = self.widget.after(250, self.show)
@@ -56,7 +56,7 @@ class WidgetTooltip:
                 pass
             self.pending_hide = None
 
-    def schedule_hide(self, event=None):
+    def schedule_hide(self, _event=None):
         self.cancel_pending_hide()
 
         def hide_if_outside():
@@ -77,7 +77,7 @@ class WidgetTooltip:
 
         self.pending_hide = self.widget.after(30, hide_if_outside)
 
-    def show(self, event=None):
+    def show(self, _event=None):
         self.pending_show = None
         if self.tip is not None or not self.text:
             return
@@ -113,7 +113,7 @@ class WidgetTooltip:
         y = max(4, min(pointer_y + 12, screen_height - tip_height - 4))
         self.tip.wm_geometry(f'+{x}+{y}')
 
-    def hide(self, event=None):
+    def hide(self, _event=None):
         self.cancel_pending_show()
         self.cancel_pending_hide()
         if self.tip is not None:
@@ -168,7 +168,7 @@ class TreeTooltip:
             label.grid(row=0, column=0)
         self.tip.wm_geometry(f'+{x}+{y}')
 
-    def hide(self, event=None):
+    def hide(self, _event=None):
         self.current_row = None
         if self.tip is not None:
             try:

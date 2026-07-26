@@ -181,7 +181,6 @@ class UnlockDataController:
                 return '\n'.join(lines).rstrip()
             return 'No unlocks or buffs earned yet.'
 
-        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         groups, shared_groups = self.build_unlock_display_groups(earned)
 

@@ -8,7 +8,7 @@ from .settings import _build_advanced_tab, _build_gameplay_settings
 def create_widgets(self):
     """Construct launcher widgets by delegating each cohesive UI region."""
     main_frame = _build_window_shell(self)
-    info_tabs, settings_tab, settings_frame = _build_right_panel(
+    info_tabs, _, settings_frame = _build_right_panel(
         self,
         main_frame,
     )

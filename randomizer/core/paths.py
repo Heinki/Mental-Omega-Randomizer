@@ -16,7 +16,6 @@ if FROZEN:
 else:
     APP_DIR = SOURCE_DIR
     GAME_ROOT = SOURCE_DIR.parent
-CLIENT_EXE = GAME_ROOT / 'MentalOmegaClient.exe'
 GAME_LAUNCHER_EXE = GAME_ROOT / 'Syringe.exe'
 GAME_EXE = GAME_ROOT / 'gamemd.exe'
 SPAWN_INI = GAME_ROOT / 'spawn.ini'
@@ -26,7 +25,6 @@ DEBUG_LOG = GAME_ROOT / 'debug' / 'debug.log'
 RULESMO_INI = GAME_ROOT / 'rulesmo.ini'
 DISABLED_RULESMO_INI = GAME_ROOT / 'rulesmo.ini.randomizer-disabled'
 BATTLE_CLIENT_INI = GAME_ROOT / 'INI' / 'BattleClient.ini'
-NO_BASES_INI = GAME_ROOT / 'INI' / 'Map Code' / 'No Bases.ini'
 STATE_PATH = APP_DIR / 'randomizer_state.json'
 BACKUP_DIR = APP_DIR / 'backups'
 EXTRACTED_MAP_DIR = APP_DIR / 'extracted_maps'

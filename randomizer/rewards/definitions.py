@@ -656,16 +656,6 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
         BUFF_TARGETS[variant_id] = variant_target
         UNIT_LABELS[variant_id] = source_target['label']
 
-
-# Keep the normal Allied storm independent from mission-local [General]
-# settings. SFIRE reduces shared lightning values for its scripted Ion Storm.
-LIGHTNING_STORM_MAP_RULES = _REWARD_CATALOGUE_CONFIG['lightning_storm_map_rules']
-
-CHRONOSHIFT_MAP_RULES = _REWARD_CATALOGUE_CONFIG['chronoshift_map_rules']
-
-CHRONOWARP_MAP_RULES = _REWARD_CATALOGUE_CONFIG['chronowarp_map_rules']
-
-
 SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['superweapon_unlock_rewards']
 
 SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_superweapon_unlock_rewards']

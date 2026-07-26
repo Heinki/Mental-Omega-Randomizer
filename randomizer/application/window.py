@@ -60,7 +60,7 @@ class WindowController:
             self.settings_toggle_button.configure(text='Show Details')
         self.after_idle(self.resize_grid_canvas_window)
 
-    def on_workspace_tab_changed(self, event=None):
+    def on_workspace_tab_changed(self, _event=None):
         """Refresh content whose layout depends on wide workspace dimensions."""
         if not hasattr(self, 'workspace_tabs'):
             return
@@ -305,7 +305,7 @@ class WindowController:
         finally:
             self.after(40, self.process_ui_queue)
 
-    def on_settings_content_configure(self, event=None):
+    def on_settings_content_configure(self, _event=None):
         if hasattr(self, 'settings_canvas'):
             self.settings_canvas.configure(scrollregion=self.settings_canvas.bbox('all'))
 
@@ -415,7 +415,7 @@ class WindowController:
             self.settings_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
-    def on_grid_configure(self, event=None):
+    def on_grid_configure(self, _event=None):
         """Keep cached Grid content and canvas viewport dimensions aligned."""
         self.resize_grid_canvas_window()
 
@@ -561,7 +561,7 @@ class WindowController:
 
         self.after(20, clear_if_outside)
 
-    def focus_unlock_search(self, event=None):
+    def focus_unlock_search(self, _event=None):
         if hasattr(self, 'info_tabs') and hasattr(self, 'unlocks_tab'):
             self.info_tabs.select(self.unlocks_tab)
         if hasattr(self, 'unlocks_notebook'):
@@ -574,13 +574,13 @@ class WindowController:
         self.refresh_unlock_search()
         return 'break'
 
-    def clear_unlock_search(self, event=None):
+    def clear_unlock_search(self, _event=None):
         self.unlock_search_var.set('')
         if hasattr(self, 'unlock_search_entry'):
             self.unlock_search_entry.focus_set()
         return 'break'
 
-    def refresh_unlock_search(self, *args):
+    def refresh_unlock_search(self, *_args):
         if not hasattr(self, 'unlocks_text'):
             return
 
@@ -619,10 +619,10 @@ class WindowController:
         self.unlocks_text.tag_add('search_current', pos, f'{pos}+{length}c')
         self.unlocks_text.see(pos)
 
-    def find_unlock_next(self, event=None):
+    def find_unlock_next(self, _event=None):
         return self.find_unlock_match(forward=True)
 
-    def find_unlock_previous(self, event=None):
+    def find_unlock_previous(self, _event=None):
         return self.find_unlock_match(forward=False)
 
     def find_unlock_match(self, forward=True):

@@ -46,7 +46,7 @@ class SeedController:
         self.seed_var.set(f'MO-{random.randrange(0x10000000):08X}')
         self.generate_seed_from_settings()
 
-    def generate_seed_from_settings(self, force=False):
+    def generate_seed_from_settings(self):
         if not self.missions:
             self.append_log('Cannot generate seed: no missions loaded.', error=True)
             return

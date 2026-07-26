@@ -377,7 +377,6 @@ def single_engineer_rules(
     lines,
     chaos_mode=False,
     additional_build_houses=(),
-    additional_production_houses=(),
 ):
     """Prepare every faction Engineer behind its matching barracks."""
     sections = all_section_value_maps(lines)
@@ -636,7 +635,6 @@ def mission_basic_unit_rules(
     for section, values in single_engineer_rules(
         lines,
         additional_build_houses=additional_build_houses,
-        additional_production_houses=additional_production_houses,
     ).items():
         rules[section] = values
     return rules
@@ -705,7 +703,6 @@ def always_available_transport_rules(
     lines,
     chaos_mode=False,
     additional_build_houses=(),
-    additional_production_houses=(),
 ):
     """Make relevant amphibious transports immediately buildable."""
     sections = all_section_value_maps(lines)

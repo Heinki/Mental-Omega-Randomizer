@@ -637,7 +637,7 @@ class AdvancedSettingsController:
         self.update_mission_goal_limit()
         self.refresh_advanced_pool_views()
 
-    def on_campaign_filter_changed(self, event=None):
+    def on_campaign_filter_changed(self, _event=None):
         self.update_mission_goal_limit()
         self.refresh_advanced_pool_views()
 
@@ -645,7 +645,7 @@ class AdvancedSettingsController:
         self.refresh_setting_states()
         self.update_mission_goal_limit()
 
-    def on_reward_mode_changed(self, event=None):
+    def on_reward_mode_changed(self, _event=None):
         self.refresh_setting_states()
 
     def on_unlimited_hero_units_changed(self):
@@ -658,7 +658,7 @@ class AdvancedSettingsController:
             self.unlimited_hero_units_var.set(False)
         self.refresh_setting_states()
 
-    def on_progression_mode_changed(self, event=None):
+    def on_progression_mode_changed(self, _event=None):
         self.refresh_progression_setting_states()
         if not self.state:
             self.redraw_progression_views()

@@ -36,7 +36,6 @@ REQUIRED_SECTIONS = {
         'standard_starter_families_by_campaign': dict,
     },
     'map_rules.json': {
-        'common_build_tab_tech_locks': list,
         'extra_tech_locks': list,
         'scripted_tech_lock_exclusions': list,
         'techno_type_lists': dict,
@@ -102,9 +101,6 @@ REQUIRED_SECTIONS = {
         'extra_unit_unlock_rewards': list,
         'faction_access_rules': dict,
         'buff_types': list,
-        'lightning_storm_map_rules': dict,
-        'chronoshift_map_rules': dict,
-        'chronowarp_map_rules': dict,
         'superweapon_unlock_rewards': list,
         'secondary_superweapon_unlock_rewards': list,
         'aid_power_rewards': list,
