@@ -450,6 +450,27 @@ def _build_gameplay_settings(self, settings_frame):
         self.include_aid_power_rewards_check,
         'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',
     )
+    self.include_power_buff_rewards_check = ttk.Checkbutton(
+        reward_frame,
+        text='Include superweapon / aid power buff rewards',
+        variable=self.include_power_buff_rewards_var,
+        command=self.refresh_setting_states,
+    )
+    self.include_power_buff_rewards_check.grid(
+        row=11, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.include_power_buff_rewards_check,
+        'Adds only buffs valid for already-unlocked powers. Native mission powers remain unchanged.',
+    )
+    self.power_buff_settings_button = ttk.Button(
+        reward_frame,
+        text='Power Buffs...',
+        command=self.open_power_buff_settings,
+    )
+    self.power_buff_settings_button.grid(
+        row=11, column=1, sticky='e', padx=(8, 0), pady=(4, 0)
+    )
 
     buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
     self.buff_frame = buff_frame

@@ -14,10 +14,16 @@ from .definitions import (
     unit_display_label,
 )
 from randomizer.config.tuning import stacking_amount, stacking_multiplier
+from randomizer.rewards.power_buff_definitions import (
+    power_buff_effect_text,
+    power_buff_stack_limit,
+)
 
 def canonical_reward(reward):
     if not isinstance(reward, dict):
         return {}
+    if reward.get('_runtime_canonical'):
+        return reward
 
     reward_name = reward.get('name')
     if not reward_name:
@@ -111,7 +117,9 @@ MAX_VETERANCY_STACKS = int(BUFF_EFFECTS['maximum_veterancy_stacks'])
 def reward_display_name(reward):
     reward = canonical_reward(reward)
     name = reward.get('name', 'Unknown reward')
-    if reward.get('kind') == 'buff' and reward.get('buff_type'):
+    if reward.get('kind') == 'buff' and (
+        reward.get('buff_type') or reward.get('power_buff_type')
+    ):
         effect_lines = buff_effect_lines(reward, include_stack=False)
         if effect_lines:
             return effect_lines[0]
@@ -128,6 +136,8 @@ def buff_stack_limit(reward):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return None
+    if reward.get('power_buff_type'):
+        return power_buff_stack_limit(reward)
     if reward.get('buff_type') == 'veteran':
         return MAX_VETERANCY_STACKS
     if reward.get('buff_type') == 'building_limit':
@@ -162,6 +172,17 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return []
+
+    if reward.get('power_buff_type'):
+        count = effective_buff_count(reward, count)
+        prefix = (
+            f'{reward.get("power_name", reward.get("superweapon", "Power"))}: '
+            if include_label else ''
+        )
+        text = f'{prefix}{power_buff_effect_text(reward, count)}'
+        if include_stack:
+            text = f'{text} ({stack_label(count)})'
+        return [text]
 
     target = BUFF_TARGETS.get(reward.get('unit'), {})
     buff_type = reward.get('buff_type')
@@ -264,7 +285,9 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
 
 def reward_rule_summary(reward):
     reward = canonical_reward(reward)
-    if reward.get('kind') == 'buff' and reward.get('buff_type'):
+    if reward.get('kind') == 'buff' and (
+        reward.get('buff_type') or reward.get('power_buff_type')
+    ):
         return buff_effect_lines(reward)
     if reward.get('kind') == 'superweapon':
         return ['Building-free repeating power; restored at the start of future missions.']

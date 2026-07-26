@@ -24,6 +24,14 @@ ROSTER_CATEGORIES = {
     'defenses': 'BuildingTypes',
     'special_buildings': 'BuildingTypes',
 }
+MANDATORY_TEMPLATE_OVERRIDES = {
+    # Old packaged editable roster files are preserved across upgrades. Keep
+    # this EMPulse field generator uncloaked even when its visible file predates
+    # the reviewed static-template correction.
+    'NAIRDM': {
+        'Cloakable.Allowed': 'no',
+    },
+}
 
 
 def randomizer_unit_id(source_id):
@@ -114,6 +122,9 @@ def randomizer_unit_roster():
             continue
         clone_ids[source_id.upper()] = clone_id
         templates[source_id.upper()] = dict(template[1])
+        templates[source_id.upper()].update(
+            MANDATORY_TEMPLATE_OVERRIDES.get(source_id.upper(), {})
+        )
     if missing:
         raise ValueError(
             'Randomizer roster lacks required TechnoTypes: ' + ', '.join(missing)

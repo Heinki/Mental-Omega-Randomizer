@@ -132,6 +132,15 @@ REQUIRED_SECTIONS = {
     'rewards/buff_exceptions.json': {
         'excluded_buff_type_ids': dict,
     },
+    'rewards/power_buffs.json': {
+        'buff_types': list,
+        'recharge': dict,
+        'cost': dict,
+        'area': dict,
+        'damage': dict,
+        'duration': dict,
+        'payload': dict,
+    },
 }
 
 
@@ -558,6 +567,55 @@ def _validate_buff_exceptions(sections, path):
         _invalid('Invalid buff exclusion policy', path)
 
 
+def _validate_power_buffs(sections, path):
+    buff_types = sections['buff_types']
+    required_type_fields = {
+        'id', 'name', 'setting_label', 'description', 'maximum_stacks',
+    }
+    if (
+        not buff_types
+        or any(
+            not isinstance(item, dict)
+            or not required_type_fields.issubset(item)
+            or not all(
+                _is_nonempty_string(item.get(key))
+                for key in ('id', 'name', 'setting_label', 'description')
+            )
+            or not isinstance(item.get('maximum_stacks'), int)
+            or item['maximum_stacks'] <= 0
+            for item in buff_types
+        )
+    ):
+        _invalid('Invalid power buff type definitions', path)
+    buff_ids = [item['id'] for item in buff_types]
+    if len(buff_ids) != len(set(buff_ids)):
+        _invalid('Duplicate power buff type IDs', path)
+
+    for section_name in ('cost', 'payload'):
+        for key, value in sections[section_name].items():
+            if key.endswith('_power_ids') or key == 'power_ids':
+                if (
+                    not isinstance(value, list)
+                    or not all(_is_nonempty_string(item) for item in value)
+                    or len(value) != len(set(value))
+                ):
+                    _invalid(
+                        f'Invalid power ID list {section_name}.{key}', path
+                    )
+
+    for section_name in ('area', 'damage', 'duration'):
+        for key, entries in sections[section_name].items():
+            if not key.endswith('_fields'):
+                continue
+            if not isinstance(entries, dict) or not all(
+                _is_nonempty_string(power_id) and isinstance(spec, dict)
+                for power_id, spec in entries.items()
+            ):
+                _invalid(
+                    f'Invalid power field mapping {section_name}.{key}', path
+                )
+
+
 def _validate_catalogue(sections, path):
     for config in sections['aid_power_map_configs']:
         image_name = config.get('sidebar_image')
@@ -588,6 +646,7 @@ CONFIG_VALIDATORS = {
     'rewards/tuning.json': _validate_tuning,
     'tier_one.json': _validate_tier_one,
     'rewards/buff_exceptions.json': _validate_buff_exceptions,
+    'rewards/power_buffs.json': _validate_power_buffs,
     'rewards/catalogue.json': _validate_catalogue,
 }
 

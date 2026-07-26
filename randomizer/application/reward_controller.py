@@ -307,9 +307,15 @@ class RewardController:
             reward_settings.get('include_secondary_superweapon_rewards', False)
         )
         include_aid_powers = bool(reward_settings.get('include_aid_power_rewards', False))
+        include_power_buffs = bool(
+            reward_settings.get('include_power_buff_rewards', False)
+        )
         include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
         include_special_buildings = bool(reward_settings.get('include_special_buildings', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
+        enabled_power_buff_types = set(
+            reward_settings.get('enabled_power_buff_types') or []
+        )
         excluded_unit_buff_types = {
             str(unit_id).upper(): {str(buff_type) for buff_type in buff_types}
             for unit_id, buff_types in reward_settings.get(
@@ -317,7 +323,25 @@ class RewardController:
             ).items()
             if isinstance(buff_types, (list, tuple, set))
         }
+        excluded_power_buff_types = {
+            str(power_id).upper(): {str(buff_type) for buff_type in buff_types}
+            for power_id, buff_types in reward_settings.get(
+                'excluded_power_buff_types', {}
+            ).items()
+            if isinstance(buff_types, (list, tuple, set))
+        }
         chaos_mode = self.active_reward_mode() == 'Chaos (Experimental)'
+
+        def power_category_enabled(reward):
+            category = reward.get('power_category', 'offensive')
+            return (
+                (category == 'offensive' and include_superweapons)
+                or (
+                    category == 'secondary'
+                    and include_secondary_superweapons
+                )
+                or (category == 'aid' and include_aid_powers)
+            )
 
         def buff_unit_is_allowed(reward):
             unit_id = str(reward.get('unit') or '').upper()
@@ -333,6 +357,21 @@ class RewardController:
             if (
                 (
                     reward.get('kind') == 'buff'
+                    and reward.get('power_buff_type')
+                    and include_power_buffs
+                    and power_category_enabled(reward)
+                    and reward.get('power_buff_type')
+                    in enabled_power_buff_types
+                    and str(reward.get('superweapon') or '').upper()
+                    not in excluded_superweapon_ids
+                    and reward.get('power_buff_type')
+                    not in excluded_power_buff_types.get(
+                        str(reward.get('superweapon') or '').upper(), set()
+                    )
+                )
+                or (
+                    reward.get('kind') == 'buff'
+                    and not reward.get('power_buff_type')
                     and include_buffs
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                     and (include_special_buildings or not self.reward_is_special_building(reward))
@@ -354,20 +393,7 @@ class RewardController:
                 )
                 or (
                     reward.get('kind') == 'superweapon'
-                    and (
-                        (
-                            reward.get('power_category', 'offensive') == 'offensive'
-                            and include_superweapons
-                        )
-                        or (
-                            reward.get('power_category') == 'secondary'
-                            and include_secondary_superweapons
-                        )
-                        or (
-                            reward.get('power_category') == 'aid'
-                            and include_aid_powers
-                        )
-                    )
+                    and power_category_enabled(reward)
                     and str(reward.get('superweapon') or '').upper()
                     not in excluded_superweapon_ids
                 )

@@ -73,6 +73,7 @@ from randomizer.rewards.catalogue import (
     DEFAULT_REWARDS_PER_CHECK,
     effective_buff_count,
     MAX_REWARDS_PER_CHECK,
+    POWER_BUFF_TYPES,
     REWARD_POOL,
     SPECIAL_BUILDING_DEFINITIONS,
     buff_effect_lines,

@@ -6,6 +6,7 @@ from ._dependencies import (
     CHECK_SCHEMA_VERSION,
     DEFAULT_MISSION_GOAL,
     DEFAULT_REWARDS_PER_CHECK,
+    POWER_BUFF_TYPES,
     REWARD_MODES,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
     STARTING_UNLOCKED_MISSIONS,
@@ -154,6 +155,23 @@ class StateController:
             generation_config.get('include_secondary_superweapon_rewards', True)
         )
         include_aid_powers = bool(generation_config.get('include_aid_power_rewards', True))
+        include_power_buffs = bool(
+            generation_config.get('include_power_buff_rewards', True)
+        )
+        known_power_buff_type_ids = [
+            buff_type['id'] for buff_type in POWER_BUFF_TYPES
+        ]
+        known_power_buff_types = set(known_power_buff_type_ids)
+        enabled_power_buff_types = generation_config.get(
+            'enabled_power_buff_types'
+        )
+        if not isinstance(enabled_power_buff_types, list):
+            enabled_power_buff_types = list(known_power_buff_type_ids)
+        enabled_power_buff_types = [
+            str(buff_type)
+            for buff_type in enabled_power_buff_types
+            if str(buff_type) in known_power_buff_types
+        ]
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
         include_special_buildings = bool(generation_config.get('include_special_buildings', True))
         unlimited_hero_units = bool(generation_config.get('unlimited_hero_units', False))
@@ -176,6 +194,7 @@ class StateController:
             'include_superweapon_rewards': include_superweapons,
             'include_secondary_superweapon_rewards': include_secondary_superweapons,
             'include_aid_power_rewards': include_aid_powers,
+            'include_power_buff_rewards': include_power_buffs,
             'enabled_reward_types': [
                 reward_type
                 for reward_type, enabled in (
@@ -184,6 +203,7 @@ class StateController:
                     ('superweapon', include_superweapons),
                     ('secondary_superweapon', include_secondary_superweapons),
                     ('aid_power', include_aid_powers),
+                    ('power_buff', include_power_buffs),
                 )
                 if enabled
             ],
@@ -207,6 +227,18 @@ class StateController:
             } if isinstance(
                 generation_config.get('excluded_unit_buff_types', {}), dict
             ) else {},
+            'enabled_power_buff_types': enabled_power_buff_types,
+            'excluded_power_buff_types': {
+                str(power_id).upper(): sorted({
+                    str(item) for item in buff_types
+                })
+                for power_id, buff_types in generation_config.get(
+                    'excluded_power_buff_types', {}
+                ).items()
+                if isinstance(buff_types, list)
+            } if isinstance(
+                generation_config.get('excluded_power_buff_types', {}), dict
+            ) else {},
         }
 
     def current_reward_settings(self):
@@ -228,10 +260,16 @@ class StateController:
         include_superweapons = bool(self.include_superweapon_rewards_var.get())
         include_secondary_superweapons = bool(self.include_secondary_superweapon_rewards_var.get())
         include_aid_powers = bool(self.include_aid_power_rewards_var.get())
+        include_power_buffs = bool(self.include_power_buff_rewards_var.get())
         enabled_buff_types = [
             buff_type['id']
             for buff_type in BUFF_TYPES
             if self.buff_type_vars[buff_type['id']].get()
+        ]
+        enabled_power_buff_types = [
+            buff_type['id']
+            for buff_type in POWER_BUFF_TYPES
+            if self.power_buff_type_vars[buff_type['id']].get()
         ]
         return {
             'randomize_unit_access': randomize_access,
@@ -247,6 +285,7 @@ class StateController:
             'include_superweapon_rewards': include_superweapons,
             'include_secondary_superweapon_rewards': include_secondary_superweapons,
             'include_aid_power_rewards': include_aid_powers,
+            'include_power_buff_rewards': include_power_buffs,
             'enabled_reward_types': [
                 reward_type
                 for reward_type, enabled in (
@@ -255,6 +294,7 @@ class StateController:
                     ('superweapon', include_superweapons),
                     ('secondary_superweapon', include_secondary_superweapons),
                     ('aid_power', include_aid_powers),
+                    ('power_buff', include_power_buffs),
                 )
                 if enabled
             ],
@@ -264,6 +304,14 @@ class StateController:
             'excluded_unit_buff_types': {
                 unit_id: sorted(buff_types)
                 for unit_id, buff_types in sorted(self.excluded_unit_buff_types.items())
+                if buff_types
+            },
+            'enabled_power_buff_types': enabled_power_buff_types,
+            'excluded_power_buff_types': {
+                power_id: sorted(buff_types)
+                for power_id, buff_types in sorted(
+                    self.excluded_power_buff_types.items()
+                )
                 if buff_types
             },
         }
@@ -297,11 +345,19 @@ class StateController:
         settings.setdefault('include_superweapon_rewards', False)
         settings.setdefault('include_secondary_superweapon_rewards', False)
         settings.setdefault('include_aid_power_rewards', False)
+        # Old generated runs contain no power-buff rewards. Keep their saved
+        # pool policy unchanged while new launcher configs default this on.
+        settings.setdefault('include_power_buff_rewards', False)
         settings.setdefault('excluded_unit_access_ids', [])
         settings.setdefault('excluded_superweapon_ids', [])
         settings.setdefault('excluded_unit_buff_types', {})
+        settings.setdefault('excluded_power_buff_types', {})
         if not isinstance(settings.get('enabled_buff_types'), list):
             settings['enabled_buff_types'] = [buff_type['id'] for buff_type in BUFF_TYPES]
+        if not isinstance(settings.get('enabled_power_buff_types'), list):
+            settings['enabled_power_buff_types'] = [
+                buff_type['id'] for buff_type in POWER_BUFF_TYPES
+            ]
         return settings
 
     def randomize_unit_access_enabled(self):
@@ -570,6 +626,13 @@ class StateController:
             for unit_id, buff_types in sorted(self.excluded_unit_buff_types.items())
             if buff_types
         }
+        self.config['generation']['excluded_power_buff_types'] = {
+            power_id: sorted(buff_types)
+            for power_id, buff_types in sorted(
+                self.excluded_power_buff_types.items()
+            )
+            if buff_types
+        }
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
         self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation'].pop('experimental_player_unit_clones', None)
@@ -585,7 +648,9 @@ class StateController:
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
         self.config['generation']['include_secondary_superweapon_rewards'] = reward_settings['include_secondary_superweapon_rewards']
         self.config['generation']['include_aid_power_rewards'] = reward_settings['include_aid_power_rewards']
+        self.config['generation']['include_power_buff_rewards'] = reward_settings['include_power_buff_rewards']
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
+        self.config['generation']['enabled_power_buff_types'] = reward_settings['enabled_power_buff_types']
         self.config['generation']['reward_mode'] = self.reward_mode_var.get()
         self.config['generation'].pop('close_game_on_victory', None)
         self.config.setdefault('archipelago', {}).setdefault('enabled', False)

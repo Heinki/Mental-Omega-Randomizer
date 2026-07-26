@@ -10,6 +10,7 @@ from randomizer.maps.ini import (
     section_value_map_preserve,
 )
 from randomizer.maps.ownership import script_referenced_taskforce_unit_ids
+from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
@@ -349,7 +350,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             allowed_unit_ids=mission_effective_tech_ids,
         )
         share_basic_equivalent_buffs = False
-    launch_power_rewards = list(earned_rewards)
+    launch_power_rewards = apply_power_buffs_to_unlock_rewards(
+        earned_rewards,
+        installed_rule_sections,
+    )
     deployed_sidebar_assets = deploy_superweapon_sidebar_assets(
         canonical_rewards(launch_power_rewards)
     )

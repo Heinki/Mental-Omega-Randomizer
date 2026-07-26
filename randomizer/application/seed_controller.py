@@ -61,17 +61,36 @@ class SeedController:
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
         reward_settings = self.current_reward_settings()
+        power_sources_enabled = any((
+            reward_settings['include_superweapon_rewards'],
+            reward_settings['include_secondary_superweapon_rewards'],
+            reward_settings['include_aid_power_rewards'],
+        ))
         if not any((
             reward_settings['randomize_unit_access'],
             reward_settings['include_buff_rewards'],
             reward_settings['include_superweapon_rewards'],
             reward_settings['include_secondary_superweapon_rewards'],
             reward_settings['include_aid_power_rewards'],
+            (
+                reward_settings['include_power_buff_rewards']
+                and power_sources_enabled
+            ),
         )):
             self.append_log('Cannot generate seed: enable at least one reward-pool option.', error=True)
             return
         if reward_settings['include_buff_rewards'] and not reward_settings['enabled_buff_types']:
             self.append_log('Cannot generate seed: buff rewards are enabled but no buff types are selected.', error=True)
+            return
+        if (
+            reward_settings['include_power_buff_rewards']
+            and power_sources_enabled
+            and not reward_settings['enabled_power_buff_types']
+        ):
+            self.append_log(
+                'Cannot generate seed: power buffs are enabled but no power buff types are selected.',
+                error=True,
+            )
             return
 
         generation_context = {

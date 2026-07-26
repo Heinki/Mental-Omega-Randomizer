@@ -47,8 +47,10 @@ def plan_seed_rewards(
         set(starting_unlocked_tech_ids)
         | set(ALWAYS_AVAILABLE_TECH_IDS)
     )
+    seed_unlocked_power_ids = set()
     buff_counts = {}
     unit_buff_counts = {}
+    power_buff_counts = {}
     global_buff_counts = {}
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
@@ -85,6 +87,21 @@ def plan_seed_rewards(
                 unit_buff_counts.get(affected_unit, 0) + 1
             )
 
+    def buff_target_count(reward):
+        power_id = str(reward.get('superweapon') or '').upper()
+        if reward.get('power_buff_type') and power_id:
+            return power_buff_counts.get(power_id, 0)
+        return unit_buff_counts.get(reward.get('unit'), 0)
+
+    def record_buff_target(reward):
+        power_id = str(reward.get('superweapon') or '').upper()
+        if reward.get('power_buff_type') and power_id:
+            power_buff_counts[power_id] = power_buff_counts.get(power_id, 0) + 1
+            return
+        unit = reward.get('unit')
+        if unit:
+            record_unit_buff(unit)
+
     # Cache each faction pool once. Canonicalization and metadata are static
     # during one draw.
     pool_cache = {}
@@ -109,7 +126,13 @@ def plan_seed_rewards(
                     buff_stack_limit(reward),
                     buff_count_key(reward),
                     reward.get('unit'),
-                    bool(reward.get('global_buff') or not reward.get('unit')),
+                    bool(
+                        reward.get('global_buff')
+                        or (
+                            not reward.get('unit')
+                            and not reward.get('power_buff_type')
+                        )
+                    ),
                     reward.get('name'),
                 )
                 for reward in canonical_pool
@@ -163,6 +186,12 @@ def plan_seed_rewards(
                 count = global_buff_counts.get(name, 0)
                 if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
                     global_candidates.append(reward)
+            elif reward.get('power_buff_type'):
+                if (
+                    str(reward.get('superweapon') or '').upper()
+                    in seed_unlocked_power_ids
+                ):
+                    unit_candidates.append(reward)
             elif not require_access_for_unit_buffs or unit_access_earned(unit):
                 unit_candidates.append(reward)
 
@@ -170,13 +199,13 @@ def plan_seed_rewards(
             candidates = global_candidates
         elif unit_candidates:
             least_buffs = min(
-                unit_buff_counts.get(reward.get('unit'), 0)
+                buff_target_count(reward)
                 for reward in unit_candidates
             )
             candidates = [
                 reward
                 for reward in unit_candidates
-                if unit_buff_counts.get(reward.get('unit'), 0) == least_buffs
+                if buff_target_count(reward) == least_buffs
             ]
         else:
             candidates = global_candidates
@@ -184,14 +213,14 @@ def plan_seed_rewards(
             return None
 
         reward = dict(rng.choice(candidates))
-        if reward.get('global_buff') or not reward.get('unit'):
+        if reward.get('global_buff') or (
+            not reward.get('unit') and not reward.get('power_buff_type')
+        ):
             name = reward.get('name')
             global_buff_counts[name] = global_buff_counts.get(name, 0) + 1
         count_key = buff_count_key(reward)
         buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-        unit = reward.get('unit')
-        if unit:
-            record_unit_buff(unit)
+        record_buff_target(reward)
         return reward
 
     def draw_repeatable_fallback(code):
@@ -208,6 +237,12 @@ def plan_seed_rewards(
                 continue
             if reward.get('kind') == 'buff':
                 unit = reward.get('unit')
+                power_id = str(reward.get('superweapon') or '').upper()
+                if (
+                    reward.get('power_buff_type')
+                    and power_id not in seed_unlocked_power_ids
+                ):
+                    continue
                 if (
                     require_access_for_unit_buffs
                     and unit
@@ -222,10 +257,20 @@ def plan_seed_rewards(
                 for reward in configured_reward_pool()
                 if reward.get('kind') == 'buff'
                 and (
-                    not require_access_for_unit_buffs
-                    or reward.get('global_buff')
-                    or not reward.get('unit')
-                    or unit_access_earned(reward.get('unit'))
+                    (
+                        reward.get('power_buff_type')
+                        and str(reward.get('superweapon') or '').upper()
+                        in seed_unlocked_power_ids
+                    )
+                    or (
+                        not reward.get('power_buff_type')
+                        and (
+                            not require_access_for_unit_buffs
+                            or reward.get('global_buff')
+                            or not reward.get('unit')
+                            or unit_access_earned(reward.get('unit'))
+                        )
+                    )
                 )
             ]
         if not candidates:
@@ -234,9 +279,7 @@ def plan_seed_rewards(
         if reward.get('kind') == 'buff':
             count_key = buff_count_key(reward)
             buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-            unit = reward.get('unit')
-            if unit:
-                record_unit_buff(unit)
+            record_buff_target(reward)
         return reward
 
     slot_order = []
@@ -283,6 +326,13 @@ def plan_seed_rewards(
         if reward is not None:
             plan[code][slot_index] = reward
             seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))
+            if (
+                reward.get('kind') == 'superweapon'
+                and reward.get('superweapon')
+            ):
+                seed_unlocked_power_ids.add(
+                    str(reward['superweapon']).upper()
+                )
         global_index += 1
 
     return {

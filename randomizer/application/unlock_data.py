@@ -343,7 +343,13 @@ class UnlockDataController:
                 keys.add(f'unit:{tech_id}')
             elif reward.get('access_category') == 'special_building':
                 keys.add(f'unit:{tech_id}')
-        if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
+        if (
+            reward.get('superweapon')
+            and (
+                reward.get('kind') == 'superweapon'
+                or reward.get('power_buff_type')
+            )
+        ):
             keys.add(f'power:{reward["superweapon"]}')
         return keys
 
@@ -605,7 +611,7 @@ class UnlockDataController:
         buffs = {}
         for reward in earned:
             if reward.get('kind') == 'buff':
-                key = reward.get('buff_type')
+                key = reward.get('buff_type') or reward.get('power_buff_type')
                 display_reward = dict(reward)
                 if entry.get('kind') == 'unit':
                     display_reward['unit'] = entry['id']

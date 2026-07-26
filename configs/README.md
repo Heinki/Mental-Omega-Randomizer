@@ -51,6 +51,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
   capacity rewards are generated. Chaos translates these to every faction
   Construction Yard.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
+- `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
+  damage, duration, and delivered-payload buff capabilities and stack tuning.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions
   and mappings, access aliases, and retired reward compatibility entries.
@@ -103,6 +105,12 @@ Aid reward identity and display data live in `catalogue.json` under
 `aid_power_rewards` (`name`, `description`, `faction`, `superweapon`, `index`).
 Map injection behavior for each matching `superweapon` remains under
 `aid_power_map_configs`.
+
+Power buff applicability lives separately in `rewards/power_buffs.json`.
+Grouped lists make every supported power/effect pairing reviewable without
+mixing superweapon mechanics into unit/building buff policy. Runtime folds
+earned stacks only into the already isolated `MOR...` power clone; native
+mission SuperWeaponTypes and effect helpers remain unchanged.
 
 `techno_clones` may provide private weapons, projectiles, warheads, delivered
 academy markers, or hidden EMPulse cannon buildings. A BuildingType with

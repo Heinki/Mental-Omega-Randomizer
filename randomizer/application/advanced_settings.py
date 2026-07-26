@@ -678,6 +678,11 @@ class AdvancedSettingsController:
         buffs_enabled = bool(self.include_buff_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         special_buildings_enabled = bool(self.include_special_buildings_var.get())
+        power_rewards_enabled = any((
+            self.include_superweapon_rewards_var.get(),
+            self.include_secondary_superweapon_rewards_var.get(),
+            self.include_aid_power_rewards_var.get(),
+        ))
         if chaos_mode:
             self.randomize_unit_access_var.set(True)
             self.randomize_unit_access_check.configure(state='disabled')
@@ -714,6 +719,12 @@ class AdvancedSettingsController:
         self.include_special_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
         )
+        self.include_power_buff_rewards_check.configure(
+            state='normal' if power_rewards_enabled else 'disabled'
+        )
+        self.power_buff_settings_button.configure(
+            state='normal' if power_rewards_enabled else 'disabled'
+        )
         self.prioritize_no_build_missions_check.configure(
             state=(
                 'normal'
@@ -726,6 +737,7 @@ class AdvancedSettingsController:
         )
         self.refresh_progression_setting_states()
         self.refresh_advanced_pool_views()
+        self.refresh_power_buff_window()
 
     def update_mission_goal_limit(self):
         if not self.missions:

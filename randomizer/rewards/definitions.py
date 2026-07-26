@@ -10,6 +10,10 @@ from randomizer.config.tuning import (
     BUFF_EFFECTS,
     REWARD_PLANNING,
 )
+from randomizer.rewards.power_buff_definitions import (
+    POWER_BUFF_TYPES,
+    build_power_buff_rewards,
+)
 
 
 _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
@@ -106,6 +110,11 @@ EXISTING_CAPABILITY_IDS = {
 EXCLUDED_BUFF_TYPE_IDS = {
     buff_type: frozenset(str(unit_id).upper() for unit_id in unit_ids)
     for buff_type, unit_ids in _BUFF_EXCEPTION_CONFIG['excluded_buff_type_ids'].items()
+}
+# Engine-safety exclusions cannot depend on replacing editable packaged config
+# during an upgrade. Old RandomizerLauncherData copies remain user-owned.
+MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
+    'cloak': frozenset({'NAIRDM'}),
 }
 
 # These types mount disguise, capture/defuse, scanner, or explicit
@@ -584,6 +593,9 @@ def build_buff_rewards():
             if unit_id in (
                 EXCLUDED_BUFF_TYPE_IDS.get('all', frozenset())
                 | EXCLUDED_BUFF_TYPE_IDS.get(buff_type_id, frozenset())
+                | MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(
+                    buff_type_id, frozenset()
+                )
             ):
                 continue
             allowed_types = target.get('allowed_buff_types')
@@ -744,6 +756,11 @@ def build_aid_power_rewards():
 
 
 AID_POWER_UNLOCK_REWARDS = build_aid_power_rewards()
+POWER_BUFF_REWARDS = build_power_buff_rewards(
+    SUPERWEAPON_UNLOCK_REWARDS
+    + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
+    + AID_POWER_UNLOCK_REWARDS
+)
 
 REWARD_POOL = (
     UNIT_UNLOCK_REWARDS
@@ -755,6 +772,7 @@ REWARD_POOL = (
     + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
     + AID_POWER_UNLOCK_REWARDS
     + UNIT_BUFF_REWARDS
+    + POWER_BUFF_REWARDS
 )
 REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
 REWARD_BY_BUFF_KEY = {

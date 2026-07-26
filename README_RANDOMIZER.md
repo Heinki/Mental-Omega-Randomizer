@@ -61,7 +61,9 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Include offensive superweapon rewards | `generation.include_superweapon_rewards` | `true` | Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest. |
 | Include secondary superweapon rewards | `generation.include_secondary_superweapon_rewards` | `true` | Adds Chronoshift, Invulnerability, and Rage independently from the offensive-superweapon option. Blasticade is excluded because it has no effect without owned Blast Trenches. |
 | Include support/aid power rewards | `generation.include_aid_power_rewards` | `true` | Adds player-facing faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners as map-local building-free copies. |
+| Include superweapon / aid power buff rewards | `generation.include_power_buff_rewards` | `true` | Adds repeatable buffs only after their matching power has been planned as unlocked. **Power Buffs...** opens a separate per-power window; invalid effects are unavailable rather than producing no-op rewards. |
 | Enabled Buff Types | `generation.enabled_buff_types` | All listed types | Limits which buff families seed generation may assign. This option is ignored when **Include buff rewards** is off. |
+| Power Buffs window | `generation.enabled_power_buff_types`, `generation.excluded_power_buff_types` | All valid types; no per-power exclusions | Globally enables power-buff families, then allows valid recharge, cost, area, damage, duration, or payload buffs to be disabled for each included power. Existing generated runs keep their saved reward plan. |
 
 ### Buff type options
 
@@ -101,7 +103,7 @@ These keys are runtime/developer controls and should not become normal Archipela
 | Key | Default | Purpose |
 |---|---:|---|
 | `generation.starting_unlocked_missions` | `3` | Mission List starting count. Grid Mode uses its own start rule. |
-| `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power]` | Derived compatibility list written from the five reward-pool toggles. |
+| `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power, power_buff]` | Derived compatibility list written from the six reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
 | `generation.experimental_house_buffs` | `false` | Legacy house-buff route; it is still constrained by the same no-reassignment trigger safety rule. |
 | `archipelago.*` | Disabled/blank | Reserved connection and slot fields. They currently do not connect to an Archipelago server. |
@@ -163,6 +165,16 @@ The sidebar groups earned production cameos into faction bands with the current 
 ## Power Reward Catalogue
 
 All earned power rewards are restored by a player-owned map-start grant in future launched missions. Each reward uses a new map-local `MOR...` power copied from the complete installed definition. The original power and any mission scripts using it remain untouched. The copy does not require its normal source building or original subfaction.
+
+Power buffs use a separate settings window and separate policy from
+unit/building buffs. Every unlockable power can receive faster recharge.
+Paid powers can receive lower activation cost. Reviewed area powers grow
+their `SW.Range` or private warhead `CellSpread`; reviewed timed effects grow
+their direct or private-warhead duration. Direct-damage powers receive higher
+`SW.Damage`. Safe UnitDelivery, paradrop, and SpyPlane rewards gain exactly one
+additional payload object per stack. Unique source structures, beacons, and
+fixed-layout grid spawners intentionally omit payload buffs. Buffs are folded
+into the same isolated power/helper clones, never native campaign definitions.
 
 | Category | Allies | Soviets | Epsilon | Foehn |
 |---|---|---|---|---|

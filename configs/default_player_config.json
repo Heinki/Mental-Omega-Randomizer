@@ -37,12 +37,14 @@
         "excluded_unit_access_ids": [],
         "excluded_superweapon_ids": [],
         "excluded_unit_buff_types": {},
+        "excluded_power_buff_types": {},
         "enabled_reward_types": [
           "access",
           "buff",
           "superweapon",
           "secondary_superweapon",
-          "aid_power"
+          "aid_power",
+          "power_buff"
         ],
         "randomize_unit_access": true,
         "start_with_tier_one_units": false,
@@ -55,6 +57,7 @@
         "include_superweapon_rewards": true,
         "include_secondary_superweapon_rewards": true,
         "include_aid_power_rewards": true,
+        "include_power_buff_rewards": true,
         "enabled_buff_types": [
           "production",
           "cost",
@@ -72,6 +75,14 @@
           "veteran",
           "build_limit",
           "building_limit"
+        ],
+        "enabled_power_buff_types": [
+          "recharge",
+          "cost",
+          "area",
+          "damage",
+          "duration",
+          "payload"
         ],
         "safe_player_country_buffs": true,
         "buff_allied_helpers": false,

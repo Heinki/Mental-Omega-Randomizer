@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "description": "Reviewed, map-local buff capabilities for unlockable superweapons and aid powers. Native mission powers are never modified.",
+  "sections": {
+    "buff_types": [
+      {
+        "id": "recharge",
+        "name": "Accelerated Recharge",
+        "setting_label": "Faster recharge",
+        "description": "Recharge time is 10% shorter per stack.",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "cost",
+        "name": "Logistics",
+        "setting_label": "Lower activation cost",
+        "description": "Activation cost is 15% cheaper per stack.",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "area",
+        "name": "Expanded Area",
+        "setting_label": "Larger effect area",
+        "description": "Effect radius grows by 0.5 cells per stack; rectangular areas grow by one cell in each dimension.",
+        "maximum_stacks": 4
+      },
+      {
+        "id": "damage",
+        "name": "Amplified Payload",
+        "setting_label": "Higher damage",
+        "description": "Direct power damage is 15% higher per stack.",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "duration",
+        "name": "Extended Effect",
+        "setting_label": "Longer effect duration",
+        "description": "Timed effect duration is 15% longer per stack.",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "payload",
+        "name": "Reinforced Payload",
+        "setting_label": "One extra delivered unit",
+        "description": "Delivery, paradrop, or aircraft count increases by one per stack.",
+        "maximum_stacks": 4
+      }
+    ],
+    "recharge": {
+      "factor_per_stack": 0.9,
+      "minimum": 0.25,
+      "applies_to_all_powers": true
+    },
+    "cost": {
+      "factor_per_stack": 0.85,
+      "minimum_absolute": 0,
+      "power_ids": [
+        "AmericanParaDropSpecial",
+        "BloodhoundsSpecial",
+        "ZephyrBeaconSpecial",
+        "LightningRodSpecial",
+        "WarpMinersSpecial",
+        "KingsnakesSpecial",
+        "PaladinAidSpecial",
+        "MercurySpecial",
+        "BlackWidowAlphaSpecial",
+        "BlackWidowSpecial",
+        "ChronoboostSpecial",
+        "CryoshotSpecial",
+        "CryospearSpecial",
+        "GlacialScreenSpecial",
+        "RepairDroneSpecial",
+        "TankDropSpecial",
+        "InstantShelterSpecial",
+        "MotorAmbushSpecial",
+        "NavalMineSpecial",
+        "TerrorDropSpecial",
+        "FlameTowerSpecial",
+        "DrakuvSpecial",
+        "RepairDronesSpecial",
+        "EliteReservesSpecial",
+        "DisruptorSpecial",
+        "SmokebombsSpecial",
+        "EMPulsSpecial",
+        "IrradiateSpecial",
+        "OverchargeSpecial",
+        "WallbusterSpecial",
+        "IrradiateBetaSpecial",
+        "RadAttackSpecial",
+        "PackAttackSpecial",
+        "RisenMonolithSpecial",
+        "MagnetShiftSpecial",
+        "LibraCloneSpecial",
+        "TickTrapSpecial",
+        "QuickFortSpecial",
+        "RuinerSpecial",
+        "HijackersSpecial",
+        "IllusionSpecial",
+        "KineticBarrierSpecial",
+        "MutationSpecial",
+        "ToxicStrikeSpecial",
+        "RegenDrugsSpecial",
+        "WonderDrugsSpecial",
+        "SpinbladeSpecial",
+        "MegaarenaSpecial",
+        "KnightfallSpecial",
+        "HarbingerSpecial",
+        "SweeperDropSpecial",
+        "DecoyTeamSpecial",
+        "DecoySquadronSpecial",
+        "MADMineSpecial",
+        "NanofiberSyncSpecial",
+        "DevourerSpecial",
+        "ChaosTouchSpecial"
+      ]
+    },
+    "area": {
+      "amount_per_stack": 0.5,
+      "rectangle_amount_per_stack": 1,
+      "direct_fields": {
+        "LightningStormSpecial": {"field": "SW.Range", "baseline": "10"},
+        "PsychicDominatorSpecial": {"field": "SW.Range", "baseline": "1"},
+        "ChronoSphereSpecial": {"field": "SW.Range", "baseline": "3,3"},
+        "IronCurtainSpecial": {"field": "SW.Range", "baseline": "3,3"},
+        "ForceShieldSpecial": {"field": "SW.Range", "baseline": "4"},
+        "SonarPulseSpecial": {"field": "SW.Range", "baseline": "5"},
+        "SpySatSpecial": {"field": "SW.Range", "baseline": "12"}
+      },
+      "warhead_fields": {
+        "NukeSpecial": {"source": "NUKE", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "GreatTempestSpecial": {"source": "GreatTempestBlastWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "RageInductorSpecial": {"source": "RageInductorWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "TargetPainterSpecial": {"source": "TargetPainterWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "ChronoboostSpecial": {"source": "ChronoboostWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "CryoshotSpecial": {"source": "CryoshotSuperWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "CryospearSpecial": {"source": "CryospearSuperWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "GlacialScreenSpecial": {"source": "GlacialScreenWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "IrradiateSpecial": {"source": "IrradiateWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "OverchargeSpecial": {"source": "OverchargeWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "IrradiateBetaSpecial": {"source": "IrradiateBetaWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "IllusionSpecial": {"source": "IllusionWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "KineticBarrierSpecial": {"source": "KineticBarrierWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "RegenDrugsSpecial": {"source": "RegenWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "WonderDrugsSpecial": {"source": "WonderWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
+        "ChaosTouchSpecial": {"source": "ChaosTouchWH", "field": "CellSpread", "reference_key": "SW.Warhead"}
+      }
+    },
+    "damage": {
+      "factor_per_stack": 1.15,
+      "direct_fields": {
+        "LightningStormSpecial": {"field": "SW.Damage", "baseline": 250},
+        "NukeSpecial": {"field": "SW.Damage", "baseline": 600},
+        "PsychicDominatorSpecial": {"field": "SW.Damage", "baseline": 1000},
+        "GreatTempestSpecial": {"field": "SW.Damage", "baseline": 25},
+        "WallbusterSpecial": {"field": "SW.Damage", "baseline": 250},
+        "BoidBlitzSpecial": {"field": "SW.Damage", "baseline": 360}
+      }
+    },
+    "duration": {
+      "factor_per_stack": 1.15,
+      "direct_fields": {
+        "IronCurtainSpecial": {"field": "Protect.Duration", "baseline": 600},
+        "ForceShieldSpecial": {"field": "Protect.Duration", "baseline": 450}
+      },
+      "warhead_fields": {
+        "RageInductorSpecial": {"source": "RageInductorWH", "fields": ["AttachEffect.Duration"]},
+        "TargetPainterSpecial": {"source": "TargetPainterWH", "fields": ["AttachEffect.Duration"]},
+        "ChronoboostSpecial": {"source": "ChronoboostWH", "fields": ["AttachEffect.Duration"]},
+        "CryoshotSpecial": {"source": "CryoshotSuperWH", "fields": ["AttachEffect.Duration", "Sonar.Duration"]},
+        "CryospearSpecial": {"source": "CryospearSuperWH", "fields": ["AttachEffect.Duration", "Sonar.Duration"]},
+        "GlacialScreenSpecial": {"source": "GlacialScreenWH", "fields": ["AttachEffect.Duration", "Sonar.Duration"]},
+        "IrradiateSpecial": {"source": "IrradiateWH", "fields": ["AttachEffect.Duration"]},
+        "OverchargeSpecial": {"source": "OverchargeWH", "fields": ["AttachEffect.Duration"]},
+        "IrradiateBetaSpecial": {"source": "IrradiateBetaWH", "fields": ["AttachEffect.Duration"]},
+        "IllusionSpecial": {"source": "IllusionWH", "fields": ["AttachEffect.Duration"]},
+        "KineticBarrierSpecial": {"source": "KineticBarrierWH", "fields": ["AttachEffect.Duration"]},
+        "RegenDrugsSpecial": {"source": "RegenWH", "fields": ["AttachEffect.Duration"]},
+        "WonderDrugsSpecial": {"source": "WonderWH", "fields": ["AttachEffect.Duration"]},
+        "ChaosTouchSpecial": {"source": "ChaosTouchWH", "fields": ["AttachEffect.Duration"]}
+      }
+    },
+    "payload": {
+      "unit_delivery_power_ids": [
+        "WarpMinersSpecial",
+        "KingsnakesSpecial",
+        "PaladinAidSpecial",
+        "CryomineSpawn",
+        "MotorAmbushSpecial",
+        "NavalMineSpecial",
+        "EMPMineSpawn",
+        "RuinerSpecial",
+        "GenomineSpawn",
+        "DecoyTeamSpecial",
+        "DecoySquadronSpecial",
+        "MADMineSpecial"
+      ],
+      "paradrop_power_ids": [
+        "AmericanParaDropSpecial",
+        "BloodhoundsSpecial",
+        "RepairDroneSpecial",
+        "TankDropSpecial",
+        "TerrorDropSpecial",
+        "RepairDronesSpecial",
+        "LibraCloneSpecial",
+        "HijackersSpecial",
+        "SweeperDropSpecial"
+      ],
+      "spy_plane_power_ids": [
+        "BlackWidowAlphaSpecial",
+        "BlackWidowSpecial",
+        "SpyPlaneSpecial",
+        "SmokebombsSpecial",
+        "RadAttackSpecial",
+        "PackAttackSpecial",
+        "ToxicStrikeSpecial",
+        "HarbingerSpecial",
+        "ReconSortieSpecial"
+      ]
+    }
+  }
+}

@@ -38,6 +38,14 @@ IMAGE_OVERRIDES = {
     # defines its cameo and sequence under [MOTOR].
     'MOTOR': 'MOTOR',
 }
+TEMPLATE_VALUE_OVERRIDES = {
+    # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
+    # prevent its self-targeted field weapon from firing reliably.
+    'NAIRDM': {
+        'Prerequisite': '',
+        'Cloakable.Allowed': 'no',
+    },
+}
 
 
 def read_sections(path: Path) -> OrderedDict[str, OrderedDict[str, str]]:
@@ -95,6 +103,12 @@ def main():
     parser.add_argument('--infantry', type=Path, default=DEFAULT_INFANTRY)
     parser.add_argument('--rules', type=Path, default=DEFAULT_RULES)
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument(
+        '--group',
+        action='append',
+        choices=tuple(OUTPUT_GROUPS),
+        help='Generate only this output group. May be repeated.',
+    )
     args = parser.parse_args()
 
     # Import after resolving project root so direct script execution works.
@@ -106,9 +120,22 @@ def main():
         NAVAL_UNIT_IDS,
     )
 
-    infantry_sections = read_sections(args.infantry)
+    selected_groups = set(args.group or OUTPUT_GROUPS)
+    needs_reviewed_infantry = bool(
+        selected_groups.intersection({'infantry', 'heroes'})
+    )
+    if needs_reviewed_infantry and not args.infantry.is_file():
+        raise FileNotFoundError(
+            f'Reviewed infantry source is required for selected groups: '
+            f'{args.infantry}'
+        )
+    infantry_sections = (
+        read_sections(args.infantry) if args.infantry.is_file() else OrderedDict()
+    )
     installed_sections = read_sections(args.rules)
-    reviewed_infantry = infantry_sources(infantry_sections)
+    reviewed_infantry = (
+        infantry_sources(infantry_sections) if infantry_sections else {}
+    )
 
     target_ids_by_list = OrderedDict(
         (list_name, []) for list_name in dict.fromkeys(TYPE_LISTS.values())
@@ -150,6 +177,7 @@ def main():
                 values['Image'] = IMAGE_OVERRIDES[source_id]
             elif not any(key.lower() == 'image' and value for key, value in values.items()):
                 values['Image'] = source_id
+            values.update(TEMPLATE_VALUE_OVERRIDES.get(source_id, {}))
             definitions[source_id] = values
 
     if missing:
@@ -174,6 +202,8 @@ def main():
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for group, source_ids in grouped_ids.items():
+        if group not in selected_groups:
+            continue
         filename, next_key = OUTPUT_GROUPS[group]
         output_path = args.output_dir / filename
         lines = [

@@ -12,6 +12,7 @@ from ._dependencies import (
     GAME_SPEEDS,
     MAX_REWARDS_PER_CHECK,
     PLAYER_COLORS,
+    POWER_BUFF_TYPES,
     PROGRESSION_MODES,
     REWARD_MODES,
     WINDOW_ICON_PATH,
@@ -27,6 +28,7 @@ from .window import WindowController
 from .state_controller import StateController
 from .reward_controller import RewardController
 from .advanced_settings import AdvancedSettingsController
+from .power_buff_settings import PowerBuffSettingsController
 from .progression_controller import ProgressionController
 from .seed_controller import SeedController
 from .launch_controller import LaunchController
@@ -39,6 +41,7 @@ class LauncherApp(
     StateController,
     RewardController,
     AdvancedSettingsController,
+    PowerBuffSettingsController,
     ProgressionController,
     SeedController,
     LaunchController,
@@ -153,6 +156,23 @@ class LauncherApp(
             if str(unit_id).strip() and isinstance(buff_types, list)
         }
         self.advanced_buff_unit_id = ''
+        raw_power_buff_exclusions = generation_config.get(
+            'excluded_power_buff_types', {}
+        )
+        self.excluded_power_buff_types = {
+            str(power_id).upper(): {
+                str(buff_type)
+                for buff_type in buff_types
+                if str(buff_type).strip()
+            }
+            for power_id, buff_types in (
+                raw_power_buff_exclusions.items()
+                if isinstance(raw_power_buff_exclusions, dict) else ()
+            )
+            if str(power_id).strip() and isinstance(buff_types, list)
+        }
+        self.power_buff_window = None
+        self.power_buff_power_id = ''
         reward_mode_default = valid_choice(
             self.state.get('reward_mode', generation_config.get('reward_mode')),
             REWARD_MODES,
@@ -225,9 +245,21 @@ class LauncherApp(
         self.include_aid_power_rewards_var = tk.BooleanVar(
             value=reward_settings['include_aid_power_rewards']
         )
+        self.include_power_buff_rewards_var = tk.BooleanVar(
+            value=reward_settings['include_power_buff_rewards']
+        )
         self.buff_type_vars = {
             buff_type['id']: tk.BooleanVar(value=buff_type['id'] in enabled_buff_types)
             for buff_type in BUFF_TYPES
+        }
+        enabled_power_buff_types = set(
+            reward_settings['enabled_power_buff_types']
+        )
+        self.power_buff_type_vars = {
+            buff_type['id']: tk.BooleanVar(
+                value=buff_type['id'] in enabled_power_buff_types
+            )
+            for buff_type in POWER_BUFF_TYPES
         }
         if self.unlimited_hero_units_var.get():
             self.buff_type_vars['build_limit'].set(False)
