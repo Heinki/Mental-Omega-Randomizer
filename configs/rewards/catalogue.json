@@ -1070,24 +1070,6 @@
         }
       }
     ],
-    "building_free_support_power_values": {
-      "IsPowered": "false",
-      "SW.FireIntoShroud": "yes",
-      "SW.AutoFire": "no",
-      "SW.ManualFire": "yes",
-      "SW.ShowCameo": "yes",
-      "SW.UseAITargeting": "no",
-      "SW.AITargeting": "None",
-      "SW.RequiredHouses": "",
-      "SW.ForbiddenHouses": "",
-      "SW.AuxBuildings": "",
-      "SW.NegBuildings": "",
-      "SW.Designators": "",
-      "SW.Inhibitors": "",
-      "SW.AnyInhibitor": "no",
-      "SW.RangeMaximum": "-1",
-      "SW.RangeMinimum": "-1"
-    },
     "aid_power_rewards": [
       {
         "name": "Airborne Power",

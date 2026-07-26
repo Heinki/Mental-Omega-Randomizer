@@ -29,7 +29,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   defensive structures, abstract saved markers, aircraft factories, and
   installed GenericPrerequisite aliases.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
-  EVA announcer choices/tags, reward-count messages, faction colors, and
+  EVA announcer tags, reward-count messages, faction colors, and
   light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
   cross-faction role-equivalence groups, linked land/water buff identities,
@@ -133,6 +133,14 @@ Source runs load this directory directly. A packaged EXE bundles these defaults
 and copies each missing file to `RandomizerLauncherData/configs` beside the game.
 Existing external files are never overwritten, so local edits survive launcher
 updates.
+
+EVA voice labels and engine tags have one source under `ui.json`:
+`eva_voice_tags`. Object order controls menu order. Add, remove, or rename one
+mapping there; launcher derives its choices automatically, with fixed
+`Mission default` and `Random` options around configured entries. Engine tags
+`Allied`, `Russian`, and `Yuri` use Ares EVA indexes 0–2. Other configured tags
+use indexes 3 onward in this same object order, which must match their order in
+the installed `EVATypes` list.
 
 Every document requires `schema_version: 1` and a `sections` object. Startup
 validates required sections and important value types. Invalid JSON or missing

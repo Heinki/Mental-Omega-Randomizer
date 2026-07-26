@@ -7,6 +7,7 @@ from randomizer_config import DEFAULT_CONFIG
 from randomizer_paths import LAUNCHER_LOG
 from randomizer_rewards import BUFF_TYPES, MAX_REWARDS_PER_CHECK
 from randomizer_tuning import stacking_amount, stacking_multiplier
+from randomizer_ui_tooltips import TreeTooltip, WidgetTooltip
 from randomizer_ui import (
     CAMPAIGN_FILTERS,
     DIFFICULTIES,
@@ -19,20 +20,6 @@ from randomizer_ui import (
 from randomizer_version import APP_VERSION
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
-_active_tooltip = None
-
-
-def _activate_tooltip(owner):
-    global _active_tooltip
-    if _active_tooltip is not None and _active_tooltip is not owner:
-        _active_tooltip.hide()
-    _active_tooltip = owner
-
-
-def _deactivate_tooltip(owner):
-    global _active_tooltip
-    if _active_tooltip is owner:
-        _active_tooltip = None
 
 
 def buff_setting_amount_text(buff_type):
@@ -61,168 +48,7 @@ def buff_setting_amount_text(buff_type):
     return buff_type['setting_label']
 
 
-class WidgetTooltip:
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tip = None
-        self.pending_show = None
-        self.pending_hide = None
-        widget.bind('<Enter>', self.schedule_show, add='+')
-        widget.bind('<Leave>', self.schedule_hide, add='+')
-        widget.bind('<ButtonPress>', self.hide, add='+')
-        widget.bind('<Unmap>', self.hide, add='+')
-        widget.bind('<Destroy>', self.hide, add='+')
-
-    def schedule_show(self, event=None):
-        self.cancel_pending_hide()
-        self.cancel_pending_show()
-        self.pending_show = self.widget.after(250, self.show)
-
-    def cancel_pending_show(self):
-        if self.pending_show is not None:
-            try:
-                self.widget.after_cancel(self.pending_show)
-            except tk.TclError:
-                pass
-            self.pending_show = None
-
-    def cancel_pending_hide(self):
-        if self.pending_hide is not None:
-            try:
-                self.widget.after_cancel(self.pending_hide)
-            except tk.TclError:
-                pass
-            self.pending_hide = None
-
-    def schedule_hide(self, event=None):
-        self.cancel_pending_hide()
-
-        def hide_if_outside():
-            self.pending_hide = None
-            try:
-                pointer_x = self.widget.winfo_pointerx()
-                pointer_y = self.widget.winfo_pointery()
-                left = self.widget.winfo_rootx()
-                top = self.widget.winfo_rooty()
-                inside = (
-                    left <= pointer_x < left + self.widget.winfo_width()
-                    and top <= pointer_y < top + self.widget.winfo_height()
-                )
-            except tk.TclError:
-                inside = False
-            if not inside:
-                self.hide()
-
-        self.pending_hide = self.widget.after(30, hide_if_outside)
-
-    def show(self, event=None):
-        self.pending_show = None
-        if self.tip is not None or not self.text:
-            return
-        _activate_tooltip(self)
-        self.tip = tk.Toplevel(self.widget)
-        self.tip.wm_overrideredirect(True)
-        # A tooltip must not become the pointer target. On Windows an active
-        # borderless Toplevel can otherwise emit Leave/Enter repeatedly for
-        # the card beneath it, producing the observed cursor flicker.
-        try:
-            self.tip.wm_attributes('-disabled', True)
-        except tk.TclError:
-            pass
-        label = ttk.Label(
-            self.tip,
-            text=self.text,
-            justify='left',
-            font=('Segoe UI', 10),
-            padding=(8, 6, 8, 6),
-            relief='solid',
-            wraplength=380,
-        )
-        label.grid(row=0, column=0)
-        self.tip.update_idletasks()
-        tip_width = self.tip.winfo_reqwidth()
-        tip_height = self.tip.winfo_reqheight()
-        screen_width = self.widget.winfo_screenwidth()
-        screen_height = self.widget.winfo_screenheight()
-        pointer_x = self.widget.winfo_pointerx()
-        pointer_y = self.widget.winfo_pointery()
-        gap = 24
-        # Keep the tooltip wholly to one side of the pointer. Vertical
-        # clamping alone is insufficient for tall unlock summaries: it can
-        # place the Toplevel directly under the cursor and trigger flicker.
-        if pointer_x + gap + tip_width <= screen_width - 4:
-            x = pointer_x + gap
-        else:
-            x = max(4, pointer_x - gap - tip_width)
-        y = max(4, min(pointer_y + 12, screen_height - tip_height - 4))
-        self.tip.wm_geometry(f'+{x}+{y}')
-
-    def hide(self, event=None):
-        self.cancel_pending_show()
-        self.cancel_pending_hide()
-        if self.tip is not None:
-            try:
-                self.tip.destroy()
-            except tk.TclError:
-                pass
-            self.tip = None
-        _deactivate_tooltip(self)
-
-
-class TreeTooltip:
-    def __init__(self, tree, text_callback):
-        self.tree = tree
-        self.text_callback = text_callback
-        self.tip = None
-        self.current_row = None
-        tree.bind('<Motion>', self.on_motion, add='+')
-        tree.bind('<Leave>', self.hide, add='+')
-        tree.bind('<Unmap>', self.hide, add='+')
-        tree.bind('<Destroy>', self.hide, add='+')
-
-    def on_motion(self, event):
-        row = self.tree.identify_row(event.y)
-        if not row:
-            self.hide()
-            return
-
-        text = self.text_callback(row)
-        if not text:
-            self.hide()
-            return
-
-        x = self.tree.winfo_rootx() + event.x + 18
-        y = self.tree.winfo_rooty() + event.y + 12
-        if row != self.current_row:
-            self.hide()
-            self.current_row = row
-            _activate_tooltip(self)
-            self.tip = tk.Toplevel(self.tree)
-            self.tip.wm_overrideredirect(True)
-            label = ttk.Label(
-                self.tip,
-                text=text,
-                justify='left',
-                padding=(8, 6, 8, 6),
-                relief='solid',
-                wraplength=620,
-            )
-            label.grid(row=0, column=0)
-        self.tip.wm_geometry(f'+{x}+{y}')
-
-    def hide(self, event=None):
-        self.current_row = None
-        if self.tip is not None:
-            try:
-                self.tip.destroy()
-            except tk.TclError:
-                pass
-            self.tip = None
-        _deactivate_tooltip(self)
-
-
-def create_widgets(self):
+def _build_window_shell(self):
     main_frame = ttk.Frame(self, padding=(12, 12, 12, 12))
     self.main_frame = main_frame
     main_frame.grid(row=0, column=0, sticky='nsew')
@@ -349,9 +175,9 @@ def create_widgets(self):
         anchor='nw',
     )
     self.grid_content_frame.bind(
-        '<Configure>', self.on_grid_content_configure, add='+'
+        '<Configure>', self.on_grid_configure, add='+'
     )
-    self.grid_canvas.bind('<Configure>', self.on_grid_canvas_configure, add='+')
+    self.grid_canvas.bind('<Configure>', self.on_grid_configure, add='+')
     self.bind_all('<MouseWheel>', self.on_grid_mousewheel, add='+')
     self.bind_all('<Shift-MouseWheel>', self.on_grid_shift_mousewheel, add='+')
     self.grid_placeholder = ttk.Label(
@@ -383,6 +209,10 @@ def create_widgets(self):
     self.compact_action_row.grid(row=1, column=0, columnspan=2, sticky='ew')
     self.compact_action_row.grid_remove()
 
+    return main_frame
+
+
+def _build_right_panel(self, main_frame):
     right_frame = ttk.Frame(main_frame)
     self.right_frame = right_frame
     right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
@@ -604,6 +434,10 @@ def create_widgets(self):
         'Recovery only: use when a completed mission was not detected.',
     )
 
+    return info_tabs, settings_tab, settings_frame
+
+
+def _build_info_tabs(self, info_tabs, settings_tab):
     progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     progress_frame.columnconfigure(0, weight=1)
     progress_frame.rowconfigure(1, weight=1)
@@ -713,6 +547,8 @@ def create_widgets(self):
 
     info_tabs.add(settings_tab, text='Settings')
 
+
+def _build_advanced_tab(self, info_tabs):
     advanced_tab = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     self.advanced_tab = advanced_tab
     advanced_tab.columnconfigure(0, weight=1)
@@ -862,6 +698,8 @@ def create_widgets(self):
     self.advanced_pool_canvases['unit_buffs'] = buff_canvas
     self.advanced_pool_frames['unit_buffs'] = buff_content
 
+
+def _build_gameplay_settings(self, settings_frame):
     self.settings_intro_label = ttk.Label(
         settings_frame,
         text=(
@@ -1210,8 +1048,8 @@ def create_widgets(self):
         'newly unlocked mission names and faction colors.',
     )
 
-    self.refresh_setting_states()
 
+def _build_log_and_overlay(self, main_frame):
     self.status_label = ttk.Label(main_frame, text='Ready', anchor='w')
     self.status_label.grid(row=7, column=0, columnspan=2, sticky='ew', pady=(8, 0))
 
@@ -1284,313 +1122,15 @@ def create_widgets(self):
     self.apply_color_mode()
 
 
-def apply_color_mode(self):
-    palette = self.ui_palette()
-    style = self.style
-    # Native Windows themes ignore several color and state overrides. Clam
-    # honors the complete palette in both modes and keeps tab geometry stable.
-    target_theme = 'clam'
-    if target_theme in style.theme_names() and style.theme_use() != target_theme:
-        style.theme_use(target_theme)
-
-    background = palette['background']
-    panel = palette['panel']
-    foreground = palette['foreground']
-    field = palette['field']
-    border = palette['border']
-    selected = palette['select']
-    selected_foreground = palette['select_foreground']
-    self.configure(background=background)
-
-    style.configure('TFrame', background=background)
-    style.configure('TLabel', background=background, foreground=foreground)
-    style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
-    # ttk's canonical style name uses a lowercase "f". The old spelling
-    # configured an unused style and left Settings group interiors light.
-    style.configure('TLabelframe', background=background, bordercolor=border)
-    style.configure('TLabelframe.Label', background=background, foreground=foreground)
-    style.configure('TCheckbutton', background=background, foreground=foreground)
-    self.ensure_checkbutton_indicator()
-    style.configure('TRadiobutton', background=background, foreground=foreground)
-    style.configure('TButton', background=panel, foreground=foreground, bordercolor=border)
-    style.configure('Launch.TButton', background=panel, foreground=foreground, bordercolor=border)
-    style.map(
-        'TButton',
-        background=[('active', selected), ('pressed', selected)],
-        foreground=[('active', selected_foreground), ('pressed', selected_foreground)],
+def create_widgets(self):
+    """Construct launcher widgets by delegating each cohesive UI region."""
+    main_frame = _build_window_shell(self)
+    info_tabs, settings_tab, settings_frame = _build_right_panel(
+        self,
+        main_frame,
     )
-    style.map(
-        'TCheckbutton',
-        background=[('active', background)],
-        foreground=[('disabled', palette['muted']), ('active', foreground)],
-    )
-    style.configure('TEntry', fieldbackground=field, foreground=foreground, insertcolor=foreground)
-    style.configure('TSpinbox', fieldbackground=field, foreground=foreground, arrowcolor=foreground)
-    style.configure('TCombobox', fieldbackground=field, background=panel, foreground=foreground, arrowcolor=foreground)
-    style.map(
-        'TCombobox',
-        fieldbackground=[('readonly', field)],
-        foreground=[('readonly', foreground)],
-        selectbackground=[('readonly', selected)],
-        selectforeground=[('readonly', selected_foreground)],
-    )
-    style.configure('TNotebook', background=background, bordercolor=border)
-    style.configure('TNotebook.Tab', background=panel, foreground=foreground)
-    style.configure('Randomizer.TNotebook', background=background, bordercolor=border, tabposition='n')
-    style.configure(
-        'Randomizer.TNotebook.Tab',
-        background=panel,
-        foreground=foreground,
-        padding=(16, 7),
-        font=('Segoe UI', 10, 'bold'),
-    )
-    style.map(
-        'Randomizer.TNotebook.Tab',
-        background=[('selected', selected), ('active', palette['canvas'])],
-        foreground=[('selected', selected_foreground), ('active', foreground)],
-        padding=[('selected', (16, 7)), ('active', (16, 7))],
-    )
-    style.configure('Unlocks.TNotebook', background=background, bordercolor=border, tabposition='n')
-    style.configure(
-        'Unlocks.TNotebook.Tab',
-        background=panel,
-        foreground=foreground,
-        padding=(7, 7),
-        font=('Segoe UI', 9, 'bold'),
-    )
-    style.map(
-        'Unlocks.TNotebook.Tab',
-        background=[('selected', selected), ('active', palette['canvas'])],
-        foreground=[('selected', selected_foreground), ('active', foreground)],
-        padding=[('selected', (7, 7)), ('active', (7, 7))],
-    )
-    style.configure(
-        'Treeview',
-        background=field,
-        fieldbackground=field,
-        foreground=foreground,
-        bordercolor=border,
-    )
-    style.map(
-        'Treeview',
-        background=[('selected', selected)],
-        foreground=[('selected', selected_foreground)],
-    )
-    style.configure('Treeview.Heading', background=panel, foreground=foreground, bordercolor=border)
-    style.map('Treeview.Heading', background=[('active', palette['canvas'])])
-    style.configure('TScrollbar', background=panel, troughcolor=background, bordercolor=border, arrowcolor=foreground)
-
-    if hasattr(self, 'missions_tree'):
-        self.missions_tree.tag_configure(
-            'completed',
-            background='#244a32' if self.dark_mode_var.get() else '#dff2df',
-            foreground='#b8efc5' if self.dark_mode_var.get() else '#176b2c',
-        )
-        self.missions_tree.tag_configure(
-            'unlock_available',
-            foreground='#65f58c' if self.dark_mode_var.get() else '#087a2f',
-            font=('Segoe UI', 9, 'bold underline'),
-        )
-    for canvas_name in ('settings_canvas', 'grid_canvas'):
-        canvas = getattr(self, canvas_name, None)
-        if canvas is not None:
-            canvas.configure(background=palette['canvas'])
-    for canvas in getattr(self, 'advanced_pool_canvases', {}).values():
-        canvas.configure(background=palette['canvas'])
-    for text_name in ('rewards_text', 'unlocks_text'):
-        text_widget = getattr(self, text_name, None)
-        if text_widget is not None:
-            text_widget.configure(
-                background=field,
-                foreground=foreground,
-                insertbackground=foreground,
-                selectbackground=selected,
-                selectforeground=selected_foreground,
-            )
-    if hasattr(self, 'unlocks_text'):
-        self.unlocks_text.tag_configure(
-            'search_match',
-            background='#665c20' if self.dark_mode_var.get() else '#fff0a6',
-            foreground=foreground,
-        )
-        self.unlocks_text.tag_configure(
-            'search_current',
-            background='#9b5d1f' if self.dark_mode_var.get() else '#ffbf69',
-            foreground=foreground,
-        )
-    if hasattr(self, 'log_text'):
-        self.log_text.configure(
-            background=field,
-            foreground=foreground,
-            insertbackground=foreground,
-            selectbackground=selected,
-            selectforeground=selected_foreground,
-        )
-        self.log_text.tag_config('error', foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020')
-    if hasattr(self, 'busy_overlay'):
-        self.busy_overlay.configure(background=palette['busy'])
-        self.busy_card.configure(
-            background=palette['busy_card'],
-            highlightbackground=selected,
-        )
-        self.busy_title.configure(
-            background=palette['busy_card'],
-            foreground=palette['busy_title'],
-        )
-        self.busy_detail.configure(
-            background=palette['busy_card'],
-            foreground=palette['busy_detail'],
-        )
-
-
-def redraw_grid(self):
-    grid = self.state.get('grid') if self.state else None
-    content_frame = self.grid_content_frame
-    if not isinstance(grid, dict) or not grid.get('nodes'):
-        if self.grid_render_signature != ('empty',):
-            for child in content_frame.winfo_children():
-                child.destroy()
-            for column in range(self.grid_configured_width):
-                content_frame.columnconfigure(
-                    column, weight=0, minsize=0, uniform=''
-                )
-            for row in range(self.grid_configured_height):
-                content_frame.rowconfigure(
-                    row, weight=0, minsize=0, uniform=''
-                )
-            self.grid_configured_width = 1
-            self.grid_configured_height = 1
-            self.grid_tile_widgets = {}
-            self.grid_render_signature = ('empty',)
-            ttk.Label(
-                content_frame,
-                text='Generate a Grid Mode seed to create the mission grid.',
-                anchor='center',
-                justify='center',
-            ).grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
-            content_frame.columnconfigure(0, weight=1)
-            content_frame.rowconfigure(0, weight=1)
-            self.grid_canvas.xview_moveto(0)
-            self.grid_canvas.yview_moveto(0)
-            self.after_idle(self.resize_grid_canvas_window)
-        return
-
-    index_by_code = {mission['code']: idx for idx, mission in enumerate(self.missions)}
-    width = int(grid.get('width', 1))
-    height = int(grid.get('height', 1))
-    signature = (
-        'grid',
-        width,
-        height,
-        tuple(sorted(
-            (code, int(node['x']), int(node['y']))
-            for code, node in grid['nodes'].items()
-        )),
-    )
-    if signature == self.grid_render_signature:
-        self.refresh_grid_tiles()
-        return
-
-    for child in content_frame.winfo_children():
-        child.destroy()
-    self.grid_tile_widgets = {}
-    self.grid_render_signature = signature
-    for column in range(max(width, self.grid_configured_width)):
-        content_frame.columnconfigure(column, weight=0, minsize=0, uniform='')
-    for row in range(max(height, self.grid_configured_height)):
-        content_frame.rowconfigure(row, weight=0, minsize=0, uniform='')
-    self.grid_configured_width = width
-    self.grid_configured_height = height
-    for column in range(width):
-        content_frame.columnconfigure(
-            column,
-            weight=1,
-            minsize=105,
-            uniform='grid-column',
-        )
-    for row in range(height):
-        content_frame.rowconfigure(row, weight=1, minsize=88, uniform='grid-row')
-
-    positions = {
-        (node['x'], node['y']): code
-        for code, node in grid['nodes'].items()
-    }
-    # Create every coordinate slot, including a quiet background for a
-    # trimmed corner. This keeps rows and columns visually aligned as a
-    # board instead of allowing an irregular set of widgets to collapse.
-    for row in range(height):
-        for column in range(width):
-            if (column, row) in positions:
-                continue
-            spacer = tk.Frame(
-                content_frame,
-                background=self.ui_palette()['canvas'],
-                borderwidth=0,
-            )
-            spacer.grid(row=row, column=column, sticky='nsew', padx=3, pady=3)
-
-    for code, node in grid['nodes'].items():
-        tile = tk.Frame(
-            content_frame,
-            relief='flat',
-            borderwidth=0,
-            highlightthickness=3,
-            highlightbackground=self.ui_palette()['canvas'],
-            cursor='hand2',
-        )
-        tile.mission_code = code
-        tile.columnconfigure(0, weight=1)
-        tile.rowconfigure(0, weight=1)
-        selection_frame = tk.Frame(
-            tile,
-            relief='flat',
-            borderwidth=0,
-            cursor='hand2',
-        )
-        selection_frame.columnconfigure(0, weight=1)
-        selection_frame.rowconfigure(1, weight=1)
-        is_goal = code == grid.get('goal')
-        selection_frame.grid(
-            row=0,
-            column=0,
-            sticky='nsew',
-            padx=3 if is_goal else 0,
-            pady=3 if is_goal else 0,
-        )
-        banner = tk.Label(
-            selection_frame,
-            font=('Segoe UI', 7, 'bold'),
-            anchor='center',
-            justify='center',
-            wraplength=max(74, 520 // max(1, width)),
-            padx=3,
-            pady=3,
-        )
-        banner.grid(row=0, column=0, sticky='ew', padx=4, pady=(4, 0))
-        body = tk.Label(
-            selection_frame,
-            font=('Segoe UI', 9, 'bold'),
-            justify='center',
-            anchor='center',
-            wraplength=max(80, 560 // max(1, width)),
-            padx=5,
-            pady=6,
-        )
-        body.grid(row=1, column=0, sticky='nsew', padx=4, pady=(0, 4))
-        mission_index = index_by_code.get(code, 0)
-        for widget in (tile, selection_frame, banner, body):
-            widget.bind(
-                '<Button-1>',
-                lambda event, index=mission_index: self.select_grid_mission(index),
-            )
-        tile.grid(row=node['y'], column=node['x'], sticky='nsew', padx=3, pady=3)
-        self.grid_tile_widgets[code] = {
-            'tile': tile,
-            'selection': selection_frame,
-            'banner': banner,
-            'body': body,
-        }
-    self.grid_canvas.xview_moveto(0)
-    self.grid_canvas.yview_moveto(0)
-    self.after_idle(self.resize_grid_canvas_window)
-    self.refresh_grid_tiles()
+    _build_info_tabs(self, info_tabs, settings_tab)
+    _build_advanced_tab(self, info_tabs)
+    _build_gameplay_settings(self, settings_frame)
+    self.refresh_setting_states()
+    _build_log_and_overlay(self, main_frame)

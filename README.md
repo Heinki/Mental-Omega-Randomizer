@@ -77,6 +77,7 @@ Each document has one purpose so the same behavior is not maintained in several 
 
 | Document | Audience | Authoritative content |
 |---|---|---|
+| [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Contributors | Feature-to-file map, runtime flow, module boundaries, change rules, validation |
 | [README_RANDOMIZER.md](README_RANDOMIZER.md) | Players and future Archipelago option authors | Complete settings tables, reward display, game modes, seed lifecycle, and user-facing limitations |
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
 | [configs/README.md](configs/README.md) | Maintainers and advanced users | Editable static mission, faction, reward, unit, and UI JSON configuration |
@@ -125,19 +126,36 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | File | Responsibility |
 |---|---|
 | `launcher_gui.py` | Packaged/source entry point and self-check |
-| `randomizer_app.py` | Tk interface, seed flow, game launch, and log watcher |
+| `randomizer_app.py` | Tk state, orchestration, game launch, and log watcher |
+| `randomizer_ui_builder.py` | Widget construction |
+| `randomizer_ui_theme.py` | Tk palette and style application |
+| `randomizer_ui_grid.py` | Grid Mode widget rendering |
+| `randomizer_ui_tooltips.py` | Shared widget/tree tooltip lifecycle |
 | `grid_progression.py` | Grid construction, corner trimming, node state, neighbor unlocks, and exit rules |
 | `randomizer_missions.py` | Pure campaign parsing, faction normalization, stage scoring, and deterministic mission ordering |
+| `randomizer_seed_rewards.py` | Pure deterministic reward-slot planning |
+| `randomizer_reward_rules.py` | Reward access IDs and role-buff scope |
 | `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass section merging |
-| `randomizer_map.py` | Generated-map patching, marker helpers, tech rules, and map-local buffs |
+| `randomizer_map_pipeline.py` | Ordered generated-map preparation |
+| `randomizer_map_houses.py` | House/country discovery |
+| `randomizer_map_ownership.py` | Placed/scripted ownership safety |
+| `randomizer_map_hooks.py` | Bounded map Action and marker mechanics |
+| `randomizer_map_progress_hooks.py` | Check/action pairing and marker injection |
+| `randomizer_map_settings.py` | Launch-time map color/EVA settings |
+| `randomizer_map.py` | Player clones, buffs, helper production, and power construction |
 | `randomizer_mission_safety.py` | Mixed-faction and Chaos production access |
 | `randomizer_rewards.py` | Reward catalogue, equivalence groups, stacking, and display helpers |
 | `randomizer_cameos.py` | Installed MIX cameo extraction and PCX-to-PNG decoding |
 | `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and loose game-asset deployment |
 | `randomizer_config.py` | YAML-compatible configuration defaults and persistence |
+| `randomizer_config_schema.py` | Static JSON schemas and focused validators |
+| `randomizer_static_config.py` | Static JSON path/loading/cache behavior |
+| `randomizer_launch_options.py` | Spawn and option INI mechanics |
+| `randomizer_storage.py` | Atomic text/JSON persistence |
+| `randomizer_state.py` | Pure persisted-state normalization and migration helpers |
 | `randomizer_diagnostics.py` | Bounded structured launcher logging for support and debugging |
 | `randomizer_paths.py` | Source and packaged runtime paths |
-| `randomizer_weapon_stats.py` | Readable accessors for the installed weapon registry snapshot |
+| `randomizer_weapon_stats.py` | Documented imports for the installed weapon registry snapshot |
 | `randomizer_weapon_stats_data.py` | Generated packed Mental Omega 3.3.6 weapon data |
 | `build_exe.ps1` | PyInstaller build and packaged self-check workflow |
 

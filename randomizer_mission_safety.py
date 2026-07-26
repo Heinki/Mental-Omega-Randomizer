@@ -6,23 +6,26 @@ campaigns translate earned roles to that production; All Campaigns preserves
 exact per-faction unlocks.
 """
 
-from randomizer_map import (
-    build_unit_usage_index,
+from randomizer_collections import comma_items, unique_in_order
+
+from randomizer_map import safe_engineer_identity_values
+from randomizer_map_houses import (
     country_family,
     map_house_records,
     player_controlled_houses,
     player_house_from_map,
-    player_transfer_houses,
     production_owner_countries,
     resolve_configured_helper_houses,
-    safe_engineer_identity_values,
+)
+from randomizer_map_ownership import (
+    build_unit_usage_index,
+    player_transfer_houses,
     unit_usage_houses,
     unsafe_country_houses,
 )
 from randomizer_ini import all_section_value_maps, section_lines
 from randomizer_rewards import (
     BUFF_TARGETS,
-    ENGINEER_UNIT_IDS,
     REWARD_POOL,
     unit_role_equivalents,
 )
@@ -280,21 +283,8 @@ def _player_family(lines, house_records):
     return country_family(house_records.get(player_house, {}))
 
 
-def _comma_items(value):
-    return [item.strip() for item in str(value or '').split(',') if item.strip()]
-
-
 def _merged_items(*groups):
-    result = []
-    seen = set()
-    for group in groups:
-        for item in group:
-            key = item.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            result.append(item)
-    return result
+    return unique_in_order(item for group in groups for item in group)
 
 
 def safe_build_countries(lines, house_records=None, additional_houses=()):
@@ -413,7 +403,7 @@ def single_engineer_rules(
         lines, player_countries, sections=sections
     )
     engineer_country_universe = _merged_items(*(
-        _comma_items(forbidden)
+        comma_items(forbidden)
         for forbidden in ENGINEER_INSTALLED_FORBIDDEN_HOUSES.values()
     ))
     rules = {}
@@ -430,7 +420,7 @@ def single_engineer_rules(
             prerequisites.extend(special_barracks)
         forbidden_native_owners = {
             item.lower()
-            for item in _comma_items(
+            for item in comma_items(
                 ENGINEER_INSTALLED_FORBIDDEN_HOUSES[engineer_id]
             )
         }
@@ -472,13 +462,13 @@ def _build_access_rule(
 ):
     """Build common ownership and prerequisite fields for earned access."""
     owners = _merged_items(
-        _comma_items(native_owners),
+        comma_items(native_owners),
         production_owner_countries(
             lines, player_build_countries, sections=sections
         ),
     )
     required_houses = _merged_items(
-        _comma_items(native_owners), player_build_countries
+        comma_items(native_owners), player_build_countries
     )
     rule = {
         'TechLevel': tech_level,
@@ -521,16 +511,16 @@ def mission_basic_unit_rules(
         house_records,
         additional_production_houses,
     ))
-    if translate_equivalents:
-        # Single-campaign seeds translate earned roles for any foreign factory
-        # physically present in the mission. Prerequisites keep access dormant
-        # until that building is captured; All Campaigns keeps prior behavior.
-        production_buildings.extend(
-            building_id
-            for line in section_lines(lines, 'Structures')
-            for _owner, building_id in [_structure_owner_and_type(line)]
-            if building_id
-        )
+    # Any placed foreign factory can become player-owned through an Engineer.
+    # Its prerequisite keeps access dormant until capture. All Campaigns
+    # exposes only exact earned IDs; selected single campaigns translate an
+    # earned role to that factory family's equivalent below.
+    production_buildings.extend(
+        building_id
+        for line in section_lines(lines, 'Structures')
+        for _owner, building_id in [_structure_owner_and_type(line)]
+        if building_id
+    )
 
     for building_id in _merged_items(production_buildings):
         building_match = PRODUCTION_LOOKUP.get(building_id)
@@ -1058,6 +1048,7 @@ def starting_tier_one_rules(
     additional_build_houses=(),
     additional_production_houses=(),
     excluded_unit_ids=(),
+    allow_player_family_fallback=False,
 ):
     """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
     selected_ids = {
@@ -1136,6 +1127,21 @@ def starting_tier_one_rules(
         for family in standard_families
         if str(family or '').lower() in STANDARD_TIER_ONE_FAMILIES
     }
+    if not production_categories and allow_player_family_fallback:
+        # Ordinary campaign maps can transfer/spawn the player's MCV only
+        # after their opening script. Resolve the future native production
+        # family from the human house without granting a foreign factory.
+        player_families = {
+            country_family(records.get(house, {}))
+            for house in player_controlled_houses(lines, records=records)
+        }
+        for family in player_families.intersection(allowed_families):
+            production_categories.update({
+                (family, 'base'),
+                (family, 'infantry'),
+                (family, 'vehicles'),
+                (family, 'air'),
+            })
     available_categories = set()
     for family, category in production_categories:
         if family not in allowed_families:

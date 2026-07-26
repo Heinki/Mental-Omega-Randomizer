@@ -44,29 +44,9 @@ from randomizer_weapon_stats_data import (
     WEAPON_USER_IDS,
 )
 
-
-def direct_weapon_ids(unit_id):
-    """Return weapons mounted directly on ``unit_id``."""
-    return ROSTER_WEAPON_REFS.get(str(unit_id or '').upper(), ())
-
-
-def damage_weapon_ids(unit_id):
-    """Return the direct or spawned weapons carrying ``unit_id`` damage."""
-    return ROSTER_DAMAGE_WEAPON_REFS.get(str(unit_id or '').upper(), ())
-
-
-def weapon_base_stats(weapon_id):
-    """Return named base stats for one WeaponType, omitting undefined fields."""
-    values = WEAPON_BASE_STATS.get(str(weapon_id or '').upper())
-    if not values:
-        return {}
-    return {
-        field: value
-        for field, value in zip(('damage', 'rof', 'range'), values)
-        if value is not None
-    }
-
-
-def weapon_user_ids(weapon_id):
-    """Return every unit, AI type, or spawner that can use ``weapon_id``."""
-    return WEAPON_USER_IDS.get(str(weapon_id or '').upper(), ())
+__all__ = (
+    'ROSTER_DAMAGE_WEAPON_REFS',
+    'ROSTER_WEAPON_REFS',
+    'WEAPON_BASE_STATS',
+    'WEAPON_USER_IDS',
+)

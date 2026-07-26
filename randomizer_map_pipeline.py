@@ -1,5 +1,6 @@
 """Generated mission-map pipeline separated from Tk orchestration."""
 
+from randomizer_collections import unique_in_order
 from randomizer_cameos import installed_rules_registry
 from randomizer_custom_assets import deploy_superweapon_sidebar_assets
 from randomizer_ini import (
@@ -11,44 +12,43 @@ from randomizer_ini import (
 from randomizer_map import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
-    action_has_code,
-    action_has_objective_complete,
-    action_line_ids,
-    append_action_to_action_id,
-    append_hook_team,
-    append_parallel_global_hook,
     append_superweapon_grant_trigger,
     backup_file_once,
     clone_player_country_for_house_buffs,
     cloned_superweapon_plan,
-    expand_equivalent_role_buffs,
     helper_ai_autobuild_plan,
     helper_ai_autobuild_rules,
-    hook_marker_name,
-    insert_actions_before_codes,
     is_generated_hooked_map,
-    map_house_records,
     mission_assistance_buff_rules,
     mission_assistance_direct_rewards,
     mission_assistance_unit_ids,
-    mission_house_color_rules,
-    mission_eva_voice_rules,
     native_variant_unit_buff_rules,
     native_variant_veterancy_rules,
-    player_controlled_houses,
     player_country_buff_rules,
-    player_country_from_map,
-    player_house_from_map,
     player_unit_clone_rules,
     resolved_academy_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
-    resolve_configured_helper_houses,
     stacked_house_buff_values,
     suppressed_superweapon_building_ids,
-    trigger_action_ids_by_name,
-    unique_in_order,
     unit_weapon_buff_rules,
+)
+from randomizer_reward_rules import expand_equivalent_role_buffs
+from randomizer_map_progress_hooks import (
+    inject_check_markers,
+    pending_check_hook_plan,
+)
+from randomizer_map_houses import (
+    map_house_records,
+    player_controlled_houses,
+    player_country_from_map,
+    player_house_from_map,
+    resolve_configured_helper_houses,
+)
+from randomizer_map_settings import (
+    apply_mission_eva_voice,
+    mission_eva_voice_rules,
+    mission_house_color_rules,
 )
 from randomizer_mission_houses import mission_house_config, mission_player_power_houses
 from randomizer_mission_overrides import (
@@ -120,14 +120,33 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.append_log(
             f'Applied map color settings to {len(color_rules)} house(s).'
         )
-    eva_rules, eva_label = mission_eva_voice_rules(
+    eva_rules, eva_label, eva_action_index = mission_eva_voice_rules(
         self.eva_voice_var.get(),
         EVA_VOICE_TAGS,
         random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
     )
     if eva_rules:
         merge_ini_section_values(lines, eva_rules)
-        self.append_log(f'Applied {eva_label} EVA voice for this mission.')
+        eva_trigger, rewritten_eva_actions = apply_mission_eva_voice(
+            lines,
+            player_country_from_map(lines),
+            eva_action_index,
+        )
+        if eva_trigger:
+            rewrite_note = (
+                f' Rebound {rewritten_eva_actions} native EVA re-enable action(s).'
+                if rewritten_eva_actions
+                else ''
+            )
+            self.append_log(
+                f'Applied live {eva_label} EVA voice for this mission.'
+                f'{rewrite_note}'
+            )
+        else:
+            self.append_log(
+                f'Could not create live {eva_label} EVA startup action.',
+                error=True,
+            )
     team_house_overrides = MISSION_TEAM_HOUSE_OVERRIDES.get(code, {})
     if team_house_overrides:
         available_team_ids = {
@@ -770,80 +789,27 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     if removed_techlevel_actions:
         self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
-    objective_action_ids = action_line_ids(
-        lines,
-        lambda groups: action_has_objective_complete(groups) and not action_has_code(groups, 1) and not action_has_code(groups, 67),
-    )
-    # Prefer a real Winner action over Announce Win. Some missions contain
-    # both, and choosing whichever appears first can fire the marker during
-    # an earlier victory announcement instead of the terminal win action.
-    victory_action_ids = unique_in_order(
-        action_line_ids(lines, lambda groups: action_has_code(groups, 1))
-        + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
-        + trigger_action_ids_by_name(lines, ['[win]', '/win', 'mission victory', 'mission successful'])
-    )
     checks = self.mission_checks(code) if self.state else []
-
-    patch_plan = []
-    objective_checks = [check for check in checks if check.get('id') != 'victory']
-    for check, action_id in zip(objective_checks, objective_action_ids):
-        if not check.get('unlocked'):
-            patch_plan.append((check, action_id))
-
-    victory_check = next((check for check in checks if check.get('id') == 'victory'), None)
-    if victory_check and not victory_check.get('unlocked') and victory_action_ids:
-        patch_plan.append((victory_check, victory_action_ids[0]))
-    elif victory_check and not victory_check.get('unlocked'):
+    patch_plan, missing_victory = pending_check_hook_plan(lines, checks)
+    if missing_victory:
         self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
 
     if not patch_plan and not rule_sections and not superweapon_trigger:
         self.append_log(f'No hookable objective/victory triggers found for {scenario}. Progress may not be recorded.')
         return None
 
-    markers = {}
-    for index, (check, action_id) in enumerate(patch_plan, start=1):
-        marker = hook_marker_name(code, check.get('id', f'check_{index}'))
-        team_id = f'RND{index:05d}'
-        taskforce_id = f'RNT{index:05d}'
-        script_id = f'RNS{index:05d}'
-        marker_action = ['4', '1', team_id, '0', '0', '0', '0', 'A']
-        if check.get('id') == 'victory':
-            patched = insert_actions_before_codes(
-                lines,
-                action_id,
-                [marker_action],
-                before_codes=('1', '67', '69'),
-            )
-            # A name-based fallback may identify a victory action list
-            # without one of the standard terminal codes. Preserve the
-            # previous append behavior for those unusual maps.
-            if not patched:
-                patched = append_action_to_action_id(lines, action_id, marker_action)
-        else:
-            patched = append_action_to_action_id(lines, action_id, marker_action)
-            if not patched:
-                patched = append_parallel_global_hook(
-                    lines,
-                    action_id,
-                    marker_action,
-                    marker,
-                )
-        if patched:
-            append_hook_team(
-                lines,
-                team_id,
-                taskforce_id,
-                script_id,
-                marker,
-                hook_house,
-            )
-            markers[marker] = check.get('id')
-        else:
-            self.append_log(
-                f'Skipped automatic {check.get("name", check.get("id", "check"))} hook for '
-                f'{scenario}: action {action_id} has no safe room for a marker.',
-                error=True,
-            )
+    markers, hook_failures = inject_check_markers(
+        lines,
+        code,
+        patch_plan,
+        hook_house,
+    )
+    for check, action_id in hook_failures:
+        self.append_log(
+            f'Skipped automatic {check.get("name", check.get("id", "check"))} hook for '
+            f'{scenario}: action {action_id} has no safe room for a marker.',
+            error=True,
+        )
 
     if patch_plan and not markers:
         self.append_log(f'Hook map generation found triggers for {scenario}, but patching actions failed.', error=True)

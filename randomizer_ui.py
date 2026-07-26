@@ -1,8 +1,4 @@
-"""UI choices and palettes for the launcher.
-
-Keeping presentation data here prevents gameplay/orchestration code from
-becoming the place contributors must edit for labels, colors, or themes.
-"""
+"""Typed UI choices and palettes loaded from editable configuration."""
 
 from randomizer_static_config import load_static_config
 
@@ -17,16 +13,12 @@ PROGRESSION_MODES = list(_UI_CONFIG['progression_modes'])
 DEFAULT_PROGRESSION_MODE = str(_UI_CONFIG['default_progression_mode'])
 PLAYER_COLORS = list(_UI_CONFIG['player_colors'])
 RAINBOWIZER_COLORS = list(_UI_CONFIG['rainbowizer_colors'])
-EVA_VOICE_CHOICES = list(_UI_CONFIG.get(
-    'eva_voice_choices',
-    ['Mission default', 'Allied', 'Soviet', 'Epsilon', 'Foehn', 'Random'],
-))
-EVA_VOICE_TAGS = dict(_UI_CONFIG.get('eva_voice_tags', {
-    'Allied': 'Allied',
-    'Soviet': 'Russian',
-    'Epsilon': 'Yuri',
-    'Foehn': 'Foehn',
-}))
+
+# Voice tags are one source of truth. Dict insertion order controls menu order;
+# adding/removing/renaming one entry updates both choices and map tag lookup.
+EVA_VOICE_TAGS = dict(_UI_CONFIG['eva_voice_tags'])
+EVA_VOICE_CHOICES = ['Mission default', *EVA_VOICE_TAGS, 'Random']
+
 REWARDS_PER_CHECK_MAXIMUM_MESSAGE = str(
     _UI_CONFIG['rewards_per_check_messages']['maximum']
 )

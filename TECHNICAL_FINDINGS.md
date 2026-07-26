@@ -8,20 +8,33 @@ This document is the authoritative implementation reference. Player-facing optio
 |---|---|
 | `launcher_gui.py` | Entry point and packaged `--self-check` |
 | `randomizer_app.py` | Tk state, deterministic seed construction, launch orchestration, progress state, and debug-log polling |
-| `randomizer_ui_builder.py` | Widget construction, palette application, and Grid Mode rendering |
+| `randomizer_ui_builder.py` | Widget construction |
+| `randomizer_ui_theme.py` | Tk palette and style application |
+| `randomizer_ui_grid.py` | Grid Mode widget rendering |
+| `randomizer_ui_tooltips.py` | Shared widget/tree tooltip lifecycle and active-tooltip ownership |
 | `grid_progression.py` | Pure grid topology, corner trimming, explicit node states, unlock queries, and completion rules |
 | `randomizer_missions.py` | Pure BattleClient parsing, faction normalization, mission staging, campaign caps, and deterministic ordering |
 | `randomizer_ini.py` | Order-preserving INI/map parsing and one-pass bulk section merging |
 | `randomizer_map.py` | Generated-map rules, trigger marker structures, country buffs, and guarded direct buffs |
 | `randomizer_map_pipeline.py` | Ordered per-launch map preparation and hook injection pipeline |
+| `randomizer_map_houses.py` | Pure map house/country discovery and production-family classification |
+| `randomizer_map_ownership.py` | Placed/TaskForce/AITrigger ownership and helper/enemy safety |
+| `randomizer_map_hooks.py` | Parser-bounded Action editing and marker TeamType construction |
+| `randomizer_map_progress_hooks.py` | Pure check/action pairing and objective/victory marker injection |
+| `randomizer_map_settings.py` | Deterministic launch-time House color and EVA overrides |
 | `randomizer_mission_safety.py` | Mission production discovery and Standard/Chaos access fallbacks |
 | `randomizer_mission_overrides.py` | Typed adapter for reviewed mission exceptions loaded from JSON |
 | `randomizer_rewards.py` | Reward derivation, canonicalization, stack limits, and display behavior |
 | `randomizer_cameos.py` | On-demand MIX extraction and PCX decoding |
 | `randomizer_custom_assets.py` | Configured PNG-to-PCX conversion and game-root deployment |
 | `randomizer_ui.py` | Typed adapter for choices and palettes loaded from JSON |
-| `randomizer_static_config.py` | Validated source/frozen JSON loading and visible packaged overrides |
-| `randomizer_storage.py` | Atomic text replacement for persistent config and seed state |
+| `randomizer_config_schema.py` | Required static JSON shapes and per-file validators |
+| `randomizer_static_config.py` | Source/frozen JSON loading, caching, and visible packaged overrides |
+| `randomizer_seed_rewards.py` | Pure deterministic reward-slot planning |
+| `randomizer_reward_rules.py` | Reward-to-TechnoType access and equivalent-buff scope |
+| `randomizer_launch_options.py` | Spawn/option INI serialization and oversized-file patching |
+| `randomizer_storage.py` | Atomic text/JSON replacement for persistent config and seed state |
+| `randomizer_state.py` | Pure persisted-state normalization for checks, failure stacks, and assistance units |
 
 The launcher does not patch the original campaign MIX archives. It extracts and caches source maps, writes a temporary loose root map for the selected scenario, and removes only files carrying the randomizer hook marker.
 
@@ -399,7 +412,19 @@ Map and cameo extraction load `NLog.dll`, `CNCMaps.Shared.dll`, and `CNCMaps.Fil
 - A 97-map maximum-power/veterancy audit produced all four groups of four hidden EMPulse cannons on every map, direct-fire references for Mercury, Wallbuster, Devourer, and Nanofiber, no missing/unknown Academy IDs, and compact Elite Reserves targets on every map.
 Insomnia keeps `TANY` and `SIEG` native across initial teams, Event 61 absence checks, and respawn TaskForces, then forwards earned buffs directly to those map identities. Cloning only the watched identity made live heroes count as absent and produced duplicate respawns.
 
-EVA selection is launch-time appearance state, not seed progression. Ares reads `EVA.Tag` from Side sections: Allied uses `Allied`, Soviet uses `Russian`, Epsilon uses `Yuri`, and Foehn uses `Foehn`. One selected or seed+mission-deterministic random tag is written to all four playable sides, keeping one announcer through scripted house/control changes.
+EVA selection is launch-time appearance state, not seed progression. Side
+`EVA.Tag` fields alone are not reliable for an already-created campaign player.
+Launch generation therefore keeps the four Side fields as fallback and adds
+Ares action `148` at time zero for the live player: Allied `0`, Russian `1`,
+Yuri `2`, then configured custom tags from `3` onward. Native positive action
+`148` changes are rebound to the selected voice; `-1` still silences EVA for
+authored cinematics.
+
+Standard Tier 1 role markers resolve against each launch map's actual production
+family. Ordinary maps whose MCV/factories appear only after opening scripts fall
+back to the human house family, without granting foreign production. True
+fixed-unit/no-build maps retain no starter combat units; reviewed no-build maps
+with authored production still receive compatible starters.
 
 ## Known Limits
 

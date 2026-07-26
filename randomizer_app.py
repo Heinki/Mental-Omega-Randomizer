@@ -1,4 +1,3 @@
-﻿import json
 import logging
 import queue
 import random
@@ -11,7 +10,18 @@ import time
 import traceback
 
 from randomizer_config import CONFIG_PATH, DEFAULT_CONFIG, load_config, save_config
-from randomizer_storage import atomic_write_text
+from randomizer_storage import atomic_write_json, read_json_object
+from randomizer_state import (
+    normalize_assistance_units,
+    normalize_completed_checks,
+    normalize_failure_stacks,
+)
+from randomizer_seed_rewards import plan_seed_rewards
+from randomizer_launch_options import (
+    choice_label_from_ini,
+    patch_large_ini_key,
+    spawn_ini_text,
+)
 from randomizer_cameos import (
     cameo_extraction_pending,
     ensure_superweapon_cameos,
@@ -28,7 +38,6 @@ from grid_progression import (
     UNLOCKED as GRID_UNLOCKED,
     completing_unlocks,
     create_grid,
-    grid_opening_mission_codes,
     grid_opening_mission_count,
     is_complete as is_grid_complete,
     refresh_states as refresh_grid_states,
@@ -39,7 +48,6 @@ from randomizer_missions import (
     LATE_FOEHN_MISSION_CODES,
     LOW_LEVEL_MISSION_COUNT,
     NO_BUILD_MISSION_CODES,
-    OPERATION_MISSION_CODES,
     STARTING_UNLOCKED_MISSIONS,
     campaign_mission_counts,
     classic_mission_order,
@@ -62,7 +70,6 @@ from randomizer_rewards import (
     BUFF_TYPES,
     DEFAULT_REWARDS_PER_CHECK,
     effective_buff_count,
-    buff_stack_limit,
     MAX_REWARDS_PER_CHECK,
     REWARD_POOL,
     SPECIAL_BUILDING_DEFINITIONS,
@@ -116,9 +123,8 @@ from randomizer_map import (
     now_stamp,
     player_house_from_map,
     map_house_records,
-    tech_ids_for_rewards,
-    unlocked_reward_tech_ids,
 )
+from randomizer_reward_rules import tech_ids_for_rewards, unlocked_reward_tech_ids
 from randomizer_mission_safety import (
     always_available_transport_rules,
     chaos_earned_access_rules,
@@ -152,17 +158,14 @@ from randomizer_ui import (
     LIGHT_UI_PALETTE,
     PLAYER_COLORS,
     PROGRESSION_MODES,
-    RAINBOWIZER_COLORS,
     REWARDS_PER_CHECK_MAXIMUM_MESSAGE,
     REWARDS_PER_CHECK_MESSAGE_THRESHOLDS,
     REWARD_MODES,
 )
-from randomizer_ui_builder import (
-    WidgetTooltip,
-    apply_color_mode as apply_launcher_color_mode,
-    create_widgets as build_launcher_widgets,
-    redraw_grid as redraw_launcher_grid,
-)
+from randomizer_ui_builder import create_widgets as build_launcher_widgets
+from randomizer_ui_grid import redraw_grid as redraw_launcher_grid
+from randomizer_ui_theme import apply_color_mode as apply_launcher_color_mode
+from randomizer_ui_tooltips import WidgetTooltip
 from randomizer_tuning import REWARD_PLANNING
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
@@ -709,10 +712,8 @@ class LauncherApp(tk.Tk):
             self.settings_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
-    def on_grid_content_configure(self, event=None):
-        self.resize_grid_canvas_window()
-
-    def on_grid_canvas_configure(self, event=None):
+    def on_grid_configure(self, event=None):
+        """Keep cached Grid content and canvas viewport dimensions aligned."""
         self.resize_grid_canvas_window()
 
     def resize_grid_canvas_window(self):
@@ -997,9 +998,7 @@ class LauncherApp(tk.Tk):
         if not STATE_PATH.exists():
             return {}
         try:
-            data = json.loads(read_text(STATE_PATH))
-            if isinstance(data, dict):
-                return data
+            return read_json_object(STATE_PATH)
         except Exception:
             log_event('state_load_failed', level=logging.ERROR, traceback=traceback.format_exc())
         return {}
@@ -1044,55 +1043,10 @@ class LauncherApp(tk.Tk):
             self.state['check_schema_version'] = CHECK_SCHEMA_VERSION
             changed = True
 
-        completed = self.state.setdefault('completed_missions', [])
-        mission_checks = self.state.get('mission_checks', {})
-        for code, checks in mission_checks.items():
-            victory_unlocked = any(check.get('id') == 'victory' and check.get('unlocked') for check in checks)
-            if victory_unlocked or code in completed:
-                if code not in completed:
-                    completed.append(code)
-                    changed = True
-                for check in checks:
-                    if not check.get('unlocked'):
-                        check['unlocked'] = True
-                        changed = True
-                    if check.pop('released', None) is not None:
-                        changed = True
-
-        raw_failure_stacks = self.state.get('mission_failure_stacks', {})
-        if not isinstance(raw_failure_stacks, dict):
-            raw_failure_stacks = {}
-        valid_codes = set(self.state.get('mission_order', []))
-        normalized_failure_stacks = {}
-        for code, value in raw_failure_stacks.items():
-            try:
-                count = max(0, int(value))
-            except (TypeError, ValueError):
-                count = 0
-            if code in valid_codes and code not in completed and count:
-                normalized_failure_stacks[code] = count
-        if self.state.get('mission_failure_stacks') != normalized_failure_stacks:
-            self.state['mission_failure_stacks'] = normalized_failure_stacks
-            changed = True
-
-        raw_assistance_units = self.state.get('mission_assistance_units', {})
-        if not isinstance(raw_assistance_units, dict):
-            raw_assistance_units = {}
-        normalized_assistance_units = {}
-        for code, unit_ids in raw_assistance_units.items():
-            if code not in valid_codes or code in completed or not isinstance(unit_ids, list):
-                continue
-            normalized = sorted({
-                str(unit_id).upper()
-                for unit_id in unit_ids
-                if BUFF_TARGETS.get(str(unit_id).upper(), {}).get('category')
-                in {'infantry', 'units', 'aircraft'}
-            })
-            if normalized:
-                normalized_assistance_units[code] = normalized
-        if self.state.get('mission_assistance_units') != normalized_assistance_units:
-            self.state['mission_assistance_units'] = normalized_assistance_units
-            changed = True
+        changed = normalize_completed_checks(self.state) or changed
+        changed = normalize_failure_stacks(self.state) or changed
+        changed = normalize_assistance_units(self.state, BUFF_TARGETS) or changed
+        completed = self.state['completed_missions']
 
         if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
             existing_grid = self.state['grid']
@@ -1136,7 +1090,7 @@ class LauncherApp(tk.Tk):
             self.save_state()
 
     def save_state(self):
-        atomic_write_text(STATE_PATH, json.dumps(self.state, indent=2))
+        atomic_write_json(STATE_PATH, self.state)
 
     def config_reward_settings(self):
         generation_config = self.config.get('generation', {})
@@ -2105,23 +2059,6 @@ class LauncherApp(tk.Tk):
         progression_mode=None,
         grid=None,
     ):
-        rng = random.Random(f'{seed}:seed-rewards')
-        require_access_for_unit_buffs = self.randomize_unit_access_enabled()
-        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
-        used_access_names = set()
-        seed_unlocked_tech_ids = (
-            self.active_starting_tier_one_access_ids()
-            | set(ALWAYS_AVAILABLE_TECH_IDS)
-        )
-        buff_counts = {}
-        unit_buff_counts = {}
-        global_buff_counts = {}
-        plan = {
-            code: [None] * max(0, int(slots_by_code.get(code, 0)))
-            for code in mission_codes
-        }
-        global_index = 0
-
         if progression_mode is None:
             progression_mode = (
                 self.state.get('progression_mode')
@@ -2132,227 +2069,19 @@ class LauncherApp(tk.Tk):
             )
         if grid is None and getattr(self, 'state', None):
             grid = self.state.get('grid')
-
-        def unit_access_earned(unit):
-            return (
-                unit in seed_unlocked_tech_ids
-                or (
-                    share_chaos_role_buffs
-                    and bool(unit_role_equivalents(unit).intersection(seed_unlocked_tech_ids))
-                )
-            )
-
-        def buff_count_key(reward):
-            unit = reward.get('unit')
-            if share_chaos_role_buffs and unit and not reward.get('global_buff'):
-                return (reward.get('buff_type'), tuple(sorted(unit_role_equivalents(unit))))
-            return reward.get('name')
-
-        def record_unit_buff(unit):
-            units = unit_role_equivalents(unit) if share_chaos_role_buffs else {unit}
-            for affected_unit in units:
-                unit_buff_counts[affected_unit] = unit_buff_counts.get(affected_unit, 0) + 1
-
-        # Reward settings are seed-wide, and the current faction selector does
-        # not vary by mission code. Build/canonicalize each distinct faction
-        # pool once instead of repeating it for every mission. Buff metadata is
-        # also static during the draw and is therefore calculated once here.
-        pool_cache = {}
-        pool_by_code = {}
-        access_by_code = {}
-        buffs_by_code = {}
-        for code in mission_codes:
-            pool_key = tuple(sorted(self.reward_factions_for_code(code)))
-            if pool_key not in pool_cache:
-                canonical_pool = tuple(
-                    canonical_reward(reward)
-                    for reward in self.reward_pool_for_code(code)
-                )
-                access_template = tuple(
-                    reward for reward in canonical_pool if reward.get('kind') != 'buff'
-                )
-                buff_metadata = tuple(
-                    (
-                        reward,
-                        buff_stack_limit(reward),
-                        buff_count_key(reward),
-                        reward.get('unit'),
-                        bool(reward.get('global_buff') or not reward.get('unit')),
-                        reward.get('name'),
-                    )
-                    for reward in canonical_pool
-                    if reward.get('kind') == 'buff'
-                )
-                pool_cache[pool_key] = (canonical_pool, access_template, buff_metadata)
-            canonical_pool, access_template, buff_metadata = pool_cache[pool_key]
-            access = list(access_template)
-            rng.shuffle(access)
-            pool_by_code[code] = canonical_pool
-            access_by_code[code] = access
-            buffs_by_code[code] = buff_metadata
-
-        def is_unit_access(reward):
-            return any(
-                BUFF_TARGETS.get(unit_id, {}).get('category')
-                in {'infantry', 'units', 'aircraft'}
-                for unit_id in tech_ids_for_rewards([reward])
-            )
-
-        def draw_access(code, unit_only=False):
-            access = access_by_code.get(code, [])
-            for index in range(len(access) - 1, -1, -1):
-                reward = access[index]
-                name = reward.get('name')
-                if name in used_access_names:
-                    access.pop(index)
-                    continue
-                if unit_only and not is_unit_access(reward):
-                    continue
-                access.pop(index)
-                used_access_names.add(name)
-                return dict(reward)
-            return None
-
-        def draw_buff(code, prefer_global=False):
-            buffs = buffs_by_code.get(code, [])
-            if not buffs:
-                return None
-
-            unit_candidates = []
-            global_candidates = []
-            for reward, limit, count_key, unit, is_global, name in buffs:
-                if limit is not None and buff_counts.get(count_key, 0) >= limit:
-                    continue
-                if is_global:
-                    count = global_buff_counts.get(name, 0)
-                    if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
-                        global_candidates.append(reward)
-                elif not require_access_for_unit_buffs or unit_access_earned(unit):
-                    unit_candidates.append(reward)
-
-            if prefer_global and global_candidates:
-                candidates = global_candidates
-            elif unit_candidates:
-                # Spread positive rewards across the faction roster before
-                # stacking more upgrades on units that already received one.
-                # This is especially important for buffs-only seeds, where a
-                # large reward count should visibly cover the whole army.
-                least_buffs = min(unit_buff_counts.get(reward.get('unit'), 0) for reward in unit_candidates)
-                candidates = [
-                    reward
-                    for reward in unit_candidates
-                    if unit_buff_counts.get(reward.get('unit'), 0) == least_buffs
-                ]
-            else:
-                candidates = global_candidates
-            if not candidates:
-                return None
-
-            reward = dict(rng.choice(candidates))
-            if reward.get('global_buff') or not reward.get('unit'):
-                name = reward.get('name')
-                global_buff_counts[name] = global_buff_counts.get(name, 0) + 1
-            count_key = buff_count_key(reward)
-            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-            unit = reward.get('unit')
-            if unit:
-                record_unit_buff(unit)
-            return reward
-
-        def draw_repeatable_fallback(code):
-            pool = [dict(reward) for reward in pool_by_code.get(code, ())]
-            buffs = [reward for reward in pool if reward.get('kind') == 'buff']
-            candidates = []
-            for reward in buffs or pool:
-                limit = buff_stack_limit(reward)
-                name = reward.get('name')
-                if reward.get('kind') == 'superweapon' and name in used_access_names:
-                    continue
-                count_key = buff_count_key(reward)
-                if limit is not None and buff_counts.get(count_key, 0) >= limit:
-                    continue
-                if reward.get('kind') == 'buff':
-                    unit = reward.get('unit')
-                    if (
-                        require_access_for_unit_buffs
-                        and unit
-                        and not reward.get('global_buff')
-                        and not unit_access_earned(unit)
-                    ):
-                        continue
-                candidates.append(reward)
-            if not candidates:
-                candidates = [
-                    dict(reward)
-                    for reward in self.configured_reward_pool()
-                    if reward.get('kind') == 'buff'
-                    and (
-                        not require_access_for_unit_buffs
-                        or reward.get('global_buff')
-                        or not reward.get('unit')
-                        or unit_access_earned(reward.get('unit'))
-                    )
-                ]
-            if not candidates:
-                return None
-            reward = dict(rng.choice(candidates))
-            name = reward.get('name')
-            if reward.get('kind') == 'buff':
-                count_key = buff_count_key(reward)
-                buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-                unit = reward.get('unit')
-                if unit:
-                    record_unit_buff(unit)
-            return reward
-
-        slot_order = []
-        reserved_opening_slots = set()
-        if progression_mode == 'Grid Mode' and isinstance(grid, dict):
-            for code in grid_opening_mission_codes(grid):
-                if code in plan and plan[code]:
-                    slot = (code, 0)
-                    reserved_opening_slots.add(slot)
-                    slot_order.append((code, 0, True))
-
-            remaining_slots = [
-                (code, slot_index, False)
-                for code in mission_codes
-                for slot_index in range(len(plan[code]))
-                if (code, slot_index) not in reserved_opening_slots
-            ]
-            rng.shuffle(remaining_slots)
-            slot_order.extend(remaining_slots)
-        else:
-            slot_order = [
-                (code, slot_index, False)
-                for code in mission_codes
-                for slot_index in range(len(plan[code]))
-            ]
-
-        for code, slot_index, force_unit_access in slot_order:
-            reward = None
-            prefer_global = (global_index + 1) % GLOBAL_BUFF_REWARD_INTERVAL == 0
-            if force_unit_access:
-                reward = draw_access(code, unit_only=True)
-            if reward is None and not force_unit_access and (
-                global_index % 5 == 4 or prefer_global
-            ):
-                reward = draw_buff(code, prefer_global=prefer_global)
-            if reward is None:
-                reward = draw_access(code)
-            if reward is None:
-                reward = draw_buff(code, prefer_global=prefer_global)
-            if reward is None:
-                reward = draw_repeatable_fallback(code)
-            if reward is not None:
-                plan[code][slot_index] = reward
-                seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))
-            global_index += 1
-
-        return {
-            code: [reward for reward in rewards if reward is not None]
-            for code, rewards in plan.items()
-        }
+        return plan_seed_rewards(
+            mission_codes,
+            seed,
+            slots_by_code,
+            progression_mode=progression_mode,
+            grid=grid,
+            reward_factions_for_code=self.reward_factions_for_code,
+            reward_pool_for_code=self.reward_pool_for_code,
+            configured_reward_pool=self.configured_reward_pool,
+            starting_unlocked_tech_ids=self.active_starting_tier_one_access_ids(),
+            require_access_for_unit_buffs=self.randomize_unit_access_enabled(),
+            share_role_buffs=self.share_chaos_role_buffs_enabled(),
+        )
 
     def earned_rewards_from_checks(self):
         earned = []
@@ -3959,22 +3688,12 @@ class LauncherApp(tk.Tk):
         return dict(GAME_SPEEDS).get(self.game_speed_var.get(), 3)
 
     def read_spawn_difficulty(self):
-        if not SPAWN_INI.exists():
-            return 'Normal'
-
-        try:
-            for line in read_text(SPAWN_INI).splitlines():
-                stripped = line.strip()
-                if stripped.lower().startswith('difficultymodehuman') and '=' in stripped:
-                    _, value = stripped.split('=', 1)
-                    mode = value.strip()
-                    for label, code in DIFFICULTIES:
-                        if str(code) == mode:
-                            return label
-        except Exception:
-            pass
-
-        return 'Normal'
+        return choice_label_from_ini(
+            SPAWN_INI,
+            'DifficultyModeHuman',
+            DIFFICULTIES,
+            default='Normal',
+        )
 
     def read_spawn_game_speed(self):
         for path in (SPAWN_INI, OPTIONS_INI, YR_OPTIONS_INI):
@@ -3984,22 +3703,7 @@ class LauncherApp(tk.Tk):
         return '3 - Medium'
 
     def read_game_speed_from_ini(self, path):
-        if not path.exists():
-            return ''
-
-        try:
-            for line in read_text(path).splitlines():
-                stripped = line.strip()
-                if stripped.lower().startswith('gamespeed') and '=' in stripped:
-                    _, value = stripped.split('=', 1)
-                    speed = value.strip()
-                    for label, code in GAME_SPEEDS:
-                        if str(code) == speed:
-                            return label
-        except Exception:
-            pass
-
-        return ''
+        return choice_label_from_ini(path, 'GameSpeed', GAME_SPEEDS)
 
     def spawn_reward_options(self):
         return {}
@@ -4121,9 +3825,7 @@ class LauncherApp(tk.Tk):
         )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
-        standard_starter_families = STANDARD_STARTER_FAMILIES_BY_CAMPAIGN.get(
-            selected_campaign, ()
-        )
+        standard_starter_families = self.active_standard_starter_families()
         starter_rules = starting_tier_one_rules(
             lines,
             starting_unit_ids,
@@ -4132,6 +3834,9 @@ class LauncherApp(tk.Tk):
             additional_production_houses=production_houses,
             excluded_unit_ids=self.active_reward_settings().get(
                 'excluded_unit_access_ids', []
+            ),
+            allow_player_family_fallback=(
+                mission_code not in NO_BUILD_MISSION_CODES
             ),
         )
         for section, values in starter_rules.items():
@@ -4344,24 +4049,15 @@ throw "Map $name was not found in expandmo*.mix"
 
     def write_spawn_ini(self, scenario, difficulty_value, game_speed_value):
         try:
-            content = [
-                '[Settings]',
-                f'Scenario={scenario}',
-                f'GameSpeed={game_speed_value}',
-                f'Difficulty={difficulty_value}',
-                f'CampDifficulty={difficulty_value}',
-                'Firestorm=False',
-                'IsSinglePlayer=Yes',
-                'SidebarHack=False',
-                'Side=0',
-                'BuildOffAlly=True',
-                f'DifficultyModeHuman={difficulty_value}',
-                f'DifficultyModeComputer={difficulty_value}',
-            ]
-            for key, value in sorted(self.spawn_reward_options().items()):
-                content.append(f'{key}={value}')
-
-            SPAWN_INI.write_text('\r\n'.join(content) + '\r\n', encoding='utf-8')
+            SPAWN_INI.write_text(
+                spawn_ini_text(
+                    scenario,
+                    difficulty_value,
+                    game_speed_value,
+                    self.spawn_reward_options(),
+                ),
+                encoding='utf-8',
+            )
             self.append_log(
                 f'Written spawn.ini: Scenario={scenario}, DifficultyModeHuman={difficulty_value}, '
                 f'Difficulty={difficulty_value}, GameSpeed={game_speed_value}'
@@ -4424,7 +4120,7 @@ throw "Map $name was not found in expandmo*.mix"
             patched = []
             with path.open('r+b') as handle:
                 for key, value in values.items():
-                    if self.patch_large_ini_key(handle, key, str(value)):
+                    if patch_large_ini_key(handle, key, value):
                         patched.append(key)
             missing = sorted(set(values) - set(patched))
             if missing:
@@ -4437,53 +4133,6 @@ throw "Map $name was not found in expandmo*.mix"
             self.append_log(f'Failed to patch oversized option file {path.name}:', error=True)
             self.append_log(traceback.format_exc(), error=True)
             return False
-
-    def patch_large_ini_key(self, handle, key, value):
-        pattern = f'{key}='.encode('ascii')
-        pattern_lower = pattern.lower()
-        replacement = value.encode('ascii')
-        chunk_size = 1024 * 1024
-        overlap_size = len(pattern) + 32
-        carry = b''
-        offset = 0
-        handle.seek(0)
-
-        while True:
-            chunk = handle.read(chunk_size)
-            if not chunk:
-                return False
-            data = carry + chunk
-            search = data.lower()
-            base_offset = offset - len(carry)
-            position = 0
-
-            while True:
-                index = search.find(pattern_lower, position)
-                if index < 0:
-                    break
-                if index > 0 and data[index - 1] not in (10, 13):
-                    position = index + len(pattern)
-                    continue
-                absolute_index = base_offset + index
-                value_start = absolute_index + len(pattern)
-                handle.seek(value_start)
-                existing = handle.read(32)
-                old_length = 0
-                for byte in existing:
-                    if byte in (10, 13):
-                        break
-                    old_length += 1
-                if old_length >= len(replacement):
-                    handle.seek(value_start)
-                    handle.write(replacement + (b' ' * (old_length - len(replacement))))
-                    return True
-                position = index + len(pattern)
-
-            if len(data) > overlap_size:
-                carry = data[-overlap_size:]
-            else:
-                carry = data
-            offset += len(chunk)
 
     def disable_generated_rules_for_client(self):
         for path in (RULESMO_INI, DISABLED_RULESMO_INI):

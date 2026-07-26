@@ -673,15 +673,6 @@ SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['superweapon_unlock_reward
 SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_superweapon_unlock_rewards']
 
 
-BUILDING_FREE_SUPPORT_POWER_VALUES = _REWARD_CATALOGUE_CONFIG['building_free_support_power_values']
-
-
-def building_free_support_values(**overrides):
-    values = dict(BUILDING_FREE_SUPPORT_POWER_VALUES)
-    values.update(overrides)
-    return values
-
-
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
 for aid_config in AID_POWER_MAP_CONFIGS:
     for clone_group in ('techno_clones', 'auxiliary_clones'):
