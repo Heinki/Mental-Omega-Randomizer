@@ -439,15 +439,34 @@ class LauncherApp(tk.Tk):
         self.settings_panel_visible = not self.settings_panel_visible
         if self.settings_panel_visible:
             self.right_frame.grid()
-            self.mission_view_frame.grid_configure(columnspan=1, padx=(0, 12))
+            self.workspace_tabs.grid_configure(columnspan=1, padx=(0, 12))
             self.compact_action_row.grid_remove()
             self.settings_toggle_button.configure(text='Hide Details')
         else:
             self.right_frame.grid_remove()
-            self.mission_view_frame.grid_configure(columnspan=2, padx=0)
+            self.workspace_tabs.grid_configure(columnspan=2, padx=0)
             self.compact_action_row.grid()
             self.settings_toggle_button.configure(text='Show Details')
         self.after_idle(self.resize_grid_canvas_window)
+
+    def on_workspace_tab_changed(self, event=None):
+        """Refresh content whose layout depends on wide workspace dimensions."""
+        if not hasattr(self, 'workspace_tabs'):
+            return
+        selected = self.workspace_tabs.select()
+        if hasattr(self, 'settings_tab') and selected == str(self.settings_tab):
+            self.after_idle(
+                lambda: self.layout_settings_sections(
+                    self.settings_canvas.winfo_width()
+                )
+            )
+        elif hasattr(self, 'advanced_tab') and selected == str(self.advanced_tab):
+            self.after_idle(self.refresh_advanced_pool_views)
+        elif (
+            hasattr(self, 'mission_view_frame')
+            and selected == str(self.mission_view_frame)
+        ):
+            self.after_idle(self.resize_grid_canvas_window)
 
     def ui_palette(self):
         return DARK_UI_PALETTE if self.dark_mode_var.get() else LIGHT_UI_PALETTE
@@ -679,20 +698,93 @@ class LauncherApp(tk.Tk):
         if hasattr(self, 'settings_canvas'):
             self.settings_canvas.configure(scrollregion=self.settings_canvas.bbox('all'))
 
+    def layout_settings_sections(self, width):
+        """Use two Settings columns when workspace width can support them."""
+        required = (
+            'settings_intro_label',
+            'seed_settings_frame',
+            'map_colors_frame',
+            'mission_pool_frame',
+            'reward_frame',
+            'buff_frame',
+            'assistance_frame',
+            'appearance_frame',
+        )
+        if not all(hasattr(self, name) for name in required):
+            return
+        wide = int(width or 0) >= 720
+        if self.__dict__.get('_settings_layout_wide') == wide:
+            return
+        self._settings_layout_wide = wide
+        widgets = [getattr(self, name) for name in required]
+        for widget in widgets:
+            widget.grid_forget()
+
+        self.settings_frame.columnconfigure(
+            0, weight=1, uniform='settings-column' if wide else ''
+        )
+        self.settings_frame.columnconfigure(
+            1, weight=1 if wide else 0, uniform='settings-column' if wide else ''
+        )
+        self.settings_intro_label.grid(
+            row=0,
+            column=0,
+            columnspan=2 if wide else 1,
+            sticky='ew',
+            pady=(0, 8),
+        )
+        if wide:
+            self.seed_settings_frame.grid(
+                row=1, column=0, sticky='nsew', padx=(0, 4)
+            )
+            self.map_colors_frame.grid(
+                row=1, column=1, sticky='nsew', padx=(4, 0)
+            )
+            self.mission_pool_frame.grid(
+                row=2, column=0, sticky='nsew', padx=(0, 4), pady=(8, 0)
+            )
+            self.assistance_frame.grid(
+                row=2, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            )
+            self.reward_frame.grid(
+                row=3, column=0, sticky='nsew', padx=(0, 4), pady=(8, 0)
+            )
+            self.buff_frame.grid(
+                row=3, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            )
+            self.appearance_frame.grid(
+                row=4, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            )
+        else:
+            for row, widget in enumerate(widgets[1:], start=1):
+                widget.grid(row=row, column=0, sticky='ew', pady=(8, 0))
+        self.on_settings_content_configure()
+
     def on_settings_canvas_configure(self, event):
         if hasattr(self, 'settings_canvas_window'):
             self.settings_canvas.itemconfigure(self.settings_canvas_window, width=event.width)
+        self.layout_settings_sections(event.width)
         if hasattr(self, 'settings_intro_label'):
             self.settings_intro_label.configure(wraplength=max(220, event.width - 32))
         if hasattr(self, 'rewards_per_check_message_label'):
             self.rewards_per_check_message_label.configure(
-                wraplength=max(180, event.width - 64)
+                wraplength=max(
+                    180,
+                    (event.width // 2 if event.width >= 720 else event.width) - 64,
+                )
+            )
+        if hasattr(self, 'assistance_description_label'):
+            self.assistance_description_label.configure(
+                wraplength=max(
+                    220,
+                    (event.width // 2 if event.width >= 720 else event.width) - 64,
+                )
             )
 
     def on_settings_mousewheel(self, event):
         if not hasattr(self, 'settings_canvas') or not hasattr(self, 'settings_tab'):
             return None
-        if self.info_tabs.select() != str(self.settings_tab):
+        if self.workspace_tabs.select() != str(self.settings_tab):
             return None
         pointer_x = self.winfo_pointerx()
         pointer_y = self.winfo_pointery()
@@ -2127,6 +2219,48 @@ class LauncherApp(tk.Tk):
             self.selected_index.set(int(children[0]))
         self.append_log(f'Loaded {len(self.missions)} missions.')
 
+    def on_advanced_tab_configure(self, event):
+        wraplength = max(340, int(event.width or 0) - 32)
+        if hasattr(self, 'advanced_pool_intro_label'):
+            self.advanced_pool_intro_label.configure(wraplength=wraplength)
+        if hasattr(self, 'advanced_pool_status_label'):
+            self.advanced_pool_status_label.configure(wraplength=wraplength)
+        if hasattr(self, 'advanced_buff_unit_label'):
+            self.advanced_buff_unit_label.configure(
+                wraplength=max(260, wraplength - 160)
+            )
+
+    def advanced_pool_column_count(self, pool_key):
+        """Return card columns fitting current Advanced canvas width."""
+        counts = getattr(self, 'advanced_pool_column_counts', {})
+        if pool_key in counts:
+            return max(1, int(counts[pool_key]))
+        canvas = getattr(self, 'advanced_pool_canvases', {}).get(pool_key)
+        width = canvas.winfo_width() if canvas is not None else 0
+        card_span = 140 if pool_key == 'unit_buffs' else 112
+        return max(1, int(width or card_span * 3) // card_span)
+
+    def on_advanced_pool_canvas_configure(self, pool_key, width):
+        """Reflow Advanced cards only when available column count changes."""
+        card_span = 140 if pool_key == 'unit_buffs' else 112
+        columns = max(1, int(width or 0) // card_span)
+        counts = getattr(self, 'advanced_pool_column_counts', None)
+        if counts is None:
+            return
+        if counts.get(pool_key) == columns:
+            return
+        counts[pool_key] = columns
+        if not hasattr(self, 'advanced_pool_frames'):
+            return
+        if self.__dict__.get('_advanced_pool_refresh_after_id') is not None:
+            return
+
+        def refresh():
+            self._advanced_pool_refresh_after_id = None
+            self.refresh_advanced_pool_views()
+
+        self._advanced_pool_refresh_after_id = self.after_idle(refresh)
+
     def advanced_unit_pool_entries(self):
         """Return combat-unit access targets represented by the reward pool."""
         entries = {}
@@ -2283,6 +2417,7 @@ class LauncherApp(tk.Tk):
                     traceback=traceback.format_exc(),
                 )
             self.advanced_unit_cameo_paths = cameo_paths
+        columns = self.advanced_pool_column_count('unit_buffs')
         for index, entry in enumerate(entries):
             photo = self.advanced_pool_photo(
                 f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
@@ -2295,7 +2430,7 @@ class LauncherApp(tk.Tk):
                     self.advanced_pool_images[large_key] = large_photo
                 photo = large_photo
             self.draw_advanced_buff_unit_card(
-                frame, index // 3, index % 3, entry, photo
+                frame, index // columns, index % columns, entry, photo
             )
         self.refresh_advanced_buff_controls(entries)
 
@@ -2501,12 +2636,13 @@ class LauncherApp(tk.Tk):
             ),
             include_operation_missions=self.include_operation_missions_var.get(),
         )
+        mission_columns = self.advanced_pool_column_count('missions')
         for index, mission in enumerate(visible_missions):
             faction = normalize_faction(mission.get('side', ''))
             self.draw_advanced_pool_card(
                 mission_frame,
-                index // 3,
-                index % 3,
+                index // mission_columns,
+                index % mission_columns,
                 {
                     'id': mission['code'].upper(),
                     'label': mission.get('title') or mission['code'],
@@ -2540,12 +2676,18 @@ class LauncherApp(tk.Tk):
                 )
             self.advanced_unit_cameo_paths = cameo_paths
         unit_frame = self.advanced_pool_frames['units']
+        unit_columns = self.advanced_pool_column_count('units')
         for index, entry in enumerate(unit_entries):
             photo = self.advanced_pool_photo(
                 f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
             )
             self.draw_advanced_pool_card(
-                unit_frame, index // 3, index % 3, entry, 'units', photo
+                unit_frame,
+                index // unit_columns,
+                index % unit_columns,
+                entry,
+                'units',
+                photo,
             )
 
         all_power_entries = self.advanced_power_pool_entries()
@@ -2579,6 +2721,7 @@ class LauncherApp(tk.Tk):
                 traceback=traceback.format_exc(),
             )
         power_frame = self.advanced_pool_frames['powers']
+        power_columns = self.advanced_pool_column_count('powers')
         for index, entry in enumerate(power_entries):
             reward = entry['reward']
             asset_name = reward.get('superweapon_sidebar_image')
@@ -2593,7 +2736,12 @@ class LauncherApp(tk.Tk):
                 )
             photo = self.advanced_pool_photo(f'power:{entry["id"]}', path)
             self.draw_advanced_pool_card(
-                power_frame, index // 3, index % 3, entry, 'powers', photo
+                power_frame,
+                index // power_columns,
+                index % power_columns,
+                entry,
+                'powers',
+                photo,
             )
 
         self.refresh_advanced_buff_view()
@@ -2803,6 +2951,11 @@ class LauncherApp(tk.Tk):
 
     def redraw_progression_views(self):
         grid_mode = self.active_progression_mode() == 'Grid Mode'
+        if hasattr(self, 'workspace_tabs') and hasattr(self, 'mission_view_frame'):
+            self.workspace_tabs.tab(
+                self.mission_view_frame,
+                text='Grid Mode' if grid_mode else 'Mission List',
+            )
         if grid_mode:
             self.missions_tree.grid_remove()
             self.tree_scrollbar.grid_remove()

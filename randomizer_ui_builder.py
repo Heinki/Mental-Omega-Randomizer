@@ -90,11 +90,34 @@ def _build_window_shell(self):
         variable.trace_add('write', self.update_header_summary)
     self.update_header_summary()
 
-    mission_view_frame = ttk.Frame(main_frame)
+    workspace_tabs = ttk.Notebook(main_frame, style='Randomizer.TNotebook')
+    self.workspace_tabs = workspace_tabs
+    workspace_tabs.grid(
+        row=2,
+        column=0,
+        rowspan=5,
+        sticky='nsew',
+        padx=(0, 12),
+    )
+    workspace_tabs.enable_traversal()
+    workspace_tabs.bind(
+        '<<NotebookTabChanged>>',
+        self.on_workspace_tab_changed,
+        add='+',
+    )
+
+    mission_view_frame = ttk.Frame(workspace_tabs)
     self.mission_view_frame = mission_view_frame
-    mission_view_frame.grid(row=2, column=0, rowspan=5, sticky='nsew', padx=(0, 12))
     mission_view_frame.columnconfigure(0, weight=1)
     mission_view_frame.rowconfigure(0, weight=1)
+    workspace_tabs.add(
+        mission_view_frame,
+        text=(
+            'Grid Mode'
+            if self.active_progression_mode() == 'Grid Mode'
+            else 'Mission List'
+        ),
+    )
 
     self.missions_tree = ttk.Treeview(
         mission_view_frame,
@@ -224,12 +247,12 @@ def _build_right_panel(self, main_frame):
     info_tabs.grid(row=1, column=0, sticky='nsew')
     info_tabs.enable_traversal()
 
-    # Build Settings now so every seed/run control can be parented inside its
-    # scrollable tab. The tab itself is added after Mission Details/Unlocks.
-    settings_tab = ttk.Frame(info_tabs)
+    # Settings occupies the wide workspace beside Mission List/Grid Mode.
+    settings_tab = ttk.Frame(self.workspace_tabs)
     self.settings_tab = settings_tab
     settings_tab.columnconfigure(0, weight=1)
     settings_tab.rowconfigure(0, weight=1)
+    self.workspace_tabs.add(settings_tab, text='Settings')
     settings_canvas = tk.Canvas(
         settings_tab,
         borderwidth=0,
@@ -247,6 +270,7 @@ def _build_right_panel(self, main_frame):
     settings_scrollbar.grid(row=0, column=1, sticky='ns')
     settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
     settings_frame.columnconfigure(0, weight=1)
+    settings_frame.columnconfigure(1, weight=0)
     self.settings_frame = settings_frame
     self.settings_canvas_window = settings_canvas.create_window(
         (0, 0),
@@ -262,6 +286,7 @@ def _build_right_panel(self, main_frame):
         text='Seed & Run',
         padding=(8, 8, 8, 8),
     )
+    self.seed_settings_frame = seed_settings_frame
     seed_settings_frame.grid(row=0, column=0, sticky='ew')
     seed_settings_frame.columnconfigure(0, weight=1)
 
@@ -437,7 +462,7 @@ def _build_right_panel(self, main_frame):
     return info_tabs, settings_tab, settings_frame
 
 
-def _build_info_tabs(self, info_tabs, settings_tab):
+def _build_info_tabs(self, info_tabs):
     progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     progress_frame.columnconfigure(0, weight=1)
     progress_frame.rowconfigure(1, weight=1)
@@ -545,15 +570,13 @@ def _build_info_tabs(self, info_tabs, settings_tab):
     self.bind_all('<F3>', self.find_unlock_next, add='+')
     self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
 
-    info_tabs.add(settings_tab, text='Settings')
-
-
-def _build_advanced_tab(self, info_tabs):
-    advanced_tab = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
+def _build_advanced_tab(self, workspace_tabs):
+    advanced_tab = ttk.Frame(workspace_tabs, padding=(8, 8, 8, 8))
     self.advanced_tab = advanced_tab
     advanced_tab.columnconfigure(0, weight=1)
     advanced_tab.rowconfigure(2, weight=1)
-    info_tabs.add(advanced_tab, text='Advanced')
+    workspace_tabs.add(advanced_tab, text='Advanced')
+    advanced_tab.bind('<Configure>', self.on_advanced_tab_configure, add='+')
     self.advanced_pool_intro_label = ttk.Label(
         advanced_tab,
         text=(
@@ -575,6 +598,7 @@ def _build_advanced_tab(self, info_tabs):
     advanced_notebook.grid(row=2, column=0, sticky='nsew')
     self.advanced_pool_canvases = {}
     self.advanced_pool_frames = {}
+    self.advanced_pool_column_counts = {}
     for pool_key, pool_label in (
         ('missions', 'Missions'),
         ('units', 'Units / Buildings'),
@@ -615,7 +639,10 @@ def _build_advanced_tab(self, info_tabs):
         )
         canvas.bind(
             '<Configure>',
-            lambda event, target=canvas, item=window: target.itemconfigure(item, width=event.width),
+            lambda event, key=pool_key, target=canvas, item=window: (
+                target.itemconfigure(item, width=event.width),
+                self.on_advanced_pool_canvas_configure(key, event.width),
+            ),
         )
         canvas.bind(
             '<MouseWheel>',
@@ -686,8 +713,9 @@ def _build_advanced_tab(self, info_tabs):
     )
     buff_canvas.bind(
         '<Configure>',
-        lambda event, target=buff_canvas, item=buff_window: target.itemconfigure(
-            item, width=event.width
+        lambda event, target=buff_canvas, item=buff_window: (
+            target.itemconfigure(item, width=event.width),
+            self.on_advanced_pool_canvas_configure('unit_buffs', event.width),
         ),
     )
     for widget in (buff_canvas, buff_content):
@@ -716,6 +744,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Mission Appearance',
         padding=(8, 8, 8, 8),
     )
+    self.map_colors_frame = map_colors_frame
     map_colors_frame.grid(row=2, column=0, sticky='ew')
     map_colors_frame.columnconfigure(1, weight=1)
     ttk.Label(map_colors_frame, text='Player color').grid(
@@ -769,6 +798,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Mission Pool',
         padding=(8, 8, 8, 8),
     )
+    self.mission_pool_frame = mission_pool_frame
     mission_pool_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
     self.include_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
@@ -820,6 +850,7 @@ def _build_gameplay_settings(self, settings_frame):
     )
 
     reward_frame = ttk.LabelFrame(settings_frame, text='Reward Pool', padding=(8, 8, 8, 8))
+    self.reward_frame = reward_frame
     reward_frame.grid(row=4, column=0, sticky='ew', pady=(8, 0))
     reward_frame.columnconfigure(0, weight=1)
     self.randomize_unit_access_check = ttk.Checkbutton(
@@ -956,6 +987,7 @@ def _build_gameplay_settings(self, settings_frame):
     )
 
     buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
+    self.buff_frame = buff_frame
     buff_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
         buff_frame.columnconfigure(column, weight=1)
@@ -983,6 +1015,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Mission Assistance',
         padding=(8, 8, 8, 8),
     )
+    self.assistance_frame = assistance_frame
     assistance_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
@@ -1015,6 +1048,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Appearance & Privacy',
         padding=(8, 8, 8, 8),
     )
+    self.appearance_frame = appearance_frame
     appearance_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
@@ -1047,6 +1081,7 @@ def _build_gameplay_settings(self, settings_frame):
         'Shows locked grid nodes as ? tiles. Completing a visible mission reveals '
         'newly unlocked mission names and faction colors.',
     )
+    self.layout_settings_sections(self.settings_canvas.winfo_width())
 
 
 def _build_log_and_overlay(self, main_frame):
@@ -1082,8 +1117,7 @@ def _build_log_and_overlay(self, main_frame):
 
     main_frame.rowconfigure(2, weight=1)
     main_frame.rowconfigure(9, weight=0)
-    # Uniform sizing makes the mission view reliably wider than settings,
-    # regardless of the settings widgets' requested width.
+    # Keep wide mission/settings workspace beside narrower details panel.
     main_frame.columnconfigure(0, weight=13, uniform='content')
     main_frame.columnconfigure(1, weight=6, minsize=396, uniform='content')
 
@@ -1129,8 +1163,8 @@ def create_widgets(self):
         self,
         main_frame,
     )
-    _build_info_tabs(self, info_tabs, settings_tab)
-    _build_advanced_tab(self, info_tabs)
+    _build_info_tabs(self, info_tabs)
+    _build_advanced_tab(self, self.workspace_tabs)
     _build_gameplay_settings(self, settings_frame)
     self.refresh_setting_states()
     _build_log_and_overlay(self, main_frame)
