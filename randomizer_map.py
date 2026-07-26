@@ -486,12 +486,16 @@ def cloned_superweapon_plan(
                 if not isinstance(clone_spec, dict):
                     continue
                 list_section = str(clone_spec.get('list') or '').strip()
-                techno_source_values = installed_sections.get(techno_source)
+                template_source = str(
+                    clone_spec.get('source') or techno_source
+                ).strip()
+                techno_source_values = installed_sections.get(template_source)
                 if not list_section or not isinstance(techno_source_values, dict):
-                    missing.append(techno_source)
+                    missing.append(template_source)
                     continue
                 preferred_techno_clone = str(
-                    clone_spec.get('clone') or randomizer_clone_type_id(techno_source)
+                    clone_spec.get('clone')
+                    or randomizer_clone_type_id(template_source)
                 ).strip()
                 techno_clone = allocate_type_id(
                     preferred_techno_clone, f'{list_section}:{techno_source}'
@@ -521,7 +525,9 @@ def cloned_superweapon_plan(
                     section_rules.setdefault(list_section, {})[type_key] = techno_clone
                 if 'Deliver.Types' in clone_values:
                     clone_values['Deliver.Types'] = _replace_list_type(
-                        clone_values['Deliver.Types'], techno_source, techno_clone
+                        clone_values['Deliver.Types'],
+                        template_source,
+                        techno_clone,
                     )
                 for reference_key in clone_spec.get('reference_keys') or ():
                     clone_values[str(reference_key)] = techno_clone

@@ -1950,12 +1950,22 @@
         "superweapon": "WallbusterSpecial",
         "values": {
           "IsPowered": "false",
-          "SW.FireIntoShroud": "yes",
+          "Type": "MultiMissile",
+          "WeaponType": "MORWBCarrier",
+          "Nuke.Payload": "MORWBPayload",
+          "Nuke.SiloLaunch": "yes",
+          "SW.Damage": "250",
+          "SW.Warhead": "<none>",
+          "SW.ActivationSound": "MissileLaunch",
+          "SW.FireIntoShroud": "no",
           "SW.AutoFire": "no",
           "SW.ManualFire": "yes",
           "SW.ShowCameo": "yes",
           "SW.UseAITargeting": "no",
-          "SW.AITargeting": "None",
+          "SW.AITargeting": "Nuke",
+          "AIDefendAgainst": "yes",
+          "EVA.Activated": "none",
+          "EVA.Detected": "none",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
           "SW.AuxBuildings": "",
@@ -1963,62 +1973,101 @@
           "SW.Designators": "",
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
-          "SW.RangeMaximum": "9999",
-          "SW.RangeMinimum": "0"
+          "SW.CreateRadarEvent": "yes",
+          "EMPulse.PulseBall": null,
+          "SW.RangeMaximum": null,
+          "SW.RangeMinimum": null,
+          "SW.Deferment": null
         },
         "techno_clones": {
-          "Wallbuster": {
-            "clone": "MORWBWeapon",
+          "WallbusterCarrier": {
+            "source": "Wallbuster",
+            "clone": "MORWBCarrier",
             "list": "WeaponTypes",
             "values": {
-              "MinimumRange": "0",
-              "OmniFire": "yes",
-              "Projectile": "MORWBProjectile",
-              "Warhead": "MORWBWarhead"
+              "Damage": null,
+              "ROF": null,
+              "Range": null,
+              "Burst": null,
+              "Projectile": "MORWBUp",
+              "Speed": "100",
+              "Warhead": "NukeMaker",
+              "Report": null,
+              "OmniFire": null,
+              "MinimumRange": null,
+              "Anim": null
+            }
+          },
+          "WallbusterPayload": {
+            "source": "Wallbuster",
+            "clone": "MORWBPayload",
+            "list": "WeaponTypes",
+            "values": {
+              "Damage": "320",
+              "ROF": null,
+              "Range": "30",
+              "Burst": null,
+              "Projectile": "MORWBDown",
+              "Speed": "100",
+              "Warhead": "MORWBWarhead",
+              "Report": null,
+              "OmniFire": null,
+              "MinimumRange": null,
+              "Anim": null,
+              "Bright": "yes"
+            }
+          },
+          "WallbusterUp": {
+            "source": "WallbusterP",
+            "clone": "MORWBUp",
+            "list": "Projectiles",
+            "values": {
+              "Arm": "2",
+              "Image": "RROCKET",
+              "Shadow": "no",
+              "Proximity": null,
+              "Ranged": null,
+              "AA": null,
+              "AG": null,
+              "Vertical": "yes",
+              "ROT": null,
+              "SubjectToCliffs": null,
+              "SubjectToElevation": null,
+              "SubjectToWalls": null,
+              "SubjectToBuildings": null,
+              "Acceleration": "30",
+              "FirersPalette": "yes",
+              "IgnoresFirestorm": "yes",
+              "DetonationAltitude": "20000"
+            }
+          },
+          "WallbusterDown": {
+            "source": "WallbusterP",
+            "clone": "MORWBDown",
+            "list": "Projectiles",
+            "values": {
+              "Arm": "2",
+              "Image": "RROCKET",
+              "Shadow": "no",
+              "Proximity": null,
+              "Ranged": null,
+              "AA": null,
+              "AG": null,
+              "Vertical": "yes",
+              "ROT": null,
+              "SubjectToCliffs": null,
+              "SubjectToElevation": null,
+              "SubjectToWalls": null,
+              "SubjectToBuildings": null,
+              "Acceleration": "30",
+              "FirersPalette": "yes",
+              "IgnoresFirestorm": "yes",
+              "DetonationAltitude": "30000"
             }
           },
           "WallbusterWH": {
             "clone": "MORWBWarhead",
             "list": "Warheads"
-          },
-          "WallbusterP": {
-            "clone": "MORWBProjectile",
-            "list": "Projectiles"
-          },
-          "NATEK": {
-            "clone": "MORWBCannon",
-            "list": "BuildingTypes",
-            "startup_count": 4,
-            "reference_keys": [
-              "EMPulse.Cannons"
-            ],
-            "values": {
-              "Name": "Randomizer Wallbuster Cannon",
-              "UIName": "NAME:DUMMYDUMMY",
-              "Image": "DUMMYDUMMY",
-              "Primary": "MORWBWeapon",
-              "EMPulseCannon": "no",
-              "Turret": "no",
-              "SuperWeapon2": null,
-              "SuperWeapons": null,
-              "TechLevel": "-1",
-              "BuildLimit": "0",
-              "AIBuildThis": "no",
-              "Power": "0",
-              "Powered": "false",
-              "Capturable": "false",
-              "Selectable": "no",
-              "Unsellable": "yes",
-              "LegalTarget": "no",
-              "Insignificant": "yes",
-              "DontScore": "yes",
-              "KeepAlive": "no",
-              "BaseNormal": "no",
-              "AIBaseNormal": "no",
-              "IsBaseDefense": "no",
-              "RadarInvisible": "yes",
-              "Sight": "0"
-            }
           }
         }
       },

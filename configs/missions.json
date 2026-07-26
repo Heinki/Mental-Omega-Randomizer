@@ -1147,11 +1147,11 @@
     },
     "team_house_overrides": {
       "SBLEED": {
-        "01000468": "Boris",
         "01000480": "Boris",
         "01000481": "Boris",
         "01000482": "Boris",
-        "01000483": "Boris"
+        "01000483": "Boris",
+        "01000468": "USSR"
       }
     },
     "required_access_rules": {
@@ -1263,6 +1263,11 @@
       }
     },
     "map_section_rules": {
+      "SBLEED": {
+        "Events": {
+          "01000528": "2,61,2,0,MORALES,13,0,10"
+        }
+      },
       "SFATAL": {
         "YTUNNEL": {
           "Passengers.Allowed": {

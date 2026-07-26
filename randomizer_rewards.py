@@ -916,7 +916,9 @@ HOUSE_CATEGORY_SUFFIXES = {
 
 HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'veteran'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
-UNIT_STAT_BUFF_TYPES = {'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors'}
+UNIT_STAT_BUFF_TYPES = {
+    'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors',
+}
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit', 'building_limit'}
 MAX_VETERANCY_STACKS = int(BUFF_EFFECTS['maximum_veterancy_stacks'])
