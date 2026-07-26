@@ -9,6 +9,7 @@ from randomizer.maps.ini import (
     read_text,
     section_value_map_preserve,
 )
+from randomizer.maps.ownership import script_referenced_taskforce_unit_ids
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
@@ -74,7 +75,11 @@ from randomizer.rewards.catalogue import (
     canonical_rewards,
     reward_display_name,
 )
-from randomizer.ui.config import EVA_VOICE_TAGS, RAINBOWIZER_COLORS
+from randomizer.ui.config import (
+    EVA_APPEARANCE_PROFILES,
+    EVA_VOICE_TAGS,
+    RAINBOWIZER_COLORS,
+)
 from randomizer.rewards.roster import randomizer_unit_roster
 
 
@@ -102,6 +107,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     native_techno_exclusions = MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
         code, ()
     )
+    native_required_access_ids = {
+        str(section).upper()
+        for section in MISSION_REQUIRED_ACCESS_RULES.get(code, {})
+    }
+    native_build_only_clone_ids = (
+        set(native_techno_exclusions) - native_required_access_ids
+    )
     excluded_player_houses = MISSION_REWARD_EXCLUDED_PLAYER_HOUSES.get(
         code, ()
     )
@@ -120,9 +132,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.append_log(
             f'Applied map color settings to {len(color_rules)} house(s).'
         )
-    eva_rules, eva_label, eva_action_index = mission_eva_voice_rules(
+    (
+        eva_rules,
+        eva_label,
+        eva_action_index,
+        eva_appearance_applied,
+    ) = mission_eva_voice_rules(
         self.eva_voice_var.get(),
         EVA_VOICE_TAGS,
+        appearance_profiles=EVA_APPEARANCE_PROFILES,
         random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
     )
     if eva_rules:
@@ -138,8 +156,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if rewritten_eva_actions
                 else ''
             )
+            appearance_note = (
+                ', matching sidebar, and mission-text color'
+                if eva_appearance_applied
+                else ''
+            )
             self.append_log(
-                f'Applied live {eva_label} EVA voice for this mission.'
+                f'Applied live {eva_label} EVA voice{appearance_note} '
+                'for this mission.'
                 f'{rewrite_note}'
             )
         else:
@@ -168,6 +192,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Preserve map-authored AI production fields before launcher access
     # locks and ownership rewrites are merged into this launch copy.
     native_map_sections = all_section_value_maps(lines)
+    scripted_story_unit_ids = script_referenced_taskforce_unit_ids(
+        lines,
+        native_map_sections,
+    )
     installed_superweapon_types, installed_rule_sections = installed_rules_registry()
     (
         _unit_roster_path,
@@ -224,7 +252,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         section_upper = str(section).upper()
         if (
             section_upper in owned_clone_ids
-            and section_upper not in native_techno_exclusions
+            and (
+                section_upper not in native_techno_exclusions
+                or section_upper in native_build_only_clone_ids
+            )
         ):
             owned_clone_rule_overlays.setdefault(section_upper, {}).update(
                 rule_sections.pop(section)
@@ -414,7 +445,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     native_names = {
         str(section).lower(): section for section in native_map_sections
     }
-    for source_id in sorted(isolated_native_ids - set(native_techno_exclusions)):
+    preserved_native_access_ids = (
+        set(native_techno_exclusions) | scripted_story_unit_ids
+    )
+    for source_id in sorted(isolated_native_ids - preserved_native_access_ids):
         forbidden = []
         for source_values in (
             installed_rule_sections.get(
@@ -622,6 +656,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
             ),
             excluded_unit_ids=native_techno_exclusions,
+            build_only_excluded_unit_ids=native_build_only_clone_ids,
             excluded_player_houses=excluded_player_houses,
             owned_clone_ids=owned_clone_ids,
             owned_clone_templates=owned_clone_templates,

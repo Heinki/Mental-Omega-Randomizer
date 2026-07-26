@@ -437,7 +437,10 @@ def _append_prerequisite_alternatives(values, alternatives):
         for match in [re.fullmatch(r'prerequisite\.list(\d+)', str(key), re.IGNORECASE)]
         if match
     }
-    next_index = 0
+    # Ares reserves List0 as an optional replacement for the normal
+    # Prerequisite field. Additional alternatives are 1-based and
+    # Prerequisite.Lists stores the highest enabled extra-list index.
+    next_index = 1
     for alternative in alternatives or ():
         alternative = str(alternative or '').strip()
         if not alternative or alternative.lower() in existing_values:
@@ -448,6 +451,9 @@ def _append_prerequisite_alternatives(values, alternatives):
         used_indexes.add(next_index)
         existing_values.add(alternative.lower())
         next_index += 1
+    extra_indexes = [index for index in used_indexes if index > 0]
+    if extra_indexes:
+        values['Prerequisite.Lists'] = str(max(extra_indexes))
 
 def helper_ai_autobuild_rules(
     lines,

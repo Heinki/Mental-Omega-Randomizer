@@ -50,6 +50,58 @@ def directly_created_team_ids(lines):
     return team_ids
 
 
+def script_referenced_team_ids(lines):
+    """Return every TeamType named by a map action.
+
+    Campaigns create reinforcements through several action variants, not only
+    action 4. Matching action parameters against the map's registered
+    TeamTypes avoids maintaining an incomplete action-code allowlist.
+    """
+    sections = all_section_value_maps(lines)
+    known_team_ids = {
+        str(team_id).lower()
+        for team_id in sections.get('TeamTypes', {}).values()
+        if team_id
+    }
+    referenced = set()
+    for line in section_lines(lines, 'Actions'):
+        if '=' not in line:
+            continue
+        _, value = line.split('=', 1)
+        _, groups = parse_action_groups(value)
+        for group in groups:
+            for parameter in group[1:]:
+                candidate = str(parameter or '').strip().lower()
+                if candidate in known_team_ids:
+                    referenced.add(candidate)
+    return referenced
+
+
+def script_referenced_taskforce_unit_ids(lines, sections=None):
+    """Return TechnoTypes used by action-referenced story teams."""
+    sections = sections or all_section_value_maps(lines)
+    sections_by_lower = {
+        str(section).lower(): values for section, values in sections.items()
+    }
+    unit_ids = set()
+    for team_id in script_referenced_team_ids(lines):
+        taskforce_id = str(
+            sections_by_lower.get(team_id, {}).get('taskforce', '')
+        ).strip().lower()
+        if not taskforce_id:
+            continue
+        for value in sections_by_lower.get(taskforce_id, {}).values():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if (
+                len(tokens) >= 2
+                and tokens[0].isdigit()
+                and tokens[1]
+                and tokens[1].lower() not in {'none', '<none>'}
+            ):
+                unit_ids.add(tokens[1].upper())
+    return unit_ids
+
+
 def taskforce_usage_houses(lines, sections=None):
     """Resolve each TaskForce to houses that can own it at runtime."""
     sections = sections or all_section_value_maps(lines)

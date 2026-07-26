@@ -34,6 +34,11 @@ menu order. Launcher adds `Mission default` and `Random`; no second choices list
 must be synchronized. Built-in tags use Ares action indexes 0–2; custom tags
 use 3 onward in mapping order.
 
+Optional `eva_appearance_profiles` entries use the same choice label (or engine
+tag) to bind a sidebar MIX index, Yuri filename mode, and mission-text color to
+that voice. Built-in tags retain installed Mental Omega appearance fallbacks
+when an older external `ui.json` has no profiles.
+
 ### Generated maps
 
 - `randomizer/maps/pipeline.py`: ordered launch pipeline only.

@@ -150,6 +150,13 @@ mapping there; launcher derives its choices automatically, with fixed
 use indexes 3 onward in this same object order, which must match their order in
 the installed `EVATypes` list.
 
+`eva_appearance_profiles` optionally binds the matching faction sidebar and
+mission-text color to an EVA choice. Profile keys normally match the visible
+choice label from `eva_voice_tags`; an engine tag also works as a fallback.
+`Mission default` applies neither voice nor appearance overrides. Built-in
+Allied, Soviet, Epsilon, and Foehn voices retain their installed appearance
+defaults when an older external `ui.json` does not yet contain profiles.
+
 Every document requires `schema_version: 1` and a `sections` object. Startup
 validates required sections and important value types. Invalid JSON or missing
 required data stops startup with the exact file and section in the error.

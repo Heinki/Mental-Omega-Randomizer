@@ -191,8 +191,7 @@ def build_unlock(
     if len(prerequisites) == 1:
         values['PrerequisiteOverride'] = prerequisites[0]
     elif prerequisites:
-        values['PrerequisiteOverride'] = 'none'
-        values['Prerequisite.List0'] = prerequisites[0]
+        values['Prerequisite'] = prerequisites[0]
         values['Prerequisite.Lists'] = str(len(prerequisites) - 1)
         for index, building_id in enumerate(prerequisites[1:], start=1):
             values[f'Prerequisite.List{index}'] = building_id

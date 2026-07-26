@@ -680,10 +680,15 @@ def _alternative_prerequisite_rules(alternatives):
         # could expose Allied peers before an Allied factory was captured.
         return {'PrerequisiteOverride': alternatives[0]}
 
+    # Ares counts only the extra, 1-based lists. The normal Prerequisite is
+    # the first path; List1..ListN are the alternatives. Using List0..ListN
+    # with Lists=len(alternatives) created one missing, therefore empty, list.
+    # An empty list is always satisfied and broke physical-factory gating.
     rules = {
-        'PrerequisiteOverride': 'none',
-        'Prerequisite.List0': alternatives[0],
-        'Prerequisite.Lists': str(len(alternatives)),
+        'Prerequisite': alternatives[0],
+        'PrerequisiteOverride': None,
+        'Prerequisite.List0': None,
+        'Prerequisite.Lists': str(len(alternatives) - 1),
     }
     for index, building_id in enumerate(alternatives[1:], start=1):
         rules[f'Prerequisite.List{index}'] = building_id

@@ -28,6 +28,8 @@ from randomizer.maps.ownership import (
     ai_trigger_team_usage_houses,
     build_unit_usage_index,
     directly_created_team_ids,
+    script_referenced_team_ids,
+    script_referenced_taskforce_unit_ids,
     scripted_enemy_house_pairs,
     taskforce_usage_houses,
     unit_usage_houses,
@@ -147,7 +149,7 @@ _COMPACT_CLONE_ID_FIRST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 _COMPACT_CLONE_ID_SECOND = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-_FIXED_PLAYER_CLONE_IDS = frozenset({'VOLKOV'})
+_FIXED_PLAYER_CLONE_IDS = frozenset({'CHITZ', 'VOLKOV'})
 
 SHARED_WEAPON_USER_IDS = {
     weapon_id: set(unit_ids)

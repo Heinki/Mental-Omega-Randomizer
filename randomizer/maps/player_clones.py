@@ -54,6 +54,7 @@ def player_unit_clone_rules(
     unit_specific_mode=False,
     native_trigger_reference_ids=(),
     excluded_unit_ids=(),
+    build_only_excluded_unit_ids=(),
     excluded_player_houses=(),
     owned_clone_ids=None,
     owned_clone_templates=None,
@@ -161,7 +162,12 @@ def player_unit_clone_rules(
     excluded_unit_ids = {
         str(unit_id or '').upper() for unit_id in excluded_unit_ids
     }
-    for unit_id in excluded_unit_ids:
+    build_only_excluded_unit_ids = {
+        str(unit_id or '').upper()
+        for unit_id in build_only_excluded_unit_ids
+        if str(unit_id or '').upper() in excluded_unit_ids
+    }
+    for unit_id in excluded_unit_ids - build_only_excluded_unit_ids:
         counts_by_unit.pop(unit_id, None)
     if direct_house_scoped_fallback and not unit_specific_mode:
         # Standard role sharing already receives direct health/weapon peers.
@@ -178,7 +184,7 @@ def player_unit_clone_rules(
         )
         for unit_id, counts in fallback_counts.items():
             counts_by_unit.setdefault(unit_id, {}).update(counts)
-    for unit_id in excluded_unit_ids:
+    for unit_id in excluded_unit_ids - build_only_excluded_unit_ids:
         counts_by_unit.pop(unit_id, None)
     map_sections = all_section_value_maps(lines)
     native_map_sections = native_map_sections or map_sections
@@ -317,6 +323,7 @@ def player_unit_clone_rules(
     clone_context = PlayerCloneContext(
         allowed_houses=allowed_houses,
         buffed_helper_names=buffed_helper_names,
+        build_only_excluded_unit_ids=build_only_excluded_unit_ids,
         buildable_ids=buildable_ids,
         compact_veteran_clone_ids=compact_veteran_clone_ids,
         counts_by_unit=counts_by_unit,

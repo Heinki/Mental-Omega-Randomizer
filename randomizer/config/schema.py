@@ -373,6 +373,27 @@ def _validate_ui(sections, path):
     if reserved.intersection(normalized_labels):
         _invalid('EVA voice labels use reserved Mission default/Random names', path)
 
+    appearance_profiles = sections.get('eva_appearance_profiles', {})
+    if not isinstance(appearance_profiles, dict):
+        _invalid('Invalid EVA appearance profiles', path)
+    allowed_profile_fields = {
+        'sidebar_mix_file_index',
+        'sidebar_yuri_file_names',
+        'message_text_color',
+    }
+    for label, profile in appearance_profiles.items():
+        if (
+            not _is_nonempty_string(label)
+            or not isinstance(profile, dict)
+            or set(profile) != allowed_profile_fields
+            or not isinstance(profile['sidebar_mix_file_index'], int)
+            or isinstance(profile['sidebar_mix_file_index'], bool)
+            or profile['sidebar_mix_file_index'] < 0
+            or not isinstance(profile['sidebar_yuri_file_names'], bool)
+            or not _is_nonempty_string(profile['message_text_color'])
+        ):
+            _invalid(f'Invalid EVA appearance profile {label!r}', path)
+
 
 def _validate_tuning(sections, path):
     effects = sections['buff_effects']

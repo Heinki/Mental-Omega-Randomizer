@@ -998,13 +998,45 @@
         "SHAD"
       ],
       "ELIZARD": [
-        "BASIL"
+        "BASIL",
+        "DEVO",
+        "SCAV",
+        "STNK",
+        "UTOPIA"
+      ],
+      "EACCEL": [
+        "YURI"
+      ],
+      "EFOCUS": [
+        "YURI"
+      ],
+      "EHUMAN": [
+        "YURI"
+      ],
+      "EMOON": [
+        "YURI"
+      ],
+      "ESCRAP": [
+        "YURI"
+      ],
+      "ESHIP": [
+        "YURI"
+      ],
+      "SDEATH": [
+        "YURI"
+      ],
+      "SPEACE": [
+        "YURI"
+      ],
+      "SROAD": [
+        "YURI"
       ],
       "ETHINK": [
         "SENGINEER"
       ],
       "EPEACE": [
-        "LCRF"
+        "LCRF",
+        "YURIPR"
       ],
       "AHAMARTIA": [
         "ATANY",
@@ -1084,7 +1116,41 @@
         "SHAD"
       ],
       "ELIZARD": [
-        "BASIL"
+        "BASIL",
+        "DEVO",
+        "SCAV",
+        "STNK",
+        "UTOPIA"
+      ],
+      "EACCEL": [
+        "YURI"
+      ],
+      "EFOCUS": [
+        "YURI"
+      ],
+      "EHUMAN": [
+        "YURI"
+      ],
+      "EMOON": [
+        "YURI"
+      ],
+      "EPEACE": [
+        "YURIPR"
+      ],
+      "ESCRAP": [
+        "YURI"
+      ],
+      "ESHIP": [
+        "YURI"
+      ],
+      "SDEATH": [
+        "YURI"
+      ],
+      "SPEACE": [
+        "YURI"
+      ],
+      "SROAD": [
+        "YURI"
       ],
       "ASIREN": [
         "TANY"
@@ -1153,8 +1219,7 @@
         "01000480": "Boris",
         "01000481": "Boris",
         "01000482": "Boris",
-        "01000483": "Boris",
-        "01000468": "USSR"
+        "01000483": "Boris"
       }
     },
     "required_access_rules": {
@@ -1172,10 +1237,11 @@
         "YENGINEER": {
           "TechLevel": "1",
           "BuildLimit": null,
-          "PrerequisiteOverride": "none",
-          "Prerequisite.List0": "CAMINE",
+          "Prerequisite": "CAMINE",
+          "PrerequisiteOverride": null,
+          "Prerequisite.List0": null,
           "Prerequisite.List1": "YABRCK",
-          "Prerequisite.Lists": "2",
+          "Prerequisite.Lists": "1",
           "Owner": "ScorpionCell,MORPLAYER",
           "RequiredHouses": "ScorpionCell,MORPLAYER",
           "ForbiddenHouses": "none"
@@ -1274,16 +1340,37 @@
       }
     },
     "map_section_rules": {
-      "SBLEED": {
-        "Events": {
-          "01000528": "2,61,2,0,MORALES,13,0,10"
-        }
-      },
       "SFATAL": {
         "YTUNNEL": {
           "Passengers.Allowed": {
             "add": [
               "MORPSVOLKOV"
+            ]
+          }
+        }
+      },
+      "ELIZARD": {
+        "BASIL": {
+          "IsSelectableCombatant": "yes"
+        },
+        "DEVO": {
+          "IsSelectableCombatant": "yes"
+        },
+        "SCAV": {
+          "IsSelectableCombatant": "yes"
+        },
+        "STNK": {
+          "IsSelectableCombatant": "yes"
+        },
+        "UTOPIA": {
+          "IsSelectableCombatant": "yes"
+        }
+      },
+      "SMELT": {
+        "GIGA": {
+          "Passengers.Allowed": {
+            "add": [
+              "MORPCHITZ"
             ]
           }
         }
@@ -1298,7 +1385,41 @@
         "SHAD"
       ],
       "ELIZARD": [
-        "BASIL"
+        "BASIL",
+        "DEVO",
+        "SCAV",
+        "STNK",
+        "UTOPIA"
+      ],
+      "EACCEL": [
+        "YURI"
+      ],
+      "EFOCUS": [
+        "YURI"
+      ],
+      "EHUMAN": [
+        "YURI"
+      ],
+      "EMOON": [
+        "YURI"
+      ],
+      "EPEACE": [
+        "YURIPR"
+      ],
+      "ESCRAP": [
+        "YURI"
+      ],
+      "ESHIP": [
+        "YURI"
+      ],
+      "SDEATH": [
+        "YURI"
+      ],
+      "SPEACE": [
+        "YURI"
+      ],
+      "SROAD": [
+        "YURI"
       ],
       "ASIREN": [
         "TANY"

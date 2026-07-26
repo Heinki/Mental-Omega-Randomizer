@@ -17,6 +17,7 @@ from ._shared import (
     production_owner_countries,
     re,
     section_value_map_preserve,
+    script_referenced_taskforce_unit_ids,
     unique_in_order,
     unit_usage_houses,
 )
@@ -52,6 +53,7 @@ class PlayerCloneContext:
 
     allowed_houses: set[str]
     buffed_helper_names: set[str]
+    build_only_excluded_unit_ids: set[str]
     buildable_ids: set[str]
     compact_veteran_clone_ids: dict[str, str]
     counts_by_unit: dict[str, dict[str, int]]
@@ -101,12 +103,24 @@ class PlayerCloneBuildResult:
     native_helper_source_ids: set[str]
 
 
+def _is_direct_weapon_reference_key(key: object) -> bool:
+    """Return whether a TechnoType key directly names one of its weapons."""
+    lowered = str(key).lower()
+    return (
+        lowered in {
+            'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+        }
+        or re.fullmatch(r'(?:elite)?weapon\d+', lowered) is not None
+    )
+
+
 def build_player_clone_sections(
     context: PlayerCloneContext,
 ) -> PlayerCloneBuildResult:
     """Build owned clone sections while preserving native AI identities."""
     allowed_houses = context.allowed_houses
     buffed_helper_names = context.buffed_helper_names
+    build_only_excluded_unit_ids = context.build_only_excluded_unit_ids
     buildable_ids = context.buildable_ids
     compact_veteran_clone_ids = context.compact_veteran_clone_ids
     counts_by_unit = context.counts_by_unit
@@ -182,6 +196,17 @@ def build_player_clone_sections(
                 and not usage_houses.issubset(allowed_houses)
             ):
                 ambiguous_mission_event_ids.add(unit_id)
+
+    # Story reinforcements use several map actions (Create Team, Reinforcement
+    # Team, reinforcement-at-waypoint variants, and more). Replacing a type in
+    # one of those TaskForces can stop transports/paradrops, break later
+    # ownership hand-offs, or invalidate exact identity checks. Keep every
+    # action-referenced team's source identities native. An earned/buildable
+    # copy is still created independently below.
+    scripted_team_unit_ids = script_referenced_taskforce_unit_ids(
+        lines,
+        map_sections,
+    )
 
     native_helper_taskforces = _helper_autocreate_taskforce_units(
         lines,
@@ -405,12 +430,31 @@ def build_player_clone_sections(
         # counts_by_unit is insufficient: those later candidate sources can
         # otherwise recreate the excluded clone and rewrite the story
         # TaskForce anyway (ASIREN Tanya and SRED Morales reproduced this).
-        if unit_id in excluded_unit_ids:
+        excluded_build_only_clone = (
+            unit_id in excluded_unit_ids
+            and unit_id in build_only_excluded_unit_ids
+            and unit_id in buildable_ids
+        )
+        if unit_id in excluded_unit_ids and not excluded_build_only_clone:
+            continue
+        scripted_build_only_clone = (
+            unit_id in scripted_team_unit_ids
+            and unit_id in buildable_ids
+        )
+        if unit_id in scripted_team_unit_ids and not scripted_build_only_clone:
+            unsupported.append(
+                f'{BUFF_TARGETS.get(unit_id, {}).get("label", unit_id)} '
+                'scripted reinforcement kept native'
+            )
             continue
         target = BUFF_TARGETS.get(target_unit_id, {})
         build_only_clone = (
-            unit_id in ambiguous_mission_event_ids
-            and unit_id in buildable_ids
+            excluded_build_only_clone
+            or scripted_build_only_clone
+            or (
+                unit_id in ambiguous_mission_event_ids
+                and unit_id in buildable_ids
+            )
         )
         if unit_id in ambiguous_mission_event_ids and not build_only_clone:
             unsupported.append(
@@ -467,6 +511,7 @@ def build_player_clone_sections(
         clone_source_values = dict(owned_template or effective_unit_values)
         mission_player_override = bool(
             owned_template is not None
+            and not build_only_clone
             and any(house.lower() in allowed_houses for house in unit_usage)
         )
         native_override_values = {}
@@ -544,14 +589,7 @@ def build_player_clone_sections(
             # follow the actual mission identity rather than a stale roster
             # weapon. Missing/disabled placeholders are ignored below.
             for key, value in clone_source_values.items():
-                lowered_key = str(key).lower()
-                if not (
-                    lowered_key in {
-                        'primary', 'secondary', 'eliteprimary',
-                        'elitesecondary',
-                    }
-                    or re.fullmatch(r'(?:elite)?weapon\d+', lowered_key)
-                ):
+                if not _is_direct_weapon_reference_key(key):
                     continue
                 weapon = str(value or '').strip()
                 if (
@@ -586,7 +624,10 @@ def build_player_clone_sections(
             weapon.upper(): [
                 key
                 for key, value in clone_source_values.items()
-                if str(value).strip().lower() == weapon.lower()
+                if (
+                    _is_direct_weapon_reference_key(key)
+                    and str(value).strip().lower() == weapon.lower()
+                )
             ]
             for weapon in weapon_targets
         }
@@ -847,27 +888,30 @@ def build_player_clone_sections(
                     clone_values,
                     helper_support.get('prerequisites', ()),
                 )
-            # Native type remains campaign AI/script identity. Only exclude
-            # current player countries so its duplicate cameo is unavailable.
-            # Owner, RequiredHouses, TechLevel, prerequisites, and BuildLimit
-            # must remain native.
-            native_forbidden_ids = [
-                item
-                for item in comma_items(
-                    _value_case_insensitive(
-                        native_unit_values, 'ForbiddenHouses', ''
+            if not build_only_clone:
+                # Native type remains campaign AI identity. Exclude current
+                # player countries only when no story action still creates
+                # that exact source ID. A build-only clone deliberately keeps
+                # all mission references native; forbidding their runtime
+                # House prevents the reinforcement from spawning and can
+                # immediately fire loss triggers (SBLEED Boris).
+                native_forbidden_ids = [
+                    item
+                    for item in comma_items(
+                        _value_case_insensitive(
+                            native_unit_values, 'ForbiddenHouses', ''
+                        )
                     )
+                    if item.lower() not in {'none', '<none>'}
+                ]
+                original_forbidden_ids = unique_in_order(
+                    native_forbidden_ids + owner_ids
                 )
-                if item.lower() not in {'none', '<none>'}
-            ]
-            original_forbidden_ids = unique_in_order(
-                native_forbidden_ids + owner_ids
-            )
-            original_rules = section_rules.setdefault(unit_id, {})
-            original_rules['ForbiddenHouses'] = (
-                ','.join(original_forbidden_ids)
-                if original_forbidden_ids else 'none'
-            )
+                original_rules = section_rules.setdefault(unit_id, {})
+                original_rules['ForbiddenHouses'] = (
+                    ','.join(original_forbidden_ids)
+                    if original_forbidden_ids else 'none'
+                )
         else:
             # Any clone without earned/mission build access is a reference
             # replacement only. Exact foreign role-buff clones previously

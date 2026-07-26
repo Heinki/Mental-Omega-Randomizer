@@ -23,6 +23,29 @@ BUILTIN_EVA_ACTION_INDEXES = {
     'yuri': 2,
 }
 
+BUILTIN_EVA_APPEARANCE_PROFILES = {
+    'allied': {
+        'sidebar_mix_file_index': 1,
+        'sidebar_yuri_file_names': True,
+        'message_text_color': 'FirstText',
+    },
+    'russian': {
+        'sidebar_mix_file_index': 2,
+        'sidebar_yuri_file_names': True,
+        'message_text_color': 'SecondText',
+    },
+    'yuri': {
+        'sidebar_mix_file_index': 3,
+        'sidebar_yuri_file_names': False,
+        'message_text_color': 'ThirdText',
+    },
+    'foehn': {
+        'sidebar_mix_file_index': 4,
+        'sidebar_yuri_file_names': True,
+        'message_text_color': 'FourthText',
+    },
+}
+
 
 def mission_house_color_rules(
     lines,
@@ -90,8 +113,13 @@ def mission_house_color_rules(
     return rules
 
 
-def mission_eva_voice_rules(selection, voice_tags, random_key=''):
-    """Return Side overrides, selected label, and Ares action-148 index."""
+def mission_eva_voice_rules(
+    selection,
+    voice_tags,
+    appearance_profiles=None,
+    random_key='',
+):
+    """Return selected voice and optional matching Side appearance rules."""
     selection = str(selection or '').strip()
     tags = {
         str(label): str(tag)
@@ -99,7 +127,7 @@ def mission_eva_voice_rules(selection, voice_tags, random_key=''):
         if str(label).strip() and str(tag).strip()
     }
     if selection.lower() in {'', 'mission default'}:
-        return {}, 'Mission default', None
+        return {}, 'Mission default', None, False
     if selection.lower() == 'random':
         labels = sorted(
             tags,
@@ -108,11 +136,11 @@ def mission_eva_voice_rules(selection, voice_tags, random_key=''):
             ).digest(),
         )
         if not labels:
-            return {}, 'Mission default', None
+            return {}, 'Mission default', None, False
         selection = labels[0]
     tag = tags.get(selection)
     if not tag:
-        return {}, 'Mission default', None
+        return {}, 'Mission default', None, False
     tag_lower = tag.lower()
     action_index = BUILTIN_EVA_ACTION_INDEXES.get(tag_lower)
     if action_index is None:
@@ -129,13 +157,35 @@ def mission_eva_voice_rules(selection, voice_tags, random_key=''):
             ),
             0,
         )
+    configured_profiles = appearance_profiles or {}
+    profile = (
+        configured_profiles.get(selection)
+        or configured_profiles.get(tag)
+        or BUILTIN_EVA_APPEARANCE_PROFILES.get(tag_lower)
+    )
+    side_values = {'EVA.Tag': tag}
+    if profile:
+        side_values.update(
+            {
+                'Sidebar.MixFileIndex': str(
+                    profile['sidebar_mix_file_index']
+                ),
+                'Sidebar.YuriFileNames': (
+                    'yes'
+                    if profile['sidebar_yuri_file_names']
+                    else 'no'
+                ),
+                'MessageTextColor': str(profile['message_text_color']),
+            }
+        )
     return (
         {
-            side: {'EVA.Tag': tag}
+            side: dict(side_values)
             for side in ('GDI', 'Nod', 'ThirdSide', 'FourthSide')
         },
         selection,
         action_index,
+        bool(profile),
     )
 
 
