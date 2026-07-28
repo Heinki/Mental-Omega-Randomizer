@@ -23,7 +23,11 @@ from randomizer.maps.ownership import (
     unit_usage_houses,
     unsafe_country_houses,
 )
-from randomizer.maps.ini import all_section_value_maps, section_lines
+from randomizer.maps.ini import (
+    all_section_value_maps,
+    parse_action_groups,
+    section_lines,
+)
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
     REWARD_POOL,
@@ -210,8 +214,9 @@ def _mission_production_buildings(
     lines,
     house_records,
     additional_production_houses=(),
+    include_capturable=False,
 ):
-    """Yield production the player owns, receives, or captures by policy."""
+    """Yield current, transferred, configured, or potentially captured production."""
     eligible_houses = set()
     configured_sources, _ = resolve_configured_helper_houses(
         house_records,
@@ -236,8 +241,9 @@ def _mission_production_buildings(
     # production family can become available later in the mission.
     usage_index = build_unit_usage_index(lines)
     for mcv_id, conyard_id in CONYARD_BY_MCV.items():
+        mcv_houses = unit_usage_houses(lines, mcv_id, usage_index)
         usage_aliases = set()
-        for house in unit_usage_houses(lines, mcv_id, usage_index):
+        for house in mcv_houses:
             record = house_records.get(house, {})
             usage_aliases.update({
                 str(house).lower(),
@@ -245,13 +251,40 @@ def _mission_production_buildings(
                 str(record.get('country') or '').lower(),
             })
         usage_aliases.discard('')
-        if usage_aliases.intersection(eligible_houses):
+        if (
+            usage_aliases.intersection(eligible_houses)
+            or (include_capturable and mcv_houses)
+        ):
             yield conyard_id
 
     for line in section_lines(lines, 'Structures'):
         owner, building_id = _structure_owner_and_type(line)
-        if building_id and str(owner or '').lower() in eligible_houses:
+        if building_id and (
+            str(owner or '').lower() in eligible_houses
+            or (
+                include_capturable
+                and building_id in PRODUCTION_LOOKUP
+            )
+        ):
             yield building_id
+
+    if include_capturable:
+        # Action 125 creates a BuildingType at a waypoint. Campaign openings
+        # and capture objectives can therefore provide a factory that has no
+        # source-map [Structures] entry. Preparing its matching T1 rules is
+        # safe: the exact building prerequisite stays unsatisfied until the
+        # player actually receives or captures that structure.
+        for line in section_lines(lines, 'Actions'):
+            if '=' not in line:
+                continue
+            _, value = line.split('=', 1)
+            _, groups = parse_action_groups(value)
+            for group in groups:
+                if len(group) < 3 or group[0] != '125':
+                    continue
+                building_id = group[2].strip().upper()
+                if building_id in PRODUCTION_LOOKUP:
+                    yield building_id
 
     # Several campaign missions, notably Epsilon 07, define the base the
     # player later operates only as numbered build nodes in a House section.

@@ -212,6 +212,7 @@ def starting_tier_one_defense_rules(
     additional_production_houses=(),
     excluded_unit_ids=(),
     allow_player_family_fallback=False,
+    include_capturable_production=False,
 ):
     """Make basic ground/anti-air defenses available behind matching yards."""
     selected_ids = {
@@ -247,6 +248,7 @@ def starting_tier_one_defense_rules(
                 lines,
                 records,
                 additional_production_houses,
+                include_capturable=include_capturable_production,
             )
             if building_id in PRODUCTION_LOOKUP
         }
@@ -289,11 +291,25 @@ def starting_tier_one_defense_rules(
         }
         and category == 'base'
     }
+    selected_roles = {
+        role
+        for role, family_units in TIER_ONE_DEFENSE_ROLE_UNITS.items()
+        if marker_selected or selected_ids.intersection(family_units.values())
+    }
     for family in eligible_families:
-        for tech_id in TIER_ONE_DEFENSE_UNITS.get(family, ()):
+        family_tech_ids = (
+            TIER_ONE_DEFENSE_UNITS.get(family, ())
+            if chaos_mode
+            else tuple(
+                TIER_ONE_DEFENSE_ROLE_UNITS[role][family]
+                for role in TIER_ONE_DEFENSE_ROLES
+                if role in selected_roles
+            )
+        )
+        for tech_id in family_tech_ids:
             if tech_id in excluded_ids:
                 continue
-            if not marker_selected and tech_id not in selected_ids:
+            if chaos_mode and not marker_selected and tech_id not in selected_ids:
                 continue
             catalog_entry = catalog_by_id.get(tech_id)
             if not catalog_entry:
@@ -330,6 +346,7 @@ def starting_tier_one_rules(
     additional_production_houses=(),
     excluded_unit_ids=(),
     allow_player_family_fallback=False,
+    include_capturable_production=False,
 ):
     """Make the seed's guaranteed Tier 1 combat roles immediately buildable."""
     selected_ids = {
@@ -359,6 +376,7 @@ def starting_tier_one_rules(
         lines,
         records,
         additional_production_houses,
+        include_capturable=include_capturable_production,
     ):
         production = PRODUCTION_LOOKUP.get(building_id)
         if production:

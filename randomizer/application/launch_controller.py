@@ -227,6 +227,7 @@ class LaunchController:
             allow_player_family_fallback=(
                 mission_code not in NO_BUILD_MISSION_CODES
             ),
+            include_capturable_production=translate_equivalents,
         )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
@@ -242,6 +243,7 @@ class LaunchController:
             allow_player_family_fallback=(
                 mission_code not in NO_BUILD_MISSION_CODES
             ),
+            include_capturable_production=translate_equivalents,
         )
         for section, values in starter_defense_rules.items():
             rules.setdefault(section, {}).update(values)
