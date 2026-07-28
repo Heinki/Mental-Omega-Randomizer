@@ -1226,7 +1226,7 @@
       "EHEAD": {
         "FOX": {
           "TechLevel": "1",
-          "BuildLimit": "-1",
+          "BuildLimit": null,
           "Prerequisite": "NAAIR",
           "PrerequisiteOverride": "NAAIR",
           "RequiredHouses": "PsiCorps",
