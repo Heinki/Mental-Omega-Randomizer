@@ -9,7 +9,10 @@ from randomizer.maps.ini import (
     read_text,
     section_value_map_preserve,
 )
-from randomizer.maps.ownership import script_referenced_taskforce_unit_ids
+from randomizer.maps.ownership import (
+    build_unit_usage_index,
+    script_referenced_taskforce_unit_ids,
+)
 from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
@@ -59,10 +62,12 @@ from randomizer.missions.overrides import (
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
+    MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES,
     MISSION_NATIVE_TRIGGER_REFERENCE_IDS,
     MISSION_NATIVE_VARIANT_BUFF_RULES,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSION_REWARD_EXCLUDED_PLAYER_HOUSES,
+    MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES,
     MISSION_MAP_SECTION_RULES,
     MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES,
     MISSION_TEAM_HOUSE_OVERRIDES,
@@ -271,6 +276,20 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             owned_clone_rule_overlays.setdefault(section_upper, {}).update(
                 rule_sections.pop(section)
             )
+    # A reviewed native Action 106 remains available when its randomizer
+    # reward is not owned. If the player already owns the isolated copy,
+    # narrow only the native identity to its story AI/helper consumers so the
+    # later mission action cannot leak a second unbuffed sidebar cameo.
+    # Apply this after owned clone overlays are split out: the rule belongs to
+    # the native source, not the earned player clone.
+    effective_tech_ids_upper = {
+        str(unit_id).upper() for unit_id in mission_effective_tech_ids
+    }
+    for source_id, values in MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES.get(
+        code, {}
+    ).items():
+        if source_id.upper() in effective_tech_ids_upper:
+            rule_sections.setdefault(source_id, {}).update(values)
     for section, values in mission_base_rules.items():
         rule_sections.setdefault(section, {}).update(values)
     mission_map_rules = resolved_map_section_rules(
@@ -459,8 +478,60 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     native_names = {
         str(section).lower(): section for section in native_map_sections
     }
+    # Story references alone do not justify leaving a native player cameo
+    # buildable. Many campaign TaskForces belong only to enemies/helpers; the
+    # old blanket exemption leaked those unbuffed originals beside the player
+    # clone whenever a transferred/captured factory exposed their roster.
+    # Preserve access only for types actually used by a player-controlled
+    # runtime house. Reviewed player TaskForces that are safely rewritten to
+    # clones do not need that exemption either.
+    usage_index = build_unit_usage_index(lines)
+    player_usage_names = {
+        str(name).lower()
+        for name in (
+            list(player_native_exclusions)
+            + player_controlled_houses(lines, records=records)
+        )
+        if name
+    }
+    for house_name, house_values in records.items():
+        if not house_values.get('player'):
+            continue
+        player_usage_names.add(str(house_name).lower())
+        if house_values.get('country'):
+            player_usage_names.add(str(house_values['country']).lower())
+        if house_values.get('parent_country'):
+            player_usage_names.add(
+                str(house_values['parent_country']).lower()
+            )
+    safe_player_clone_unit_ids = set()
+    native_sections_by_lower = {
+        str(section).lower(): values
+        for section, values in native_map_sections.items()
+    }
+    for taskforce_id in MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ()):
+        for value in native_sections_by_lower.get(
+            str(taskforce_id).lower(), {}
+        ).values():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if (
+                len(tokens) >= 2
+                and tokens[0].isdigit()
+                and tokens[1]
+                and tokens[1].lower() not in {'none', '<none>'}
+            ):
+                safe_player_clone_unit_ids.add(tokens[1].upper())
+    player_story_unit_ids = {
+        unit_id
+        for unit_id in scripted_story_unit_ids
+        if {
+            str(house).lower()
+            for house in usage_index.get(unit_id, ())
+        }.intersection(player_usage_names)
+    }
     preserved_native_access_ids = (
-        set(native_techno_exclusions) | scripted_story_unit_ids
+        set(native_techno_exclusions)
+        | (player_story_unit_ids - safe_player_clone_unit_ids)
     )
     for source_id in sorted(isolated_native_ids - preserved_native_access_ids):
         forbidden = []
@@ -670,6 +741,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             unit_specific_mode=chaos_unit_specific_buffs,
             native_trigger_reference_ids=(
                 MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
+            ),
+            scripted_player_buff_taskforces=(
+                MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ())
             ),
             excluded_unit_ids=native_techno_exclusions,
             build_only_excluded_unit_ids=native_build_only_clone_ids,

@@ -37,6 +37,9 @@ OUTPUT_GROUPS = OrderedDict((
     ('aircraft', ('RandomizerAircraft.ini', 340000)),
     ('buildings', ('RandomizerDefensesAndSpecialBuildings.ini', 350000)),
 ))
+# Append newly reviewed map-only identities instead of renumbering every
+# committed registry entry that already follows them in BUFF_TARGETS order.
+STABLE_APPEND_IDS = frozenset({'MAMM'})
 IMAGE_OVERRIDES = {
     # Mapper source calls the Mortar Quad art MORTAR, but installed artmo.ini
     # defines its cameo and sequence under [MOTOR].
@@ -65,6 +68,11 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'BORIS': {
         'BuildLimit': '1',
+    },
+    'PERUN': {
+        # Campaign source is intentionally impractical to produce. Portable
+        # reward must use normal construction timing.
+        'BuildTimeMultiplier': '1',
     },
     'RHAD': {
         'BuildLimit': '1',
@@ -119,7 +127,10 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'JACKALP': {
         'Name': 'Jackal Racer Prototype',
-        'Image': 'JACKALA',
+        # JACKALA is a native-map appearance swap whose visible turret still
+        # depends on the original JACKAL identity. Standalone reward clones
+        # need the complete JACKAL voxel/turret pair.
+        'Image': 'JACKAL',
     },
     'DIVERP': {
         'Name': 'Diverbee Prototype',
@@ -352,6 +363,14 @@ def main():
         else:
             group = 'buildings'
         grouped_ids[group].append(source_id)
+    for group, source_ids in grouped_ids.items():
+        grouped_ids[group] = [
+            source_id for source_id in source_ids
+            if source_id not in STABLE_APPEND_IDS
+        ] + [
+            source_id for source_id in source_ids
+            if source_id in STABLE_APPEND_IDS
+        ]
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for group, source_ids in grouped_ids.items():

@@ -3,6 +3,7 @@
 from ._shared import (
     ALWAYS_AVAILABLE_UNIT_IDS,
     BUFF_TARGETS,
+    buff_stack_limit,
     FACTION_UNIT_ROSTERS,
     HOUSE_SCOPED_BUFF_TYPES,
     MAX_COUNTRY_VETERAN_VALUE_LENGTH,
@@ -79,6 +80,9 @@ def stacked_house_buff_values(
             for global_suffix in ('Infantry', 'Units', 'Aircraft', 'Buildings', 'Defenses'):
                 key = (buff_type, global_suffix)
                 category_counts[key] = category_counts.get(key, 0) + 1
+                limit = buff_stack_limit(reward)
+                if limit is not None:
+                    category_counts[key] = min(category_counts[key], limit)
             continue
         suffix = house_category_suffix(target)
         if buff_type == 'veteran':
@@ -125,6 +129,9 @@ def stacked_house_buff_values(
         for equivalent_suffix in suffixes:
             key = (buff_type, equivalent_suffix)
             category_counts[key] = category_counts.get(key, 0) + 1
+            limit = buff_stack_limit(reward)
+            if limit is not None:
+                category_counts[key] = min(category_counts[key], limit)
 
     values = {}
     for (buff_type, suffix), count in category_counts.items():

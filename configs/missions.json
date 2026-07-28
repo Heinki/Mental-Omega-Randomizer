@@ -1058,6 +1058,7 @@
       ],
       "EHUEHUE": [
         "INTRUDER",
+        "NACLON",
         "SHAD"
       ],
       "SBLEED": [
@@ -1165,6 +1166,7 @@
       ],
       "EHUEHUE": [
         "INTRUDER",
+        "NACLON",
         "SHAD"
       ],
       "SBLEED": [
@@ -1219,6 +1221,15 @@
         "speed"
       ]
     },
+    "scripted_player_buff_taskforces": {
+      "FKILL": [
+        "01000006",
+        "01000007",
+        "01000008",
+        "01000020",
+        "01000452"
+      ]
+    },
     "team_house_overrides": {
       "SBLEED": {
         "01000480": "Boris",
@@ -1258,13 +1269,6 @@
         },
         "NAIRDM": {
           "BuildLimit": "-1"
-        }
-      },
-      "FKILL": {
-        "SMCV": {
-          "Speed": "16",
-          "Accelerates": "false",
-          "ROT": "10"
         }
       },
       "SRED": {
@@ -1378,6 +1382,21 @@
               "MORPCHITZ"
             ]
           }
+        }
+      },
+      "SHAND": {
+        "DOG": {
+          "RequiredHouses": "Kremlin,SovietEP,SovietNE,SovietSW"
+        },
+        "SENGINEER": {
+          "RequiredHouses": "Kremlin,SovietEP,SovietNE,SovietSW,Chinese,Latin"
+        }
+      },
+      "FKILL": {
+        "SMCV": {
+          "Speed": "16",
+          "Accelerates": "false",
+          "ROT": "10"
         }
       }
     },
@@ -1525,6 +1544,10 @@
           "native_units": ["ASSN"]
         }
       ],
+      "SFATAL": {
+        "source_unit": "VOLKOV",
+        "native_units": ["VOLKOV", "SVOLKOV"]
+      },
       "AWITHER": {
         "source_unit": "TANY",
         "native_units": ["ATANY"]
@@ -1546,7 +1569,17 @@
       "SJUGGER": [
         "NAHAMM",
         "NAIRDM"
+      ],
+      "SHAND": [
+        "MAMM"
       ]
+    },
+    "native_unlock_owned_access_rules": {
+      "SHAND": {
+        "MAMM": {
+          "RequiredHouses": "SovietNE"
+        }
+      }
     },
     "superweapon_techno_clone_overrides": {
       "SFATAL": {

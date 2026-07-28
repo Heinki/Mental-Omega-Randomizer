@@ -138,6 +138,8 @@ def buff_stack_limit(reward):
         return None
     if reward.get('power_buff_type'):
         return power_buff_stack_limit(reward)
+    if reward.get('buff_type') == 'production':
+        return max(1, int(BUFF_EFFECTS['production']['stack_limit']))
     if reward.get('buff_type') == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))

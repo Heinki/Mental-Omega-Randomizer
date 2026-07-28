@@ -130,7 +130,7 @@ def unit_weapon_buff_rules(
                 'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
                 'sensors', 'cost', 'speed',
             ):
-                if buff_type in counts and apply_unit_buff_value(
+                if buff_type in direct_types and apply_unit_buff_value(
                     unit_values,
                     target,
                     buff_type,

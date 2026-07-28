@@ -2892,13 +2892,22 @@
         "superweapon": "TimeFreezeSpecial",
         "values": {
           "IsPowered": "false",
+          "Type": "GenericWarhead",
+          "Action": "Custom",
           "RechargeTime": "12",
           "ShowTimer": "yes",
+          "Range": "1",
+          "Cursor": "Glacial",
+          "NoCursor": "NoCanDo",
           "SW.AutoFire": "no",
           "SW.ManualFire": "yes",
           "SW.ShowCameo": "yes",
           "SW.UseAITargeting": "no",
-          "SW.AITargeting": "Self",
+          "SW.AITargeting": "Offensive",
+          "SW.Warhead": "MORTimeFreezeWH",
+          "SW.Damage": "0",
+          "SW.AffectsHouse": "enemies",
+          "SW.RequiresTarget": "land",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
           "SW.AuxBuildings": "",
@@ -2907,57 +2916,18 @@
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
           "SW.FireIntoShroud": "yes",
-          "SW.RangeMaximum": "9999",
-          "SW.RangeMinimum": "0",
-          "EMPulse.TargetSelf": "yes"
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
+          "EMPulse.TargetSelf": null,
+          "EMPulse.Cannons": null
         },
         "techno_clones": {
-          "TimeFreezeWeapon": {
-            "clone": "MORTimeFreezeWeapon",
-            "list": "WeaponTypes",
-            "values": {
-              "Warhead": "MORTimeFreezeWH",
-              "OmniFire": "yes",
-              "AreaFire": "yes"
-            }
-          },
           "TimeFreezeWH": {
             "clone": "MORTimeFreezeWH",
-            "list": "Warheads"
-          },
-          "DUMMYDUMMY": {
-            "clone": "MORTimeFreezeCannon",
-            "list": "BuildingTypes",
-            "startup_count": 1,
-            "reference_keys": [
-              "EMPulse.Cannons"
-            ],
+            "list": "Warheads",
             "values": {
-              "Name": "Randomizer Time Freeze Cannon",
-              "UIName": "NAME:DUMMYDUMMY",
-              "Image": "DUMMYDUMMY",
-              "Primary": "MORTimeFreezeWeapon",
-              "EMPulseCannon": "no",
-              "SuperWeapon": null,
-              "SuperWeapon2": null,
-              "SuperWeapons": null,
-              "TechLevel": "-1",
-              "BuildLimit": "0",
-              "AIBuildThis": "no",
-              "Power": "0",
-              "Powered": "false",
-              "Capturable": "false",
-              "Selectable": "no",
-              "Unsellable": "yes",
-              "LegalTarget": "no",
-              "Insignificant": "yes",
-              "DontScore": "yes",
-              "KeepAlive": "no",
-              "BaseNormal": "no",
-              "AIBaseNormal": "no",
-              "IsBaseDefense": "no",
-              "RadarInvisible": "yes",
-              "Sight": "0"
+              "AllowZeroDamage": "yes",
+              "DamageAirThreshold": "-1"
             }
           }
         }
@@ -3051,8 +3021,8 @@
           "SW.InitialReady": "yes",
           "SW.MaxCount": "-1",
           "SW.Range": "0.1",
-          "SW.RangeMaximum": "22",
-          "SW.RangeMinimum": "0",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1",
           "SW.Sound": "SpaceBarrageFlyby",
           "SW.Deferment": "20",
           "DropPod.Types": "SHOCK,DESOR,CYBO",
@@ -3065,8 +3035,8 @@
           "SW.AllowAI": "no",
           "SW.UseAITargeting": "no",
           "SW.AITargeting": "None",
-          "SW.FireIntoShroud": "no",
-          "SW.RequiresTarget": "land",
+          "SW.FireIntoShroud": "yes",
+          "SW.RequiresTarget": null,
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
           "SW.AuxBuildings": "",

@@ -80,6 +80,7 @@ class PlayerCloneContext:
     player_houses: list[str]
     records: dict[str, dict[str, Any]]
     reserved_ids: set[str]
+    scripted_player_buff_taskforces: set[str]
     shared_player_veteran_ids: set[str]
     unit_specific_mode: bool
     unlimited_limit_ids: set[str]
@@ -147,6 +148,7 @@ def build_player_clone_sections(
     player_houses = context.player_houses
     records = context.records
     reserved_ids = context.reserved_ids
+    scripted_player_buff_taskforces = context.scripted_player_buff_taskforces
     shared_player_veteran_ids = context.shared_player_veteran_ids
     unit_specific_mode = context.unit_specific_mode
     unlimited_limit_ids = context.unlimited_limit_ids
@@ -207,6 +209,25 @@ def build_player_clone_sections(
         lines,
         map_sections,
     )
+    # Reviewed player-start TaskForces may safely use isolated buffed clones.
+    # Keep blanket story-team preservation everywhere else: transports,
+    # paradrops, hand-offs, and exact-ID events can depend on native identity.
+    scripted_player_clone_unit_ids = set()
+    sections_by_lower = {
+        str(section).lower(): values
+        for section, values in map_sections.items()
+    }
+    for taskforce_id in scripted_player_buff_taskforces:
+        for value in sections_by_lower.get(taskforce_id, {}).values():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if (
+                len(tokens) >= 2
+                and tokens[0].isdigit()
+                and tokens[1]
+                and tokens[1].lower() not in {'none', '<none>'}
+            ):
+                scripted_player_clone_unit_ids.add(tokens[1].upper())
+    scripted_team_unit_ids.difference_update(scripted_player_clone_unit_ids)
 
     native_helper_taskforces = _helper_autocreate_taskforce_units(
         lines,
@@ -422,6 +443,17 @@ def build_player_clone_sections(
     existing_candidate_ids.update(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     )
+
+    def preserve_native_speed(unit_id, counts):
+        """Keep authored movement while allowing other guarded native buffs."""
+        if 'speed' not in counts:
+            return
+        handled_by_unit[unit_id] = {
+            'unit_buff_types': {'speed'},
+            'weapon_ids': set(),
+            'clone_id': '',
+        }
+
     for unit_id, target_unit_id, counts in clone_candidates:
         unit_id = str(unit_id).upper()
         # Mission-authored operator/passenger/loss chains can require the
@@ -436,12 +468,14 @@ def build_player_clone_sections(
             and unit_id in buildable_ids
         )
         if unit_id in excluded_unit_ids and not excluded_build_only_clone:
+            preserve_native_speed(unit_id, counts)
             continue
         scripted_build_only_clone = (
             unit_id in scripted_team_unit_ids
             and unit_id in buildable_ids
         )
         if unit_id in scripted_team_unit_ids and not scripted_build_only_clone:
+            preserve_native_speed(unit_id, counts)
             unsupported.append(
                 f'{BUFF_TARGETS.get(unit_id, {}).get("label", unit_id)} '
                 'scripted reinforcement kept native'
@@ -457,6 +491,7 @@ def build_player_clone_sections(
             )
         )
         if unit_id in ambiguous_mission_event_ids and not build_only_clone:
+            preserve_native_speed(unit_id, counts)
             unsupported.append(
                 f'{target.get("label", target_unit_id)} shared mission event kept native'
             )
@@ -919,6 +954,13 @@ def build_player_clone_sections(
         _register_map_type(
             section_rules, lines, installed_sections, list_section, clone_id
         )
+        if unit_id in {'JACKAL', 'JACKALP'}:
+            # Map-authored JACKALA works only while the original JACKAL
+            # identity supplies its visible mobile turret. A standalone clone
+            # must use the complete standard body/turret asset pair. Its
+            # prototype cameo remains distinct through the generated art
+            # overlay deployed for this launch.
+            clone_values['Image'] = 'JACKAL'
         section_rules[clone_id] = clone_values
         cloned_source_ids.add(unit_id)
         if not build_only_clone:
@@ -935,9 +977,22 @@ def build_player_clone_sections(
             unsupported.append(
                 f'{target.get("label", target_unit_id)} build-only clone kept native mission references'
             )
+        # A build-only clone serves production but deliberately leaves
+        # mission-authored placements and scripted teams on the native ID.
+        # Do not tell the guarded native pass that every clone buff was
+        # handled: that suppresses health/weapon/etc. bonuses on the units the
+        # mission actually gives the player. Movement remains clone-only so
+        # those native mission units keep their authored/default Speed.
+        native_handled_unit_types = handled_unit_types
+        native_handled_weapon_ids = handled_weapon_ids
+        if build_only_clone:
+            native_handled_unit_types = handled_unit_types.intersection(
+                {'speed'}
+            )
+            native_handled_weapon_ids = set()
         handled_by_unit[unit_id] = {
-            'unit_buff_types': handled_unit_types,
-            'weapon_ids': handled_weapon_ids,
+            'unit_buff_types': native_handled_unit_types,
+            'weapon_ids': native_handled_weapon_ids,
             'clone_id': clone_id,
         }
         label = target.get('label', target_unit_id)

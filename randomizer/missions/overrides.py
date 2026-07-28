@@ -33,6 +33,10 @@ MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES = _frozenset_mapping(
     'clone_only_country_buff_types'
 )
 
+MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES = _frozenset_mapping(
+    'scripted_player_buff_taskforces'
+)
+
 MISSION_TEAM_HOUSE_OVERRIDES = dict(_MISSION_CONFIG['team_house_overrides'])
 
 # Mission-only production merged after progression locks. These never become
@@ -59,6 +63,10 @@ MISSION_NATIVE_VARIANT_BUFF_RULES = {
 }
 
 MISSION_NATIVE_TECH_UNLOCK_IDS = _frozenset_mapping('native_tech_unlock_ids')
+
+MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES = dict(
+    _MISSION_CONFIG['native_unlock_owned_access_rules']
+)
 
 MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES = dict(
     _MISSION_CONFIG['superweapon_techno_clone_overrides']

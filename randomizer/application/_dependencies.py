@@ -32,7 +32,11 @@ from randomizer.ui.cameos import (
     powershell_mix_reader_load_script,
 )
 from randomizer.core.diagnostics import event as log_event
-from randomizer.maps.assets import custom_sidebar_preview
+from randomizer.maps.assets import (
+    custom_sidebar_preview,
+    deploy_generated_unit_art,
+    remove_generated_unit_art,
+)
 from randomizer.core.version import APP_VERSION
 from randomizer.progression.grid import (
     COMPLETED as GRID_COMPLETED,

@@ -707,14 +707,18 @@ UNIT_BUFF_REWARDS = build_buff_rewards()
 for source_id, variants in LINKED_BUFF_VARIANTS.items():
     source_target = BUFF_TARGETS[source_id]
     for variant_id, definition in variants.items():
-        variant_target = dict(source_target)
+        # Linked identities share earned stacks, not authored base values.
+        # Campaign prototypes can differ from their normal Foehn counterpart
+        # in cost, speed, strength, art, and faction while using related
+        # weapons. Preserve the variant's own target metadata.
+        variant_target = dict(BUFF_TARGETS.get(variant_id, source_target))
         variant_target['weapons'] = {
             str(weapon_id).upper(): dict(stats)
             for weapon_id, stats in definition.get('weapons', {}).items()
         }
         variant_target['linked_buff_source'] = source_id
         BUFF_TARGETS[variant_id] = variant_target
-        UNIT_LABELS[variant_id] = source_target['label']
+        UNIT_LABELS.setdefault(variant_id, variant_target['label'])
 
 SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['superweapon_unlock_rewards']
 

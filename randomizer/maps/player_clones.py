@@ -53,6 +53,7 @@ def player_unit_clone_rules(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
     native_trigger_reference_ids=(),
+    scripted_player_buff_taskforces=(),
     excluded_unit_ids=(),
     build_only_excluded_unit_ids=(),
     excluded_player_houses=(),
@@ -369,6 +370,11 @@ def player_unit_clone_rules(
         player_houses=player_houses,
         records=records,
         reserved_ids=reserved_ids,
+        scripted_player_buff_taskforces={
+            str(taskforce_id).lower()
+            for taskforce_id in scripted_player_buff_taskforces
+            if taskforce_id
+        },
         shared_player_veteran_ids=shared_player_veteran_ids,
         unit_specific_mode=unit_specific_mode,
         unlimited_limit_ids=unlimited_limit_ids,

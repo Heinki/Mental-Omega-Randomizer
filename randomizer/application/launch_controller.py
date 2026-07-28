@@ -31,6 +31,7 @@ from ._dependencies import (
     chaos_earned_access_rules,
     choice_label_from_ini,
     controlled_tech_ids,
+    deploy_generated_unit_art,
     is_generated_hooked_map,
     is_generated_rules_file,
     launch_rules_for_reward,
@@ -44,6 +45,7 @@ from ._dependencies import (
     powershell_mix_reader_load_script,
     prepare_hooked_mission_map,
     read_text,
+    remove_generated_unit_art,
     set_ini_value_lines,
     shutil,
     single_engineer_rules,
@@ -536,6 +538,7 @@ throw "Map $name was not found in expandmo*.mix"
         for path in (RULESMO_INI, DISABLED_RULESMO_INI):
             if path.exists() and is_generated_rules_file(path):
                 path.unlink()
+        remove_generated_unit_art()
 
     def build_command(self):
         return f'"{GAME_LAUNCHER_EXE}" "{GAME_EXE.name}" -SPAWN -CD -SPEEDCONTROL -LOG'
@@ -736,6 +739,24 @@ throw "Map $name was not found in expandmo*.mix"
                 self.append_log('Objective hook preparation failed; launching without automatic objective detection.', error=True)
                 self.append_log(traceback.format_exc(), error=True)
                 self.cleanup_generated_root_maps()
+            if hook and hook.get('root_map'):
+                try:
+                    art_path, art_aliases = deploy_generated_unit_art(
+                        hook['root_map']
+                    )
+                    if art_path:
+                        self.append_log(
+                            'Prepared temporary unit cameo art for: '
+                            + ', '.join(sorted(art_aliases))
+                            + '.'
+                        )
+                except Exception:
+                    self.append_log(
+                        'Could not prepare temporary unit cameo art; '
+                        'existing custom art was left untouched.',
+                        error=True,
+                    )
+                    self.append_log(traceback.format_exc(), error=True)
             self.write_spawn_ini(scenario, difficulty_value, game_speed_value)
             self.write_launch_options(difficulty_value, game_speed_value)
         except Exception:

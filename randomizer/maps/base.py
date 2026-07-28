@@ -387,6 +387,19 @@ def cloned_superweapon_plan(
                 )
                 techno_values = dict(techno_source_values)
                 techno_values.update(clone_spec.get('values') or {})
+                if (
+                    list_section.lower() in {
+                        'aircrafttypes', 'buildingtypes', 'infantrytypes',
+                        'vehicletypes',
+                    }
+                    and not any(
+                        str(key).lower() == 'image' and str(value or '').strip()
+                        for key, value in techno_values.items()
+                    )
+                ):
+                    # TechnoType art defaults to its section ID. A renamed
+                    # map-local clone must explicitly retain source art.
+                    techno_values['Image'] = template_source
                 section_rules[techno_clone] = techno_values
 
                 map_entries = section_value_map_preserve(lines, list_section)

@@ -3,7 +3,7 @@
   "description": "Editable reward stacking, clone construction, retry assistance, and reward-planning tuning. Repeatable buff effects have no artificial stack ceiling; explicit engine/gameplay safety limits remain.",
   "sections": {
     "buff_effects": {
-      "production": {"factor_per_stack": 0.85},
+      "production": {"factor_per_stack": 0.85, "stack_limit": 10},
       "cost": {"factor_per_stack": 0.8},
       "speed": {"factor_per_stack": 1.1},
       "armor": {"factor_per_stack": 0.9},

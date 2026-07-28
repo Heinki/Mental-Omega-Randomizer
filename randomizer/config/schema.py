@@ -25,6 +25,7 @@ REQUIRED_SECTIONS = {
         'native_techno_clone_exclusions': dict,
         'reward_excluded_player_houses': dict,
         'clone_only_country_buff_types': dict,
+        'scripted_player_buff_taskforces': dict,
         'team_house_overrides': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
@@ -32,6 +33,7 @@ REQUIRED_SECTIONS = {
         'native_direct_buff_exclusions': dict,
         'native_variant_buff_rules': dict,
         'native_tech_unlock_ids': dict,
+        'native_unlock_owned_access_rules': dict,
         'superweapon_techno_clone_overrides': dict,
         'all_conyard_defense_access_missions': list,
         'standard_starter_families_by_campaign': dict,
@@ -438,6 +440,13 @@ def _validate_tuning(sections, path):
             or values['factor_per_stack'] <= 0
         ):
             _invalid(f'Invalid buff effect {effect!r}', path)
+    production_stack_limit = effects.get('production', {}).get('stack_limit')
+    if (
+        not isinstance(production_stack_limit, int)
+        or isinstance(production_stack_limit, bool)
+        or production_stack_limit < 1
+    ):
+        _invalid('Invalid production buff stack limit', path)
 
     for effect in ('range', 'sight', 'ammo'):
         values = effects.get(effect)
