@@ -171,8 +171,7 @@ class LauncherApp(
             )
             if str(power_id).strip() and isinstance(buff_types, list)
         }
-        self.power_buff_window = None
-        self.power_buff_power_id = ''
+        self.advanced_power_buff_id = ''
         reward_mode_default = valid_choice(
             self.state.get('reward_mode', generation_config.get('reward_mode')),
             REWARD_MODES,

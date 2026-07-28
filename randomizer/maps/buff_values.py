@@ -40,16 +40,16 @@ def apply_unit_buff_value(values, target, buff_type, count):
         )))
     elif buff_type == 'self_healing':
         values['SelfHealing'] = 'yes'
-        if target.get('category') == 'defenses':
-            # Ares defaults to one hitpoint per RepairRate tick. On structures
-            # with hundreds or thousands of HP that appears non-functional.
-            # Keep the normal game interval but heal 1% max strength per tick.
-            values['SelfHealing.Amount'] = str(
-                max(1, int(round(
-                    target['strength']
-                    * float(BUFF_EFFECTS['defense_self_heal_fraction'])
-                )))
-            )
+        # Ares defaults to one hitpoint per RepairRate tick. Give every stack
+        # another configured fraction of effective maximum strength.
+        current_strength = int(values.get('Strength', target['strength']))
+        values['SelfHealing.Amount'] = str(
+            max(1, int(round(
+                current_strength
+                * float(BUFF_EFFECTS['defense_self_heal_fraction'])
+                * count
+            )))
+        )
     elif buff_type == 'cloak':
         values['Cloakable'] = 'yes'
         values['Cloakable.Stages'] = '1'

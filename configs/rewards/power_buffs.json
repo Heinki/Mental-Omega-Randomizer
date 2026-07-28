@@ -7,48 +7,41 @@
         "id": "recharge",
         "name": "Accelerated Recharge",
         "setting_label": "Faster recharge",
-        "description": "Recharge time is 10% shorter per stack.",
-        "maximum_stacks": 5
+        "description": "Recharge time is 10% shorter per stack."
       },
       {
         "id": "cost",
         "name": "Logistics",
         "setting_label": "Lower activation cost",
-        "description": "Activation cost is 15% cheaper per stack.",
-        "maximum_stacks": 5
+        "description": "Activation cost is 15% cheaper per stack."
       },
       {
         "id": "area",
         "name": "Expanded Area",
         "setting_label": "Larger effect area",
-        "description": "Effect radius grows by 0.5 cells per stack; rectangular areas grow by one cell in each dimension.",
-        "maximum_stacks": 4
+        "description": "Effect radius grows by 0.5 cells per stack; rectangular areas grow by one cell in each dimension."
       },
       {
         "id": "damage",
         "name": "Amplified Payload",
         "setting_label": "Higher damage",
-        "description": "Direct power damage is 15% higher per stack.",
-        "maximum_stacks": 5
+        "description": "Direct power damage is 15% higher per stack."
       },
       {
         "id": "duration",
         "name": "Extended Effect",
         "setting_label": "Longer effect duration",
-        "description": "Timed effect duration is 15% longer per stack.",
-        "maximum_stacks": 5
+        "description": "Timed effect duration is 15% longer per stack."
       },
       {
         "id": "payload",
         "name": "Reinforced Payload",
         "setting_label": "One extra delivered unit",
-        "description": "Delivery, paradrop, or aircraft count increases by one per stack.",
-        "maximum_stacks": 4
+        "description": "Delivery, paradrop, or aircraft count increases by one per stack."
       }
     ],
     "recharge": {
       "factor_per_stack": 0.9,
-      "minimum": 0.25,
       "applies_to_all_powers": true
     },
     "cost": {

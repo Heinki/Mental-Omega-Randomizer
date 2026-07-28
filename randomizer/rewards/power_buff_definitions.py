@@ -86,10 +86,8 @@ def build_power_buff_rewards(power_rewards):
 
 
 def power_buff_stack_limit(reward):
-    definition = POWER_BUFF_TYPE_BY_ID.get(reward.get('power_buff_type'))
-    if not definition:
-        return None
-    return int(definition['maximum_stacks'])
+    """Power buffs are repeatable without an artificial stack ceiling."""
+    return None
 
 
 def power_buff_effect_text(reward, count=1):
@@ -97,7 +95,7 @@ def power_buff_effect_text(reward, count=1):
     definition = POWER_BUFF_TYPE_BY_ID.get(reward.get('power_buff_type'))
     if not definition:
         return ''
-    count = min(max(1, int(count)), int(definition['maximum_stacks']))
+    count = max(1, int(count))
     buff_id = definition['id']
     if buff_id == 'recharge':
         factor = float(POWER_BUFF_CONFIG['recharge']['factor_per_stack'])

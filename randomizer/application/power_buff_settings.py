@@ -1,12 +1,18 @@
-"""Separate settings window for superweapon and aid-power buff rewards."""
+"""Advanced-tab controls for superweapon and aid-power buff rewards."""
 
 from ._dependencies import (
     CAMPAIGN_FILTERS,
+    FACTION_TILE_COLORS,
     POWER_BUFF_TYPES,
     REWARD_POOL,
+    WidgetTooltip,
+    custom_sidebar_preview,
+    ensure_superweapon_cameos,
+    log_event,
+    logging,
     reward_display_name,
     tk,
-    ttk,
+    traceback,
 )
 from randomizer.rewards.power_buff_definitions import power_buff_type_ids
 
@@ -16,13 +22,15 @@ class PowerBuffSettingsController:
     def power_buff_entries(self):
         entries = []
         selected_campaign = self.campaign_var.get()
-        enabled_categories = set()
-        if self.include_superweapon_rewards_var.get():
-            enabled_categories.add('offensive')
-        if self.include_secondary_superweapon_rewards_var.get():
-            enabled_categories.add('secondary')
-        if self.include_aid_power_rewards_var.get():
-            enabled_categories.add('aid')
+        enabled_categories = {
+            category
+            for category, enabled in (
+                ('offensive', self.include_superweapon_rewards_var.get()),
+                ('secondary', self.include_secondary_superweapon_rewards_var.get()),
+                ('aid', self.include_aid_power_rewards_var.get()),
+            )
+            if enabled
+        }
         for reward in REWARD_POOL:
             if (
                 reward.get('kind') != 'superweapon'
@@ -48,6 +56,7 @@ class PowerBuffSettingsController:
                 'faction': faction,
                 'category': reward.get('power_category', 'offensive'),
                 'buff_types': power_buff_type_ids(power_id),
+                'reward': reward,
             })
         faction_rank = {
             'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4,
@@ -60,244 +69,233 @@ class PowerBuffSettingsController:
             ),
         )
 
-    def open_power_buff_settings(self):
-        window = self.power_buff_window
-        if window is not None and window.winfo_exists():
-            window.deiconify()
-            window.lift()
-            window.focus_force()
-            return
-
-        window = tk.Toplevel(self)
-        self.power_buff_window = window
-        window.title('Power Buff Rewards')
-        window.geometry('900x620')
-        window.minsize(720, 480)
-        window.transient(self)
-        window.protocol('WM_DELETE_WINDOW', self.close_power_buff_settings)
-        window.columnconfigure(0, weight=1)
-        window.rowconfigure(2, weight=1)
-
-        intro = ttk.Label(
-            window,
-            text=(
-                'Power buffs affect only earned map-local power clones. '
-                'Choose global reward types, then tune valid buffs per power.'
-            ),
-            wraplength=850,
-        )
-        intro.grid(row=0, column=0, sticky='ew', padx=12, pady=(12, 6))
-
-        type_frame = ttk.LabelFrame(
-            window, text='Power Buff Reward Types', padding=8
-        )
-        type_frame.grid(row=1, column=0, sticky='ew', padx=12, pady=(0, 8))
-        for column in range(3):
-            type_frame.columnconfigure(column, weight=1)
-        for index, definition in enumerate(POWER_BUFF_TYPES):
-            check = ttk.Checkbutton(
-                type_frame,
-                text=definition['setting_label'],
-                variable=self.power_buff_type_vars[definition['id']],
-                command=self.on_power_buff_global_type_changed,
-            )
-            check.grid(
-                row=index // 3,
-                column=index % 3,
-                sticky='w',
-                padx=(0, 10),
-                pady=2,
-            )
-
-        content = ttk.Frame(window)
-        content.grid(row=2, column=0, sticky='nsew', padx=12)
-        content.columnconfigure(0, weight=2)
-        content.columnconfigure(1, weight=3)
-        content.rowconfigure(0, weight=1)
-
-        list_frame = ttk.LabelFrame(content, text='Included Powers', padding=6)
-        list_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 8))
-        list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
-        tree = ttk.Treeview(
-            list_frame,
-            columns=('faction', 'category'),
-            show='tree headings',
-            selectmode='browse',
-        )
-        tree.heading('#0', text='Power')
-        tree.heading('faction', text='Faction')
-        tree.heading('category', text='Class')
-        tree.column('#0', width=230, stretch=True)
-        tree.column('faction', width=75, anchor='center')
-        tree.column('category', width=75, anchor='center')
-        tree.grid(row=0, column=0, sticky='nsew')
-        scrollbar = ttk.Scrollbar(
-            list_frame, orient='vertical', command=tree.yview
-        )
-        scrollbar.grid(row=0, column=1, sticky='ns')
-        tree.configure(yscrollcommand=scrollbar.set)
-        tree.bind('<<TreeviewSelect>>', self.on_power_buff_power_selected)
-        self.power_buff_tree = tree
-
-        detail = ttk.LabelFrame(content, text='Selected Power', padding=10)
-        detail.grid(row=0, column=1, sticky='nsew')
-        detail.columnconfigure(0, weight=1)
-        self.power_buff_selected_label = ttk.Label(
-            detail, text='Select a power.', wraplength=430
-        )
-        self.power_buff_selected_label.grid(
-            row=0, column=0, sticky='ew', pady=(0, 8)
-        )
-        self.power_buff_power_vars = {
-            definition['id']: tk.BooleanVar(value=False)
+    def draw_advanced_power_buff_card(
+        self,
+        parent,
+        row,
+        column,
+        entry,
+        photo=None,
+    ):
+        power_id = entry['id']
+        selected = power_id == self.advanced_power_buff_id
+        possible = set(entry['buff_types'])
+        excluded = self.excluded_power_buff_types.get(power_id, set())
+        globally_enabled = {
+            definition['id']
             for definition in POWER_BUFF_TYPES
+            if self.power_buff_type_vars[definition['id']].get()
         }
-        self.power_buff_power_checks = {}
-        for index, definition in enumerate(POWER_BUFF_TYPES, start=1):
-            check = ttk.Checkbutton(
-                detail,
-                text=(
-                    f'{definition["setting_label"]}: '
-                    f'{definition["description"]}'
-                ),
-                variable=self.power_buff_power_vars[definition['id']],
-                command=lambda buff_id=definition['id']: (
-                    self.on_power_buff_power_type_changed(buff_id)
-                ),
-            )
-            check.grid(row=index, column=0, sticky='w', pady=3)
-            self.power_buff_power_checks[definition['id']] = check
-        buttons = ttk.Frame(detail)
-        buttons.grid(
-            row=len(POWER_BUFF_TYPES) + 1,
-            column=0,
-            sticky='w',
-            pady=(10, 0),
+        active_count = len(possible.intersection(globally_enabled) - excluded)
+        border = '#73d673' if selected else '#4d92d8'
+        card = tk.Canvas(
+            parent,
+            width=130,
+            height=112,
+            highlightthickness=3 if selected else 2,
+            highlightbackground=border,
+            highlightcolor=border,
+            background=FACTION_TILE_COLORS.get(
+                entry.get('faction'), '#315b82'
+            ),
+            cursor='hand2',
         )
-        ttk.Button(
-            buttons,
-            text='Enable valid',
-            command=lambda: self.set_selected_power_buffs(True),
-        ).grid(row=0, column=0, padx=(0, 6))
-        ttk.Button(
-            buttons,
-            text='Disable all',
-            command=lambda: self.set_selected_power_buffs(False),
-        ).grid(row=0, column=1)
+        card.grid(row=row, column=column, padx=4, pady=4, sticky='nw')
+        if photo is not None:
+            card.create_image(65, 35, image=photo, anchor='center')
+        else:
+            card.create_text(
+                65,
+                35,
+                text=entry.get('faction') or '?',
+                fill='#ffffff',
+                font=('Segoe UI', 10, 'bold'),
+                width=122,
+                justify='center',
+            )
+        card.create_rectangle(0, 72, 130, 112, fill='#151a20', outline='')
+        card.create_text(
+            65,
+            87,
+            text=entry['label'],
+            fill='#ffffff',
+            font=('Segoe UI', 9, 'bold'),
+            width=122,
+            justify='center',
+        )
+        card.create_text(
+            65,
+            105,
+            text=f'{active_count}/{len(possible)} buffs',
+            fill='#73d673' if active_count else '#aeb4bb',
+            font=('Segoe UI', 8),
+            width=122,
+            justify='center',
+        )
+        card.bind(
+            '<Button-1>',
+            lambda _event, item_id=power_id: (
+                self.select_advanced_power_buff(item_id)
+            ),
+        )
+        card.bind(
+            '<MouseWheel>',
+            lambda event, target=self.advanced_pool_canvases['power_buffs']: (
+                self.on_unlock_mousewheel(event, target)
+            ),
+        )
+        WidgetTooltip(
+            card,
+            (
+                f'{entry["label"]} ({power_id})\n'
+                f'{active_count} of {len(possible)} valid buff types enabled'
+            ),
+        )
 
-        footer = ttk.Frame(window)
-        footer.grid(row=3, column=0, sticky='ew', padx=12, pady=12)
-        footer.columnconfigure(0, weight=1)
-        self.power_buff_status_label = ttk.Label(footer, text='')
-        self.power_buff_status_label.grid(row=0, column=0, sticky='w')
-        ttk.Button(
-            footer, text='Close', command=self.close_power_buff_settings
-        ).grid(row=0, column=1)
-        self.refresh_power_buff_window()
-
-    def close_power_buff_settings(self):
-        window = self.power_buff_window
-        self.power_buff_window = None
-        if window is not None and window.winfo_exists():
-            window.destroy()
-
-    def refresh_power_buff_window(self):
-        window = self.power_buff_window
-        if window is None or not window.winfo_exists():
+    def refresh_advanced_power_buff_view(self):
+        if 'power_buffs' not in getattr(self, 'advanced_pool_frames', {}):
             return
+        frame = self.advanced_pool_frames['power_buffs']
+        for child in frame.winfo_children():
+            child.destroy()
         entries = self.power_buff_entries()
-        self._power_buff_entries_by_id = {
-            entry['id']: entry for entry in entries
-        }
-        tree = self.power_buff_tree
-        selected = self.power_buff_power_id
-        for item in tree.get_children():
-            tree.delete(item)
-        for entry in entries:
-            tree.insert(
-                '',
-                'end',
-                iid=entry['id'],
-                text=entry['label'],
-                values=(entry['faction'], entry['category'].title()),
-            )
-        if selected not in self._power_buff_entries_by_id:
-            selected = entries[0]['id'] if entries else ''
-        self.power_buff_power_id = selected
-        if selected:
-            tree.selection_set(selected)
-            tree.see(selected)
-        self.refresh_selected_power_buff_controls()
+        entry_ids = {entry['id'] for entry in entries}
+        if not entries:
+            self.advanced_power_buff_id = ''
+        elif self.advanced_power_buff_id not in entry_ids:
+            self.advanced_power_buff_id = entries[0]['id']
 
-    def refresh_selected_power_buff_controls(self):
-        entry = getattr(self, '_power_buff_entries_by_id', {}).get(
-            self.power_buff_power_id
+        normal_power_ids = [
+            entry['reward'].get('cameo_superweapon', entry['id'])
+            for entry in entries
+            if not entry['reward'].get('superweapon_sidebar_image')
+        ]
+        power_paths = dict(
+            getattr(self, 'advanced_power_cameo_paths', {}) or {}
         )
-        possible = set(entry['buff_types']) if entry else set()
+        missing_power_ids = [
+            power_id
+            for power_id in normal_power_ids
+            if str(power_id).upper() not in power_paths
+        ]
+        if missing_power_ids:
+            try:
+                power_paths.update(
+                    ensure_superweapon_cameos(missing_power_ids)
+                )
+            except Exception:
+                log_event(
+                    'advanced_power_buff_cameos_failed',
+                    level=logging.ERROR,
+                    traceback=traceback.format_exc(),
+                )
+        self.advanced_power_cameo_paths = power_paths
+        columns = self.advanced_pool_column_count('power_buffs')
+        for index, entry in enumerate(entries):
+            reward = entry['reward']
+            asset_name = reward.get('superweapon_sidebar_image')
+            if asset_name:
+                try:
+                    path = custom_sidebar_preview(asset_name)
+                except Exception:
+                    path = None
+            else:
+                path = power_paths.get(
+                    str(
+                        reward.get('cameo_superweapon', entry['id'])
+                    ).upper()
+                )
+            photo = self.advanced_pool_photo(
+                f'power-buff:{entry["id"]}', path
+            )
+            if photo is not None:
+                large_key = f'advanced:power-buff-large:{entry["id"]}'
+                large_photo = self.advanced_pool_images.get(large_key)
+                if large_photo is None:
+                    large_photo = photo.zoom(6, 6).subsample(5, 5)
+                    self.advanced_pool_images[large_key] = large_photo
+                photo = large_photo
+            self.draw_advanced_power_buff_card(
+                frame,
+                index // columns,
+                index % columns,
+                entry,
+                photo,
+            )
+        self.refresh_advanced_power_buff_controls(entries)
+
+    def refresh_advanced_power_buff_controls(self, entries=None):
+        if not hasattr(self, 'advanced_power_buff_vars'):
+            return
+        entries = entries if entries is not None else self.power_buff_entries()
+        selected = next(
+            (
+                entry
+                for entry in entries
+                if entry['id'] == self.advanced_power_buff_id
+            ),
+            None,
+        )
+        possible = set(selected['buff_types']) if selected else set()
         excluded = self.excluded_power_buff_types.get(
-            self.power_buff_power_id, set()
+            self.advanced_power_buff_id, set()
         )
         globally_enabled = {
             definition['id']
             for definition in POWER_BUFF_TYPES
             if self.power_buff_type_vars[definition['id']].get()
         }
+        active = possible.intersection(globally_enabled) - excluded
+        self.advanced_power_buff_label.configure(
+            text=(
+                f'{selected["label"]}: {len(active)}/{len(possible)} valid buff types enabled.'
+                if selected
+                else 'No included powers in this campaign/reward pool.'
+            )
+        )
         for definition in POWER_BUFF_TYPES:
             buff_id = definition['id']
-            self.power_buff_power_vars[buff_id].set(
+            self.advanced_power_buff_vars[buff_id].set(
                 buff_id in possible and buff_id not in excluded
             )
-            self.power_buff_power_checks[buff_id].configure(
+            self.advanced_power_buff_checks[buff_id].configure(
                 state=(
                     'normal'
                     if buff_id in possible and buff_id in globally_enabled
                     else 'disabled'
                 )
             )
-        if entry:
-            enabled = possible - excluded
-            self.power_buff_selected_label.configure(
-                text=(
-                    f'{entry["label"]} ({entry["faction"]}): '
-                    f'{len(enabled)}/{len(possible)} valid buffs enabled.'
-                )
-            )
-        else:
-            self.power_buff_selected_label.configure(
-                text='No included powers for current campaign/settings.'
-            )
-        self.power_buff_status_label.configure(
-            text=f'{len(getattr(self, "_power_buff_entries_by_id", {}))} powers'
-        )
 
-    def on_power_buff_power_selected(self, _event=None):
-        selection = self.power_buff_tree.selection()
-        if selection:
-            self.power_buff_power_id = selection[0]
-        self.refresh_selected_power_buff_controls()
+    def select_advanced_power_buff(self, power_id):
+        self.advanced_power_buff_id = str(power_id).upper()
+        self.refresh_advanced_power_buff_view()
 
     def on_power_buff_global_type_changed(self):
         self.save_current_launcher_config()
-        self.refresh_selected_power_buff_controls()
+        self.refresh_advanced_power_buff_view()
 
     def on_power_buff_power_type_changed(self, buff_id):
-        power_id = self.power_buff_power_id
+        power_id = self.advanced_power_buff_id
         if not power_id:
             return
         excluded = self.excluded_power_buff_types.setdefault(power_id, set())
-        if self.power_buff_power_vars[buff_id].get():
+        if self.advanced_power_buff_vars[buff_id].get():
             excluded.discard(buff_id)
         else:
             excluded.add(buff_id)
         if not excluded:
             self.excluded_power_buff_types.pop(power_id, None)
         self.save_current_launcher_config()
-        self.refresh_selected_power_buff_controls()
+        self.refresh_advanced_power_buff_view()
 
     def set_selected_power_buffs(self, include):
-        entry = getattr(self, '_power_buff_entries_by_id', {}).get(
-            self.power_buff_power_id
+        entry = next(
+            (
+                item
+                for item in self.power_buff_entries()
+                if item['id'] == self.advanced_power_buff_id
+            ),
+            None,
         )
         if not entry:
             return
@@ -308,4 +306,4 @@ class PowerBuffSettingsController:
                 entry['buff_types']
             )
         self.save_current_launcher_config()
-        self.refresh_selected_power_buff_controls()
+        self.refresh_advanced_power_buff_view()

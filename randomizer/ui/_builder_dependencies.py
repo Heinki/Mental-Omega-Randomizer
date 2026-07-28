@@ -7,7 +7,11 @@ from tkinter import scrolledtext, ttk
 
 from randomizer.config.player import DEFAULT_CONFIG
 from randomizer.core.paths import LAUNCHER_LOG
-from randomizer.rewards.catalogue import BUFF_TYPES, MAX_REWARDS_PER_CHECK
+from randomizer.rewards.catalogue import (
+    BUFF_TYPES,
+    MAX_REWARDS_PER_CHECK,
+    POWER_BUFF_TYPES,
+)
 from randomizer.config.tuning import stacking_amount, stacking_multiplier
 from randomizer.ui.tooltips import TreeTooltip, WidgetTooltip
 from randomizer.ui.config import (

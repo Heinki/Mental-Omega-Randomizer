@@ -12,18 +12,12 @@ REWARD_PLANNING = _CONFIG['reward_planning']
 
 
 def stacking_multiplier(effect, count):
-    """Return one configured bounded exponential multiplier."""
+    """Return one configured unbounded exponential multiplier."""
     values = BUFF_EFFECTS[effect]
-    multiplier = float(values['factor_per_stack']) ** max(0, int(count))
-    if 'minimum_multiplier' in values:
-        multiplier = max(float(values['minimum_multiplier']), multiplier)
-    if 'maximum_multiplier' in values:
-        multiplier = min(float(values['maximum_multiplier']), multiplier)
-    return multiplier
+    return float(values['factor_per_stack']) ** max(0, int(count))
 
 
 def stacking_amount(effect, count):
-    """Return one configured bounded additive amount."""
+    """Return one configured unbounded additive amount."""
     values = BUFF_EFFECTS[effect]
-    amount = float(values['amount_per_stack']) * max(0, int(count))
-    return min(float(values['maximum_amount']), amount)
+    return float(values['amount_per_stack']) * max(0, int(count))

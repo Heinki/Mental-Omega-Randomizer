@@ -14,9 +14,6 @@ from randomizer.rewards.catalogue import (
 from randomizer.config.tuning import REWARD_PLANNING
 
 
-MAX_GLOBAL_BUFF_REPEATS_PER_SEED = int(
-    REWARD_PLANNING['maximum_global_buff_repeats_per_seed']
-)
 GLOBAL_BUFF_REWARD_INTERVAL = int(
     REWARD_PLANNING['global_buff_reward_interval']
 )
@@ -51,7 +48,6 @@ def plan_seed_rewards(
     buff_counts = {}
     unit_buff_counts = {}
     power_buff_counts = {}
-    global_buff_counts = {}
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
         for code in mission_codes
@@ -133,7 +129,6 @@ def plan_seed_rewards(
                             and not reward.get('power_buff_type')
                         )
                     ),
-                    reward.get('name'),
                 )
                 for reward in canonical_pool
                 if reward.get('kind') == 'buff'
@@ -179,13 +174,11 @@ def plan_seed_rewards(
 
         unit_candidates = []
         global_candidates = []
-        for reward, limit, count_key, unit, is_global, name in buffs:
+        for reward, limit, count_key, unit, is_global in buffs:
             if limit is not None and buff_counts.get(count_key, 0) >= limit:
                 continue
             if is_global:
-                count = global_buff_counts.get(name, 0)
-                if count < MAX_GLOBAL_BUFF_REPEATS_PER_SEED:
-                    global_candidates.append(reward)
+                global_candidates.append(reward)
             elif reward.get('power_buff_type'):
                 if (
                     str(reward.get('superweapon') or '').upper()
@@ -213,11 +206,6 @@ def plan_seed_rewards(
             return None
 
         reward = dict(rng.choice(candidates))
-        if reward.get('global_buff') or (
-            not reward.get('unit') and not reward.get('power_buff_type')
-        ):
-            name = reward.get('name')
-            global_buff_counts[name] = global_buff_counts.get(name, 0) + 1
         count_key = buff_count_key(reward)
         buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
         record_buff_target(reward)
@@ -256,6 +244,11 @@ def plan_seed_rewards(
                 dict(reward)
                 for reward in configured_reward_pool()
                 if reward.get('kind') == 'buff'
+                and (
+                    buff_stack_limit(reward) is None
+                    or buff_counts.get(buff_count_key(reward), 0)
+                    < buff_stack_limit(reward)
+                )
                 and (
                     (
                         reward.get('power_buff_type')

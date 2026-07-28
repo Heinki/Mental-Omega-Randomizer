@@ -53,10 +53,11 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
   damage, duration, and delivered-payload buff capabilities and stack tuning.
+  Supported effects have no Randomizer-imposed stack ceiling.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions
   and mappings, access aliases, and retired reward compatibility entries.
-- `rewards/tuning.json`: stack multipliers and caps, retry-assistance behavior,
+- `rewards/tuning.json`: unbounded stack multipliers, retry-assistance behavior,
   clone prefixes/production-field policy, reward count limits, and global-buff
   planning cadence. Display text and generated map values use the same data.
 - `RandomizerInfantry.ini`, `RandomizerHeroes.ini`,

@@ -111,9 +111,6 @@ UNIT_STAT_BUFF_TYPES = {
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit', 'building_limit'}
-MAX_VETERANCY_STACKS = int(BUFF_EFFECTS['maximum_veterancy_stacks'])
-
-
 def reward_display_name(reward):
     reward = canonical_reward(reward)
     name = reward.get('name', 'Unknown reward')
@@ -138,8 +135,6 @@ def buff_stack_limit(reward):
         return None
     if reward.get('power_buff_type'):
         return power_buff_stack_limit(reward)
-    if reward.get('buff_type') == 'veteran':
-        return MAX_VETERANCY_STACKS
     if reward.get('buff_type') == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))
@@ -150,9 +145,11 @@ def buff_stack_limit(reward):
             if base_speed >= MAX_BUFFED_INFANTRY_SPEED:
                 return 1
             for stacks in range(1, 33):
-                if capped_infantry_speed(base_speed, stacks) >= MAX_BUFFED_INFANTRY_SPEED:
+                if capped_infantry_speed(
+                    base_speed, stacks
+                ) >= MAX_BUFFED_INFANTRY_SPEED:
                     return stacks
-    if reward.get('buff_type') in {'self_healing', 'cloak', 'sensors'}:
+    if reward.get('buff_type') in {'cloak', 'sensors', 'veteran'}:
         return 1
     return None
 
@@ -266,7 +263,14 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         return [stacked(f'{prefix}{ammo_label} {base_ammo} -> {total_ammo}')]
     if buff_type == 'self_healing':
-        return [stacked(f'{prefix}Self-healing enabled')]
+        fraction = (
+            float(BUFF_EFFECTS['defense_self_heal_fraction'])
+            * count
+            * 100
+        )
+        return [stacked(
+            f'{prefix}Self-healing {fraction:g}% maximum health per tick'
+        )]
     if buff_type == 'cloak':
         return [stacked(f'{prefix}Cloaking enabled')]
     if buff_type == 'sensors':

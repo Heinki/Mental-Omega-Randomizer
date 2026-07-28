@@ -5,7 +5,6 @@ from copy import deepcopy
 from randomizer.rewards.catalogue import canonical_rewards
 from randomizer.rewards.power_buff_definitions import (
     POWER_BUFF_CONFIG,
-    power_buff_stack_limit,
 )
 
 
@@ -164,10 +163,7 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
         power_id = str(reward.get('superweapon') or '')
         if reward.get('kind') == 'buff' and buff_type and power_id:
             key = (power_id.upper(), str(buff_type))
-            counts[key] = min(
-                power_buff_stack_limit(reward),
-                counts.get(key, 0) + 1,
-            )
+            counts[key] = counts.get(key, 0) + 1
 
     output = []
     for original in canonical:
@@ -185,9 +181,9 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
             config = POWER_BUFF_CONFIG['recharge']
             baseline = float(_value(source_values, 'RechargeTime', 0) or 0)
             if baseline > 0:
-                value = max(
-                    float(config['minimum']),
-                    baseline * float(config['factor_per_stack']) ** recharge_count,
+                value = (
+                    baseline
+                    * float(config['factor_per_stack']) ** recharge_count
                 )
                 reward.setdefault('superweapon_rules', {})[
                     'RechargeTime'

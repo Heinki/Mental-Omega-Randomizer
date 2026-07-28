@@ -4,6 +4,7 @@ from ._builder_dependencies import (
     BUFF_TYPES,
     EVA_VOICE_CHOICES,
     PLAYER_COLORS,
+    POWER_BUFF_TYPES,
     WidgetTooltip,
     stacking_amount,
     stacking_multiplier,
@@ -46,8 +47,9 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_pool_intro_label = ttk.Label(
         advanced_tab,
         text=(
-            'Choose what may appear in the next generated seed. Click an image to exclude it; '
-            'excluded units lose both access and unit-specific buff rewards. Always-available '
+            'Choose what may appear in the next generated seed. Mission, unit, and superpower '
+            'cards toggle pool inclusion; buff-page cards select one target for detailed options. '
+            'Excluded units lose both access and unit-specific buff rewards. Always-available '
             'essentials remain available. The current run is never changed.'
         ),
         wraplength=340,
@@ -191,6 +193,110 @@ def _build_advanced_tab(self, workspace_tabs):
         )
     self.advanced_pool_canvases['unit_buffs'] = buff_canvas
     self.advanced_pool_frames['unit_buffs'] = buff_content
+
+    power_buff_page = ttk.Frame(advanced_notebook)
+    power_buff_page.columnconfigure(0, weight=1)
+    power_buff_page.rowconfigure(2, weight=1)
+    advanced_notebook.add(power_buff_page, text='Superpower Buffs')
+
+    power_buff_controls = ttk.Frame(power_buff_page)
+    power_buff_controls.grid(
+        row=0, column=0, columnspan=2, sticky='ew', pady=(0, 4)
+    )
+    power_buff_controls.columnconfigure(0, weight=1)
+    self.advanced_power_buff_label = ttk.Label(
+        power_buff_controls,
+        text='Select an included power below.',
+        style='Muted.TLabel',
+        wraplength=210,
+    )
+    self.advanced_power_buff_label.grid(row=0, column=0, sticky='w')
+    ttk.Button(
+        power_buff_controls,
+        text='All',
+        width=6,
+        command=lambda: self.set_selected_power_buffs(True),
+    ).grid(row=0, column=1, padx=(4, 0))
+    ttk.Button(
+        power_buff_controls,
+        text='None',
+        width=6,
+        command=lambda: self.set_selected_power_buffs(False),
+    ).grid(row=0, column=2, padx=(4, 0))
+
+    selected_power_buff_options = ttk.Frame(power_buff_page)
+    selected_power_buff_options.grid(
+        row=1, column=0, columnspan=2, sticky='ew', pady=(0, 6)
+    )
+    for column in range(2):
+        selected_power_buff_options.columnconfigure(column, weight=1)
+    self.advanced_power_buff_vars = {}
+    self.advanced_power_buff_checks = {}
+    for index, definition in enumerate(POWER_BUFF_TYPES):
+        buff_id = definition['id']
+        variable = tk.BooleanVar(value=True)
+        check = ttk.Checkbutton(
+            selected_power_buff_options,
+            text=definition['setting_label'],
+            variable=variable,
+            command=lambda item=buff_id: (
+                self.on_power_buff_power_type_changed(item)
+            ),
+        )
+        check.grid(
+            row=index // 2,
+            column=index % 2,
+            sticky='w',
+            padx=(0, 6),
+        )
+        self.advanced_power_buff_vars[buff_id] = variable
+        self.advanced_power_buff_checks[buff_id] = check
+        WidgetTooltip(check, definition['description'])
+
+    power_buff_canvas = tk.Canvas(
+        power_buff_page,
+        borderwidth=0,
+        highlightthickness=0,
+        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+    )
+    power_buff_scrollbar = ttk.Scrollbar(
+        power_buff_page,
+        orient='vertical',
+        command=power_buff_canvas.yview,
+    )
+    power_buff_canvas.configure(yscrollcommand=power_buff_scrollbar.set)
+    power_buff_canvas.grid(row=2, column=0, sticky='nsew')
+    power_buff_scrollbar.grid(row=2, column=1, sticky='ns')
+    power_buff_content = ttk.Frame(
+        power_buff_canvas, padding=(4, 4, 4, 4)
+    )
+    power_buff_canvas_item = power_buff_canvas.create_window(
+        (0, 0), window=power_buff_content, anchor='nw'
+    )
+    power_buff_content.bind(
+        '<Configure>',
+        lambda _event, target=power_buff_canvas: (
+            target.configure(scrollregion=target.bbox('all'))
+        ),
+    )
+    power_buff_canvas.bind(
+        '<Configure>',
+        lambda event, target=power_buff_canvas, item=power_buff_canvas_item: (
+            target.itemconfigure(item, width=event.width),
+            self.on_advanced_pool_canvas_configure(
+                'power_buffs', event.width
+            ),
+        ),
+    )
+    for widget in (power_buff_canvas, power_buff_content):
+        widget.bind(
+            '<MouseWheel>',
+            lambda event, target=power_buff_canvas: (
+                self.on_unlock_mousewheel(event, target)
+            ),
+        )
+    self.advanced_pool_canvases['power_buffs'] = power_buff_canvas
+    self.advanced_pool_frames['power_buffs'] = power_buff_content
 
 def _build_gameplay_settings(self, settings_frame):
     self.settings_intro_label = ttk.Label(
@@ -463,16 +569,11 @@ def _build_gameplay_settings(self, settings_frame):
         self.include_power_buff_rewards_check,
         'Adds only buffs valid for already-unlocked powers. Native mission powers remain unchanged.',
     )
-    self.power_buff_settings_button = ttk.Button(
-        reward_frame,
-        text='Power Buffs...',
-        command=self.open_power_buff_settings,
+    buff_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Units / Buildings',
+        padding=(8, 8, 8, 8),
     )
-    self.power_buff_settings_button.grid(
-        row=11, column=1, sticky='e', padx=(8, 0), pady=(4, 0)
-    )
-
-    buff_frame = ttk.LabelFrame(settings_frame, text='Enabled Buff Types', padding=(8, 8, 8, 8))
     self.buff_frame = buff_frame
     buff_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
@@ -496,13 +597,42 @@ def _build_gameplay_settings(self, settings_frame):
         self.buff_type_checks_by_id[buff_type['id']] = check
         description = buff_type.get('description', '').format(plural='Affected units')
         WidgetTooltip(check, description)
+
+    power_buff_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Superweapons',
+        padding=(8, 8, 8, 8),
+    )
+    self.power_buff_frame = power_buff_frame
+    power_buff_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
+    for column in range(2):
+        power_buff_frame.columnconfigure(column, weight=1)
+    self.power_buff_type_checks = []
+    for index, buff_type in enumerate(POWER_BUFF_TYPES):
+        row, column = divmod(index, 2)
+        check = ttk.Checkbutton(
+            power_buff_frame,
+            text=buff_type['setting_label'],
+            variable=self.power_buff_type_vars[buff_type['id']],
+            command=self.on_power_buff_global_type_changed,
+        )
+        check.grid(
+            row=row,
+            column=column,
+            sticky='w',
+            padx=(0, 10),
+            pady=(0, 3),
+        )
+        self.power_buff_type_checks.append(check)
+        WidgetTooltip(check, buff_type['description'])
+
     assistance_frame = ttk.LabelFrame(
         settings_frame,
         text='Mission Assistance',
         padding=(8, 8, 8, 8),
     )
     self.assistance_frame = assistance_frame
-    assistance_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
+    assistance_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
         text='Strengthen failed missions on retry',
@@ -535,7 +665,7 @@ def _build_gameplay_settings(self, settings_frame):
         padding=(8, 8, 8, 8),
     )
     self.appearance_frame = appearance_frame
-    appearance_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
+    appearance_frame.grid(row=8, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
         text='Dark mode',

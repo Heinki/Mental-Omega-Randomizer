@@ -2023,12 +2023,22 @@
         "superweapon": "MercurySpecial",
         "values": {
           "IsPowered": "false",
-          "SW.FireIntoShroud": "yes",
+          "Type": "MultiMissile",
+          "Nuke.SiloLaunch": "no",
+          "Nuke.Payload": "MercuryOverdriveAlt",
+          "Nuke.PsiWarning": "NOANIM",
+          "SW.Warhead": "MercuryStrikeAlt",
+          "SW.FireIntoShroud": "no",
+          "EVA.Detected": "none",
+          "EVA.Activated": "none",
+          "Light.Enabled": "no",
           "SW.AutoFire": "no",
           "SW.ManualFire": "yes",
           "SW.ShowCameo": "yes",
           "SW.UseAITargeting": "no",
-          "SW.AITargeting": "None",
+          "SW.AITargeting": "PsychicDominator",
+          "SW.AITargeting.Constraints": "enemy",
+          "SW.AIRequiresTarget": "units",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
           "SW.AuxBuildings": "",
@@ -2036,80 +2046,49 @@
           "SW.Designators": "",
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
-          "SW.RangeMaximum": "9999",
-          "SW.RangeMinimum": "0"
+          "SW.RangeMaximum": null,
+          "SW.RangeMinimum": null,
+          "EMPulse.PulseDelay": null,
+          "EMPulse.PulseBall": null
         },
         "techno_clones": {
           "MercuryOverdrive": {
-            "clone": "MORMercuryWeapon",
+            "clone": "MercuryOverdriveAlt",
             "list": "WeaponTypes",
             "values": {
-              "OmniFire": "yes",
-              "Projectile": "MORMercuryProjectile",
-              "Warhead": "MORMercuryStrikeWH"
+              "Projectile": "MercuryPAlt",
+              "Warhead": "MercuryStrikeAlt"
             }
           },
           "MercuryP": {
-            "clone": "MORMercuryProjectile",
+            "clone": "MercuryPAlt",
             "list": "Projectiles",
             "values": {
-              "AirburstWeapon": "MORMercuryLaser"
+              "AirburstWeapon": "MercuryLaserAlt"
             }
           },
           "MercuryLaser": {
-            "clone": "MORMercuryLaser",
+            "clone": "MercuryLaserAlt",
             "list": "WeaponTypes",
             "values": {
-              "Projectile": "MORMercuryLaserP",
-              "Warhead": "MORMercuryLaserWH"
+              "Projectile": "InvisibleMercAlt",
+              "Warhead": "MercuryLaserWHAlt"
             }
           },
           "InvisibleMerc": {
-            "clone": "MORMercuryLaserP",
+            "clone": "InvisibleMercAlt",
             "list": "Projectiles"
           },
           "MercuryStrikeWH": {
-            "clone": "MORMercuryStrikeWH",
-            "list": "Warheads"
+            "clone": "MercuryStrikeAlt",
+            "list": "Warheads",
+            "values": {
+              "PreventScatter": "yes"
+            }
           },
           "MercuryLaserWH": {
-            "clone": "MORMercuryLaserWH",
+            "clone": "MercuryLaserWHAlt",
             "list": "Warheads"
-          },
-          "GAMERC": {
-            "clone": "MORMercuryCannon",
-            "list": "BuildingTypes",
-            "startup_count": 4,
-            "reference_keys": [
-              "EMPulse.Cannons"
-            ],
-            "values": {
-              "Name": "Randomizer Mercury Cannon",
-              "UIName": "NAME:DUMMYDUMMY",
-              "Image": "DUMMYDUMMY",
-              "Primary": "MORMercuryWeapon",
-              "EMPulseCannon": "no",
-              "SuperWeapon": null,
-              "SuperWeapon2": null,
-              "SuperWeapons": null,
-              "TechLevel": "-1",
-              "BuildLimit": "0",
-              "AIBuildThis": "no",
-              "Power": "0",
-              "Powered": "false",
-              "Capturable": "false",
-              "Selectable": "no",
-              "Unsellable": "yes",
-              "LegalTarget": "no",
-              "Insignificant": "yes",
-              "DontScore": "yes",
-              "KeepAlive": "no",
-              "BaseNormal": "no",
-              "AIBaseNormal": "no",
-              "IsBaseDefense": "no",
-              "RadarInvisible": "yes",
-              "Sight": "0"
-            }
           }
         }
       },

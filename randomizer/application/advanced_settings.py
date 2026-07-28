@@ -36,6 +36,10 @@ class AdvancedSettingsController:
             self.advanced_buff_unit_label.configure(
                 wraplength=max(260, wraplength - 160)
             )
+        if hasattr(self, 'advanced_power_buff_label'):
+            self.advanced_power_buff_label.configure(
+                wraplength=max(260, wraplength - 160)
+            )
 
     def advanced_pool_column_count(self, pool_key):
         """Return card columns fitting current Advanced canvas width."""
@@ -44,12 +48,16 @@ class AdvancedSettingsController:
             return max(1, int(counts[pool_key]))
         canvas = getattr(self, 'advanced_pool_canvases', {}).get(pool_key)
         width = canvas.winfo_width() if canvas is not None else 0
-        card_span = 140 if pool_key == 'unit_buffs' else 112
+        card_span = (
+            140 if pool_key in {'unit_buffs', 'power_buffs'} else 112
+        )
         return max(1, int(width or card_span * 3) // card_span)
 
     def on_advanced_pool_canvas_configure(self, pool_key, width):
         """Reflow Advanced cards only when available column count changes."""
-        card_span = 140 if pool_key == 'unit_buffs' else 112
+        card_span = (
+            140 if pool_key in {'unit_buffs', 'power_buffs'} else 112
+        )
         columns = max(1, int(width or 0) // card_span)
         counts = getattr(self, 'advanced_pool_column_counts', None)
         if counts is None:
@@ -527,6 +535,7 @@ class AdvancedSettingsController:
                 level=logging.ERROR,
                 traceback=traceback.format_exc(),
             )
+        self.advanced_power_cameo_paths = power_paths
         power_frame = self.advanced_pool_frames['powers']
         power_columns = self.advanced_pool_column_count('powers')
         for index, entry in enumerate(power_entries):
@@ -552,6 +561,7 @@ class AdvancedSettingsController:
             )
 
         self.refresh_advanced_buff_view()
+        self.refresh_advanced_power_buff_view()
 
         included_missions = len(visible_missions) - len(
             {mission['code'].upper() for mission in visible_missions}
@@ -722,9 +732,14 @@ class AdvancedSettingsController:
         self.include_power_buff_rewards_check.configure(
             state='normal' if power_rewards_enabled else 'disabled'
         )
-        self.power_buff_settings_button.configure(
-            state='normal' if power_rewards_enabled else 'disabled'
+        power_buffs_enabled = bool(
+            power_rewards_enabled
+            and self.include_power_buff_rewards_var.get()
         )
+        for check in getattr(self, 'power_buff_type_checks', []):
+            check.configure(
+                state='normal' if power_buffs_enabled else 'disabled'
+            )
         self.prioritize_no_build_missions_check.configure(
             state=(
                 'normal'
@@ -737,7 +752,6 @@ class AdvancedSettingsController:
         )
         self.refresh_progression_setting_states()
         self.refresh_advanced_pool_views()
-        self.refresh_power_buff_window()
 
     def update_mission_goal_limit(self):
         if not self.missions:

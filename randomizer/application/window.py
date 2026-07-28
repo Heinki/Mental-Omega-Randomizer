@@ -318,6 +318,7 @@ class WindowController:
             'mission_pool_frame',
             'reward_frame',
             'buff_frame',
+            'power_buff_frame',
             'assistance_frame',
             'appearance_frame',
         )
@@ -363,8 +364,11 @@ class WindowController:
             self.buff_frame.grid(
                 row=3, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
             )
-            self.appearance_frame.grid(
+            self.power_buff_frame.grid(
                 row=4, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            )
+            self.appearance_frame.grid(
+                row=5, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
             )
         else:
             for row, widget in enumerate(widgets[1:], start=1):

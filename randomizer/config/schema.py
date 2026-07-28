@@ -424,32 +424,18 @@ def _validate_tuning(sections, path):
         ):
             _invalid(f'Invalid buff effect {effect!r}', path)
 
-    effect_bounds = {
-        'production': 'minimum_multiplier',
-        'cost': 'minimum_multiplier',
-        'speed': 'maximum_multiplier',
-        'armor': 'minimum_multiplier',
-        'health': 'maximum_multiplier',
-        'damage': 'maximum_multiplier',
-        'reload': 'minimum_multiplier',
-    }
-    for effect, key in effect_bounds.items():
-        value = effects[effect].get(key)
-        if not isinstance(value, (int, float)) or value <= 0:
-            _invalid(f'Invalid {key!r} for buff effect {effect!r}', path)
-
     for effect in ('range', 'sight', 'ammo'):
         values = effects.get(effect)
-        if not isinstance(values, dict) or not all(
-            isinstance(values.get(key), (int, float)) and values[key] >= 0
-            for key in ('amount_per_stack', 'maximum_amount')
+        if (
+            not isinstance(values, dict)
+            or not isinstance(values.get('amount_per_stack'), (int, float))
+            or values['amount_per_stack'] < 0
         ):
             _invalid(f'Invalid additive buff effect {effect!r}', path)
 
     for key in (
         'sensor_sight_bonus',
         'defense_self_heal_fraction',
-        'maximum_veterancy_stacks',
     ):
         if not isinstance(effects.get(key), (int, float)) or effects[key] < 0:
             _invalid(f'Invalid buff tuning {key!r}', path)
@@ -477,11 +463,6 @@ def _validate_tuning(sections, path):
             _invalid(f'Invalid clone policy {key!r}', path)
 
     assistance = sections['mission_assistance']
-    if (
-        not isinstance(assistance.get('maximum_direct_stacks'), int)
-        or assistance['maximum_direct_stacks'] < 0
-    ):
-        _invalid('Invalid mission assistance stack limit', path)
     if not isinstance(assistance.get('direct_buff_types'), list) or not all(
         _is_nonempty_string(value)
         for value in assistance['direct_buff_types']
@@ -500,7 +481,6 @@ def _validate_tuning(sections, path):
     planning_keys = (
         'default_rewards_per_check',
         'maximum_rewards_per_check',
-        'maximum_global_buff_repeats_per_seed',
         'global_buff_reward_interval',
     )
     for key in planning_keys:
@@ -570,7 +550,7 @@ def _validate_buff_exceptions(sections, path):
 def _validate_power_buffs(sections, path):
     buff_types = sections['buff_types']
     required_type_fields = {
-        'id', 'name', 'setting_label', 'description', 'maximum_stacks',
+        'id', 'name', 'setting_label', 'description',
     }
     if (
         not buff_types
@@ -581,8 +561,6 @@ def _validate_power_buffs(sections, path):
                 _is_nonempty_string(item.get(key))
                 for key in ('id', 'name', 'setting_label', 'description')
             )
-            or not isinstance(item.get('maximum_stacks'), int)
-            or item['maximum_stacks'] <= 0
             for item in buff_types
         )
     ):

@@ -516,7 +516,10 @@ def capped_infantry_speed(base_speed, count):
     base_speed = max(1, int(base_speed))
     ceiling = max(base_speed, MAX_BUFFED_INFANTRY_SPEED)
     factor = float(BUFF_EFFECTS['infantry_speed']['factor_per_stack'])
-    return min(ceiling, max(1, int(round(base_speed * (factor ** count)))))
+    return min(
+        ceiling,
+        max(1, int(round(base_speed * (factor ** max(0, int(count)))))),
+    )
 
 # Westwood-spawn missiles do not expose their real impact damage as a normal
 # WeaponType. These General-section fields are the actual payload damage for

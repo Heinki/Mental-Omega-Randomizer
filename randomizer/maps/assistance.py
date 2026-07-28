@@ -229,14 +229,13 @@ def mission_assistance_direct_rewards(
     rewards = []
     if not stacks:
         return rewards
-    direct_stacks = min(stacks, int(MISSION_ASSISTANCE['maximum_direct_stacks']))
     for unit_id in unique_in_order(
         str(unit_id or '').upper() for unit_id in (unit_ids or [])
     ):
         target = BUFF_TARGETS.get(unit_id)
         if not target:
             continue
-        for _ in range(direct_stacks):
+        for _ in range(stacks):
             buff_types = list(MISSION_ASSISTANCE['direct_buff_types'])
             if include_house_scoped:
                 # A shared player CountryType cannot safely receive the normal
