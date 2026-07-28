@@ -226,6 +226,9 @@ class LauncherApp(
         self.include_special_buildings_var = tk.BooleanVar(
             value=reward_settings['include_special_buildings']
         )
+        self.include_special_rewards_var = tk.BooleanVar(
+            value=reward_settings['include_special_rewards']
+        )
         self.unlimited_hero_units_var = tk.BooleanVar(
             value=reward_settings['unlimited_hero_units']
         )

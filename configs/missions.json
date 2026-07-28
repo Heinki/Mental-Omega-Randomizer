@@ -1214,6 +1214,11 @@
         "ScorpionCell House"
       ]
     },
+    "clone_only_country_buff_types": {
+      "AHYST": [
+        "speed"
+      ]
+    },
     "team_house_overrides": {
       "SBLEED": {
         "01000480": "Boris",

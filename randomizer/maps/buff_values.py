@@ -8,7 +8,7 @@ from ._shared import (
     WEAPON_STAT_BUFF_TYPES,
     buff_stack_limit,
     buffs_with_unlocked_access,
-    capped_infantry_speed,
+    capped_movement_speed,
     expand_equivalent_role_buffs,
     linked_buff_variant_ids,
     map_house_records,
@@ -76,11 +76,7 @@ def apply_unit_buff_value(values, target, buff_type, count):
         base = parse_float(values.get(existing_key), 1.0)
         values[existing_key] = format_multiplier(base * multiplier)
     elif buff_type == 'speed':
-        if target.get('category') == 'infantry':
-            values['Speed'] = str(capped_infantry_speed(target['speed'], count))
-        else:
-            multiplier = stacking_multiplier('speed', count)
-            values['Speed'] = str(max(1, int(round(target['speed'] * multiplier))))
+        values['Speed'] = str(capped_movement_speed(target, count))
     elif buff_type == 'armor':
         multiplier = stacking_multiplier('armor', count)
         current_strength = int(values.get('Strength', target['strength']))
@@ -161,10 +157,6 @@ def _active_direct_buff_counts(
             direct_chaos_types.update(
                 {'production', 'cost', 'speed', 'armor'}
             )
-        # Standard-mode infantry speed also needs a direct value: the country
-        # multiplier cannot enforce a per-TechnoType safe ceiling.
-        if buff_type == 'speed' and target.get('category') == 'infantry':
-            direct_chaos_types.add('speed')
         if buff_type not in CLONE_REQUIRED_BUFF_TYPES and buff_type not in direct_chaos_types:
             continue
         if (

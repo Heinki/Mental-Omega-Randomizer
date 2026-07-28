@@ -488,13 +488,27 @@ def _build_gameplay_settings(self, settings_frame):
         'Includes Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor access, '
         'plus repeatable +1 structure-limit rewards when that buff type is enabled.',
     )
+    self.include_special_rewards_check = ttk.Checkbutton(
+        reward_frame,
+        text='Include campaign/map-only Special rewards',
+        variable=self.include_special_rewards_var,
+        command=self.refresh_setting_states,
+    )
+    self.include_special_rewards_check.grid(
+        row=5, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.include_special_rewards_check,
+        'Includes units, marked buildings, and powers shown as Special, plus their matching buffs. '
+        'Normal roster units, economy buildings, and aid powers are unchanged.',
+    )
     self.include_buff_rewards_check = ttk.Checkbutton(
         reward_frame,
         text='Include buff rewards',
         variable=self.include_buff_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_buff_rewards_check.grid(row=5, column=0, sticky='w', pady=(4, 0))
+    self.include_buff_rewards_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_buff_rewards_check,
         'Adds repeatable stat upgrades to the reward pool. Turning this off disables all buff-only settings below.',
@@ -504,7 +518,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Share buffs with equivalent units (Chaos / All Campaigns)',
         variable=self.share_chaos_role_buffs_var,
     )
-    self.share_chaos_role_buffs_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
+    self.share_chaos_role_buffs_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.share_chaos_role_buffs_check,
         'In Chaos or Standard All Campaigns, a buff for one curated role also affects its peers—'
@@ -517,7 +531,7 @@ def _build_gameplay_settings(self, settings_frame):
         variable=self.unlimited_hero_units_var,
         command=self.refresh_setting_states,
     )
-    self.unlimited_hero_units_check.grid(row=7, column=0, sticky='w', pady=(4, 0))
+    self.unlimited_hero_units_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.unlimited_hero_units_check,
         'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
@@ -530,7 +544,7 @@ def _build_gameplay_settings(self, settings_frame):
         variable=self.include_superweapon_rewards_var,
         command=self.on_unlimited_hero_units_changed,
     )
-    self.include_superweapon_rewards_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
+    self.include_superweapon_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_superweapon_rewards_check,
         'Adds Lightning Storm, Tactical Nuke, Psychic Dominator, and Great Tempest as building-free rewards.',
@@ -541,7 +555,7 @@ def _build_gameplay_settings(self, settings_frame):
         variable=self.include_secondary_superweapon_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_secondary_superweapon_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
+    self.include_secondary_superweapon_rewards_check.grid(row=10, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_secondary_superweapon_rewards_check,
         'Adds Chronoshift, Invulnerability, and Rage as building-free rewards.',
@@ -552,7 +566,7 @@ def _build_gameplay_settings(self, settings_frame):
         variable=self.include_aid_power_rewards_var,
         command=self.refresh_setting_states,
     )
-    self.include_aid_power_rewards_check.grid(row=10, column=0, sticky='w', pady=(4, 0))
+    self.include_aid_power_rewards_check.grid(row=11, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.include_aid_power_rewards_check,
         'Adds faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners.',
@@ -564,7 +578,7 @@ def _build_gameplay_settings(self, settings_frame):
         command=self.refresh_setting_states,
     )
     self.include_power_buff_rewards_check.grid(
-        row=11, column=0, sticky='w', pady=(4, 0)
+        row=12, column=0, sticky='w', pady=(4, 0)
     )
     WidgetTooltip(
         self.include_power_buff_rewards_check,
@@ -649,8 +663,8 @@ def _build_gameplay_settings(self, settings_frame):
         assistance_frame,
         text=(
             'Per stack: faster production and per-unit weapon firing, cheaper units, and higher movement '
-            'speed, health, weapon damage, armor effectiveness, and attack range. Infantry '
-            'infantry movement is capped at Speed 8. Applies '
+            'speed, health, weapon damage, armor effectiveness, and attack range. Movement '
+            'uses safe per-unit ceilings: infantry 8, vehicles/naval 12, aircraft 30. Applies '
             'to earned units and units supplied by that mission; normal faction rosters '
             'are used when unit access is not randomized.'
         ),

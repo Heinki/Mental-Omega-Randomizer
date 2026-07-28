@@ -11,12 +11,12 @@ from ._shared import (
     all_section_value_maps,
     buffs_with_unlocked_access,
     build_unit_usage_index,
-    capped_infantry_speed,
     comma_items,
     country_family,
     house_category_suffix,
     linked_buff_variant_ids,
     map_house_records,
+    movement_speed_ceiling,
     player_controlled_houses,
     player_house_from_map,
     resolve_configured_helper_houses,
@@ -45,8 +45,12 @@ def stacked_house_buff_values(
     unit_specific_mode=False,
     veteran_priority_unit_ids=None,
     max_veteran_value_length=MAX_COUNTRY_VETERAN_VALUE_LENGTH,
+    excluded_buff_types=(),
 ):
     base_values = base_values or {}
+    excluded_buff_types = {
+        str(buff_type).lower() for buff_type in excluded_buff_types
+    }
     category_counts = {}
     veteran_units = {}
     for reward in buffs_with_unlocked_access(
@@ -58,6 +62,8 @@ def stacked_house_buff_values(
         if reward.get('kind') != 'buff' or not reward.get('unit') or not reward.get('buff_type'):
             continue
         buff_type = reward.get('buff_type')
+        if str(buff_type).lower() in excluded_buff_types:
+            continue
         if buff_type not in HOUSE_SCOPED_BUFF_TYPES:
             continue
         target = BUFF_TARGETS.get(reward.get('unit'))
@@ -117,10 +123,6 @@ def stacked_house_buff_values(
                 if unit_id in BUFF_TARGETS
             )
         for equivalent_suffix in suffixes:
-            # SpeedInfantryMult has no per-unit ceiling. Infantry movement
-            # rewards therefore use guarded direct TechnoType values.
-            if buff_type == 'speed' and equivalent_suffix == 'Infantry':
-                continue
             key = (buff_type, equivalent_suffix)
             category_counts[key] = category_counts.get(key, 0) + 1
 
@@ -132,9 +134,6 @@ def stacked_house_buff_values(
         elif buff_type == 'cost':
             key = f'Cost{suffix}Mult'
             multiplier = stacking_multiplier('cost', count)
-        elif buff_type == 'speed':
-            key = f'Speed{suffix}Mult'
-            multiplier = stacking_multiplier('speed', count)
         elif buff_type == 'armor':
             key = f'Armor{suffix}Mult'
             multiplier = stacking_multiplier('armor', count)
@@ -252,10 +251,10 @@ def mission_assistance_direct_rewards(
             ):
                 buff_types.append('reload')
             if (
-                MISSION_ASSISTANCE['add_safe_infantry_speed']
-                and target.get('category') == 'infantry'
-                and capped_infantry_speed(target.get('speed', 1), 1)
-                > int(target.get('speed', 1))
+                MISSION_ASSISTANCE['add_safe_movement_speed']
+                and movement_speed_ceiling(target) is not None
+                and int(round(float(target.get('speed', 1))))
+                < movement_speed_ceiling(target)
             ):
                 buff_types.append('speed')
             for buff_type in unique_in_order(buff_types):
@@ -283,15 +282,10 @@ def mission_assistance_buff_values(base_values, stacks):
     fields = (
         ('BuildTime', 'production'),
         ('Cost', 'cost'),
-        ('Speed', 'speed'),
         ('Armor', 'armor'),
     )
     for prefix, multiplier_name in fields:
         for suffix in MISSION_ASSISTANCE_CATEGORIES:
-            # Infantry retry speed uses guarded direct TechnoType values so it
-            # obeys the same hard ceiling as normal movement rewards.
-            if prefix == 'Speed' and suffix == 'Infantry':
-                continue
             key = f'{prefix}{suffix}Mult'
             existing_key = next(
                 (key_name for key_name in base_values if key_name.lower() == key.lower()),

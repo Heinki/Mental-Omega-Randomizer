@@ -59,6 +59,7 @@ def player_unit_clone_rules(
     owned_clone_ids=None,
     owned_clone_templates=None,
     owned_clone_rule_overlays=None,
+    force_direct_house_scoped_fallback_types=(),
 ):
     """Build player-only TechnoTypes from static owned templates.
 
@@ -134,12 +135,10 @@ def player_unit_clone_rules(
 
     usage_index = build_unit_usage_index(lines)
     # Some campaign child countries share their ParentCountry with scripted
-    # enemies. Country/category multipliers are then intentionally skipped to
-    # prevent leakage. Bake the four TechnoType-compatible multipliers into
-    # isolated player clones so earned production/cost/speed/armor rewards do
-    # not silently disappear. This remains necessary when allied helpers are
-    # enabled: their safe countries do not make the player's shared country
-    # safe.
+    # enemies. Country/category production, cost, and armor multipliers are
+    # then intentionally skipped to prevent leakage. Bake those effects into
+    # isolated player clones so rewards do not silently disappear. Speed is
+    # always clone-direct because every mobile category has a hard ceiling.
     player_country_buff_unsafe = any(
         unsafe_country_houses(
             lines,
@@ -152,6 +151,13 @@ def player_unit_clone_rules(
         for house in player_houses
     )
     direct_house_scoped_fallback = bool(player_country_buff_unsafe)
+    forced_house_scoped_fallback_types = {
+        str(buff_type).lower()
+        for buff_type in force_direct_house_scoped_fallback_types
+        if str(buff_type).lower() in {
+            'production', 'cost', 'speed', 'armor',
+        }
+    }
     counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -169,7 +175,10 @@ def player_unit_clone_rules(
     }
     for unit_id in excluded_unit_ids - build_only_excluded_unit_ids:
         counts_by_unit.pop(unit_id, None)
-    if direct_house_scoped_fallback and not unit_specific_mode:
+    if (
+        (direct_house_scoped_fallback or forced_house_scoped_fallback_types)
+        and not unit_specific_mode
+    ):
         # Standard role sharing already receives direct health/weapon peers.
         # Keep this last-resort country-buff replacement on the earned native
         # unit IDs; expanding four more categories to every role peer creates
@@ -183,7 +192,17 @@ def player_unit_clone_rules(
             house_scoped_only=True,
         )
         for unit_id, counts in fallback_counts.items():
-            counts_by_unit.setdefault(unit_id, {}).update(counts)
+            selected_counts = (
+                counts
+                if direct_house_scoped_fallback
+                else {
+                    buff_type: count
+                    for buff_type, count in counts.items()
+                    if buff_type in forced_house_scoped_fallback_types
+                }
+            )
+            if selected_counts:
+                counts_by_unit.setdefault(unit_id, {}).update(selected_counts)
     for unit_id in excluded_unit_ids - build_only_excluded_unit_ids:
         counts_by_unit.pop(unit_id, None)
     map_sections = all_section_value_maps(lines)

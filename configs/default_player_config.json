@@ -51,6 +51,7 @@
         "start_with_tier_one_defenses": false,
         "include_defensive_buildings": true,
         "include_special_buildings": true,
+        "include_special_rewards": true,
         "unlimited_hero_units": false,
         "share_chaos_role_buffs": false,
         "include_buff_rewards": true,

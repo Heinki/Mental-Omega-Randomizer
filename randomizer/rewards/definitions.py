@@ -39,6 +39,10 @@ MAX_REWARDS_PER_CHECK = int(REWARD_PLANNING['maximum_rewards_per_check'])
 # seed must be able to improve every player-owned faction unit, not merely the
 # small subset that also has an access reward.
 FACTION_UNIT_ROSTERS = dict(_UNIT_DATA_CONFIG['faction_unit_rosters'])
+SPECIAL_REWARD_UNIT_IDS = frozenset(
+    str(unit_id).upper()
+    for unit_id in _UNIT_DATA_CONFIG.get('special_reward_unit_ids', ())
+)
 
 # Snapshot of the installed 3.3.6 rules values used by map-local stat buffs.
 # Tuple order: Cost, Speed, Strength, Sight, GuardRange, Ammo.  GuardRange
@@ -301,6 +305,10 @@ def build_missing_roster_unlock_rewards(existing_rewards):
         rewards.append({
             'name': f'{label} Access',
             'description': f'Allows {label} production from the earliest matching faction facility.',
+            'access_category': (
+                'special' if unit_id in SPECIAL_REWARD_UNIT_IDS else category
+            ),
+            'special_reward': unit_id in SPECIAL_REWARD_UNIT_IDS,
             'rules': rules,
             'factions': [faction],
         })
@@ -315,7 +323,10 @@ def build_defense_unlock_rewards():
             rewards.append({
                 'name': f'{label} Access',
                 'description': f'Allows {label} construction from the faction Construction Yard.',
-                'access_category': 'defense',
+                'access_category': (
+                    'special' if defense_id in SPECIAL_REWARD_UNIT_IDS else 'defense'
+                ),
+                'special_reward': defense_id in SPECIAL_REWARD_UNIT_IDS,
                 'rules': build_unlock(defense_id, 1, access['defenses'], access['houses']),
                 'factions': [faction],
             })
@@ -349,6 +360,7 @@ def build_special_building_unlock_rewards():
                 'faction Construction Yard, without its normal tech structure.'
             ),
             'access_category': 'special_building',
+            'special_reward': bool(definition.get('special_reward')),
             'rules': rules,
             'factions': [faction],
         })
@@ -410,6 +422,8 @@ def default_plural(label):
         'Epsilon MCV': 'Epsilon MCVs',
         'Foehn MCV': 'Foehn MCVs',
         'Stalin\'s Fist': 'Stalin\'s Fists',
+        'Cloning Vats': 'Cloning Vats',
+        'Soviet Cloning Vats': 'Soviet Cloning Vats',
     }
     return special.get(label, f'{label}s')
 
@@ -433,6 +447,7 @@ def add_complete_faction_buff_targets():
                     'sight': sight,
                     'guard_range': guard_range,
                     'trainable': unit_id not in NONTRAINABLE_UNIT_IDS,
+                    'special_reward': unit_id in SPECIAL_REWARD_UNIT_IDS,
                 })
                 if ammo is not None:
                     target['ammo'] = ammo
@@ -460,6 +475,7 @@ def add_complete_faction_buff_targets():
                 'guard_range': guard_range,
                 'allowed_buff_types': defense_buff_types,
                 'trainable': defense_id in TRAINABLE_DEFENSE_IDS,
+                'special_reward': defense_id in SPECIAL_REWARD_UNIT_IDS,
             }
             if not target['trainable']:
                 target['allowed_buff_types'] = [
@@ -503,23 +519,50 @@ for definition in SPECIAL_BUILDING_DEFINITIONS:
         'cameo_priority': int(definition.get('cameo_priority', -1000)),
         'allowed_buff_types': ['building_limit'],
         'trainable': False,
+        'special_reward': bool(definition.get('special_reward')),
     }
 
-# Speed 10 proved unsafe for infantry pathfinding on campaign slopes, notably
-# Malver in Singularity. Earned infantry movement buffs use direct TechnoType
-# values capped at this conservative limit. Faster native infantry retain
-# their authored speed but cannot be accelerated.
-MAX_BUFFED_INFANTRY_SPEED = int(BUFF_EFFECTS['infantry_speed']['safe_ceiling'])
+# High movement values break campaign pathfinding, formation spacing, landing,
+# and MCV deployment. Every mobile category therefore uses a direct
+# TechnoType Speed value with a reviewed ceiling. Faster authored identities
+# retain their original speed but cannot be accelerated.
+MOVEMENT_SPEED_SAFE_CEILINGS = {
+    str(category): int(value)
+    for category, value in BUFF_EFFECTS[
+        'movement_speed'
+    ]['safe_ceilings'].items()
+}
+MAX_BUFFED_INFANTRY_SPEED = MOVEMENT_SPEED_SAFE_CEILINGS['infantry']
 
 
-def capped_infantry_speed(base_speed, count):
-    """Return safe earned infantry speed without lowering faster native types."""
-    base_speed = max(1, int(base_speed))
-    ceiling = max(base_speed, MAX_BUFFED_INFANTRY_SPEED)
-    factor = float(BUFF_EFFECTS['infantry_speed']['factor_per_stack'])
+def movement_speed_ceiling(target):
+    """Return reviewed earned-speed ceiling for one mobile reward target."""
+    if isinstance(target, dict):
+        category = target.get('category')
+    else:
+        category = target
+    return MOVEMENT_SPEED_SAFE_CEILINGS.get(str(category or ''))
+
+
+def capped_movement_speed(target, count):
+    """Return safe earned movement speed without lowering authored speed."""
+    base_speed = max(1, int(round(float(target.get('speed', 1)))))
+    safe_ceiling = movement_speed_ceiling(target)
+    if safe_ceiling is None:
+        return base_speed
+    ceiling = max(base_speed, safe_ceiling)
+    factor = float(BUFF_EFFECTS['speed']['factor_per_stack'])
     return min(
         ceiling,
         max(1, int(round(base_speed * (factor ** max(0, int(count)))))),
+    )
+
+
+def capped_infantry_speed(base_speed, count):
+    """Backward-compatible infantry-only wrapper."""
+    return capped_movement_speed(
+        {'category': 'infantry', 'speed': base_speed},
+        count,
     )
 
 # Westwood-spawn missiles do not expose their real impact damage as a normal
@@ -611,10 +654,11 @@ def build_buff_rewards():
                 continue
             if (
                 buff_type_id == 'speed'
-                and target.get('category') == 'infantry'
-                and int(target.get('speed', 0)) >= MAX_BUFFED_INFANTRY_SPEED
+                and movement_speed_ceiling(target) is not None
+                and int(target.get('speed', 0))
+                >= movement_speed_ceiling(target)
             ):
-                # Already at the safe ceiling or authored faster. No no-op.
+                # Already at safe ceiling or authored faster. No no-op reward.
                 continue
             if (
                 unit_id in NONCOMBAT_WEAPON_TARGET_IDS
@@ -650,6 +694,7 @@ def build_buff_rewards():
                 'unit': unit_id,
                 'buff_type': buff_type['id'],
                 'global_buff': bool(target.get('global_buff')),
+                'special_reward': bool(target.get('special_reward')),
             })
     return rewards
 
@@ -719,6 +764,7 @@ def build_aid_power_rewards():
             'power_category': 'aid',
             'superweapon': superweapon,
             'superweapon_index': index,
+            'special_reward': bool(definition.get('special_reward')),
         }
         if building_bound:
             reward['superweapon_grant_buildings'] = list(

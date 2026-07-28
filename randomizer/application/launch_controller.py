@@ -346,6 +346,9 @@ throw "Map $name was not found in expandmo*.mix"
         include_special_buildings = bool(
             self.active_reward_settings().get('include_special_buildings', True)
         )
+        include_special_rewards = bool(
+            self.active_reward_settings().get('include_special_rewards', True)
+        )
         return {
             section.upper()
             for section in controlled_tech_ids()
@@ -357,6 +360,10 @@ throw "Map $name was not found in expandmo*.mix"
                 include_special_buildings
                 or BUFF_TARGETS.get(section.upper(), {}).get('category')
                 != 'special_buildings'
+            )
+            and (
+                include_special_rewards
+                or not BUFF_TARGETS.get(section.upper(), {}).get('special_reward')
             )
         }
 

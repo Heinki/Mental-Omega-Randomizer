@@ -99,11 +99,17 @@ class AdvancedSettingsController:
                     'special_buildings',
                 }:
                     continue
-                entries.setdefault(unit_id, {
+                entry = entries.setdefault(unit_id, {
                     'id': unit_id,
                     'label': unit_display_label(unit_id),
                     'faction': factions[0],
+                    'special_reward': False,
                 })
+                entry['special_reward'] = bool(
+                    entry['special_reward']
+                    or reward.get('special_reward')
+                    or target.get('special_reward')
+                )
         faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
         return sorted(
             entries.values(),
@@ -148,6 +154,11 @@ class AdvancedSettingsController:
         if (
             not self.include_special_buildings_var.get()
             and BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings'
+        ):
+            return False
+        if (
+            not self.include_special_rewards_var.get()
+            and BUFF_TARGETS.get(unit_id, {}).get('special_reward')
         ):
             return False
         if unit_id not in ALWAYS_AVAILABLE_TECH_IDS and linked_buff_variant_ids(
@@ -476,6 +487,10 @@ class AdvancedSettingsController:
                 or BUFF_TARGETS.get(entry['id'], {}).get('category')
                 != 'special_buildings'
             )
+            and (
+                self.include_special_rewards_var.get()
+                or not entry.get('special_reward')
+            )
         ]
         unit_ids = [entry['id'] for entry in all_unit_entries]
         cameo_paths = getattr(self, 'advanced_unit_cameo_paths', None)
@@ -520,6 +535,10 @@ class AdvancedSettingsController:
             if visible_for_campaign(entry)
             and entry['reward'].get('power_category', 'offensive')
             in enabled_power_categories
+            and (
+                self.include_special_rewards_var.get()
+                or not entry['reward'].get('special_reward')
+            )
         ]
         normal_power_ids = [
             entry['reward'].get('cameo_superweapon', entry['id'])
@@ -613,9 +632,15 @@ class AdvancedSettingsController:
         elif pool_key == 'units':
             entries = [
                 entry for entry in self.advanced_unit_pool_entries()
-                if self.include_special_buildings_var.get()
-                or BUFF_TARGETS.get(entry['id'], {}).get('category')
-                != 'special_buildings'
+                if (
+                    self.include_special_buildings_var.get()
+                    or BUFF_TARGETS.get(entry['id'], {}).get('category')
+                    != 'special_buildings'
+                )
+                and (
+                    self.include_special_rewards_var.get()
+                    or not entry.get('special_reward')
+                )
             ]
             target = self.excluded_unit_access_ids
         else:
@@ -632,6 +657,10 @@ class AdvancedSettingsController:
                 entry for entry in self.advanced_power_pool_entries()
                 if entry['reward'].get('power_category', 'offensive')
                 in enabled_categories
+                and (
+                    self.include_special_rewards_var.get()
+                    or not entry['reward'].get('special_reward')
+                )
             ]
             target = self.excluded_superweapon_ids
         all_ids = {
@@ -731,6 +760,13 @@ class AdvancedSettingsController:
         )
         self.include_special_buildings_check.configure(
             state='normal' if reward_source_enabled else 'disabled'
+        )
+        self.include_special_rewards_check.configure(
+            state=(
+                'normal'
+                if reward_source_enabled or power_rewards_enabled
+                else 'disabled'
+            )
         )
         self.include_power_buff_rewards_check.configure(
             state='normal' if power_rewards_enabled else 'disabled'

@@ -33,6 +33,7 @@ POWER_BUFF_POWER_IDS = {
         set(POWER_BUFF_CONFIG['payload']['unit_delivery_power_ids'])
         | set(POWER_BUFF_CONFIG['payload']['paradrop_power_ids'])
         | set(POWER_BUFF_CONFIG['payload']['spy_plane_power_ids'])
+        | set(POWER_BUFF_CONFIG['payload'].get('drop_pod_power_ids', ()))
     ),
 }
 
@@ -81,6 +82,7 @@ def build_power_buff_rewards(power_rewards):
                     'power_category', 'offensive'
                 ),
                 'superweapon': power_id,
+                'special_reward': bool(power_reward.get('special_reward')),
             })
     return rewards
 

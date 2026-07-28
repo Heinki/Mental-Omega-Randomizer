@@ -1473,6 +1473,30 @@
         "faction": "Foehn",
         "superweapon": "StasisGridSpawn",
         "index": 63
+      },
+      {
+        "name": "Time Freeze Power",
+        "description": "Freezes and weakens enemy units and structures across the battlefield.",
+        "faction": "Allies",
+        "superweapon": "TimeFreezeSpecial",
+        "index": 67,
+        "special_reward": true
+      },
+      {
+        "name": "Stratofortress Power",
+        "description": "Calls a Stratofortress bomber to strike the selected area.",
+        "faction": "Allies",
+        "superweapon": "StratoSpecial",
+        "index": 132,
+        "special_reward": true
+      },
+      {
+        "name": "Moon Reinforcements Power",
+        "description": "Calls down elite Shock Troopers, Desolators, and Cyborg Vanguards from orbit.",
+        "faction": "Soviets",
+        "superweapon": "KnightfallSpawn",
+        "index": 45,
+        "special_reward": true
       }
     ],
     "aid_power_map_configs": [
@@ -2862,6 +2886,197 @@
           "Cursor": "Paradrop",
           "NoCursor": "NoCanDo",
           "SW.RequiresTarget": "land"
+        }
+      },
+      {
+        "superweapon": "TimeFreezeSpecial",
+        "values": {
+          "IsPowered": "false",
+          "RechargeTime": "12",
+          "ShowTimer": "yes",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "Self",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.FireIntoShroud": "yes",
+          "SW.RangeMaximum": "9999",
+          "SW.RangeMinimum": "0",
+          "EMPulse.TargetSelf": "yes"
+        },
+        "techno_clones": {
+          "TimeFreezeWeapon": {
+            "clone": "MORTimeFreezeWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Warhead": "MORTimeFreezeWH",
+              "OmniFire": "yes",
+              "AreaFire": "yes"
+            }
+          },
+          "TimeFreezeWH": {
+            "clone": "MORTimeFreezeWH",
+            "list": "Warheads"
+          },
+          "DUMMYDUMMY": {
+            "clone": "MORTimeFreezeCannon",
+            "list": "BuildingTypes",
+            "startup_count": 1,
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "values": {
+              "Name": "Randomizer Time Freeze Cannon",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "Primary": "MORTimeFreezeWeapon",
+              "EMPulseCannon": "no",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "SuperWeapons": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "Sight": "0"
+            }
+          }
+        }
+      },
+      {
+        "superweapon": "StratoSpecial",
+        "values": {
+          "Name": "Stratofortress",
+          "Type": "SpyPlane",
+          "Range": "4",
+          "Action": "Custom",
+          "Cursor": "Strato",
+          "UIName": "NAME:B52",
+          "NoCursor": "NoCanDo",
+          "IsPowered": "false",
+          "ShowTimer": "yes",
+          "SidebarPCX": "strticon.pcx",
+          "Money.Amount": "-1000",
+          "RechargeTime": "7",
+          "SW.Animation": "FLAREBLUE",
+          "SpyPlane.Type": "MORB52",
+          "LineMultiplier": "2",
+          "SW.AITargeting": "None",
+          "SpyPlane.Count": "1",
+          "AIDefendAgainst": "no",
+          "SW.AuxBuildings": "",
+          "SpyPlane.Mission": "Attack",
+          "SW.FireIntoShroud": "no",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "Message.FirerColor": "yes",
+          "SW.CreateRadarEvent": "yes",
+          "DisableableFromShell": "no",
+          "FlashSidebarTabFrames": "0"
+        },
+        "techno_clones": {
+          "B52": {
+            "clone": "MORB52",
+            "list": "AircraftTypes",
+            "reference_keys": [
+              "SpyPlane.Type"
+            ],
+            "values": {
+              "Primary": "MORStratoRun"
+            }
+          },
+          "StratoRun": {
+            "clone": "MORStratoRun",
+            "list": "WeaponTypes",
+            "values": {
+              "Damage": "150",
+              "Warhead": "MORStratoWH"
+            }
+          },
+          "StratoWH": {
+            "clone": "MORStratoWH",
+            "list": "Warheads",
+            "values": {
+              "Verses": "120%,110%,100%,150%,140%,125%,25%,25%,20%,100%,100%",
+              "Versus.super1": "10%",
+              "Versus.concrete_b": "5%"
+            }
+          }
+        }
+      },
+      {
+        "superweapon": "KnightfallSpawn",
+        "values": {
+          "UIName": "name:moondrop",
+          "Name": "Moon Reinforcements",
+          "Type": "DropPod",
+          "Action": "Custom",
+          "Cursor": "MoonDrop",
+          "NoCursor": "NoCanDo",
+          "SidebarPCX": "mdrpicon.pcx",
+          "EVA.Ready": "EVA_ReinforcementsReady",
+          "IsPowered": "false",
+          "ShowTimer": "no",
+          "Money.Amount": "0",
+          "RechargeTime": "6",
+          "SW.Shots": "12",
+          "SW.VirtualCharge": "yes",
+          "SW.InitialReady": "yes",
+          "SW.MaxCount": "-1",
+          "SW.Range": "0.1",
+          "SW.RangeMaximum": "22",
+          "SW.RangeMinimum": "0",
+          "SW.Sound": "SpaceBarrageFlyby",
+          "SW.Deferment": "20",
+          "DropPod.Types": "SHOCK,DESOR,CYBO",
+          "DropPod.Minimum": "8",
+          "DropPod.Maximum": "12",
+          "DropPod.Veterancy": "2",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.AllowAI": "no",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.FireIntoShroud": "no",
+          "SW.RequiresTarget": "land",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.CreateRadarEvent": "no",
+          "DisableableFromShell": "no",
+          "FlashSidebarTabFrames": "0"
         }
       },
       {

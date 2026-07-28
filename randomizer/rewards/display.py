@@ -3,14 +3,14 @@
 from .definitions import (
     BUFF_EFFECTS,
     BUFF_TARGETS,
-    MAX_BUFFED_INFANTRY_SPEED,
     NONTRAINABLE_UNIT_IDS,
     RETIRED_REWARD_BY_NAME,
     REWARD_ALIASES,
     REWARD_BY_BUFF_KEY,
     REWARD_BY_NAME,
     _UNIT_POLICY_CONFIG,
-    capped_infantry_speed,
+    capped_movement_speed,
+    movement_speed_ceiling,
     unit_display_label,
 )
 from randomizer.config.tuning import stacking_amount, stacking_multiplier
@@ -104,13 +104,16 @@ HOUSE_CATEGORY_SUFFIXES = {
     'defenses': 'Defenses',
 }
 
-HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'speed', 'armor', 'veteran'}
+HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'armor', 'veteran'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors',
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
-CLONE_REQUIRED_BUFF_TYPES = MAP_GUARDED_BUFF_TYPES | {'build_limit', 'building_limit'}
+CLONE_REQUIRED_BUFF_TYPES = (
+    MAP_GUARDED_BUFF_TYPES
+    | {'speed', 'build_limit', 'building_limit'}
+)
 def reward_display_name(reward):
     reward = canonical_reward(reward)
     name = reward.get('name', 'Unknown reward')
@@ -140,14 +143,13 @@ def buff_stack_limit(reward):
         return max(1, int(target.get('capacity_stack_limit', 4)))
     if reward.get('buff_type') == 'speed':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
-        if target.get('category') == 'infantry':
-            base_speed = max(1, int(target.get('speed', 1)))
-            if base_speed >= MAX_BUFFED_INFANTRY_SPEED:
+        safe_ceiling = movement_speed_ceiling(target)
+        if safe_ceiling is not None:
+            base_speed = max(1, int(round(float(target.get('speed', 1)))))
+            if base_speed >= safe_ceiling:
                 return 1
-            for stacks in range(1, 33):
-                if capped_infantry_speed(
-                    base_speed, stacks
-                ) >= MAX_BUFFED_INFANTRY_SPEED:
+            for stacks in range(1, 257):
+                if capped_movement_speed(target, stacks) >= safe_ceiling:
                     return stacks
     if reward.get('buff_type') in {'cloak', 'sensors', 'veteran'}:
         return 1
@@ -206,12 +208,13 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         cheaper = int(round((1.0 - multiplier) * 100))
         return [stacked(f'{prefix}Cost {cheaper}% cheaper')]
     if buff_type == 'speed':
-        if target.get('category') == 'infantry':
-            base_speed = int(target.get('speed', 1))
-            speed = capped_infantry_speed(base_speed, count)
+        safe_ceiling = movement_speed_ceiling(target)
+        if safe_ceiling is not None:
+            base_speed = int(round(float(target.get('speed', 1))))
+            speed = capped_movement_speed(target, count)
             return [stacked(
                 f'{prefix}Speed {base_speed} -> {speed} '
-                f'(safe infantry ceiling {MAX_BUFFED_INFANTRY_SPEED})'
+                f'(safe ceiling {safe_ceiling})'
             )]
         multiplier = stacking_multiplier('speed', count)
         faster = int(round((multiplier - 1.0) * 100))

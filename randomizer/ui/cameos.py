@@ -29,6 +29,11 @@ MIX_READER_ASSEMBLY_NAMES = (
     'CNCMaps.Shared.dll',
     'CNCMaps.FileFormats.dll',
 )
+UNIT_CAMEO_OVERRIDES = {
+    # Perun ships with a hidden dedicated icon, but its [PERUN] art section
+    # intentionally omits CameoPCX because the campaign unit is not buildable.
+    'PERUN': 'peruico.pcx',
+}
 
 
 def cameo_extraction_pending():
@@ -410,18 +415,42 @@ def ensure_requested_cameos(requested):
 def ensure_unit_cameos(unit_ids):
     cameo_names = art_cameo_names()
     art_names = rules_art_names()
+    try:
+        from randomizer.rewards.roster import randomizer_unit_roster
+        _paths, _clone_ids, templates = randomizer_unit_roster()
+    except (FileNotFoundError, ValueError):
+        templates = {}
     requested = {}
     for unit_id in unit_ids:
         unit_id = str(unit_id).upper()
-        cameo_name = cameo_names.get(art_names.get(unit_id, unit_id))
+        if unit_id in UNIT_CAMEO_OVERRIDES:
+            requested[unit_id] = UNIT_CAMEO_OVERRIDES[unit_id]
+            continue
+        art_id = art_names.get(unit_id)
+        if not art_id:
+            template = templates.get(unit_id, {})
+            art_id = next(
+                (
+                    value
+                    for key, value in template.items()
+                    if str(key).lower() == 'image' and value
+                ),
+                unit_id,
+            )
+        cameo_name = cameo_names.get(str(art_id).upper())
         if cameo_name:
             requested[unit_id] = cameo_name
     return ensure_requested_cameos(requested)
 
 
-def ensure_superweapon_cameos(superweapon_ids):
+def ensure_superweapon_cameos(superweapon_ids, sidebar_overrides=None):
     """Resolve the installed sidebar icon for each requested superweapon."""
     sidebar_names = rules_sidebar_names()
+    sidebar_names.update({
+        str(superweapon_id).upper(): str(cameo_name)
+        for superweapon_id, cameo_name in (sidebar_overrides or {}).items()
+        if cameo_name
+    })
     requested = {}
     for superweapon_id in superweapon_ids:
         superweapon_id = str(superweapon_id).upper()

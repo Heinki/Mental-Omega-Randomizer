@@ -57,9 +57,10 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions
   and mappings, access aliases, and retired reward compatibility entries.
-- `rewards/tuning.json`: unbounded stack multipliers, retry-assistance behavior,
-  clone prefixes/production-field policy, reward count limits, and global-buff
-  planning cadence. Display text and generated map values use the same data.
+- `rewards/tuning.json`: stack multipliers, per-category movement-speed
+  ceilings, retry-assistance behavior, clone prefixes/production-field policy,
+  reward count limits, and global-buff planning cadence. Display text,
+  effective stack limits, and generated map values use the same data.
 - `RandomizerInfantry.ini`, `RandomizerHeroes.ini`,
   `RandomizerVehicles.ini`, `RandomizerShips.ini`,
   `RandomizerAircraft.ini`, and

@@ -67,12 +67,13 @@ from randomizer.rewards.catalogue import (
     NONTRAINABLE_UNIT_IDS,
     REWARD_POOL,
     WEAPON_STAT_BUFF_TYPES,
-    capped_infantry_speed,
+    capped_movement_speed,
     buff_stack_limit,
     canonical_reward,
     canonical_rewards,
     house_category_suffix,
     linked_buff_variant_ids,
+    movement_speed_ceiling,
     unit_role_equivalents,
 )
 

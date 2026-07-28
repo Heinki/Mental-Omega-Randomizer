@@ -174,6 +174,7 @@ class StateController:
         ]
         include_defensive_buildings = bool(generation_config.get('include_defensive_buildings', True))
         include_special_buildings = bool(generation_config.get('include_special_buildings', True))
+        include_special_rewards = bool(generation_config.get('include_special_rewards', True))
         unlimited_hero_units = bool(generation_config.get('unlimited_hero_units', False))
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
@@ -186,6 +187,7 @@ class StateController:
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
+            'include_special_rewards': include_special_rewards,
             'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -252,6 +254,7 @@ class StateController:
         )
         include_defensive_buildings = bool(self.include_defensive_buildings_var.get())
         include_special_buildings = bool(self.include_special_buildings_var.get())
+        include_special_rewards = bool(self.include_special_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
@@ -277,6 +280,7 @@ class StateController:
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
+            'include_special_rewards': include_special_rewards,
             'unlimited_hero_units': unlimited_hero_units,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
@@ -329,6 +333,7 @@ class StateController:
         settings.setdefault('start_with_tier_one_defenses', False)
         settings.setdefault('include_defensive_buildings', True)
         settings.setdefault('include_special_buildings', True)
+        settings.setdefault('include_special_rewards', True)
         settings.setdefault('unlimited_hero_units', False)
         settings.setdefault('share_chaos_role_buffs', False)
         settings.setdefault(
@@ -651,6 +656,7 @@ class StateController:
         self.config['generation']['start_with_tier_one_defenses'] = reward_settings['start_with_tier_one_defenses']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
         self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
+        self.config['generation']['include_special_rewards'] = reward_settings['include_special_rewards']
         self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']

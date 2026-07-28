@@ -54,6 +54,7 @@ from randomizer.maps.settings import (
 )
 from randomizer.missions.houses import mission_house_config, mission_player_power_houses
 from randomizer.missions.overrides import (
+    MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
@@ -118,6 +119,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     excluded_player_houses = MISSION_REWARD_EXCLUDED_PLAYER_HOUSES.get(
         code, ()
     )
+    clone_only_country_buff_types = (
+        MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES.get(code, ())
+    )
+    if clone_only_country_buff_types:
+        self.append_log(
+            f'Kept {", ".join(sorted(clone_only_country_buff_types))} '
+            f'country buffs clone-only for {code}; native scripted '
+            'reinforcements retain mission-authored stats.'
+        )
 
     source_path = self.extract_campaign_map(scenario)
     lines = read_text(source_path).splitlines()
@@ -511,6 +521,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             additional_unlocked_tech_ids=buff_access_tech_ids,
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
+            excluded_buff_types=clone_only_country_buff_types,
         )
         if house_buffs:
             buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
@@ -525,6 +536,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
             excluded_player_houses=excluded_player_houses,
+            excluded_buff_types=clone_only_country_buff_types,
         )
         if house_rule_sections:
             merge_ini_section_values(lines, house_rule_sections)
@@ -665,6 +677,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             owned_clone_ids=owned_clone_ids,
             owned_clone_templates=owned_clone_templates,
             owned_clone_rule_overlays=owned_clone_rule_overlays,
+            force_direct_house_scoped_fallback_types=(
+                clone_only_country_buff_types
+            ),
         )
         if clone_rule_sections:
             merge_ini_section_values(lines, clone_rule_sections)

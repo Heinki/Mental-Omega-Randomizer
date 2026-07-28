@@ -117,8 +117,20 @@ class UnlockViewController:
             for entry in power_entries
             if not entry['reward'].get('superweapon_sidebar_image')
         ]
+        power_sidebar_overrides = {
+            str(entry['reward'].get('cameo_superweapon', entry['id'])).upper():
+                str(
+                    (entry['reward'].get('superweapon_rules') or {}).get(
+                        'SidebarPCX', ''
+                    )
+                )
+            for entry in power_entries
+            if not entry['reward'].get('superweapon_sidebar_image')
+        }
         try:
-            power_paths = ensure_superweapon_cameos(normal_power_ids)
+            power_paths = ensure_superweapon_cameos(
+                normal_power_ids, power_sidebar_overrides
+            )
         except Exception:
             power_paths = {}
             log_event('unlock_dashboard_power_cameos_failed', level=logging.ERROR,
@@ -160,7 +172,8 @@ class UnlockViewController:
         field = '#20242b' if self.dark_mode_var.get() else '#ffffff'
         foreground = '#f2f4f8' if self.dark_mode_var.get() else '#202124'
         order = {'Infantry': 0, 'Vehicles / Naval': 1, 'Aircraft': 2,
-                 'Defenses': 3, 'Special Buildings': 4, 'Superweapons': 5}
+                 'Defenses': 3, 'Special': 4, 'Special Buildings': 5,
+                 'Superweapons': 6}
         self.unlock_dashboard_sections = {}
         self.unlock_dashboard_columns = {}
         self.unlock_dashboard_cards = {}

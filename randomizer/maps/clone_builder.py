@@ -661,10 +661,7 @@ def build_player_clone_sections(
         forced_isolated_clone = (
             unit_id in unlimited_limit_ids
             or bool({'build_limit', 'building_limit'}.intersection(direct_types))
-            or (
-                'speed' in direct_types
-                and target.get('category') == 'infantry'
-            )
+            or 'speed' in direct_types
         )
         variant_has_effect = bool(direct_types) or any(
             direct_weapon_keys.get(weapon.upper())

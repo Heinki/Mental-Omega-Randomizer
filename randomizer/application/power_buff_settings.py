@@ -36,6 +36,10 @@ class PowerBuffSettingsController:
                 reward.get('kind') != 'superweapon'
                 or reward.get('power_category', 'offensive')
                 not in enabled_categories
+                or (
+                    not self.include_special_rewards_var.get()
+                    and reward.get('special_reward')
+                )
             ):
                 continue
             power_id = str(reward.get('superweapon') or '').upper()

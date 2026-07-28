@@ -25,6 +25,7 @@ def clone_player_country_for_house_buffs(
     additional_unlocked_tech_ids=None,
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
+    excluded_buff_types=(),
 ):
     player_house = player_house_from_map(lines)
     if not player_house:
@@ -40,6 +41,7 @@ def clone_player_country_for_house_buffs(
         additional_unlocked_tech_ids=additional_unlocked_tech_ids,
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
+        excluded_buff_types=excluded_buff_types,
     )
     if not house_buff_values:
         return (player_house, {})
@@ -61,6 +63,7 @@ def player_country_buff_rules(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
     excluded_player_houses=(),
+    excluded_buff_types=(),
 ):
     sections = all_section_value_maps(lines)
     sections_by_lower = {name.lower(): values for name, values in sections.items()}
@@ -109,6 +112,7 @@ def player_country_buff_rules(
         additional_unlocked_tech_ids=additional_unlocked_tech_ids,
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
+        excluded_buff_types=excluded_buff_types,
     )
     if house_buff_values:
         if not shared_houses:
@@ -152,6 +156,7 @@ def player_country_buff_rules(
                 additional_unlocked_tech_ids=additional_unlocked_tech_ids,
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=unit_specific_mode,
+                excluded_buff_types=excluded_buff_types,
             )
             if helper_buff_values:
                 rule_sections[helper_country] = helper_buff_values

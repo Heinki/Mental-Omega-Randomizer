@@ -43,8 +43,8 @@ class UnlockDataController:
         return (
             f'production time {round((1 - multipliers["production"]) * 100)}% shorter, '
             f'cost {round((1 - multipliers["cost"]) * 100)}% cheaper, '
-            f'movement speed {round((multipliers["speed"] - 1) * 100)}% faster '
-            f'(infantry capped at Speed 8), '
+            f'movement speed up to {round((multipliers["speed"] - 1) * 100)}% faster '
+            '(safe ceilings: infantry 8, vehicles/naval 12, aircraft 30), '
             f'health {round((multipliers["health"] - 1) * 100)}% higher, '
             f'weapon damage {round((multipliers["damage"] - 1) * 100)}% higher, '
             f'damage taken {round((1 - multipliers["armor"]) * 100)}% lower, '
@@ -438,13 +438,18 @@ class UnlockDataController:
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
-            if factions[0] == 'Foehn' and not foehn_units_available:
+            special_reward = bool(target.get('special_reward'))
+            if (
+                factions[0] == 'Foehn'
+                and not foehn_units_available
+                and not special_reward
+            ):
                 source_data = {
                     'assigned': [], 'earned': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             unlocked = bool(
-                (factions[0] != 'Foehn' or foehn_units_available)
+                (factions[0] != 'Foehn' or foehn_units_available or special_reward)
                 and (
                     not randomize_access
                     or unit_id in ALWAYS_AVAILABLE_TECH_IDS
@@ -477,7 +482,9 @@ class UnlockDataController:
                 'id': unit_id,
                 'label': target.get('label', unit_id),
                 'faction': factions[0],
-                'category': category_labels[category],
+                'category': (
+                    'Special' if special_reward else category_labels[category]
+                ),
                 'status': status,
                 'condition': condition,
                 'sources': source_data,
@@ -517,7 +524,11 @@ class UnlockDataController:
                 'id': building_id,
                 'label': str(definition['name']),
                 'faction': faction,
-                'category': 'Special Buildings',
+                'category': (
+                    'Special'
+                    if definition.get('special_reward')
+                    else 'Special Buildings'
+                ),
                 'status': status,
                 'condition': '',
                 'sources': source_data,
@@ -559,7 +570,9 @@ class UnlockDataController:
                 'id': power_id,
                 'label': reward_display_name(reward),
                 'faction': factions[0],
-                'category': 'Superweapons',
+                'category': (
+                    'Special' if reward.get('special_reward') else 'Superweapons'
+                ),
                 'status': status,
                 'condition': '',
                 'sources': source_data,

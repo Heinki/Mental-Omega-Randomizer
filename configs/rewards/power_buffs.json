@@ -104,7 +104,8 @@
         "MADMineSpecial",
         "NanofiberSyncSpecial",
         "DevourerSpecial",
-        "ChaosTouchSpecial"
+        "ChaosTouchSpecial",
+        "StratoSpecial"
       ]
     },
     "area": {
@@ -169,7 +170,18 @@
         "KineticBarrierSpecial": {"source": "KineticBarrierWH", "fields": ["AttachEffect.Duration"]},
         "RegenDrugsSpecial": {"source": "RegenWH", "fields": ["AttachEffect.Duration"]},
         "WonderDrugsSpecial": {"source": "WonderWH", "fields": ["AttachEffect.Duration"]},
-        "ChaosTouchSpecial": {"source": "ChaosTouchWH", "fields": ["AttachEffect.Duration"]}
+        "ChaosTouchSpecial": {"source": "ChaosTouchWH", "fields": ["AttachEffect.Duration"]},
+        "TimeFreezeSpecial": {
+          "source": "TimeFreezeWH",
+          "fields": [
+            "EMP.Duration",
+            "EMP.Cap",
+            "Sonar.Duration",
+            "DisableWeapons.Duration",
+            "AttachEffect.Duration"
+          ],
+          "clone_group": "techno"
+        }
       }
     },
     "payload": {
@@ -207,7 +219,11 @@
         "PackAttackSpecial",
         "ToxicStrikeSpecial",
         "HarbingerSpecial",
-        "ReconSortieSpecial"
+        "ReconSortieSpecial",
+        "StratoSpecial"
+      ],
+      "drop_pod_power_ids": [
+        "KnightfallSpawn"
       ]
     }
   }

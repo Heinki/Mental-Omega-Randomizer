@@ -60,6 +60,15 @@ def _ensure_auxiliary_clone(reward, source, reference_key=None):
     return spec
 
 
+def _ensure_techno_clone(reward, source):
+    clones = deepcopy(reward.get('superweapon_techno_clones') or {})
+    spec = deepcopy(clones.get(source) or {})
+    spec.setdefault('values', {})
+    clones[source] = spec
+    reward['superweapon_techno_clones'] = clones
+    return spec
+
+
 def _apply_scalar_rule(rules, spec, count, factor):
     rules[spec['field']] = str(
         _scaled_integer(spec['baseline'], factor, count)
@@ -105,7 +114,10 @@ def _apply_duration(reward, installed_sections, count):
         return
     source = warhead['source']
     source_values = installed_sections.get(source, {})
-    spec = _ensure_auxiliary_clone(reward, source, 'SW.Warhead')
+    if warhead.get('clone_group') == 'techno':
+        spec = _ensure_techno_clone(reward, source)
+    else:
+        spec = _ensure_auxiliary_clone(reward, source, 'SW.Warhead')
     for field in warhead['fields']:
         baseline = _value(source_values, field)
         if baseline is None:
@@ -148,6 +160,13 @@ def _apply_payload(reward, source_values, count):
             # Ares requires both lists when overriding a paradrop payload.
             rules['ParaDrop.Types'] = ','.join(types)
             rules['ParaDrop.Num'] = ','.join(str(number) for number in numbers)
+        return
+    if power_id in payload.get('drop_pod_power_ids', ()):
+        minimum = int(_value(source_values, 'DropPod.Minimum', 0) or 0)
+        maximum = int(_value(source_values, 'DropPod.Maximum', minimum) or minimum)
+        if minimum > 0 and maximum >= minimum:
+            rules['DropPod.Minimum'] = str(minimum + count)
+            rules['DropPod.Maximum'] = str(maximum + count)
         return
     if power_id in payload['spy_plane_power_ids']:
         baseline = int(_value(source_values, 'SpyPlane.Count', 1) or 1)

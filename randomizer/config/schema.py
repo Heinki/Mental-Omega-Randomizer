@@ -24,6 +24,7 @@ REQUIRED_SECTIONS = {
         'native_trigger_reference_ids': dict,
         'native_techno_clone_exclusions': dict,
         'reward_excluded_player_houses': dict,
+        'clone_only_country_buff_types': dict,
         'team_house_overrides': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
@@ -177,6 +178,20 @@ def _validate_missions(sections, path):
     }
     if invalid:
         _invalid(f'Invalid mission build classifications: {invalid}', path)
+
+    country_buff_types = {'production', 'cost', 'speed', 'armor'}
+    for code, buff_types in sections['clone_only_country_buff_types'].items():
+        if (
+            not _is_nonempty_string(code)
+            or not isinstance(buff_types, list)
+            or not buff_types
+            or any(
+                not _is_nonempty_string(buff_type)
+                or buff_type not in country_buff_types
+                for buff_type in buff_types
+            )
+        ):
+            _invalid(f'Invalid clone-only country buff types for {code}', path)
 
     operation_codes = sections['catalogue'].get('operation_mission_codes')
     if not isinstance(operation_codes, list) or not all(
@@ -440,13 +455,23 @@ def _validate_tuning(sections, path):
         if not isinstance(effects.get(key), (int, float)) or effects[key] < 0:
             _invalid(f'Invalid buff tuning {key!r}', path)
 
-    infantry_speed = effects.get('infantry_speed')
-    if not isinstance(infantry_speed, dict) or not all(
-        isinstance(infantry_speed.get(key), (int, float))
-        and infantry_speed[key] > 0
-        for key in ('factor_per_stack', 'safe_ceiling')
+    movement_speed = effects.get('movement_speed')
+    movement_ceilings = (
+        movement_speed.get('safe_ceilings')
+        if isinstance(movement_speed, dict)
+        else None
+    )
+    if (
+        not isinstance(movement_ceilings, dict)
+        or set(movement_ceilings) != {'infantry', 'units', 'aircraft'}
+        or not all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            for value in movement_ceilings.values()
+        )
     ):
-        _invalid('Invalid infantry speed tuning', path)
+        _invalid('Invalid movement speed tuning', path)
 
     clone_policy = sections['clone_policy']
     for key in ('unit_id_prefix', 'weapon_id_prefix'):
@@ -473,7 +498,7 @@ def _validate_tuning(sections, path):
             assistance.get('reload_when_weapon_rof_above'),
             (int, float),
         )
-        or not isinstance(assistance.get('add_safe_infantry_speed'), bool)
+        or not isinstance(assistance.get('add_safe_movement_speed'), bool)
     ):
         _invalid('Invalid mission assistance policy', path)
 

@@ -29,6 +29,10 @@ MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS = _frozenset_mapping('native_techno_clone
 
 MISSION_REWARD_EXCLUDED_PLAYER_HOUSES = _frozenset_mapping('reward_excluded_player_houses')
 
+MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES = _frozenset_mapping(
+    'clone_only_country_buff_types'
+)
+
 MISSION_TEAM_HOUSE_OVERRIDES = dict(_MISSION_CONFIG['team_house_overrides'])
 
 # Mission-only production merged after progression locks. These never become

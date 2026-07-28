@@ -15,7 +15,13 @@
       "ammo": {"amount_per_stack": 1},
       "sensor_sight_bonus": 2,
       "defense_self_heal_fraction": 0.01,
-      "infantry_speed": {"factor_per_stack": 1.1, "safe_ceiling": 8}
+      "movement_speed": {
+        "safe_ceilings": {
+          "infantry": 8,
+          "units": 12,
+          "aircraft": 30
+        }
+      }
     },
     "clone_policy": {
       "unit_id_prefix": "MORP",
@@ -27,7 +33,7 @@
     "mission_assistance": {
       "direct_buff_types": ["health", "damage", "range"],
       "reload_when_weapon_rof_above": 1,
-      "add_safe_infantry_speed": true
+      "add_safe_movement_speed": true
     },
     "reward_planning": {
       "default_rewards_per_check": 1,

@@ -16,8 +16,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INFANTRY = ROOT / 'InfantryList.txt'
+FALLBACK_REVIEWED_INFANTRY = ROOT / 'configs' / 'RandomizerHeroes.ini'
 DEFAULT_RULES = ROOT.parent / 'RandomizerLauncherData' / 'cameo_cache' / 'rulesmo.ini'
 DEFAULT_OUTPUT_DIR = ROOT / 'configs'
+SUPPLEMENTAL_SOURCE_FILES = (
+    ROOT.parent / 'MapsMO' / 'Challenge' / 'c_revolution.map',
+)
 TYPE_LISTS = OrderedDict((
     ('infantry', 'InfantryTypes'),
     ('units', 'VehicleTypes'),
@@ -38,12 +42,136 @@ IMAGE_OVERRIDES = {
     # defines its cameo and sequence under [MOTOR].
     'MOTOR': 'MOTOR',
 }
+SPECIAL_TEMPLATE_SOURCES = {
+    # Campaign/map-only variants receive independent reward identities while
+    # retaining the complete installed source definition underneath.
+    'GHTNKP': 'GHTNK',
+    'PROMEP': 'PROME',
+    'ITNK': 'RACC',
+    'JACKALP': 'JACKAL',
+    'DIVERP': 'DIVER',
+    'TARCHIAP': 'TARCHIA',
+    'ROACHP': 'ROACH',
+    'NAPSIS': 'YAPSIS',
+    'NACLONS': 'NACLON',
+    'LUNRE': 'LUNR',
+}
 TEMPLATE_VALUE_OVERRIDES = {
     # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
     # prevent its self-targeted field weapon from firing reliably.
     'NAIRDM': {
         'Prerequisite': '',
         'Cloakable.Allowed': 'no',
+    },
+    'BORIS': {
+        'BuildLimit': '1',
+    },
+    'RHAD': {
+        'BuildLimit': '1',
+    },
+    'GHTNKP': {
+        'Name': 'Gharial Prototype',
+        'Image': 'GHTNK2',
+        'IFVMode': '3',
+        'Primary': 'GharialBetaCannon',
+        'Weapon1': 'GharialBetaCannon',
+        'ElitePrimary': 'GharialBetaCannon',
+        'EliteWeapon1': 'GharialBetaCannon',
+        'InitialPayload.Nums': '0',
+    },
+    'PROMEP': {
+        'Name': 'Mastodon Prototype',
+        'Image': 'PROME2',
+        'Speed': '4',
+        'IFVMode': '11',
+        'Weapon1': 'PrometheusBetaCharge',
+        'Weapon2': 'PrometheusBetaCharge',
+        'Weapon3': 'PrometheusBetaBlast',
+        'Weapon4': 'PrometheusBetaBlast',
+        'Weapon5': 'PrometheusBetaCharge2',
+        'Weapon6': 'PrometheusBetaCharge2',
+        'EliteWeapon1': 'PrometheusBetaCharge',
+        'EliteWeapon2': 'PrometheusBetaCharge',
+        'EliteWeapon3': 'PrometheusBetaBlast',
+        'EliteWeapon4': 'PrometheusBetaBlast',
+        'EliteWeapon5': 'PrometheusBetaCharge2',
+        'EliteWeapon6': 'PrometheusBetaCharge2',
+        'VoiceSelect': 'MastodonBetaSelect',
+        'VoiceAttackCommand': 'MastodonBetaAttackCommand',
+        'VoiceFeedback': 'none',
+        'SelfHealing.Amount': '2',
+        'DamageParticleSystems': 'SparkSys,SmallGreySSys',
+    },
+    'ITNK': {
+        'ROT': '6',
+        'Image': 'ITNK',
+        'Name': 'Infector Tank',
+        'UIName': 'NAME:ITNK',
+        'Sight': '8',
+        'Speed': '6',
+        'Strength': '320',
+        'MoveSound': 'GharialMoveStart',
+        'CrushSound': 'TankCrush',
+        'VoiceSelect': 'RaccoonSelect2',
+        'InhibitorRange': '0',
+        'AttachEffect.Delay': '-1',
+        'AttachEffect.Animation': 'DUMMY',
+    },
+    'JACKALP': {
+        'Name': 'Jackal Racer Prototype',
+        'Image': 'JACKALA',
+    },
+    'DIVERP': {
+        'Name': 'Diverbee Prototype',
+        'Image': 'ADIVER',
+        'Cost': '800',
+        'Soylent': '400',
+        'Explosion': 'DIVERKILL2',
+        'AttachEffect.Animation': 'none',
+    },
+    'TARCHIAP': {
+        'Name': 'Tarchia Prototype',
+        'Image': 'ATARCHIA',
+        'Speed': '6',
+        'IFVMode': '3',
+        'Weapon5': 'TarchiaCannonOld',
+        'Weapon6': 'TarchiaCannonOld',
+        'EliteWeapon5': 'TarchiaCannonOld',
+        'EliteWeapon6': 'TarchiaCannonOld',
+        'Explodes': 'no',
+        'DeathWeapon': 'none',
+    },
+    'ROACHP': {
+        'Name': 'Bison Prototype',
+        'Image': 'ROACH2',
+        'Speed': '5',
+        'Strength': '700',
+        'Explodes': 'yes',
+        'DeathWeapon': 'MantisDeathWeapon',
+        'DamageParticleSystems': 'SparkSys,SmallGreySSys',
+    },
+    'NAPSIS': {
+        'Name': 'Psychic Sensor',
+        'UIName': 'NAME:NAPSIS',
+        'Image': 'NAPSIS',
+        'Cost': '800',
+        'Power': '-50',
+        'Radar': 'no',
+        'Spyable': 'no',
+        'SuperWeapon': 'none',
+        'SuperWeapon2': 'none',
+        'HasRadialIndicator': 'true',
+        'PsychicDetectionRadius': '10',
+        'ConcentricRadialIndicator': 'true',
+    },
+    'NACLONS': {
+        'Name': 'Soviet Cloning Vats',
+        'UIName': 'NAME:NACLON',
+        'Image': 'NACLON',
+    },
+    'LUNRE': {
+        'Name': 'Cosmonaut',
+        'Image': 'LUNR',
     },
 }
 
@@ -79,7 +207,12 @@ def infantry_sources(sections):
         clone_id = clone_id.split(';', 1)[0].strip()
         if not clone_id.upper().startswith('MOR'):
             continue
-        source_id = 'E1' if clone_id.upper() == 'MORE1' else clone_id[3:].upper()
+        if clone_id.upper() == 'MORE1':
+            source_id = 'E1'
+        elif clone_id.upper().startswith('MORP'):
+            source_id = clone_id[4:].upper()
+        else:
+            source_id = clone_id[3:].upper()
         section_name = case_name(sections, clone_id)
         if not section_name:
             # Mapper scratch lists may reserve a future registry ID before its
@@ -118,21 +251,29 @@ def main():
         BUFF_TARGETS,
         LIMITED_HERO_UNIT_IDS,
         NAVAL_UNIT_IDS,
+        SPECIAL_REWARD_UNIT_IDS,
     )
 
     selected_groups = set(args.group or OUTPUT_GROUPS)
-    needs_reviewed_infantry = bool(
-        selected_groups.intersection({'infantry', 'heroes'})
-    )
-    if needs_reviewed_infantry and not args.infantry.is_file():
+    needs_reviewed_infantry = bool(selected_groups.intersection({'infantry', 'heroes'}))
+    reviewed_infantry_path = args.infantry
+    if needs_reviewed_infantry and not reviewed_infantry_path.is_file():
+        reviewed_infantry_path = FALLBACK_REVIEWED_INFANTRY
+    if needs_reviewed_infantry and not reviewed_infantry_path.is_file():
         raise FileNotFoundError(
-            f'Reviewed infantry source is required for selected groups: '
-            f'{args.infantry}'
+            'Reviewed infantry source is required for selected groups: '
+            f'{args.infantry} or {FALLBACK_REVIEWED_INFANTRY}'
         )
     infantry_sections = (
-        read_sections(args.infantry) if args.infantry.is_file() else OrderedDict()
+        read_sections(reviewed_infantry_path)
+        if reviewed_infantry_path.is_file()
+        else OrderedDict()
     )
     installed_sections = read_sections(args.rules)
+    supplemental_sections = OrderedDict()
+    for source_path in SUPPLEMENTAL_SOURCE_FILES:
+        if source_path.is_file():
+            supplemental_sections.update(read_sections(source_path))
     reviewed_infantry = (
         infantry_sources(infantry_sections) if infantry_sections else {}
     )
@@ -164,11 +305,16 @@ def main():
             if source_id in reviewed_infantry:
                 source_values = infantry_sections[reviewed_infantry[source_id]]
             else:
-                source_name = case_name(installed_sections, source_id)
+                template_source = SPECIAL_TEMPLATE_SOURCES.get(source_id, source_id)
+                source_sections = installed_sections
+                source_name = case_name(source_sections, template_source)
+                if not source_name:
+                    source_sections = supplemental_sections
+                    source_name = case_name(source_sections, template_source)
                 if not source_name:
                     missing.append(source_id)
                     continue
-                source_values = installed_sections[source_name]
+                source_values = source_sections[source_name]
             values = OrderedDict(source_values)
             if source_id in IMAGE_OVERRIDES:
                 for key in list(values):
@@ -186,7 +332,14 @@ def main():
     grouped_ids = OrderedDict((group, []) for group in OUTPUT_GROUPS)
     for source_id in definitions:
         category = target_categories[source_id]
-        if source_id in LIMITED_HERO_UNIT_IDS or category == 'infantry-extra':
+        if (
+            source_id in LIMITED_HERO_UNIT_IDS
+            or (
+                source_id in SPECIAL_REWARD_UNIT_IDS
+                and category == 'infantry'
+            )
+            or category == 'infantry-extra'
+        ):
             group = 'heroes'
         elif category == 'infantry':
             group = 'infantry'

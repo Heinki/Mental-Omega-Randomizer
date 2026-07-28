@@ -99,6 +99,7 @@ class RewardController:
             and reward.get('kind') != 'superweapon'
             and reward.get('access_category') != 'special_building'
             and not self.reward_is_special_building(reward)
+            and not self.reward_is_special_reward(reward)
             and set(reward.get('factions') or ()) == {'Foehn'}
         )
 
@@ -106,6 +107,12 @@ class RewardController:
         rewards = canonical_rewards(
             self.earned_rewards_from_checks() if self.state else []
         )
+        if not self.active_reward_settings().get('include_special_rewards', True):
+            rewards = [
+                reward
+                for reward in rewards
+                if not self.reward_is_special_reward(reward)
+            ]
         rewards = [
             reward
             for reward in rewards
@@ -264,6 +271,7 @@ class RewardController:
                         reward.get('kind') == 'superweapon'
                         or reward.get('access_category') == 'special_building'
                         or self.reward_is_special_building(reward)
+                        or self.reward_is_special_reward(reward)
                     )
                     and 'Foehn' in reward.get('factions', [])
                 )
@@ -289,6 +297,17 @@ class RewardController:
             and BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings'
         )
 
+    def reward_is_special_reward(self, reward):
+        if reward.get('special_reward') or reward.get('access_category') == 'special':
+            return True
+        unit_id = str(reward.get('unit') or '').upper()
+        if not unit_id:
+            tech_ids = tech_ids_for_rewards([reward])
+            unit_id = next(iter(tech_ids), '')
+        return bool(
+            unit_id and BUFF_TARGETS.get(unit_id, {}).get('special_reward')
+        )
+
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
         excluded_access_ids = {
@@ -312,6 +331,7 @@ class RewardController:
         )
         include_defensive_buildings = bool(reward_settings.get('include_defensive_buildings', True))
         include_special_buildings = bool(reward_settings.get('include_special_buildings', True))
+        include_special_rewards = bool(reward_settings.get('include_special_rewards', True))
         enabled_buff_types = set(reward_settings.get('enabled_buff_types') or [])
         enabled_power_buff_types = set(
             reward_settings.get('enabled_power_buff_types') or []
@@ -359,6 +379,7 @@ class RewardController:
                     reward.get('kind') == 'buff'
                     and reward.get('power_buff_type')
                     and include_power_buffs
+                    and (include_special_rewards or not self.reward_is_special_reward(reward))
                     and power_category_enabled(reward)
                     and reward.get('power_buff_type')
                     in enabled_power_buff_types
@@ -373,6 +394,7 @@ class RewardController:
                     reward.get('kind') == 'buff'
                     and not reward.get('power_buff_type')
                     and include_buffs
+                    and (include_special_rewards or not self.reward_is_special_reward(reward))
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                     and (include_special_buildings or not self.reward_is_special_building(reward))
                     and reward.get('buff_type') in enabled_buff_types
@@ -393,6 +415,7 @@ class RewardController:
                 )
                 or (
                     reward.get('kind') == 'superweapon'
+                    and (include_special_rewards or not self.reward_is_special_reward(reward))
                     and power_category_enabled(reward)
                     and str(reward.get('superweapon') or '').upper()
                     not in excluded_superweapon_ids
@@ -400,6 +423,7 @@ class RewardController:
                 or (
                     reward.get('kind') not in {'buff', 'superweapon'}
                     and randomize_access
+                    and (include_special_rewards or not self.reward_is_special_reward(reward))
                     and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                     and (include_special_buildings or not self.reward_is_special_building(reward))
                     and not tech_ids_for_rewards([reward]).intersection(starting_access_ids)

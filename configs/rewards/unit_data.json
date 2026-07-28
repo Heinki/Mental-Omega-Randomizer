@@ -23,6 +23,10 @@
           "ARMR": "Norio"
         },
         "units": {
+          "JACKALP": "Jackal Racer Prototype",
+          "AHVYBOT": "Future Tank X-0",
+          "DIVERP": "Diverbee Prototype",
+          "TARCHIAP": "Tarchia Prototype",
           "CMIN": "Chrono Miner",
           "FV": "Stryker IFV",
           "ETNK": "Bulldog Light Tank",
@@ -81,9 +85,18 @@
           "CHITZ": "Chitzkoi",
           "VOLKOV": "Volkov",
           "MORALES": "Morales",
-          "YUNRU": "Yunru"
+          "YUNRU": "Yunru",
+          "BORIS": "Boris",
+          "REZNOV": "Col. Reznov",
+          "KRUKOV": "Col. Krukov",
+          "CYBO": "Cyborg Vanguard",
+          "LUNR": "Soviet Cosmonaut"
         },
         "units": {
+          "GHTNKP": "Gharial Prototype",
+          "PROMEP": "Mastodon Prototype",
+          "ITNK": "Infector Tank",
+          "PERUN": "Perun Flagship",
           "HARV": "War Miner",
           "HTK": "Halftrack",
           "SCAR": "Tigr APC",
@@ -141,7 +154,9 @@
           "VIRUS": "Virus",
           "LIBRA": "Libra",
           "UNDER": "Malver",
-          "ASSN": "Rahn"
+          "ASSN": "Rahn",
+          "RHAD": "Rashidi",
+          "LUNRE": "Epsilon Cosmonaut"
         },
         "units": {
           "YMIN": "Ghost Miner",
@@ -195,6 +210,7 @@
           "URAGAN": "Uragan"
         },
         "units": {
+          "ROACHP": "Bison Prototype",
           "NMIN": "Minermite",
           "TERA": "Teratorn",
           "CYCL": "Cyclops Walker",
@@ -231,7 +247,154 @@
         "aircraft": {}
       }
     },
+    "special_reward_unit_ids": [
+      "BORIS",
+      "REZNOV",
+      "KRUKOV",
+      "CYBO",
+      "GHTNKP",
+      "PROMEP",
+      "ITNK",
+      "LUNR",
+      "PERUN",
+      "NAPSIS",
+      "JACKALP",
+      "AHVYBOT",
+      "DIVERP",
+      "TARCHIAP",
+      "RHAD",
+      "LUNRE",
+      "ROACHP"
+    ],
     "unit_base_stats": {
+      "BORIS": [
+        1500,
+        7,
+        360,
+        9,
+        9,
+        null
+      ],
+      "REZNOV": [
+        1500,
+        6,
+        360,
+        9,
+        9,
+        null
+      ],
+      "KRUKOV": [
+        1500,
+        6,
+        360,
+        9,
+        9,
+        2
+      ],
+      "CYBO": [
+        1200,
+        5,
+        450,
+        6,
+        6,
+        null
+      ],
+      "GHTNKP": [
+        2050,
+        5,
+        750,
+        6,
+        6,
+        null
+      ],
+      "PROMEP": [
+        2400,
+        4,
+        1450,
+        6,
+        6,
+        1
+      ],
+      "ITNK": [
+        850,
+        6,
+        320,
+        8,
+        8,
+        null
+      ],
+      "LUNR": [
+        600,
+        9,
+        200,
+        8,
+        8,
+        null
+      ],
+      "PERUN": [
+        2500,
+        16,
+        3500,
+        10,
+        10,
+        null
+      ],
+      "JACKALP": [
+        750,
+        12,
+        360,
+        8,
+        8,
+        null
+      ],
+      "AHVYBOT": [
+        1500,
+        7,
+        490,
+        6,
+        6,
+        null
+      ],
+      "DIVERP": [
+        800,
+        36,
+        220,
+        5,
+        5,
+        null
+      ],
+      "TARCHIAP": [
+        1650,
+        6,
+        650,
+        6,
+        6,
+        3
+      ],
+      "RHAD": [
+        1000,
+        5,
+        300,
+        10,
+        10,
+        null
+      ],
+      "LUNRE": [
+        600,
+        9,
+        200,
+        8,
+        8,
+        null
+      ],
+      "ROACHP": [
+        900,
+        5,
+        700,
+        6,
+        6,
+        null
+      ],
       "E1": [
         120,
         6,
@@ -2115,7 +2278,8 @@
         "NAMORT": "Smoke Turret",
         "NADRON": "Soviet Repair Crane",
         "NATRAP": "EMP Mines",
-        "NAIRDM": "Soviet Iron Guard"
+        "NAIRDM": "Soviet Iron Guard",
+        "NAPSIS": "Psychic Sensor"
       },
       "Epsilon": {
         "YAGGUN": "Epsilon Gatling Cannon",
@@ -2143,6 +2307,12 @@
       }
     },
     "defense_base_stats": {
+      "NAPSIS": [
+        800,
+        1200,
+        10,
+        10
+      ],
       "GAPILL": [
         400,
         500,
@@ -2568,6 +2738,207 @@
       }
     },
     "buff_targets": {
+      "BORIS": {
+        "weapons": {
+          "AKM": {
+            "damage": 110,
+            "rof": 20,
+            "range": 9.5
+          },
+          "AKME": {
+            "damage": 110,
+            "rof": 20,
+            "range": 9.5
+          },
+          "FlareAI": {
+            "rof": 60,
+            "range": 15
+          }
+        }
+      },
+      "REZNOV": {
+        "weapons": {
+          "ReznovSniper": {
+            "damage": 225,
+            "rof": 45,
+            "range": 14.5
+          },
+          "ReznovSniperE": {
+            "damage": 225,
+            "rof": 45,
+            "range": 14.5
+          },
+          "TanyaC4": {
+            "damage": 3000,
+            "rof": 75,
+            "range": 1.83
+          }
+        }
+      },
+      "KRUKOV": {
+        "weapons": {
+          "KrukovRadBeam": {
+            "damage": 150,
+            "rof": 30,
+            "range": 7
+          },
+          "KrukovSword": {
+            "rof": 90,
+            "range": 7
+          }
+        }
+      },
+      "CYBO": {
+        "weapons": {
+          "CyborgGrenade": {
+            "damage": 120,
+            "rof": 100,
+            "range": 6.5
+          },
+          "CyborgGrenadeE": {
+            "damage": 120,
+            "rof": 100,
+            "range": 6.5
+          },
+          "TERMIGUN": {
+            "damage": 40,
+            "rof": 5,
+            "range": 6.5
+          },
+          "TERMIGUNE": {
+            "damage": 40,
+            "rof": 5,
+            "range": 6.5
+          }
+        }
+      },
+      "GHTNKP": {
+        "weapons": {
+          "GharialBetaCannon": {
+            "damage": 50,
+            "rof": 40,
+            "range": 8
+          }
+        }
+      },
+      "PROMEP": {
+        "weapons": {
+          "PrometheusBetaCharge": {
+            "rof": 5,
+            "range": 11.5
+          },
+          "PrometheusBetaBlast": {
+            "damage": 120,
+            "rof": 10,
+            "range": 11.5
+          },
+          "PrometheusBetaCharge2": {
+            "rof": 5,
+            "range": 11.5
+          }
+        }
+      },
+      "LUNR": {
+        "weapons": {
+          "Lunarblaster": {
+            "damage": 25,
+            "rof": 20,
+            "range": 6.5
+          }
+        }
+      },
+      "PERUN": {
+        "weapons": {
+          "PerunBolt": {
+            "damage": 100,
+            "rof": 60,
+            "range": 10
+          },
+          "PerunBoltE": {
+            "damage": 100,
+            "rof": 60,
+            "range": 10
+          }
+        }
+      },
+      "JACKALP": {
+        "weapons": {
+          "JackalZap": {
+            "damage": 40,
+            "rof": 70,
+            "range": 6
+          },
+          "JackalZapE": {
+            "damage": 40,
+            "rof": 70,
+            "range": 6
+          }
+        }
+      },
+      "AHVYBOT": {
+        "weapons": {
+          "FTankLaser": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          },
+          "FTankLaserE": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          }
+        }
+      },
+      "DIVERP": {
+        "weapons": {
+          "DiverbeeAttack": {
+            "damage": 220,
+            "rof": 500,
+            "range": 7
+          }
+        }
+      },
+      "TARCHIAP": {
+        "weapons": {
+          "TarchiaCannonOld": {
+            "damage": 110,
+            "rof": 50,
+            "range": 18
+          }
+        }
+      },
+      "RHAD": {
+        "weapons": {
+          "RhadGun": {
+            "damage": 110,
+            "rof": 40,
+            "range": 10
+          }
+        }
+      },
+      "LUNRE": {
+        "weapons": {
+          "Lunarblaster": {
+            "damage": 25,
+            "rof": 20,
+            "range": 6.5
+          }
+        }
+      },
+      "ROACHP": {
+        "weapons": {
+          "RoachBlast": {
+            "damage": 65,
+            "rof": 40,
+            "range": 6
+          },
+          "RoachBlastE": {
+            "damage": 65,
+            "rof": 40,
+            "range": 6
+          }
+        }
+      },
       "DUNE": {
         "weapons": {
           "HoverGrenade": {
@@ -3116,7 +3487,12 @@
       "SIBFIN": 1,
       "SICALI": 1,
       "EUREKA": 1,
-      "URAGAN": 1
+      "URAGAN": 1,
+      "BORIS": 1,
+      "REZNOV": 1,
+      "KRUKOV": 1,
+      "PERUN": 1,
+      "RHAD": 1
     },
     "special_damage_fields": {
       "V3": {
