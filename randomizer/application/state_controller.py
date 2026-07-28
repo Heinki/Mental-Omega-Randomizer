@@ -506,8 +506,17 @@ class StateController:
         )
 
     def share_chaos_role_buffs_enabled(self):
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected_campaign = generation_context.get('campaign_filter')
+        if selected_campaign is None:
+            selected_campaign = (self.state or {}).get('campaign_filter')
+        if not selected_campaign and hasattr(self, 'campaign_var'):
+            selected_campaign = self.campaign_var.get()
         return bool(
-            self.active_reward_mode() == 'Chaos (Experimental)'
+            (
+                self.active_reward_mode() == 'Chaos (Experimental)'
+                or selected_campaign == 'All Campaigns'
+            )
             and self.active_reward_settings().get('share_chaos_role_buffs', False)
         )
 

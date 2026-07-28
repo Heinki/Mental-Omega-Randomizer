@@ -144,9 +144,10 @@ ALWAYS_AVAILABLE_BUILDING_IDS = set(
 )
 ALWAYS_AVAILABLE_TECH_IDS = ALWAYS_AVAILABLE_UNIT_IDS | ALWAYS_AVAILABLE_BUILDING_IDS
 
-# Explicit cross-faction gameplay roles used only for single-campaign buff
-# sharing. Unique units remain independent; they are never forced into a weak
-# equivalence merely because their broad sidebar category matches.
+# Explicit cross-faction gameplay roles used for compatible single-campaign
+# translation and optional Chaos / All Campaigns buff sharing. Unique units
+# remain independent; they are never forced into a weak equivalence merely
+# because their broad sidebar category matches.
 UNIT_ROLE_EQUIVALENCE_GROUPS = tuple(
     frozenset(group)
     for group in _UNIT_DATA_CONFIG['unit_role_equivalence_groups']

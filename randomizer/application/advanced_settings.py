@@ -648,6 +648,7 @@ class AdvancedSettingsController:
         self.refresh_advanced_pool_views()
 
     def on_campaign_filter_changed(self, _event=None):
+        self.refresh_setting_states()
         self.update_mission_goal_limit()
         self.refresh_advanced_pool_views()
 
@@ -696,9 +697,11 @@ class AdvancedSettingsController:
         if chaos_mode:
             self.randomize_unit_access_var.set(True)
             self.randomize_unit_access_check.configure(state='disabled')
-            self.share_chaos_role_buffs_check.grid()
         else:
             self.randomize_unit_access_check.configure(state='normal')
+        if chaos_mode or self.campaign_var.get() == 'All Campaigns':
+            self.share_chaos_role_buffs_check.grid()
+        else:
             self.share_chaos_role_buffs_check.grid_remove()
         self.share_chaos_role_buffs_check.configure(state='normal' if buffs_enabled else 'disabled')
         reward_source_enabled = bool(self.randomize_unit_access_var.get()) or buffs_enabled

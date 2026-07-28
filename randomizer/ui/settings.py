@@ -501,14 +501,15 @@ def _build_gameplay_settings(self, settings_frame):
     )
     self.share_chaos_role_buffs_check = ttk.Checkbutton(
         reward_frame,
-        text='Share buffs with equivalent units (Chaos only)',
+        text='Share buffs with equivalent units (Chaos / All Campaigns)',
         variable=self.share_chaos_role_buffs_var,
     )
     self.share_chaos_role_buffs_check.grid(row=6, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.share_chaos_role_buffs_check,
-        'In Chaos, a buff for one curated role also affects its peers—for example GI, Conscript, '
-        'Initiate, and Knightframe. Shared groups are displayed together in Unlocks.',
+        'In Chaos or Standard All Campaigns, a buff for one curated role also affects its peers—'
+        'for example GI, Conscript, Initiate, and Knightframe. Shared groups are displayed '
+        'together in Unlocks.',
     )
     self.unlimited_hero_units_check = ttk.Checkbutton(
         reward_frame,
