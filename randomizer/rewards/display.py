@@ -1,5 +1,7 @@
 """Reward canonicalization, stacking, and human-readable display."""
 
+from math import ceil
+
 from .definitions import (
     BUFF_EFFECTS,
     BUFF_TARGETS,
@@ -13,7 +15,11 @@ from .definitions import (
     movement_speed_ceiling,
     unit_display_label,
 )
-from randomizer.config.tuning import stacking_amount, stacking_multiplier
+from randomizer.config.tuning import (
+    stacking_amount,
+    stacking_multiplier,
+    stacking_stack_limit,
+)
 from randomizer.rewards.power_buff_definitions import (
     power_buff_effect_text,
     power_buff_stack_limit,
@@ -138,12 +144,23 @@ def buff_stack_limit(reward):
         return None
     if reward.get('power_buff_type'):
         return power_buff_stack_limit(reward)
-    if reward.get('buff_type') == 'production':
-        return max(1, int(BUFF_EFFECTS['production']['stack_limit']))
-    if reward.get('buff_type') == 'building_limit':
+    buff_type = reward.get('buff_type')
+    if buff_type in {
+        'production', 'cost', 'armor', 'health', 'range', 'sight',
+    }:
+        return stacking_stack_limit(buff_type)
+    if buff_type == 'self_healing':
+        fraction_per_stack = float(
+            BUFF_EFFECTS['defense_self_heal_fraction']
+        )
+        maximum_fraction = float(
+            BUFF_EFFECTS['maximum_self_heal_fraction']
+        )
+        return max(1, int(ceil(maximum_fraction / fraction_per_stack)))
+    if buff_type == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))
-    if reward.get('buff_type') == 'speed':
+    if buff_type == 'speed':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         safe_ceiling = movement_speed_ceiling(target)
         if safe_ceiling is not None:
@@ -153,7 +170,7 @@ def buff_stack_limit(reward):
             for stacks in range(1, 257):
                 if capped_movement_speed(target, stacks) >= safe_ceiling:
                     return stacks
-    if reward.get('buff_type') in {'cloak', 'sensors', 'veteran'}:
+    if buff_type in {'cloak', 'sensors', 'veteran'}:
         return 1
     return None
 
@@ -268,13 +285,13 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         return [stacked(f'{prefix}{ammo_label} {base_ammo} -> {total_ammo}')]
     if buff_type == 'self_healing':
-        fraction = (
+        fraction = min(
+            float(BUFF_EFFECTS['maximum_self_heal_fraction']),
             float(BUFF_EFFECTS['defense_self_heal_fraction'])
             * count
-            * 100
         )
         return [stacked(
-            f'{prefix}Self-healing {fraction:g}% maximum health per tick'
+            f'{prefix}Self-healing {fraction * 100:g}% maximum health per tick'
         )]
     if buff_type == 'cloak':
         return [stacked(f'{prefix}Cloaking enabled')]

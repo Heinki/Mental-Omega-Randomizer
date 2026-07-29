@@ -70,27 +70,30 @@ The launcher is currently standalone and offline. The option keys below are inte
 
 | Option ID | UI label | Effect per stack | Implementation scope |
 |---|---|---|---|
-| `production` | Production / construction speed | 15% faster production or construction | House/category scoped. Per-unit production rewards are omitted in Chaos where unsupported. |
-| `cost` | Cost reduction | 20% cheaper | House/category scoped in Standard; unit-specific in Chaos. |
+| `production` | Production / construction speed | 15% faster production or construction, capped at 80% shorter | House/category scoped in Standard; unit-specific owned clone in Chaos. |
+| `cost` | Cost reduction | 20% cheaper, capped at 100% | House/category scoped in Standard; unit-specific in Chaos. |
 | `speed` | Movement speed | 10% faster per stack | Infantry uses isolated direct clones and cannot be raised above Speed `8`; infantry already at or above that ceiling is omitted from the Mobility reward pool. Faster native infantry retains its authored speed but receives no acceleration. Vehicles, naval units, and aircraft retain their existing house/category or unit-specific behavior. |
-| `armor` | Armor | About 11% stronger effective durability per stack | House/category scoped in Standard; unit-specific effective durability in Chaos. |
-| `health` | Health | 15% more health | Direct unit type; applied only when enemy use of that global type is not detected. |
-| `sight` | Vision | +1 sight | Direct unit type with the same safety guard. |
+| `armor` | Armor | About 11% stronger effective durability per stack, capped at +1000% | House/category scoped in Standard; unit-specific effective durability in Chaos. |
+| `health` | Health | 15% more health, capped at +1000% | Direct unit type; applied only when enemy use of that global type is not detected. |
+| `sight` | Vision | +1 sight, capped at +100 | Direct unit type with the same safety guard. |
 | `damage` | Damage | 15% more real impact/payload damage per stack | Direct or spawned-payload weapon data with unit, spawner, and shared-weapon safety guards. |
 | `reload` | Unit fire rate | 10% shorter weapon reload | Direct weapon type with unit and shared-weapon safety guards. |
-| `range` | Attack range | +0.5 weapon range | Direct weapon type with unit and shared-weapon safety guards. |
+| `range` | Attack range | +0.5 weapon range, capped at +50 | Direct weapon type with unit and shared-weapon safety guards. |
 | `ammo` | Ammo | +1 ammo capacity | Direct unit type with the same safety guard. |
-| `self_healing` | Self-healing | +1% maximum health per normal repair tick per stack | Direct unit type. Every stack raises `SelfHealing.Amount`; the first also enables self-healing. |
+| `self_healing` | Self-healing | +1% maximum health per normal repair tick per stack, capped at 50% | Direct unit type. Every useful stack raises `SelfHealing.Amount`; the first also enables self-healing. |
 | `cloak` | Cloaking | Enables cloaking | Direct unit type; one effective stack. |
 | `sensors` | Sensors | Enables sensors with a unit-derived radius | Direct unit type; one effective stack. |
 | `veteran` | Veteran start | Newly produced affected units start veteran | House scoped; one effective stack because the engine flag does not start units elite. Installed `Trainable=no` units such as Engineers and Spies are excluded. Generated country lists are bounded below the engine's single-value parser limit. |
 | `build_limit` | Unique / hero unit limit +1 | Raises the normal simultaneous cap by one | Repeatable. Each earned stack adds one to that unit's isolated player/helper clone: four Tanya stacks permit five simultaneous Tanyas. Available only for the 16 trainable installed hero/unique units with a positive cap. Enemy caps stay native. Disabled when **Unlimited unique / hero units** is enabled. |
 | `building_limit` | Special building limit +1 | Raises a special economy building's simultaneous cap by one | Repeatable up to four stacks and independent from hero capacity. Available only for Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor when special-building rewards are enabled. The four-stack limit prevents unusable extra copies and no-op rewards for facilities whose effect does not continue scaling. Heroes never offer this type; legacy hero Structure Capacity rewards migrate to the matching Command Capacity reward. **Unlimited unique / hero units** does not disable it. |
 
-Only Sensors, Cloaking, and Veteran start stop after one effective stack. Every
-other buff remains repeatable. Infantry movement retains its Speed `8` safety
-ceiling, and special-building capacity retains its reviewed four-stack limit.
-All remaining repeatable buffs have no Randomizer-imposed stack ceiling.
+Sensors, Cloaking, and Veteran start stop after one effective stack. Production,
+cost, armor, health, range, vision, and self-healing stop at their listed caps.
+The final useful stack receives only the remaining effect needed to hit its cap;
+seed planning reallocates later reward slots to other eligible buffs. Movement
+uses category safety ceilings, and special-building capacity retains its
+reviewed four-stack limit. Damage, reload, ammo, and hero capacity remain
+repeatable without an additional Randomizer stat cap.
 
 Direct unit, defense, and weapon definitions are global to the map. The launcher creates narrow standalone `MORP...` TechnoType and `MORW...` WeaponType copies when needed to isolate earned buffs from enemies. Buildable defense buffs always use a complete installed-identity clone: player and enabled-helper placements, exact helper base-plan entries, veterancy lists, and relevant trigger event/action type references use the clone, while enemy placements, plans, original defenses, and original weapons remain unchanged. Clone `Owner` includes each allowed country's parent chain so transferred factories recognize custom campaign countries; concrete `RequiredHouses` remains the isolation gate, preventing hostile descendants of the same parent from receiving the clone. This is distinct from unsafe global country-section buffs. With helper buffs disabled, helpers retain only originals. Mobile helper TaskForces use compatible buffed clones while native originals remain buildable dynamic-AI fallbacks. Mission-critical events/actions follow a clone whenever every actual map consumer of its source type is friendly, even if the trigger itself is owned by an unrelated story house. Every friendly scripted TaskForce follows the same clone, including locked map-only hero aliases, so escort and hero-loss checks cannot watch a different identity from the one the mission creates. Shared enemy types are retargeted only in player/helper-owned trigger lists. If a buildable shared type has an outside-owned destruction event that cannot be assigned safely, the launcher creates a buffed build-only player clone while leaving every native placement, team, action, and event untouched; non-buildable ambiguous types stay native and skip unsafe direct buffs. Helper veteran lists prioritize every clone actually produced before fallback IDs so the engine's 480-byte value limit cannot silently remove veterancy. Positive ownership prevents enemy buff leakage and duplicate player cameos. Installed positive mobile-unit limits remain capped normally unless the seed enables the isolated unlimited setting or earns repeatable `+1` cap stacks; enemy originals retain native limits in both cases. Launcher locks `0` and one-build-only `-1` are never treated as live caps. Effects that cannot be isolated safely remain skipped and logged. Saved Standard rewards are canonicalized and faction-filtered again at launch, so corrected catalogue entries cannot keep leaking foreign technology from an older seed.
 

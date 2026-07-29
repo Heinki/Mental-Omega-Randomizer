@@ -440,13 +440,30 @@ def _validate_tuning(sections, path):
             or values['factor_per_stack'] <= 0
         ):
             _invalid(f'Invalid buff effect {effect!r}', path)
-    production_stack_limit = effects.get('production', {}).get('stack_limit')
+    minimum_multiplier_effects = ('production', 'cost', 'armor')
+    for effect in minimum_multiplier_effects:
+        values = effects[effect]
+        minimum = values.get('minimum_multiplier')
+        if (
+            not isinstance(minimum, (int, float))
+            or isinstance(minimum, bool)
+            or minimum < 0
+            or (effect != 'cost' and minimum == 0)
+            or minimum >= 1
+            or values['factor_per_stack'] >= 1
+        ):
+            _invalid(
+                f'Invalid minimum multiplier for buff effect {effect!r}',
+                path,
+            )
+    health_maximum = effects['health'].get('maximum_multiplier')
     if (
-        not isinstance(production_stack_limit, int)
-        or isinstance(production_stack_limit, bool)
-        or production_stack_limit < 1
+        not isinstance(health_maximum, (int, float))
+        or isinstance(health_maximum, bool)
+        or health_maximum <= 1
+        or effects['health']['factor_per_stack'] <= 1
     ):
-        _invalid('Invalid production buff stack limit', path)
+        _invalid('Invalid maximum multiplier for health buff effect', path)
 
     for effect in ('range', 'sight', 'ammo'):
         values = effects.get(effect)
@@ -456,13 +473,37 @@ def _validate_tuning(sections, path):
             or values['amount_per_stack'] < 0
         ):
             _invalid(f'Invalid additive buff effect {effect!r}', path)
+    for effect in ('range', 'sight'):
+        values = effects[effect]
+        maximum = values.get('maximum_amount')
+        if (
+            not isinstance(maximum, (int, float))
+            or isinstance(maximum, bool)
+            or maximum < values['amount_per_stack']
+        ):
+            _invalid(f'Invalid maximum amount for buff effect {effect!r}', path)
+    for effect in ('production', 'cost', 'armor', 'health', 'range', 'sight'):
+        stack_limit = effects[effect].get('stack_limit')
+        if (
+            not isinstance(stack_limit, int)
+            or isinstance(stack_limit, bool)
+            or stack_limit < 1
+        ):
+            _invalid(f'Invalid stack limit for buff effect {effect!r}', path)
 
     for key in (
         'sensor_sight_bonus',
         'defense_self_heal_fraction',
+        'maximum_self_heal_fraction',
     ):
         if not isinstance(effects.get(key), (int, float)) or effects[key] < 0:
             _invalid(f'Invalid buff tuning {key!r}', path)
+    if (
+        effects['defense_self_heal_fraction'] <= 0
+        or effects['maximum_self_heal_fraction']
+        < effects['defense_self_heal_fraction']
+    ):
+        _invalid('Invalid self-healing buff cap', path)
 
     movement_speed = effects.get('movement_speed')
     movement_ceilings = (

@@ -77,6 +77,7 @@ from randomizer.missions.safety import safe_build_countries
 from randomizer.missions.catalogue import normalize_faction
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT, GENERATED_MAP_DIR
 from randomizer.rewards.catalogue import (
+    ALWAYS_AVAILABLE_UNIT_IDS,
     BUFF_TARGETS,
     ENGINEER_UNIT_IDS,
     canonical_rewards,
@@ -690,6 +691,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         guarded_rewards.extend(assistance_direct_rewards)
         buildable_clone_ids = set(fallback_tech_ids)
         buildable_clone_ids.update(mission_effective_tech_ids)
+        # Always-available Engineers/transports are deliberately absent from
+        # randomized access rewards, but earned buffs still need their owned
+        # player identity. Without adding currently usable essentials here,
+        # Chaos production buffs had no clone on which to write
+        # BuildTimeMultiplier and silently disappeared.
+        buildable_clone_ids.update(
+            set(mission_buff_unit_ids).intersection(
+                ALWAYS_AVAILABLE_UNIT_IDS
+            )
+        )
         if not require_unlocked_access_for_buffs:
             buildable_clone_ids.update(
                 unit_id

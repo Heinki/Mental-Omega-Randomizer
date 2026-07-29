@@ -43,11 +43,14 @@ def apply_unit_buff_value(values, target, buff_type, count):
         # Ares defaults to one hitpoint per RepairRate tick. Give every stack
         # another configured fraction of effective maximum strength.
         current_strength = int(values.get('Strength', target['strength']))
+        heal_fraction = min(
+            float(BUFF_EFFECTS['maximum_self_heal_fraction']),
+            float(BUFF_EFFECTS['defense_self_heal_fraction']) * count,
+        )
         values['SelfHealing.Amount'] = str(
             max(1, int(round(
                 current_strength
-                * float(BUFF_EFFECTS['defense_self_heal_fraction'])
-                * count
+                * heal_fraction
             )))
         )
     elif buff_type == 'cloak':
@@ -62,7 +65,7 @@ def apply_unit_buff_value(values, target, buff_type, count):
         )))
     elif buff_type == 'cost':
         multiplier = stacking_multiplier('cost', count)
-        values['Cost'] = str(max(1, int(round(target['cost'] * multiplier))))
+        values['Cost'] = str(max(0, int(round(target['cost'] * multiplier))))
     elif buff_type == 'production':
         multiplier = stacking_multiplier('production', count)
         existing_key = next(
