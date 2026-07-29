@@ -32,6 +32,7 @@ from randomizer.maps.rules import (
     player_country_buff_rules,
     player_unit_clone_rules,
     resolved_academy_clone_rules,
+    resolved_delivery_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
     stacked_house_buff_values,
@@ -782,6 +783,23 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             merge_ini_section_values(lines, academy_clone_rules)
             self.append_log(
                 'Resolved delivered Academy targets to current player clone IDs.'
+            )
+        delivery_clone_ids = unique_in_order(
+            unit_id
+            for reward in canonical_rewards(launch_power_rewards)
+            for unit_id in reward.get(
+                'superweapon_delivery_player_clone_ids', ()
+            )
+        )
+        delivery_clone_rules = resolved_delivery_clone_rules(
+            cloned_power_rules,
+            clone_handled,
+            delivery_clone_ids,
+        )
+        if delivery_clone_rules:
+            merge_ini_section_values(lines, delivery_clone_rules)
+            self.append_log(
+                'Resolved unit-delivery payloads to current player clone IDs.'
             )
         if clone_warnings:
             self.append_log(

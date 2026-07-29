@@ -88,6 +88,7 @@ REQUIRED_SECTIONS = {
     },
     'rewards/unit_data.json': {
         'faction_unit_rosters': dict,
+        'unit_sidebar_images': dict,
         'unit_base_stats': dict,
         'unit_role_equivalence_groups': list,
         'linked_buff_variants': dict,
@@ -245,6 +246,26 @@ def _validate_missions(sections, path):
 
 
 def _validate_unit_data(sections, path):
+    for unit_id, config in sections['unit_sidebar_images'].items():
+        if not _is_nonempty_string(unit_id) or not isinstance(config, dict):
+            _invalid(
+                f'Invalid custom unit sidebar image mapping for {unit_id!r}',
+                path,
+            )
+        image_path = Path(str(config.get('image', '')))
+        sidebar_pcx = Path(str(config.get('pcx', '')))
+        if (
+            image_path.name != str(config.get('image', ''))
+            or image_path.suffix.lower() != '.png'
+            or sidebar_pcx.name != str(config.get('pcx', ''))
+            or sidebar_pcx.suffix.lower() != '.pcx'
+            or not sidebar_pcx.name.lower().startswith('mor')
+        ):
+            _invalid(
+                f'Invalid custom unit sidebar image mapping for {unit_id!r}',
+                path,
+            )
+
     seen_equivalence_ids = set()
     known_equivalence_ids = {
         str(unit_id).upper()
@@ -671,6 +692,23 @@ def _validate_power_buffs(sections, path):
 
 def _validate_catalogue(sections, path):
     for config in sections['aid_power_map_configs']:
+        delivery_clone_ids = config.get('delivery_player_clone_ids')
+        if delivery_clone_ids is not None and (
+            not isinstance(delivery_clone_ids, list)
+            or not delivery_clone_ids
+            or not all(
+                _is_nonempty_string(unit_id)
+                for unit_id in delivery_clone_ids
+            )
+            or len({
+                unit_id.upper() for unit_id in delivery_clone_ids
+            }) != len(delivery_clone_ids)
+        ):
+            _invalid(
+                'Invalid delivery player-clone IDs for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
         image_name = config.get('sidebar_image')
         if not image_name:
             continue

@@ -126,6 +126,39 @@ def resolved_academy_clone_rules(
                 updates.setdefault(section, {})[key] = resolved_value
     return updates
 
+def resolved_delivery_clone_rules(
+    power_rule_sections,
+    clone_handled,
+    source_unit_ids,
+):
+    """Point configured UnitDelivery payloads at current player clone IDs."""
+    configured_sources = {
+        str(unit_id).upper() for unit_id in (source_unit_ids or ())
+    }
+    replacements = {
+        str(source).upper(): str(details.get('clone_id') or '').strip()
+        for source, details in (clone_handled or {}).items()
+        if (
+            isinstance(details, dict)
+            and str(source).upper() in configured_sources
+            and str(details.get('clone_id') or '').strip()
+        )
+    }
+    updates = {}
+    for section, values in (power_rule_sections or {}).items():
+        if not isinstance(values, dict):
+            continue
+        for key, value in values.items():
+            if str(key).lower() != 'deliver.types':
+                continue
+            resolved_value = ','.join(
+                replacements.get(type_id.upper(), type_id)
+                for type_id in comma_items(value)
+            )
+            if resolved_value != str(value):
+                updates.setdefault(section, {})[key] = resolved_value
+    return updates
+
 def now_stamp():
     return datetime.now().strftime('%Y%m%d-%H%M%S')
 

@@ -29,13 +29,6 @@ MIX_READER_ASSEMBLY_NAMES = (
     'CNCMaps.Shared.dll',
     'CNCMaps.FileFormats.dll',
 )
-UNIT_CAMEO_OVERRIDES = {
-    # Perun ships with a hidden dedicated icon, but its [PERUN] art section
-    # intentionally omits CameoPCX because the campaign unit is not buildable.
-    'PERUN': 'peruico.pcx',
-}
-
-
 def cameo_extraction_pending():
     """Return whether a background MIX extraction is still running."""
     with _PENDING_LOCK:
@@ -413,6 +406,9 @@ def ensure_requested_cameos(requested):
 
 
 def ensure_unit_cameos(unit_ids):
+    from randomizer.maps.assets import custom_sidebar_preview
+    from randomizer.rewards.catalogue import UNIT_SIDEBAR_IMAGES
+
     cameo_names = art_cameo_names()
     art_names = rules_art_names()
     try:
@@ -421,10 +417,12 @@ def ensure_unit_cameos(unit_ids):
     except (FileNotFoundError, ValueError):
         templates = {}
     requested = {}
+    result = {}
     for unit_id in unit_ids:
         unit_id = str(unit_id).upper()
-        if unit_id in UNIT_CAMEO_OVERRIDES:
-            requested[unit_id] = UNIT_CAMEO_OVERRIDES[unit_id]
+        custom_image = UNIT_SIDEBAR_IMAGES.get(unit_id, {}).get('image')
+        if custom_image:
+            result[unit_id] = custom_sidebar_preview(custom_image)
             continue
         art_id = art_names.get(unit_id)
         if not art_id:
@@ -440,7 +438,8 @@ def ensure_unit_cameos(unit_ids):
         cameo_name = cameo_names.get(str(art_id).upper())
         if cameo_name:
             requested[unit_id] = cameo_name
-    return ensure_requested_cameos(requested)
+    result.update(ensure_requested_cameos(requested))
+    return result
 
 
 def ensure_superweapon_cameos(superweapon_ids, sidebar_overrides=None):

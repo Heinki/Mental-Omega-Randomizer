@@ -27,6 +27,7 @@
           "AHVYBOT": "Future Tank X-0",
           "DIVERP": "Diverbee Prototype",
           "TARCHIAP": "Tarchia Prototype",
+          "PANTHER": "Paladin Tank Hunter",
           "CMIN": "Chrono Miner",
           "FV": "Stryker IFV",
           "ETNK": "Bulldog Light Tank",
@@ -264,10 +265,17 @@
       "AHVYBOT",
       "DIVERP",
       "TARCHIAP",
+      "PANTHER",
       "RHAD",
       "LUNRE",
       "ROACHP"
     ],
+    "unit_sidebar_images": {
+      "PERUN": {
+        "image": "perun_flagship.png",
+        "pcx": "morperunicon.pcx"
+      }
+    },
     "unit_base_stats": {
       "BORIS": [
         1500,
@@ -372,6 +380,14 @@
         6,
         6,
         3
+      ],
+      "PANTHER": [
+        1300,
+        5,
+        520,
+        6,
+        6,
+        null
       ],
       "RHAD": [
         1000,
@@ -2986,6 +3002,30 @@
             "damage": 110,
             "rof": 50,
             "range": 18
+          }
+        }
+      },
+      "PANTHER": {
+        "weapons": {
+          "JagdPanther": {
+            "damage": 180,
+            "rof": 70,
+            "range": 8.5
+          },
+          "JagdPantherE": {
+            "damage": 180,
+            "rof": 70,
+            "range": 8.5
+          },
+          "JagdMissile": {
+            "damage": 300,
+            "rof": 70,
+            "range": 9
+          },
+          "JagdMissileE": {
+            "damage": 300,
+            "rof": 70,
+            "range": 9
           }
         }
       },

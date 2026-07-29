@@ -43,6 +43,10 @@ SPECIAL_REWARD_UNIT_IDS = frozenset(
     str(unit_id).upper()
     for unit_id in _UNIT_DATA_CONFIG.get('special_reward_unit_ids', ())
 )
+UNIT_SIDEBAR_IMAGES = {
+    str(unit_id).upper(): dict(config)
+    for unit_id, config in _UNIT_DATA_CONFIG['unit_sidebar_images'].items()
+}
 
 # Snapshot of the installed 3.3.6 rules values used by map-local stat buffs.
 # Tuple order: Cost, Speed, Strength, Sight, GuardRange, Ammo.  GuardRange
@@ -805,6 +809,11 @@ def build_aid_power_rewards():
             reward['cameo_superweapon'] = modified_config['cameo_superweapon']
         if modified_config and modified_config.get('sidebar_image'):
             reward['superweapon_sidebar_image'] = modified_config['sidebar_image']
+        if modified_config and modified_config.get('delivery_player_clone_ids'):
+            reward['superweapon_delivery_player_clone_ids'] = [
+                str(unit_id).upper()
+                for unit_id in modified_config['delivery_player_clone_ids']
+            ]
         rewards.append(reward)
     return rewards
 

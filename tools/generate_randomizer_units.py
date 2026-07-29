@@ -39,7 +39,7 @@ OUTPUT_GROUPS = OrderedDict((
 ))
 # Append newly reviewed map-only identities instead of renumbering every
 # committed registry entry that already follows them in BUFF_TARGETS order.
-STABLE_APPEND_IDS = frozenset({'MAMM'})
+STABLE_APPEND_IDS = frozenset({'MAMM', 'PANTHER'})
 IMAGE_OVERRIDES = {
     # Mapper source calls the Mortar Quad art MORTAR, but installed artmo.ini
     # defines its cameo and sequence under [MOTOR].

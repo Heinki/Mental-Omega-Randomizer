@@ -1577,6 +1577,9 @@
       },
       {
         "superweapon": "PaladinAidSpecial",
+        "delivery_player_clone_ids": [
+          "PANTHER"
+        ],
         "values": {
           "Range": "1.5",
           "SW.Sound": "ChronosphereMove",
