@@ -7,6 +7,7 @@ from ._shared import (
     BUFF_TARGETS,
     CLONE_POLICY,
     ENGINEER_UNIT_IDS,
+    LIMITED_HERO_UNIT_IDS,
     LOCKED_TECH_LEVEL,
     NONTRAINABLE_UNIT_IDS,
     SHARED_WEAPON_USER_IDS,
@@ -444,18 +445,33 @@ def build_player_clone_sections(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     )
 
-    def preserve_native_speed(unit_id, counts):
-        """Keep authored movement while allowing other guarded native buffs."""
-        if 'speed' not in counts:
+    def preserve_native_effects(unit_id, counts, extra_types=()):
+        """Keep unsafe effects off native mission units; allow guarded peers."""
+        handled_types = {'speed'}.intersection(counts)
+        handled_types.update(
+            buff_type for buff_type in extra_types if buff_type in counts
+        )
+        if not handled_types:
             return
         handled_by_unit[unit_id] = {
-            'unit_buff_types': {'speed'},
+            'unit_buff_types': handled_types,
             'weapon_ids': set(),
             'clone_id': '',
         }
 
     for unit_id, target_unit_id, counts in clone_candidates:
         unit_id = str(unit_id).upper()
+        # Cloaked mission heroes can disappear from their controlling player's
+        # view once their own sight no longer reveals them. Installed Ares 3.0
+        # and Phobos 0.3 expose no owner/allied visibility override for cloak.
+        # Keep every map-authored hero instance uncloaked. If that hero is also
+        # normally buildable, its isolated production clone still receives the
+        # earned cloak reward.
+        mission_hero_cloak = (
+            'cloak' in counts
+            and target_unit_id in LIMITED_HERO_UNIT_IDS
+            and bool(unit_usage_houses(lines, unit_id, usage_index))
+        )
         # Mission-authored operator/passenger/loss chains can require the
         # original TechnoType identity even when access, veterancy, helper, or
         # unlimited-cap logic independently asks for a clone. Filtering only
@@ -467,15 +483,29 @@ def build_player_clone_sections(
             and unit_id in build_only_excluded_unit_ids
             and unit_id in buildable_ids
         )
-        if unit_id in excluded_unit_ids and not excluded_build_only_clone:
-            preserve_native_speed(unit_id, counts)
+        hero_build_only_clone = (
+            mission_hero_cloak and unit_id in buildable_ids
+        )
+        allowed_build_only_clone = (
+            excluded_build_only_clone or hero_build_only_clone
+        )
+        if unit_id in excluded_unit_ids and not allowed_build_only_clone:
+            preserve_native_effects(
+                unit_id,
+                counts,
+                {'cloak'} if mission_hero_cloak else (),
+            )
             continue
         scripted_build_only_clone = (
             unit_id in scripted_team_unit_ids
             and unit_id in buildable_ids
         )
         if unit_id in scripted_team_unit_ids and not scripted_build_only_clone:
-            preserve_native_speed(unit_id, counts)
+            preserve_native_effects(
+                unit_id,
+                counts,
+                {'cloak'} if mission_hero_cloak else (),
+            )
             unsupported.append(
                 f'{BUFF_TARGETS.get(unit_id, {}).get("label", unit_id)} '
                 'scripted reinforcement kept native'
@@ -485,13 +515,17 @@ def build_player_clone_sections(
         build_only_clone = (
             excluded_build_only_clone
             or scripted_build_only_clone
+            or hero_build_only_clone
             or (
                 unit_id in ambiguous_mission_event_ids
                 and unit_id in buildable_ids
             )
         )
+        if mission_hero_cloak and not build_only_clone:
+            preserve_native_effects(unit_id, counts, {'cloak'})
+            continue
         if unit_id in ambiguous_mission_event_ids and not build_only_clone:
-            preserve_native_speed(unit_id, counts)
+            preserve_native_effects(unit_id, counts)
             unsupported.append(
                 f'{target.get("label", target_unit_id)} shared mission event kept native'
             )
@@ -973,7 +1007,11 @@ def build_player_clone_sections(
         # TaskForces, so reference-only clones are safe here.
         if not build_only_clone:
             taskforce_replacements[unit_id] = clone_id
-        else:
+        elif (
+            excluded_build_only_clone
+            or scripted_build_only_clone
+            or unit_id in ambiguous_mission_event_ids
+        ):
             unsupported.append(
                 f'{target.get("label", target_unit_id)} build-only clone kept native mission references'
             )
@@ -987,7 +1025,7 @@ def build_player_clone_sections(
         native_handled_weapon_ids = handled_weapon_ids
         if build_only_clone:
             native_handled_unit_types = handled_unit_types.intersection(
-                {'speed'}
+                {'speed', 'cloak'} if mission_hero_cloak else {'speed'}
             )
             native_handled_weapon_ids = set()
         handled_by_unit[unit_id] = {

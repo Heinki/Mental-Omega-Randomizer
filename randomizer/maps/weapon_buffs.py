@@ -227,6 +227,15 @@ def native_variant_unit_buff_rules(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
     ).get(source_unit_id, {})
+    # These identities are mission-spawned/scripted by definition. Cloaking
+    # them can make player-controlled heroes invisible and unselectable when
+    # no other friendly unit reveals their cell. A separately buildable player
+    # clone, when present, remains eligible for the earned cloak reward.
+    counts = {
+        buff_type: count
+        for buff_type, count in counts.items()
+        if buff_type != 'cloak'
+    }
     if not counts:
         return {}, []
 
