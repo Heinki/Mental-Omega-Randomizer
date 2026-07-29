@@ -72,12 +72,24 @@ def randomizer_unit_roster():
 
     paths = _active_roster_paths()
     sections_by_path = {}
+    bundled_fallback_sections = {}
     missing_files = []
     for path in paths:
         if not path.is_file():
             missing_files.append(str(path))
             continue
         sections_by_path[path] = _read_sections(path)
+    if FROZEN:
+        # Editable roster files intentionally survive packaged upgrades. New
+        # mandatory clone templates must still work when an older visible
+        # roster predates them, so use bundled registrations/templates only as
+        # an in-memory fallback. Existing visible sections remain authoritative.
+        for name in ROSTER_FILENAMES:
+            bundled_path = SOURCE_DIR / 'configs' / name
+            if bundled_path.is_file():
+                bundled_fallback_sections[bundled_path] = _read_sections(
+                    bundled_path
+                )
     if missing_files:
         raise FileNotFoundError(
             'Randomizer unit roster file(s) missing: ' + ', '.join(missing_files)
@@ -103,6 +115,20 @@ def randomizer_unit_roster():
                     f'Duplicate randomizer unit section [{section}] in {path}.'
                 )
             template_sections[lowered] = (section, values)
+    for sections in bundled_fallback_sections.values():
+        section_names = {name.lower(): name for name in sections}
+        for list_name in set(ROSTER_CATEGORIES.values()):
+            actual = section_names.get(list_name.lower())
+            registered_by_list.setdefault(list_name, set()).update(
+                value.upper()
+                for value in sections.get(actual, {}).values()
+                if value
+            )
+        for section, values in sections.items():
+            lowered = section.lower()
+            if lowered in {name.lower() for name in ROSTER_CATEGORIES.values()}:
+                continue
+            template_sections.setdefault(lowered, (section, values))
 
     missing = []
     templates = {}

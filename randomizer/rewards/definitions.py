@@ -730,6 +730,72 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_super
 
 
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
+
+# GenericWarhead detonates the private warhead directly. Keep both filtering
+# layers explicit. GenericWarhead does not apply SW.AffectsHouse to the direct
+# EMP/AttachEffect loop; Ares uses the warhead's AffectsAllies for both the
+# owner and allied houses, and AffectsEnemies for non-allied houses. Retain
+# AffectsOwner as a harmless explicit compatibility value for engine variants.
+# Zero verses for misc armor also preserve neutral scenery independent of
+# diplomacy. ASOMNIA's additional Libra immunity is mission-specific and must
+# not make enemy Libra immune to the portable power globally. Older editable
+# packaged catalogues may omit these corrected values.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') != 'TimeFreezeSpecial':
+        continue
+    aid_config.setdefault('values', {}).update({
+        'SW.AffectsHouse': 'enemies',
+        'SW.AffectsTarget': 'infantry,units,buildings',
+    })
+    time_freeze_clone = (
+        aid_config.get('techno_clones', {}).get('TimeFreezeWH')
+    )
+    if isinstance(time_freeze_clone, dict):
+        time_freeze_clone.setdefault('values', {}).update({
+            'Versus.misc': '0%',
+            'AffectsOwner': 'no',
+            'AffectsAllies': 'no',
+            'AffectsEnemies': 'yes',
+        })
+    time_freeze_provider = aid_config.setdefault(
+        'techno_clones', {}
+    ).setdefault('TimeFreezeProvider', {})
+    time_freeze_provider.update({
+        'source': 'DUMMYDUMMY',
+        'clone': 'MORTimeFreezeProvider',
+        'list': 'BuildingTypes',
+        'startup_count': 1,
+        'static_startup': True,
+        'provides_superweapon': True,
+    })
+    time_freeze_provider.setdefault('values', {}).update({
+        'Name': 'Randomizer Time Freeze Provider',
+        'UIName': 'NAME:DUMMYDUMMY',
+        'Image': 'DUMMYDUMMY',
+        'SuperWeapon': None,
+        'SuperWeapon2': None,
+        'TechLevel': '-1',
+        'BuildLimit': '0',
+        'AIBuildThis': 'no',
+        'Power': '0',
+        'Powered': 'false',
+        'Capturable': 'false',
+        'Selectable': 'no',
+        'Unsellable': 'yes',
+        'LegalTarget': 'no',
+        'Insignificant': 'yes',
+        'ImmuneToEMP': 'yes',
+        'DontScore': 'yes',
+        'KeepAlive': 'no',
+        'BaseNormal': 'no',
+        'AIBaseNormal': 'no',
+        'IsBaseDefense': 'no',
+        'RadarInvisible': 'yes',
+        'IsPassable': 'yes',
+        'Firestorm.Wall': 'no',
+        'Sight': '0',
+    })
+
 for aid_config in AID_POWER_MAP_CONFIGS:
     for clone_group in ('techno_clones', 'auxiliary_clones'):
         for clone in aid_config.get(clone_group, {}).values():

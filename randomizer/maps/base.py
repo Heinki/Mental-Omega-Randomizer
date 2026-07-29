@@ -295,7 +295,7 @@ def cloned_superweapon_plan(
         superweapon_techno_clone_overrides or {}
     )
     if not installed_superweapon_types:
-        return {}, [], [], [], ['SuperWeaponTypes']
+        return {}, [], [], [], [], ['SuperWeaponTypes']
     installed_lookup = {type_id.lower() for type_id in installed_superweapon_types}
     runtime_types = list(installed_superweapon_types)
     runtime_lookup = set(installed_lookup)
@@ -340,6 +340,7 @@ def cloned_superweapon_plan(
     actions = []
     clone_names = []
     startup_buildings = []
+    static_startup_buildings = []
     missing = []
     granted_indices = set()
     list_keys = {str(key).lower() for key in map_superweapon_entries}
@@ -420,6 +421,25 @@ def cloned_superweapon_plan(
                 )
                 techno_values = dict(techno_source_values)
                 techno_values.update(clone_spec.get('values') or {})
+                if clone_spec.get('provides_superweapon'):
+                    # Ares GenericWarhead passes its launch BuildingType as
+                    # source to EMP and AttachEffect filtering. Action-34-only
+                    # powers have no launch building, so those effects receive
+                    # a null source and affect every house. A hidden provider
+                    # gives the existing direct GenericWarhead path a real
+                    # player-owned source without adding a weapon or cannon.
+                    _remove_case_insensitive(
+                        techno_values,
+                        'SuperWeapon',
+                        'SuperWeapon2',
+                        'SuperWeapons',
+                    )
+                    # Use the vanilla primary slot, matching the working
+                    # mission Time Freeze provider. Ares checks this slot
+                    # first when resolving the GenericWarhead launch firer.
+                    # The plural extension can fail to resolve a scenario-
+                    # local SuperWeaponType early enough, leaving pFirer null.
+                    techno_values['SuperWeapon'] = clone_type
                 if (
                     list_section.lower() in {
                         'aircrafttypes', 'buildingtypes', 'infantrytypes',
@@ -480,7 +500,15 @@ def cloned_superweapon_plan(
                     techno_values['RequiredHouses'] = startup_owners
                     techno_values['ForbiddenHouses'] = 'none'
                     techno_values['FactoryOwners'] = None
-                startup_buildings.extend([techno_clone] * startup_count)
+                startup_targets = (
+                    static_startup_buildings
+                    if (
+                        clone_spec.get('static_startup')
+                        and list_section.lower() == 'buildingtypes'
+                    )
+                    else startup_buildings
+                )
+                startup_targets.extend([techno_clone] * startup_count)
 
         # Weapon/warhead/projectile helpers are ordinary INI sections, not
         # registered TechnoTypes or SuperWeaponTypes. Clone them without list
@@ -567,7 +595,14 @@ def cloned_superweapon_plan(
 
     if list_rules:
         section_rules.setdefault('SuperWeaponTypes', {}).update(list_rules)
-    return section_rules, actions, clone_names, startup_buildings, missing
+    return (
+        section_rules,
+        actions,
+        clone_names,
+        startup_buildings,
+        static_startup_buildings,
+        missing,
+    )
 
 def techlevel_rules_for_reward(reward):
     reward = canonical_reward(reward)

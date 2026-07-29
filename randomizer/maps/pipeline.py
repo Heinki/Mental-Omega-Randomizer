@@ -17,6 +17,7 @@ from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
+    append_static_startup_buildings,
     append_superweapon_grant_trigger,
     backup_file_once,
     clone_player_country_for_house_buffs,
@@ -417,6 +418,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         superweapon_actions,
         _cloned_power_names,
         startup_power_buildings,
+        static_startup_power_buildings,
         missing_power_sources,
     ) = cloned_superweapon_plan(
         lines,
@@ -951,6 +953,34 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
+    static_power_providers = append_static_startup_buildings(
+        lines,
+        power_house_names,
+        static_startup_power_buildings,
+    )
+    expected_static_power_providers = (
+        len(unique_in_order(power_house_names))
+        * len(static_startup_power_buildings)
+    )
+    if expected_static_power_providers:
+        if len(static_power_providers) == expected_static_power_providers:
+            self.append_log(
+                'Placed exact-House static power provider(s): '
+                + ', '.join(
+                    f'{building_id} for {house}'
+                    for house, building_id, _cell_x, _cell_y
+                    in static_power_providers
+                )
+                + '.'
+            )
+        else:
+            self.append_log(
+                'Could not place every exact-House static power provider; '
+                f'placed {len(static_power_providers)} of '
+                f'{expected_static_power_providers}.',
+                error=True,
+            )
+
     # Objective marker TeamTypes still need one concrete owner. Keep this
     # separate from the possibly multi-house superweapon grant list: the
     # latter replaced the old ``house`` local and accidentally left marker

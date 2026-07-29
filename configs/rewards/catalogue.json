@@ -2910,6 +2910,7 @@
           "SW.Warhead": "MORTimeFreezeWH",
           "SW.Damage": "0",
           "SW.AffectsHouse": "enemies",
+          "SW.AffectsTarget": "infantry,units,buildings",
           "SW.RequiresTarget": "land",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -2925,12 +2926,51 @@
           "EMPulse.Cannons": null
         },
         "techno_clones": {
+          "TimeFreezeProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORTimeFreezeProvider",
+            "list": "BuildingTypes",
+            "startup_count": 1,
+            "static_startup": true,
+            "provides_superweapon": true,
+            "values": {
+              "Name": "Randomizer Time Freeze Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
           "TimeFreezeWH": {
             "clone": "MORTimeFreezeWH",
             "list": "Warheads",
             "values": {
               "AllowZeroDamage": "yes",
-              "DamageAirThreshold": "-1"
+              "DamageAirThreshold": "-1",
+              "Versus.misc": "0%",
+              "AffectsOwner": "no",
+              "AffectsAllies": "no",
+              "AffectsEnemies": "yes"
             }
           }
         }

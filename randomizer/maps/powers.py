@@ -26,13 +26,13 @@ def _waypoint_label(index):
         label = chr(ord('A') + remainder) + label
     return label
 
-def _startup_building_actions(
+def _startup_building_placements(
     lines,
     house,
     building_ids,
     reserved_cells=None,
 ):
-    """Create hidden support buildings near proven friendly map objects."""
+    """Choose hidden support-building cells near proven friendly map objects."""
     building_ids = [str(item).strip() for item in building_ids if str(item).strip()]
     if not building_ids:
         return []
@@ -62,7 +62,7 @@ def _startup_building_actions(
     aliases.discard('')
 
     occupied = set(reserved_cells or ())
-    placements = []
+    map_objects = []
     friendly_anchors = []
     fallback_anchors = []
     # Structures are stable, playable anchors and much less likely than map
@@ -84,7 +84,7 @@ def _startup_building_actions(
                 or owner.replace(' house', '') in anchor_aliases
             ):
                 friendly_anchors.append(cell)
-            placements.append((owner, cell))
+            map_objects.append((owner, cell))
 
     anchors = list(dict.fromkeys(friendly_anchors))
     if not anchors:
@@ -94,7 +94,7 @@ def _startup_building_actions(
         }
         anchors = list(dict.fromkeys(
             cell
-            for owner, cell in placements
+            for owner, cell in map_objects
             if owner in player_houses
         ))
     if not anchors:
@@ -124,8 +124,7 @@ def _startup_building_actions(
             sum(cell[1] for cell in anchors) / len(anchors),
         )
 
-    next_waypoint = next_numeric_section_index(lines, 'Waypoints')
-    actions = []
+    startup_placements = []
     for building_number, building_id in enumerate(building_ids):
         chosen = None
         for anchor_number in range(len(anchors)):
@@ -152,6 +151,25 @@ def _startup_building_actions(
         occupied.add(chosen)
         if reserved_cells is not None:
             reserved_cells.add(chosen)
+        startup_placements.append((building_id, chosen))
+    return startup_placements
+
+def _startup_building_actions(
+    lines,
+    house,
+    building_ids,
+    reserved_cells=None,
+):
+    """Create hidden support buildings through map-start actions."""
+    placements = _startup_building_placements(
+        lines,
+        house,
+        building_ids,
+        reserved_cells=reserved_cells,
+    )
+    next_waypoint = next_numeric_section_index(lines, 'Waypoints')
+    actions = []
+    for building_id, chosen in placements:
         waypoint = _waypoint_label(next_waypoint)
         append_section_entry(
             lines,
@@ -164,6 +182,47 @@ def _startup_building_actions(
             '125', '10', building_id, '0', '0', '0', '0', waypoint,
         ])
     return actions
+
+def append_static_startup_buildings(lines, houses, building_ids=()):
+    """Place exact-House support buildings before map-start triggers run."""
+    if isinstance(houses, str):
+        houses = [houses]
+    houses = unique_in_order(
+        str(house or '').strip()
+        for house in (houses or ())
+        if str(house or '').strip()
+    )
+    building_ids = [
+        str(item).strip()
+        for item in building_ids
+        if str(item).strip()
+    ]
+    if not houses or not building_ids:
+        return []
+
+    next_structure = next_numeric_section_index(lines, 'Structures')
+    reserved_cells = set()
+    placed = []
+    for house in houses:
+        placements = _startup_building_placements(
+            lines,
+            house,
+            building_ids,
+            reserved_cells=reserved_cells,
+        )
+        for building_id, (cell_x, cell_y) in placements:
+            append_section_entry(
+                lines,
+                'Structures',
+                str(next_structure),
+                (
+                    f'{house},{building_id},256,{cell_x},{cell_y},64,None,'
+                    '1,0,1,0,0,None,None,None,0,0'
+                ),
+            )
+            next_structure += 1
+            placed.append((house, building_id, cell_x, cell_y))
+    return placed
 
 def append_superweapon_grant_trigger(
     lines,

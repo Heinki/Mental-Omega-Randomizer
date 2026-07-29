@@ -358,6 +358,37 @@ cursor. Its portable copy must explicitly set `Action=Custom`,
 `Cursor=Glacial`, and `NoCursor=NoCanDo`; without these fields, clicking the
 ready power produced a red health cursor and the engine rejected activation.
 
+The first enemy-filter fix was insufficient. Ares 3.0's
+`SW_GenericWarhead::Activate` searches the owning House's buildings for one
+that provides the exact SuperWeaponType. It passes that BuildingClass as the
+source to `applyEMP` and `applyAttachedEffect`. Action 34 grants portable Time
+Freeze without a provider, so this search returns null. Both effect functions
+then skip `CanAffectTarget`, causing owner, allies, and enemies to receive the
+freeze regardless of `SW.AffectsHouse` or warhead flags. Native mission Time
+Freeze differs because its authored source object supplies a non-null firer.
+
+The fix keeps direct `Type=GenericWarhead` and adds no Time Freeze weapon or
+EMPulse cannon. One hidden `MORTimeFreezeProvider`, cloned from `DUMMYDUMMY`,
+is written directly into `[Structures]` for each exact player House before
+map-start triggers run. It declares `SuperWeapon=MORTimeFreeze` in the vanilla
+primary slot, carries exact player ownership, is
+hidden/passable/EMP-immune/unselectable/non-scoring, and has no weapon. Ares can
+therefore resolve it from the owning House's `Buildings` collection and pass
+that House through existing EMP and AttachEffect warhead filtering. The power
+still sets `SW.AffectsHouse=enemies`; private `MORTimeFreezeWH` sets
+`AffectsOwner=no`, `AffectsAllies=no`, and `AffectsEnemies=yes`.
+`Versus.misc=0%` independently protects neutral scenery because the installed
+warhead uses `EffectsRequireVerses=yes`. ASOMNIA's additional
+`Versus.libra=0%` remains mission-specific; copying it globally would exempt
+enemy Libra. Runtime definitions reapply provider and filter fields for older
+editable packaged catalogues. Ares 3.0 treats the firing house itself as allied
+in this direct warhead path, so `AffectsAllies=no` is the operative
+owner/allied exclusion; `AffectsOwner` remains an explicit compatibility
+field. Both plural binding and later singular binding through action 125 were
+structurally present but failed live in Red Dawn. The decisive working-mission
+difference is a statically pre-owned provider in `[Structures]`, not only its
+slot spelling.
+
 `MORV3TestSpecial` proves a power can be wholly new rather than copied. Its disabled template uses `UnitDelivery`, zero cost, a 0.5-minute recharge, and delivers 20 player-owned `V3` types on land when enabled. `sidebar_image=yuri_shocked.png` supplies both the launcher Unlocks preview and the configured 60×48 indexed `SidebarPCX=moryv3.pcx` loose game asset. PNG is configuration input only; Mental Omega consumes the generated PCX.
 
 `ZephyrBeaconSpecial` delivers neutral `ZTARGET`; it is a targeting beacon for already-owned `HOWI` Zephyr Artillery, not a standalone bombardment. A guaranteed minimum barrage would require a custom weapon/projectile/warhead helper or a materially different delivery power, not a safe one-key override.

@@ -119,6 +119,14 @@ academy markers, or hidden EMPulse cannon buildings. A BuildingType with
 `startup_count` is created for each power-grant country; runtime replaces its
 inherited ownership with that country and splits map-start action lists by both
 the configured action-count ceiling and the engine's byte limit.
+`provides_superweapon=true` binds the generated SuperWeaponType clone to that
+hidden BuildingType through its vanilla primary `SuperWeapon` slot. This
+supplies a real player-owned launch source for engine paths such as
+GenericWarhead EMP/AttachEffect filtering without adding a weapon.
+`static_startup=true` places that provider directly in `[Structures]` under
+each exact mission House instead of creating it through action 125. Use this
+when engine filtering must resolve the provider from the owning House before
+map-start grant triggers run.
 
 Custom power artwork uses `sidebar_image` with a plain PNG filename from
 `assets/`; its matching `values.SidebarPCX` supplies the loose PCX filename
