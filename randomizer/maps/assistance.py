@@ -37,6 +37,15 @@ from .base import (
     parse_float,
 )
 
+
+def _country_armor_multiplier(received_damage_multiplier):
+    """Convert reward damage reduction to the engine's armor divisor."""
+    multiplier = float(received_damage_multiplier)
+    if multiplier <= 0:
+        raise ValueError('Country armor damage multiplier must be positive')
+    return 1.0 / multiplier
+
+
 def stacked_house_buff_values(
     rewards,
     base_values=None,
@@ -143,7 +152,12 @@ def stacked_house_buff_values(
             multiplier = stacking_multiplier('cost', count)
         elif buff_type == 'armor':
             key = f'Armor{suffix}Mult'
-            multiplier = stacking_multiplier('armor', count)
+            # RA2/YR divides incoming damage by CountryType Armor*Mult.
+            # Reward tuning stores the desired received-damage multiplier,
+            # so x0.9 damage must be emitted as an engine divisor of 1/0.9.
+            multiplier = _country_armor_multiplier(
+                stacking_multiplier('armor', count)
+            )
         else:
             continue
         existing_key = next((key_name for key_name in base_values if key_name.lower() == key.lower()), key)
@@ -299,7 +313,10 @@ def mission_assistance_buff_values(base_values, stacks):
                 key,
             )
             base = parse_float(base_values.get(existing_key), 1.0)
-            values[key] = format_multiplier(base * multipliers[multiplier_name])
+            multiplier = multipliers[multiplier_name]
+            if multiplier_name == 'armor':
+                multiplier = _country_armor_multiplier(multiplier)
+            values[key] = format_multiplier(base * multiplier)
 
     return values
 
