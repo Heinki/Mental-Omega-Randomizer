@@ -607,6 +607,17 @@ def player_unit_clone_rules(
                 replacement = country_replacements.get(item.upper())
                 if replacement and target_category == category:
                     rewritten_items.append(replacement)
+                    if (
+                        is_main_player_country
+                        and item.upper() not in replacements
+                    ):
+                        # Build-only clones isolate factory production while
+                        # mission placements and scripted TaskForces deliberately
+                        # keep the native identity. Preserve that already-safe
+                        # native Veteran* entry after the clone so both creation
+                        # paths receive the earned rank. Normal reference clones
+                        # still replace the native ID outright.
+                        rewritten_items.append(item)
                     if not is_main_player_country:
                         # Helpers can still receive native fallback production
                         # outside TaskForces. Preserve veteran status for those

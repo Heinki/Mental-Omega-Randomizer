@@ -5,13 +5,16 @@ from ._shared import (
     MAX_COUNTRY_VETERAN_VALUE_LENGTH,
     SHARED_WEAPON_USER_IDS,
     WEAPON_STAT_BUFF_TYPES,
+    all_section_value_maps,
     build_unit_usage_index,
     comma_items,
     house_category_suffix,
     map_house_records,
+    parse_action_groups,
     player_controlled_houses,
     player_house_from_map,
     resolve_configured_helper_houses,
+    section_lines,
     section_value_map_preserve,
     stacking_multiplier,
     unique_in_order,
@@ -330,14 +333,21 @@ def native_variant_unit_buff_rules(
 
     return rule_sections, applied_ids
 
-def native_variant_veterancy_rules(lines, source_unit_id, native_unit_ids):
+def native_variant_veterancy_rules(
+    lines,
+    source_unit_id,
+    native_unit_ids,
+    source_clone_id='',
+):
     """Extend an earned native-unit veterancy entry to scripted variants.
 
     Country Veteran* lists are the engine mechanism that promotes freshly
     created units.  Mission variants such as AHAMARTIA's ATANY keep exact
     identities for loss and respawn triggers, so they cannot inherit a cloned
-    TANY identity.  Only extend a list that already contains the earned source
-    ID; this preserves the normal country-safety decision made earlier.
+    TANY identity. Only extend a list that already contains the earned source
+    or its isolated player clone; this preserves the normal country-safety
+    decision made earlier. Clone rewriting runs before this pass and normally
+    substitutes the source ID, so checking only the native source skips variants.
     """
     source_unit_id = str(source_unit_id or '').upper()
     target = BUFF_TARGETS.get(source_unit_id, {})
@@ -355,6 +365,14 @@ def native_variant_veterancy_rules(lines, source_unit_id, native_unit_ids):
     )
     if not variants:
         return {}, []
+    earned_ids = {
+        unit_id
+        for unit_id in (
+            source_unit_id,
+            str(source_clone_id or '').upper(),
+        )
+        if unit_id
+    }
 
     records = map_house_records(lines)
     player_houses = player_controlled_houses(lines, records=records)
@@ -373,7 +391,7 @@ def native_variant_veterancy_rules(lines, source_unit_id, native_unit_ids):
             or ''
         )
         current_ids = {item.upper() for item in comma_items(current)}
-        if source_unit_id not in current_ids:
+        if earned_ids.isdisjoint(current_ids):
             continue
         updated = merge_unique_csv_bounded(
             current,
@@ -387,3 +405,99 @@ def native_variant_veterancy_rules(lines, source_unit_id, native_unit_ids):
             unit_id for unit_id in variants if unit_id not in current_ids
         )
     return rules, unique_in_order(applied)
+
+def scripted_reinforcement_veterancy_rules(
+    lines,
+    veteran_unit_ids,
+    configured_helper_houses=(),
+    excluded_player_houses=(),
+):
+    """Promote eligible player reinforcement teams without widening rewards.
+
+    Actions 7, 80, and 107 force every created member to the TeamType's
+    VeteranLevel, overriding Country Veteran* lists. Set VeteranLevel=2 only
+    when every TaskForce member has earned veterancy; mixed teams containing
+    any unearned or nontrainable identity remain authored.
+    """
+    veteran_unit_ids = {
+        str(unit_id or '').upper()
+        for unit_id in veteran_unit_ids
+        if unit_id
+    }
+    if not veteran_unit_ids:
+        return {}, []
+
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {
+        str(section).lower(): values for section, values in sections.items()
+    }
+    records = map_house_records(lines, sections=sections)
+    excluded = {
+        str(house or '').lower() for house in excluded_player_houses
+    }
+    player_houses = [
+        house
+        for house in player_controlled_houses(lines, records=records)
+        if house.lower() not in excluded
+    ]
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
+    )
+    allowed_owners = set()
+    for house in unique_in_order(player_houses + helper_houses):
+        record = records.get(house, {})
+        country = str(record.get('country') or house.replace(' House', ''))
+        allowed_owners.update({
+            house.lower(),
+            house.replace(' House', '').lower(),
+            country.lower(),
+        })
+
+    known_teams = {
+        str(team_id).lower()
+        for team_id in sections_by_lower.get('teamtypes', {}).values()
+        if team_id
+    }
+    reinforcement_teams = set()
+    for line in section_lines(lines, 'Actions'):
+        if '=' not in line:
+            continue
+        _, groups = parse_action_groups(line.split('=', 1)[1])
+        for group in groups:
+            if group[0] not in {'7', '80', '107'}:
+                continue
+            reinforcement_teams.update(
+                str(parameter).lower()
+                for parameter in group[1:]
+                if str(parameter).lower() in known_teams
+            )
+
+    rules = {}
+    promoted = []
+    for team_id in sorted(reinforcement_teams):
+        team_values = sections_by_lower.get(team_id, {})
+        if str(team_values.get('house', '')).lower() not in allowed_owners:
+            continue
+        taskforce_id = str(team_values.get('taskforce', '')).lower()
+        members = [
+            tokens[1].upper()
+            for key, value in sections_by_lower.get(taskforce_id, {}).items()
+            if str(key).isdigit()
+            for tokens in ([item.strip() for item in str(value).split(',')],)
+            if len(tokens) >= 2 and tokens[1]
+        ]
+        if not members or any(
+            member not in veteran_unit_ids for member in members
+        ):
+            continue
+        try:
+            current_level = int(team_values.get('veteranlevel', 1))
+        except (TypeError, ValueError):
+            current_level = 1
+        if current_level >= 2:
+            continue
+        rules[team_id] = {'VeteranLevel': '2'}
+        promoted.append(team_id)
+    return rules, promoted

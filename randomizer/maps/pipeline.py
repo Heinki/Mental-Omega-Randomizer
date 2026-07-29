@@ -35,6 +35,7 @@ from randomizer.maps.rules import (
     resolved_delivery_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
+    scripted_reinforcement_veterancy_rules,
     stacked_house_buff_values,
     suppressed_superweapon_building_ids,
     unit_weapon_buff_rules,
@@ -78,7 +79,7 @@ from randomizer.missions.safety import safe_build_countries
 from randomizer.missions.catalogue import normalize_faction
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT, GENERATED_MAP_DIR
 from randomizer.rewards.catalogue import (
-    ALWAYS_AVAILABLE_UNIT_IDS,
+    AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     ENGINEER_UNIT_IDS,
     canonical_rewards,
@@ -699,7 +700,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         # BuildTimeMultiplier and silently disappeared.
         buildable_clone_ids.update(
             set(mission_buff_unit_ids).intersection(
-                ALWAYS_AVAILABLE_UNIT_IDS
+                set(ENGINEER_UNIT_IDS) | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)
             )
         )
         if not require_unlocked_access_for_buffs:
@@ -837,9 +838,33 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
+        reward_veterancy = stacked_house_buff_values(
+            guarded_rewards,
+            require_unlocked_access=require_unlocked_access_for_buffs,
+            additional_unlocked_tech_ids=buff_access_tech_ids,
+            share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+            unit_specific_mode=chaos_unit_specific_buffs,
+            max_veteran_value_length=None,
+        )
+        scripted_veteran_ids = {
+            unit_id.upper()
+            for field in (
+                'VeteranInfantry', 'VeteranUnits', 'VeteranAircraft',
+                'VeteranBuildings',
+            )
+            for unit_id in str(reward_veterancy.get(field, '')).split(',')
+            if unit_id
+        }
+        scripted_veteran_ids.update(
+            values.get('clone_id', '')
+            for unit_id, values in clone_handled.items()
+            if unit_id in scripted_veteran_ids and values.get('clone_id')
+        )
         for native_variant_buff_config in MISSION_NATIVE_VARIANT_BUFF_RULES.get(code, ()):
             source_unit_id = native_variant_buff_config['source_unit']
             native_variant_ids = native_variant_buff_config['native_units']
+            if source_unit_id in scripted_veteran_ids:
+                scripted_veteran_ids.update(native_variant_ids)
             native_variant_rules, native_buffed_ids = native_variant_unit_buff_rules(
                 guarded_rewards,
                 installed_rule_sections,
@@ -864,6 +889,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     lines,
                     source_unit_id,
                     native_variant_ids,
+                    source_clone_id=clone_handled.get(
+                        source_unit_id, {}
+                    ).get('clone_id', ''),
                 )
             )
             if native_veterancy_rules:
@@ -874,6 +902,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     + ', '.join(native_veteran_ids)
                     + '.'
                 )
+        (
+            scripted_veterancy_sections,
+            scripted_veteran_team_ids,
+        ) = scripted_reinforcement_veterancy_rules(
+            lines,
+            scripted_veteran_ids,
+            configured_helper_houses=reward_helpers,
+            excluded_player_houses=excluded_player_houses,
+        )
+        if scripted_veterancy_sections:
+            merge_ini_section_values(lines, scripted_veterancy_sections)
+            self.append_log(
+                'Applied earned veterancy to scripted reinforcement teams: '
+                + ', '.join(scripted_veteran_team_ids)
+                + '.'
+            )
         (
             weapon_rule_sections,
             weapon_buffed_units,

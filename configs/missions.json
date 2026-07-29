@@ -1394,9 +1394,9 @@
       },
       "FKILL": {
         "SMCV": {
-          "Speed": "16",
+          "Speed": "30",
           "Accelerates": "false",
-          "ROT": "10"
+          "ROT": "90"
         }
       }
     },
