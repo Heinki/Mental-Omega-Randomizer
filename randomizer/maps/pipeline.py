@@ -58,6 +58,7 @@ from randomizer.maps.settings import (
     mission_eva_voice_rules,
     mission_house_color_rules,
 )
+from randomizer.maps.special_buildings import reprocessor_bounty_rules
 from randomizer.missions.houses import mission_house_config, mission_player_power_houses
 from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
@@ -776,6 +777,39 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 'Prepared isolated standalone player unit/defense clones for: '
                 + ', '.join(cloned_unit_names)
                 + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
+            )
+        reprocessor_rules, reprocessor_report = reprocessor_bounty_rules(
+            lines,
+            installed_rule_sections,
+            clone_handled,
+            buildable_tech_ids=buildable_clone_ids,
+        )
+        if reprocessor_rules:
+            merge_ini_section_values(lines, reprocessor_rules)
+        if reprocessor_report['clone_id']:
+            faction_counts = ', '.join(
+                f'{faction}={len(unit_ids)}'
+                for faction, unit_ids
+                in reprocessor_report['eligible_by_faction'].items()
+            ) or 'none'
+            self.append_log(
+                'Reprocessor bounty trigger '
+                + (
+                    'enabled'
+                    if reprocessor_report['trigger_enabled']
+                    else 'invalid'
+                )
+                + f' for {reprocessor_report["clone_id"]}; '
+                f'Bounty=yes player-unit detection: {faction_counts}; '
+                f'authored exclusions={len(reprocessor_report["excluded_unit_ids"])}.'
+                + (
+                    ' Issues: '
+                    + '; '.join(reprocessor_report['issues'])
+                    + '.'
+                    if reprocessor_report['issues']
+                    else ''
+                ),
+                error=bool(reprocessor_report['issues']),
             )
         academy_clone_rules = resolved_academy_clone_rules(
             cloned_power_rules,

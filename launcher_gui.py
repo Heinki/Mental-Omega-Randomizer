@@ -64,6 +64,10 @@ def run_self_check():
         unit_roster = validate_randomizer_unit_roster()
         special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
+        from randomizer.maps.special_buildings import (
+            validate_reprocessor_bounty_support,
+        )
+        reprocessor_bounty = validate_reprocessor_bounty_support()
         from randomizer.rewards.catalogue import AID_POWER_MAP_CONFIGS
         moon_configs = [
             config
@@ -168,6 +172,13 @@ def run_self_check():
                 and transport_buffs['stallion_open_topped_excluded']
             ),
             'transport_buff_eligibility': transport_buffs,
+            'reprocessor_bounty_support_valid': bool(
+                reprocessor_bounty['runtime_enablers']
+                and all(
+                    reprocessor_bounty['representative_results'].values()
+                )
+            ),
+            'reprocessor_bounty_support': reprocessor_bounty,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
             'reward_weight_connections_valid': (
@@ -193,6 +204,7 @@ def run_self_check():
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_disabled_valid',
                 'transport_buff_eligibility_valid',
+                'reprocessor_bounty_support_valid',
                 'application_imported',
                 'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',
