@@ -76,6 +76,15 @@ def run_self_check():
                 moon_configs[0].get('values', {}).get('SW.InitialReady', '')
             ).lower() == 'no'
         )
+        zephyr_configs = [
+            config
+            for config in AID_POWER_MAP_CONFIGS
+            if config.get('superweapon') == 'ZephyrBeaconSpecial'
+        ]
+        zephyr_disabled_valid = bool(
+            len(zephyr_configs) == 1
+            and zephyr_configs[0].get('disabled') is True
+        )
         from randomizer.application import (
             advanced_settings as advanced_settings_module,
             app as application_module,
@@ -152,6 +161,7 @@ def run_self_check():
             'moon_reinforcements_initial_cooldown_valid': (
                 moon_initial_cooldown_valid
             ),
+            'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and transport_buffs['stallion_capacity_enabled']
@@ -181,6 +191,7 @@ def run_self_check():
                 'randomizer_unit_roster_valid',
                 'special_reward_build_times_valid',
                 'moon_reinforcements_initial_cooldown_valid',
+                'zephyr_bombardment_disabled_valid',
                 'transport_buff_eligibility_valid',
                 'application_imported',
                 'reward_weight_connections_valid',

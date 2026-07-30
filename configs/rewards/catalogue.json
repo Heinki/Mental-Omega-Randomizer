@@ -1005,13 +1005,6 @@
         "index": 26
       },
       {
-        "name": "Zephyrobot Power",
-        "description": "Deploys a targeting beacon for Zephyr Artillery units you already own.",
-        "faction": "Allies",
-        "superweapon": "ZephyrBeaconSpecial",
-        "index": 34
-      },
-      {
         "name": "Lightning Rod Power",
         "description": "Deploys a temporary Lightning Rod at the selected area.",
         "faction": "Allies",
@@ -1562,28 +1555,8 @@
       },
       {
         "superweapon": "ZephyrBeaconSpecial",
-        "values": {
-          "IsPowered": "false",
-          "RechargeTime": "5.5",
-          "Money.Amount": "-500",
-          "SW.Deferment": "0",
-          "Deliver.Types": "ZTARGET",
-          "Deliver.Owner": "neutral",
-          "SW.AutoFire": "no",
-          "SW.ManualFire": "yes",
-          "SW.ShowCameo": "yes",
-          "SW.UseAITargeting": "no",
-          "SW.InitialReady": "no",
-          "SW.AITargeting": "None",
-          "SW.FireIntoShroud": "no",
-          "SW.RequiresTarget": "land",
-          "SW.RequiredHouses": "",
-          "SW.ForbiddenHouses": "",
-          "SW.AuxBuildings": "",
-          "SW.NegBuildings": "",
-          "AuxBuilding": "",
-          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM"
-        }
+        "disabled": true,
+        "values": {}
       },
       {
         "superweapon": "LightningRodSpecial",
@@ -3469,6 +3442,16 @@
         "rules": {},
         "factions": [
           "Foehn"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Zephyrobot Power": {
+        "name": "Zephyrobot Power (retired: unsafe without campaign support)",
+        "description": "Removed after the portable hidden-support implementation caused a runtime fatal error; campaign Zephyr bombardment remains map-script/data specific.",
+        "rules": {},
+        "factions": [
+          "Allies"
         ],
         "kind": "retired",
         "retired_reward": true
