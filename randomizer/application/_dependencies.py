@@ -19,6 +19,15 @@ from randomizer.progression.state import (
     normalize_failure_stacks,
 )
 from randomizer.rewards.planning import plan_seed_rewards
+from randomizer.rewards.weights import (
+    DEFAULT_REWARD_WEIGHT,
+    MAIN_REWARD_WEIGHT_TYPES,
+    POWER_BUFF_WEIGHT_TYPES,
+    UNIT_BUFF_WEIGHT_TYPES,
+    clamp_reward_weight,
+    normalize_reward_weights,
+    reward_selection_weight,
+)
 from randomizer.launch.options import (
     choice_label_from_ini,
     patch_large_ini_key,

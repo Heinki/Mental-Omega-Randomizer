@@ -56,7 +56,55 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
-        __import__('randomizer.application.app')
+        from randomizer.application import (
+            advanced_settings as advanced_settings_module,
+            app as application_module,
+            reward_controller as reward_controller_module,
+            state_controller as state_controller_module,
+        )
+        required_runtime_symbols = {
+            application_module: (
+                'MAIN_REWARD_WEIGHT_TYPES',
+                'POWER_BUFF_WEIGHT_TYPES',
+                'UNIT_BUFF_WEIGHT_TYPES',
+                'normalize_reward_weights',
+            ),
+            advanced_settings_module: (
+                'DEFAULT_REWARD_WEIGHT',
+                'MAIN_REWARD_WEIGHT_TYPES',
+                'POWER_BUFF_WEIGHT_TYPES',
+                'UNIT_BUFF_WEIGHT_TYPES',
+                'clamp_reward_weight',
+            ),
+            reward_controller_module: (
+                'normalize_reward_weights',
+                'reward_selection_weight',
+            ),
+            state_controller_module: (
+                'MAIN_REWARD_WEIGHT_TYPES',
+                'POWER_BUFF_WEIGHT_TYPES',
+                'UNIT_BUFF_WEIGHT_TYPES',
+                'clamp_reward_weight',
+                'normalize_reward_weights',
+            ),
+        }
+        missing_runtime_symbols = [
+            f'{module.__name__}.{name}'
+            for module, names in required_runtime_symbols.items()
+            for name in names
+            if not hasattr(module, name)
+        ]
+        state_stub = object.__new__(state_controller_module.StateController)
+        state_stub.config = {'generation': {}}
+        runtime_reward_settings = (
+            state_controller_module.StateController.config_reward_settings(
+                state_stub
+            )
+        )
+        reward_weight_connections_valid = bool(
+            not missing_runtime_symbols
+            and runtime_reward_settings.get('reward_weights')
+        )
         checks = {
             'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),
@@ -77,6 +125,10 @@ def run_self_check():
             'randomizer_unit_roster_paths': unit_roster['paths'],
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
+            'reward_weight_connections_valid': (
+                reward_weight_connections_valid
+            ),
+            'missing_runtime_symbols': missing_runtime_symbols,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
         }
@@ -93,6 +145,7 @@ def run_self_check():
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
                 'application_imported',
+                'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',
             )
         )

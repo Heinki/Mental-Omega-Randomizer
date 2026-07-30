@@ -19,10 +19,12 @@ from ._dependencies import (
     log_event,
     map_house_records,
     normalize_faction,
+    normalize_reward_weights,
     parse_missions,
     plan_seed_rewards,
     player_house_from_map,
     tech_ids_for_rewards,
+    reward_selection_weight,
     unit_display_label,
     unit_role_equivalents,
     unlocked_reward_tech_ids,
@@ -351,6 +353,9 @@ class RewardController:
             if isinstance(buff_types, (list, tuple, set))
         }
         chaos_mode = self.active_reward_mode() == 'Chaos (Experimental)'
+        reward_weights = normalize_reward_weights(
+            reward_settings.get('reward_weights')
+        )
 
         def power_category_enabled(reward):
             category = reward.get('power_category', 'offensive')
@@ -375,6 +380,8 @@ class RewardController:
             reward
             for reward in pool
             if (
+                reward_selection_weight(reward, reward_weights) > 0
+                and
                 (
                     reward.get('kind') == 'buff'
                     and reward.get('power_buff_type')
@@ -602,6 +609,9 @@ class RewardController:
             starting_unlocked_tech_ids=self.active_starting_tier_one_access_ids(),
             require_access_for_unit_buffs=self.randomize_unit_access_enabled(),
             share_role_buffs=self.share_chaos_role_buffs_enabled(),
+            reward_weights=self.active_reward_settings().get(
+                'reward_weights'
+            ),
         )
 
     def earned_rewards_from_checks(self):

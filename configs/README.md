@@ -22,7 +22,9 @@ that overlap only with full reward-plan and 97-map parity coverage.
 ## Files
 
 - `default_player_config.json`: fallback player, generation, launch, privacy,
-  and future Archipelago settings used when active YAML keys are absent.
+  reward-weight, and future Archipelago settings used when active YAML keys are
+  absent. `generation.reward_weights` stores bounded `0`–`100` main,
+  unit-buff, and power-buff selection weights; absent legacy keys use `100`.
 - `missions.json`: mission build classifications, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
   access rules, native-variant buff forwarding, and campaign starter families.

@@ -63,8 +63,27 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Include secondary superweapon rewards | `generation.include_secondary_superweapon_rewards` | `true` | Adds Chronoshift, Invulnerability, and Rage independently from the offensive-superweapon option. Blasticade is excluded because it has no effect without owned Blast Trenches. |
 | Include support/aid power rewards | `generation.include_aid_power_rewards` | `true` | Adds player-facing faction strikes, buffs, scouting, unit drops, deployable support structures, minefields, and grid spawners as map-local building-free copies. |
 | Include superweapon / aid power buff rewards | `generation.include_power_buff_rewards` | `true` | Adds repeatable buffs only after their matching power has been planned as unlocked. Settings → **Superweapons** enables broad buff families; Advanced → **Superpower Buffs** configures valid effects per included power. Invalid effects are unavailable rather than producing no-op rewards. |
+| Main reward weights | `generation.reward_weights.main` | Every value `100` | Controls relative selection of normal unit unlocks, power/aid unlocks, Special unit unlocks, faction-wide production increases, unit/building buffs, and power buffs. A `0` category is never selected. A category with no currently valid reward is removed before the roll, so its chance is reallocated. |
+| Unit buff weights | `generation.reward_weights.unit_buffs` | Every value `100` | Controls relative selection of movement, health, damage, range, fire rate, armor, cost, production time, healing, vision, ammo, cloaking, sensors, veterancy, and other existing unit/building buffs. Weights change item frequency only, never effect strength or stack caps. |
+| Superweapon buff weights | `generation.reward_weights.power_buffs` | Every value `100` | Controls relative selection of recharge, cost, area, damage, duration, extra delivered units, and future/other reviewed power buffs. A power buff remains unavailable until its matching power is unlocked. |
 | Enabled Buff Types | `generation.enabled_buff_types` | All listed types | Limits which buff families seed generation may assign. This option is ignored when **Include buff rewards** is off. |
 | Settings → Superweapons / Advanced → Superpower Buffs | `generation.enabled_power_buff_types`, `generation.excluded_power_buff_types` | All broad families enabled; no per-power exclusions | Settings globally enables recharge, cost, area, damage, duration, or payload reward families. Advanced selects one included power at a time for finer valid-effect exclusions. Existing generated runs keep their saved reward plan. |
+
+Weights use separate sliders accepting integers from `0` through `100`. Invalid,
+missing, or old-config
+values are normalized safely; negative values become `0`, oversized values
+become `100`, and malformed values use the default. Existing reward and
+buff checkboxes remain the enabled/disabled source; a disabled choice stays
+unavailable regardless of its slider. Main category selection
+happens before the matching unit- or power-buff subtype selection, preventing a
+large catalogue category from gaining extra chance merely because it contains
+more individual rewards. Already-earned one-time unlocks, capped buffs,
+inapplicable unit buffs, and power buffs whose power is still locked are removed
+before each roll. The **Default** button restores every slider to `100` only;
+other reward-pool, buff-type, and Advanced exclusions remain
+unchanged. The all-default weight set uses the original reward planner exactly,
+including existing seed output. Missing weight settings in older player configs
+and generated runs therefore retain prior behavior.
 
 ### Buff type options
 

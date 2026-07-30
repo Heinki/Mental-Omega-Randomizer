@@ -3,14 +3,41 @@
 from ._builder_dependencies import (
     BUFF_TYPES,
     EVA_VOICE_CHOICES,
+    IntegerSlider,
+    MAIN_REWARD_WEIGHT_TYPES,
+    MAX_REWARD_WEIGHT,
     PLAYER_COLORS,
     POWER_BUFF_TYPES,
+    POWER_BUFF_WEIGHT_TYPES,
+    UNIT_BUFF_WEIGHT_TYPES,
     WidgetTooltip,
     stacking_amount,
     stacking_multiplier,
     tk,
     ttk,
 )
+
+
+def _weight_slider(self, parent, label, variable, row, tooltip):
+    ttk.Label(parent, text=label).grid(
+        row=row, column=0, sticky='w', padx=(0, 8), pady=(0, 4)
+    )
+    slider = IntegerSlider(
+        parent,
+        variable=variable,
+        minimum=0,
+        maximum=MAX_REWARD_WEIGHT,
+        palette=self.ui_palette(),
+        command=lambda value, target=variable: (
+            self.on_reward_weight_slider_changed(target, value)
+        ),
+    )
+    slider.grid(row=row, column=1, sticky='ew', pady=(0, 4))
+    self.reward_weight_slider_controls.append(slider)
+    WidgetTooltip(slider.canvas, tooltip)
+    WidgetTooltip(slider.value_entry, tooltip)
+    return slider
+
 
 def buff_setting_amount_text(buff_type):
     buff_id = buff_type['id']
@@ -584,6 +611,7 @@ def _build_gameplay_settings(self, settings_frame):
         self.include_power_buff_rewards_check,
         'Adds only buffs valid for already-unlocked powers. Native mission powers remain unchanged.',
     )
+
     buff_frame = ttk.LabelFrame(
         settings_frame,
         text='Units / Buildings',
@@ -641,13 +669,113 @@ def _build_gameplay_settings(self, settings_frame):
         self.power_buff_type_checks.append(check)
         WidgetTooltip(check, buff_type['description'])
 
+    weight_settings_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Weight Settings',
+        padding=(8, 8, 8, 8),
+    )
+    self.weight_settings_frame = weight_settings_frame
+    weight_settings_frame.grid(
+        row=7, column=0, sticky='ew', pady=(8, 0)
+    )
+    weight_settings_frame.columnconfigure(0, weight=1)
+    self.reward_weight_slider_controls = []
+    weight_header = ttk.Frame(weight_settings_frame)
+    weight_header.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+    weight_header.columnconfigure(0, weight=1)
+    ttk.Label(
+        weight_header,
+        text=(
+            'Weights are relative; totals do not need to equal 100. '
+            '0 means never selected. 100 is maximum. Buff strength is unchanged.'
+        ),
+        style='Muted.TLabel',
+        wraplength=620,
+        justify='left',
+    ).grid(row=0, column=0, sticky='ew', padx=(0, 8))
+    ttk.Button(
+        weight_header,
+        text='Default',
+        command=self.reset_reward_weights,
+    ).grid(row=0, column=1, sticky='e')
+
+    reward_weight_frame = ttk.LabelFrame(
+        weight_settings_frame,
+        text='Reward weights',
+        padding=(8, 8, 8, 8),
+    )
+    self.reward_weight_frame = reward_weight_frame
+    reward_weight_frame.grid(row=1, column=0, sticky='ew')
+    reward_weight_frame.columnconfigure(0, minsize=190)
+    reward_weight_frame.columnconfigure(1, weight=1)
+    self.main_reward_weight_sliders = {}
+    for row, definition in enumerate(MAIN_REWARD_WEIGHT_TYPES):
+        weight_id = definition['id']
+        self.main_reward_weight_sliders[weight_id] = _weight_slider(
+            self,
+            reward_weight_frame,
+            definition['label'],
+            self.main_reward_weight_vars[weight_id],
+            row,
+            (
+                f'{definition["description"]} Selection chance only; '
+                f'range 0-{MAX_REWARD_WEIGHT}.'
+            ),
+        )
+
+    unit_weight_frame = ttk.LabelFrame(
+        weight_settings_frame,
+        text='Unit buff weights',
+        padding=(8, 8, 8, 8),
+    )
+    self.unit_weight_frame = unit_weight_frame
+    unit_weight_frame.grid(row=2, column=0, sticky='ew', pady=(8, 0))
+    unit_weight_frame.columnconfigure(0, minsize=190)
+    unit_weight_frame.columnconfigure(1, weight=1)
+    self.unit_buff_weight_sliders = {}
+    for row, (weight_id, label) in enumerate(UNIT_BUFF_WEIGHT_TYPES):
+        self.unit_buff_weight_sliders[weight_id] = _weight_slider(
+            self,
+            unit_weight_frame,
+            label,
+            self.unit_buff_weight_vars[weight_id],
+            row,
+            (
+                f'{label} reward selection chance only; '
+                f'range 0-{MAX_REWARD_WEIGHT}.'
+            ),
+        )
+
+    power_weight_frame = ttk.LabelFrame(
+        weight_settings_frame,
+        text='Superweapon buff weights',
+        padding=(8, 8, 8, 8),
+    )
+    self.power_weight_frame = power_weight_frame
+    power_weight_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+    power_weight_frame.columnconfigure(0, minsize=190)
+    power_weight_frame.columnconfigure(1, weight=1)
+    self.power_buff_weight_sliders = {}
+    for row, (weight_id, label) in enumerate(POWER_BUFF_WEIGHT_TYPES):
+        self.power_buff_weight_sliders[weight_id] = _weight_slider(
+            self,
+            power_weight_frame,
+            label,
+            self.power_buff_weight_vars[weight_id],
+            row,
+            (
+                f'{label} reward selection chance only; '
+                f'range 0-{MAX_REWARD_WEIGHT}.'
+            ),
+        )
+
     assistance_frame = ttk.LabelFrame(
         settings_frame,
         text='Mission Assistance',
         padding=(8, 8, 8, 8),
     )
     self.assistance_frame = assistance_frame
-    assistance_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
+    assistance_frame.grid(row=8, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
         text='Strengthen failed missions on retry',
@@ -680,7 +808,7 @@ def _build_gameplay_settings(self, settings_frame):
         padding=(8, 8, 8, 8),
     )
     self.appearance_frame = appearance_frame
-    appearance_frame.grid(row=8, column=0, sticky='ew', pady=(8, 0))
+    appearance_frame.grid(row=9, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
         text='Dark mode',

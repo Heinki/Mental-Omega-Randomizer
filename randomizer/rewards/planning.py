@@ -12,6 +12,14 @@ from randomizer.rewards.catalogue import (
     unit_role_equivalents,
 )
 from randomizer.config.tuning import REWARD_PLANNING
+from randomizer.rewards.weights import (
+    main_reward_weight_type,
+    normalize_reward_weights,
+    power_buff_weight_type,
+    reward_selection_weight,
+    reward_weights_are_default,
+    unit_buff_weight_type,
+)
 
 
 GLOBAL_BUFF_REWARD_INTERVAL = int(
@@ -32,6 +40,7 @@ def plan_seed_rewards(
     starting_unlocked_tech_ids=(),
     require_access_for_unit_buffs=True,
     share_role_buffs=False,
+    reward_weights=None,
 ):
     """Assign rewards without reading GUI or mutable launcher state.
 
@@ -48,6 +57,8 @@ def plan_seed_rewards(
     buff_counts = {}
     unit_buff_counts = {}
     power_buff_counts = {}
+    reward_weights = normalize_reward_weights(reward_weights)
+    use_weighted_draws = not reward_weights_are_default(reward_weights)
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
         for code in mission_codes
@@ -275,6 +286,117 @@ def plan_seed_rewards(
             record_buff_target(reward)
         return reward
 
+    def weighted_choice(items, weight_for):
+        """Draw from relative weights normalized by their active total."""
+        weighted = [
+            (item, max(0, int(weight_for(item))))
+            for item in items
+        ]
+        weighted = [(item, weight) for item, weight in weighted if weight > 0]
+        total = sum(weight for _item, weight in weighted)
+        if total <= 0:
+            return None
+        roll = rng.randrange(total)
+        for item, weight in weighted:
+            if roll < weight:
+                return item
+            roll -= weight
+        return weighted[-1][0]
+
+    def eligible_weighted_rewards(code, unit_only=False):
+        candidates = []
+        for reward in pool_by_code.get(code, ()):
+            if reward_selection_weight(reward, reward_weights) <= 0:
+                continue
+            if reward.get('kind') != 'buff':
+                if reward.get('name') in used_access_names:
+                    continue
+                if unit_only and not is_unit_access(reward):
+                    continue
+                candidates.append(reward)
+                continue
+            if unit_only:
+                continue
+            limit = buff_stack_limit(reward)
+            count_key = buff_count_key(reward)
+            if limit is not None and buff_counts.get(count_key, 0) >= limit:
+                continue
+            power_id = str(reward.get('superweapon') or '').upper()
+            if (
+                reward.get('power_buff_type')
+                and power_id not in seed_unlocked_power_ids
+            ):
+                continue
+            unit = reward.get('unit')
+            if (
+                require_access_for_unit_buffs
+                and unit
+                and not reward.get('global_buff')
+                and not unit_access_earned(unit)
+            ):
+                continue
+            candidates.append(reward)
+        return candidates
+
+    def draw_weighted(code, unit_only=False):
+        candidates = eligible_weighted_rewards(code, unit_only=unit_only)
+        groups = {}
+        for candidate in candidates:
+            groups.setdefault(
+                main_reward_weight_type(candidate), []
+            ).append(candidate)
+        main_type = weighted_choice(
+            list(groups),
+            lambda item: reward_weights['main'][item],
+        )
+        if main_type is None:
+            return None
+        candidates = groups[main_type]
+
+        if main_type == 'unit_buffs':
+            subgroups = {}
+            for candidate in candidates:
+                subgroups.setdefault(
+                    unit_buff_weight_type(candidate.get('buff_type')), []
+                ).append(candidate)
+            sub_type = weighted_choice(
+                list(subgroups),
+                lambda item: reward_weights['unit_buffs'][item],
+            )
+            candidates = subgroups.get(sub_type, [])
+        elif main_type == 'power_buffs':
+            subgroups = {}
+            for candidate in candidates:
+                subgroups.setdefault(
+                    power_buff_weight_type(
+                        candidate.get('power_buff_type')
+                    ),
+                    [],
+                ).append(candidate)
+            sub_type = weighted_choice(
+                list(subgroups),
+                lambda item: reward_weights['power_buffs'][item],
+            )
+            candidates = subgroups.get(sub_type, [])
+
+        if not candidates:
+            return None
+        if main_type in {'unit_buffs', 'power_buffs'}:
+            least_buffs = min(buff_target_count(item) for item in candidates)
+            candidates = [
+                item
+                for item in candidates
+                if buff_target_count(item) == least_buffs
+            ]
+        reward = dict(rng.choice(candidates))
+        if reward.get('kind') == 'buff':
+            count_key = buff_count_key(reward)
+            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
+            record_buff_target(reward)
+        else:
+            used_access_names.add(reward.get('name'))
+        return reward
+
     slot_order = []
     reserved_opening_slots = set()
     if progression_mode == 'Grid Mode' and isinstance(grid, dict):
@@ -304,18 +426,23 @@ def plan_seed_rewards(
         prefer_global = (
             (global_index + 1) % GLOBAL_BUFF_REWARD_INTERVAL == 0
         )
-        if force_unit_access:
-            reward = draw_access(code, unit_only=True)
-        if reward is None and not force_unit_access and (
-            global_index % 5 == 4 or prefer_global
-        ):
-            reward = draw_buff(code, prefer_global=prefer_global)
-        if reward is None:
-            reward = draw_access(code)
-        if reward is None:
-            reward = draw_buff(code, prefer_global=prefer_global)
-        if reward is None:
-            reward = draw_repeatable_fallback(code)
+        if use_weighted_draws:
+            reward = draw_weighted(code, unit_only=force_unit_access)
+            if reward is None and force_unit_access:
+                reward = draw_weighted(code)
+        else:
+            if force_unit_access:
+                reward = draw_access(code, unit_only=True)
+            if reward is None and not force_unit_access and (
+                global_index % 5 == 4 or prefer_global
+            ):
+                reward = draw_buff(code, prefer_global=prefer_global)
+            if reward is None:
+                reward = draw_access(code)
+            if reward is None:
+                reward = draw_buff(code, prefer_global=prefer_global)
+            if reward is None:
+                reward = draw_repeatable_fallback(code)
         if reward is not None:
             plan[code][slot_index] = reward
             seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))

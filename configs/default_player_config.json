@@ -85,6 +85,44 @@
           "duration",
           "payload"
         ],
+        "reward_weights": {
+          "main": {
+            "unit_unlocks": 100,
+            "power_unlocks": 100,
+            "special_unlocks": 100,
+            "production": 100,
+            "unit_buffs": 100,
+            "power_buffs": 100
+          },
+          "unit_buffs": {
+            "speed": 100,
+            "health": 100,
+            "damage": 100,
+            "range": 100,
+            "reload": 100,
+            "armor": 100,
+            "cost": 100,
+            "production": 100,
+            "self_healing": 100,
+            "sight": 100,
+            "ammo": 100,
+            "cloak": 100,
+            "sensors": 100,
+            "veteran": 100,
+            "build_limit": 100,
+            "building_limit": 100,
+            "other": 100
+          },
+          "power_buffs": {
+            "recharge": 100,
+            "cost": 100,
+            "area": 100,
+            "damage": 100,
+            "duration": 100,
+            "payload": 100,
+            "other": 100
+          }
+        },
         "safe_player_country_buffs": true,
         "buff_allied_helpers": false,
         "failure_assistance": false,

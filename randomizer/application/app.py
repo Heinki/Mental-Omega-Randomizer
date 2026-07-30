@@ -10,15 +10,19 @@ from ._dependencies import (
     DIFFICULTIES,
     EVA_VOICE_CHOICES,
     GAME_SPEEDS,
+    MAIN_REWARD_WEIGHT_TYPES,
     MAX_REWARDS_PER_CHECK,
     PLAYER_COLORS,
     POWER_BUFF_TYPES,
+    POWER_BUFF_WEIGHT_TYPES,
     PROGRESSION_MODES,
     REWARD_MODES,
+    UNIT_BUFF_WEIGHT_TYPES,
     WINDOW_ICON_PATH,
     clamp_int,
     load_config,
     log_event,
+    normalize_reward_weights,
     queue,
     tk,
     valid_choice,
@@ -262,6 +266,27 @@ class LauncherApp(
                 value=buff_type['id'] in enabled_power_buff_types
             )
             for buff_type in POWER_BUFF_TYPES
+        }
+        reward_weights = normalize_reward_weights(
+            reward_settings.get('reward_weights')
+        )
+        self.main_reward_weight_vars = {
+            definition['id']: tk.IntVar(
+                value=reward_weights['main'][definition['id']]
+            )
+            for definition in MAIN_REWARD_WEIGHT_TYPES
+        }
+        self.unit_buff_weight_vars = {
+            weight_id: tk.IntVar(
+                value=reward_weights['unit_buffs'][weight_id]
+            )
+            for weight_id, _label in UNIT_BUFF_WEIGHT_TYPES
+        }
+        self.power_buff_weight_vars = {
+            weight_id: tk.IntVar(
+                value=reward_weights['power_buffs'][weight_id]
+            )
+            for weight_id, _label in POWER_BUFF_WEIGHT_TYPES
         }
         if self.unlimited_hero_units_var.get():
             self.buff_type_vars['build_limit'].set(False)

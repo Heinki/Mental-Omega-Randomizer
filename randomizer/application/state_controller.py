@@ -6,13 +6,16 @@ from ._dependencies import (
     CHECK_SCHEMA_VERSION,
     DEFAULT_MISSION_GOAL,
     DEFAULT_REWARDS_PER_CHECK,
+    MAIN_REWARD_WEIGHT_TYPES,
     POWER_BUFF_TYPES,
+    POWER_BUFF_WEIGHT_TYPES,
     REWARD_MODES,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
     STARTING_UNLOCKED_MISSIONS,
     STATE_PATH,
     atomic_write_json,
     check_rewards,
+    clamp_reward_weight,
     create_grid,
     expanded_tier_one_defense_ids,
     expanded_tier_one_unit_ids,
@@ -22,6 +25,7 @@ from ._dependencies import (
     normalize_assistance_units,
     normalize_completed_checks,
     normalize_failure_stacks,
+    normalize_reward_weights,
     random,
     random_chaos_tier_one_defense_ids,
     random_chaos_tier_one_unit_ids,
@@ -31,6 +35,7 @@ from ._dependencies import (
     tier_one_defense_ids,
     tier_one_unit_ids,
     traceback,
+    UNIT_BUFF_WEIGHT_TYPES,
 )
 
 class StateController:
@@ -179,6 +184,9 @@ class StateController:
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
         failure_assistance = bool(generation_config.get('failure_assistance', False))
+        reward_weights = normalize_reward_weights(
+            generation_config.get('reward_weights')
+        )
         if generation_config.get('reward_mode') == 'Chaos (Experimental)':
             randomize_access = True
         return {
@@ -241,6 +249,7 @@ class StateController:
             } if isinstance(
                 generation_config.get('excluded_power_buff_types', {}), dict
             ) else {},
+            'reward_weights': reward_weights,
         }
 
     def current_reward_settings(self):
@@ -274,6 +283,26 @@ class StateController:
             for buff_type in POWER_BUFF_TYPES
             if self.power_buff_type_vars[buff_type['id']].get()
         ]
+        reward_weights = normalize_reward_weights({
+            'main': {
+                definition['id']: clamp_reward_weight(
+                    self.main_reward_weight_vars[definition['id']].get()
+                )
+                for definition in MAIN_REWARD_WEIGHT_TYPES
+            },
+            'unit_buffs': {
+                weight_id: clamp_reward_weight(
+                    self.unit_buff_weight_vars[weight_id].get()
+                )
+                for weight_id, _label in UNIT_BUFF_WEIGHT_TYPES
+            },
+            'power_buffs': {
+                weight_id: clamp_reward_weight(
+                    self.power_buff_weight_vars[weight_id].get()
+                )
+                for weight_id, _label in POWER_BUFF_WEIGHT_TYPES
+            },
+        })
         return {
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
@@ -318,6 +347,7 @@ class StateController:
                 )
                 if buff_types
             },
+            'reward_weights': reward_weights,
         }
 
     def active_reward_settings(self):
@@ -363,6 +393,9 @@ class StateController:
             settings['enabled_power_buff_types'] = [
                 buff_type['id'] for buff_type in POWER_BUFF_TYPES
             ]
+        settings['reward_weights'] = normalize_reward_weights(
+            settings.get('reward_weights')
+        )
         return settings
 
     def randomize_unit_access_enabled(self):
@@ -666,6 +699,7 @@ class StateController:
         self.config['generation']['include_power_buff_rewards'] = reward_settings['include_power_buff_rewards']
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
         self.config['generation']['enabled_power_buff_types'] = reward_settings['enabled_power_buff_types']
+        self.config['generation']['reward_weights'] = reward_settings['reward_weights']
         self.config['generation']['reward_mode'] = self.reward_mode_var.get()
         self.config['generation'].pop('close_game_on_victory', None)
         self.config.setdefault('archipelago', {}).setdefault('enabled', False)

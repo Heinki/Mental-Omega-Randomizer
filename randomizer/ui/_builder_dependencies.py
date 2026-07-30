@@ -13,7 +13,14 @@ from randomizer.rewards.catalogue import (
     POWER_BUFF_TYPES,
 )
 from randomizer.config.tuning import stacking_amount, stacking_multiplier
+from randomizer.rewards.weights import (
+    MAIN_REWARD_WEIGHT_TYPES,
+    MAX_REWARD_WEIGHT,
+    POWER_BUFF_WEIGHT_TYPES,
+    UNIT_BUFF_WEIGHT_TYPES,
+)
 from randomizer.ui.tooltips import TreeTooltip, WidgetTooltip
+from randomizer.ui.integer_slider import IntegerSlider
 from randomizer.ui.config import (
     CAMPAIGN_FILTERS,
     DIFFICULTIES,

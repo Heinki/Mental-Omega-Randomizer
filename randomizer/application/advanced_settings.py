@@ -5,14 +5,18 @@ from ._dependencies import (
     BUFF_TARGETS,
     BUFF_TYPES,
     CAMPAIGN_FILTERS,
+    DEFAULT_REWARD_WEIGHT,
     FACTION_TILE_COLORS,
     GAME_ROOT,
+    MAIN_REWARD_WEIGHT_TYPES,
+    POWER_BUFF_WEIGHT_TYPES,
     REWARD_POOL,
     WidgetTooltip,
     custom_sidebar_preview,
     ensure_superweapon_cameos,
     ensure_unit_cameos,
     filter_missions_by_build_settings,
+    clamp_reward_weight,
     linked_buff_variant_ids,
     log_event,
     logging,
@@ -21,6 +25,7 @@ from ._dependencies import (
     tk,
     tech_ids_for_rewards,
     traceback,
+    UNIT_BUFF_WEIGHT_TYPES,
     unit_display_label,
 )
 
@@ -687,6 +692,21 @@ class AdvancedSettingsController:
 
     def on_reward_mode_changed(self, _event=None):
         self.refresh_setting_states()
+
+    def on_reward_weight_slider_changed(self, variable, value):
+        weight = clamp_reward_weight(value, 0)
+        if variable.get() != weight:
+            variable.set(weight)
+
+    def reset_reward_weights(self):
+        for definition in MAIN_REWARD_WEIGHT_TYPES:
+            weight_id = definition['id']
+            self.main_reward_weight_vars[weight_id].set(DEFAULT_REWARD_WEIGHT)
+        for weight_id, _label in UNIT_BUFF_WEIGHT_TYPES:
+            self.unit_buff_weight_vars[weight_id].set(DEFAULT_REWARD_WEIGHT)
+        for weight_id, _label in POWER_BUFF_WEIGHT_TYPES:
+            self.power_buff_weight_vars[weight_id].set(DEFAULT_REWARD_WEIGHT)
+        self.save_current_launcher_config()
 
     def on_unlimited_hero_units_changed(self):
         if self.unlimited_hero_units_var.get():

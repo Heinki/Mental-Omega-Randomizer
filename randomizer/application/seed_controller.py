@@ -92,6 +92,14 @@ class SeedController:
                 error=True,
             )
             return
+        if not any(
+            reward_settings['reward_weights']['main'].values()
+        ):
+            self.append_log(
+                'Cannot generate seed: enable at least one main reward weight.',
+                error=True,
+            )
+            return
 
         generation_context = {
             'campaign_filter': self.campaign_var.get(),

@@ -319,6 +319,7 @@ class WindowController:
             'reward_frame',
             'buff_frame',
             'power_buff_frame',
+            'weight_settings_frame',
             'assistance_frame',
             'appearance_frame',
         )
@@ -367,8 +368,15 @@ class WindowController:
             self.power_buff_frame.grid(
                 row=4, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
             )
+            self.weight_settings_frame.grid(
+                row=5,
+                column=0,
+                columnspan=2,
+                sticky='nsew',
+                pady=(8, 0),
+            )
             self.appearance_frame.grid(
-                row=5, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+                row=6, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
             )
         else:
             for row, widget in enumerate(widgets[1:], start=1):
