@@ -51,6 +51,8 @@ UNIT_BUFF_WEIGHT_TYPES = (
     ('self_healing', 'Healing'),
     ('sight', 'Vision'),
     ('ammo', 'Ammo'),
+    ('passenger_capacity', 'Passenger capacity'),
+    ('open_topped', 'Passenger firing'),
     ('cloak', 'Cloaking'),
     ('sensors', 'Sensors'),
     ('veteran', 'Veterancy'),

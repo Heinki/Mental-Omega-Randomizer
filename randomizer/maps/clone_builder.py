@@ -847,8 +847,9 @@ def build_player_clone_sections(
         handled_unit_types = set()
         handled_weapon_ids = set()
         for buff_type in (
-            'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
-            'sensors', 'production', 'cost', 'speed',
+            'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+            'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
+            'cost', 'speed',
         ):
             if buff_type in direct_types and apply_unit_buff_value(
                 clone_values, effective_target, buff_type, counts[buff_type]

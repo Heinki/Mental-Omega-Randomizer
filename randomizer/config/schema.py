@@ -266,6 +266,26 @@ def _validate_unit_data(sections, path):
                 path,
             )
 
+    transport_base_stats = sections.get('transport_base_stats', {})
+    if not isinstance(transport_base_stats, dict):
+        _invalid('Invalid transport base stats', path)
+    for unit_id, stats in transport_base_stats.items():
+        required_keys = {'passengers', 'open_topped'}
+        allowed_keys = required_keys | {'open_topped_blocked'}
+        if (
+            not _is_nonempty_string(unit_id)
+            or unit_id not in sections['unit_base_stats']
+            or not isinstance(stats, dict)
+            or not required_keys.issubset(stats)
+            or not set(stats).issubset(allowed_keys)
+            or not isinstance(stats['passengers'], int)
+            or isinstance(stats['passengers'], bool)
+            or stats['passengers'] < 1
+            or not isinstance(stats['open_topped'], bool)
+            or not isinstance(stats.get('open_topped_blocked', False), bool)
+        ):
+            _invalid(f'Invalid transport base stats for {unit_id!r}', path)
+
     seen_equivalence_ids = set()
     known_equivalence_ids = {
         str(unit_id).upper()

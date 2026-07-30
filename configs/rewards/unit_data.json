@@ -183,14 +183,13 @@
           "MIND": "Mastermind",
           "TELE": "Magnetron",
           "YAHCR": "Gehenna Platform",
-          "SCAV": "Scavenger",
+          "TRACTOR": "Scavenger",
           "WORMQ": "Wormqueen",
           "SALA": "Salamander",
           "PLAG": "Plague Splatter",
           "COYO": "Oxidizer",
           "DEVO": "Colossus",
           "QUAD": "Hazequad",
-          "RUINER": "Ruiner",
           "BASIL": "Basilisk",
           "GOTTER": "Aerial Fortress Irkalla",
           "YHVR": "Mandjet Transport",
@@ -289,7 +288,7 @@
       "GRUMBLE",
       "SYCKLE",
       "IDRAG",
-      "SCAV",
+      "TRACTOR",
       "WORMQ",
       "SEIZER",
       "SALA",
@@ -1665,13 +1664,13 @@
         18,
         null
       ],
-      "SCAV": [
-        1400,
-        7,
-        410,
+      "TRACTOR": [
+        2000,
         6,
+        1300,
         6,
-        18
+        8,
+        null
       ],
       "PLAG": [
         750,
@@ -2146,6 +2145,34 @@
         null
       ]
     },
+    "transport_base_stats": {
+      "AHMV": {"passengers": 2, "open_topped": false},
+      "AMC": {"passengers": 1, "open_topped": false},
+      "APOC": {"passengers": 1, "open_topped": true},
+      "ARMA": {"passengers": 8, "open_topped": false},
+      "BFRT": {"passengers": 4, "open_topped": true},
+      "BOREK": {"passengers": 6, "open_topped": false},
+      "CHRP": {"passengers": 3, "open_topped": false},
+      "CNTR": {"passengers": 3, "open_topped": true},
+      "DRIL": {"passengers": 3, "open_topped": false},
+      "FV": {"passengers": 1, "open_topped": false},
+      "GHTNK": {"passengers": 3, "open_topped": false},
+      "GHTNKP": {"passengers": 3, "open_topped": false},
+      "HTK": {"passengers": 2, "open_topped": false},
+      "JACKAL": {"passengers": 1, "open_topped": true},
+      "JACKALP": {"passengers": 1, "open_topped": true},
+      "LCRF": {"passengers": 12, "open_topped": false},
+      "QUICK": {"passengers": 1, "open_topped": false},
+      "SAPC": {"passengers": 12, "open_topped": false},
+      "SCAR": {"passengers": 3, "open_topped": false},
+      "SEAT": {"passengers": 12, "open_topped": false},
+      "SHAD": {"passengers": 6, "open_topped": false, "open_topped_blocked": true},
+      "STING": {"passengers": 1, "open_topped": false},
+      "STNK": {"passengers": 1, "open_topped": false},
+      "TRACTOR": {"passengers": 12, "open_topped": false},
+      "TENGU": {"passengers": 1, "open_topped": false},
+      "YHVR": {"passengers": 12, "open_topped": false}
+    },
     "unit_role_equivalence_groups": [
       [
         "E1",
@@ -2277,7 +2304,7 @@
       [
         "ABRM",
         "APOC",
-        "SCAV",
+        "TRACTOR",
         "MEGA"
       ],
       [
@@ -3107,6 +3134,153 @@
             "damage": 80,
             "rof": 160,
             "range": 14
+          }
+        }
+      },
+      "TRACTOR": {
+        "weapons": {
+          "RuptureBeam": {
+            "damage": 10,
+            "rof": 5,
+            "range": 8
+          },
+          "ScavengerTankCannon": {
+            "damage": 150,
+            "rof": 60,
+            "range": 8
+          },
+          "ScavengerTankCannonE": {
+            "damage": 150,
+            "rof": 60,
+            "range": 8
+          },
+          "ScavengerMachineGun": {
+            "damage": 50,
+            "rof": 5,
+            "range": 8
+          },
+          "ScavengerMachineGunE": {
+            "damage": 50,
+            "rof": 5,
+            "range": 8
+          },
+          "ScavengerTankKiller": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          },
+          "ScavengerTankKillerE": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          },
+          "ScavengerHECannon": {
+            "damage": 75,
+            "rof": 40,
+            "range": 8
+          },
+          "ScavengerLaser": {
+            "damage": 50,
+            "rof": 10,
+            "range": 8
+          },
+          "ScavengerLaserE": {
+            "damage": 50,
+            "rof": 10,
+            "range": 8
+          },
+          "ScavengerVenom": {
+            "damage": 55,
+            "rof": 6,
+            "range": 8
+          },
+          "ScavengerRailgun": {
+            "damage": 100,
+            "rof": 100,
+            "range": 8
+          },
+          "ScavengerComet": {
+            "damage": 100,
+            "rof": 100,
+            "range": 8
+          },
+          "ScavengerCometE": {
+            "damage": 105,
+            "rof": 100,
+            "range": 8
+          },
+          "ScavengerMedusa": {
+            "damage": 40,
+            "rof": 15,
+            "range": 8
+          },
+          "ScavengerConfuseRay": {
+            "damage": 120,
+            "rof": 20,
+            "range": 8
+          },
+          "ScavengerRadBeam": {
+            "damage": 100,
+            "rof": 30,
+            "range": 8
+          },
+          "ScavengerTeslaBolt": {
+            "damage": 55,
+            "rof": 15,
+            "range": 8
+          },
+          "ScavengerTeslaBoltE": {
+            "damage": 55,
+            "rof": 15,
+            "range": 8
+          },
+          "ScavengerJammer": {
+            "range": 15
+          },
+          "ScavengerNeutron": {
+            "damage": 800,
+            "rof": 400,
+            "range": 9.5
+          },
+          "ScavengerCryo": {
+            "damage": 25,
+            "rof": 5,
+            "range": 10.5
+          },
+          "ScavengerCryoE": {
+            "damage": 25,
+            "rof": 5,
+            "range": 10.5
+          },
+          "SuperRuptureBeam": {
+            "damage": 22,
+            "rof": 5,
+            "range": 8
+          },
+          "ScavengerGoldRock": {
+            "damage": 50,
+            "rof": 30,
+            "range": 9
+          },
+          "ScavengerTarcCannon": {
+            "damage": 75,
+            "rof": 150,
+            "range": 14
+          },
+          "ScavengerSuperlaser": {
+            "damage": 160,
+            "rof": 60,
+            "range": 8.5
+          },
+          "ScavengerSuperlaserE": {
+            "damage": 160,
+            "rof": 60,
+            "range": 8.5
+          },
+          "ScavengerHail": {
+            "damage": 45,
+            "rof": 15,
+            "range": 10
           }
         }
       },

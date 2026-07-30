@@ -43,7 +43,7 @@ STABLE_APPEND_ORDER = (
     'MAMM', 'PANTHER',
     'QUICK', 'LIONH', 'CHRP', 'AHVYBOT2', 'AHVYBOT2B',
     'GRUMBLE', 'NAGRUM', 'SYCKLE', 'IDRAG',
-    'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
+    'TRACTOR', 'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
@@ -224,7 +224,7 @@ def read_sections(path: Path) -> OrderedDict[str, OrderedDict[str, str]]:
     current = None
     for raw_line in path.read_text(encoding='utf-8-sig', errors='strict').splitlines():
         stripped = raw_line.strip()
-        match = re.fullmatch(r'\[([^]]+)\]', stripped)
+        match = re.match(r'^\[([^]]+)\]', stripped)
         if match:
             current = match.group(1).strip()
             sections[current] = OrderedDict()
@@ -272,6 +272,48 @@ def render_section(name, values):
             continue
         lines.append(f'{key}={value}')
     return lines
+
+
+def stable_registry_entries(output_path, list_name, source_ids, first_key):
+    """Preserve existing numeric type registrations across regeneration."""
+    previous = read_sections(output_path) if output_path.is_file() else OrderedDict()
+    previous_name = case_name(previous, list_name)
+    previous_values = previous.get(previous_name, {}) if previous_name else {}
+    current_clone_ids = {f'MORP{source_id}'.upper() for source_id in source_ids}
+    existing_keys = {
+        value.upper(): str(key)
+        for key, value in previous_values.items()
+        if value
+    }
+    reusable_keys = sorted(
+        (
+            int(key)
+            for key, value in previous_values.items()
+            if str(key).isdigit() and str(value).upper() not in current_clone_ids
+        )
+    )
+    used_keys = {
+        int(key)
+        for clone_id, key in existing_keys.items()
+        if clone_id in current_clone_ids and key.isdigit()
+    }
+    next_key = max([first_key - 1, *used_keys, *reusable_keys]) + 1
+    entries = []
+    for source_id in source_ids:
+        clone_id = f'MORP{source_id}'
+        key = existing_keys.get(clone_id.upper())
+        if key is None:
+            if reusable_keys:
+                key = str(reusable_keys.pop(0))
+            else:
+                while next_key in used_keys:
+                    next_key += 1
+                key = str(next_key)
+                next_key += 1
+        if key.isdigit():
+            used_keys.add(int(key))
+        entries.append((key, clone_id))
+    return entries, next_key
 
 
 def main():
@@ -422,9 +464,11 @@ def main():
             registry_groups.setdefault(list_name, []).append(source_id)
         for list_name, registry_ids in registry_groups.items():
             lines.append(f'[{list_name}]')
-            for source_id in registry_ids:
-                lines.append(f'{next_key}=MORP{source_id}')
-                next_key += 1
+            entries, next_key = stable_registry_entries(
+                output_path, list_name, registry_ids, next_key
+            )
+            for registry_key, clone_id in entries:
+                lines.append(f'{registry_key}={clone_id}')
             lines.append('')
         for source_id in source_ids:
             lines.extend(render_section(f'MORP{source_id}', definitions[source_id]))

@@ -59,6 +59,8 @@ def buff_setting_amount_text(buff_type):
     if buff_id in {'sight', 'ammo'}:
         amount = int(stacking_amount(buff_id, 1))
         return f'{buff_type["setting_label"]} (+{amount})'
+    if buff_id == 'passenger_capacity':
+        return 'Passenger capacity (+1)'
     if buff_id == 'range':
         amount = stacking_amount('range', 1)
         return f'{buff_type["setting_label"]} (+{amount:g})'

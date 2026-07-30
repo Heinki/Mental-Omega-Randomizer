@@ -18,7 +18,11 @@ from randomizer.core.paths import (
 )
 from randomizer.core.version import APP_VERSION
 from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs
-from randomizer.rewards.roster import ROSTER_FILENAMES, validate_randomizer_unit_roster
+from randomizer.rewards.roster import (
+    ROSTER_FILENAMES,
+    validate_randomizer_unit_roster,
+    validate_transport_buff_eligibility,
+)
 
 
 def run_launcher():
@@ -56,6 +60,7 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        transport_buffs = validate_transport_buff_eligibility()
         from randomizer.application import (
             advanced_settings as advanced_settings_module,
             app as application_module,
@@ -123,6 +128,12 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'transport_buff_eligibility_valid': bool(
+                transport_buffs['gunner_ids']
+                and transport_buffs['stallion_capacity_enabled']
+                and transport_buffs['stallion_open_topped_excluded']
+            ),
+            'transport_buff_eligibility': transport_buffs,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
             'reward_weight_connections_valid': (
@@ -144,6 +155,7 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'transport_buff_eligibility_valid',
                 'application_imported',
                 'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',

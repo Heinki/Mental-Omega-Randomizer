@@ -129,13 +129,32 @@ def unit_weapon_buff_rules(
             )
         elif direct_types:
             unit_values = rule_sections.setdefault(unit_id, {})
+            effective_target = target
+            if 'passenger_capacity' in direct_types:
+                # Native mission transports can deliberately override their
+                # installed cargo/capture capacity. Add earned slots to that
+                # authored value instead of replacing it from the installed
+                # reward snapshot (ASOMNIA's Chrono Prison uses 24).
+                authored_passengers = _value_case_insensitive(
+                    section_value_map_preserve(lines, unit_id),
+                    'Passengers',
+                )
+                if authored_passengers is not None:
+                    try:
+                        effective_target = dict(target)
+                        effective_target['passengers'] = int(
+                            float(str(authored_passengers).strip())
+                        )
+                    except (TypeError, ValueError):
+                        effective_target = target
             for buff_type in (
-                'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
-                'sensors', 'cost', 'speed',
+                'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+                'open_topped', 'self_healing', 'cloak', 'sensors', 'cost',
+                'speed',
             ):
                 if buff_type in direct_types and apply_unit_buff_value(
                     unit_values,
-                    target,
+                    effective_target,
                     buff_type,
                     counts[buff_type],
                 ):
@@ -268,8 +287,9 @@ def native_variant_unit_buff_rules(
         updated_values = dict(base_values)
         applied = False
         for buff_type in (
-            'health', 'armor', 'sight', 'ammo', 'self_healing', 'cloak',
-            'sensors', 'production', 'cost', 'speed',
+            'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+            'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
+            'cost', 'speed',
         ):
             if buff_type in counts:
                 applied = (

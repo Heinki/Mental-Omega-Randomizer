@@ -710,6 +710,22 @@
         "requires_clone": true
       },
       {
+        "id": "passenger_capacity",
+        "name": "Expanded Transport",
+        "setting_label": "Passenger capacity +1",
+        "description": "{plural} gain +1 passenger capacity per stack in future launched missions.",
+        "requires_stat": "passengers",
+        "requires_clone": true
+      },
+      {
+        "id": "open_topped",
+        "name": "Firing Ports",
+        "setting_label": "Passenger firing",
+        "description": "Passengers inside {plural} can fire at enemies in future launched missions.",
+        "requires_stat": "passengers",
+        "requires_clone": true
+      },
+      {
         "id": "self_healing",
         "name": "Repair Systems",
         "setting_label": "Self-healing",
@@ -3403,6 +3419,16 @@
         "rules": {},
         "factions": [
           "Foehn"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Ruiner Access": {
+        "name": "Ruiner Access (retired: aid power only)",
+        "description": "Use the Ruiner Power; the payload is not a trainable unit.",
+        "rules": {},
+        "factions": [
+          "Epsilon"
         ],
         "kind": "retired",
         "retired_reward": true

@@ -14,6 +14,7 @@ from randomizer.rewards.power_buff_definitions import (
     POWER_BUFF_TYPES,
     build_power_buff_rewards,
 )
+from randomizer.rewards.roster import randomizer_unit_ids_with_behavior
 
 
 _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
@@ -33,12 +34,27 @@ DEFAULT_UNLOCK_BUILD_HOUSES = _FACTION_CONFIG['default_unlock_build_houses']
 DEFAULT_REWARDS_PER_CHECK = int(REWARD_PLANNING['default_rewards_per_check'])
 MAX_REWARDS_PER_CHECK = int(REWARD_PLANNING['maximum_rewards_per_check'])
 
+# Delivery payloads owned exclusively through aid powers. Keep this mandatory
+# in code so preserved editable packaged rosters cannot restore production
+# access, unit buffs, Advanced options, or Unlocks cards.
+AID_ONLY_UNIT_IDS = frozenset({'RAVA', 'RUINER', 'HARB'})
+
 # Complete playable 3.3.6 faction rosters.  These use the real rulesmo.ini
 # section IDs, which frequently differ from the public-facing unit names.
 # Keep economy, construction, support and hero units here too: a buffs-only
 # seed must be able to improve every player-owned faction unit, not merely the
 # small subset that also has an access reward.
-FACTION_UNIT_ROSTERS = dict(_UNIT_DATA_CONFIG['faction_unit_rosters'])
+FACTION_UNIT_ROSTERS = {
+    faction: {
+        category: {
+            str(unit_id).upper(): label
+            for unit_id, label in units.items()
+            if str(unit_id).upper() not in AID_ONLY_UNIT_IDS
+        }
+        for category, units in categories.items()
+    }
+    for faction, categories in _UNIT_DATA_CONFIG['faction_unit_rosters'].items()
+}
 SPECIAL_REWARD_UNIT_IDS = frozenset(
     str(unit_id).upper()
     for unit_id in _UNIT_DATA_CONFIG.get('special_reward_unit_ids', ())
@@ -106,10 +122,32 @@ EXISTING_CLOAK_IDS = frozenset(
 EXISTING_SENSOR_IDS = frozenset(
     _UNIT_POLICY_CONFIG['existing_capability_ids']['sensors']
 )
+TRANSPORT_BASE_STATS = {
+    str(unit_id).upper(): dict(stats)
+    for unit_id, stats in _UNIT_DATA_CONFIG.get(
+        'transport_base_stats', {}
+    ).items()
+}
+EXISTING_OPEN_TOPPED_IDS = frozenset(
+    unit_id
+    for unit_id, stats in TRANSPORT_BASE_STATS.items()
+    if stats['open_topped']
+)
+TRANSPORT_GUNNER_IDS = frozenset(
+    TRANSPORT_BASE_STATS
+).intersection(
+    randomizer_unit_ids_with_behavior('Gunner', 'yes')
+)
+TRANSPORT_OPEN_TOPPED_BLOCKED_IDS = frozenset(
+    unit_id
+    for unit_id, stats in TRANSPORT_BASE_STATS.items()
+    if stats.get('open_topped_blocked', False)
+) | frozenset({'SHAD'})
 EXISTING_CAPABILITY_IDS = {
     'self_healing': EXISTING_SELF_HEALING_IDS,
     'cloak': EXISTING_CLOAK_IDS,
     'sensors': EXISTING_SENSOR_IDS,
+    'open_topped': EXISTING_OPEN_TOPPED_IDS,
 }
 
 # Reviewed gameplay exclusions for buffs that are technically constructible
@@ -123,6 +161,15 @@ EXCLUDED_BUFF_TYPE_IDS = {
 # during an upgrade. Old RandomizerLauncherData copies remain user-owned.
 MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     'cloak': frozenset({'NAIRDM'}),
+    # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
+    # not as ordinary cargo. More seats or OpenTopped mixes incompatible
+    # passenger logics, so both rewards are absent from every selection path.
+    'passenger_capacity': TRANSPORT_GUNNER_IDS,
+    # Stallion is weaponless and explicitly cannot passively acquire targets;
+    # live verification found that its passengers therefore never fire.
+    'open_topped': (
+        TRANSPORT_GUNNER_IDS | TRANSPORT_OPEN_TOPPED_BLOCKED_IDS
+    ),
 }
 
 # These types mount disguise, capture/defuse, scanner, or explicit
@@ -412,7 +459,11 @@ normalize_roster_unlock_rules(
     UNIT_UNLOCK_REWARDS + EXTRA_UNIT_UNLOCK_REWARDS + ROSTER_UNIT_UNLOCK_REWARDS
 )
 
-BUFF_TARGETS = dict(_UNIT_DATA_CONFIG['buff_targets'])
+BUFF_TARGETS = {
+    str(unit_id).upper(): dict(target)
+    for unit_id, target in _UNIT_DATA_CONFIG['buff_targets'].items()
+    if str(unit_id).upper() not in AID_ONLY_UNIT_IDS
+}
 
 
 def default_plural(label):
@@ -459,6 +510,9 @@ def add_complete_faction_buff_targets():
                     target.pop('ammo', None)
                 if unit_id in ROSTER_WEAPON_STATS:
                     target['weapons'] = ROSTER_WEAPON_STATS[unit_id]
+                transport_stats = TRANSPORT_BASE_STATS.get(unit_id)
+                if transport_stats:
+                    target['passengers'] = int(transport_stats['passengers'])
 
     defense_buff_types = [
         'production', 'cost', 'armor', 'health', 'sight',
@@ -990,7 +1044,7 @@ REWARD_ALIASES = {
     'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
 }
 for unit_id, legacy_labels in {
-    'SCAV': ('Tyrant',),
+    'TRACTOR': ('Tyrant',),
 }.items():
     current_label = BUFF_TARGETS[unit_id]['label']
     for reward in UNIT_BUFF_REWARDS:

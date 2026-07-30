@@ -295,6 +295,7 @@ def _target_with_effective_unit_stats(target, effective_values):
         ('strength', 'Strength'),
         ('sight', 'Sight'),
         ('ammo', 'Ammo'),
+        ('passengers', 'Passengers'),
         ('cost', 'Cost'),
         ('speed', 'Speed'),
     ):
@@ -305,6 +306,15 @@ def _target_with_effective_unit_stats(target, effective_values):
             result[target_key] = float(str(raw_value).strip())
         except (TypeError, ValueError):
             pass
+    if 'passengers' in target:
+        raw_passengers = _value_case_insensitive(
+            effective_values, 'Passengers'
+        )
+        try:
+            if int(float(str(raw_passengers).strip())) < 1:
+                result.pop('passengers', None)
+        except (TypeError, ValueError):
+            result.pop('passengers', None)
     return result
 
 def _friendly_variant_clone_candidates(

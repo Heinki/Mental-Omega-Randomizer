@@ -39,7 +39,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   EVA announcer tags, reward-count messages, faction colors, and
   light/dark palettes.
-- `rewards/unit_data.json`: unit and defense rosters, base stats, weapon stats,
+- `rewards/unit_data.json`: unit and defense rosters, base stats, reviewed
+  transport passenger/open-top baselines and behavior exclusions, weapon stats,
   cross-faction role-equivalence groups, linked land/water buff identities,
   buff targets, labels, hero limits, and
   special weapon damage fields.

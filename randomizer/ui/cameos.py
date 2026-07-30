@@ -205,10 +205,10 @@ def _iter_ini_records(path, strict_sections=False):
 
 
 def _read_ini_sections(path):
-    """Read complete installed INI sections, retaining prior registry behavior."""
+    """Read complete installed INI sections, including commented headers."""
     sections = {}
     current_values = None
-    for record_type, key, value in _iter_ini_records(path, strict_sections=True):
+    for record_type, key, value in _iter_ini_records(path):
         if record_type == 'section':
             current_values = {}
             sections[key] = current_values

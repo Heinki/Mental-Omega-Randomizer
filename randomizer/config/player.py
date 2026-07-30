@@ -11,6 +11,10 @@ LEGACY_CONFIG_PATH = LEGACY_CONFIG_DIR / CONFIG_PATH.name
 DEFAULT_CONFIG = static_config_section(
     'default_player_config.json', 'defaults', dict
 )
+UNIT_BUFF_CATALOGUE_VERSION = 1
+UNIT_BUFF_TYPES_INTRODUCED = {
+    1: ('passenger_capacity', 'open_topped'),
+}
 
 
 def deep_copy(value):
@@ -29,6 +33,38 @@ def deep_merge(defaults, loaded):
         else:
             merged[key] = value
     return merged
+
+
+def migrate_loaded_config(loaded):
+    """Enable newly introduced buff types once without restoring old toggles."""
+    if not isinstance(loaded, dict):
+        return False
+    generation = loaded.get('generation')
+    if not isinstance(generation, dict):
+        return False
+    try:
+        version = max(0, int(generation.get('unit_buff_catalogue_version', 0)))
+    except (TypeError, ValueError):
+        version = 0
+    enabled = generation.get('enabled_buff_types')
+    changed = False
+    if isinstance(enabled, list):
+        for introduced_version in range(
+            version + 1,
+            UNIT_BUFF_CATALOGUE_VERSION + 1,
+        ):
+            for buff_type in UNIT_BUFF_TYPES_INTRODUCED.get(
+                introduced_version, ()
+            ):
+                if buff_type not in enabled:
+                    enabled.append(buff_type)
+                    changed = True
+    if version < UNIT_BUFF_CATALOGUE_VERSION:
+        generation['unit_buff_catalogue_version'] = (
+            UNIT_BUFF_CATALOGUE_VERSION
+        )
+        changed = True
+    return changed
 
 
 def parse_scalar(value):
@@ -136,8 +172,9 @@ def write_simple_yaml(path, data):
 def load_config():
     migrate_legacy_config()
     loaded = read_simple_yaml(CONFIG_PATH)
+    migrated = migrate_loaded_config(loaded)
     config = deep_merge(DEFAULT_CONFIG, loaded)
-    if not CONFIG_PATH.exists():
+    if migrated or not CONFIG_PATH.exists():
         save_config(config)
     return config
 

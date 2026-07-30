@@ -114,7 +114,8 @@ HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'armor', 'veteran'}
 HOUSE_WIDE_BUFF_TYPES = {'production', 'cost', 'armor'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {
-    'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors',
+    'health', 'sight', 'ammo', 'passenger_capacity', 'open_topped',
+    'self_healing', 'cloak', 'sensors',
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = (
@@ -232,7 +233,7 @@ def buff_stack_limit(reward):
             for stacks in range(1, 257):
                 if capped_movement_speed(target, stacks) >= safe_ceiling:
                     return stacks
-    if buff_type in {'cloak', 'sensors', 'veteran'}:
+    if buff_type in {'open_topped', 'cloak', 'sensors', 'veteran'}:
         return 1
     return None
 
@@ -346,6 +347,14 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
             reward.get('unit'), 'Ammo'
         )
         return [stacked(f'{prefix}{ammo_label} {base_ammo} -> {total_ammo}')]
+    if buff_type == 'passenger_capacity':
+        base_passengers = int(target.get('passengers', 0))
+        return [stacked(
+            f'{prefix}Passenger capacity '
+            f'{base_passengers} -> {base_passengers + count}'
+        )]
+    if buff_type == 'open_topped':
+        return [stacked(f'{prefix}Passengers can fire from transport')]
     if buff_type == 'self_healing':
         fraction = min(
             float(BUFF_EFFECTS['maximum_self_heal_fraction']),

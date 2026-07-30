@@ -4,6 +4,7 @@ from ._shared import (
     BUFF_EFFECTS,
     BUFF_TARGETS,
     CLONE_REQUIRED_BUFF_TYPES,
+    MANDATORY_EXCLUDED_BUFF_TYPE_IDS,
     RANDOMIZER_TYPE_LIST_KEY_START,
     WEAPON_STAT_BUFF_TYPES,
     buff_stack_limit,
@@ -38,6 +39,14 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['Ammo'] = str(int(round(
             target['ammo'] + stacking_amount('ammo', count)
         )))
+    elif buff_type == 'passenger_capacity':
+        if int(target.get('passengers', 0)) < 1:
+            return False
+        values['Passengers'] = str(int(target['passengers']) + int(count))
+    elif buff_type == 'open_topped':
+        if int(target.get('passengers', 0)) < 1:
+            return False
+        values['OpenTopped'] = 'yes'
     elif buff_type == 'self_healing':
         values['SelfHealing'] = 'yes'
         # Ares defaults to one hitpoint per RepairRate tick. Give every stack
@@ -143,6 +152,12 @@ def _active_direct_buff_counts(
         target = BUFF_TARGETS.get(unit_id, {})
         if not unit_id or not target:
             continue
+        if unit_id in MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(
+            buff_type, frozenset()
+        ):
+            # Defense in depth for old saves and externally supplied runtime
+            # rewards. Catalogue/UI exclusion is not the only safety boundary.
+            continue
         if house_scoped_only and buff_type not in {
             'production', 'cost', 'speed', 'armor',
         }:
@@ -172,6 +187,8 @@ def _active_direct_buff_counts(
             'health': 'strength',
             'sight': 'sight',
             'ammo': 'ammo',
+            'passenger_capacity': 'passengers',
+            'open_topped': 'passengers',
             'cost': 'cost',
             'speed': 'speed',
             'armor': 'strength',

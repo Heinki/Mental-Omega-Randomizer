@@ -66,6 +66,49 @@ def _read_sections(path: Path):
     return sections
 
 
+@lru_cache(maxsize=None)
+def randomizer_unit_ids_with_behavior(key, expected_value='yes'):
+    """Return source IDs selected by an actual static-template behavior tag."""
+    paths = _active_roster_paths()
+    missing_files = [str(path) for path in paths if not path.is_file()]
+    if missing_files:
+        raise FileNotFoundError(
+            'Randomizer unit roster file(s) missing: ' + ', '.join(missing_files)
+        )
+
+    sections = {}
+    for path in paths:
+        for section, values in _read_sections(path).items():
+            sections[section.lower()] = (section, values)
+    if FROZEN:
+        # Preserved visible sections remain authoritative. Bundled sections
+        # only supplement types absent from an older packaged roster.
+        for name in ROSTER_FILENAMES:
+            bundled_path = SOURCE_DIR / 'configs' / name
+            if not bundled_path.is_file():
+                continue
+            for section, values in _read_sections(bundled_path).items():
+                sections.setdefault(section.lower(), (section, values))
+
+    normalized_key = str(key).strip().lower()
+    normalized_value = str(expected_value).strip().lower()
+    matches = set()
+    for section, values in sections.values():
+        if not section.upper().startswith('MORP'):
+            continue
+        value = next(
+            (
+                raw_value
+                for raw_key, raw_value in values.items()
+                if raw_key.strip().lower() == normalized_key
+            ),
+            None,
+        )
+        if value is not None and value.strip().lower() == normalized_value:
+            matches.add(section[4:].upper())
+    return frozenset(matches)
+
+
 @lru_cache(maxsize=1)
 def randomizer_unit_roster():
     from randomizer.rewards.catalogue import BUFF_TARGETS
@@ -165,4 +208,101 @@ def validate_randomizer_unit_roster():
         'files': len(paths),
         'types': len(clone_ids),
         'templates': len(templates),
+    }
+
+
+def validate_transport_buff_eligibility():
+    """Audit IFV/OpenTopped reward invariants used by every selection UI."""
+    from randomizer.maps.buff_values import _active_direct_buff_counts
+    from randomizer.rewards.display import canonical_reward
+    from randomizer.rewards.definitions import (
+        EXISTING_OPEN_TOPPED_IDS,
+        TRANSPORT_GUNNER_IDS,
+        TRANSPORT_OPEN_TOPPED_BLOCKED_IDS,
+        UNIT_BUFF_REWARDS,
+    )
+
+    _paths, _clone_ids, templates = randomizer_unit_roster()
+    template_gunners = randomizer_unit_ids_with_behavior('Gunner', 'yes')
+    reward_pairs = {
+        (str(reward.get('unit', '')).upper(), reward.get('buff_type'))
+        for reward in UNIT_BUFF_REWARDS
+    }
+    forced_runtime_rewards = [
+        {
+            '_runtime_canonical': True,
+            'name': f'Forced {unit_id} {buff_type}',
+            'kind': 'buff',
+            'unit': unit_id,
+            'buff_type': buff_type,
+        }
+        for unit_id in template_gunners
+        for buff_type in ('passenger_capacity', 'open_topped')
+    ] + [{
+        '_runtime_canonical': True,
+        'name': 'Forced Stallion open_topped',
+        'kind': 'buff',
+        'unit': 'SHAD',
+        'buff_type': 'open_topped',
+    }]
+    forced_counts = _active_direct_buff_counts(
+        forced_runtime_rewards,
+        require_unlocked_access=False,
+    )
+    errors = []
+    if forced_counts:
+        errors.append(
+            f'mandatory transport exclusions reached map buffs: {forced_counts}'
+        )
+    if template_gunners != TRANSPORT_GUNNER_IDS:
+        errors.append(
+            'Gunner=yes templates differ from transport-gunner exclusions'
+        )
+    for unit_id in template_gunners:
+        for buff_type in ('passenger_capacity', 'open_topped'):
+            if (unit_id, buff_type) in reward_pairs:
+                errors.append(f'{unit_id} still offers {buff_type}')
+            legacy = canonical_reward({
+                'name': f'Legacy {unit_id} {buff_type}',
+                'kind': 'buff',
+                'unit': unit_id,
+                'buff_type': buff_type,
+            })
+            if legacy.get('kind') != 'retired':
+                errors.append(f'{unit_id} legacy {buff_type} remains active')
+    if ('SHAD', 'passenger_capacity') not in reward_pairs:
+        errors.append('Stallion lost passenger_capacity')
+    if ('SHAD', 'open_topped') in reward_pairs:
+        errors.append('Stallion still offers broken open_topped')
+    legacy_stallion_open_top = canonical_reward({
+        'name': 'Legacy Stallion Passenger Firing I',
+        'kind': 'buff',
+        'unit': 'SHAD',
+        'buff_type': 'open_topped',
+    })
+    if legacy_stallion_open_top.get('kind') != 'retired':
+        errors.append('Stallion legacy open_topped remains active')
+    if 'SHAD' not in TRANSPORT_OPEN_TOPPED_BLOCKED_IDS:
+        errors.append('Stallion is absent from mandatory OpenTopped exclusions')
+    for unit_id in EXISTING_OPEN_TOPPED_IDS:
+        template = templates.get(unit_id, {})
+        open_topped = next(
+            (
+                value
+                for key, value in template.items()
+                if key.strip().lower() == 'opentopped'
+            ),
+            '',
+        )
+        if str(open_topped).strip().lower() != 'yes':
+            errors.append(f'{unit_id} native OpenTopped=yes was not preserved')
+        if (unit_id, 'open_topped') in reward_pairs:
+            errors.append(f'{unit_id} offers redundant open_topped')
+    if errors:
+        raise ValueError('Transport buff eligibility failed: ' + '; '.join(errors))
+    return {
+        'gunner_ids': sorted(template_gunners),
+        'stallion_capacity_enabled': True,
+        'stallion_open_topped_excluded': True,
+        'native_open_topped_ids': sorted(EXISTING_OPEN_TOPPED_IDS),
     }
