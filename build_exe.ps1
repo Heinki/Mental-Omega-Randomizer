@@ -13,6 +13,8 @@ $iconPath = Join-Path $scriptDir "mo-logo-puzzle-icon.ico"
 $staticConfigPath = Join-Path $scriptDir "configs"
 $assetPath = Join-Path $scriptDir "assets"
 $versionInfoPath = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-version.txt"
+$configManifestDir = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-config"
+$configManifestPath = Join-Path $configManifestDir "bundle_manifest.json"
 
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
@@ -76,6 +78,40 @@ VSVersionInfo(
 "@
 [IO.File]::WriteAllText($versionInfoPath, $versionInfo, [Text.UTF8Encoding]::new($false))
 
+$manifestFiles = [ordered]@{}
+$staticConfigPrefix = [IO.Path]::GetFullPath($staticConfigPath).TrimEnd('\') + '\'
+Get-ChildItem -LiteralPath $staticConfigPath -Recurse -File |
+    Where-Object {
+        ($_.Extension -eq '.json' -or $_.Name -like 'Randomizer*.ini') -and
+        $_.FullName -notlike "$staticConfigPath\player\*"
+    } |
+    Sort-Object FullName |
+    ForEach-Object {
+        $fullConfigPath = [IO.Path]::GetFullPath($_.FullName)
+        if (-not $fullConfigPath.StartsWith(
+            $staticConfigPrefix,
+            [StringComparison]::OrdinalIgnoreCase
+        )) {
+            throw "Refusing config outside source root: $fullConfigPath"
+        }
+        $relativePath = $fullConfigPath.Substring(
+            $staticConfigPrefix.Length
+        ).Replace('\', '/')
+        $manifestFiles[$relativePath] = (
+            Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+    }
+$configManifest = [ordered]@{
+    format = 1
+    files = $manifestFiles
+} | ConvertTo-Json -Depth 4
+New-Item -ItemType Directory -Path $configManifestDir -Force | Out-Null
+[IO.File]::WriteAllText(
+    $configManifestPath,
+    $configManifest,
+    [Text.UTF8Encoding]::new($false)
+)
+
 # The standalone launcher has no network client. Remove the network-related
 # exclusions below when Archipelago connectivity is implemented.
 try {
@@ -93,6 +129,7 @@ try {
         --add-data "$staticConfigPath\*.ini;configs" `
         --add-data "$staticConfigPath\README.md;configs" `
         --add-data "$staticConfigPath\rewards;configs\rewards" `
+        --add-data "$configManifestPath;configs" `
         --add-data "$assetPath;assets" `
         --exclude-module logging.handlers `
         --exclude-module ssl `
@@ -114,6 +151,8 @@ try {
     }
 } finally {
     Remove-Item -LiteralPath $versionInfoPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $configManifestPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $configManifestDir -Force -ErrorAction SilentlyContinue
 }
 
 $builtExe = Join-Path $distDir "MentalOmegaRandomizer.exe"

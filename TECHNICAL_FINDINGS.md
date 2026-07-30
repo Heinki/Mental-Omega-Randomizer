@@ -58,7 +58,7 @@ Writes use a complete sibling temporary file followed by same-directory atomic
 replacement, preventing a crash or power loss from leaving partially written
 YAML or JSON.
 
-Source runs load static data directly from `configs`. One-file builds bundle those defaults and copy each missing document to visible `RandomizerLauncherData/configs`; existing external files are never overwritten. Restart is required after editing. Every document uses a validated `schema_version` and required-section envelope. See [configs/README.md](configs/README.md).
+Source runs load static data directly from `configs`. One-file builds generate and bundle a SHA-256 manifest with every static JSON and `Randomizer*.ini`, excluding player YAML. Frozen startup verifies the bundle, then synchronizes visible `RandomizerLauncherData/configs`: a pre-manifest installation gets one recoverable `*.pre-bundle-sync-backup` migration to the complete current set; later updates replace only files whose live hash still matches the prior bundled hash, preserving local edits. This prevents valid but stale external catalogues from hiding newly packaged units or powers. Restart is required after editing. Every JSON document uses a validated `schema_version` and required-section envelope. See [configs/README.md](configs/README.md).
 
 ## Mission Discovery and Seed Construction
 

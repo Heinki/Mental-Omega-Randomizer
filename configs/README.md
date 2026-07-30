@@ -156,11 +156,14 @@ state for compatibility but are omitted from the Unlocks list.
 ## Load locations
 
 Source runs load static files from this directory directly. A packaged EXE
-bundles these defaults and copies each missing static file to
-`RandomizerLauncherData/configs` beside the game. Existing external files are
-never overwritten, so local edits survive launcher updates. Player YAML lives
-in the separate `configs/player/` child, is always launcher-managed, and is
-excluded from packaged build inputs.
+bundles these defaults plus a hash manifest and exposes them under
+`RandomizerLauncherData/configs` beside the game. First launch after upgrading
+from a pre-manifest build backs up differing legacy files as
+`*.pre-bundle-sync-backup`, then installs one complete current set. Later
+updates replace only files still matching the preceding bundled hash; locally
+edited files remain authoritative. Player YAML lives in the separate
+`configs/player/` child, is always launcher-managed, and is excluded from
+packaged build inputs.
 
 EVA voice labels and engine tags have one source under `ui.json`:
 `eva_voice_tags`. Object order controls menu order. Add, remove, or rename one
