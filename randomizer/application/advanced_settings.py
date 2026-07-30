@@ -115,7 +115,10 @@ class AdvancedSettingsController:
                     or reward.get('special_reward')
                     or target.get('special_reward')
                 )
-        faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
+        faction_rank = {
+            'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3,
+            'Neutral': 4, 'Other': 5,
+        }
         return sorted(
             entries.values(),
             key=lambda entry: (
@@ -144,7 +147,10 @@ class AdvancedSettingsController:
                 'buff_types': set(),
             })
             entry['buff_types'].add(str(reward.get('buff_type') or ''))
-        faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
+        faction_rank = {
+            'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3,
+            'Neutral': 4, 'Other': 5,
+        }
         return sorted(
             entries.values(),
             key=lambda entry: (
@@ -173,6 +179,7 @@ class AdvancedSettingsController:
         selected_campaign = self.campaign_var.get()
         return (
             selected_campaign == CAMPAIGN_FILTERS[0]
+            or entry.get('faction') == 'Neutral'
             or entry.get('faction') == selected_campaign
         )
 
@@ -446,6 +453,7 @@ class AdvancedSettingsController:
         def visible_for_campaign(entry):
             return (
                 selected_campaign == CAMPAIGN_FILTERS[0]
+                or entry.get('faction') == 'Neutral'
                 or entry.get('faction') == selected_campaign
             )
 
@@ -671,6 +679,7 @@ class AdvancedSettingsController:
         all_ids = {
             entry['id'] for entry in entries
             if selected_campaign == CAMPAIGN_FILTERS[0]
+            or entry.get('faction') == 'Neutral'
             or entry.get('faction') == selected_campaign
         }
         if include:

@@ -53,6 +53,11 @@ def _ensure_auxiliary_clone(reward, source, reference_key=None):
     references = list(spec.get('reference_keys') or ())
     if reference_key and reference_key not in references:
         references.append(reference_key)
+    if str(reference_key or '').lower() == 'sw.warhead':
+        # Ares does not allocate a WarheadType merely because a map contains
+        # its section. The private type must be present in [Warheads] before
+        # the cloned superweapon's SW.Warhead reference is parsed.
+        spec.setdefault('list', 'Warheads')
     if references:
         spec['reference_keys'] = references
     clones[source] = spec

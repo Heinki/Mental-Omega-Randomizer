@@ -86,11 +86,11 @@ class RewardController:
         if selected == 'Foehn':
             # Foehn Standard intentionally uses bundled Allied/Soviet access;
             # native Foehn powers may also be valid campaign rewards.
-            return {'Allies', 'Soviets', 'Foehn'}
+            return {'Allies', 'Soviets', 'Foehn', 'Neutral'}
         if selected in {'Allies', 'Soviets', 'Epsilon'}:
-            return {selected}
+            return {selected, 'Neutral'}
         if selected == 'All Campaigns':
-            return {'Allies', 'Soviets', 'Epsilon'}
+            return {'Allies', 'Soviets', 'Epsilon', 'Neutral'}
         return None
 
     def standard_foehn_unit_reward(self, reward):
@@ -174,6 +174,9 @@ class RewardController:
             unit_id
             for unit_id in unlocked
             if not BUFF_TARGETS.get(unit_id, {}).get('factions')
+            or 'Neutral' in BUFF_TARGETS.get(
+                unit_id, {}
+            ).get('factions', ())
             or player_factions.intersection(
                 BUFF_TARGETS.get(unit_id, {}).get('factions', ())
             )
@@ -267,6 +270,7 @@ class RewardController:
             if (
                 not reward.get('factions')
                 or factions.intersection(reward.get('factions', []))
+                or 'Neutral' in reward.get('factions', [])
                 or (
                     selected == 'Foehn'
                     and (
@@ -383,58 +387,60 @@ class RewardController:
                 reward_selection_weight(reward, reward_weights) > 0
                 and
                 (
-                    reward.get('kind') == 'buff'
-                    and reward.get('power_buff_type')
-                    and include_power_buffs
-                    and (include_special_rewards or not self.reward_is_special_reward(reward))
-                    and power_category_enabled(reward)
-                    and reward.get('power_buff_type')
-                    in enabled_power_buff_types
-                    and str(reward.get('superweapon') or '').upper()
-                    not in excluded_superweapon_ids
-                    and reward.get('power_buff_type')
-                    not in excluded_power_buff_types.get(
-                        str(reward.get('superweapon') or '').upper(), set()
+                    (
+                        reward.get('kind') == 'buff'
+                        and reward.get('power_buff_type')
+                        and include_power_buffs
+                        and (include_special_rewards or not self.reward_is_special_reward(reward))
+                        and power_category_enabled(reward)
+                        and reward.get('power_buff_type')
+                        in enabled_power_buff_types
+                        and str(reward.get('superweapon') or '').upper()
+                        not in excluded_superweapon_ids
+                        and reward.get('power_buff_type')
+                        not in excluded_power_buff_types.get(
+                            str(reward.get('superweapon') or '').upper(), set()
+                        )
                     )
-                )
-                or (
-                    reward.get('kind') == 'buff'
-                    and not reward.get('power_buff_type')
-                    and include_buffs
-                    and (include_special_rewards or not self.reward_is_special_reward(reward))
-                    and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
-                    and (include_special_buildings or not self.reward_is_special_building(reward))
-                    and reward.get('buff_type') in enabled_buff_types
-                    and reward.get('buff_type') not in excluded_unit_buff_types.get(
-                        str(reward.get('unit') or '').upper(), set()
+                    or (
+                        reward.get('kind') == 'buff'
+                        and not reward.get('power_buff_type')
+                        and include_buffs
+                        and (include_special_rewards or not self.reward_is_special_reward(reward))
+                        and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                        and (include_special_buildings or not self.reward_is_special_building(reward))
+                        and reward.get('buff_type') in enabled_buff_types
+                        and reward.get('buff_type') not in excluded_unit_buff_types.get(
+                            str(reward.get('unit') or '').upper(), set()
+                        )
+                        and buff_unit_is_allowed(reward)
+                        and not (
+                            reward_settings.get('unlimited_hero_units')
+                            and reward.get('buff_type') == 'build_limit'
+                            and not self.reward_is_special_building(reward)
+                        )
+                        and not (
+                            chaos_mode
+                            and reward.get('buff_type') == 'production'
+                            and not reward.get('global_buff')
+                        )
                     )
-                    and buff_unit_is_allowed(reward)
-                    and not (
-                        reward_settings.get('unlimited_hero_units')
-                        and reward.get('buff_type') == 'build_limit'
-                        and not self.reward_is_special_building(reward)
+                    or (
+                        reward.get('kind') == 'superweapon'
+                        and (include_special_rewards or not self.reward_is_special_reward(reward))
+                        and power_category_enabled(reward)
+                        and str(reward.get('superweapon') or '').upper()
+                        not in excluded_superweapon_ids
                     )
-                    and not (
-                        chaos_mode
-                        and reward.get('buff_type') == 'production'
-                        and not reward.get('global_buff')
+                    or (
+                        reward.get('kind') not in {'buff', 'superweapon'}
+                        and randomize_access
+                        and (include_special_rewards or not self.reward_is_special_reward(reward))
+                        and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
+                        and (include_special_buildings or not self.reward_is_special_building(reward))
+                        and not tech_ids_for_rewards([reward]).intersection(starting_access_ids)
+                        and not tech_ids_for_rewards([reward]).intersection(excluded_access_ids)
                     )
-                )
-                or (
-                    reward.get('kind') == 'superweapon'
-                    and (include_special_rewards or not self.reward_is_special_reward(reward))
-                    and power_category_enabled(reward)
-                    and str(reward.get('superweapon') or '').upper()
-                    not in excluded_superweapon_ids
-                )
-                or (
-                    reward.get('kind') not in {'buff', 'superweapon'}
-                    and randomize_access
-                    and (include_special_rewards or not self.reward_is_special_reward(reward))
-                    and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
-                    and (include_special_buildings or not self.reward_is_special_building(reward))
-                    and not tech_ids_for_rewards([reward]).intersection(starting_access_ids)
-                    and not tech_ids_for_rewards([reward]).intersection(excluded_access_ids)
                 )
             )
         ]

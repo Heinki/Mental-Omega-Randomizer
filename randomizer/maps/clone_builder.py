@@ -15,6 +15,7 @@ from ._shared import (
     UNLOCKED_TECH_LEVEL,
     WEAPON_STAT_BUFF_TYPES,
     comma_items,
+    linked_buff_variant_ids,
     production_owner_countries,
     re,
     section_value_map_preserve,
@@ -46,6 +47,16 @@ from .base import (
     _value_case_insensitive,
     parse_float,
 )
+
+LINKED_CLONE_REFERENCE_KEYS = {
+    'convert.deploy',
+    'convert.deploy.reversedas',
+    'reversedas',
+    'deploysinto',
+    'undeploysinto',
+    'passengers.allowed',
+    'initialpayload.types',
+}
 
 
 @dataclass(slots=True)
@@ -157,6 +168,7 @@ def build_player_clone_sections(
 
     section_rules = {}
     replacements = {}
+    clone_id_by_source = {}
     cloned_source_ids = set()
     taskforce_replacements = {}
     structure_plan_allowed_houses_by_unit = {}
@@ -380,6 +392,26 @@ def build_player_clone_sections(
     existing_candidate_ids = {
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     }
+    # Deploying/converting units and initial-payload support identities must
+    # exist even when access was earned without any matching buff. Keep those
+    # forms tied to the source reward so later stacks affect every mode.
+    for target_unit_id in sorted(buildable_ids):
+        if target_unit_id not in BUFF_TARGETS:
+            continue
+        for unit_id in sorted(
+            linked_buff_variant_ids(target_unit_id) - {target_unit_id}
+        ):
+            if unit_id in existing_candidate_ids or unit_id not in BUFF_TARGETS:
+                continue
+            clone_candidates.append((
+                unit_id,
+                target_unit_id,
+                counts_by_unit.get(
+                    unit_id,
+                    counts_by_unit.get(target_unit_id, {}),
+                ),
+            ))
+            existing_candidate_ids.add(unit_id)
     clone_candidates.extend(
         (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
         for unit_id in sorted(native_helper_source_ids.intersection(buildable_ids))
@@ -530,7 +562,8 @@ def build_player_clone_sections(
                 f'{target.get("label", target_unit_id)} shared mission event kept native'
             )
             continue
-        list_section = TECHNO_TYPE_LISTS.get(target.get('category'))
+        identity_target = BUFF_TARGETS.get(unit_id, target)
+        list_section = TECHNO_TYPE_LISTS.get(identity_target.get('category'))
         if not list_section:
             continue
         source_unit = (
@@ -572,11 +605,7 @@ def build_player_clone_sections(
             if installed_unit
             else native_unit_values
         )
-        owned_template = (
-            owned_clone_templates.get(unit_id)
-            if unit_id == target_unit_id
-            else None
-        )
+        owned_template = owned_clone_templates.get(unit_id)
         clone_source_values = dict(owned_template or effective_unit_values)
         mission_player_override = bool(
             owned_template is not None
@@ -634,6 +663,14 @@ def build_player_clone_sections(
                 _remove_case_insensitive(clone_source_values, key)
                 if value is not None:
                     clone_source_values[key] = value
+            # Mission-authored variants may disable a deploy/conversion link
+            # on their native story identity. The separately earned owned
+            # clone must retain the complete installed/static reward identity.
+            for key, value in owned_template.items():
+                if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
+                    continue
+                _remove_case_insensitive(clone_source_values, key)
+                clone_source_values[key] = value
         if target_unit_id in ENGINEER_UNIT_IDS:
             clone_source_values = _sanitize_engineer_clone_values(
                 clone_source_values, target
@@ -714,6 +751,9 @@ def build_player_clone_sections(
                     weapon_unsafe = True
                     break
         is_variant = unit_id != target_unit_id
+        linked_buildable_variant = (
+            is_variant and target_unit_id in buildable_ids
+        )
         native_helper_shared = unit_id in native_helper_source_ids
         helper_autobuild_shared = unit_id in helper_autobuild_support
         shared_player_veteran = unit_id in shared_player_veteran_ids
@@ -757,6 +797,7 @@ def build_player_clone_sections(
         ) or (
             is_variant
             and not variant_has_effect
+            and not linked_buildable_variant
             and not native_helper_shared
             and not helper_autobuild_shared
             and not shared_player_veteran
@@ -996,6 +1037,7 @@ def build_player_clone_sections(
             # overlay deployed for this launch.
             clone_values['Image'] = 'JACKAL'
         section_rules[clone_id] = clone_values
+        clone_id_by_source[unit_id] = clone_id
         cloned_source_ids.add(unit_id)
         if not build_only_clone:
             replacements[unit_id] = clone_id
@@ -1043,6 +1085,27 @@ def build_player_clone_sections(
             and unit_id not in NONTRAINABLE_UNIT_IDS
         ):
             player_veterancy_replacements[unit_id] = clone_id
+
+    # Static owned templates keep deploy/convert/payload links on their stable
+    # MORP IDs. Veteran-list compaction can assign a shorter runtime clone ID
+    # to a trainable root, so resolve every link after all related clone IDs
+    # are known. Otherwise the linked form exists but points to an absent
+    # stable root (for example MORPNAGRUM -> MORPGRUMBLE).
+    linked_clone_replacements = {}
+    for source_id, clone_id in clone_id_by_source.items():
+        linked_clone_replacements[source_id.upper()] = clone_id
+        stable_clone_id = owned_clone_ids.get(source_id)
+        if stable_clone_id:
+            linked_clone_replacements[stable_clone_id.upper()] = clone_id
+    for clone_id in clone_id_by_source.values():
+        clone_values = section_rules.get(clone_id, {})
+        for key, value in list(clone_values.items()):
+            if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
+                continue
+            clone_values[key] = ','.join(
+                linked_clone_replacements.get(item.upper(), item)
+                for item in comma_items(value)
+            )
     return PlayerCloneBuildResult(
         section_rules=section_rules,
         replacements=replacements,

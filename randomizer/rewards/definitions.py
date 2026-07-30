@@ -715,7 +715,8 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
         # Campaign prototypes can differ from their normal Foehn counterpart
         # in cost, speed, strength, art, and faction while using related
         # weapons. Preserve the variant's own target metadata.
-        variant_target = dict(BUFF_TARGETS.get(variant_id, source_target))
+        variant_target = dict(source_target)
+        variant_target.update(BUFF_TARGETS.get(variant_id, {}))
         variant_target['weapons'] = {
             str(weapon_id).upper(): dict(stats)
             for weapon_id, stats in definition.get('weapons', {}).items()
@@ -796,6 +797,71 @@ for aid_config in AID_POWER_MAP_CONFIGS:
         'Sight': '0',
     })
 
+# Maintenance uses the same GenericWarhead source lookup as Time Freeze.
+# Its native Tech Maintenance Facility is the firer; an action-34-only copy
+# has no BuildingClass. Preserve a hidden CASTRF-derived exact-House provider
+# plus explicit zero-damage/house filters even when packaged editable configs
+# predate them. The private warhead also has to be registered in [Warheads];
+# emitting only [MORMaintenanceWH] makes Ares parse SW.Warhead as null.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') != 'MaintenanceSpecial':
+        continue
+    aid_config.setdefault('values', {}).update({
+        'SW.AffectsHouse': 'team',
+        'SW.AffectsTarget': 'buildings',
+    })
+    maintenance_clone = aid_config.setdefault(
+        'auxiliary_clones', {}
+    ).setdefault('MaintenanceWH', {})
+    maintenance_clone.setdefault('values', {}).update({
+        'AllowZeroDamage': 'yes',
+        'EffectsRequireDamage': 'no',
+        'AffectsOwner': 'yes',
+        'AffectsAllies': 'yes',
+        'AffectsEnemies': 'no',
+    })
+    maintenance_provider = aid_config.setdefault(
+        'techno_clones', {}
+    ).setdefault('MaintenanceProvider', {})
+    maintenance_provider.update({
+        'source': 'CASTRF',
+        'clone': 'MORMaintenanceProvider',
+        'list': 'BuildingTypes',
+        'startup_count': 1,
+        'static_startup': True,
+        'provides_superweapon': True,
+    })
+    maintenance_provider.setdefault('values', {}).update({
+        'Name': 'Randomizer Maintenance Provider',
+        'UIName': 'NAME:DUMMYDUMMY',
+        'Image': 'DUMMYDUMMY',
+        'InvisibleInGame': 'yes',
+        'SuperWeapon': None,
+        'SuperWeapon2': None,
+        'TechLevel': '-1',
+        'BuildLimit': '0',
+        'AIBuildThis': 'no',
+        'Power': '0',
+        'Powered': 'false',
+        'Immune': 'yes',
+        'Capturable': 'false',
+        'NeedsEngineer': 'no',
+        'Selectable': 'no',
+        'Unsellable': 'yes',
+        'LegalTarget': 'no',
+        'Insignificant': 'yes',
+        'ImmuneToEMP': 'yes',
+        'DontScore': 'yes',
+        'KeepAlive': 'no',
+        'BaseNormal': 'no',
+        'AIBaseNormal': 'no',
+        'IsBaseDefense': 'no',
+        'RadarInvisible': 'yes',
+        'IsPassable': 'yes',
+        'Firestorm.Wall': 'no',
+        'Sight': '0',
+    })
+
 for aid_config in AID_POWER_MAP_CONFIGS:
     for clone_group in ('techno_clones', 'auxiliary_clones'):
         for clone in aid_config.get(clone_group, {}).values():
@@ -809,8 +875,8 @@ AID_POWER_MAP_CONFIG_BY_SUPERWEAPON = {
 
 def build_aid_power_rewards():
     # Installed player-facing support powers plus useful mine/grid spawners.
-    # Neutral tech powers, internal handlers, and powers whose effect requires
-    # a separately owned source object remain excluded.
+    # Internal handlers and unconfigured powers whose effect requires a
+    # separately owned source object remain excluded.
     definitions = _REWARD_CATALOGUE_CONFIG['aid_power_rewards']
     rewards = []
     for definition in definitions:
@@ -923,6 +989,19 @@ REWARD_ALIASES = {
     'Base Construction Drill I': 'Faction Production Drill I',
     'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
 }
+for unit_id, legacy_labels in {
+    'SCAV': ('Tyrant',),
+}.items():
+    current_label = BUFF_TARGETS[unit_id]['label']
+    for reward in UNIT_BUFF_REWARDS:
+        if reward.get('unit') != unit_id:
+            continue
+        current_name = str(reward.get('name') or '')
+        if not current_name.startswith(current_label):
+            continue
+        suffix = current_name[len(current_label):]
+        for legacy_label in legacy_labels:
+            REWARD_ALIASES[f'{legacy_label}{suffix}'] = current_name
 for definition in SPECIAL_BUILDING_DEFINITIONS:
     building_name = str(definition['name'])
     REWARD_ALIASES[

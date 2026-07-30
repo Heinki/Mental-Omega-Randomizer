@@ -23,6 +23,9 @@
           "ARMR": "Norio"
         },
         "units": {
+          "QUICK": "Quickshifter",
+          "CHRP": "Chrono Prison",
+          "AHVYBOT2": "Future Tank Alpha",
           "JACKALP": "Jackal Racer Prototype",
           "AHVYBOT": "Future Tank X-0",
           "DIVERP": "Diverbee Prototype",
@@ -61,6 +64,7 @@
           "SIREN": "Siren Frigate"
         },
         "aircraft": {
+          "LIONH": "Lionheart Bomber",
           "STORM": "Stormchild",
           "ORCA": "Harrier",
           "BEAG": "Black Eagle",
@@ -94,6 +98,9 @@
           "LUNR": "Soviet Cosmonaut"
         },
         "units": {
+          "GRUMBLE": "Grumble",
+          "SYCKLE": "Syckle",
+          "IDRAG": "Iron Dragon",
           "GHTNKP": "Gharial Prototype",
           "PROMEP": "Mastodon Prototype",
           "ITNK": "Infector Tank",
@@ -176,7 +183,9 @@
           "MIND": "Mastermind",
           "TELE": "Magnetron",
           "YAHCR": "Gehenna Platform",
-          "SCAV": "Tyrant",
+          "SCAV": "Scavenger",
+          "WORMQ": "Wormqueen",
+          "SALA": "Salamander",
           "PLAG": "Plague Splatter",
           "COYO": "Oxidizer",
           "DEVO": "Colossus",
@@ -191,6 +200,7 @@
           "BSUB": "Resheph Ballistic Sub"
         },
         "aircraft": {
+          "SEIZER": "Dybbuk-Seizer",
           "BLIGHT": "Dybbuk-Attacker",
           "VENOM": "Dybbuk-Evolver"
         }
@@ -212,6 +222,9 @@
           "URAGAN": "Uragan"
         },
         "units": {
+          "PHNT": "Phantasm MLRS",
+          "SEITAAD": "Seitaad Ballista",
+          "ARCH": "Archelon",
           "ROACHP": "Bison Prototype",
           "NMIN": "Minermite",
           "TERA": "Teratorn",
@@ -268,7 +281,22 @@
       "PANTHER",
       "RHAD",
       "LUNRE",
-      "ROACHP"
+      "ROACHP",
+      "QUICK",
+      "LIONH",
+      "CHRP",
+      "AHVYBOT2",
+      "GRUMBLE",
+      "SYCKLE",
+      "IDRAG",
+      "SCAV",
+      "WORMQ",
+      "SEIZER",
+      "SALA",
+      "PHNT",
+      "SEITAAD",
+      "ARCH",
+      "REJU"
     ],
     "unit_sidebar_images": {
       "PERUN": {
@@ -277,6 +305,118 @@
       }
     },
     "unit_base_stats": {
+      "QUICK": [
+        2000,
+        3,
+        250,
+        5,
+        5,
+        null
+      ],
+      "LIONH": [
+        2000,
+        16,
+        800,
+        7,
+        30,
+        1
+      ],
+      "CHRP": [
+        2000,
+        4,
+        950,
+        10,
+        10,
+        1
+      ],
+      "AHVYBOT2": [
+        2000,
+        4,
+        1300,
+        7,
+        7,
+        null
+      ],
+      "GRUMBLE": [
+        2000,
+        4,
+        620,
+        10,
+        10,
+        null
+      ],
+      "SYCKLE": [
+        2000,
+        25,
+        200,
+        7,
+        7,
+        null
+      ],
+      "IDRAG": [
+        2000,
+        4,
+        640,
+        6,
+        6,
+        null
+      ],
+      "WORMQ": [
+        2000,
+        4,
+        350,
+        6,
+        6,
+        6
+      ],
+      "SEIZER": [
+        2000,
+        38,
+        440,
+        6,
+        30,
+        3
+      ],
+      "SALA": [
+        2000,
+        9,
+        1200,
+        8,
+        8,
+        null
+      ],
+      "PHNT": [
+        2000,
+        6,
+        520,
+        6,
+        6,
+        4
+      ],
+      "SEITAAD": [
+        2000,
+        5,
+        500,
+        7,
+        7,
+        1
+      ],
+      "ARCH": [
+        2000,
+        4,
+        2000,
+        6,
+        6,
+        null
+      ],
+      "REJU": [
+        1500,
+        22,
+        320,
+        10,
+        8,
+        8
+      ],
       "BORIS": [
         1500,
         7,
@@ -2263,6 +2403,67 @@
       ]
     ],
     "linked_buff_variants": {
+      "AHVYBOT2": {
+        "AHVYBOT2B": {
+          "weapons": {
+            "FTankCannon": {
+              "damage": 180,
+              "rof": 180,
+              "range": 8
+            }
+          }
+        }
+      },
+      "GRUMBLE": {
+        "NAGRUM": {
+          "weapons": {
+            "GrumbleFake": {
+              "range": 26
+            },
+            "GrumbleRocket": {
+              "damage": 400,
+              "rof": 200,
+              "range": 26
+            }
+          }
+        }
+      },
+      "SALA": {
+        "SALA_1": {
+          "weapons": {
+            "SalamanderBeam": {
+              "damage": 110,
+              "rof": 100,
+              "range": 10.5
+            },
+            "SalamanderBeamAA": {
+              "damage": 110,
+              "rof": 100,
+              "range": 8
+            }
+          }
+        },
+        "SALA_2": {
+          "weapons": {
+            "SalamanderField": {
+              "damage": 220,
+              "rof": 200,
+              "range": 10.5
+            }
+          }
+        }
+      },
+      "ARCH": {
+        "ARCH2": {
+          "weapons": {
+            "ArchelonAttack": {
+              "damage": 200,
+              "rof": 150,
+              "range": 4.5
+            }
+          }
+        }
+      },
       "JACKAL": {
         "JACKALP": {
           "weapons": {
@@ -2802,6 +3003,242 @@
       }
     },
     "buff_targets": {
+      "QUICK": {
+        "weapons": {
+          "Phalanx": {
+            "damage": 36,
+            "rof": 15,
+            "range": 9.5
+          },
+          "PhalanxE": {
+            "damage": 36,
+            "rof": 15,
+            "range": 9.5
+          }
+        }
+      },
+      "LIONH": {
+        "weapons": {
+          "LionheartBomb": {
+            "damage": 160,
+            "rof": 125,
+            "range": 3.5
+          }
+        }
+      },
+      "CHRP": {
+        "weapons": {
+          "ChronoImprison": {
+            "rof": 250,
+            "range": 10
+          }
+        }
+      },
+      "AHVYBOT2": {
+        "weapons": {
+          "FTankLaser": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          },
+          "FTankLaserE": {
+            "damage": 100,
+            "rof": 90,
+            "range": 8
+          },
+          "FTankPiles": {
+            "damage": 25,
+            "rof": 5,
+            "range": 8
+          },
+          "FTankCannon": {
+            "damage": 180,
+            "rof": 180,
+            "range": 8
+          }
+        }
+      },
+      "AHVYBOT2B": {
+        "category": "units",
+        "factions": [
+          "Allies"
+        ],
+        "allowed_buff_types": [
+          "linked_only"
+        ]
+      },
+      "GRUMBLE": {
+        "weapons": {
+          "GrumbleFake": {
+            "range": 26
+          },
+          "GrumbleRocket": {
+            "damage": 400,
+            "rof": 200,
+            "range": 26
+          }
+        }
+      },
+      "NAGRUM": {
+        "category": "defenses",
+        "factions": [
+          "Soviets"
+        ],
+        "allowed_buff_types": [
+          "linked_only"
+        ]
+      },
+      "SYCKLE": {
+        "weapons": {
+          "BikeBeamWeapon": {
+            "damage": 140,
+            "rof": 55,
+            "range": 8
+          },
+          "MobileIronCurtain": {
+            "rof": 125,
+            "range": 8
+          }
+        }
+      },
+      "IDRAG": {
+        "weapons": {
+          "IronDragonBalls": {
+            "damage": 80,
+            "rof": 160,
+            "range": 14
+          }
+        }
+      },
+      "WORMQ": {
+        "weapons": {
+          "WormqueenBolt": {
+            "damage": 120,
+            "rof": 170,
+            "range": 11
+          }
+        }
+      },
+      "SEIZER": {
+        "weapons": {
+          "DybbukMindControl": {
+            "damage": 3,
+            "rof": 40,
+            "range": 9
+          }
+        }
+      },
+      "SALA": {
+        "weapons": {
+          "SalamanderBow": {
+            "damage": 15,
+            "rof": 5,
+            "range": 10.5
+          },
+          "SalamanderBowAA": {
+            "damage": 15,
+            "rof": 5,
+            "range": 8
+          },
+          "SalamanderBeam": {
+            "damage": 110,
+            "rof": 100,
+            "range": 10.5
+          },
+          "SalamanderBeamAA": {
+            "damage": 110,
+            "rof": 100,
+            "range": 8
+          },
+          "SalamanderField": {
+            "damage": 220,
+            "rof": 200,
+            "range": 10.5
+          }
+        }
+      },
+      "SALA_1": {
+        "category": "units",
+        "factions": [
+          "Epsilon"
+        ],
+        "allowed_buff_types": [
+          "linked_only"
+        ]
+      },
+      "SALA_2": {
+        "category": "units",
+        "factions": [
+          "Epsilon"
+        ],
+        "allowed_buff_types": [
+          "linked_only"
+        ]
+      },
+      "PHNT": {
+        "weapons": {
+          "PhantasmMissiles": {
+            "damage": 50,
+            "rof": 150,
+            "range": 10
+          }
+        }
+      },
+      "SEITAAD": {
+        "weapons": {
+          "SeitaadEMPCannon": {
+            "rof": 20,
+            "range": 12
+          },
+          "SeitaadMissile": {
+            "rof": 180,
+            "range": 12
+          },
+          "SeitaadMissileFrag": {
+            "damage": 80
+          }
+        }
+      },
+      "ARCH": {
+        "weapons": {
+          "ArchelonAttack": {
+            "damage": 200,
+            "rof": 150,
+            "range": 4.5
+          }
+        }
+      },
+      "ARCH2": {
+        "category": "units",
+        "factions": [
+          "Foehn"
+        ],
+        "allowed_buff_types": [
+          "linked_only"
+        ]
+      },
+      "REJU": {
+        "label": "Rejuvenator",
+        "plural": "Rejuvenators",
+        "category": "units",
+        "factions": [
+          "Neutral"
+        ],
+        "cost": 1500,
+        "speed": 22,
+        "strength": 320,
+        "sight": 10,
+        "guard_range": 8,
+        "ammo": 8,
+        "trainable": false,
+        "special_reward": true,
+        "weapons": {
+          "RejuvenationBullet": {
+            "rof": 3,
+            "range": 9
+          }
+        }
+      },
       "BORIS": {
         "weapons": {
           "AKM": {
@@ -3553,6 +3990,7 @@
       }
     },
     "unit_labels": {
+      "REJU": "Rejuvenator",
       "ADOG": "Attack Dog",
       "AEGIS": "Aegis Cruiser",
       "AHMV": "Humvee",

@@ -510,11 +510,10 @@ def cloned_superweapon_plan(
                 )
                 startup_targets.extend([techno_clone] * startup_count)
 
-        # Weapon/warhead/projectile helpers are ordinary INI sections, not
-        # registered TechnoTypes or SuperWeaponTypes. Clone them without list
-        # registration and point explicit superweapon fields at the isolated
-        # copy. This prevents mission-local overrides from changing a copied
-        # reward effect when no engine type-list registration is required.
+        # Weapon/warhead/projectile helpers are not TechnoTypes or
+        # SuperWeaponTypes. Clone them as isolated sections and register them
+        # in their configured engine list when the reference parser requires
+        # it (notably SW.Warhead -> [Warheads]).
         auxiliary_clones = reward.get('superweapon_auxiliary_clones')
         if isinstance(auxiliary_clones, dict):
             for auxiliary_source, clone_spec in auxiliary_clones.items():
@@ -535,6 +534,48 @@ def cloned_superweapon_plan(
                 auxiliary_values = dict(auxiliary_source_values)
                 auxiliary_values.update(clone_spec.get('values') or {})
                 section_rules[auxiliary_clone] = auxiliary_values
+                list_section = str(clone_spec.get('list') or '').strip()
+                if list_section:
+                    # A named helper section is not necessarily a registered
+                    # engine type. In particular, Ares parses SW.Warhead by
+                    # looking up the WarheadType registry; an unregistered
+                    # private clone leaves the power with a null warhead even
+                    # though its [Section] exists in the map.
+                    map_entries = section_value_map_preserve(
+                        lines, list_section
+                    )
+                    installed_entries = installed_sections.get(
+                        list_section, {}
+                    )
+                    registered = {
+                        str(value).lower()
+                        for value in (
+                            list(installed_entries.values())
+                            + list(map_entries.values())
+                        )
+                    }
+                    registered.update(
+                        str(value).lower()
+                        for value in section_rules.get(
+                            list_section, {}
+                        ).values()
+                    )
+                    if auxiliary_clone.lower() not in registered:
+                        type_keys = {
+                            str(key).lower() for key in map_entries
+                        }
+                        type_keys.update(
+                            str(key).lower()
+                            for key in section_rules.get(
+                                list_section, {}
+                            )
+                        )
+                        type_key, _ = _next_reserved_type_key(
+                            type_keys, RANDOMIZER_TYPE_LIST_KEY_START
+                        )
+                        section_rules.setdefault(
+                            list_section, {}
+                        )[type_key] = auxiliary_clone
                 for reference_key in clone_spec.get('reference_keys') or ():
                     clone_values[str(reference_key)] = auxiliary_clone
 

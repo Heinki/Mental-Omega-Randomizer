@@ -299,6 +299,70 @@ def _art_cameo_sections(text):
     return sections
 
 
+def _merge_art_section_values(text, section_values):
+    """Merge art overrides without shadowing complete installed sections."""
+    pending = {
+        str(section).upper(): {
+            str(key).lower(): (str(key), value)
+            for key, value in values.items()
+        }
+        for section, values in section_values.items()
+        if isinstance(values, dict) and values
+    }
+    lines = text.splitlines()
+    output = []
+    active = None
+    seen_keys = set()
+    found_sections = set()
+
+    def flush_missing():
+        if active is None:
+            return
+        for key_lower, (key, value) in pending[active].items():
+            if key_lower not in seen_keys and value is not None:
+                output.append(f'{key}={value}')
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('[') and ']' in stripped:
+            flush_missing()
+            section = stripped[1:stripped.index(']')].strip().upper()
+            active = (
+                section
+                if section in pending and section not in found_sections
+                else None
+            )
+            if active is not None:
+                found_sections.add(active)
+            seen_keys = set()
+            output.append(line)
+            continue
+        if active is not None and '=' in line and not stripped.startswith(';'):
+            key_lower = line.split('=', 1)[0].strip().lower()
+            replacement = pending[active].get(key_lower)
+            if replacement is not None:
+                key, value = replacement
+                if value is not None:
+                    output.append(f'{key}={value}')
+                seen_keys.add(key_lower)
+                continue
+        output.append(line)
+
+    flush_missing()
+    for section, values in pending.items():
+        if section in found_sections:
+            continue
+        if output and output[-1].strip():
+            output.append('')
+        output.append(f'[{section}]')
+        output.extend(
+            f'{key}={value}'
+            for key, value in values.values()
+            if value is not None
+        )
+    return '\n'.join(output) + '\n'
+
+
 def generated_unit_art_aliases(map_path, art_text):
     """Return art-only cameo aliases required by generated TechnoType IDs."""
     map_sections = all_section_value_maps(
@@ -351,8 +415,9 @@ def generated_unit_art_aliases(map_path, art_text):
             }
     # PERUN's installed art section supplies the complete voxel but omits its
     # hidden cameo because the campaign identity is normally never buildable.
-    # Append a same-name overlay even when that section exists: generated
-    # clones retain Image=PERUN and therefore resolve sidebar art through it.
+    # Merge the custom cameo into the complete installed section. Appending a
+    # second cameo-only [PERUN] section makes the engine shadow Voxel=yes and
+    # renders the unit invisible while leaving its sidebar icon functional.
     if perun_used:
         aliases['PERUN'] = {
             'CameoPCX': GENERATED_UNIT_CAMEO_ASSETS['PERUN']['pcx'],
@@ -392,14 +457,11 @@ def deploy_generated_unit_art(
         remove_generated_unit_art(target)
         return None, {}
     _deploy_generated_unit_sidebar_assets(aliases, target.parent)
-    output = [GENERATED_ART_MARKER, art_text.rstrip()]
-    for section, values in aliases.items():
-        output.extend([
-            '',
-            f'[{section}]',
-            *(f'{key}={value}' for key, value in values.items()),
-        ])
-    target.write_text('\n'.join(output) + '\n', encoding='utf-8')
+    merged_art = _merge_art_section_values(art_text, aliases)
+    target.write_text(
+        GENERATED_ART_MARKER + '\n' + merged_art,
+        encoding='utf-8',
+    )
     return target, aliases
 
 

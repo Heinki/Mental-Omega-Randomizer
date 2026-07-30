@@ -50,7 +50,7 @@ class PowerBuffSettingsController:
                 or power_id in self.excluded_superweapon_ids
                 or (
                     selected_campaign != CAMPAIGN_FILTERS[0]
-                    and faction != selected_campaign
+                    and faction not in {selected_campaign, 'Neutral'}
                 )
             ):
                 continue
@@ -63,7 +63,8 @@ class PowerBuffSettingsController:
                 'reward': reward,
             })
         faction_rank = {
-            'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4,
+            'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3,
+            'Neutral': 4, 'Other': 5,
         }
         return sorted(
             entries,

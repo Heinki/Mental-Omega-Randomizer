@@ -55,6 +55,7 @@
         "WarpMinersSpecial",
         "KingsnakesSpecial",
         "PaladinAidSpecial",
+        "TechMissileSpecial",
         "MercurySpecial",
         "BlackWidowAlphaSpecial",
         "BlackWidowSpecial",
@@ -121,6 +122,7 @@
         "SpySatSpecial": {"field": "SW.Range", "baseline": "12"}
       },
       "warhead_fields": {
+        "MaintenanceSpecial": {"source": "MaintenanceWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "NukeSpecial": {"source": "NUKE", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "GreatTempestSpecial": {"source": "GreatTempestBlastWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "RageInductorSpecial": {"source": "RageInductorWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
@@ -157,6 +159,7 @@
         "ForceShieldSpecial": {"field": "Protect.Duration", "baseline": 450}
       },
       "warhead_fields": {
+        "MaintenanceSpecial": {"source": "MaintenanceWH", "fields": ["AttachEffect.Duration"]},
         "RageInductorSpecial": {"source": "RageInductorWH", "fields": ["AttachEffect.Duration"]},
         "TargetPainterSpecial": {"source": "TargetPainterWH", "fields": ["AttachEffect.Duration"]},
         "ChronoboostSpecial": {"source": "ChronoboostWH", "fields": ["AttachEffect.Duration"]},

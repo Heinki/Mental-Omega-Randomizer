@@ -517,7 +517,10 @@ class UnlockDataController:
             if category not in category_labels:
                 continue
             factions = list(target.get('factions') or [])
-            if len(factions) != 1 or factions[0] not in FACTION_ORDER:
+            if (
+                len(factions) != 1
+                or factions[0] not in (*FACTION_ORDER, 'Neutral')
+            ):
                 continue
             key = f'unit:{unit_id}'
             source_data = sources.get(
@@ -633,7 +636,10 @@ class UnlockDataController:
             if power_id in seen_powers:
                 continue
             factions = list(reward.get('factions') or [])
-            if len(factions) != 1 or factions[0] not in FACTION_ORDER:
+            if (
+                len(factions) != 1
+                or factions[0] not in (*FACTION_ORDER, 'Neutral')
+            ):
                 continue
             seen_powers.add(power_id)
             key = f'power:{power_id}'

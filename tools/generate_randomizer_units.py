@@ -39,7 +39,14 @@ OUTPUT_GROUPS = OrderedDict((
 ))
 # Append newly reviewed map-only identities instead of renumbering every
 # committed registry entry that already follows them in BUFF_TARGETS order.
-STABLE_APPEND_IDS = frozenset({'MAMM', 'PANTHER'})
+STABLE_APPEND_ORDER = (
+    'MAMM', 'PANTHER',
+    'QUICK', 'LIONH', 'CHRP', 'AHVYBOT2', 'AHVYBOT2B',
+    'GRUMBLE', 'NAGRUM', 'SYCKLE', 'IDRAG',
+    'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
+    'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
+)
+STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 IMAGE_OVERRIDES = {
     # Mapper source calls the Mortar Quad art MORTAR, but installed artmo.ini
     # defines its cameo and sequence under [MOTOR].
@@ -183,6 +190,31 @@ TEMPLATE_VALUE_OVERRIDES = {
     'LUNRE': {
         'Name': 'Cosmonaut',
         'Image': 'LUNR',
+    },
+    # Multi-form stolen-tech units keep every runtime conversion and payload
+    # on player-owned identities. Native forms remain available to mission AI.
+    'AHVYBOT2': {
+        'Convert.Deploy': 'MORPAHVYBOT2B',
+    },
+    'AHVYBOT2B': {
+        'Convert.Deploy': 'MORPAHVYBOT2',
+    },
+    'GRUMBLE': {
+        'DeploysInto': 'MORPNAGRUM',
+    },
+    'NAGRUM': {
+        'UndeploysInto': 'MORPGRUMBLE',
+    },
+    'SALA': {
+        'Passengers.Allowed': 'MORPSALA_1,MORPSALA_2',
+        'InitialPayload.Types': 'MORPSALA_1,MORPSALA_2',
+    },
+    'ARCH': {
+        'Convert.Deploy': 'MORPARCH2',
+    },
+    'ARCH2': {
+        'Convert.Deploy': 'MORPARCH',
+        'ReversedAs': 'MORPARCH',
     },
 }
 
@@ -368,8 +400,8 @@ def main():
             source_id for source_id in source_ids
             if source_id not in STABLE_APPEND_IDS
         ] + [
-            source_id for source_id in source_ids
-            if source_id in STABLE_APPEND_IDS
+            source_id for source_id in STABLE_APPEND_ORDER
+            if source_id in source_ids
         ]
 
     args.output_dir.mkdir(parents=True, exist_ok=True)

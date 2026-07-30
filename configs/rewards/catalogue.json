@@ -580,6 +580,24 @@
         "factions": [
           "Soviets"
         ]
+      },
+      {
+        "name": "Rejuvenator Access",
+        "description": "Allows Rejuvenator production from any faction War Factory without capturing a Tech Secret Lab.",
+        "access_category": "special",
+        "special_reward": true,
+        "rules": {
+          "REJU": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "FACTORY"
+          }
+        },
+        "factions": [
+          "Neutral"
+        ]
       }
     ],
     "faction_access_rules": {
@@ -1473,6 +1491,20 @@
         "faction": "Foehn",
         "superweapon": "StasisGridSpawn",
         "index": 63
+      },
+      {
+        "name": "Missile Strike Power",
+        "description": "Launches the Tech Missile Bunker's tactical missile at the selected area.",
+        "faction": "Neutral",
+        "superweapon": "TechMissileSpecial",
+        "index": 23
+      },
+      {
+        "name": "Maintenance Power",
+        "description": "Rapidly repairs friendly structures in the selected area.",
+        "faction": "Neutral",
+        "superweapon": "MaintenanceSpecial",
+        "index": 43
       },
       {
         "name": "Time Freeze Power",
@@ -2936,6 +2968,145 @@
         }
       },
       {
+        "superweapon": "TechMissileSpecial",
+        "values": {
+          "IsPowered": "false",
+          "Type": "MultiMissile",
+          "WeaponType": "MORTMCarrier",
+          "Nuke.Payload": "MORTMPayload",
+          "Nuke.SiloLaunch": "no",
+          "SW.FireIntoShroud": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "Nuke",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": null,
+          "SW.RangeMinimum": null
+        },
+        "techno_clones": {
+          "MissileCarrier": {
+            "clone": "MORTMCarrier",
+            "list": "WeaponTypes",
+            "reference_keys": [
+              "WeaponType"
+            ],
+            "values": {
+              "Projectile": "MORTMUp"
+            }
+          },
+          "SmallNukeUp": {
+            "clone": "MORTMUp",
+            "list": "Projectiles"
+          },
+          "MissilePayload": {
+            "clone": "MORTMPayload",
+            "list": "WeaponTypes",
+            "reference_keys": [
+              "Nuke.Payload"
+            ],
+            "values": {
+              "Projectile": "MORTMDown",
+              "Warhead": "MORTMWH"
+            }
+          },
+          "SmallNukeDown": {
+            "clone": "MORTMDown",
+            "list": "Projectiles"
+          },
+          "TechMissileWH": {
+            "clone": "MORTMWH",
+            "list": "Warheads"
+          }
+        }
+      },
+      {
+        "superweapon": "MaintenanceSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.FireIntoShroud": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "SW.AffectsHouse": "team",
+          "SW.AffectsTarget": "buildings",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.RangeMaximum": "-1",
+          "SW.RangeMinimum": "-1"
+        },
+        "techno_clones": {
+          "MaintenanceProvider": {
+            "source": "CASTRF",
+            "clone": "MORMaintenanceProvider",
+            "list": "BuildingTypes",
+            "startup_count": 1,
+            "static_startup": true,
+            "provides_superweapon": true,
+            "values": {
+              "Name": "Randomizer Maintenance Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Immune": "yes",
+              "Capturable": "false",
+              "NeedsEngineer": "no",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          }
+        },
+        "auxiliary_clones": {
+          "MaintenanceWH": {
+            "clone": "MORMaintenanceWH",
+            "list": "Warheads",
+            "reference_keys": [
+              "SW.Warhead"
+            ],
+            "values": {
+              "AllowZeroDamage": "yes",
+              "EffectsRequireDamage": "no",
+              "AffectsOwner": "yes",
+              "AffectsAllies": "yes",
+              "AffectsEnemies": "no"
+            }
+          }
+        }
+      },
+      {
         "superweapon": "TimeFreezeSpecial",
         "values": {
           "IsPowered": "false",
@@ -3294,7 +3465,8 @@
       "Battlecruiser Access": "Trident Battleship Access",
       "Typhoon Sub Access": "Typhoon Attack Sub Access",
       "Squid Access": "Giant Squid Access",
-      "Sea Scorpion Access": "Mosquito Demoboat Access"
+      "Sea Scorpion Access": "Mosquito Demoboat Access",
+      "Tyrant Access": "Scavenger Access"
     }
   }
 }
