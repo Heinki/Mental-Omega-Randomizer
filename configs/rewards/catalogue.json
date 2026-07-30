@@ -3292,7 +3292,7 @@
           "RechargeTime": "6",
           "SW.Shots": "12",
           "SW.VirtualCharge": "yes",
-          "SW.InitialReady": "yes",
+          "SW.InitialReady": "no",
           "SW.MaxCount": "-1",
           "SW.Range": "0.1",
           "SW.RangeMaximum": "-1",

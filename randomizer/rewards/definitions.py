@@ -786,6 +786,13 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_super
 
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
 
+# Moon Reinforcements is granted at map start like other portable powers, but
+# its charge must still begin empty. Preserve that normal initial cooldown for
+# packaged installs whose editable catalogue predates the corrected value.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') == 'KnightfallSpawn':
+        aid_config.setdefault('values', {})['SW.InitialReady'] = 'no'
+
 # GenericWarhead detonates the private warhead directly. Keep both filtering
 # layers explicit. GenericWarhead does not apply SW.AffectsHouse to the direct
 # EMP/AttachEffect loop; Ares uses the warhead's AffectsAllies for both the

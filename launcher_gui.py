@@ -19,8 +19,10 @@ from randomizer.core.paths import (
 from randomizer.core.version import APP_VERSION
 from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs
 from randomizer.rewards.roster import (
+    MAX_PLAYER_BUILD_TIME_MULTIPLIER,
     ROSTER_FILENAMES,
     validate_randomizer_unit_roster,
+    validate_special_reward_build_times,
     validate_transport_buff_eligibility,
 )
 
@@ -60,7 +62,20 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
+        from randomizer.rewards.catalogue import AID_POWER_MAP_CONFIGS
+        moon_configs = [
+            config
+            for config in AID_POWER_MAP_CONFIGS
+            if config.get('superweapon') == 'KnightfallSpawn'
+        ]
+        moon_initial_cooldown_valid = bool(
+            len(moon_configs) == 1
+            and str(
+                moon_configs[0].get('values', {}).get('SW.InitialReady', '')
+            ).lower() == 'no'
+        )
         from randomizer.application import (
             advanced_settings as advanced_settings_module,
             app as application_module,
@@ -128,6 +143,15 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'special_reward_build_times_valid': bool(
+                special_build_times['types']
+                and special_build_times['max_effective_multiplier']
+                <= MAX_PLAYER_BUILD_TIME_MULTIPLIER
+            ),
+            'special_reward_build_times': special_build_times,
+            'moon_reinforcements_initial_cooldown_valid': (
+                moon_initial_cooldown_valid
+            ),
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and transport_buffs['stallion_capacity_enabled']
@@ -155,6 +179,8 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'special_reward_build_times_valid',
+                'moon_reinforcements_initial_cooldown_valid',
                 'transport_buff_eligibility_valid',
                 'application_imported',
                 'reward_weight_connections_valid',

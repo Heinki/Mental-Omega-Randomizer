@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import shutil
 from functools import lru_cache
+from math import isfinite
 from pathlib import Path
+from statistics import median
 
 from randomizer.core.paths import APP_DIR, FROZEN, SOURCE_DIR
 
@@ -32,6 +34,11 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Cloakable.Allowed': 'no',
     },
 }
+MAX_PLAYER_BUILD_TIME_MULTIPLIER = 10.0
+BUILD_TIME_MULTIPLIER_KEYS = frozenset({
+    'buildtimemultiplier',
+    'buildtime.multiplefactory',
+})
 
 
 def randomizer_unit_id(source_id):
@@ -64,6 +71,88 @@ def _read_sections(path: Path):
         key, value = raw_line.split('=', 1)
         sections[current][key.strip()] = value.split(';', 1)[0].strip()
     return sections
+
+
+def _case_insensitive_item(values, wanted_key):
+    wanted = str(wanted_key).lower()
+    return next(
+        (
+            (key, value)
+            for key, value in values.items()
+            if str(key).lower() == wanted
+        ),
+        (None, None),
+    )
+
+
+def _safe_multiplier(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if isfinite(number) else None
+
+
+def _format_multiplier(value):
+    return f'{float(value):g}'
+
+
+def _normal_build_time_multipliers_by_category(templates, targets):
+    """Derive normal hero/tech timing from comparable ordinary roster units."""
+    candidates = {}
+    for unit_id, target in targets.items():
+        if (
+            target.get('special_reward')
+            or not target.get('trainable')
+            or not target.get('build_limit')
+        ):
+            continue
+        _key, raw_value = _case_insensitive_item(
+            templates.get(unit_id.upper(), {}),
+            'BuildTimeMultiplier',
+        )
+        value = _safe_multiplier(raw_value)
+        if value is None or value <= 0 or value > MAX_PLAYER_BUILD_TIME_MULTIPLIER:
+            continue
+        candidates.setdefault(target.get('category'), []).append(value)
+    return {
+        category: median(values)
+        for category, values in candidates.items()
+        if category and values
+    }
+
+
+def _normalize_special_reward_build_times(templates, targets):
+    """Replace mission-delay multipliers on every producible Special unit."""
+    normal_by_category = _normal_build_time_multipliers_by_category(
+        templates,
+        targets,
+    )
+    normalized = {}
+    for unit_id, target in targets.items():
+        if not target.get('special_reward'):
+            continue
+        template = templates.get(unit_id.upper())
+        if not template:
+            continue
+        for key, raw_value in list(template.items()):
+            lowered = str(key).lower()
+            if lowered not in BUILD_TIME_MULTIPLIER_KEYS:
+                continue
+            value = _safe_multiplier(raw_value)
+            if (
+                value is not None
+                and 0 < value <= MAX_PLAYER_BUILD_TIME_MULTIPLIER
+            ):
+                continue
+            replacement = (
+                normal_by_category.get(target.get('category'), 1.0)
+                if lowered == 'buildtimemultiplier'
+                else 1.0
+            )
+            template[key] = _format_multiplier(replacement)
+            normalized.setdefault(unit_id.upper(), {})[key] = template[key]
+    return normalized
 
 
 @lru_cache(maxsize=None)
@@ -198,6 +287,7 @@ def randomizer_unit_roster():
         raise ValueError(
             'Randomizer roster lacks required TechnoTypes: ' + ', '.join(missing)
         )
+    _normalize_special_reward_build_times(templates, BUFF_TARGETS)
     return paths, clone_ids, templates
 
 
@@ -208,6 +298,57 @@ def validate_randomizer_unit_roster():
         'files': len(paths),
         'types': len(clone_ids),
         'templates': len(templates),
+    }
+
+
+def validate_special_reward_build_times():
+    """Audit every producible campaign/Special template for sane timing."""
+    from randomizer.rewards.catalogue import BUFF_TARGETS
+
+    _paths, _clone_ids, templates = randomizer_unit_roster()
+    special_ids = sorted(
+        unit_id.upper()
+        for unit_id, target in BUFF_TARGETS.items()
+        if target.get('special_reward')
+        and target.get('category') in ROSTER_CATEGORIES
+    )
+    errors = []
+    effective = {}
+    for unit_id in special_ids:
+        template = templates.get(unit_id)
+        if not template:
+            errors.append(f'{unit_id} has no player template')
+            continue
+        for key, raw_value in template.items():
+            lowered = str(key).lower()
+            if lowered not in BUILD_TIME_MULTIPLIER_KEYS:
+                continue
+            value = _safe_multiplier(raw_value)
+            if (
+                value is None
+                or value <= 0
+                or value > MAX_PLAYER_BUILD_TIME_MULTIPLIER
+            ):
+                errors.append(f'{unit_id} has unusable {key}={raw_value}')
+                continue
+        build_time_key, build_time_raw = _case_insensitive_item(
+            template,
+            'BuildTimeMultiplier',
+        )
+        effective[unit_id] = (
+            _safe_multiplier(build_time_raw)
+            if build_time_key is not None
+            else 1.0
+        )
+    if errors:
+        raise ValueError(
+            'Special reward build-time validation failed: ' + '; '.join(errors)
+        )
+    return {
+        'types': len(special_ids),
+        'unit_ids': special_ids,
+        'max_effective_multiplier': max(effective.values(), default=1.0),
+        'effective_multipliers': effective,
     }
 
 
