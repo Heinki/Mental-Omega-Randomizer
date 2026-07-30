@@ -859,6 +859,8 @@ def build_aid_power_rewards():
                 }
                 for section, clone in modified_config['techno_clones'].items()
             }
+        if modified_config and modified_config.get('provider_only'):
+            reward['superweapon_provider_only'] = True
         if modified_config and modified_config.get('auxiliary_clones'):
             reward['superweapon_auxiliary_clones'] = {
                 section: {

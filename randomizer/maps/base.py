@@ -590,6 +590,9 @@ def cloned_superweapon_plan(
                 pending['SuperWeapons'] = ','.join(attached)
             clone_names.append(clone_type)
             continue
+        if reward.get('superweapon_provider_only'):
+            clone_names.append(clone_type)
+            continue
         clone_names.append(clone_type)
         actions.append(['34', '0', str(runtime_index), '0', '0', '0', '0', 'A'])
 

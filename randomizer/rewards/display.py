@@ -111,6 +111,7 @@ HOUSE_CATEGORY_SUFFIXES = {
 }
 
 HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'armor', 'veteran'}
+HOUSE_WIDE_BUFF_TYPES = {'production', 'cost', 'armor'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'self_healing', 'cloak', 'sensors',
@@ -136,6 +137,67 @@ def reward_display_name(reward):
 
 def house_category_suffix(target):
     return HOUSE_CATEGORY_SUFFIXES.get(target.get('category', 'units'), 'Units')
+
+
+def house_wide_buff_scope(reward, unit_specific_mode=False):
+    """Return actual CountryType category effect, excluding exact-unit lists."""
+    reward = canonical_reward(reward)
+    if (
+        reward.get('kind') != 'buff'
+        or reward.get('power_buff_type')
+    ):
+        return None
+    buff_type = str(reward.get('buff_type') or '')
+    target = BUFF_TARGETS.get(str(reward.get('unit') or '').upper(), {})
+    if not target or buff_type not in HOUSE_WIDE_BUFF_TYPES:
+        return None
+    if buff_type == 'production' and target.get('global_production'):
+        return ('All', buff_type)
+    if unit_specific_mode:
+        return None
+    return (house_category_suffix(target), buff_type)
+
+
+def house_wide_buff_label(scope):
+    suffix, buff_type = scope
+    subjects = {
+        'All': 'All Production',
+        'Infantry': 'Infantry',
+        'Units': 'Vehicles / Naval',
+        'Aircraft': 'Aircraft',
+        'Buildings': 'Buildings',
+        'Defenses': 'Defenses',
+    }
+    effects = {
+        'production': 'Production',
+        'cost': 'Cost',
+        'armor': 'Armor',
+    }
+    subject = subjects.get(suffix, suffix)
+    effect = effects.get(buff_type, buff_type.title())
+    if suffix == 'All' and buff_type == 'production':
+        return subject
+    return f'{subject} {effect}'
+
+
+def house_wide_buff_effect_lines(scope, count=1, include_stack=True):
+    suffix, buff_type = scope
+    label = house_wide_buff_label(scope)
+    count = max(1, int(count))
+    if buff_type == 'production':
+        multiplier = stacking_multiplier('production', count)
+        text = f'{label} time {int(round((1.0 - multiplier) * 100))}% shorter'
+    elif buff_type == 'cost':
+        multiplier = stacking_multiplier('cost', count)
+        text = f'{label} {int(round((1.0 - multiplier) * 100))}% cheaper'
+    elif buff_type == 'armor':
+        multiplier = stacking_multiplier('armor', count)
+        text = f'{label} {int(round(((1.0 / multiplier) - 1.0) * 100))}% stronger'
+    else:
+        return []
+    if include_stack:
+        text = f'{text} ({stack_label(count)})'
+    return [text]
 
 
 def buff_stack_limit(reward):

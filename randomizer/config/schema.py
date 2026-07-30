@@ -692,6 +692,15 @@ def _validate_power_buffs(sections, path):
 
 def _validate_catalogue(sections, path):
     for config in sections['aid_power_map_configs']:
+        if (
+            'provider_only' in config
+            and not isinstance(config['provider_only'], bool)
+        ):
+            _invalid(
+                'Invalid provider-only flag for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
         delivery_clone_ids = config.get('delivery_player_clone_ids')
         if delivery_clone_ids is not None and (
             not isinstance(delivery_clone_ids, list)

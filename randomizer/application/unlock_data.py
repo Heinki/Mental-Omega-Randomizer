@@ -10,6 +10,9 @@ from ._dependencies import (
     canonical_reward,
     check_rewards,
     effective_buff_count,
+    house_wide_buff_effect_lines,
+    house_wide_buff_label,
+    house_wide_buff_scope,
     mission_assistance_multipliers,
     reward_cameo_token,
     reward_display_name,
@@ -36,6 +39,14 @@ class UnlockDataController:
         rank = FACTION_ORDER.index(faction) if faction in FACTION_ORDER else len(FACTION_ORDER)
         return (rank, unit_display_label(tech_id).lower())
 
+    def reward_house_wide_buff_scope(self, reward):
+        return house_wide_buff_scope(
+            reward,
+            unit_specific_mode=(
+                self.active_reward_mode() == 'Chaos (Experimental)'
+            ),
+        )
+
     def mission_assistance_effect_text(self, stacks):
         multipliers = mission_assistance_multipliers(stacks)
         range_cells = multipliers['range']
@@ -56,6 +67,7 @@ class UnlockDataController:
         """Group canonical earned rewards for Unlocks text rendering."""
         groups = {}
         shared_groups = {}
+        house_buff_groups = {}
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
 
@@ -68,6 +80,15 @@ class UnlockDataController:
             })
 
         for reward in earned:
+            house_scope = self.reward_house_wide_buff_scope(reward)
+            if house_scope:
+                entry = house_buff_groups.setdefault(
+                    house_scope,
+                    {'reward': reward, 'count': 0},
+                )
+                entry['count'] += 1
+                continue
+
             bundle_units = reward.get('bundle_units') or []
             if bundle_units:
                 unit_ids = tuple(sorted(set(bundle_units), key=self.unit_faction_sort_key))
@@ -133,7 +154,7 @@ class UnlockDataController:
                     'other': [],
                 })['other'].append(reward)
 
-        return groups, shared_groups
+        return groups, shared_groups, house_buff_groups
 
     def current_unlocks_text(self):
         if not self.state:
@@ -182,7 +203,24 @@ class UnlockDataController:
             return 'No unlocks or buffs earned yet.'
 
         share_foehn_roles = self.foehn_standard_bundles_enabled()
-        groups, shared_groups = self.build_unlock_display_groups(earned)
+        groups, shared_groups, house_buff_groups = (
+            self.build_unlock_display_groups(earned)
+        )
+
+        if house_buff_groups:
+            heading = 'Global / House-Wide Buffs'
+            lines.extend([heading, '=' * len(heading)])
+            for scope, entry in sorted(
+                house_buff_groups.items(),
+                key=lambda item: house_wide_buff_label(item[0]).casefold(),
+            ):
+                count = effective_buff_count(
+                    entry['reward'], entry['count']
+                )
+                lines.extend(
+                    house_wide_buff_effect_lines(scope, count=count)
+                )
+            lines.append('')
 
         if shared_groups:
             heading = (
@@ -283,7 +321,7 @@ class UnlockDataController:
             if self.standard_foehn_unit_reward(reward):
                 continue
             if reward.get('kind') == 'buff' and reward.get('unit'):
-                if reward['unit'] != 'MOR_BUILDINGS':
+                if not self.reward_house_wide_buff_scope(reward):
                     if (
                         (share_chaos_role_buffs or share_foehn_roles)
                         and not reward.get('global_buff')
@@ -323,8 +361,13 @@ class UnlockDataController:
         """Return catalogue icons affected by one serialized reward."""
         reward = canonical_reward(reward)
         keys = set()
+        house_scope = self.reward_house_wide_buff_scope(reward)
+        if house_scope:
+            suffix, buff_type = house_scope
+            keys.add(f'house:{suffix.lower()}:{buff_type}')
+            return keys
         unit_id = str(reward.get('unit') or '').upper()
-        if reward.get('kind') == 'buff' and unit_id and unit_id != 'MOR_BUILDINGS':
+        if reward.get('kind') == 'buff' and unit_id:
             keys.add(f'unit:{unit_id}')
             if (
                 not reward.get('global_buff')
@@ -422,6 +465,51 @@ class UnlockDataController:
             'aircraft': 'Aircraft',
             'defenses': 'Defenses',
         }
+        house_scopes = {}
+        for reward in REWARD_POOL:
+            scope = self.reward_house_wide_buff_scope(reward)
+            if scope:
+                house_scopes.setdefault(scope, reward)
+        for scope, reward in sorted(
+            house_scopes.items(),
+            key=lambda item: house_wide_buff_label(item[0]).casefold(),
+        ):
+            suffix, buff_type = scope
+            key = f'house:{suffix.lower()}:{buff_type}'
+            source_data = sources.get(
+                key, {
+                    'assigned': [], 'earned': [], 'available': [],
+                    'available_unlocks': [], 'available_codes': [],
+                }
+            )
+            status = (
+                'unlocked'
+                if source_data['earned']
+                else 'available'
+                if source_data['available'] and not privacy
+                else 'locked'
+                if source_data['assigned']
+                else 'unavailable'
+            )
+            entries.append({
+                'key': key,
+                'kind': 'house',
+                'id': f'{suffix}:{buff_type}',
+                'label': house_wide_buff_label(scope),
+                'faction': 'Neutral',
+                'category': (
+                    'Global Buffs'
+                    if suffix == 'All'
+                    else 'House-Wide Buffs'
+                ),
+                'status': status,
+                'condition': '',
+                'sources': source_data,
+                'privacy': privacy,
+                'reward': reward,
+                'house_scope': scope,
+            })
+
         for unit_id, target in BUFF_TARGETS.items():
             if target.get('linked_buff_source'):
                 continue
@@ -594,8 +682,13 @@ class UnlockDataController:
         ]
         sources = entry['sources']
         earned_source_names = list(dict.fromkeys(source for source, _ in sources['earned']))
+        available_source_items = (
+            sources['available']
+            if entry.get('kind') == 'house'
+            else sources['available_unlocks']
+        )
         available_source_names = list(dict.fromkeys(
-            source for source, _ in sources['available_unlocks']
+            source for source, _ in available_source_items
         ))
 
         def compact_sources(names):
@@ -621,21 +714,36 @@ class UnlockDataController:
             lines.append('Not assigned by this seed and current reward settings.')
 
         earned = [reward for _, reward in sources['earned']]
-        buffs = {}
-        for reward in earned:
-            if reward.get('kind') == 'buff':
-                key = reward.get('buff_type') or reward.get('power_buff_type')
-                display_reward = dict(reward)
-                if entry.get('kind') == 'unit':
-                    display_reward['unit'] = entry['id']
-                buffs.setdefault(
-                    key, {'reward': display_reward, 'count': 0}
-                )['count'] += 1
         effect_lines = []
-        for buff in buffs.values():
-            effect_lines.extend(buff_effect_lines(
-                buff['reward'], count=buff['count'], include_label=False
-            ))
+        if entry.get('kind') == 'house':
+            buff_count = sum(
+                1 for reward in earned if reward.get('kind') == 'buff'
+            )
+            if buff_count:
+                effect_lines.extend(house_wide_buff_effect_lines(
+                    entry['house_scope'],
+                    count=effective_buff_count(entry['reward'], buff_count),
+                ))
+        else:
+            buffs = {}
+            for reward in earned:
+                if reward.get('kind') == 'buff':
+                    key = (
+                        reward.get('buff_type')
+                        or reward.get('power_buff_type')
+                    )
+                    display_reward = dict(reward)
+                    if entry.get('kind') == 'unit':
+                        display_reward['unit'] = entry['id']
+                    buffs.setdefault(
+                        key, {'reward': display_reward, 'count': 0}
+                    )['count'] += 1
+            for buff in buffs.values():
+                effect_lines.extend(buff_effect_lines(
+                    buff['reward'],
+                    count=buff['count'],
+                    include_label=False,
+                ))
         if (
             entry.get('reward')
             and entry['status'] == 'unlocked'
@@ -648,11 +756,19 @@ class UnlockDataController:
 
         if entry['status'] == 'available':
             potential = []
-            for _source, reward in sources['available_unlocks']:
+            for _source, reward in available_source_items:
                 if reward.get('kind') == 'buff':
-                    potential.extend(buff_effect_lines(
-                        reward, include_label=False, include_stack=False
-                    ))
+                    if entry.get('kind') == 'house':
+                        potential.extend(house_wide_buff_effect_lines(
+                            entry['house_scope'],
+                            include_stack=False,
+                        ))
+                    else:
+                        potential.extend(buff_effect_lines(
+                            reward,
+                            include_label=False,
+                            include_stack=False,
+                        ))
                 else:
                     potential.append(reward_display_name(reward))
             if potential:

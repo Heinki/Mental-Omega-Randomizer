@@ -466,7 +466,7 @@ def _build_info_tabs(self, info_tabs):
     unlocks_notebook.grid(row=1, column=0, sticky='nsew')
     self.unlock_icon_canvases = {}
     self.unlock_icon_frames = {}
-    for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
+    for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn', 'Neutral'):
         faction_page = ttk.Frame(unlocks_notebook)
         faction_page.columnconfigure(0, weight=1)
         faction_page.rowconfigure(0, weight=1)

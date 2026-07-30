@@ -1168,7 +1168,7 @@
       },
       {
         "name": "Elite Reserves Power",
-        "description": "Makes newly produced Tier 1 units from every faction elite while the granting Barracks exists.",
+        "description": "Makes newly produced Tier 1 units from every faction elite.",
         "faction": "Soviets",
         "superweapon": "EliteReservesSpecial",
         "index": 100
@@ -1678,9 +1678,12 @@
       },
       {
         "superweapon": "EliteReservesSpecial",
-        "grant_buildings": ["GAPILE", "GAPILEB", "NAHAND", "NAHANDB", "YABRCK", "YABRCKB", "FABARR", "FABARRB"],
+        "provider_only": true,
         "values": {
+          "IsPowered": "false",
           "SW.AuxBuildings": "",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
           "SW.AllowPlayer": "yes",
           "SW.AllowAI": "no"
         },
@@ -1694,8 +1697,49 @@
               "Academy.VehicleVeterancy": "2",
               "Academy.AircraftVeterancy": "2",
               "Academy.Types": "E1,GGI,E2,FLAKT,INIT,HARP,COVE,KNIGHT,ETNK,MTNK,KTNK,HTNK,CTNK,JTNK,LTNK,QTNK,STNK,CYCL,DRACO,ROACH,FV,AMC,TENGU,SCAR,HTK,YTNK,TERA,STORM,ORCA,BEAG,FOX,BLIGHT,MORPE1,MORPGGI,MORPE2,MORPFLAKT,MORPINIT,MORPHARP,MORPCOVE,MORPKNIGHT,MORPETNK,MORPMTNK,MORPKTNK,MORPHTNK,MORPCTNK,MORPJTNK,MORPLTNK,MORPQTNK,MORPSTNK,MORPCYCL,MORPDRACO,MORPROACH,MORPFV,MORPAMC,MORPTENGU,MORPSCAR,MORPHTK,MORPYTNK,MORPTERA,MORPSTORM,MORPORCA,MORPBEAG,MORPFOX,MORPBLIGHT",
-              "Owner": "Europeans,UnitedStates,Pacific,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
-              "RequiredHouses": "Europeans,UnitedStates,Pacific,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER"
+              "Owner": null,
+              "RequiredHouses": null,
+              "ForbiddenHouses": null,
+              "FactoryOwners": null,
+              "Prerequisite": null,
+              "PrerequisiteOverride": null,
+              "Prerequisite.Lists": null,
+              "TechLevel": null
+            }
+          },
+          "EliteReservesProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MOREliteProvider",
+            "list": "BuildingTypes",
+            "startup_count": 1,
+            "static_startup": true,
+            "provides_superweapon": true,
+            "values": {
+              "Name": "Randomizer Elite Reserves Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
             }
           }
         }

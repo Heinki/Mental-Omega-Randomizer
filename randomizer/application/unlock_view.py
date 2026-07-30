@@ -143,7 +143,7 @@ class UnlockViewController:
             path = None
             if entry['kind'] == 'unit':
                 path = unit_paths.get(entry['id'])
-            else:
+            elif entry['kind'] == 'power':
                 asset_name = entry['reward'].get('superweapon_sidebar_image')
                 if asset_name:
                     try:
@@ -173,7 +173,8 @@ class UnlockViewController:
         foreground = '#f2f4f8' if self.dark_mode_var.get() else '#202124'
         order = {'Infantry': 0, 'Vehicles / Naval': 1, 'Aircraft': 2,
                  'Defenses': 3, 'Special': 4, 'Special Buildings': 5,
-                 'Superweapons': 6}
+                 'Superweapons': 6, 'Global Buffs': 0,
+                 'House-Wide Buffs': 1}
         self.unlock_dashboard_sections = {}
         self.unlock_dashboard_columns = {}
         self.unlock_dashboard_cards = {}

@@ -72,6 +72,7 @@ from randomizer.rewards.catalogue import (
     canonical_reward,
     canonical_rewards,
     house_category_suffix,
+    house_wide_buff_scope,
     linked_buff_variant_ids,
     movement_speed_ceiling,
     unit_role_equivalents,

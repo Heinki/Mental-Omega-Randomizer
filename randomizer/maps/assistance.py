@@ -15,6 +15,7 @@ from ._shared import (
     comma_items,
     country_family,
     house_category_suffix,
+    house_wide_buff_scope,
     linked_buff_variant_ids,
     map_house_records,
     movement_speed_ceiling,
@@ -79,13 +80,11 @@ def stacked_house_buff_values(
         target = BUFF_TARGETS.get(reward.get('unit'))
         if not target:
             continue
-        if (
-            unit_specific_mode
-            and buff_type in {'production', 'cost', 'speed', 'armor'}
-            and not target.get('global_production')
-        ):
-            continue
-        if buff_type == 'production' and target.get('global_production'):
+        house_scope = house_wide_buff_scope(
+            reward,
+            unit_specific_mode=unit_specific_mode,
+        )
+        if house_scope and house_scope[0] == 'All':
             for global_suffix in ('Infantry', 'Units', 'Aircraft', 'Buildings', 'Defenses'):
                 key = (buff_type, global_suffix)
                 category_counts[key] = category_counts.get(key, 0) + 1
@@ -93,7 +92,21 @@ def stacked_house_buff_values(
                 if limit is not None:
                     category_counts[key] = min(category_counts[key], limit)
             continue
-        suffix = house_category_suffix(target)
+        if house_scope:
+            suffixes = {house_scope[0]}
+            if share_basic_equivalent_buffs:
+                suffixes.update(
+                    house_category_suffix(BUFF_TARGETS[unit_id])
+                    for unit_id in unit_role_equivalents(reward['unit'])
+                    if unit_id in BUFF_TARGETS
+                )
+            for equivalent_suffix in suffixes:
+                key = (buff_type, equivalent_suffix)
+                category_counts[key] = category_counts.get(key, 0) + 1
+                limit = buff_stack_limit(reward)
+                if limit is not None:
+                    category_counts[key] = min(category_counts[key], limit)
+            continue
         if buff_type == 'veteran':
             if not target.get('trainable', True):
                 continue
@@ -128,19 +141,6 @@ def stacked_house_buff_values(
                 )
                 veteran_units.setdefault(equivalent_suffix, []).append(unit_id)
             continue
-        suffixes = {suffix}
-        if share_basic_equivalent_buffs:
-            suffixes.update(
-                house_category_suffix(BUFF_TARGETS[unit_id])
-                for unit_id in unit_role_equivalents(reward['unit'])
-                if unit_id in BUFF_TARGETS
-            )
-        for equivalent_suffix in suffixes:
-            key = (buff_type, equivalent_suffix)
-            category_counts[key] = category_counts.get(key, 0) + 1
-            limit = buff_stack_limit(reward)
-            if limit is not None:
-                category_counts[key] = min(category_counts[key], limit)
 
     values = {}
     for (buff_type, suffix), count in category_counts.items():
