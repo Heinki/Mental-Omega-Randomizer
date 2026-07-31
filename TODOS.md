@@ -23,13 +23,11 @@ BUGS AND IMPROVEMENTS
 - deployed units do not get the buffs
 - Make settings with available buffs/debuffs/superweapons saveable so that players can share the same seed and the same settings basically
 - duplicated units still with cloned tech AND original tech, original tech should not be available for the player when capturing enemy buildings and such
-- Miners not available even though they should ALWAYS be available!
 - Vanishing points not working
-- Add perun as hero limit like other units
 - Grumble issue with deployment
 - Tainted empire nonstop yunru spawns
-- Engineers that are given at the start of missions which are cloaked are not selectable
-- Check generates buffs, when max buffs already achieved give it to units/powers that can be buffed "endlessly" 
+- Check generates buffs, when max buffs already achieved give it to units/powers that can be buffed "endlessly"
+
 
 
 New Game mode idea
