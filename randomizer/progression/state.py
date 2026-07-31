@@ -1,5 +1,7 @@
 """Pure normalization helpers for persisted launcher state."""
 
+from randomizer.config.tuning import mission_assistance_stack_count
+
 
 def normalize_completed_checks(state):
     """Synchronize completed missions and their check flags in place."""
@@ -34,7 +36,7 @@ def normalize_failure_stacks(state):
     normalized = {}
     for code, value in raw_stacks.items():
         try:
-            count = max(0, int(value))
+            count = mission_assistance_stack_count(value)
         except (TypeError, ValueError):
             count = 0
         if code in valid_codes and code not in completed and count:

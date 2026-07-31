@@ -1,5 +1,7 @@
 """Unlock display models, labels, sources, and tooltips."""
 
+from randomizer.config.tuning import mission_assistance_stack_count
+
 from ._dependencies import (
     ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
@@ -48,6 +50,7 @@ class UnlockDataController:
         )
 
     def mission_assistance_effect_text(self, stacks):
+        stacks = mission_assistance_stack_count(stacks)
         multipliers = mission_assistance_multipliers(stacks)
         range_cells = multipliers['range']
         range_unit = 'cell' if range_cells == 1 else 'cells'

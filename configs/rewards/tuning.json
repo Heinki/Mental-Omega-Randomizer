@@ -32,6 +32,7 @@
       "required_weapon_fields": ["Projectile", "Warhead"]
     },
     "mission_assistance": {
+      "stack_limit": 10,
       "direct_buff_types": ["health", "damage", "range"],
       "reload_when_weapon_rof_above": 1,
       "add_safe_movement_speed": true

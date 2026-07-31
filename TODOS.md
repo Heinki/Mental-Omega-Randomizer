@@ -30,7 +30,6 @@ BUGS AND IMPROVEMENTS
 - Tainted empire nonstop yunru spawns
 - Engineers that are given at the start of missions which are cloaked are not selectable
 - Check generates buffs, when max buffs already achieved give it to units/powers that can be buffed "endlessly" 
-- Ghost Hunt - engineer cannot enter the MCV, clone issue
 
 
 New Game mode idea

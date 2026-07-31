@@ -32,6 +32,8 @@ from ._shared import (
     unit_role_equivalents,
     unsafe_country_houses,
 )
+from randomizer.config.tuning import mission_assistance_stack_count
+
 from .base import (
     format_multiplier,
     merge_unique_csv_bounded,
@@ -215,10 +217,7 @@ def stacked_house_buff_values(
 
 def mission_assistance_multipliers(stacks):
     """Return the cumulative player-only multipliers for failed-mission retries."""
-    try:
-        stacks = max(0, int(stacks))
-    except (TypeError, ValueError):
-        stacks = 0
+    stacks = mission_assistance_stack_count(stacks)
     return {
         'production': stacking_multiplier('production', stacks),
         'cost': stacking_multiplier('cost', stacks),
@@ -242,10 +241,7 @@ def mission_assistance_direct_rewards(
     country.  ``unit_weapon_buff_rules`` therefore remains responsible for
     rejecting a type whenever a non-assisted house uses it in this map.
     """
-    try:
-        stacks = max(0, int(stacks))
-    except (TypeError, ValueError):
-        stacks = 0
+    stacks = mission_assistance_stack_count(stacks)
     rewards = []
     if not stacks:
         return rewards
@@ -291,10 +287,7 @@ def mission_assistance_direct_rewards(
 
 def mission_assistance_buff_values(base_values, stacks):
     """Build category/country overrides for one mission's assistance stacks."""
-    try:
-        stacks = max(0, int(stacks))
-    except (TypeError, ValueError):
-        stacks = 0
+    stacks = mission_assistance_stack_count(stacks)
     multipliers = mission_assistance_multipliers(stacks)
     if not stacks:
         return {}
@@ -336,10 +329,7 @@ def mission_assistance_buff_rules(
     Global unit/weapon assistance is guarded separately by
     :func:`unit_weapon_buff_rules`.
     """
-    try:
-        stacks = max(0, int(stacks))
-    except (TypeError, ValueError):
-        stacks = 0
+    stacks = mission_assistance_stack_count(stacks)
     if not stacks:
         return ({}, [], [])
 

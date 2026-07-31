@@ -13,6 +13,16 @@ MISSION_ASSISTANCE = _CONFIG['mission_assistance']
 REWARD_PLANNING = _CONFIG['reward_planning']
 
 
+def mission_assistance_stack_count(count):
+    """Clamp retry assistance to its configured mission-only stack cap."""
+    try:
+        count = max(0, int(count))
+    except (TypeError, ValueError):
+        return 0
+    stack_limit = max(1, int(MISSION_ASSISTANCE.get('stack_limit', 10)))
+    return min(count, stack_limit)
+
+
 def stacking_multiplier(effect, count):
     """Return one configured exponential multiplier within its exact cap."""
     values = BUFF_EFFECTS[effect]

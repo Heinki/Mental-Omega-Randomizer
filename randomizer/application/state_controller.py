@@ -1,5 +1,7 @@
 """Persistent state, player configuration, starters, and assistance."""
 
+from randomizer.config.tuning import mission_assistance_stack_count
+
 from ._dependencies import (
     BUFF_TARGETS,
     BUFF_TYPES,
@@ -564,10 +566,9 @@ class StateController:
     def mission_failure_stack(self, code):
         if not self.state or not code:
             return 0
-        try:
-            return max(0, int(self.state.get('mission_failure_stacks', {}).get(code, 0)))
-        except (TypeError, ValueError):
-            return 0
+        return mission_assistance_stack_count(
+            self.state.get('mission_failure_stacks', {}).get(code, 0)
+        )
 
     def cache_mission_assistance_units(self, code, unit_ids):
         if not self.state or not code or code not in self.state.get('mission_order', []):
@@ -598,7 +599,10 @@ class StateController:
             return False
 
         stacks = self.state.setdefault('mission_failure_stacks', {})
-        next_stack = self.mission_failure_stack(code) + 1
+        current_stack = self.mission_failure_stack(code)
+        next_stack = mission_assistance_stack_count(current_stack + 1)
+        if next_stack == current_stack:
+            return False
         stacks[code] = next_stack
         self.save_state()
         self.append_log(
