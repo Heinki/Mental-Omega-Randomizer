@@ -145,6 +145,7 @@ from randomizer.maps.rules import (
 )
 from randomizer.rewards.rules import tech_ids_for_rewards, unlocked_reward_tech_ids
 from randomizer.missions.safety import (
+    always_available_miner_rules,
     always_available_transport_rules,
     chaos_earned_access_rules,
     expanded_tier_one_defense_ids,
@@ -162,6 +163,7 @@ from randomizer.missions.safety import (
 )
 from randomizer.maps.pipeline import prepare_hooked_map as prepare_hooked_mission_map
 from randomizer.missions.overrides import (
+    MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,

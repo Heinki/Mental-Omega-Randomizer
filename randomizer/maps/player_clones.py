@@ -83,6 +83,9 @@ def player_unit_clone_rules(
         str(source).upper(): dict(values)
         for source, values in (owned_clone_rule_overlays or {}).items()
     }
+    buildable_ids = {
+        str(item).upper() for item in (buildable_tech_ids or ())
+    }
     records, allowed_houses = _allowed_buff_house_names(
         lines,
         (),
@@ -165,6 +168,7 @@ def player_unit_clone_rules(
         additional_unlocked_tech_ids=additional_unlocked_tech_ids,
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
+        global_production_unit_ids=buildable_ids,
     )
     excluded_unit_ids = {
         str(unit_id or '').upper() for unit_id in excluded_unit_ids
@@ -217,7 +221,6 @@ def player_unit_clone_rules(
     }
     reserved_ids = {str(section).lower() for section in installed_sections}
     reserved_ids.update(str(section).lower() for section in map_sections)
-    buildable_ids = {str(item).upper() for item in (buildable_tech_ids or ())}
     forced_clone_ids = {
         str(item).upper()
         for item in (forced_buildable_clone_ids or ())
@@ -363,6 +366,11 @@ def player_unit_clone_rules(
         native_helper_support=native_helper_support,
         native_map_name_by_lower=native_map_name_by_lower,
         native_map_sections=native_map_sections,
+        native_trigger_reference_ids={
+            str(unit_id).upper()
+            for unit_id in native_trigger_reference_ids
+            if unit_id
+        },
         owned_clone_ids=owned_clone_ids,
         owned_clone_rule_overlays=owned_clone_rule_overlays,
         owned_clone_templates=owned_clone_templates,
@@ -383,6 +391,7 @@ def player_unit_clone_rules(
     clone_result = build_player_clone_sections(clone_context)
     section_rules = clone_result.section_rules
     replacements = clone_result.replacements
+    direct_replacements = clone_result.direct_replacements
     cloned_source_ids = clone_result.cloned_source_ids
     taskforce_replacements = clone_result.taskforce_replacements
     structure_plan_allowed_houses_by_unit = clone_result.structure_plan_allowed_houses_by_unit
@@ -518,6 +527,7 @@ def player_unit_clone_rules(
             structure_plan_allowed_houses_by_unit
         ),
         native_trigger_reference_ids=native_trigger_reference_ids,
+        direct_replacements=direct_replacements,
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)

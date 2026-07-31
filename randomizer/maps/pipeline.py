@@ -17,6 +17,7 @@ from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
+    PLAYER_ORIGINAL_PRODUCTION_GATE_ID,
     append_static_startup_buildings,
     append_superweapon_grant_trigger,
     backup_file_once,
@@ -30,12 +31,14 @@ from randomizer.maps.rules import (
     mission_assistance_unit_ids,
     native_variant_unit_buff_rules,
     native_variant_veterancy_rules,
+    original_player_production_gate_rules,
     player_country_buff_rules,
     player_unit_clone_rules,
     resolved_academy_clone_rules,
     resolved_delivery_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
+    rewrite_techlevel_actions,
     scripted_reinforcement_veterancy_rules,
     stacked_house_buff_values,
     suppressed_superweapon_building_ids,
@@ -116,6 +119,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     code = mission.get('code')
     if not scenario or not code:
         return None
+    delayed_native_unlock_ids = {
+        str(unit_id).upper()
+        for unit_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ())
+        if any(
+            str(key).lower() == 'techlevel'
+            and str(value) == LOCKED_TECH_LEVEL
+            for key, value in (extra_rules or {}).get(unit_id, {}).items()
+        )
+    }
     native_techno_exclusions = MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
         code, ()
     )
@@ -132,6 +144,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     clone_only_country_buff_types = (
         MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES.get(code, ())
     )
+    direct_only_country_buff_types = set(clone_only_country_buff_types)
+    direct_only_country_buff_types.add('production')
     if clone_only_country_buff_types:
         self.append_log(
             f'Kept {", ".join(sorted(clone_only_country_buff_types))} '
@@ -598,7 +612,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             additional_unlocked_tech_ids=buff_access_tech_ids,
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
-            excluded_buff_types=clone_only_country_buff_types,
+            excluded_buff_types=direct_only_country_buff_types,
         )
         if house_buffs:
             buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
@@ -613,7 +627,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
             excluded_player_houses=excluded_player_houses,
-            excluded_buff_types=clone_only_country_buff_types,
+            excluded_buff_types=direct_only_country_buff_types,
         )
         if house_rule_sections:
             merge_ini_section_values(lines, house_rule_sections)
@@ -768,16 +782,117 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             owned_clone_templates=owned_clone_templates,
             owned_clone_rule_overlays=owned_clone_rule_overlays,
             force_direct_house_scoped_fallback_types=(
-                clone_only_country_buff_types
+                direct_only_country_buff_types
             ),
         )
+        mission_unlock_clone_replacements = {
+            source_id: str(clone_handled.get(source_id, {}).get('clone_id') or '')
+            for source_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ())
+            if str(clone_handled.get(source_id, {}).get('clone_id') or '')
+        }
+        for source_id in sorted(delayed_native_unlock_ids):
+            clone_id = mission_unlock_clone_replacements.get(source_id)
+            if not clone_id or clone_id not in clone_rule_sections:
+                self.append_log(
+                    f'Could not prepare delayed player clone for native unlock {source_id}.',
+                    error=True,
+                )
+                continue
+            clone_rule_sections[clone_id]['TechLevel'] = LOCKED_TECH_LEVEL
+
+        actual_clone_source_ids = {
+            str(source_id).upper()
+            for source_id, details in clone_handled.items()
+            if str((details or {}).get('clone_id') or '').strip()
+        }
+        production_gate_source_ids = (
+            (set(isolated_native_ids) - set(preserved_native_access_ids))
+            | actual_clone_source_ids
+        )
+        production_gate_rules = original_player_production_gate_rules(
+            lines,
+            installed_rule_sections,
+            production_gate_source_ids,
+            existing_rule_sections=clone_rule_sections,
+        )
+        for section, values in production_gate_rules.items():
+            clone_rule_sections.setdefault(section, {}).update(values)
         if clone_rule_sections:
+            production_trace = {}
+            for source_id, details in clone_handled.items():
+                if 'production' not in set(
+                    (details or {}).get('clone_unit_buff_types', ())
+                ):
+                    continue
+                clone_id = str((details or {}).get('clone_id') or '')
+                clone_values = clone_rule_sections.get(clone_id, {})
+                multiplier = next(
+                    (
+                        str(value)
+                        for key, value in clone_values.items()
+                        if str(key).lower() == 'buildtimemultiplier'
+                    ),
+                    '',
+                )
+                if not multiplier:
+                    continue
+                category = str(
+                    BUFF_TARGETS.get(source_id, {}).get('category')
+                    or 'other'
+                )
+                production_trace.setdefault(category, {}).setdefault(
+                    multiplier, 0
+                )
+                production_trace[category][multiplier] += 1
+            if production_trace:
+                trace_parts = []
+                for category in sorted(production_trace):
+                    values = production_trace[category]
+                    value_summary = '/'.join(sorted(values))
+                    count = sum(values.values())
+                    trace_parts.append(
+                        f'{category}={value_summary} ({count} clone(s))'
+                    )
+                self.append_log(
+                    'Applied live clone BuildTimeMultiplier values: '
+                    + '; '.join(trace_parts)
+                    + '.'
+                )
             merge_ini_section_values(lines, clone_rule_sections)
             self.append_log(
                 'Prepared isolated standalone player unit/defense clones for: '
                 + ', '.join(cloned_unit_names)
-                + '. Compatible helper references use the same buffed clones; native IDs remain buildable fallbacks.'
+                + '. Compatible helper references use the same buffed clones; '
+                'native IDs remain AI/script fallbacks only.'
             )
+        production_gate_houses = player_controlled_houses(
+            lines, records=records
+        )
+        if not production_gate_houses:
+            fallback_gate_house = player_house_from_map(lines, records=records)
+            production_gate_houses = (
+                [fallback_gate_house] if fallback_gate_house else []
+            )
+        placed_production_gates = append_static_startup_buildings(
+            lines,
+            production_gate_houses,
+            [PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
+            if production_gate_source_ids else (),
+        )
+        if production_gate_source_ids:
+            expected_gate_count = len(unique_in_order(production_gate_houses))
+            if len(placed_production_gates) != expected_gate_count:
+                self.append_log(
+                    'Could not place every exact-House original-production gate; '
+                    f'placed {len(placed_production_gates)} of {expected_gate_count}.',
+                    error=True,
+                )
+            else:
+                self.append_log(
+                    'Blocked native player production behind isolated clone mapping: '
+                    f'{len(production_gate_source_ids)} source type(s), '
+                    f'{len(placed_production_gates)} player house gate(s).'
+                )
         reprocessor_rules, reprocessor_report = reprocessor_bounty_rules(
             lines,
             installed_rule_sections,
@@ -1040,10 +1155,20 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             + f'. Grant houses: {", ".join(power_houses)}.'
         )
 
+    rewritten_native_unlocks = rewrite_techlevel_actions(
+        lines,
+        mission_unlock_clone_replacements if self.state else {},
+    )
+    if rewritten_native_unlocks:
+        self.append_log(
+            f'Retargeted {rewritten_native_unlocks} native tech unlock action(s) '
+            'to isolated player clones.'
+        )
+
     unlocked_tech_ids = set(mission_effective_tech_ids)
-    # Preserve reviewed native Action 106 unlocks. Their initial
-    # TechLevel remains locked; mission_required_launch_rules removes only
-    # BuildLimit so the native action can reveal them at the right time.
+    # Keep reviewed source IDs as a fail-safe if clone preparation was
+    # impossible. Normal launches rewrite Action 106 to the registered clone;
+    # delayed clones remain locked until that authored action fires.
     unlocked_tech_ids.update(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
     randomized_tech_ids = self.randomized_tech_ids() | suppressed_power_buildings
     unlocked_tech_ids.difference_update(suppressed_power_buildings)

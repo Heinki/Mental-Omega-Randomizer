@@ -10,7 +10,7 @@
     "noncombat_weapon_target_ids": ["ENGINEER", "SENGINEER", "YENGINEER", "FENGINEER", "SPY", "SBTR", "INTRUDER", "HIJACKER", "MWF", "MSA", "SWPR", "ORCIN", "ITNK"],
     "nontrainable_unit_ids": ["AMEDIC", "ENGINEER", "SPY", "SUPR", "CMIN", "AMCV", "SHAD", "CRYO", "HBIRD", "SENGINEER", "SBTR", "ARSO", "DRON", "SMCV", "RAVA", "MWF", "FDRON", "EDRN", "DUST", "YENGINEER", "KAOS", "INTRUDER", "HIJACKER", "REPU", "YMIN", "PCV", "DRIL", "COYO", "QUAD", "RUINER", "YHVR", "FENGINEER", "SYNC", "CLAIR", "NMIN", "FMCV", "MSA", "RACC", "COON", "CONF", "DIVER", "MAD", "ORCIN", "BOID", "SEAT", "HARB", "ITNK", "DIVERP", "CHRP", "REJU"],
     "always_available_core_unit_ids": ["AMCV", "SMCV", "PCV", "FMCV", "CMIN", "HARV", "YMIN", "NMIN"],
-    "always_available_building_ids": ["GACNST", "NACNST", "YACNST", "FACNST", "GAPOWR", "NAPOWR", "YAPOWR", "FATRAP", "GAREFN", "NAREFN", "YAREFN", "FAREFN"],
+    "always_available_building_ids": ["GACNST", "NACNST", "YACNST", "FACNST", "GAPOWR", "NAPOWR", "YAPOWR", "FATRAP", "GAREFN", "NAREFN", "YARIREFN", "FAREFN"],
     "trainable_defense_ids": ["GAPILL", "NASAM", "GAGUN", "GACPIL", "ATESLA", "GTGCAN", "GAHYPE", "NALASR", "NAFLAK", "TESLA", "NAHAMM", "YAGGUN", "YARAIL", "YAHADE", "YAPSYT", "FASONI", "FAGUAR", "FARAIL", "FACOMP", "FAAVAL"],
     "naval_unit_ids": ["LCRF", "DEST", "AEGIS", "DLPH", "HCRUIS", "CARRIER", "SIREN", "SAPC", "SUB", "SWLF", "REAP", "DBOAT", "DRED", "AKULA", "YHVR", "SLED", "SQD", "NAUT", "BSUB", "SEAT", "SWORD", "SHARK", "MANTA", "LEVI"],
     "additional_production_prerequisites": {},

@@ -89,7 +89,7 @@ and generated runs therefore retain prior behavior.
 
 | Option ID | UI label | Effect per stack | Implementation scope |
 |---|---|---|---|
-| `production` | Production / construction speed | 15% faster production or construction, capped at 80% shorter | House/category scoped in Standard; unit-specific owned clone in Chaos. |
+| `production` | Production / construction time | 15% shorter production or construction time, capped at 80% shorter | Written to the currently buildable owned clone in Standard and Chaos. |
 | `cost` | Cost reduction | 20% cheaper, capped at 100% | House/category scoped in Standard; unit-specific in Chaos. |
 | `speed` | Movement speed | 10% faster per stack | Infantry uses isolated direct clones and cannot be raised above Speed `8`; infantry already at or above that ceiling is omitted from the Mobility reward pool. Faster native infantry retains its authored speed but receives no acceleration. Vehicles, naval units, and aircraft retain their existing house/category or unit-specific behavior. |
 | `armor` | Armor | About 11% stronger effective durability per stack, capped at +1000% | House/category scoped in Standard; unit-specific effective durability in Chaos. |

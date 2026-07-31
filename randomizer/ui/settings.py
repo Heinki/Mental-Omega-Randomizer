@@ -792,7 +792,7 @@ def _build_gameplay_settings(self, settings_frame):
     self.assistance_description_label = ttk.Label(
         assistance_frame,
         text=(
-            'Per stack: faster production and per-unit weapon firing, cheaper units, and higher movement '
+            'Per stack: 15% shorter production time, faster per-unit weapon firing, cheaper units, and higher movement '
             'speed, health, weapon damage, armor effectiveness, and attack range. Movement '
             'uses safe per-unit ceilings: infantry 8, vehicles/naval 12, aircraft 30. Applies '
             'to earned units and units supplied by that mission; normal faction rosters '

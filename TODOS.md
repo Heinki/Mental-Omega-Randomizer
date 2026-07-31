@@ -19,27 +19,18 @@ https://github.com/TheCondor07/Starcraft2ArchipelagoData
 BUGS AND IMPROVEMENTS
 -------------------------
 
-- increased buff difficultie for enemys after x objectives have been done
-- check ini implementation instead of copying infos into the .map files
-- Give buffs to super weapons/Aid powerups
-- Enemy AI not working and building (Check with buff difficultie in one go)
-
-- iron guard not working
-- Default T1 defensive Structures not available in Standard mission for ALL Campaigns
-- After morales extract enemy attacks with stingers only :KEKW: :KEKW: :KEKW: , easy peasy, also the cloning of morales on this won't work, if you build him he disappears
-Standerd, not chaos as well, on mental difficulty
-- @Heinki I have a lead on what might be causing the issue with AI production
-BuildLimit=0
-TechLevel=11
-Owner=<player's country>,MORPLAYER
-I'm seeing some cases where this is on non-cloned units
-
-These are just the ones I could find by doing a very quick wiki search before I go off to bed- these all should have unique sidebar icons
-- Soviets: Boris, Krukov, Reznov, Cyborg Vanguard, (Gharial Prototype, Mastodon Prototype, Infector Tank), Cosmonaut, Perun Flagship, Soviet Psychic Sensor(?), Soviet Cloning Lab(?), 
-Allies: (Jackal Racer Prototype, Future Tank X-0, Diverbee Prototype, Tarchia Prototype). Stratofortress Support Power?
-Epsilon: Rashidi(?), Cosmonaut, 
-Foehn: (Prototype Bison Tank????)
-
+- increased buff difficultie for enemys after x objectives have been done - maybe change this into only house buffs and super weapons/aid powerups to help the AI, copying the AI will break the game misisons once again, also check if we can give the AI extra unlocks so that they can build tech units earlier which they normally get at the end of the missions.
+- deployed units do not get the buffs
+- Make settings with available buffs/debuffs/superweapons saveable so that players can share the same seed and the same settings basically
+- duplicated units still with cloned tech AND original tech, original tech should not be available for the player when capturing enemy buildings and such
+- Miners not available even though they should ALWAYS be available!
+- Vanishing points not working
+- Add perun as hero limit like other units
+- Grumble issue with deployment
+- Tainted empire nonstop yunru spawns
+- Engineers that are given at the start of missions which are cloaked are not selectable
+- Check generates buffs, when max buffs already achieved give it to units/powers that can be buffed "endlessly" 
+- Ghost Hunt - engineer cannot enter the MCV, clone issue
 
 
 New Game mode idea
@@ -53,7 +44,6 @@ The levels will be divided into 3 categories:
 
 INFO
 ------------------------------
-there's Survivors, Nightcrawler and Obsidian Sands, there's also Fullmetal, but your Allies in between a fight with Psicorps and Scorpion Cell.
 
 https://ares-developers.github.io/Ares-docs/new/typeselect.html?highlight=group for grouping same units and cloned units
 

@@ -121,6 +121,7 @@ def _active_direct_buff_counts(
     unit_specific_mode=False,
     include_house_scoped_fallback=False,
     house_scoped_only=False,
+    global_production_unit_ids=None,
 ):
     """Group applicable direct TechnoType/WeaponType buffs by source unit."""
     grouped_counts = {}
@@ -134,6 +135,8 @@ def _active_direct_buff_counts(
         active_rewards,
         enabled=share_basic_equivalent_buffs,
     )
+    global_production_count = 0
+    global_production_limit = None
     identity_rewards = []
     for reward in role_rewards:
         identity_rewards.append(reward)
@@ -152,6 +155,15 @@ def _active_direct_buff_counts(
         target = BUFF_TARGETS.get(unit_id, {})
         if not unit_id or not target:
             continue
+        if buff_type == 'production' and target.get('global_production'):
+            global_production_count += 1
+            global_production_limit = buff_stack_limit(reward)
+            if global_production_limit is not None:
+                global_production_count = min(
+                    global_production_count,
+                    global_production_limit,
+                )
+            continue
         if unit_id in MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(
             buff_type, frozenset()
         ):
@@ -162,11 +174,14 @@ def _active_direct_buff_counts(
             'production', 'cost', 'speed', 'armor',
         }:
             continue
-        direct_chaos_types = (
-            {'production', 'cost', 'speed', 'armor'}
-            if unit_specific_mode
-            else set()
-        )
+        # CountryType BuildTime*Mult values are accepted by the parser but do
+        # not change live campaign production timing reliably. Production is
+        # therefore always written to the owned TechnoType clone through
+        # BuildTimeMultiplier. Chaos additionally keeps its other formerly
+        # house-scoped buffs clone-local.
+        direct_chaos_types = {'production'}
+        if unit_specific_mode:
+            direct_chaos_types.update({'cost', 'speed', 'armor'})
         if reward.get('force_direct_unit_buff'):
             direct_chaos_types.update(
                 {'production', 'cost', 'speed', 'armor'}
@@ -202,6 +217,27 @@ def _active_direct_buff_counts(
         limit = buff_stack_limit(reward)
         if limit is not None:
             grouped_counts[key] = min(grouped_counts[key], limit)
+
+    if global_production_count:
+        for unit_id in {
+            str(item).upper()
+            for item in (global_production_unit_ids or ())
+        }:
+            target = BUFF_TARGETS.get(unit_id, {})
+            if target.get('category') not in {
+                'infantry', 'units', 'aircraft', 'defenses',
+                'special_buildings',
+            }:
+                continue
+            key = (unit_id, 'production')
+            grouped_counts[key] = (
+                grouped_counts.get(key, 0) + global_production_count
+            )
+            if global_production_limit is not None:
+                grouped_counts[key] = min(
+                    grouped_counts[key],
+                    global_production_limit,
+                )
 
     counts_by_unit = {}
     for (unit_id, buff_type), count in grouped_counts.items():

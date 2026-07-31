@@ -404,9 +404,9 @@ def reward_rule_summary(reward):
                 except (TypeError, ValueError):
                     delta = 0
                 if delta > 0:
-                    changes.append(f'builds/trains {delta}% faster')
+                    changes.append(f'production time {delta}% shorter')
                 elif delta < 0:
-                    changes.append(f'builds/trains {abs(delta)}% slower')
+                    changes.append(f'production time {abs(delta)}% longer')
                 else:
                     changes.append(f'BuildTimeMultiplier={value}')
             elif key_lower in {'owner', 'requiredhouses', 'forbiddenhouses', 'prerequisiteoverride'}:

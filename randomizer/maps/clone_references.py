@@ -43,6 +43,7 @@ def _clone_reference_rules(
     taskforce_allowed_houses=None,
     structure_plan_allowed_houses_by_unit=None,
     native_trigger_reference_ids=(),
+    direct_replacements=None,
 ):
     """Rewrite friendly placements, base plans, and TaskForce consumers."""
     section_rules = {}
@@ -67,6 +68,9 @@ def _clone_reference_rules(
     native_trigger_reference_ids = {
         str(unit_id).upper() for unit_id in native_trigger_reference_ids
     }
+    direct_replacements = (
+        replacements if direct_replacements is None else direct_replacements
+    )
     rewritten = 0
     mixed_taskforces = []
     for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
@@ -74,7 +78,7 @@ def _clone_reference_rules(
             tokens = [token.strip() for token in value.split(',')]
             if len(tokens) < 2 or tokens[0].lower() not in allowed_houses:
                 continue
-            replacement = replacements.get(tokens[1].upper())
+            replacement = direct_replacements.get(tokens[1].upper())
             if not replacement:
                 continue
             tokens[1] = replacement

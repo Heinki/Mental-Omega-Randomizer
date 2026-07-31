@@ -16,6 +16,7 @@ from ._dependencies import (
     LOCKED_TECH_LEVEL,
     MAX_OPTION_INI_BYTES,
     MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS,
+    MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
@@ -27,6 +28,7 @@ from ._dependencies import (
     STARTING_UNLOCKED_MISSIONS,
     VICTORY_CLOSE_DELAY_MS,
     YR_OPTIONS_INI,
+    always_available_miner_rules,
     always_available_transport_rules,
     chaos_earned_access_rules,
     choice_label_from_ini,
@@ -54,6 +56,7 @@ from ._dependencies import (
     starting_tier_one_rules,
     subprocess,
     summarize_basic_unit_rules,
+    tech_ids_for_rewards,
     traceback,
 )
 
@@ -122,6 +125,56 @@ class LaunchController:
         mission_code = str(mission.get('code') or '').upper()
 
         def merge_required_rules(rules):
+            miner_rules = always_available_miner_rules(
+                lines,
+                additional_build_houses=(),
+            )
+            for section, values in miner_rules.items():
+                rules.setdefault(section, {}).update(values)
+
+            already_available_ids = set(self.active_unlocked_reward_tech_ids())
+            already_available_ids.update(
+                self.active_starting_tier_one_expanded_ids()
+            )
+            already_available_ids.update(
+                self.active_starting_tier_one_defense_expanded_ids()
+            )
+            delayed_native_ids = {
+                str(unit_id).upper()
+                for unit_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(
+                    mission_code, ()
+                )
+            } - already_available_ids
+            if delayed_native_ids:
+                if self.active_reward_mode() == 'Chaos (Experimental)':
+                    delayed_rewards = [
+                        reward
+                        for reward in REWARD_POOL
+                        if tech_ids_for_rewards([reward]).intersection(
+                            delayed_native_ids
+                        )
+                    ]
+                    delayed_rules = chaos_earned_access_rules(
+                        lines,
+                        delayed_rewards,
+                        additional_build_houses=(),
+                    )
+                else:
+                    delayed_rules = mission_basic_unit_rules(
+                        lines,
+                        earned_access_ids=delayed_native_ids,
+                        translate_equivalents=False,
+                        additional_build_houses=(),
+                        additional_production_houses=production_houses,
+                    )
+                for unit_id in sorted(delayed_native_ids):
+                    values = delayed_rules.get(unit_id)
+                    if not values:
+                        continue
+                    values = dict(values)
+                    values['TechLevel'] = LOCKED_TECH_LEVEL
+                    rules.setdefault(unit_id, {}).update(values)
+
             if mission_code in MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS:
                 # Juggernaut eventually hands the player an SMCV. Expose every
                 # earned defense through any construction yard, including

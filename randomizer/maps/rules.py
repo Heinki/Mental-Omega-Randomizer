@@ -20,4 +20,5 @@ from .country_buffs import *
 from .helper_ai import *
 from .player_clones import *
 from .powers import *
+from .production import *
 from .weapon_buffs import *

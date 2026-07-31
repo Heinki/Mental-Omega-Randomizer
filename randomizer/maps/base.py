@@ -6,6 +6,7 @@ from ._shared import (
     EXTRA_TECH_LOCKS,
     HOOKED_MAP_MARKER,
     MAX_ARES_TYPE_ID_LENGTH,
+    MAX_MAP_ACTION_LINE_LENGTH,
     RANDOMIZED_SUPERWEAPON_BUILDINGS,
     RANDOMIZER_RULES_MARKER,
     RANDOMIZER_SUPERWEAPON_CAMEO_PRIORITY,
@@ -227,6 +228,53 @@ def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_id
             lines[index] = f'{key.strip()}={len(kept)}' + (',' + ','.join(tokens) if tokens else '')
 
     return removed
+
+
+def rewrite_techlevel_actions(lines, replacements):
+    """Retarget native Action 106 unlocks to registered player clones."""
+    replacements = {
+        str(source).upper(): str(replacement)
+        for source, replacement in (replacements or {}).items()
+        if str(source).strip() and str(replacement).strip()
+    }
+    if not replacements:
+        return 0
+
+    start, end = find_section_bounds(lines, 'Actions')
+    if start is None:
+        return 0
+    rewritten = 0
+    for index in range(start + 1, end):
+        line = lines[index]
+        if '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        count, groups = parse_action_groups(value)
+        if not count or not groups:
+            continue
+        changed = False
+        for group in groups:
+            if len(group) < 3 or group[0] != '106':
+                continue
+            replacement = replacements.get(group[2].strip().upper())
+            if not replacement:
+                continue
+            group[2] = replacement
+            changed = True
+            rewritten += 1
+        if not changed:
+            continue
+        tokens = action_group_tokens(groups)
+        replacement_line = (
+            f'{key.strip()}={count}'
+            + (',' + ','.join(tokens) if tokens else '')
+        )
+        if len(replacement_line.encode('utf-8')) > MAX_MAP_ACTION_LINE_LENGTH:
+            raise ValueError(
+                f'Action 106 clone replacement exceeds {MAX_MAP_ACTION_LINE_LENGTH} bytes.'
+            )
+        lines[index] = replacement_line
+    return rewritten
 
 def randomizer_clone_type_id(source_type):
     source_type = str(source_type or '').strip()

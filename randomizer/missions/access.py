@@ -88,6 +88,11 @@ AMPHIBIOUS_TRANSPORTS = {
     for family, values in _FACTION_CONFIG['amphibious_transports'].items()
 }
 
+MINERS = {
+    family: tuple(values)
+    for family, values in _FACTION_CONFIG['miners'].items()
+}
+
 PRODUCTION_BUILDINGS = {
     family: {category: set(ids) for category, ids in categories.items()}
     for family, categories in _FACTION_CONFIG['production_buildings'].items()
@@ -707,11 +712,15 @@ def _alternative_prerequisite_rules(alternatives):
     if not alternatives:
         return {}
     if len(alternatives) == 1:
-        # Standard captured-factory access must remain gated by that exact
-        # faction building. A concrete override also survives player-clone
-        # generation; `none` plus List0 was stripped from cloned units and
-        # could expose Allied peers before an Allied factory was captured.
-        return {'PrerequisiteOverride': alternatives[0]}
+        # This is the complete exact gate, not an escape hatch from another
+        # prerequisite. Keep it on the normal field so map-local clones cannot
+        # inherit or trigger broad PrerequisiteOverride behavior.
+        return {
+            'Prerequisite': alternatives[0],
+            'PrerequisiteOverride': None,
+            'Prerequisite.List0': None,
+            'Prerequisite.Lists': None,
+        }
 
     # Ares counts only the extra, 1-based lists. The normal Prerequisite is
     # the first path; List1..ListN are the alternatives. Using List0..ListN
@@ -770,6 +779,39 @@ def always_available_transport_rules(
         else:
             values['PrerequisiteOverride'] = prerequisite
         rules[tech_id] = values
+    return rules
+
+
+def always_available_miner_rules(lines, additional_build_houses=()):
+    """Keep each faction miner available behind its refinery and factory."""
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
+    player_countries = safe_build_countries(
+        lines, records, additional_build_houses
+    )
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
+    rules = {}
+    for _family, (tech_id, factory_id, refinery_id) in MINERS.items():
+        rules[tech_id] = {
+            'TechLevel': '1',
+            'Owner': owners,
+            'RequiredHouses': required_houses,
+            'ForbiddenHouses': 'none',
+            'FactoryOwners': None,
+            'FactoryOwners.Forbidden': None,
+            # PrerequisiteOverride is satisfied by *any one* listed building.
+            # A normal prerequisite list requires both exact faction
+            # buildings, so foreign miners appear only after both structures
+            # are captured (or constructed).
+            'Prerequisite': f'{factory_id},{refinery_id}',
+            'PrerequisiteOverride': None,
+            'Prerequisite.Lists': None,
+            'Prerequisite.List0': None,
+            'Prerequisite.StolenTechs': None,
+        }
     return rules
 
 

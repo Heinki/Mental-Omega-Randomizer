@@ -46,6 +46,28 @@
         "FAYARD"
       ]
     },
+    "miners": {
+      "allies": [
+        "CMIN",
+        "GAWEAP",
+        "GAREFN"
+      ],
+      "soviets": [
+        "HARV",
+        "NAWEAP",
+        "NAREFN"
+      ],
+      "epsilon": [
+        "YMIN",
+        "YAWEAP",
+        "YARIREFN"
+      ],
+      "foehn": [
+        "NMIN",
+        "FAWEAP",
+        "FAREFN"
+      ]
+    },
     "production_buildings": {
       "allies": {
         "base": [

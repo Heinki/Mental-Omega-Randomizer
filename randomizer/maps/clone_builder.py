@@ -85,6 +85,7 @@ class PlayerCloneContext:
     native_helper_support: dict[str, dict[str, list[str]]]
     native_map_name_by_lower: dict[str, str]
     native_map_sections: dict[str, dict[str, Any]]
+    native_trigger_reference_ids: set[str]
     owned_clone_ids: dict[str, str]
     owned_clone_rule_overlays: dict[str, dict[str, Any]]
     owned_clone_templates: dict[str, dict[str, Any]]
@@ -105,6 +106,7 @@ class PlayerCloneBuildResult:
 
     section_rules: dict[str, dict[str, Any]]
     replacements: dict[str, str]
+    direct_replacements: dict[str, str]
     cloned_source_ids: set[str]
     taskforce_replacements: dict[str, str]
     structure_plan_allowed_houses_by_unit: dict[str, list[str]]
@@ -153,6 +155,7 @@ def build_player_clone_sections(
     native_helper_support = context.native_helper_support
     native_map_name_by_lower = context.native_map_name_by_lower
     native_map_sections = context.native_map_sections
+    native_trigger_reference_ids = context.native_trigger_reference_ids
     owned_clone_ids = context.owned_clone_ids
     owned_clone_rule_overlays = context.owned_clone_rule_overlays
     owned_clone_templates = context.owned_clone_templates
@@ -168,6 +171,7 @@ def build_player_clone_sections(
 
     section_rules = {}
     replacements = {}
+    direct_replacements = {}
     clone_id_by_source = {}
     cloned_source_ids = set()
     taskforce_replacements = {}
@@ -241,6 +245,21 @@ def build_player_clone_sections(
             ):
                 scripted_player_clone_unit_ids.add(tokens[1].upper())
     scripted_team_unit_ids.difference_update(scripted_player_clone_unit_ids)
+
+    direct_friendly_ids = set()
+    for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
+        for value in section_value_map_preserve(lines, section).values():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if len(tokens) >= 2 and tokens[0].lower() in allowed_houses:
+                direct_friendly_ids.add(tokens[1].upper())
+    exact_reference_ids = set()
+    for section in ('Events', 'Actions'):
+        for value in section_value_map_preserve(lines, section).values():
+            exact_reference_ids.update(
+                token.strip().upper()
+                for token in str(value).split(',')
+                if token.strip()
+            )
 
     native_helper_taskforces = _helper_autocreate_taskforce_units(
         lines,
@@ -671,6 +690,31 @@ def build_player_clone_sections(
                     continue
                 _remove_case_insensitive(clone_source_values, key)
                 clone_source_values[key] = value
+            if (
+                unit_id in buildable_ids
+                and owned_clone_rule_overlays.get(unit_id)
+            ):
+                # Installed/map source gates belong to the native AI identity.
+                # Keep only gates explicitly emitted by current player access
+                # planning. Otherwise FactoryOwners/StolenTech restrictions
+                # can survive on the MORP clone and expose the original after
+                # capture while hiding its intended replacement.
+                explicit_production_keys = {
+                    str(key).lower()
+                    for key, value in owned_clone_rule_overlays.get(
+                        unit_id, {}
+                    ).items()
+                    if value is not None
+                }
+                for key in list(clone_source_values):
+                    lowered = str(key).lower()
+                    if (
+                        lowered in CLONE_POLICY['production_gate_keys']
+                        or lowered.startswith(tuple(
+                            CLONE_POLICY['production_gate_prefixes']
+                        ))
+                    ) and lowered not in explicit_production_keys:
+                        clone_source_values.pop(key, None)
         if target_unit_id in ENGINEER_UNIT_IDS:
             clone_source_values = _sanitize_engineer_clone_values(
                 clone_source_values, target
@@ -1040,8 +1084,74 @@ def build_player_clone_sections(
         section_rules[clone_id] = clone_values
         clone_id_by_source[unit_id] = clone_id
         cloned_source_ids.add(unit_id)
+        usage_names = {
+            str(house).lower()
+            for house in unit_usage
+            if house
+        }
+        all_usage_friendly = bool(usage_names) and usage_names.issubset(
+            allowed_houses
+        )
+        safe_direct_rewrite = (
+            unit_id in direct_friendly_ids
+            and not excluded_build_only_clone
+            and unit_id not in ambiguous_mission_event_ids
+            and (
+                unit_id not in exact_reference_ids
+                or (
+                    all_usage_friendly
+                    and unit_id not in native_trigger_reference_ids
+                )
+            )
+        )
+        reference_clone_id = clone_id
+        starting_engineer_reference = (
+            safe_direct_rewrite and target_unit_id in ENGINEER_UNIT_IDS
+        )
+        if safe_direct_rewrite and (
+            'cloak' in direct_types or starting_engineer_reference
+        ):
+            # A cloaked infantry unit cannot reveal itself through its own
+            # Sight. Keep the fully buffed/cloaked production clone. Give
+            # map-authored player Engineers a clean, locked, non-cloaked
+            # identity even when no cloak reward is active; newly trained
+            # Engineers continue to use the normal production clone.
+            reference_clone_id = _collision_safe_type_id(
+                f'MORR{unit_id}',
+                f'player-reference:{unit_id}',
+                reserved_ids,
+            )
+            reference_values = dict(
+                clone_source_values
+                if starting_engineer_reference
+                else clone_values
+            )
+            _remove_case_insensitive(
+                reference_values,
+                'Cloakable',
+                'Cloakable.Stages',
+                'CloakingSpeed',
+                'CloakSound',
+                'BuildLimit',
+            )
+            reference_values['Cloakable'] = 'no'
+            reference_values['TechLevel'] = LOCKED_TECH_LEVEL
+            _register_map_type(
+                section_rules,
+                lines,
+                installed_sections,
+                list_section,
+                reference_clone_id,
+            )
+            section_rules[reference_clone_id] = reference_values
+        if safe_direct_rewrite:
+            direct_replacements[unit_id] = reference_clone_id
         if not build_only_clone:
-            replacements[unit_id] = clone_id
+            replacements[unit_id] = (
+                reference_clone_id
+                if safe_direct_rewrite and all_usage_friendly
+                else clone_id
+            )
         # Scripted teams must follow every friendly clone, including locked
         # map-local hero variants. Otherwise exact loss triggers can watch the
         # clone while a reinforcement TaskForce still creates the native ID,
@@ -1049,11 +1159,13 @@ def build_player_clone_sections(
         # _clone_reference_rules keeps enemy consumers native and splits shared
         # TaskForces, so reference-only clones are safe here.
         if not build_only_clone:
-            taskforce_replacements[unit_id] = clone_id
+            taskforce_replacements[unit_id] = reference_clone_id
         elif (
             excluded_build_only_clone
             or scripted_build_only_clone
             or unit_id in ambiguous_mission_event_ids
+        ) and not (
+            scripted_build_only_clone and safe_direct_rewrite
         ):
             unsupported.append(
                 f'{target.get("label", target_unit_id)} build-only clone kept native mission references'
@@ -1073,6 +1185,7 @@ def build_player_clone_sections(
             native_handled_weapon_ids = set()
         handled_by_unit[unit_id] = {
             'unit_buff_types': native_handled_unit_types,
+            'clone_unit_buff_types': handled_unit_types,
             'weapon_ids': native_handled_weapon_ids,
             'clone_id': clone_id,
         }
@@ -1110,6 +1223,7 @@ def build_player_clone_sections(
     return PlayerCloneBuildResult(
         section_rules=section_rules,
         replacements=replacements,
+        direct_replacements=direct_replacements,
         cloned_source_ids=cloned_source_ids,
         taskforce_replacements=taskforce_replacements,
         structure_plan_allowed_houses_by_unit=structure_plan_allowed_houses_by_unit,
