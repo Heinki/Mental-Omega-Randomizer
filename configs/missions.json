@@ -16,7 +16,9 @@
       "operation_stage_score": 9,
       "fallback_stage_score": 12,
       "finale_stage_score": 24,
-      "finale_mission_codes": ["SHAND"],
+      "finale_mission_codes": [
+        "SHAND"
+      ],
       "operation_mission_codes": [
         "ADEMON",
         "AOBST",
@@ -1098,6 +1100,9 @@
         "LIBRA6",
         "LIBRA7",
         "LIBRA8"
+      ],
+      "AGHOST": [
+        "SENGINEER"
       ]
     },
     "disabled_triggers": {
@@ -1209,6 +1214,9 @@
       ],
       "FEMPIRE": [
         "YUNRU"
+      ],
+      "AGHOST": [
+        "SENGINEER"
       ]
     },
     "reward_excluded_player_houses": {
@@ -1358,6 +1366,14 @@
           }
         }
       },
+      "AGHOST": {
+        "SENGINEER": {
+          "Cloakable": "no",
+          "Cloakable.Stages": null,
+          "CloakingSpeed": null,
+          "CloakSound": null
+        }
+      },
       "ELIZARD": {
         "BASIL": {
           "IsSelectableCombatant": "yes"
@@ -1488,81 +1504,124 @@
       ],
       "FEMPIRE": [
         "YUNRU"
+      ],
+      "AGHOST": [
+        "SENGINEER"
       ]
     },
     "native_variant_buff_rules": {
       "AINSOMNIA": [
         {
           "source_unit": "TANY",
-          "native_units": ["TANY"]
+          "native_units": [
+            "TANY"
+          ]
         },
         {
           "source_unit": "SIEG",
-          "native_units": ["SIEG"]
+          "native_units": [
+            "SIEG"
+          ]
         }
       ],
       "ASIREN": [
         {
           "source_unit": "TANY",
-          "native_units": ["TANY"]
+          "native_units": [
+            "TANY"
+          ]
         },
         {
           "source_unit": "SIEG",
-          "native_units": ["CLEG"]
+          "native_units": [
+            "CLEG"
+          ]
         }
       ],
       "AHAMMERFALL": {
         "source_unit": "TANY",
-        "native_units": ["TANY"]
+        "native_units": [
+          "TANY"
+        ]
       },
       "AHAMARTIA": {
         "source_unit": "TANY",
-        "native_units": ["TANY", "ATANY"]
+        "native_units": [
+          "TANY",
+          "ATANY"
+        ]
       },
       "SBLEED": {
         "source_unit": "MORALES",
-        "native_units": ["MORALES"]
+        "native_units": [
+          "MORALES"
+        ]
       },
       "EREALITY": {
         "source_unit": "LIBRA",
         "native_units": [
-          "LIBRA", "LIBRA1", "LIBRA2", "LIBRA3", "LIBRA4",
-          "LIBRA5", "LIBRA6", "LIBRA7", "LIBRA8"
+          "LIBRA",
+          "LIBRA1",
+          "LIBRA2",
+          "LIBRA3",
+          "LIBRA4",
+          "LIBRA5",
+          "LIBRA6",
+          "LIBRA7",
+          "LIBRA8"
         ]
       },
       "SRED": {
         "source_unit": "MORALES",
-        "native_units": ["MORALES"]
+        "native_units": [
+          "MORALES"
+        ]
       },
       "ETOTAL": [
         {
           "source_unit": "LIBRA",
-          "native_units": ["LIBRA"]
+          "native_units": [
+            "LIBRA"
+          ]
         },
         {
           "source_unit": "ASSN",
-          "native_units": ["ASSN"]
+          "native_units": [
+            "ASSN"
+          ]
         }
       ],
       "SFATAL": {
         "source_unit": "VOLKOV",
-        "native_units": ["VOLKOV", "SVOLKOV"]
+        "native_units": [
+          "VOLKOV",
+          "SVOLKOV"
+        ]
       },
       "AWITHER": {
         "source_unit": "TANY",
-        "native_units": ["ATANY"]
+        "native_units": [
+          "ATANY"
+        ]
       },
       "SJUGGER": {
         "source_unit": "VOLKOV",
-        "native_units": ["CYCOM"]
+        "native_units": [
+          "CYCOM"
+        ]
       },
       "EMIGDAL": {
         "source_unit": "LIBRA",
-        "native_units": ["LIBRA2", "LIBRA4"]
+        "native_units": [
+          "LIBRA2",
+          "LIBRA4"
+        ]
       },
       "FEMPIRE": {
         "source_unit": "YUNRU",
-        "native_units": ["YUNRU"]
+        "native_units": [
+          "YUNRU"
+        ]
       }
     },
     "native_tech_unlock_ids": {
