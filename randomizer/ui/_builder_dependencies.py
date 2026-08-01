@@ -11,6 +11,8 @@ from randomizer.rewards.catalogue import (
     BUFF_TYPES,
     MAX_REWARDS_PER_CHECK,
     POWER_BUFF_TYPES,
+    REWARD_POOL,
+    buff_stack_limit,
 )
 from randomizer.config.tuning import stacking_amount, stacking_multiplier
 from randomizer.rewards.weights import (

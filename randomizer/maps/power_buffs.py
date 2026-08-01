@@ -5,6 +5,7 @@ from copy import deepcopy
 from randomizer.rewards.catalogue import canonical_rewards
 from randomizer.rewards.power_buff_definitions import (
     POWER_BUFF_CONFIG,
+    power_buff_stack_limit,
 )
 
 
@@ -187,7 +188,9 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
         power_id = str(reward.get('superweapon') or '')
         if reward.get('kind') == 'buff' and buff_type and power_id:
             key = (power_id.upper(), str(buff_type))
-            counts[key] = counts.get(key, 0) + 1
+            limit = power_buff_stack_limit(reward)
+            next_count = counts.get(key, 0) + 1
+            counts[key] = min(next_count, limit) if limit is not None else next_count
 
     output = []
     for original in canonical:

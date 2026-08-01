@@ -9,8 +9,10 @@ from ._builder_dependencies import (
     PLAYER_COLORS,
     POWER_BUFF_TYPES,
     POWER_BUFF_WEIGHT_TYPES,
+    REWARD_POOL,
     UNIT_BUFF_WEIGHT_TYPES,
     WidgetTooltip,
+    buff_stack_limit,
     stacking_amount,
     stacking_multiplier,
     tk,
@@ -65,6 +67,39 @@ def buff_setting_amount_text(buff_type):
         amount = stacking_amount('range', 1)
         return f'{buff_type["setting_label"]} (+{amount:g})'
     return buff_type['setting_label']
+
+
+def _limit_text(limit):
+    if limit is None:
+        return 'no limit'
+    return f'max {limit} stack' + ('s' if limit != 1 else '')
+
+
+def unit_buff_limit_text(buff_id):
+    """Summarize per-target stack limits for one broad unit buff switch."""
+    rewards = [
+        reward
+        for reward in REWARD_POOL
+        if reward.get('kind') == 'buff'
+        and reward.get('unit')
+        and reward.get('buff_type') == buff_id
+    ]
+    limits = {buff_stack_limit(reward) for reward in rewards}
+    if not limits or limits == {None}:
+        return _limit_text(None)
+    finite = sorted(limit for limit in limits if limit is not None)
+    if None in limits:
+        return 'target-specific limit'
+    if len(finite) == 1:
+        return _limit_text(finite[0])
+    return f'max {finite[0]}-{finite[-1]} stacks by unit'
+
+
+def power_buff_setting_text(definition):
+    return (
+        f'{definition["setting_label"]} '
+        f'({_limit_text(definition.get("maximum_stacks"))})'
+    )
 
 def _build_advanced_tab(self, workspace_tabs):
     advanced_tab = ttk.Frame(workspace_tabs, padding=(8, 8, 8, 8))
@@ -180,18 +215,21 @@ def _build_advanced_tab(self, workspace_tabs):
     buff_options.columnconfigure(1, weight=1)
     self.advanced_unit_buff_vars = {}
     self.advanced_unit_buff_checks = {}
+    self.advanced_unit_buff_base_text = {}
     for index, buff_type in enumerate(BUFF_TYPES):
         buff_id = buff_type['id']
         variable = tk.BooleanVar(value=True)
+        option_text = buff_setting_amount_text(buff_type)
         check = ttk.Checkbutton(
             buff_options,
-            text=buff_setting_amount_text(buff_type),
+            text=option_text,
             variable=variable,
             command=lambda item=buff_id: self.on_advanced_unit_buff_changed(item),
         )
         check.grid(row=index // 2, column=index % 2, sticky='w', padx=(0, 4))
         self.advanced_unit_buff_vars[buff_id] = variable
         self.advanced_unit_buff_checks[buff_id] = check
+        self.advanced_unit_buff_base_text[buff_id] = option_text
     buff_canvas = tk.Canvas(
         buff_page,
         borderwidth=0,
@@ -266,7 +304,7 @@ def _build_advanced_tab(self, workspace_tabs):
         variable = tk.BooleanVar(value=True)
         check = ttk.Checkbutton(
             selected_power_buff_options,
-            text=definition['setting_label'],
+            text=power_buff_setting_text(definition),
             variable=variable,
             command=lambda item=buff_id: (
                 self.on_power_buff_power_type_changed(item)
@@ -629,7 +667,10 @@ def _build_gameplay_settings(self, settings_frame):
         row, column = divmod(index, 2)
         check = ttk.Checkbutton(
             buff_frame,
-            text=buff_type.get('setting_label', buff_type['name']),
+            text=(
+                f'{buff_type.get("setting_label", buff_type["name"])} '
+                f'({unit_buff_limit_text(buff_type["id"])})'
+            ),
             variable=self.buff_type_vars[buff_type['id']],
             command=(
                 self.on_hero_limit_buff_changed
@@ -657,7 +698,7 @@ def _build_gameplay_settings(self, settings_frame):
         row, column = divmod(index, 2)
         check = ttk.Checkbutton(
             power_buff_frame,
-            text=buff_type['setting_label'],
+            text=power_buff_setting_text(buff_type),
             variable=self.power_buff_type_vars[buff_type['id']],
             command=self.on_power_buff_global_type_changed,
         )

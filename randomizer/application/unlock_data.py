@@ -9,6 +9,7 @@ from ._dependencies import (
     REWARD_POOL,
     SPECIAL_BUILDING_DEFINITIONS,
     buff_effect_lines,
+    buff_stack_limit,
     canonical_reward,
     check_rewards,
     effective_buff_count,
@@ -221,7 +222,11 @@ class UnlockDataController:
                     entry['reward'], entry['count']
                 )
                 lines.extend(
-                    house_wide_buff_effect_lines(scope, count=count)
+                    house_wide_buff_effect_lines(
+                        scope,
+                        count=count,
+                        stack_limit=buff_stack_limit(entry['reward']),
+                    )
                 )
             lines.append('')
 
@@ -732,6 +737,7 @@ class UnlockDataController:
                 effect_lines.extend(house_wide_buff_effect_lines(
                     entry['house_scope'],
                     count=effective_buff_count(entry['reward'], buff_count),
+                    stack_limit=buff_stack_limit(entry['reward']),
                 ))
         else:
             buffs = {}

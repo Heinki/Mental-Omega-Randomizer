@@ -7,13 +7,15 @@
         "id": "recharge",
         "name": "Accelerated Recharge",
         "setting_label": "Faster recharge",
-        "description": "Recharge time is 10% shorter per stack."
+        "description": "Recharge time is 10% shorter per stack.",
+        "maximum_stacks": 5
       },
       {
         "id": "cost",
         "name": "Logistics",
         "setting_label": "Lower activation cost",
-        "description": "Activation cost is 15% cheaper per stack."
+        "description": "Activation cost is 15% cheaper per stack.",
+        "maximum_stacks": 5
       },
       {
         "id": "area",
@@ -25,13 +27,15 @@
         "id": "damage",
         "name": "Amplified Payload",
         "setting_label": "Higher damage",
-        "description": "Direct power damage is 15% higher per stack."
+        "description": "Direct power damage is 15% higher per stack.",
+        "maximum_stacks": 5
       },
       {
         "id": "duration",
         "name": "Extended Effect",
         "setting_label": "Longer effect duration",
-        "description": "Timed effect duration is 15% longer per stack."
+        "description": "Timed effect duration is 15% longer per stack.",
+        "maximum_stacks": 5
       },
       {
         "id": "payload",

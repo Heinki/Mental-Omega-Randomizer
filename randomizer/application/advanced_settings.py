@@ -26,6 +26,7 @@ from ._dependencies import (
     tech_ids_for_rewards,
     traceback,
     UNIT_BUFF_WEIGHT_TYPES,
+    buff_stack_limit,
     unit_display_label,
 )
 
@@ -296,6 +297,33 @@ class AdvancedSettingsController:
         )
         for buff_type in BUFF_TYPES:
             buff_id = buff_type['id']
+            base_text = self.advanced_unit_buff_base_text.get(
+                buff_id, buff_type['setting_label']
+            )
+            reward = next(
+                (
+                    reward
+                    for reward in REWARD_POOL
+                    if reward.get('kind') == 'buff'
+                    and str(reward.get('unit') or '').upper()
+                    == self.advanced_buff_unit_id
+                    and reward.get('buff_type') == buff_id
+                ),
+                None,
+            )
+            limit = buff_stack_limit(reward) if reward else None
+            limit_text = (
+                f'max {limit} stack' + ('s' if limit != 1 else '')
+                if limit is not None
+                else 'no limit'
+            )
+            self.advanced_unit_buff_checks[buff_id].configure(
+                text=(
+                    f'{base_text} ({limit_text})'
+                    if buff_id in possible
+                    else base_text
+                )
+            )
             self.advanced_unit_buff_vars[buff_id].set(
                 buff_id in possible and buff_id not in excluded
             )

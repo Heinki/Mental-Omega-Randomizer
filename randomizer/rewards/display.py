@@ -181,7 +181,12 @@ def house_wide_buff_label(scope):
     return f'{subject} {effect}'
 
 
-def house_wide_buff_effect_lines(scope, count=1, include_stack=True):
+def house_wide_buff_effect_lines(
+    scope,
+    count=1,
+    include_stack=True,
+    stack_limit=None,
+):
     suffix, buff_type = scope
     label = house_wide_buff_label(scope)
     count = max(1, int(count))
@@ -197,7 +202,7 @@ def house_wide_buff_effect_lines(scope, count=1, include_stack=True):
     else:
         return []
     if include_stack:
-        text = f'{text} ({stack_label(count)})'
+        text = f'{text} ({stack_label(count, stack_limit)})'
     return [text]
 
 
@@ -245,8 +250,11 @@ def effective_buff_count(reward, count):
     return min(count, limit)
 
 
-def stack_label(count):
-    return f'Stacked {count} time' + ('s' if count != 1 else '')
+def stack_label(count, limit=None):
+    text = f'Stacked {count} time' + ('s' if count != 1 else '')
+    if limit is not None:
+        text += f'; maximum {limit}'
+    return text
 
 
 def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
@@ -254,6 +262,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     if reward.get('kind') != 'buff':
         return []
 
+    limit = buff_stack_limit(reward)
     if reward.get('power_buff_type'):
         count = effective_buff_count(reward, count)
         prefix = (
@@ -262,7 +271,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         text = f'{prefix}{power_buff_effect_text(reward, count)}'
         if include_stack:
-            text = f'{text} ({stack_label(count)})'
+            text = f'{text} ({stack_label(count, limit)})'
         return [text]
 
     target = BUFF_TARGETS.get(reward.get('unit'), {})
@@ -274,7 +283,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     def stacked(text):
         if not include_stack:
             return text
-        return f'{text} ({stack_label(count)})'
+        return f'{text} ({stack_label(count, limit)})'
 
     if buff_type == 'production':
         multiplier = stacking_multiplier('production', count)
@@ -374,7 +383,7 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         if include_stack:
             sensor_text = (
                 f'{prefix}Sensors enabled ({sensor_range}-cell range; '
-                f'{stack_label(count)})'
+                f'{stack_label(count, limit)})'
             )
         return [sensor_text]
     return []

@@ -684,6 +684,17 @@ def _validate_power_buffs(sections, path):
     buff_ids = [item['id'] for item in buff_types]
     if len(buff_ids) != len(set(buff_ids)):
         _invalid('Duplicate power buff type IDs', path)
+    for item in buff_types:
+        maximum_stacks = item.get('maximum_stacks')
+        if maximum_stacks is not None and (
+            not isinstance(maximum_stacks, int)
+            or isinstance(maximum_stacks, bool)
+            or maximum_stacks < 1
+        ):
+            _invalid(
+                f'Invalid maximum stacks for power buff {item["id"]!r}',
+                path,
+            )
 
     for section_name in ('cost', 'payload'):
         for key, value in sections[section_name].items():

@@ -209,7 +209,9 @@ their direct or private-warhead duration. Direct-damage powers receive higher
 additional payload object per stack. Unique source structures, beacons, and
 fixed-layout grid spawners intentionally omit payload buffs. Buffs are folded
 into the same isolated power/helper clones, never native campaign definitions.
-All supported power-buff types stack without a Randomizer-imposed ceiling.
+Recharge, activation-cost, damage, and duration buffs stop at five stacks per
+power. Seed planning reallocates later reward slots after a power reaches that
+limit. Effect radius and extra delivered units remain unbounded.
 
 | Category | Allies | Soviets | Epsilon | Foehn |
 |---|---|---|---|---|

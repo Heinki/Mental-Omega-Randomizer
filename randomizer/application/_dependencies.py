@@ -92,6 +92,7 @@ from randomizer.rewards.catalogue import (
     POWER_BUFF_TYPES,
     REWARD_POOL,
     SPECIAL_BUILDING_DEFINITIONS,
+    buff_stack_limit,
     buff_effect_lines,
     canonical_reward,
     canonical_rewards,
