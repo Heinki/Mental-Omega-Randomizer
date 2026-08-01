@@ -246,10 +246,10 @@ class LaunchController:
             for section, values in starter_defense_rules.items():
                 rules.setdefault(section, {}).update(values)
             return merge_required_rules(rules)
-        selected_campaign = self.state.get('campaign_filter', '') if self.state else ''
-        translate_equivalents = selected_campaign in {
-            'Allies', 'Soviets', 'Epsilon', 'Foehn'
-        }
+        # Every mode resolves an earned role to one clone for each faction.
+        # Exact faction prerequisites keep foreign mappings dormant until the
+        # matching production building is captured or constructed.
+        translate_equivalents = True
         earned_access_ids = (
             self.active_unlocked_reward_tech_ids()
             if self.randomize_unit_access_enabled()

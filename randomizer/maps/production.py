@@ -9,6 +9,7 @@ from .buff_values import _register_map_type
 
 
 PLAYER_ORIGINAL_PRODUCTION_GATE_ID = 'MORPOriginalGate'
+HUMAN_LOCKED_TECH_LEVEL = '-1'
 
 
 def _value_case_insensitive(values, key, default=None):
@@ -34,7 +35,10 @@ def original_player_production_gate_rules(
     Native ownership, AI production, placements, TeamTypes, and exact campaign
     references remain unchanged. Ares evaluates ``Prerequisite.Negative`` for
     normal, alternate-prerequisite, captured-factory, and reverse-engineered
-    production, making the registered player clone the only player cameo.
+    production. ``TechLevel=-1`` is the independent human-production lock:
+    Ares rejects that value only for a human-controlled house while AI houses
+    continue to satisfy it. The registered player clone is therefore the only
+    human cameo even if a mission does not count the hidden gate correctly.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -104,9 +108,9 @@ def original_player_production_gate_rules(
             negatives.extend(comma_items(
                 _value_case_insensitive(values, 'Prerequisite.Negative', '')
             ))
-        rules.setdefault(source_id, {})['Prerequisite.Negative'] = ','.join(
-            unique_in_order(
-                negatives + [PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
-            )
-        )
+        source_rules = rules.setdefault(source_id, {})
+        source_rules['Prerequisite.Negative'] = ','.join(unique_in_order(
+            negatives + [PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
+        ))
+        source_rules['TechLevel'] = HUMAN_LOCKED_TECH_LEVEL
     return rules

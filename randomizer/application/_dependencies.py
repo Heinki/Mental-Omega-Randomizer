@@ -152,6 +152,7 @@ from randomizer.missions.safety import (
     expanded_tier_one_defense_ids,
     expanded_tier_one_unit_ids,
     mission_basic_unit_rules,
+    mission_production_families,
     random_chaos_tier_one_unit_ids,
     random_chaos_tier_one_defense_ids,
     single_engineer_rules,

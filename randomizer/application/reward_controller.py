@@ -14,15 +14,13 @@ from ._dependencies import (
     canonical_rewards,
     check_rewards,
     clamp_int,
-    country_family,
     linked_buff_variant_ids,
     log_event,
-    map_house_records,
-    normalize_faction,
     normalize_reward_weights,
     parse_missions,
     plan_seed_rewards,
-    player_house_from_map,
+    mission_player_production_houses,
+    mission_production_families,
     tech_ids_for_rewards,
     reward_selection_weight,
     unit_display_label,
@@ -151,24 +149,23 @@ class RewardController:
         if self.active_reward_mode() == 'Chaos (Experimental)':
             return unlocked | additional
 
-        records = map_house_records(lines)
         family_names = {
             'allies': 'Allies',
             'soviets': 'Soviets',
             'epsilon': 'Epsilon',
             'foehn': 'Foehn',
         }
-        primary_house = player_house_from_map(lines, records=records)
-        primary_family = country_family(records.get(primary_house, {}))
-        player_factions = (
-            {family_names[primary_family]}
-            if primary_family in family_names
-            else set()
-        )
-        if not player_factions:
-            fallback_faction = normalize_faction(mission.get('side', ''))
-            if fallback_faction:
-                player_factions.add(fallback_faction)
+        production_factions = {
+            family_names[family]
+            for family in mission_production_families(
+                lines,
+                additional_production_houses=mission_player_production_houses(
+                    mission.get('code')
+                ),
+                include_capturable=True,
+            )
+            if family in family_names
+        }
 
         return additional | {
             unit_id
@@ -177,7 +174,7 @@ class RewardController:
             or 'Neutral' in BUFF_TARGETS.get(
                 unit_id, {}
             ).get('factions', ())
-            or player_factions.intersection(
+            or production_factions.intersection(
                 BUFF_TARGETS.get(unit_id, {}).get('factions', ())
             )
         }

@@ -1,9 +1,9 @@
 """Mission-local access translation for mixed campaign production.
 
 The randomizer locks unit access globally, but campaign maps sometimes hand
-the player another faction's production during the mission. Selected-faction
-campaigns translate earned roles to that production; All Campaigns preserves
-exact per-faction unlocks.
+the player another faction's production during the mission. Every mode maps an
+earned role to one equivalent per available faction, each behind that faction's
+exact production building.
 """
 
 from randomizer.core.collections import comma_items, unique_in_order
@@ -314,6 +314,28 @@ def _mission_production_buildings(
                 yield building_id
 
 
+def mission_production_families(
+    lines,
+    house_records=None,
+    additional_production_houses=(),
+    include_capturable=True,
+):
+    """Return faction families backed by physical or scripted production."""
+    records = house_records or map_house_records(lines)
+    return {
+        family
+        for building_id in _mission_production_buildings(
+            lines,
+            records,
+            additional_production_houses,
+            include_capturable=include_capturable,
+        )
+        for production in (PRODUCTION_LOOKUP.get(building_id),)
+        if production
+        for family in (production[0],)
+    }
+
+
 def _player_family(lines, house_records):
     player_house = player_house_from_map(lines)
     if not player_house:
@@ -364,10 +386,12 @@ def safe_build_countries(lines, house_records=None, additional_houses=()):
 
 
 def _allowed_safety_families(player_family):
-    if player_family == 'foehn':
-        return {'allies', 'soviets'}
     if player_family in PRODUCTION_BUILDINGS:
-        return set(PRODUCTION_BUILDINGS) - {player_family, 'foehn'}
+        # Role translation applies to the current production family too. An
+        # Allied role reward used on a Soviet-start mission must resolve to the
+        # Soviet peer behind NAHAND/NAWEAP, just as a later captured Allied,
+        # Epsilon, or Foehn factory resolves to its own peer.
+        return set(PRODUCTION_BUILDINGS)
     return set()
 
 
@@ -527,12 +551,12 @@ def mission_basic_unit_rules(
     additional_build_houses=(),
     additional_production_houses=(),
 ):
-    """Return off-faction access needed by mixed mission production.
+    """Resolve earned roles to each physically available production family.
 
-    All-Campaign seeds preserve exact earned unit IDs for each physical
-    production family. A selected single-faction campaign translates earned
-    access into role-equivalent units for foreign production. Exactly one
-    faction-appropriate Engineer remains a base-operation essential.
+    Each faction gets one equivalent mapping behind its own exact factory.
+    This includes the starting family; foreign mappings stay dormant until
+    their Barracks, War Factory, airfield, or naval factory is owned. Exactly
+    one faction-appropriate Engineer remains a base-operation essential.
     """
     sections = all_section_value_maps(lines)
     house_records = map_house_records(lines, sections=sections)
@@ -547,11 +571,11 @@ def mission_basic_unit_rules(
         lines,
         house_records,
         additional_production_houses,
+        include_capturable=True,
     ))
-    # Any placed foreign factory can become player-owned through an Engineer.
-    # Its prerequisite keeps access dormant until capture. All Campaigns
-    # exposes only exact earned IDs; selected single campaigns translate an
-    # earned role to that factory family's equivalent below.
+    # Any placed factory can become player-owned through an Engineer. Its exact
+    # prerequisite keeps foreign access dormant until capture, while the
+    # starting faction's matching factory activates its own equivalent.
     production_buildings.extend(
         building_id
         for line in section_lines(lines, 'Structures')
@@ -672,6 +696,7 @@ def mission_basic_unit_rules(
         rules[tech_id] = dict(rule or {'TechLevel': tech_level})
     for section, values in single_engineer_rules(
         lines,
+        chaos_mode=True,
         additional_build_houses=additional_build_houses,
     ).items():
         rules[section] = values
@@ -738,10 +763,8 @@ def _alternative_prerequisite_rules(alternatives):
 
 
 def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
-    """Allow an earned item from the matching factory of any faction."""
-    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
-    if not alternatives and fallback:
-        alternatives = [fallback]
+    """Require the mapped item's own faction production building."""
+    alternatives = [fallback] if fallback else []
     alternatives.extend(extra_alternatives)
     return _alternative_prerequisite_rules(alternatives)
 
@@ -761,9 +784,15 @@ def always_available_transport_rules(
         production_owner_countries(lines, player_countries, sections=sections)
     )
     required_houses = ','.join(player_countries)
-    allowed_families = set(AMPHIBIOUS_TRANSPORTS) if chaos_mode else {
-        _player_family(lines, records)
-    }
+    allowed_families = (
+        set(AMPHIBIOUS_TRANSPORTS)
+        if chaos_mode
+        else mission_production_families(
+            lines,
+            house_records=records,
+            include_capturable=True,
+        )
+    )
     rules = {}
     for family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
         if family not in allowed_families:
@@ -774,10 +803,7 @@ def always_available_transport_rules(
             'RequiredHouses': required_houses,
             'ForbiddenHouses': 'none',
         }
-        if chaos_mode:
-            values.update(_chaos_prerequisite_rules('naval', prerequisite))
-        else:
-            values['PrerequisiteOverride'] = prerequisite
+        values.update(_chaos_prerequisite_rules('naval', prerequisite))
         rules[tech_id] = values
     return rules
 

@@ -3,7 +3,6 @@
 from .access import (
     ACCESS_CATALOG,
     CHAOS_PRIMARY_PRODUCTION,
-    CHAOS_PRODUCTION_ALTERNATIVES,
     PRODUCTION_LOOKUP,
     STANDARD_TIER_ONE_FAMILIES,
     TIER_ONE_AIRFIELDS,
@@ -20,8 +19,8 @@ from .access import (
     _build_access_rule,
     _chaos_prerequisite_rules,
     _mission_production_buildings,
+    _native_access_prerequisites,
     _player_family,
-    _special_factory_alternatives,
     all_section_value_maps,
     chaos_cameo_priority_rules,
     country_family,
@@ -30,6 +29,7 @@ from .access import (
     player_house_from_map,
     production_owner_countries,
     safe_build_countries,
+    unit_role_equivalents,
 )
 
 def tier_one_unit_ids(families):
@@ -169,19 +169,19 @@ def _tier_one_airfield_rules(
     required_houses,
     chaos_mode=False,
 ):
-    """Unlock required AircraftType factories only when base building exists."""
+    """Unlock required AircraftType factories behind matching faction tech."""
     base_families = {
         family for family in base_families if family in CHAOS_PRIMARY_PRODUCTION
     }
-    if not base_families:
+    if not base_families and not chaos_mode:
         return {}
 
     if chaos_mode:
-        # Foreign Chaos aircraft already accept any matching AircraftType
-        # factory. Unlock the player's native airfield, never the aircraft's
-        # foreign airfield (for example YAAIRF in an Allied base).
+        # Foreign aircraft require their own faction airfield. Prepare that
+        # airfield behind its matching Construction Yard so capture remains
+        # the only way to activate foreign air production.
         conyards = ()
-        airfield_families = set(base_families) if aircraft_families else set()
+        airfield_families = set(aircraft_families)
     else:
         conyards = ()
         airfield_families = set(base_families).intersection(aircraft_families)
@@ -258,11 +258,8 @@ def starting_tier_one_defense_rules(
         }
         if not base_families and allow_player_family_fallback:
             # Many ordinary campaign base missions spawn or transfer the MCV
-            # only after scripted opening events. Their source map therefore
-            # has no physical Construction Yard to detect at launch. Falling
-            # back to the current player house family exposes the matching
-            # defense behind that family's yard without granting another
-            # faction's structures.
+            # only after scripted opening events. If no physical family exists,
+            # prepare the current house family behind its exact Yard.
             player_families = {
                 country_family(records.get(house, {}))
                 for house in player_controlled_houses(lines, records=records)
@@ -324,7 +321,7 @@ def starting_tier_one_defense_rules(
                     player_countries,
                     tech_level,
                     native_owners,
-                    prerequisite_alternatives=CHAOS_PRODUCTION_ALTERNATIVES['base'],
+                    prerequisite_alternatives=(prerequisite,),
                 )
             else:
                 rules[tech_id] = _build_access_rule(
@@ -333,7 +330,7 @@ def starting_tier_one_defense_rules(
                     player_countries,
                     tech_level,
                     native_owners,
-                    prerequisite_override=prerequisite,
+                    prerequisite_alternatives=(prerequisite,),
                 )
     return rules
 
@@ -409,7 +406,6 @@ def starting_tier_one_rules(
                     values.update(_chaos_prerequisite_rules(
                         category,
                         fallback,
-                        _special_factory_alternatives(lines, category, sections),
                     ))
                     rules[tech_id] = values
         rules.update(_tier_one_airfield_rules(
@@ -428,8 +424,8 @@ def starting_tier_one_rules(
     }
     if not production_categories and allow_player_family_fallback:
         # Ordinary campaign maps can transfer/spawn the player's MCV only
-        # after their opening script. Resolve the future native production
-        # family from the human house without granting a foreign factory.
+        # after their opening script. Use the house family only when the source
+        # map exposes no physical or scripted production family at all.
         player_families = {
             country_family(records.get(house, {}))
             for house in player_controlled_houses(lines, records=records)
@@ -465,13 +461,14 @@ def starting_tier_one_rules(
             if (family, category) not in available_categories:
                 continue
             prerequisite = CHAOS_PRIMARY_PRODUCTION[family][category]
-            rules[tech_id] = {
+            values = {
                 'TechLevel': '1',
                 'Owner': owners,
                 'RequiredHouses': required_houses,
                 'ForbiddenHouses': 'none',
-                'PrerequisiteOverride': prerequisite,
             }
+            values.update(_alternative_prerequisite_rules((prerequisite,)))
+            rules[tech_id] = values
     rules.update(_tier_one_airfield_rules(
         base_families.intersection(allowed_families),
         (
@@ -503,16 +500,8 @@ def chaos_earned_access_rules(
     player_countries = safe_build_countries(lines, records, additional_build_houses)
 
     rules = {}
-    owners = ','.join(
-        production_owner_countries(lines, player_countries, sections=sections)
-    )
-    required_houses = ','.join(player_countries)
     player_family = _player_family(lines, records)
-    special_alternatives = {
-        category: _special_factory_alternatives(lines, category, sections)
-        for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
-    }
-
+    earned_access_ids = set()
     for reward in earned_rewards:
         if reward.get('kind') in {'buff', 'superweapon'}:
             continue
@@ -521,47 +510,25 @@ def chaos_earned_access_rules(
                 (str(value) for key, value in values.items() if key.lower() == 'techlevel'),
                 '',
             )
-            prerequisite_override = next(
-                (
-                    str(value).upper()
-                    for key, value in values.items()
-                    if key.lower() == 'prerequisiteoverride'
-                ),
-                '',
-            )
-            prerequisites = []
-            if prerequisite_override and prerequisite_override != 'NONE':
-                prerequisites.append(prerequisite_override)
-            prerequisites.extend(
-                str(value).upper()
-                for key, value in values.items()
-                if key.lower().startswith('prerequisite.list')
-                and key.lower() != 'prerequisite.lists'
-            )
-            prerequisites = list(dict.fromkeys(prerequisites))
-            productions = [
-                PRODUCTION_LOOKUP[prerequisite]
-                for prerequisite in prerequisites
-                if prerequisite in PRODUCTION_LOOKUP
-            ]
-            if not tech_level or not productions:
-                continue
-            categories = list(dict.fromkeys(category for _, category in productions))
-            rules[tech_id.upper()] = {
-                'TechLevel': tech_level,
-                'Owner': owners,
-                'RequiredHouses': required_houses,
-                'ForbiddenHouses': 'none',
-            }
-            alternatives = []
-            for category in categories:
-                alternatives.extend(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
-                alternatives.extend(special_alternatives[category])
-            if not alternatives:
-                alternatives.extend(prerequisites)
-            rules[tech_id.upper()].update(
-                _alternative_prerequisite_rules(alternatives)
-            )
+            if tech_level:
+                earned_access_ids.add(tech_id.upper())
+
+    # One earned role prepares exactly one clone mapping per faction. Each
+    # target retains its own Barracks/War Factory/airfield/naval prerequisite;
+    # owning another faction's same-category factory cannot unlock it.
+    for tech_id, tech_level, _family, _category, prerequisite, native_owners in ACCESS_CATALOG:
+        if not unit_role_equivalents(tech_id).intersection(earned_access_ids):
+            continue
+        rules[tech_id] = _build_access_rule(
+            lines,
+            sections,
+            player_countries,
+            tech_level,
+            native_owners,
+            prerequisite_alternatives=_native_access_prerequisites(
+                tech_id, prerequisite
+            ),
+        )
     for section, values in chaos_cameo_priority_rules(player_family).items():
         rules.setdefault(section, {}).update(values)
     return rules
