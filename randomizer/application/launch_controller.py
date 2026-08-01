@@ -17,6 +17,7 @@ from ._dependencies import (
     MAX_OPTION_INI_BYTES,
     MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
+    MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
@@ -41,6 +42,7 @@ from ._dependencies import (
     logging,
     messagebox,
     mission_basic_unit_rules,
+    original_mcv_access_rules,
     mission_player_production_houses,
     mix_reader_assembly_paths,
     patch_large_ini_key,
@@ -130,6 +132,14 @@ class LaunchController:
                 additional_build_houses=(),
             )
             for section, values in miner_rules.items():
+                rules.setdefault(section, {}).update(values)
+
+            mcv_rules = original_mcv_access_rules(
+                lines,
+                MISSION_ORIGINAL_MCV_ACCESS_IDS.get(mission_code, ()),
+                additional_build_houses=(),
+            )
+            for section, values in mcv_rules.items():
                 rules.setdefault(section, {}).update(values)
 
             already_available_ids = set(self.active_unlocked_reward_tech_ids())

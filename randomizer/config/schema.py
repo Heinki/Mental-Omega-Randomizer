@@ -27,6 +27,8 @@ REQUIRED_SECTIONS = {
         'clone_only_country_buff_types': dict,
         'scripted_player_buff_taskforces': dict,
         'team_house_overrides': dict,
+        'native_runtime_identity_preserve_ids': dict,
+        'objective_clone_event_refs': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
         'map_section_rules': dict,
@@ -182,6 +184,45 @@ def _validate_missions(sections, path):
     if invalid:
         _invalid(f'Invalid mission build classifications: {invalid}', path)
 
+    for section in (
+        'original_mcv_access',
+        'native_production_gate_exclusions',
+        'native_runtime_identity_preserve_ids',
+    ):
+        for code, unit_ids in sections.get(section, {}).items():
+            if (
+                not _is_nonempty_string(code)
+                or code not in sections['build_classifications']
+                or not isinstance(unit_ids, list)
+                or any(not _is_nonempty_string(unit_id) for unit_id in unit_ids)
+            ):
+                _invalid(f'Invalid {section} entry for {code!r}', path)
+
+    for code, unit_events in sections.get(
+        'objective_clone_event_refs', {}
+    ).items():
+        if (
+            not _is_nonempty_string(code)
+            or code not in sections['build_classifications']
+            or not isinstance(unit_events, dict)
+            or not unit_events
+        ):
+            _invalid(
+                f'Invalid objective_clone_event_refs entry for {code!r}', path
+            )
+        for unit_id, event_ids in unit_events.items():
+            if (
+                not _is_nonempty_string(unit_id)
+                or not isinstance(event_ids, list)
+                or not event_ids
+                or any(not _is_nonempty_string(event_id) for event_id in event_ids)
+            ):
+                _invalid(
+                    'Invalid objective clone Event list for '
+                    f'{code!r}/{unit_id!r}',
+                    path,
+                )
+
     country_buff_types = {'production', 'cost', 'speed', 'armor'}
     for code, buff_types in sections['clone_only_country_buff_types'].items():
         if (
@@ -226,6 +267,25 @@ def _validate_missions(sections, path):
             for key, value in values.items():
                 if not _is_nonempty_string(key):
                     _invalid(f'Invalid map key {key!r} for {code}:{section}', path)
+                if str(section).lower() == 'actions' and isinstance(value, str):
+                    tokens = [token.strip() for token in value.split(',')]
+                    try:
+                        action_count = int(tokens[0])
+                    except (IndexError, ValueError):
+                        _invalid(
+                            f'Invalid action count for {code}:{section}:{key}',
+                            path,
+                        )
+                    serialized_count = (len(tokens) - 1) // 8
+                    if (
+                        (len(tokens) - 1) % 8
+                        or action_count != serialized_count
+                        or len(value.encode('utf-8')) > 511
+                    ):
+                        _invalid(
+                            f'Invalid action groups for {code}:{section}:{key}',
+                            path,
+                        )
                 if not isinstance(value, dict):
                     continue
                 if not value or not set(value).issubset({'add', 'remove'}):
@@ -497,14 +557,18 @@ def _validate_tuning(sections, path):
                 f'Invalid minimum multiplier for buff effect {effect!r}',
                 path,
             )
-    health_maximum = effects['health'].get('maximum_multiplier')
-    if (
-        not isinstance(health_maximum, (int, float))
-        or isinstance(health_maximum, bool)
-        or health_maximum <= 1
-        or effects['health']['factor_per_stack'] <= 1
-    ):
-        _invalid('Invalid maximum multiplier for health buff effect', path)
+    for effect in ('health', 'damage'):
+        maximum = effects[effect].get('maximum_multiplier')
+        if (
+            not isinstance(maximum, (int, float))
+            or isinstance(maximum, bool)
+            or maximum <= 1
+            or effects[effect]['factor_per_stack'] <= 1
+        ):
+            _invalid(
+                f'Invalid maximum multiplier for {effect} buff effect',
+                path,
+            )
 
     for effect in ('range', 'sight', 'ammo'):
         values = effects.get(effect)
@@ -523,7 +587,9 @@ def _validate_tuning(sections, path):
             or maximum < values['amount_per_stack']
         ):
             _invalid(f'Invalid maximum amount for buff effect {effect!r}', path)
-    for effect in ('production', 'cost', 'armor', 'health', 'range', 'sight'):
+    for effect in (
+        'production', 'cost', 'armor', 'health', 'damage', 'range', 'sight'
+    ):
         stack_limit = effects[effect].get('stack_limit')
         if (
             not isinstance(stack_limit, int)
@@ -707,6 +773,21 @@ def _validate_power_buffs(sections, path):
                     _invalid(
                         f'Invalid power ID list {section_name}.{key}', path
                     )
+
+    drop_pod_additions = sections['payload'].get(
+        'drop_pod_type_weight_additions', {}
+    )
+    if (
+        not isinstance(drop_pod_additions, dict)
+        or any(
+            not _is_nonempty_string(power_id)
+            or not isinstance(type_ids, list)
+            or not type_ids
+            or not all(_is_nonempty_string(type_id) for type_id in type_ids)
+            for power_id, type_ids in drop_pod_additions.items()
+        )
+    ):
+        _invalid('Invalid DropPod payload type additions', path)
 
     for section_name in ('area', 'damage', 'duration'):
         for key, entries in sections[section_name].items():

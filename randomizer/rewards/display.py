@@ -214,7 +214,7 @@ def buff_stack_limit(reward):
         return power_buff_stack_limit(reward)
     buff_type = reward.get('buff_type')
     if buff_type in {
-        'production', 'cost', 'armor', 'health', 'range', 'sight',
+        'production', 'cost', 'armor', 'health', 'damage', 'range', 'sight',
     }:
         return stacking_stack_limit(buff_type)
     if buff_type == 'self_healing':

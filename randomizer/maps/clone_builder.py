@@ -256,10 +256,19 @@ def build_player_clone_sections(
     exact_reference_ids = set()
     for section in ('Events', 'Actions'):
         for value in section_value_map_preserve(lines, section).values():
+            tokens = [token.strip() for token in str(value).split(',')]
             exact_reference_ids.update(
-                token.strip().upper()
-                for token in str(value).split(',')
-                if token.strip()
+                token.upper()
+                for index, token in enumerate(tokens)
+                if token
+                # Every Action is serialized as eight fields after its count;
+                # field eight is a waypoint. A waypoint such as EHEAD's `FV`
+                # can equal a TechnoType ID but is never an exact type reference.
+                and not (
+                    section == 'Actions'
+                    and index > 0
+                    and (index - 1) % 8 == 7
+                )
             )
 
     native_helper_taskforces = _helper_autocreate_taskforce_units(

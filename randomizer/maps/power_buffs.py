@@ -173,6 +173,19 @@ def _apply_payload(reward, source_values, count):
         if minimum > 0 and maximum >= minimum:
             rules['DropPod.Minimum'] = str(minimum + count)
             rules['DropPod.Maximum'] = str(maximum + count)
+        types = [
+            item.strip()
+            for item in str(_value(source_values, 'DropPod.Types', '')).split(',')
+            if item.strip()
+        ]
+        additions = list(
+            payload.get('drop_pod_type_weight_additions', {}).get(power_id, ())
+        )
+        if types and additions:
+            # Ares selects each DropPod.Types entry with equal probability.
+            # Add both configured non-baseline roles per stack so larger Moon
+            # drops scale as a mixed force instead of chiefly adding DESORs.
+            rules['DropPod.Types'] = ','.join(types + additions * count)
         return
     if power_id in payload['spy_plane_power_ids']:
         baseline = int(_value(source_values, 'SpyPlane.Count', 1) or 1)
@@ -180,7 +193,11 @@ def _apply_payload(reward, source_values, count):
 
 
 def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
-    """Fold earned buffs into copied power rewards before clone generation."""
+    """Return real power unlocks with any earned buffs folded into them.
+
+    Buff rewards are stored independently. They never enter grant/clone output
+    and therefore cannot create a power without its actual unlock reward.
+    """
     canonical = canonical_rewards(rewards)
     counts = {}
     for reward in canonical:
@@ -195,7 +212,6 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
     output = []
     for original in canonical:
         if original.get('kind') != 'superweapon':
-            output.append(original)
             continue
         reward = deepcopy(original)
         # Runtime copy already came through canonical_rewards. Preserve folded

@@ -11,6 +11,7 @@ REPROCESSOR_BOUNTY_KEY = 'BountyEnablers'
 REPROCESSOR_BOUNTY_CATEGORIES = frozenset({
     'infantry', 'units', 'aircraft',
 })
+ORE_PURIFIER_SOURCE_ID = 'GAOREP'
 
 
 def _section_values(sections, section):
@@ -32,6 +33,98 @@ def _effective_section_values(map_sections, installed_sections, section):
     values = _section_values(installed_sections, section)
     values.update(_section_values(map_sections, section))
     return values
+
+
+def ore_purifier_miner_dock_rules(lines, clone_handled):
+    """Allow every isolated ore miner to dock at isolated Ore Purifier."""
+    purifier_id = str(
+        (clone_handled or {}).get(ORE_PURIFIER_SOURCE_ID, {}).get('clone_id')
+        or ''
+    ).strip()
+    report = {
+        'purifier_id': purifier_id,
+        'miner_ids': (),
+        'issues': (),
+    }
+    if not purifier_id:
+        return {}, report
+
+    sections = all_section_value_maps(lines)
+    rules = {}
+    miner_ids = []
+    for details in (clone_handled or {}).values():
+        clone_id = str((details or {}).get('clone_id') or '').strip()
+        if not clone_id or clone_id.upper() == purifier_id.upper():
+            continue
+        values = _section_values(sections, clone_id)
+        if values.get('harvester', '').strip().lower() != 'yes':
+            continue
+        docks = comma_items(values.get('dock', ''))
+        rules[clone_id] = {
+            'Dock': ','.join(unique_in_order(docks + [purifier_id])),
+        }
+        miner_ids.append(clone_id)
+
+    issues = () if miner_ids else ('no cloned Harvester=yes miners found',)
+    report.update({
+        'miner_ids': tuple(unique_in_order(miner_ids)),
+        'issues': issues,
+    })
+    return rules, report
+
+
+def validate_ore_purifier_miner_docks():
+    """Self-check static and runtime Ore Purifier docking identities."""
+    from randomizer.rewards.roster import randomizer_unit_roster
+
+    _paths, clone_ids, templates = randomizer_unit_roster()
+    purifier_id = clone_ids[ORE_PURIFIER_SOURCE_ID]
+    miner_source_ids = sorted(
+        source_id
+        for source_id, values in templates.items()
+        if str(_section_values({'template': values}, 'template').get(
+            'harvester', ''
+        )).lower() == 'yes'
+    )
+    clone_handled = {
+        source_id: {'clone_id': clone_ids[source_id]}
+        for source_id in miner_source_ids + [ORE_PURIFIER_SOURCE_ID]
+    }
+    lines = []
+    static_missing = []
+    for source_id in miner_source_ids:
+        clone_id = clone_ids[source_id]
+        values = _section_values({'template': templates[source_id]}, 'template')
+        docks = comma_items(values.get('dock', ''))
+        if purifier_id.upper() not in {dock.upper() for dock in docks}:
+            static_missing.append(clone_id)
+        lines.extend([
+            f'[{clone_id}]',
+            'Harvester=yes',
+            f'Dock={",".join(docks)}',
+            '',
+        ])
+    runtime_rules, runtime_report = ore_purifier_miner_dock_rules(
+        lines,
+        clone_handled,
+    )
+    runtime_missing = [
+        clone_ids[source_id]
+        for source_id in miner_source_ids
+        if purifier_id.upper() not in {
+            dock.upper()
+            for dock in comma_items(
+                runtime_rules.get(clone_ids[source_id], {}).get('Dock', '')
+            )
+        }
+    ]
+    return {
+        'purifier_id': purifier_id,
+        'miner_ids': [clone_ids[source_id] for source_id in miner_source_ids],
+        'static_missing': static_missing,
+        'runtime_missing': runtime_missing,
+        'runtime_issues': list(runtime_report['issues']),
+    }
 
 
 def reprocessor_bounty_rules(

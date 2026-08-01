@@ -431,7 +431,7 @@ Blasticade is not a reward because it needs owned Blast Trench objects to produc
 
 Map-start power grants normally target only authoritative `[Basic] Player`. Reviewed phase-based exceptions target every required human country: `ASIREN` declares Europeans as `[Basic] Player` while its gameplay triggers and second controllable force use UnitedStates, and `SAWAKE` rotates among PlayerEscort, Player, and USSR2. Each reviewed country receives the same isolated clone indices in separately bounded action lists; native mission power sections and triggers remain unchanged. This explicit allowlist avoids empowering unrelated temporary/script houses merely because a map also marks them `PlayerControl=yes`.
 
-The July 2026 mission audit confirmed that `ABMIND`'s `IronCurtainSpecial RechargeTime=.3` is native map data and remains identical in generated output. Machinehead receives a map-only `FOX` unlock behind `NAAIR`; it is not added to saved progression. Its ScorpionCell drop-pod creates native `LIBRA`, so all follow-up teams and Event 61 loss references must also remain native. Rewriting only the loss event to `MORPLIBRA` makes the absent clone satisfy Event 61 immediately when Libra arrives and causes instant defeat. Juggernaut's Action 106 entries for `NAHAMM`/`NAIRDM` now target registered player clones, while a mission-local earned-defense pass also exposes every unlocked Allied, Soviet, Epsilon, and Foehn defense through any construction yard; the native pair is not mistaken for the complete reward inventory. Soviet 24 likewise retargets its authored Action 106 `MAMM` unlock to `MORPMAMM`. When Apocalypse is not already earned, its complete owned clone stays at `TechLevel=-1` until that action fires; native MAMM TaskForces remain unchanged. Apocalypse is also a Soviet Special reward with a complete static owned type and six independently cloned/buffed rookie/elite cannon/missile/strike weapons. If Special access is already owned, the clone is available immediately and the later action harmlessly targets the same identity. SHAND's native DOG and SENGINEER remain available only to their exact story/helper countries; the player receives only the isolated buffed copies. Kill the Messenger applies its deployment fix to native `[SMCV]` as a final map-section rule: routing it through ordinary required-access handling incorrectly moved the fields onto `MORPSMCV`, while TeamType `01000031` still created native `SMCV`. Its four reviewed Guild1-only starting TaskForces (`01000006`, `01000007`, `01000008`, `01000020`) are explicit exceptions to blanket action-referenced story-team preservation and now use isolated buffed clones. Enemy/shared TaskForces remain native. The SMCV keeps Speed `16`, `Accelerates=false`, and ROT `10`; earned speed does not alter it. Bleed Red's map-local `MORALES` is Boris, not the installed hero: his native identity is retained, only his spawn TeamType (`01000468`) is assigned to `USSR`, and all four transport/escort TeamTypes remain explicitly assigned to authored `Boris`. Native fallback-loss Event `01000528` originally checked whether House index 15 (`Boris House`) had no objects; moving Boris out of that house made the condition true immediately at his arrival. The map-only event override now checks global `MORALES` absence followed by the original elapsed-time condition, so Boris remains controllable and defeat occurs only after he actually dies. Unthinkable keeps `LIBRA`, its final `MDUMMY2` Driller, and `ASSN` Rahn native: its exact post-Libra boarding TaskForce and script chain now remain intact. Reality Check excludes `ScorpionCell House` from reward/retry buff targeting because that future player-control house begins allied to the hostile army. `LIBRA` and all eight phase identities stay native. Their authored Strength bases are multiplied by five (`6000` for 1200-strength phases, `7500` for 1500-strength phases), then all earned health, armor, sight, ammo, stealth, cost, speed, and primary-weapon buffs are layered on those mission bases. `FKILL` supplies a Soviet MCV, so Foehn Standard translates earned basic-defense roles to Soviet equivalents. `HARB` and `RAVA` remain aid-only payloads. Moon Reinforcements clears inherited target kind, shroud, and distance gates; direct action-34 ownership has no source building from which `SW.RangeMaximum=22` could be measured. Power action lists remain split at 16 actions. Maximum-power map generation remains below the 511-byte action-line limit.
+The July 2026 mission audit confirmed that `ABMIND`'s `IronCurtainSpecial RechargeTime=.3` is native map data and remains identical in generated output. Machinehead exposes only its isolated `MORPFOX` player build identity and retargets authored Event 81 `01000942` to count sixteen of it. A parallel native/clone trigger enabled from `01000920` caused a live C0000005 exactly when the second reinforcement/Hammer-defense transition enabled it; never extend this objective with an injected trigger. Singularity's native passengers remain live global objects after boarding, so Event 61 absence is not a transport-entry detector. The authored Driller unit 43 now carries `MORSGIN`, and enabled success trigger `01000639` uses object-attached Entered-by Event 1 for PsiCorps House index 6; Malver entering fires success without depending on unrelated PsiCorps objects. Tainted Empire's Yunru retry loop now requires `YUNRU` absence instead of a local that stays clear until lab entry. Machinehead's ScorpionCell drop-pod creates native `LIBRA`, so all follow-up teams and Event 61 loss references must also remain native. Rewriting only the loss event to `MORPLIBRA` makes the absent clone satisfy Event 61 immediately when Libra arrives and causes instant defeat. Juggernaut's Action 106 entries for `NAHAMM`/`NAIRDM` now target registered player clones, while a mission-local earned-defense pass also exposes every unlocked Allied, Soviet, Epsilon, and Foehn defense through any construction yard; the native pair is not mistaken for the complete reward inventory. Soviet 24 likewise retargets its authored Action 106 `MAMM` unlock to `MORPMAMM`. When Apocalypse is not already earned, its complete owned clone stays at `TechLevel=-1` until that action fires; native MAMM TaskForces remain unchanged. Apocalypse is also a Soviet Special reward with a complete static owned type and six independently cloned/buffed rookie/elite cannon/missile/strike weapons. If Special access is already owned, the clone is available immediately and the later action harmlessly targets the same identity. SHAND's native DOG and SENGINEER remain available only to their exact story/helper countries; the player receives only the isolated buffed copies. Kill the Messenger applies its deployment fix to native `[SMCV]` as a final map-section rule: routing it through ordinary required-access handling incorrectly moved the fields onto `MORPSMCV`, while TeamType `01000031` still created native `SMCV`. Its four reviewed Guild1-only starting TaskForces (`01000006`, `01000007`, `01000008`, `01000020`) are explicit exceptions to blanket action-referenced story-team preservation and now use isolated buffed clones. Enemy/shared TaskForces remain native. The SMCV keeps Speed `16`, `Accelerates=false`, and ROT `10`; earned speed does not alter it. Bleed Red's map-local `MORALES` is Boris, not the installed hero: his native identity is retained, only his spawn TeamType (`01000468`) is assigned to `USSR`, and all four transport/escort TeamTypes remain explicitly assigned to authored `Boris`. Native fallback-loss Event `01000528` originally checked whether House index 15 (`Boris House`) had no objects; moving Boris out of that house made the condition true immediately at his arrival. The map-only event override now checks global `MORALES` absence followed by the original elapsed-time condition, so Boris remains controllable and defeat occurs only after he actually dies. Unthinkable keeps `LIBRA`, its final `MDUMMY2` Driller, and `ASSN` Rahn native: its exact post-Libra boarding TaskForce and script chain now remain intact. Reality Check excludes `ScorpionCell House` from reward/retry buff targeting because that future player-control house begins allied to the hostile army. `LIBRA` and all eight phase identities stay native. Their authored Strength bases are multiplied by five (`6000` for 1200-strength phases, `7500` for 1500-strength phases), then all earned health, armor, sight, ammo, stealth, cost, speed, and primary-weapon buffs are layered on those mission bases. `FKILL` supplies a Soviet MCV, so Foehn Standard translates earned basic-defense roles to Soviet equivalents. `HARB` and `RAVA` remain aid-only payloads. Moon Reinforcements clears inherited target kind, shroud, and distance gates; direct action-34 ownership has no source building from which `SW.RangeMaximum=22` could be measured. Each payload stack adds one pod plus `SHOCK` and `CYBO` weights. Power action lists remain split at 16 actions. Maximum-power map generation remains below the 511-byte action-line limit.
 
 The July 23 reward audit replaced the old ad-hoc cross-faction buff mapping with the reviewed `grouping ideas.txt`/`regrouping.txt` roles. Groups are disjoint and validated at startup. In particular, `CLAIR` now follows `SPY/SBTR/INTRUDER`, `SYNC` follows `SUPR/ARSO/REPU`, the three Allied IFV variants share their anti-air group, and `DUNE` is restored as a full Epsilon access/buff target with its installed sensor and HoverGrenade baselines. Robot Tank access now uses both `GAWEAP` and `GAYARD`; Chaos retains both production categories. Linked identity pairs `JACKAL/JACKALP`, `DIVER/DIVERP`, and `TARCHIA/TARCHIAP` expand each earned direct-buff count to both the normal Foehn and Allied prototype form, while keeping each form's own cost, speed, strength, faction, label, and weapon baselines. Editable special-building rewards live in `rewards/special_buildings.json` and cover `GAOREP`, `NAINDP`, `NACLON`, and `FAREPR`: Standard uses the native faction Construction Yard, while Chaos permits all four. Divergence exposed the old Wallbuster placement defect: its human `PsiCorps` house owns no startup object, so the retired hidden-cannon implementation used arbitrary edge anchors. The mapper-tested `MultiMissile` conversion below removes that dependency. Mission-specific `map_section_rules` provide final literal/null or CSV add/remove edits for arbitrary extracted-map sections without mission-code branches. Fatal Impact uses this hook to append the randomized `MORPSVOLKOV` identity to `YTUNNEL.Passengers.Allowed` while preserving its five native passengers.
 
@@ -513,7 +513,7 @@ with authored production still receive compatible starters.
 - Mandatory standalone player clones have static 97-map generation coverage plus successful live isolation, sidebar, and helper-production tests. Loading cost, save/load behavior, and wider campaign trigger compatibility still need continued validation.
 - Direct unit/weapon buffs are skipped when a denied enemy shares the affected global type.
 - Matching power buildings may share the granted power instead of creating an independent copy.
-- Source-object-only powers such as Blasticade, Golden Wind, Hunter-Seeker, Nanocharge, Gear Change, Psychic Flash, Blackout Missile, Nuclear Path, and Backwarp remain excluded because a building-free copy cannot perform their intended effect without the associated object.
+- Source-object-only powers such as Blasticade, Golden Wind, Nanocharge, Gear Change, Psychic Flash, Blackout Missile, Nuclear Path, and Backwarp remain excluded because a building-free copy cannot perform their intended effect without the associated object. Hunter-Seeker is the reviewed exception and uses one hidden exact-House provider bound through `HunterSeeker.Buildings`.
 - Game-speed behavior needs validation across more campaign maps.
 
 ## July 26 Context and Sidebar Rules
@@ -522,3 +522,83 @@ with authored production still receive compatible starters.
 - `PROJECT_CONTEXT.md` is compact authoritative agent memory. Root and repository `AGENTS.md` files require Caveman ultra plus that one context read, then defer `TECHNICAL_FINDINGS.md`, JSON catalogues, INI rosters, extracted maps, and installed rules until a task needs exact detail.
 - Static `Randomizer*.ini` files own complete player TechnoType identities. Validated JSON remains policy/compatibility data. `rewards/unit_data.json` has intentional roster/base-stat overlap that may be migrated later, but cannot be deleted while reward construction still consumes its target metadata, role groups, linked variants, labels, and compatibility facts.
 - Archipelago transport, slot data, item IDs, and location IDs are not implemented yet.
+
+## August 1 Mission Corrections
+
+- Supersedes the July Machinehead native-and-clone note: `FOX` is now native
+  only, excluded from direct buffs, and buildable behind `NAAIR`. Authored Event
+  81 `01000942` counts that same identity. Never add a parallel trigger to
+  objective action `01000920`; the attempted trigger caused a live C0000005 at
+  the second reinforcement/Hammer-defense transition.
+- Singularity passengers remain live global objects while inside a transport,
+  so Event 61 absence cannot detect evacuation. Native Driller unit 43 carries
+  an attached Entered-by-PsiCorps tag that fires authored success trigger
+  `01000639` when Malver boards.
+
+## August 2 Trigger and Power-State Corrections
+
+- Machinehead action `01000580` contains reinforcement waypoint `FV`. Generic
+  exact-reference rewriting confused it with the IFV TechnoType and wrote
+  `MORPFV`. Serialized Action groups have eight fields after the count, and
+  field eight is always a waypoint. Clone discovery and replacement now exclude
+  that field globally while preserving genuine type parameters. A later live
+  run retained `FV` but crashed at the same transition, proving waypoint repair
+  was not the complete crash fix.
+- Machinehead crash dump `snapshot-20260802-000754` failed at the same virtual
+  call as the later `003320` snapshot. The bad object used the
+  `.?AVAbstractClass@@` vtable; its `+0x78` slot held invalid target
+  `A2529D39`, while a valid infantry object's corresponding slot resolved into
+  `gamemd.exe`. Debug timing placed the fault immediately after `GHTNK 235` and
+  `GHTNK 236` reached their west-edge waypoints. Replacing their authored
+  `37,0` cleanup with guard (`5,2`) did not fix it: live snapshot
+  `20260802-005323` traversed the same paths and failed through the same
+  `AbstractClass` vtable, now at invalid target `404E0000`. The GHTNKs are the
+  transports that deliver the visible Driller wave. Disabling return-only
+  triggers `01000561` and `01000563` caused an immediate live crash and was
+  reverted. Restoring `[GHTNK]` alone did not fix the live crash: snapshot
+  `20260802-012939` reached the same return paths and failed at the same invalid
+  virtual target. Full wave comparison then showed that every other prebuilt
+  reinforcement identity was still changed. `[CNTR]`, its initial `[COVE]`
+  payload, `[EMPR]`, `[CTNK]`, and `[ARMA]` each gained
+  `ForbiddenHouses`, the hidden negative gate, and `TechLevel=-1` (replacing
+  authored `TechLevel=11` for CNTR/COVE). TeamTypes, TaskForces, Scripts,
+  Actions, and return triggers were otherwise authored. EHEAD now preserves all
+  six runtime sections after clone planning while player production continues
+  through separate clones. The focused audit found no other difference in the
+  crashing reinforcement chain. The next fresh-seed snapshot
+  `20260802-014444` proved this removed the invalid-vtable failure, but exposed
+  a second cleanup fault at gamemd `004F9AB1`. Disassembly shows the engine
+  calling through a valid GHTNK object and reading its Owner at offset `+0x21C`;
+  Owner was null immediately after the return paths reached their deletion
+  edge. This is a destructive action-37 use-after-delete, not another trigger
+  mismatch. The earlier guard-only experiment could not fix the separate type
+  corruption then present. With all six runtime identities now preserved,
+  scripts `01000557`/`01000558` keep the authored edge movement and use final
+  guard `5,2` instead of `37,0`. Return triggers and teams stay authored; fresh
+  live confirmation remains required.
+- Machinehead native/shared Foxtrot counting was also rejected. Player
+  production again uses the isolated build-only clone; native enemy placements
+  and TaskForces remain `FOX`. New `objective_clone_event_refs` retargets only
+  Events `01000926` and `01000942` to the actual launch clone ID, including a
+  compact veteran alias, so the 8/16 objectives count player-built Foxtrots
+  without a second trigger or shared native identity.
+- Power Hunger must never put `37,0` in delivery script `01001529`: that deletes
+  both SAPC and SMCV. Unload mode `8,2` releases the SAPC from the delivery team.
+  Local-47 action `01001542` now creates a separate Latin cleanup TeamType using
+  authored SAPC-only TaskForce `01001090` and script `01001082`; it moves and
+  deletes only the freed transporter. Authored `01001529` moved a land MCV to
+  waypoint 3; transport conversion accidentally gave that move only to the
+  loaded SAPC. The script now repeats move-to-3 after unload, waits six seconds
+  for cleanup, then action `9,0` deploys the separated MCV.
+- Power buff rewards never imply access. Grant preparation now returns only
+  earned `kind=superweapon` rewards, folding stored buff counts into those real
+  unlocks. Dashboard indexing has separate `earned` and `earned_unlocks` lists;
+  a buff-only power remains locked and shows deferred effects until access is
+  actually earned.
+
+## August 2 Unit Damage Ceiling
+
+- Supersedes earlier uncapped unit-damage notes. Unit weapon damage remains
+  x1.15 per stack but caps at x6 total damage, displayed as +500%, on stack 13.
+  Planning stops assigning that unit's damage reward at 13; UI aggregation and
+  generated WeaponTypes clamp legacy excess stacks to the same value.

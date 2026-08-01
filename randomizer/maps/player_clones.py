@@ -4,6 +4,7 @@ from ._shared import (
     BUFF_TARGETS,
     LIMITED_HERO_UNIT_IDS,
     MAX_COUNTRY_VETERAN_VALUE_LENGTH,
+    MAX_MAP_ACTION_LINE_LENGTH,
     NONTRAINABLE_UNIT_IDS,
     UNLOCKED_TECH_LEVEL,
     all_section_value_maps,
@@ -54,6 +55,7 @@ def player_unit_clone_rules(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
     native_trigger_reference_ids=(),
+    objective_clone_event_refs=None,
     scripted_player_buff_taskforces=(),
     excluded_unit_ids=(),
     build_only_excluded_unit_ids=(),
@@ -537,6 +539,52 @@ def player_unit_clone_rules(
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)
+
+    # Some mission objectives count player-built copies of a type also used by
+    # enemy placements/TaskForces. Those sources deliberately use build-only
+    # clones, so broad reference rewriting remains disabled. Retarget only the
+    # exact reviewed Event IDs to the concrete clone allocated for this launch
+    # (which may be a compact two-character veteran identity).
+    event_values = section_value_map_preserve(lines, 'Events')
+    for source_id, event_ids in (objective_clone_event_refs or {}).items():
+        source_id = str(source_id).upper()
+        clone_id = str(
+            handled_by_unit.get(source_id, {}).get('clone_id') or ''
+        ).strip()
+        if not clone_id:
+            mixed_taskforces.append(
+                f'Events for {source_id} have no player clone'
+            )
+            continue
+        for event_id in event_ids:
+            event_id = str(event_id)
+            original = event_values.get(event_id)
+            if original is None:
+                mixed_taskforces.append(
+                    f'Event {event_id} for {source_id} is missing'
+                )
+                continue
+            tokens = [token.strip() for token in str(original).split(',')]
+            replacement_count = sum(
+                token.upper() == source_id for token in tokens
+            )
+            if not replacement_count:
+                mixed_taskforces.append(
+                    f'Event {event_id} does not reference {source_id}'
+                )
+                continue
+            tokens = [
+                clone_id if token.upper() == source_id else token
+                for token in tokens
+            ]
+            replacement = ','.join(tokens)
+            if len(f'{event_id}={replacement}'.encode('utf-8')) > MAX_MAP_ACTION_LINE_LENGTH:
+                mixed_taskforces.append(
+                    f'Event {event_id} clone rewrite exceeds parser limit'
+                )
+                continue
+            section_rules.setdefault('Events', {})[event_id] = replacement
+            rewritten += 1
 
     # Country veterancy lists contain exact TechnoType IDs. Replace originals
     # with the clone each country actually produces. Never append the whole

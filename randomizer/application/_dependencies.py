@@ -152,6 +152,7 @@ from randomizer.missions.safety import (
     expanded_tier_one_defense_ids,
     expanded_tier_one_unit_ids,
     mission_basic_unit_rules,
+    original_mcv_access_rules,
     mission_production_families,
     random_chaos_tier_one_unit_ids,
     random_chaos_tier_one_defense_ids,
@@ -165,6 +166,7 @@ from randomizer.missions.safety import (
 )
 from randomizer.maps.pipeline import prepare_hooked_map as prepare_hooked_mission_map
 from randomizer.missions.overrides import (
+    MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS,

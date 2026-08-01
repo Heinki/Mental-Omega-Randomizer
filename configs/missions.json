@@ -1078,7 +1078,8 @@
         "BOREK",
         "DRIL",
         "INIT",
-        "MORALES"
+        "MORALES",
+        "SAPC"
       ],
       "FKILL": [
         "YUNRU"
@@ -1190,7 +1191,8 @@
         "BOREK",
         "DRIL",
         "INIT",
-        "MORALES"
+        "MORALES",
+        "SAPC"
       ],
       "FKILL": [
         "YUNRU"
@@ -1249,6 +1251,35 @@
         "01000481": "Boris",
         "01000482": "Boris",
         "01000483": "Boris"
+      }
+    },
+    "original_mcv_access": {
+      "FREMNANT": [
+        "AMCV",
+        "SMCV"
+      ]
+    },
+    "native_production_gate_exclusions": {
+      "SRED": [
+        "SAPC"
+      ]
+    },
+    "native_runtime_identity_preserve_ids": {
+      "EHEAD": [
+        "ARMA",
+        "CNTR",
+        "COVE",
+        "CTNK",
+        "EMPR",
+        "GHTNK"
+      ]
+    },
+    "objective_clone_event_refs": {
+      "EHEAD": {
+        "FOX": [
+          "01000926",
+          "01000942"
+        ]
       }
     },
     "required_access_rules": {
@@ -1405,12 +1436,97 @@
           }
         }
       },
+      "ESING": {
+        "Events": {
+          "01000639": "1,1,0,6"
+        },
+        "Tags": {
+          "MORSGIN": "0,[Ob5] Randomizer Driller Entry,01000639"
+        },
+        "Units": {
+          "43": "Guild2 House,DRIL,256,173,35,64,Guard,MORSGIN,0,-1,0,-1,1,0"
+        }
+      },
+      "FEMPIRE": {
+        "Events": {
+          "01000367": "2,13,0,5,61,2,0,YUNRU"
+        }
+      },
+      "EHEAD": {
+        "01000557": {
+          "1": "5,2"
+        },
+        "01000558": {
+          "1": "5,2"
+        }
+      },
       "SHAND": {
         "DOG": {
           "RequiredHouses": "Kremlin,SovietEP,SovietNE,SovietSW"
         },
         "SENGINEER": {
           "RequiredHouses": "Kremlin,SovietEP,SovietNE,SovietSW,Chinese,Latin"
+        }
+      },
+      "SRED": {
+        "Actions": {
+          "01001029": "8,21,6,EVA_ObjectiveComplete,0,0,0,0,A,19,7,ObjectiveComplete,0,0,0,0,A,11,4,MISSION:irenic44,0,0,0,0,A,53,2,01001040,0,0,0,0,A,57,0,33,0,0,0,0,A,80,1,01001531,0,0,0,0,EY,80,1,01001083,0,0,0,0,OK,56,0,47,0,0,0,0,A",
+          "01001084": "10,11,4,MISSION:irenic47,0,0,0,0,A,55,0,1,0,0,0,0,OO,54,2,01001637,0,0,0,0,A,53,2,01001115,0,0,0,0,A,80,1,01001038,0,0,0,0,OJ,80,1,01001037,0,0,0,0,OI,53,2,01000787,0,0,0,0,A,53,2,01000697,0,0,0,0,A,54,2,01000051,0,0,0,0,A,53,2,01000427,0,0,0,0,A",
+          "01001535": "13,80,1,01001532,0,0,0,0,EY,80,1,01001532,0,0,0,0,EX,80,1,01001532,0,0,0,0,EX,80,1,01001534,0,0,0,0,EX,80,1,01001534,0,0,0,0,EX,80,1,01001537,0,0,0,0,F,80,1,01001537,0,0,0,0,G,80,1,01001537,0,0,0,0,H,80,1,01001537,0,0,0,0,I,60,0,0,0,0,0,0,A,80,1,01001544,0,0,0,0,EY,80,1,01001544,0,0,0,0,EX,53,2,01001441,0,0,0,0,A",
+          "01001542": "4,53,2,01001630,0,0,0,0,A,53,2,01001550,0,0,0,0,A,53,2,01001554,0,0,0,0,A,4,1,MORSREDLatinSAPCReturn,0,0,0,0,A"
+        },
+        "TeamTypes": {
+          "401": "MORSREDLatinSAPCReturn"
+        },
+        "MORSREDLatinSAPCReturn": {
+          "Max": "5",
+          "Full": "no",
+          "Name": "Randomizer Latin SAPC Return",
+          "Group": "-1",
+          "House": "Latin",
+          "Script": "01001082",
+          "Whiner": "no",
+          "Droppod": "no",
+          "Suicide": "no",
+          "Loadable": "no",
+          "Prebuild": "yes",
+          "Priority": "5",
+          "Waypoint": "N",
+          "Annoyance": "no",
+          "IonImmune": "no",
+          "Recruiter": "no",
+          "Reinforce": "no",
+          "TaskForce": "01001090",
+          "TechLevel": "0",
+          "Aggressive": "no",
+          "Autocreate": "no",
+          "GuardSlower": "no",
+          "OnTransOnly": "no",
+          "AvoidThreats": "no",
+          "LooseRecruit": "no",
+          "VeteranLevel": "1",
+          "IsBaseDefense": "no",
+          "UseTransportOrigin": "no",
+          "MindControlDecision": "0",
+          "OnlyTargetHouseEnemy": "no",
+          "TransportsReturnOnUnload": "no",
+          "AreTeamMembersRecruitable": "no"
+        },
+        "01001531": {
+          "Autocreate": "no",
+          "Full": "yes",
+          "Prebuild": "yes",
+          "TaskForce": "01001081"
+        },
+        "01001529": {
+          "0": "3,3",
+          "1": "8,2",
+          "2": "3,3",
+          "3": "5,1",
+          "4": "9,0",
+          "5": "42,4",
+          "6": "39,47",
+          "7": "5,2"
         }
       },
       "FKILL": {

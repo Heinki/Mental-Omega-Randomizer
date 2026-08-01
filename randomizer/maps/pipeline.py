@@ -64,13 +64,20 @@ from randomizer.maps.settings import (
     mission_eva_voice_rules,
     mission_house_color_rules,
 )
-from randomizer.maps.special_buildings import reprocessor_bounty_rules
+from randomizer.maps.special_buildings import (
+    ore_purifier_miner_dock_rules,
+    reprocessor_bounty_rules,
+)
 from randomizer.missions.houses import mission_house_config, mission_player_power_houses
 from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
+    MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS,
+    MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS,
+    MISSION_ORIGINAL_MCV_ACCESS_IDS,
+    MISSION_OBJECTIVE_CLONE_EVENT_REFS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES,
     MISSION_NATIVE_TRIGGER_REFERENCE_IDS,
@@ -131,13 +138,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for key, value in (extra_rules or {}).get(unit_id, {}).items()
         )
     }
-    native_techno_exclusions = MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
-        code, ()
+    original_mcv_access_ids = set(
+        MISSION_ORIGINAL_MCV_ACCESS_IDS.get(code, ())
+    )
+    native_techno_exclusions = frozenset(
+        set(MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(code, ()))
+        | original_mcv_access_ids
     )
     native_required_access_ids = {
         str(section).upper()
         for section in MISSION_REQUIRED_ACCESS_RULES.get(code, {})
-    }
+    } | original_mcv_access_ids
     native_build_only_clone_ids = (
         set(native_techno_exclusions) - native_required_access_ids
     )
@@ -817,6 +828,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             native_trigger_reference_ids=(
                 MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get(code, ())
             ),
+            objective_clone_event_refs=(
+                MISSION_OBJECTIVE_CLONE_EVENT_REFS.get(code, {})
+            ),
             scripted_player_buff_taskforces=(
                 MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ())
             ),
@@ -850,9 +864,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for source_id, details in clone_handled.items()
             if str((details or {}).get('clone_id') or '').strip()
         }
+        runtime_identity_preserve_ids = {
+            str(source_id).upper()
+            for source_id in MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS.get(
+                code, ()
+            )
+        }
         production_gate_source_ids = (
             (set(isolated_native_ids) - set(preserved_native_access_ids))
             | actual_clone_source_ids
+        ) - (
+            set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
+            | runtime_identity_preserve_ids
         )
         production_gate_rules = original_player_production_gate_rules(
             lines,
@@ -863,6 +886,19 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         remember_generated_techno_types(production_gate_rules)
         for section, values in production_gate_rules.items():
             clone_rule_sections.setdefault(section, {}).update(values)
+        for source_id in sorted(runtime_identity_preserve_ids):
+            original_values = native_map_sections.get(source_id, {})
+            current_values = section_value_map_preserve(lines, source_id)
+            pending_values = clone_rule_sections.get(source_id, {})
+            if not original_values and not current_values and not pending_values:
+                continue
+            restored_values = {
+                key: None
+                for key in set(current_values) | set(pending_values)
+                if key not in original_values
+            }
+            restored_values.update(original_values)
+            clone_rule_sections[source_id] = restored_values
         for source_id, details in clone_handled.items():
             clone_id = str((details or {}).get('clone_id') or '').strip()
             list_section = TECHNO_TYPE_LISTS.get(
@@ -947,6 +983,23 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     f'{len(production_gate_source_ids)} source type(s), '
                     f'{len(placed_production_gates)} player house gate(s).'
                 )
+        ore_dock_rules, ore_dock_report = ore_purifier_miner_dock_rules(
+            lines,
+            clone_handled,
+        )
+        if ore_dock_rules:
+            merge_ini_section_values(lines, ore_dock_rules)
+        if ore_dock_report['purifier_id']:
+            self.append_log(
+                f'Bound {len(ore_dock_report["miner_ids"])} player ore miner '
+                f'clone(s) to {ore_dock_report["purifier_id"]}.'
+                + (
+                    ' Issues: ' + '; '.join(ore_dock_report['issues']) + '.'
+                    if ore_dock_report['issues']
+                    else ''
+                ),
+                error=bool(ore_dock_report['issues']),
+            )
         reprocessor_rules, reprocessor_report = reprocessor_bounty_rules(
             lines,
             installed_rule_sections,

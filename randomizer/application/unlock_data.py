@@ -430,6 +430,7 @@ class UnlockDataController:
                             {
                                 'assigned': [],
                                 'earned': [],
+                                'earned_unlocks': [],
                                 'available': [],
                                 'available_unlocks': [],
                                 'available_codes': [],
@@ -439,6 +440,8 @@ class UnlockDataController:
                         entry['assigned'].append(item)
                         if earned:
                             entry['earned'].append(item)
+                            if reward.get('kind') != 'buff':
+                                entry['earned_unlocks'].append(item)
                         elif code in playable:
                             entry['available'].append(item)
                             if reward.get('kind') != 'buff':
@@ -486,7 +489,7 @@ class UnlockDataController:
             key = f'house:{suffix.lower()}:{buff_type}'
             source_data = sources.get(
                 key, {
-                    'assigned': [], 'earned': [], 'available': [],
+                    'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
@@ -533,7 +536,7 @@ class UnlockDataController:
             key = f'unit:{unit_id}'
             source_data = sources.get(
                 key, {
-                    'assigned': [], 'earned': [], 'available': [],
+                    'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
@@ -544,7 +547,7 @@ class UnlockDataController:
                 and not special_reward
             ):
                 source_data = {
-                    'assigned': [], 'earned': [], 'available': [],
+                    'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             unlocked = bool(
@@ -604,7 +607,7 @@ class UnlockDataController:
             key = f'unit:{building_id}'
             source_data = sources.get(
                 key, {
-                    'assigned': [], 'earned': [], 'available': [],
+                    'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
@@ -653,13 +656,13 @@ class UnlockDataController:
             key = f'power:{power_id}'
             source_data = sources.get(
                 key, {
-                    'assigned': [], 'earned': [], 'available': [],
+                    'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
             status = (
                 'unlocked'
-                if source_data['earned']
+                if source_data['earned_unlocks']
                 else 'available'
                 if source_data['available_unlocks'] and not privacy
                 else 'locked'
@@ -741,7 +744,12 @@ class UnlockDataController:
                 ))
         else:
             buffs = {}
-            for reward in earned:
+            active_effect_rewards = (
+                earned
+                if entry.get('kind') != 'power' or entry['status'] == 'unlocked'
+                else ()
+            )
+            for reward in active_effect_rewards:
                 if reward.get('kind') == 'buff':
                     key = (
                         reward.get('buff_type')
@@ -768,6 +776,29 @@ class UnlockDataController:
         if effect_lines:
             lines.extend(['', 'Current effects:'])
             lines.extend(f'• {line}' for line in effect_lines)
+
+        deferred_power_buffs = [
+            reward
+            for reward in earned
+            if entry.get('kind') == 'power'
+            and entry['status'] != 'unlocked'
+            and reward.get('kind') == 'buff'
+        ]
+        if deferred_power_buffs:
+            deferred = {}
+            for reward in deferred_power_buffs:
+                key = reward.get('power_buff_type')
+                deferred.setdefault(
+                    key, {'reward': reward, 'count': 0}
+                )['count'] += 1
+            lines.extend(['', 'Stored buffs (apply after unlock):'])
+            for buff in deferred.values():
+                for summary in buff_effect_lines(
+                    buff['reward'],
+                    count=buff['count'],
+                    include_label=False,
+                ):
+                    lines.append(f'  {summary}')
 
         if entry['status'] == 'available':
             potential = []

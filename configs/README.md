@@ -27,7 +27,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
   unit-buff, and power-buff selection weights; absent legacy keys use `100`.
 - `missions.json`: mission build classifications, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
-  access rules, native-variant buff forwarding, and campaign starter families.
+  access rules, original mission-only MCV access, native-variant buff
+  forwarding, and campaign starter families.
 - `map_rules.json`: controlled technology locks, TechnoType registry mapping,
   and parser/engine safety limits used by generated maps.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
@@ -63,7 +64,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/tuning.json`: stack multipliers, per-category movement-speed
   ceilings, retry-assistance behavior, clone prefixes/production-field policy,
   reward count limits, and global-buff planning cadence. Display text,
-  effective stack limits, and generated map values use the same data.
+  effective stack limits, and generated map values use the same data. Unit
+  damage uses x1.15 per stack and caps at x6 total (+500%) on stack 13.
 - `RandomizerInfantry.ini`, `RandomizerHeroes.ini`,
   `RandomizerVehicles.ini`, `RandomizerShips.ini`,
   `RandomizerAircraft.ini`, and
@@ -83,6 +85,61 @@ unlock preservation, arbitrary map-section values, superweapon payload clones,
 and native variant buff rules.
 An expansion map can use the same sections once its mission code is present in
 the catalogue/classification data.
+
+`original_mcv_access` maps mission codes to native MCV TechnoType IDs. The
+bundled default exposes `AMCV` and `SMCV` only in Foehn 06 (`FREMNANT`). These
+remain original mission identities; no `MORP*` MCV clone is created. Replace
+that mission's list to change the available MCVs, or set it to `[]` to disable
+the exception. Missions absent from the mapping receive no original MCV access.
+
+`native_production_gate_exclusions` is narrower engine-safety policy for
+script-created native units. Power Hunger excludes `SAPC` because its player
+MCV delivery team needs the authored Zubr identity. Its map-authored
+`TechLevel=-1` still blocks native player production, while the isolated
+buildable transport clone remains available.
+
+Power Hunger also patches four authored `Actions` values. Objective 2
+completion now creates both Latin AI and player MCV delivery teams. The Latin
+team reuses the proven native `SAPC+SMCV` TaskForce and unloads before running
+an explicit deploy action, its authored base-ready sequence, and guard. Live
+play proved `TransportsReturnOnUnload=yes` leaves the empty transporter in the
+MCV's deployment cells. Unload mode `8,2` separates that SAPC from the MCV
+team. Local-47 action `01001542` then creates Latin-only
+`MORSREDLatinSAPCReturn`, which recruits exactly one free SAPC with the
+authored SAPC-only TaskForce/script, moves it to waypoint 400, and deletes it.
+No whole-team delete touches the MCV. Authored script `01001529` originally
+moved a land MCV to waypoint 3. The transported version repeats that move after
+unload so the separated MCV receives it, waits six seconds for the SAPC to
+clear, then deploys. The delivery uses the same prebuilt,
+non-Autocreate mode as working Latin SAPC reinforcements. Objective 2 also sets
+authored local `47`, guaranteeing the unchanged Latin ConYard and AI activation
+chain even if the engine rejects the visual transport at water waypoint `EY`.
+Later native actions retain every non-MCV effect but omit duplicate MCV
+creation. This replaces the authored 7.5-minute plus 3-minute Latin MCV delay;
+the player MCV originally waited for that AI MCV to deploy into `NACNST`.
+
+`objective_clone_event_refs` retargets exact reviewed objective Events to the
+player clone allocated for that launch without rewriting enemy placements or
+scripted TaskForces. Machinehead uses this for Foxtrot Events `01000926` and
+`01000942`; both count the isolated build-only clone, including compact veteran
+IDs, while enemy Foxtrots stay native. Its GHTNK transports carry the Driller
+reinforcements. Changing or disabling their return triggers also crashed and is
+not part of the fix. Original/generated comparison found every native type in
+that reinforcement wave had received randomizer production-isolation fields:
+`GHTNK`, `CNTR`, its initial `COVE` payload, `EMPR`, `CTNK`, and `ARMA`.
+`native_runtime_identity_preserve_ids` restores reviewed runtime sections after
+clone planning. EHEAD uses it for that complete set; return triggers, scripts,
+TaskForces, and runtime identities therefore retain the original map values,
+except the two final return-script deletes. After identity preservation removed
+the earlier invalid-vtable crash, the next live dump failed inside gamemd at
+`004F9AB1`: a returned GHTNK had already had its Owner cleared by action 37 but
+was still referenced by the engine's object scan. Scripts `01000557` and
+`01000558` retain their authored move-to-edge action and replace only final
+`37,0` with guard `5,2`; triggers and team creation remain authored.
+Singularity attaches an
+Entered-by-PsiCorps tag to the authored Driller, so Malver boarding completes
+the evacuation condition even though transported passengers remain live game
+objects.
 
 `map_section_rules` can patch any INI section in any configured mission. A
 literal replaces a value, `null` removes its key, and `add`/`remove` edits a
@@ -114,8 +171,14 @@ Map injection behavior for each matching `superweapon` remains under
 Power buff applicability lives separately in `rewards/power_buffs.json`.
 Grouped lists make every supported power/effect pairing reviewable without
 mixing superweapon mechanics into unit/building buff policy. Runtime folds
-earned stacks only into the already isolated `MOR...` power clone; native
-mission SuperWeaponTypes and effect helpers remain unchanged.
+earned stacks only into an actually earned power unlock and its isolated
+`MOR...` clone; a buff alone emits no grant or clone. The Unlock dashboard also
+tracks earned buffs separately from earned access, keeps the power locked, and
+labels those effects stored until the real unlock is received. Native mission
+SuperWeaponTypes and effect helpers remain unchanged.
+`payload.drop_pod_type_weight_additions` adds configured type weights for each
+DropPod payload stack. Moon Reinforcements adds both `SHOCK` and `CYBO` per
+stack while increasing its minimum and maximum pod count.
 
 `techno_clones` may provide private weapons, projectiles, warheads, delivered
 academy markers, or hidden EMPulse cannon buildings. A BuildingType with

@@ -115,6 +115,14 @@ def _clone_reference_rules(
             tokens = [token.strip() for token in value.split(',')]
             replaced = False
             for index, token in enumerate(tokens):
+                if (
+                    section == 'Actions'
+                    and index > 0
+                    and (index - 1) % 8 == 7
+                ):
+                    # The eighth field of each Action group is a waypoint.
+                    # Do not turn labels such as `FV` into a TechnoType clone.
+                    continue
                 source_id = token.upper()
                 if (
                     source_id not in replacements

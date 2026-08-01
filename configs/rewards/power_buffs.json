@@ -230,7 +230,13 @@
       ],
       "drop_pod_power_ids": [
         "KnightfallSpawn"
-      ]
+      ],
+      "drop_pod_type_weight_additions": {
+        "KnightfallSpawn": [
+          "SHOCK",
+          "CYBO"
+        ]
+      }
     }
   }
 }

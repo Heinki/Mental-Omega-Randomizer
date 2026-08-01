@@ -841,6 +841,37 @@ def always_available_miner_rules(lines, additional_build_houses=()):
     return rules
 
 
+def original_mcv_access_rules(
+    lines,
+    mcv_ids,
+    additional_build_houses=(),
+):
+    """Expose configured native MCVs for the exact mission player only."""
+    sections = all_section_value_maps(lines)
+    records = map_house_records(lines, sections=sections)
+    player_countries = safe_build_countries(
+        lines, records, additional_build_houses
+    )
+    owners = ','.join(
+        production_owner_countries(lines, player_countries, sections=sections)
+    )
+    required_houses = ','.join(player_countries)
+    return {
+        str(mcv_id).upper(): {
+            'TechLevel': '1',
+            'Owner': owners,
+            'RequiredHouses': required_houses,
+            'ForbiddenHouses': 'none',
+            'FactoryOwners': None,
+            'FactoryOwners.Forbidden': None,
+        }
+        for mcv_id in unique_in_order(
+            str(value).strip().upper() for value in (mcv_ids or ())
+        )
+        if mcv_id
+    }
+
+
 def summarize_basic_unit_rules(rules):
     if not rules:
         return ''

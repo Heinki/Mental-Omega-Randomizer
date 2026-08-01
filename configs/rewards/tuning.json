@@ -8,7 +8,7 @@
       "speed": {"factor_per_stack": 1.1},
       "armor": {"factor_per_stack": 0.9, "minimum_multiplier": 0.09090909090909091, "stack_limit": 23},
       "health": {"factor_per_stack": 1.15, "maximum_multiplier": 11.0, "stack_limit": 18},
-      "damage": {"factor_per_stack": 1.15},
+      "damage": {"factor_per_stack": 1.15, "maximum_multiplier": 6.0, "stack_limit": 13},
       "reload": {"factor_per_stack": 0.9},
       "range": {"amount_per_stack": 0.5, "maximum_amount": 50.0, "stack_limit": 100},
       "sight": {"amount_per_stack": 1, "maximum_amount": 100, "stack_limit": 100},

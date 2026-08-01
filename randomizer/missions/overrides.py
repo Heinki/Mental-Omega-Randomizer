@@ -39,6 +39,49 @@ MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES = _frozenset_mapping(
 
 MISSION_TEAM_HOUSE_OVERRIDES = dict(_MISSION_CONFIG['team_house_overrides'])
 
+# Native MCV identities exposed only in configured missions. An empty list
+# disables the mission exception; replacing the list changes its MCV types.
+MISSION_ORIGINAL_MCV_ACCESS_IDS = {
+    code: frozenset(values)
+    for code, values in _MISSION_CONFIG.get(
+        'original_mcv_access',
+        {'FREMNANT': ['AMCV', 'SMCV']},
+    ).items()
+}
+
+# Some scripted TeamTypes are refused when their native transport carries the
+# exact-House negative production gate. These reviewed identities retain the
+# human-only TechLevel lock but never receive the hidden gate prerequisite.
+MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS = {
+    code: frozenset(values)
+    for code, values in _MISSION_CONFIG.get(
+        'native_production_gate_exclusions',
+        {'SRED': ['SAPC']},
+    ).items()
+}
+
+# Mission-authored runtime identities whose complete map section must survive
+# player-clone production isolation unchanged. These remain native only for
+# scripted placements/TaskForces; player production uses its separate clone.
+MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS = {
+    code: frozenset(values)
+    for code, values in _MISSION_CONFIG.get(
+        'native_runtime_identity_preserve_ids', {}
+    ).items()
+}
+
+# Exact player-objective Events which must follow a separately buildable clone
+# while enemy placements and scripted TaskForces retain the native identity.
+MISSION_OBJECTIVE_CLONE_EVENT_REFS = {
+    code: {
+        str(unit_id).upper(): tuple(event_ids)
+        for unit_id, event_ids in values.items()
+    }
+    for code, values in _MISSION_CONFIG.get(
+        'objective_clone_event_refs', {}
+    ).items()
+}
+
 # Mission-only production merged after progression locks. These never become
 # permanent seed rewards.
 MISSION_REQUIRED_ACCESS_RULES = dict(_MISSION_CONFIG['required_access_rules'])

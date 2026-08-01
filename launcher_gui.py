@@ -67,8 +67,10 @@ def run_self_check():
         special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
         from randomizer.maps.special_buildings import (
+            validate_ore_purifier_miner_docks,
             validate_reprocessor_bounty_support,
         )
+        ore_purifier_docks = validate_ore_purifier_miner_docks()
         reprocessor_bounty = validate_reprocessor_bounty_support()
         from randomizer.rewards.catalogue import AID_POWER_MAP_CONFIGS
         moon_configs = [
@@ -186,6 +188,13 @@ def run_self_check():
                 )
             ),
             'reprocessor_bounty_support': reprocessor_bounty,
+            'ore_purifier_miner_docks_valid': bool(
+                ore_purifier_docks['miner_ids']
+                and not ore_purifier_docks['static_missing']
+                and not ore_purifier_docks['runtime_missing']
+                and not ore_purifier_docks['runtime_issues']
+            ),
+            'ore_purifier_miner_docks': ore_purifier_docks,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
             'reward_weight_connections_valid': (
@@ -213,6 +222,7 @@ def run_self_check():
                 'zephyr_bombardment_disabled_valid',
                 'transport_buff_eligibility_valid',
                 'reprocessor_bounty_support_valid',
+                'ore_purifier_miner_docks_valid',
                 'application_imported',
                 'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',

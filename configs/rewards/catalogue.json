@@ -1516,6 +1516,13 @@
         "index": 43
       },
       {
+        "name": "Hunter-Seeker Power",
+        "description": "Launches a Hunter-Seeker drone from its unrestricted hidden provider.",
+        "faction": "Allies",
+        "superweapon": "HunterSeekerSpecial",
+        "index": 53
+      },
+      {
         "name": "Time Freeze Power",
         "description": "Freezes and weakens enemy units and structures across the battlefield.",
         "faction": "Allies",
@@ -3226,6 +3233,67 @@
               "AffectsOwner": "yes",
               "AffectsAllies": "yes",
               "AffectsEnemies": "no"
+            }
+          }
+        }
+      },
+      {
+        "superweapon": "HunterSeekerSpecial",
+        "values": {
+          "IsPowered": "false",
+          "Money.Amount": "0",
+          "SW.AuxBuildings": "",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "HunterSeeker.RandomOnly": "no",
+          "HunterSeeker.Buildings": "MORHunterProvider"
+        },
+        "techno_clones": {
+          "HunterProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORHunterProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "HunterSeeker.Buildings"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "provides_superweapon": true,
+            "values": {
+              "Name": "Randomizer Hunter-Seeker Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
             }
           }
         }
