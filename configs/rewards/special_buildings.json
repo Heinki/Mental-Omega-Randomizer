@@ -10,7 +10,7 @@
         "prerequisite": "GACNST",
         "tech_level": 1,
         "build_limit": 1,
-        "capacity_stack_limit": 4,
+        "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
         "capacity_rewards": true
@@ -22,7 +22,7 @@
         "prerequisite": "NACNST",
         "tech_level": 1,
         "build_limit": 1,
-        "capacity_stack_limit": 4,
+        "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
         "capacity_rewards": true
@@ -34,7 +34,7 @@
         "prerequisite": "NACNST",
         "tech_level": 1,
         "build_limit": 1,
-        "capacity_stack_limit": 4,
+        "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
         "capacity_rewards": true,
@@ -47,7 +47,7 @@
         "prerequisite": "YACNST",
         "tech_level": 1,
         "build_limit": 1,
-        "capacity_stack_limit": 4,
+        "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
         "capacity_rewards": true
@@ -59,7 +59,7 @@
         "prerequisite": "FACNST",
         "tech_level": 1,
         "build_limit": 1,
-        "capacity_stack_limit": 4,
+        "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
         "capacity_rewards": true

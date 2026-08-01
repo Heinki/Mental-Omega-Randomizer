@@ -624,6 +624,12 @@ def build_player_clone_sections(
             if installed_unit
             else native_unit_values
         )
+        if not clone_build_limit and target.get('build_limit') is not None:
+            # Map/campaign-only production rewards can have no native source
+            # in installed rules. Keep their reviewed template cap after the
+            # generic production-gate cleanup; NACLONS otherwise became
+            # unlimited before its earned building-limit stacks were added.
+            clone_build_limit = str(target['build_limit'])
         owned_template = owned_clone_templates.get(unit_id)
         clone_source_values = dict(owned_template or effective_unit_values)
         mission_player_override = bool(
