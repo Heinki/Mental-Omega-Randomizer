@@ -18,6 +18,7 @@ from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
     PLAYER_ORIGINAL_PRODUCTION_GATE_ID,
+    TECHNO_TYPE_LISTS,
     append_static_startup_buildings,
     append_superweapon_grant_trigger,
     backup_file_once,
@@ -38,11 +39,13 @@ from randomizer.maps.rules import (
     resolved_delivery_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
+    reconcile_generated_techno_registrations,
     rewrite_techlevel_actions,
     scripted_reinforcement_veterancy_rules,
     stacked_house_buff_values,
     suppressed_superweapon_building_ids,
     unit_weapon_buff_rules,
+    veteran_armor_safety_rules,
 )
 from randomizer.rewards.rules import expand_equivalent_role_buffs
 from randomizer.maps.progress_hooks import (
@@ -232,6 +235,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         native_map_sections,
     )
     installed_superweapon_types, installed_rule_sections = installed_rules_registry()
+    veteran_health_rules = veteran_armor_safety_rules(
+        lines,
+        installed_rule_sections,
+    )
+    if veteran_health_rules:
+        merge_ini_section_values(lines, veteran_health_rules)
+        self.append_log(
+            'Replaced unsafe map VeteranArmor with the installed positive '
+            'veterancy multiplier.'
+        )
     (
         _unit_roster_path,
         owned_clone_ids,
@@ -402,6 +415,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         earned_rewards,
         installed_rule_sections,
     )
+    expected_generated_techno_types = {
+        list_section: []
+        for list_section in dict.fromkeys(TECHNO_TYPE_LISTS.values())
+    }
+
+    def remember_generated_techno_types(sections):
+        for list_section, type_ids in expected_generated_techno_types.items():
+            type_ids.extend((sections.get(list_section) or {}).values())
+
     deployed_sidebar_assets = deploy_superweapon_sidebar_assets(
         canonical_rewards(launch_power_rewards)
     )
@@ -445,8 +467,30 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         ),
         superweapon_required_houses=power_houses,
     )
+    remember_generated_techno_types(cloned_power_rules)
     for section, values in cloned_power_rules.items():
         rule_sections.setdefault(section, {}).update(values)
+    # UnitDelivery powers are factories too: their payload must use the same
+    # complete, health-validated player clone as production/reinforcements.
+    # Discover every configured payload, not only the few rewards carrying an
+    # older explicit clone hint.
+    delivery_clone_ids = unique_in_order(
+        [
+            unit_id
+            for reward in canonical_rewards(launch_power_rewards)
+            for unit_id in reward.get(
+                'superweapon_delivery_player_clone_ids', ()
+            )
+        ]
+        + [
+            type_id.strip().upper()
+            for values in cloned_power_rules.values()
+            for key, value in values.items()
+            if str(key).lower() == 'deliver.types'
+            for type_id in str(value or '').split(',')
+            if type_id.strip().upper() in BUFF_TARGETS
+        ]
+    )
     building_bound_power_names = [
         reward_display_name(reward)
         for reward in canonical_rewards(launch_power_rewards)
@@ -762,6 +806,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             forced_buildable_clone_ids=(
                 fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
             ),
+            forced_isolated_clone_ids=delivery_clone_ids,
             unlimited_build_limit_unit_ids=(
                 mission_buff_unit_ids
                 if self.active_reward_settings().get('unlimited_hero_units', False)
@@ -815,8 +860,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             production_gate_source_ids,
             existing_rule_sections=clone_rule_sections,
         )
+        remember_generated_techno_types(production_gate_rules)
         for section, values in production_gate_rules.items():
             clone_rule_sections.setdefault(section, {}).update(values)
+        for source_id, details in clone_handled.items():
+            clone_id = str((details or {}).get('clone_id') or '').strip()
+            list_section = TECHNO_TYPE_LISTS.get(
+                BUFF_TARGETS.get(source_id, {}).get('category')
+            )
+            if clone_id and list_section:
+                expected_generated_techno_types[list_section].append(clone_id)
+        remember_generated_techno_types(clone_rule_sections)
         if clone_rule_sections:
             production_trace = {}
             for source_id, details in clone_handled.items():
@@ -936,13 +990,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             self.append_log(
                 'Resolved delivered Academy targets to current player clone IDs.'
             )
-        delivery_clone_ids = unique_in_order(
-            unit_id
-            for reward in canonical_rewards(launch_power_rewards)
-            for unit_id in reward.get(
-                'superweapon_delivery_player_clone_ids', ()
-            )
-        )
         delivery_clone_rules = resolved_delivery_clone_rules(
             cloned_power_rules,
             clone_handled,
@@ -1076,6 +1123,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         ) = unit_weapon_buff_rules(
             lines,
             guarded_rewards,
+            installed_sections=installed_rule_sections,
+            native_map_sections=native_map_sections,
             configured_helper_houses=reward_helpers,
             require_unlocked_access=require_unlocked_access_for_buffs,
             additional_unlocked_tech_ids=buff_access_tech_ids,
@@ -1216,6 +1265,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if removed_after_patching:
         self.append_log(
             f'Removed {removed_after_patching} additional native tech unlock action(s) after hook patching.'
+        )
+
+    registration_rules, repaired_registrations = (
+        reconcile_generated_techno_registrations(
+            lines,
+            installed_rule_sections,
+            expected_generated_techno_types,
+        )
+    )
+    if registration_rules:
+        merge_ini_section_values(lines, registration_rules)
+    if repaired_registrations:
+        self.append_log(
+            'Repaired generated TechnoType registry entries lost during rule '
+            'batch merging: ' + ', '.join(repaired_registrations) + '.'
         )
 
     GENERATED_MAP_DIR.mkdir(parents=True, exist_ok=True)

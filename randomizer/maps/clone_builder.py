@@ -27,6 +27,7 @@ from .buff_values import (
     _register_map_type,
     apply_unit_buff_value,
     apply_weapon_buff_value,
+    normalize_unit_strength,
 )
 from .helper_ai import (
     _append_prerequisite_alternatives,
@@ -734,6 +735,16 @@ def build_player_clone_sections(
             if mission_strength is not None:
                 _remove_case_insensitive(clone_source_values, 'Strength')
                 clone_source_values['Strength'] = mission_strength
+        # Every player/spawn clone must carry one complete, positive health
+        # baseline even when a mission section overrides Strength with 0/1,
+        # malformed text, or alternate key casing.  Prefer the reviewed owned
+        # template before the older reward snapshot when repairing bad input.
+        normalize_unit_strength(
+            clone_source_values,
+            target,
+            owned_template or {},
+            effective_unit_values,
+        )
         effective_target = _target_with_effective_unit_stats(
             target, clone_source_values
         )

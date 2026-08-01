@@ -21,6 +21,7 @@ from .base import (
 )
 from .buff_values import (
     _register_map_type,
+    parsed_safe_strength,
 )
 
 def _sanitize_engineer_clone_values(values, target):
@@ -305,6 +306,11 @@ def _target_with_effective_unit_stats(target, effective_values):
     ):
         raw_value = _value_case_insensitive(effective_values, rules_key)
         if raw_value is None:
+            continue
+        if target_key == 'strength':
+            strength = parsed_safe_strength(raw_value)
+            if strength is not None:
+                result[target_key] = strength
             continue
         try:
             result[target_key] = float(str(raw_value).strip())

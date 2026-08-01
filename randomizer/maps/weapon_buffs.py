@@ -38,6 +38,8 @@ from .base import (
 def unit_weapon_buff_rules(
     lines,
     rewards,
+    installed_sections=None,
+    native_map_sections=None,
     configured_helper_houses=(),
     require_unlocked_access=True,
     additional_unlocked_tech_ids=None,
@@ -53,6 +55,14 @@ def unit_weapon_buff_rules(
     explicitly configured helper houses participate; any buff whose affected
     unit type or shared weapon is also used by an enemy is skipped.
     """
+    installed_sections = installed_sections or {}
+    native_map_sections = native_map_sections or {}
+    installed_by_lower = {
+        str(section).lower(): section for section in installed_sections
+    }
+    native_by_lower = {
+        str(section).lower(): section for section in native_map_sections
+    }
     records = map_house_records(lines)
     player_house = player_house_from_map(lines, records=records)
     if not player_house:
@@ -129,7 +139,18 @@ def unit_weapon_buff_rules(
             )
         elif direct_types:
             unit_values = rule_sections.setdefault(unit_id, {})
-            effective_target = target
+            installed_name = installed_by_lower.get(unit_id.lower())
+            native_name = native_by_lower.get(unit_id.lower())
+            effective_values = _standalone_clone_values_from_maps(
+                installed_sections.get(installed_name, {})
+                if installed_name else {},
+                native_map_sections.get(native_name, {})
+                if native_name else {},
+            )
+            effective_target = _target_with_effective_unit_stats(
+                target,
+                effective_values,
+            )
             if 'passenger_capacity' in direct_types:
                 # Native mission transports can deliberately override their
                 # installed cargo/capture capacity. Add earned slots to that
@@ -146,7 +167,10 @@ def unit_weapon_buff_rules(
                             float(str(authored_passengers).strip())
                         )
                     except (TypeError, ValueError):
-                        effective_target = target
+                        effective_target = _target_with_effective_unit_stats(
+                            target,
+                            effective_values,
+                        )
             for buff_type in (
                 'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
                 'open_topped', 'self_healing', 'cloak', 'sensors', 'cost',

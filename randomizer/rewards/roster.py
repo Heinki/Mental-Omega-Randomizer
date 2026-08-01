@@ -301,6 +301,38 @@ def validate_randomizer_unit_roster():
     }
 
 
+def validate_randomizer_unit_health():
+    """Audit the authoritative player templates used by every spawn path."""
+    _paths, clone_ids, templates = randomizer_unit_roster()
+    errors = []
+    strengths = {}
+    for source_id in sorted(clone_ids):
+        key, raw_value = _case_insensitive_item(
+            templates.get(source_id, {}),
+            'Strength',
+        )
+        value = _safe_multiplier(raw_value)
+        if (
+            key is None
+            or value is None
+            or value < 2
+            or value != round(value)
+        ):
+            errors.append(f'{source_id} has unsafe Strength={raw_value!r}')
+            continue
+        strengths[source_id] = int(value)
+    if errors:
+        raise ValueError(
+            'Randomizer player-template health validation failed: '
+            + '; '.join(errors)
+        )
+    return {
+        'types': len(strengths),
+        'minimum_strength': min(strengths.values(), default=0),
+        'maximum_strength': max(strengths.values(), default=0),
+    }
+
+
 def validate_special_reward_build_times():
     """Audit every producible campaign/Special template for sane timing."""
     from randomizer.rewards.catalogue import BUFF_TARGETS

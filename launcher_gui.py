@@ -21,6 +21,7 @@ from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_co
 from randomizer.rewards.roster import (
     MAX_PLAYER_BUILD_TIME_MULTIPLIER,
     ROSTER_FILENAMES,
+    validate_randomizer_unit_health,
     validate_randomizer_unit_roster,
     validate_special_reward_build_times,
     validate_transport_buff_eligibility,
@@ -62,6 +63,7 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        unit_health = validate_randomizer_unit_health()
         special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
         from randomizer.maps.special_buildings import (
@@ -156,6 +158,11 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'randomizer_unit_health_valid': bool(
+                unit_health['types'] == unit_roster['types']
+                and unit_health['minimum_strength'] >= 2
+            ),
+            'randomizer_unit_health': unit_health,
             'special_reward_build_times_valid': bool(
                 special_build_times['types']
                 and special_build_times['max_effective_multiplier']
@@ -200,6 +207,7 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'randomizer_unit_health_valid',
                 'special_reward_build_times_valid',
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_disabled_valid',

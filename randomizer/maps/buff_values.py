@@ -1,5 +1,7 @@
 """Low-level TechnoType and WeaponType buff calculations."""
 
+from math import isfinite
+
 from ._shared import (
     BUFF_EFFECTS,
     BUFF_TARGETS,
@@ -27,10 +29,125 @@ from .base import (
     parse_float,
 )
 
+
+MIN_SAFE_TECHNO_STRENGTH = 2
+
+
+def parsed_safe_strength(value):
+    """Return an engine-usable TechnoType Strength or ``None``.
+
+    A Strength of zero is the engine/default failure state and is displayed as
+    a one-hitpoint object.  One is technically parseable but is never a sane
+    player-unit baseline.  Reject both instead of hiding a bad load behind a
+    later ``max(1, ...)`` calculation.
+    """
+    try:
+        number = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    if not isfinite(number):
+        return None
+    strength = int(round(number))
+    return strength if strength >= MIN_SAFE_TECHNO_STRENGTH else None
+
+
+def strength_from_values(values):
+    """Read Strength case-insensitively from one INI value mapping."""
+    for key, value in (values or {}).items():
+        if str(key).lower() == 'strength':
+            return parsed_safe_strength(value)
+    return None
+
+
+def set_safe_strength(values, strength):
+    """Write one canonical Strength key and remove casing duplicates."""
+    raw_strength = strength
+    strength = parsed_safe_strength(raw_strength)
+    if strength is None:
+        raise ValueError(f'Unsafe TechnoType Strength: {raw_strength!r}')
+    for key in list(values):
+        if str(key).lower() == 'strength':
+            values.pop(key, None)
+    values['Strength'] = str(strength)
+    return strength
+
+
+def resolved_safe_strength(target, *value_sources):
+    """Resolve health from live/template mappings, then curated metadata."""
+    for values in value_sources:
+        strength = strength_from_values(values)
+        if strength is not None:
+            return strength
+    strength = parsed_safe_strength((target or {}).get('strength'))
+    if strength is None:
+        raise ValueError(
+            'No safe TechnoType Strength in effective values or buff target.'
+        )
+    return strength
+
+
+def normalize_unit_strength(values, target, *fallback_value_sources):
+    """Repair a missing/invalid live Strength from reviewed fallbacks."""
+    current = strength_from_values(values)
+    strength = (
+        current
+        if current is not None
+        else resolved_safe_strength(target, *fallback_value_sources)
+    )
+    set_safe_strength(values, strength)
+    return strength
+
+
+def veteran_armor_safety_rules(lines, installed_sections):
+    """Repair map VeteranArmor values that can collapse promoted health."""
+    map_general = section_value_map_preserve(lines, 'General')
+    map_value = next(
+        (
+            value for key, value in map_general.items()
+            if str(key).lower() == 'veteranarmor'
+        ),
+        None,
+    )
+    if map_value is None:
+        return {}
+    try:
+        map_multiplier = float(str(map_value).strip())
+    except (TypeError, ValueError):
+        map_multiplier = 0.0
+    if isfinite(map_multiplier) and map_multiplier >= 1.0:
+        return {}
+
+    installed_general = next(
+        (
+            values for section, values in (installed_sections or {}).items()
+            if str(section).lower() == 'general'
+        ),
+        {},
+    )
+    installed_value = next(
+        (
+            value for key, value in installed_general.items()
+            if str(key).lower() == 'veteranarmor'
+        ),
+        1.0,
+    )
+    try:
+        installed_multiplier = float(str(installed_value).strip())
+    except (TypeError, ValueError):
+        installed_multiplier = 1.0
+    if not isfinite(installed_multiplier) or installed_multiplier < 1.0:
+        installed_multiplier = 1.0
+    return {
+        'General': {
+            'VeteranArmor': format_multiplier(installed_multiplier),
+        },
+    }
+
 def apply_unit_buff_value(values, target, buff_type, count):
     if buff_type == 'health':
         multiplier = stacking_multiplier('health', count)
-        values['Strength'] = str(max(1, int(round(target['strength'] * multiplier))))
+        base_strength = resolved_safe_strength(target)
+        set_safe_strength(values, int(round(base_strength * multiplier)))
     elif buff_type == 'sight':
         values['Sight'] = str(int(round(
             target['sight'] + stacking_amount('sight', count)
@@ -51,7 +168,7 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['SelfHealing'] = 'yes'
         # Ares defaults to one hitpoint per RepairRate tick. Give every stack
         # another configured fraction of effective maximum strength.
-        current_strength = int(values.get('Strength', target['strength']))
+        current_strength = resolved_safe_strength(target, values)
         heal_fraction = min(
             float(BUFF_EFFECTS['maximum_self_heal_fraction']),
             float(BUFF_EFFECTS['defense_self_heal_fraction']) * count,
@@ -91,8 +208,8 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['Speed'] = str(capped_movement_speed(target, count))
     elif buff_type == 'armor':
         multiplier = stacking_multiplier('armor', count)
-        current_strength = int(values.get('Strength', target['strength']))
-        values['Strength'] = str(max(1, int(round(current_strength / multiplier))))
+        current_strength = resolved_safe_strength(target, values)
+        set_safe_strength(values, int(round(current_strength / multiplier)))
     else:
         return False
     return True
@@ -297,3 +414,62 @@ def _register_map_type(section_rules, lines, installed_sections, list_section, t
     keys.update(str(key).lower() for key in pending_entries)
     key, _ = _next_reserved_type_key(keys, RANDOMIZER_TYPE_LIST_KEY_START)
     pending_entries[key] = type_id
+
+
+def reconcile_generated_techno_registrations(
+    lines,
+    installed_sections,
+    expected_by_list,
+):
+    """Repair generated TechnoTypes lost to pending registry-key collisions.
+
+    Several map-rule builders allocate reserved numeric keys independently
+    before their batches are merged.  Two batches can therefore both choose
+    the same key; a normal mapping update retains only the later value.  The
+    generated TechnoType section still exists, but the engine does not load it
+    as that category and can instantiate it with the one-HP default state.
+
+    Reconcile once against the completed map.  This also serves as a launch
+    invariant: every intended generated TechnoType must have both a definition
+    and a category-list registration.
+    """
+    repair_rules = {}
+    repaired = []
+    missing_definitions = []
+    for list_section, type_ids in expected_by_list.items():
+        for type_id in unique_in_order(
+            str(value or '').strip() for value in type_ids
+        ):
+            if not type_id:
+                continue
+            if not (
+                section_value_map_preserve(lines, type_id)
+                or installed_sections.get(type_id, {})
+            ):
+                missing_definitions.append(type_id)
+                continue
+            before = {
+                str(value).lower()
+                for value in list(
+                    installed_sections.get(list_section, {}).values()
+                )
+                + list(
+                    section_value_map_preserve(lines, list_section).values()
+                )
+                + list(repair_rules.get(list_section, {}).values())
+            }
+            _register_map_type(
+                repair_rules,
+                lines,
+                installed_sections,
+                list_section,
+                type_id,
+            )
+            if type_id.lower() not in before:
+                repaired.append(type_id)
+    if missing_definitions:
+        raise ValueError(
+            'Generated TechnoType definition missing before registry '
+            'reconciliation: ' + ', '.join(unique_in_order(missing_definitions))
+        )
+    return repair_rules, unique_in_order(repaired)

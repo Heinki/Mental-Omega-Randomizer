@@ -49,6 +49,7 @@ def player_unit_clone_rules(
     build_owner_ids=(),
     helper_autobuild_support=None,
     forced_buildable_clone_ids=(),
+    forced_isolated_clone_ids=(),
     unlimited_build_limit_unit_ids=(),
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
@@ -226,6 +227,11 @@ def player_unit_clone_rules(
         for item in (forced_buildable_clone_ids or ())
         if str(item).upper() in buildable_ids
     }
+    forced_clone_ids.update(
+        str(item).upper()
+        for item in (forced_isolated_clone_ids or ())
+        if str(item).upper() in BUFF_TARGETS
+    )
     unlimited_limit_ids = {
         str(item).upper()
         for item in (unlimited_build_limit_unit_ids or ())
