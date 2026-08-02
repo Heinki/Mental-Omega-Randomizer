@@ -2430,6 +2430,78 @@
       ]
     ],
     "linked_buff_variants": {
+      "AMCV": {
+        "GACNST": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "FDRON": {
+        "NAFURY": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "SMCV": {
+        "NACNST": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "MWF": {
+        "NAFIST": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "QUAD": {
+        "YAQUAD": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "PCV": {
+        "YACNST": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "YAMREF": {
+        "SMIN": {
+          "category": "units",
+          "weapons": {}
+        }
+      },
+      "MSA": {
+        "FAMSA": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "ORCIN": {
+        "FAORCI": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "FMCV": {
+        "FACNST": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "BOID": {
+        "FABOID": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
+      "SWPR": {
+        "FASWPR": {
+          "category": "defenses",
+          "weapons": {}
+        }
+      },
       "AHVYBOT2": {
         "AHVYBOT2B": {
           "weapons": {
@@ -2457,6 +2529,7 @@
       },
       "SALA": {
         "SALA_1": {
+          "weapon_buffs_only": true,
           "weapons": {
             "SalamanderBeam": {
               "damage": 110,
@@ -2471,6 +2544,7 @@
           }
         },
         "SALA_2": {
+          "weapon_buffs_only": true,
           "weapons": {
             "SalamanderField": {
               "damage": 220,
@@ -3103,6 +3177,30 @@
             "damage": 400,
             "rof": 200,
             "range": 26
+          }
+        }
+      },
+      "GOTTER": {
+        "weapons": {
+          "GotterLaser": {
+            "damage": 15,
+            "rof": 1,
+            "range": 11
+          },
+          "GotterLaserE": {
+            "damage": 15,
+            "rof": 1,
+            "range": 11
+          },
+          "GotterBow": {
+            "damage": 20,
+            "rof": 1,
+            "range": 11
+          },
+          "GotterBowE": {
+            "damage": 20,
+            "rof": 1,
+            "range": 11
           }
         }
       },

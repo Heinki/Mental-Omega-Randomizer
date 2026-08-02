@@ -5,12 +5,19 @@ from randomizer.config.tuning import mission_assistance_stack_count
 from ._dependencies import (
     BUFF_TARGETS,
     BUFF_TYPES,
+    CAMPAIGN_FILTERS,
     CHECK_SCHEMA_VERSION,
     DEFAULT_MISSION_GOAL,
     DEFAULT_REWARDS_PER_CHECK,
+    DIFFICULTIES,
+    EVA_VOICE_CHOICES,
+    GAME_SPEEDS,
     MAIN_REWARD_WEIGHT_TYPES,
+    MAX_REWARDS_PER_CHECK,
+    PLAYER_COLORS,
     POWER_BUFF_TYPES,
     POWER_BUFF_WEIGHT_TYPES,
+    PROGRESSION_MODES,
     REWARD_MODES,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
     STARTING_UNLOCKED_MISSIONS,
@@ -21,9 +28,11 @@ from ._dependencies import (
     create_grid,
     expanded_tier_one_defense_ids,
     expanded_tier_one_unit_ids,
+    filedialog,
     linked_buff_variant_ids,
     log_event,
     logging,
+    messagebox,
     normalize_assistance_units,
     normalize_completed_checks,
     normalize_failure_stacks,
@@ -32,12 +41,15 @@ from ._dependencies import (
     random_chaos_tier_one_defense_ids,
     random_chaos_tier_one_unit_ids,
     read_json_object,
+    read_portable_settings,
     refresh_grid_states,
     save_config,
     tier_one_defense_ids,
     tier_one_unit_ids,
     traceback,
     UNIT_BUFF_WEIGHT_TYPES,
+    valid_choice,
+    write_portable_settings,
 )
 
 class StateController:
@@ -62,21 +74,35 @@ class StateController:
 
         old_earned = self.state.get('earned_rewards', [])
         old_queue = self.state.get('reward_queue', [])
+        discard_old_reward_history = False
         if any('spawn' in reward for reward in old_earned + old_queue):
+            discard_old_reward_history = True
             old_earned = []
             old_queue = []
             self.state['earned_rewards'] = []
             self.state['reward_queue'] = []
             changed = True
 
-        schema_changed = self.state.get('check_schema_version') != CHECK_SCHEMA_VERSION
+        previous_schema = self.state.get('check_schema_version')
+        schema_changed = previous_schema != CHECK_SCHEMA_VERSION
+        preserve_capped_reward_history = (
+            previous_schema == 16 and not discard_old_reward_history
+        )
         if self.missions and (schema_changed or 'mission_checks' not in self.state):
             self.state['mission_checks'] = self.build_mission_checks(
                 self.state.get('mission_order', []),
                 self.state.get('seed', ''),
-                [] if schema_changed else old_earned,
+                (
+                    old_earned
+                    if not schema_changed or preserve_capped_reward_history
+                    else []
+                ),
                 self.state.get('completed_missions', []),
-                preserved_checks={} if schema_changed else self.state.get('mission_checks', {}),
+                preserved_checks=(
+                    self.state.get('mission_checks', {})
+                    if not schema_changed or preserve_capped_reward_history
+                    else {}
+                ),
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
@@ -716,3 +742,240 @@ class StateController:
             self.selected_mission_goal(),
             self.selected_rewards_per_check(),
         )
+
+    def save_settings_file(self):
+        """Export every launcher option without active seed progress."""
+        path = filedialog.asksaveasfilename(
+            parent=self,
+            title='Save Randomizer Settings',
+            defaultextension='.json',
+            initialfile='Mental Omega Randomizer Settings.json',
+            filetypes=(
+                ('Randomizer settings', '*.json'),
+                ('All files', '*.*'),
+            ),
+        )
+        if not path:
+            return
+        try:
+            self.save_current_launcher_config()
+            write_portable_settings(path, self.config)
+        except Exception as exc:
+            log_event(
+                'portable_settings_save_failed',
+                level=logging.ERROR,
+                path=str(path),
+                traceback=traceback.format_exc(),
+            )
+            messagebox.showerror(
+                'Save Settings Failed',
+                f'Could not save settings.\n\n{exc}',
+                parent=self,
+            )
+            return
+        self.append_log(f'Saved portable settings: {path}')
+        messagebox.showinfo(
+            'Settings Saved',
+            'Portable settings saved. Copy this JSON file to another PC to '
+            'load the identical setup.',
+            parent=self,
+        )
+
+    def load_settings_file(self):
+        """Import every launcher option while preserving run progress."""
+        path = filedialog.askopenfilename(
+            parent=self,
+            title='Load Randomizer Settings',
+            filetypes=(
+                ('Randomizer settings', '*.json'),
+                ('All files', '*.*'),
+            ),
+        )
+        if not path:
+            return
+        try:
+            config = read_portable_settings(path)
+            self.apply_portable_settings(config)
+        except Exception as exc:
+            log_event(
+                'portable_settings_load_failed',
+                level=logging.ERROR,
+                path=str(path),
+                traceback=traceback.format_exc(),
+            )
+            messagebox.showerror(
+                'Load Settings Failed',
+                f'Could not load settings.\n\n{exc}',
+                parent=self,
+            )
+            return
+        self.append_log(f'Loaded portable settings: {path}')
+        messagebox.showinfo(
+            'Settings Loaded',
+            'All settings loaded. They apply to the next generated seed; '
+            'current run progress was not changed.',
+            parent=self,
+        )
+
+    def apply_portable_settings(self, config):
+        """Apply one validated portable config to every live setting control."""
+        self.config = config
+        generation = self.config.get('generation', {})
+        reward_settings = self.config_reward_settings()
+
+        self.dark_mode_var.set(bool(self.config.get('dark_mode', False)))
+        self.hide_reward_details_var.set(bool(
+            self.config.get('hide_reward_details', False)
+        ))
+        self.hide_locked_grid_missions_var.set(bool(
+            self.config.get('hide_locked_grid_missions', False)
+        ))
+        self.seed_var.set(str(self.config.get('seed', '')))
+        self.campaign_var.set(valid_choice(
+            self.config.get('campaign_filter'),
+            CAMPAIGN_FILTERS,
+            CAMPAIGN_FILTERS[0],
+        ))
+        self.mission_goal_var.set(max(
+            1, int(self.config.get('mission_goal', DEFAULT_MISSION_GOAL))
+        ))
+        self.progression_mode_var.set(valid_choice(
+            self.config.get('progression_mode'),
+            PROGRESSION_MODES,
+            PROGRESSION_MODES[0],
+        ))
+        self.grid_two_starts_var.set(bool(
+            self.config.get('grid_two_start_positions', False)
+        ))
+        self.rewards_per_check_var.set(max(1, min(
+            MAX_REWARDS_PER_CHECK,
+            int(self.config.get(
+                'rewards_per_objective', DEFAULT_REWARDS_PER_CHECK
+            )),
+        )))
+        self.difficulty_var.set(valid_choice(
+            self.config.get('difficulty'),
+            [name for name, _ in DIFFICULTIES],
+            DIFFICULTIES[0][0],
+        ))
+        self.game_speed_var.set(valid_choice(
+            self.config.get('game_speed'),
+            [name for name, _ in GAME_SPEEDS],
+            GAME_SPEEDS[0][0],
+        ))
+        self.player_color_var.set(valid_choice(
+            self.config.get('player_color'),
+            PLAYER_COLORS,
+            PLAYER_COLORS[0],
+        ))
+        self.rainbowizer_var.set(bool(
+            self.config.get('rainbowizer', False)
+        ))
+        self.eva_voice_var.set(valid_choice(
+            self.config.get('eva_voice'),
+            EVA_VOICE_CHOICES,
+            EVA_VOICE_CHOICES[0],
+        ))
+
+        self.include_no_build_missions_var.set(bool(
+            generation.get('include_no_build_missions', True)
+        ))
+        self.include_no_build_production_missions_var.set(bool(
+            generation.get('include_no_build_production_missions', True)
+        ))
+        self.include_operation_missions_var.set(bool(
+            generation.get('include_operation_missions', True)
+        ))
+        self.prioritize_no_build_missions_var.set(bool(
+            generation.get('prioritize_no_build_missions', False)
+        ))
+        self.reward_mode_var.set(valid_choice(
+            generation.get('reward_mode'),
+            REWARD_MODES,
+            REWARD_MODES[0],
+        ))
+
+        self.excluded_mission_codes = {
+            str(code).upper()
+            for code in generation.get('excluded_mission_codes', [])
+            if str(code).strip()
+        }
+        self.excluded_unit_access_ids = {
+            str(unit_id).upper()
+            for unit_id in reward_settings['excluded_unit_access_ids']
+        }
+        self.excluded_superweapon_ids = {
+            str(power_id).upper()
+            for power_id in reward_settings['excluded_superweapon_ids']
+        }
+        self.excluded_unit_buff_types = {
+            str(unit_id).upper(): set(buff_types)
+            for unit_id, buff_types in reward_settings[
+                'excluded_unit_buff_types'
+            ].items()
+        }
+        self.excluded_power_buff_types = {
+            str(power_id).upper(): set(buff_types)
+            for power_id, buff_types in reward_settings[
+                'excluded_power_buff_types'
+            ].items()
+        }
+
+        setting_vars = {
+            'randomize_unit_access': self.randomize_unit_access_var,
+            'start_with_tier_one_units': self.start_with_tier_one_units_var,
+            'start_with_tier_one_defenses': self.start_with_tier_one_defenses_var,
+            'include_defensive_buildings': self.include_defensive_buildings_var,
+            'include_special_buildings': self.include_special_buildings_var,
+            'include_special_rewards': self.include_special_rewards_var,
+            'unlimited_hero_units': self.unlimited_hero_units_var,
+            'share_chaos_role_buffs': self.share_chaos_role_buffs_var,
+            'buff_allied_helpers': self.buff_allied_helpers_var,
+            'failure_assistance': self.failure_assistance_var,
+            'include_buff_rewards': self.include_buff_rewards_var,
+            'include_superweapon_rewards': self.include_superweapon_rewards_var,
+            'include_secondary_superweapon_rewards': (
+                self.include_secondary_superweapon_rewards_var
+            ),
+            'include_aid_power_rewards': self.include_aid_power_rewards_var,
+            'include_power_buff_rewards': self.include_power_buff_rewards_var,
+        }
+        for key, variable in setting_vars.items():
+            variable.set(bool(reward_settings[key]))
+
+        enabled_unit_buffs = set(reward_settings['enabled_buff_types'])
+        for buff_type in BUFF_TYPES:
+            self.buff_type_vars[buff_type['id']].set(
+                buff_type['id'] in enabled_unit_buffs
+            )
+        enabled_power_buffs = set(
+            reward_settings['enabled_power_buff_types']
+        )
+        for buff_type in POWER_BUFF_TYPES:
+            self.power_buff_type_vars[buff_type['id']].set(
+                buff_type['id'] in enabled_power_buffs
+            )
+
+        weights = reward_settings['reward_weights']
+        for definition in MAIN_REWARD_WEIGHT_TYPES:
+            weight_id = definition['id']
+            self.main_reward_weight_vars[weight_id].set(
+                weights['main'][weight_id]
+            )
+        for weight_id, _label in UNIT_BUFF_WEIGHT_TYPES:
+            self.unit_buff_weight_vars[weight_id].set(
+                weights['unit_buffs'][weight_id]
+            )
+        for weight_id, _label in POWER_BUFF_WEIGHT_TYPES:
+            self.power_buff_weight_vars[weight_id].set(
+                weights['power_buffs'][weight_id]
+            )
+
+        save_config(self.config)
+        self.apply_color_mode()
+        self.refresh_setting_states()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+        self.grid_render_signature = None
+        self.unlock_dashboard_signature = None
+        self.refresh_progress_view()

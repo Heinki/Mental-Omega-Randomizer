@@ -1,6 +1,6 @@
 """Map object/team ownership analysis used by buff isolation."""
 
-from randomizer.core.collections import unique_in_order
+from randomizer.core.collections import comma_items, unique_in_order
 from randomizer.maps.ini import (
     all_section_value_maps,
     parse_action_groups,
@@ -13,6 +13,90 @@ from randomizer.maps.houses import (
     map_house_records,
     player_controlled_houses,
 )
+
+
+def techno_type_possible_houses(
+    lines,
+    values,
+    records=None,
+    sections=None,
+    sections_by_lower=None,
+):
+    """Return active Houses that may legally create one native TechnoType.
+
+    Placed units and TaskForces are incomplete production evidence: campaign AI
+    can request any native type allowed by Owner/RequiredHouses. Treat missing
+    ownership as globally reachable. This keeps a native global buff unsafe
+    unless both authored references and production ownership are friendly.
+    """
+    sections = sections if sections is not None else all_section_value_maps(lines)
+    records = (
+        records
+        if records is not None
+        else map_house_records(lines, sections=sections)
+    )
+    lowered = {
+        str(key).lower(): value for key, value in (values or {}).items()
+    }
+    owners = comma_items(lowered.get('owner', ''))
+    required = comma_items(lowered.get('requiredhouses', ''))
+    forbidden = comma_items(lowered.get('forbiddenhouses', ''))
+    sections_by_lower = sections_by_lower or {
+        str(name).lower(): section_values
+        for name, section_values in sections.items()
+    }
+
+    def inherits(country, ancestor):
+        wanted = str(ancestor or '').strip().lower()
+        current = str(country or '').strip()
+        visited = set()
+        while current and current.lower() not in visited:
+            current_lower = current.lower()
+            if current_lower == wanted:
+                return True
+            visited.add(current_lower)
+            parent = str(
+                sections_by_lower.get(current_lower, {}).get(
+                    'parentcountry', ''
+                )
+            ).strip()
+            if not parent or parent.lower() == current_lower:
+                break
+            current = parent
+        return False
+
+    def matches(house_name, country, identities):
+        wanted = {
+            str(item).strip().lower()
+            for item in identities
+            if str(item).strip().lower() not in {'', 'none', '<none>'}
+        }
+        if not wanted:
+            return False
+        house_aliases = {
+            house_name.lower(),
+            house_name.removesuffix(' House').lower(),
+            str(country).lower(),
+        }
+        if house_aliases.intersection(wanted):
+            return True
+        return any(inherits(country, identity) for identity in wanted)
+
+    possible = []
+    ownership_known = bool(owners or required)
+    for house_name, record in records.items():
+        country = record.get('country') or house_name.replace(' House', '')
+        owner_allowed = not owners or matches(house_name, country, owners)
+        required_allowed = (
+            not required or matches(house_name, country, required)
+        )
+        denied = matches(house_name, country, forbidden)
+        if (
+            (not ownership_known or (owner_allowed and required_allowed))
+            and not denied
+        ):
+            possible.append(house_name)
+    return possible
 
 
 def ai_trigger_team_usage_houses(lines):

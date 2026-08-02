@@ -1202,6 +1202,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     source_clone_id=clone_handled.get(
                         source_unit_id, {}
                     ).get('clone_id', ''),
+                    configured_helper_houses=reward_helpers,
+                    excluded_player_houses=excluded_player_houses,
                 )
             )
             if native_veterancy_rules:

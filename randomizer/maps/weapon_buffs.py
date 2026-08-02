@@ -17,8 +17,10 @@ from ._shared import (
     section_lines,
     section_value_map_preserve,
     stacking_multiplier,
+    techno_type_possible_houses,
     unique_in_order,
     unit_usage_houses,
+    unsafe_country_houses,
 )
 from .buff_values import (
     _active_direct_buff_counts,
@@ -63,7 +65,11 @@ def unit_weapon_buff_rules(
     native_by_lower = {
         str(section).lower(): section for section in native_map_sections
     }
-    records = map_house_records(lines)
+    sections = all_section_value_maps(lines)
+    sections_by_lower = {
+        str(name).lower(): values for name, values in sections.items()
+    }
+    records = map_house_records(lines, sections=sections)
     player_house = player_house_from_map(lines, records=records)
     if not player_house:
         return ({}, [], [])
@@ -96,6 +102,30 @@ def unit_weapon_buff_rules(
             allowed_names.append(record['country'])
     allowed_houses = {name.lower() for name in allowed_names if name}
     usage_index = build_unit_usage_index(lines)
+    possible_house_cache = {}
+
+    def possible_native_houses(unit_id, effective_values=None):
+        unit_upper = str(unit_id).upper()
+        if unit_upper in possible_house_cache:
+            return possible_house_cache[unit_upper]
+        if effective_values is None:
+            installed_name = installed_by_lower.get(unit_upper.lower())
+            native_name = native_by_lower.get(unit_upper.lower())
+            effective_values = _standalone_clone_values_from_maps(
+                installed_sections.get(installed_name, {})
+                if installed_name else {},
+                native_map_sections.get(native_name, {})
+                if native_name else {},
+            )
+        possible = set(techno_type_possible_houses(
+            lines,
+            effective_values,
+            records=records,
+            sections=sections,
+            sections_by_lower=sections_by_lower,
+        ))
+        possible_house_cache[unit_upper] = possible
+        return possible
 
     counts_by_unit = _active_direct_buff_counts(
         rewards,
@@ -123,9 +153,20 @@ def unit_weapon_buff_rules(
             str(weapon).upper() for weapon in handled.get('weapon_ids', ())
         }
         target = BUFF_TARGETS.get(unit_id, {})
+        installed_name = installed_by_lower.get(unit_id.lower())
+        native_name = native_by_lower.get(unit_id.lower())
+        effective_values = _standalone_clone_values_from_maps(
+            installed_sections.get(installed_name, {})
+            if installed_name else {},
+            native_map_sections.get(native_name, {})
+            if native_name else {},
+        )
         unsafe_unit_houses = sorted({
             house
-            for house in unit_usage_houses(lines, unit_id, usage_index)
+            for house in (
+                unit_usage_houses(lines, unit_id, usage_index)
+                | possible_native_houses(unit_id, effective_values)
+            )
             if house.lower() not in allowed_houses
         })
 
@@ -139,14 +180,6 @@ def unit_weapon_buff_rules(
             )
         elif direct_types:
             unit_values = rule_sections.setdefault(unit_id, {})
-            installed_name = installed_by_lower.get(unit_id.lower())
-            native_name = native_by_lower.get(unit_id.lower())
-            effective_values = _standalone_clone_values_from_maps(
-                installed_sections.get(installed_name, {})
-                if installed_name else {},
-                native_map_sections.get(native_name, {})
-                if native_name else {},
-            )
             effective_target = _target_with_effective_unit_stats(
                 target,
                 effective_values,
@@ -195,7 +228,10 @@ def unit_weapon_buff_rules(
                 unsafe_weapon_houses = sorted({
                     house
                     for weapon_user in weapon_users
-                    for house in unit_usage_houses(lines, weapon_user, usage_index)
+                    for house in (
+                        unit_usage_houses(lines, weapon_user, usage_index)
+                        | possible_native_houses(weapon_user)
+                    )
                     if house.lower() not in allowed_houses
                 })
                 if unsafe_weapon_houses:
@@ -382,6 +418,8 @@ def native_variant_veterancy_rules(
     source_unit_id,
     native_unit_ids,
     source_clone_id='',
+    configured_helper_houses=(),
+    excluded_player_houses=(),
 ):
     """Extend an earned native-unit veterancy entry to scripted variants.
 
@@ -419,7 +457,20 @@ def native_variant_veterancy_rules(
     }
 
     records = map_house_records(lines)
-    player_houses = player_controlled_houses(lines, records=records)
+    excluded_names = {
+        str(house or '').lower() for house in excluded_player_houses
+    }
+    player_houses = [
+        house
+        for house in player_controlled_houses(lines, records=records)
+        if house.lower() not in excluded_names
+    ]
+    helper_houses, _ = resolve_configured_helper_houses(
+        records,
+        configured_helper_houses,
+        player_houses,
+    )
+    allowed_houses = unique_in_order(player_houses + helper_houses)
     countries = unique_in_order(
         str(records.get(house, {}).get('country') or house.replace(' House', ''))
         for house in player_houses
@@ -428,6 +479,16 @@ def native_variant_veterancy_rules(
     rules = {}
     applied = []
     for country in countries:
+        # A CountryType Veteran* field affects every inheriting House. Never
+        # add native mission identities when an active enemy or neutral House
+        # shares that country, even if the player's isolated clone is present.
+        if unsafe_country_houses(
+            lines,
+            country,
+            allowed_houses,
+            records=records,
+        ):
+            continue
         current = str(
             _value_case_insensitive(
                 section_value_map_preserve(lines, country), field, ''

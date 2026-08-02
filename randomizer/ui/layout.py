@@ -298,6 +298,21 @@ def _build_right_panel(self, main_frame):
     self.campaign_combo.grid(row=2, column=1, sticky='ew', pady=(6, 0))
     self.campaign_combo.bind('<<ComboboxSelected>>', self.on_campaign_filter_changed, add='+')
 
+    settings_file_row = ttk.Frame(seed_settings_frame)
+    settings_file_row.grid(row=3, column=0, sticky='ew', pady=(2, 0))
+    settings_file_row.columnconfigure(0, weight=1)
+    settings_file_row.columnconfigure(1, weight=1)
+    ttk.Button(
+        settings_file_row,
+        text='Save Settings',
+        command=self.save_settings_file,
+    ).grid(row=0, column=0, sticky='ew', padx=(0, 3))
+    ttk.Button(
+        settings_file_row,
+        text='Load Settings',
+        command=self.load_settings_file,
+    ).grid(row=0, column=1, sticky='ew', padx=(3, 0))
+
     ttk.Label(options_row, text='Difficulty').grid(row=3, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.difficulty_combo = ttk.Combobox(
         options_row,

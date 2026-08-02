@@ -21,7 +21,8 @@
         "id": "area",
         "name": "Expanded Area",
         "setting_label": "Larger effect area",
-        "description": "Effect radius grows by 0.5 cells per stack; rectangular areas grow by one cell in each dimension."
+        "description": "Effect radius grows by 0.5 cells per stack; rectangular areas grow by one cell in each dimension.",
+        "maximum_stacks": 20
       },
       {
         "id": "damage",
@@ -41,7 +42,8 @@
         "id": "payload",
         "name": "Reinforced Payload",
         "setting_label": "One extra delivered unit",
-        "description": "Delivery, paradrop, or aircraft count increases by one per stack."
+        "description": "Delivery, paradrop, or aircraft count increases by one per stack.",
+        "maximum_stacks": 20
       }
     ],
     "recharge": {

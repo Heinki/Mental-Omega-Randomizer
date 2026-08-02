@@ -75,7 +75,39 @@ def run_self_check():
         from randomizer.rewards.catalogue import (
             AID_POWER_MAP_CONFIGS,
             AID_POWER_UNLOCK_REWARDS,
+            BUFF_TARGETS,
+            REWARD_POOL,
+            buff_stack_limit,
+            linked_buff_variant_ids,
         )
+        all_buff_caps_valid = bool(
+            any(reward.get('kind') == 'buff' for reward in REWARD_POOL)
+            and all(
+                buff_stack_limit(reward) is not None
+                for reward in REWARD_POOL
+                if reward.get('kind') == 'buff'
+            )
+        )
+        from randomizer.ui.cameos import installed_rules_registry
+        _installed_types, installed_sections = installed_rules_registry()
+        installed_by_upper = {
+            str(section).upper(): {
+                str(key).lower(): value for key, value in values.items()
+            }
+            for section, values in installed_sections.items()
+        }
+        deploy_clone_link_gaps = []
+        for unit_id, values in installed_by_upper.items():
+            if unit_id not in BUFF_TARGETS:
+                continue
+            for key in ('deploysinto', 'undeploysinto'):
+                target_id = str(values.get(key, '') or '').upper()
+                if target_id in {'', 'NONE', '<NONE>'}:
+                    continue
+                if target_id not in linked_buff_variant_ids(unit_id):
+                    deploy_clone_link_gaps.append(
+                        f'{unit_id}.{key}={target_id}'
+                    )
         moon_configs = [
             config
             for config in AID_POWER_MAP_CONFIGS
@@ -185,6 +217,8 @@ def run_self_check():
                 'UNIT_BUFF_WEIGHT_TYPES',
                 'clamp_reward_weight',
                 'normalize_reward_weights',
+                'read_portable_settings',
+                'write_portable_settings',
             ),
         }
         missing_runtime_symbols = [
@@ -238,6 +272,9 @@ def run_self_check():
             ),
             'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
+            'all_buff_caps_valid': all_buff_caps_valid,
+            'deploy_clone_links_valid': not deploy_clone_link_gaps,
+            'deploy_clone_link_gaps': deploy_clone_link_gaps,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and transport_buffs['stallion_capacity_enabled']
@@ -284,6 +321,8 @@ def run_self_check():
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_disabled_valid',
                 'portable_aid_powers_valid',
+                'all_buff_caps_valid',
+                'deploy_clone_links_valid',
                 'transport_buff_eligibility_valid',
                 'reprocessor_bounty_support_valid',
                 'ore_purifier_miner_docks_valid',

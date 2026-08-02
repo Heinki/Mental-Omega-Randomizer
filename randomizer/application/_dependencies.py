@@ -12,13 +12,21 @@ import time
 import traceback
 
 from randomizer.config.player import CONFIG_PATH, DEFAULT_CONFIG, load_config, save_config
+from randomizer.config.portable import (
+    read_portable_settings,
+    write_portable_settings,
+)
 from randomizer.core.storage import atomic_write_json, read_json_object
 from randomizer.progression.state import (
     normalize_assistance_units,
     normalize_completed_checks,
     normalize_failure_stacks,
 )
-from randomizer.rewards.planning import plan_seed_rewards
+from randomizer.rewards.planning import (
+    MAX_REWARDS_ACHIEVED_REWARD,
+    is_max_rewards_achieved_reward,
+    plan_seed_rewards,
+)
 from randomizer.rewards.weights import (
     DEFAULT_REWARD_WEIGHT,
     MAIN_REWARD_WEIGHT_TYPES,
@@ -109,7 +117,7 @@ from randomizer.rewards.catalogue import (
 
 try:
     import tkinter as tk
-    from tkinter import ttk, messagebox, scrolledtext
+    from tkinter import ttk, filedialog, messagebox, scrolledtext
 except ImportError:
     raise ImportError('tkinter is required to run this launcher UI.')
 
@@ -193,7 +201,7 @@ from randomizer.ui.theme import apply_color_mode as apply_launcher_color_mode
 from randomizer.ui.tooltips import WidgetTooltip
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
-CHECK_SCHEMA_VERSION = 16
+CHECK_SCHEMA_VERSION = 17
 HOOK_POLL_MS = 1500
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024

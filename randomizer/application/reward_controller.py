@@ -16,6 +16,7 @@ from ._dependencies import (
     clamp_int,
     linked_buff_variant_ids,
     log_event,
+    MAX_REWARDS_ACHIEVED_REWARD,
     normalize_reward_weights,
     parse_missions,
     plan_seed_rewards,
@@ -23,6 +24,7 @@ from ._dependencies import (
     mission_production_families,
     tech_ids_for_rewards,
     reward_selection_weight,
+    is_max_rewards_achieved_reward,
     unit_display_label,
     unit_role_equivalents,
     unlocked_reward_tech_ids,
@@ -527,8 +529,32 @@ class RewardController:
         }
         preserved_checks = preserved_checks or {}
         checks = {}
+        preserved_reward_check_ids = {}
+        for code in mission_codes:
+            old_checks = {
+                check.get('id'): check
+                for check in preserved_checks.get(code, [])
+                if check.get('id')
+            }
+            preserved_reward_check_ids[code] = {
+                check_id
+                for check_id, _name, _hint in templates_by_code[code]
+                if (
+                    check_id in old_checks
+                    and (
+                        old_checks[check_id].get('unlocked')
+                        or old_checks[check_id].get('released')
+                    )
+                    and check_rewards(old_checks[check_id])
+                ) or (
+                    check_id == 'objective_1' and code in completed_rewards
+                )
+            }
         slots_by_code = {
-            code: len(templates_by_code[code]) * rewards_per_check
+            code: (
+                len(templates_by_code[code])
+                - len(preserved_reward_check_ids[code])
+            ) * rewards_per_check
             for code in mission_codes
         }
         rewards_by_code = self.generate_seed_reward_plan(
@@ -537,6 +563,7 @@ class RewardController:
             slots_by_code,
             progression_mode=progression_mode,
             grid=grid,
+            initial_rewards=earned_rewards,
         )
 
         for code in mission_codes:
@@ -565,9 +592,18 @@ class RewardController:
                     released = False
                 else:
                     rewards_for_check = rewards[reward_index:reward_index + rewards_per_check]
+                    real_rewards = [
+                        reward for reward in rewards_for_check
+                        if not is_max_rewards_achieved_reward(reward)
+                    ]
+                    if len(real_rewards) != len(rewards_for_check):
+                        rewards_for_check = real_rewards + [
+                            dict(MAX_REWARDS_ACHIEVED_REWARD)
+                        ]
                     unlocked = False
                     released = False
-                reward_index += rewards_per_check
+                if check_id not in preserved_reward_check_ids[code]:
+                    reward_index += rewards_per_check
                 primary_reward = rewards_for_check[0] if rewards_for_check else {}
                 mission_checks.append({
                     'id': check_id,
@@ -589,6 +625,7 @@ class RewardController:
         slots_by_code,
         progression_mode=None,
         grid=None,
+        initial_rewards=(),
     ):
         if progression_mode is None:
             progression_mode = (
@@ -610,6 +647,7 @@ class RewardController:
             reward_pool_for_code=self.reward_pool_for_code,
             configured_reward_pool=self.configured_reward_pool,
             starting_unlocked_tech_ids=self.active_starting_tier_one_access_ids(),
+            initial_rewards=initial_rewards,
             require_access_for_unit_buffs=self.randomize_unit_access_enabled(),
             share_role_buffs=self.share_chaos_role_buffs_enabled(),
             reward_weights=self.active_reward_settings().get(
@@ -622,7 +660,10 @@ class RewardController:
         for code in self.state.get('mission_order', []):
             for check in self.state.get('mission_checks', {}).get(code, []):
                 if check.get('unlocked') or check.get('released'):
-                    earned.extend(check_rewards(check))
+                    earned.extend(
+                        reward for reward in check_rewards(check)
+                        if not is_max_rewards_achieved_reward(reward)
+                    )
         return earned
 
     def release_remaining_grid_rewards(self):

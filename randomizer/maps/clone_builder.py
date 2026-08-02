@@ -20,6 +20,7 @@ from ._shared import (
     re,
     section_value_map_preserve,
     script_referenced_taskforce_unit_ids,
+    techno_type_possible_houses,
     unique_in_order,
     unit_usage_houses,
 )
@@ -174,6 +175,7 @@ def build_player_clone_sections(
     replacements = {}
     direct_replacements = {}
     clone_id_by_source = {}
+    reference_clone_id_by_source = {}
     cloned_source_ids = set()
     taskforce_replacements = {}
     structure_plan_allowed_houses_by_unit = {}
@@ -182,6 +184,33 @@ def build_player_clone_sections(
     handled_by_unit = {}
     unsupported = []
     missing = []
+    ownership_sections_by_lower = {
+        str(name).lower(): values for name, values in map_sections.items()
+    }
+    possible_house_cache = {}
+
+    def possible_native_houses(unit_id, effective_values=None):
+        unit_upper = str(unit_id).upper()
+        if unit_upper in possible_house_cache:
+            return possible_house_cache[unit_upper]
+        if effective_values is None:
+            installed_name = installed_name_by_lower.get(unit_upper.lower())
+            native_name = native_map_name_by_lower.get(unit_upper.lower())
+            effective_values = _standalone_clone_values_from_maps(
+                installed_sections.get(installed_name, {})
+                if installed_name else {},
+                native_map_sections.get(native_name, {})
+                if native_name else {},
+            )
+        possible = set(techno_type_possible_houses(
+            lines,
+            effective_values,
+            records=records,
+            sections=map_sections,
+            sections_by_lower=ownership_sections_by_lower,
+        ))
+        possible_house_cache[unit_upper] = possible
+        return possible
 
     # Event 61 is the campaign's exact TechnoType-destroyed/nonexistent test.
     # Its Trigger owner is often only a story executor and does not identify
@@ -405,7 +434,14 @@ def build_player_clone_sections(
                     )
 
     clone_candidates = [
-        (unit_id, unit_id, counts)
+        (
+            unit_id,
+            str(
+                BUFF_TARGETS.get(unit_id, {}).get('linked_buff_source')
+                or unit_id
+            ).upper(),
+            counts,
+        )
         for unit_id, counts in counts_by_unit.items()
     ]
     clone_candidates.extend(
@@ -455,6 +491,7 @@ def build_player_clone_sections(
     existing_candidate_ids.update(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     )
+
     clone_candidates.extend(
         (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
         for unit_id in sorted(helper_autobuild_support)
@@ -506,6 +543,27 @@ def build_player_clone_sections(
         str(unit_id).upper() for unit_id, _target_id, _counts in clone_candidates
     )
 
+    # Clone graphs are closed in both directions. Mission exclusions can
+    # remove the root count/build candidate while its deployed form still
+    # needs an isolated player clone (or vice versa). Add the missing half as
+    # a locked reference-only candidate carrying the same earned stacks.
+    for unit_id, _target_id, counts in list(clone_candidates):
+        for peer_id in sorted(
+            linked_buff_variant_ids(unit_id) - {str(unit_id).upper()}
+        ):
+            if peer_id in existing_candidate_ids or peer_id not in BUFF_TARGETS:
+                continue
+            peer_target_id = str(
+                BUFF_TARGETS[peer_id].get('linked_buff_source') or peer_id
+            ).upper()
+            clone_candidates.append((peer_id, peer_target_id, dict(counts)))
+            existing_candidate_ids.add(peer_id)
+
+    candidate_counts_by_id = {
+        str(unit_id).upper(): counts
+        for unit_id, _target_id, counts in clone_candidates
+    }
+
     def preserve_native_effects(unit_id, counts, extra_types=()):
         """Keep unsafe effects off native mission units; allow guarded peers."""
         handled_types = {'speed'}.intersection(counts)
@@ -522,6 +580,32 @@ def build_player_clone_sections(
 
     for unit_id, target_unit_id, counts in clone_candidates:
         unit_id = str(unit_id).upper()
+        linked_peer_ids = linked_buff_variant_ids(unit_id) - {unit_id}
+        linked_candidate_clone = any(
+            peer_id in candidate_counts_by_id
+            for peer_id in linked_peer_ids
+        )
+        linked_excluded_reference_clone = bool(
+            unit_id in excluded_unit_ids
+            and any(
+                peer_id in candidate_counts_by_id
+                for peer_id in linked_peer_ids
+            )
+        )
+        linked_script_reference_clone = bool(
+            linked_candidate_clone
+            and unit_id not in buildable_ids
+            and (
+                unit_id in scripted_team_unit_ids
+                or unit_id in ambiguous_mission_event_ids
+            )
+        )
+        if linked_excluded_reference_clone and not counts:
+            for peer_id in sorted(linked_peer_ids):
+                peer_counts = candidate_counts_by_id.get(peer_id, {})
+                if peer_counts:
+                    counts = dict(peer_counts)
+                    break
         # Cloaked mission heroes can disappear from their controlling player's
         # view once their own sight no longer reveals them. Installed Ares 3.0
         # and Phobos 0.3 expose no owner/allied visibility override for cloak.
@@ -550,7 +634,11 @@ def build_player_clone_sections(
         allowed_build_only_clone = (
             excluded_build_only_clone or hero_build_only_clone
         )
-        if unit_id in excluded_unit_ids and not allowed_build_only_clone:
+        if (
+            unit_id in excluded_unit_ids
+            and not allowed_build_only_clone
+            and not linked_excluded_reference_clone
+        ):
             preserve_native_effects(
                 unit_id,
                 counts,
@@ -561,7 +649,12 @@ def build_player_clone_sections(
             unit_id in scripted_team_unit_ids
             and unit_id in buildable_ids
         )
-        if unit_id in scripted_team_unit_ids and not scripted_build_only_clone:
+        if (
+            unit_id in scripted_team_unit_ids
+            and not scripted_build_only_clone
+            and not linked_excluded_reference_clone
+            and not linked_script_reference_clone
+        ):
             preserve_native_effects(
                 unit_id,
                 counts,
@@ -575,6 +668,8 @@ def build_player_clone_sections(
         target = BUFF_TARGETS.get(target_unit_id, {})
         build_only_clone = (
             excluded_build_only_clone
+            or linked_excluded_reference_clone
+            or linked_script_reference_clone
             or scripted_build_only_clone
             or hero_build_only_clone
             or (
@@ -585,7 +680,11 @@ def build_player_clone_sections(
         if mission_hero_cloak and not build_only_clone:
             preserve_native_effects(unit_id, counts, {'cloak'})
             continue
-        if unit_id in ambiguous_mission_event_ids and not build_only_clone:
+        if (
+            unit_id in ambiguous_mission_event_ids
+            and not build_only_clone
+            and not linked_excluded_reference_clone
+        ):
             preserve_native_effects(unit_id, counts)
             unsupported.append(
                 f'{target.get("label", target_unit_id)} shared mission event kept native'
@@ -603,11 +702,6 @@ def build_player_clone_sections(
             missing.append(unit_id)
             continue
 
-        unsafe_unit_houses = {
-            house
-            for house in unit_usage_houses(lines, unit_id, usage_index)
-            if house.lower() not in allowed_houses
-        }
         unit_usage = unit_usage_houses(lines, unit_id, usage_index)
         direct_types = set(counts) - WEAPON_STAT_BUFF_TYPES
         weapon_buff_types = WEAPON_STAT_BUFF_TYPES.intersection(counts)
@@ -625,6 +719,14 @@ def build_player_clone_sections(
                 native_map_name_by_lower.get(unit_id.lower()), {}
             ),
         )
+        unsafe_unit_houses = {
+            house
+            for house in (
+                unit_usage
+                | possible_native_houses(unit_id, effective_unit_values)
+            )
+            if house.lower() not in allowed_houses
+        }
         # A map may reuse an installed ID for a different scripted hero (for
         # example SHAND [SUPR]=Reznov with BuildLimit=1). Earned buildable
         # clones copy the installed identity, so their cap must also come from
@@ -758,7 +860,11 @@ def build_player_clone_sections(
             target, clone_source_values
         )
         weapon_targets = dict(target.get('weapons', {}))
-        if target.get('category') == 'defenses' or mission_player_override:
+        if (
+            unit_id != target_unit_id
+            or target.get('category') == 'defenses'
+            or mission_player_override
+        ):
             # Trainable defenses switch weapons after promotion, and mission
             # heroes may replace or disable installed weapons. Pull every
             # direct weapon from the effective clone so earned weapon buffs
@@ -816,7 +922,10 @@ def build_player_clone_sections(
                 if any(
                     house.lower() not in allowed_houses
                     for weapon_user in weapon_users
-                    for house in unit_usage_houses(lines, weapon_user, usage_index)
+                    for house in (
+                        unit_usage_houses(lines, weapon_user, usage_index)
+                        | possible_native_houses(weapon_user)
+                    )
                 ):
                     weapon_unsafe = True
                     break
@@ -864,6 +973,8 @@ def build_player_clone_sections(
             and not forced_player_clone
             and not forced_isolated_clone
             and not needs_direct_house_fallback
+            and not linked_excluded_reference_clone
+            and not linked_script_reference_clone
         ) or (
             is_variant
             and not variant_has_effect
@@ -873,6 +984,8 @@ def build_player_clone_sections(
             and not shared_player_veteran
             and not forced_player_clone
             and not forced_isolated_clone
+            and not linked_excluded_reference_clone
+            and not linked_script_reference_clone
         ):
             continue
 
@@ -1096,6 +1209,37 @@ def build_player_clone_sections(
             # inherited their native TechLevel and leaked into the sidebar;
             # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
+            if linked_buildable_variant:
+                linked_helper_ids = helper_autobuild_support.get(
+                    target_unit_id, {}
+                ).get('countries', ())
+                linked_owner_ids = unique_in_order(
+                    list(owner_ids) + list(linked_helper_ids)
+                )
+                if linked_owner_ids:
+                    clone_values['Owner'] = ','.join(
+                        production_owner_countries(
+                            lines,
+                            linked_owner_ids,
+                            sections=map_sections,
+                        )
+                    )
+                    clone_values['RequiredHouses'] = ','.join(
+                        linked_owner_ids
+                    )
+                    _remove_case_insensitive(
+                        clone_values,
+                        'ForbiddenHouses',
+                        'FactoryOwners',
+                        'FactoryOwners.Forbidden',
+                        'Prerequisite.Negative',
+                        'Prerequisite.StolenTechs',
+                    )
+
+        if linked_excluded_reference_clone:
+            # This identity exists only as the other half of a cloned deploy
+            # pair. It must never become a second factory/sidebar entry.
+            clone_values['TechLevel'] = LOCKED_TECH_LEVEL
 
         _register_map_type(
             section_rules, lines, installed_sections, list_section, clone_id
@@ -1170,6 +1314,7 @@ def build_player_clone_sections(
                 reference_clone_id,
             )
             section_rules[reference_clone_id] = reference_values
+            reference_clone_id_by_source[unit_id] = reference_clone_id
         if safe_direct_rewrite:
             direct_replacements[unit_id] = reference_clone_id
         if not build_only_clone:
@@ -1246,6 +1391,127 @@ def build_player_clone_sections(
                 linked_clone_replacements.get(item.upper(), item)
                 for item in comma_items(value)
             )
+
+    # A mission-placement reference clone (MORR*) deliberately differs from
+    # its production clone, usually by suppressing unsafe live cloak. Give it
+    # its own paired transform form. Sharing the production target would make
+    # undeploy return a different clone identity and change its buff state.
+    for source_id, reference_clone_id in list(
+        reference_clone_id_by_source.items()
+    ):
+        reference_values = section_rules.get(reference_clone_id, {})
+        for key, value in list(reference_values.items()):
+            lowered_key = str(key).lower()
+            if lowered_key not in {'deploysinto', 'undeploysinto'}:
+                continue
+            target_token = next(iter(comma_items(value)), '')
+            target_source = ''
+            for candidate_source, candidate_clone in clone_id_by_source.items():
+                stable_clone = owned_clone_ids.get(candidate_source, '')
+                if target_token.upper() in {
+                    candidate_source.upper(),
+                    candidate_clone.upper(),
+                    stable_clone.upper(),
+                }:
+                    target_source = candidate_source
+                    break
+            if not target_source:
+                continue
+            paired_reference_id = reference_clone_id_by_source.get(
+                target_source
+            )
+            if not paired_reference_id:
+                main_target_id = clone_id_by_source.get(target_source)
+                main_target_values = section_rules.get(main_target_id, {})
+                if not main_target_id or not main_target_values:
+                    continue
+                paired_reference_id = _collision_safe_type_id(
+                    f'MORR{target_source}',
+                    f'player-reference:{target_source}',
+                    reserved_ids,
+                )
+                paired_values = dict(main_target_values)
+                _remove_case_insensitive(
+                    paired_values,
+                    'Cloakable',
+                    'Cloakable.Stages',
+                    'CloakingSpeed',
+                    'CloakSound',
+                    'BuildLimit',
+                )
+                paired_values['Cloakable'] = 'no'
+                paired_values['TechLevel'] = LOCKED_TECH_LEVEL
+                target_category = BUFF_TARGETS.get(
+                    target_source, {}
+                ).get('category')
+                list_section = TECHNO_TYPE_LISTS.get(target_category)
+                if list_section:
+                    _register_map_type(
+                        section_rules,
+                        lines,
+                        installed_sections,
+                        list_section,
+                        paired_reference_id,
+                    )
+                section_rules[paired_reference_id] = paired_values
+                reference_clone_id_by_source[
+                    target_source
+                ] = paired_reference_id
+            paired_values = section_rules[paired_reference_id]
+            reference_values[key] = paired_reference_id
+            reverse_key = (
+                'UndeploysInto'
+                if lowered_key == 'deploysinto'
+                else 'DeploysInto'
+            )
+            _remove_case_insensitive(paired_values, reverse_key)
+            paired_values[reverse_key] = reference_clone_id
+            for owner_key in ('Owner', 'RequiredHouses'):
+                owner_value = _value_case_insensitive(
+                    reference_values, owner_key
+                )
+                _remove_case_insensitive(paired_values, owner_key)
+                if owner_value is not None:
+                    paired_values[owner_key] = owner_value
+            _remove_case_insensitive(
+                paired_values,
+                'ForbiddenHouses',
+                'FactoryOwners',
+                'FactoryOwners.Forbidden',
+                'Prerequisite.Negative',
+                'Prerequisite.StolenTechs',
+            )
+    # A transform target is not factory-buildable, but the engine still
+    # validates its ownership when DeploysInto/UndeploysInto changes type.
+    # Copy the root clone's exact ownership onto every linked form even when
+    # the root itself is reference-only for this mission. Otherwise the link
+    # resolves to a clone but deployment can fail or revert through a native
+    # country gate.
+    for variant_source, variant_clone_id in clone_id_by_source.items():
+        root_source = str(
+            BUFF_TARGETS.get(variant_source, {}).get('linked_buff_source')
+            or ''
+        ).upper()
+        if not root_source or root_source == variant_source:
+            continue
+        root_clone_id = clone_id_by_source.get(root_source)
+        if not root_clone_id:
+            continue
+        root_values = section_rules.get(root_clone_id, {})
+        variant_values = section_rules.get(variant_clone_id, {})
+        for key in ('Owner', 'RequiredHouses'):
+            value = _value_case_insensitive(root_values, key)
+            _remove_case_insensitive(variant_values, key)
+            if value is not None:
+                variant_values[key] = value
+        _remove_case_insensitive(
+            variant_values,
+            'ForbiddenHouses',
+            'FactoryOwners',
+            'FactoryOwners.Forbidden',
+            'Prerequisite.Negative',
+            'Prerequisite.StolenTechs',
+        )
     return PlayerCloneBuildResult(
         section_rules=section_rules,
         replacements=replacements,

@@ -25,6 +25,24 @@ from randomizer.rewards.weights import (
 GLOBAL_BUFF_REWARD_INTERVAL = int(
     REWARD_PLANNING['global_buff_reward_interval']
 )
+MAX_REWARDS_ACHIEVED_MESSAGE = 'Max rewards achieved.'
+MAX_REWARDS_ACHIEVED_REWARD = {
+    'name': MAX_REWARDS_ACHIEVED_MESSAGE,
+    'description': (
+        'Every enabled reward is already unlocked or at its maximum level.'
+    ),
+    'rules': {},
+    'factions': [],
+    'kind': 'message',
+    'max_rewards_achieved': True,
+}
+
+
+def is_max_rewards_achieved_reward(reward):
+    return bool(
+        isinstance(reward, dict)
+        and reward.get('max_rewards_achieved') is True
+    )
 
 
 def plan_seed_rewards(
@@ -38,6 +56,7 @@ def plan_seed_rewards(
     reward_pool_for_code,
     configured_reward_pool,
     starting_unlocked_tech_ids=(),
+    initial_rewards=(),
     require_access_for_unit_buffs=True,
     share_role_buffs=False,
     reward_weights=None,
@@ -118,6 +137,30 @@ def plan_seed_rewards(
         unit = reward.get('unit')
         if unit:
             record_unit_buff(unit)
+
+    # Regeneration can preserve already released checks. Seed planner state from
+    # those rewards so future slots cannot repeat access or exceed buff caps.
+    canonical_initial_rewards = tuple(
+        canonical_reward(reward)
+        for reward in initial_rewards
+        if not is_max_rewards_achieved_reward(reward)
+    )
+    seed_unlocked_tech_ids.update(
+        tech_ids_for_rewards(canonical_initial_rewards)
+    )
+    for reward in canonical_initial_rewards:
+        if reward.get('kind') == 'buff':
+            count_key = buff_count_key(reward)
+            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
+            record_buff_target(reward)
+            continue
+        name = reward.get('name')
+        if name:
+            used_access_names.add(name)
+        if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
+            seed_unlocked_power_ids.add(
+                str(reward['superweapon']).upper()
+            )
 
     # Cache each faction pool once. Canonicalization and metadata are static
     # during one draw.
@@ -265,33 +308,34 @@ def plan_seed_rewards(
                     continue
             candidates.append(reward)
         if not candidates:
-            candidates = [
-                dict(reward)
-                for reward in configured_reward_pool()
-                if reward.get('kind') == 'buff'
-                and reward_prerequisites_met(reward)
-                and (
-                    buff_stack_limit(reward) is None
-                    or buff_counts.get(buff_count_key(reward), 0)
-                    < buff_stack_limit(reward)
-                )
-                and (
-                    (
-                        reward.get('power_buff_type')
-                        and str(reward.get('superweapon') or '').upper()
-                        in seed_unlocked_power_ids
-                    )
-                    or (
-                        not reward.get('power_buff_type')
-                        and (
-                            not require_access_for_unit_buffs
-                            or reward.get('global_buff')
-                            or not reward.get('unit')
-                            or unit_access_earned(reward.get('unit'))
-                        )
-                    )
-                )
-            ]
+            for configured in configured_reward_pool():
+                reward = canonical_reward(configured)
+                if reward.get('kind') != 'buff':
+                    continue
+                if not reward_prerequisites_met(reward):
+                    continue
+                limit = buff_stack_limit(reward)
+                if (
+                    limit is not None
+                    and buff_counts.get(buff_count_key(reward), 0) >= limit
+                ):
+                    continue
+                power_id = str(reward.get('superweapon') or '').upper()
+                if (
+                    reward.get('power_buff_type')
+                    and power_id not in seed_unlocked_power_ids
+                ):
+                    continue
+                unit = reward.get('unit')
+                if (
+                    require_access_for_unit_buffs
+                    and unit
+                    and not reward.get('global_buff')
+                    and not reward.get('power_buff_type')
+                    and not unit_access_earned(unit)
+                ):
+                    continue
+                candidates.append(dict(reward))
         if not candidates:
             return None
         reward = dict(rng.choice(candidates))
@@ -470,9 +514,11 @@ def plan_seed_rewards(
                 seed_unlocked_power_ids.add(
                     str(reward['superweapon']).upper()
                 )
+        else:
+            # Preserve slot positions so one exhausted draw cannot shift later
+            # mission/check assignments. UI compacts repeated markers to one
+            # visible message per check.
+            plan[code][slot_index] = dict(MAX_REWARDS_ACHIEVED_REWARD)
         global_index += 1
 
-    return {
-        code: [reward for reward in rewards if reward is not None]
-        for code, rewards in plan.items()
-    }
+    return plan

@@ -16,6 +16,7 @@ from .definitions import (
     unit_display_label,
 )
 from randomizer.config.tuning import (
+    REWARD_PLANNING,
     stacking_amount,
     stacking_multiplier,
     stacking_stack_limit,
@@ -214,7 +215,8 @@ def buff_stack_limit(reward):
         return power_buff_stack_limit(reward)
     buff_type = reward.get('buff_type')
     if buff_type in {
-        'production', 'cost', 'armor', 'health', 'damage', 'range', 'sight',
+        'production', 'cost', 'armor', 'health', 'damage', 'reload', 'range',
+        'sight', 'ammo',
     }:
         return stacking_stack_limit(buff_type)
     if buff_type == 'self_healing':
@@ -228,6 +230,10 @@ def buff_stack_limit(reward):
     if buff_type == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))
+    if buff_type in {'passenger_capacity', 'build_limit'}:
+        return max(1, int(
+            REWARD_PLANNING['buff_stack_limits'][buff_type]
+        ))
     if buff_type == 'speed':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         safe_ceiling = movement_speed_ceiling(target)

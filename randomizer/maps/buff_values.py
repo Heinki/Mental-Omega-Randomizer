@@ -261,6 +261,12 @@ def _active_direct_buff_counts(
             continue
         source_id = str(reward.get('unit') or '').upper()
         for variant_id in sorted(linked_buff_variant_ids(source_id) - {source_id}):
+            variant_target = BUFF_TARGETS.get(variant_id, {})
+            if (
+                variant_target.get('linked_buff_weapon_only')
+                and reward.get('buff_type') not in WEAPON_STAT_BUFF_TYPES
+            ):
+                continue
             variant_reward = dict(reward)
             variant_reward['unit'] = variant_id
             identity_rewards.append(variant_reward)
@@ -312,6 +318,7 @@ def _active_direct_buff_counts(
         if (
             buff_type in WEAPON_STAT_BUFF_TYPES
             and not target.get('weapons')
+            and not target.get('runtime_transform')
             and not (buff_type == 'damage' and target.get('special_damage_fields'))
         ):
             continue

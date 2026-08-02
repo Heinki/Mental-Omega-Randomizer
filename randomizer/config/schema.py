@@ -378,6 +378,7 @@ def _validate_unit_data(sections, path):
     for source_id, variants in sections['linked_buff_variants'].items():
         if (
             source_id not in sections['unit_base_stats']
+            and source_id not in sections['defense_base_stats']
             or not isinstance(variants, dict)
             or not variants
         ):
@@ -387,6 +388,13 @@ def _validate_unit_data(sections, path):
             if (
                 not _is_nonempty_string(variant_id)
                 or not isinstance(weapons, dict)
+                or (
+                    variant.get('category') is not None
+                    and variant.get('category') not in {
+                        'infantry', 'units', 'aircraft', 'defenses',
+                        'special_buildings',
+                    }
+                )
             ):
                 _invalid(f'Invalid linked buff variant {variant_id!r}', path)
             for weapon_id, stats in weapons.items():
@@ -588,7 +596,8 @@ def _validate_tuning(sections, path):
         ):
             _invalid(f'Invalid maximum amount for buff effect {effect!r}', path)
     for effect in (
-        'production', 'cost', 'armor', 'health', 'damage', 'range', 'sight'
+        'production', 'cost', 'armor', 'health', 'damage', 'reload', 'range',
+        'sight', 'ammo',
     ):
         stack_limit = effects[effect].get('stack_limit')
         if (
@@ -670,6 +679,18 @@ def _validate_tuning(sections, path):
             _invalid(f'Invalid reward planning value {key!r}', path)
     if planning['default_rewards_per_check'] > planning['maximum_rewards_per_check']:
         _invalid('Default rewards exceed maximum', path)
+    buff_stack_limits = planning.get('buff_stack_limits')
+    if (
+        not isinstance(buff_stack_limits, dict)
+        or set(buff_stack_limits) != {'passenger_capacity', 'build_limit'}
+        or not all(
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            for value in buff_stack_limits.values()
+        )
+    ):
+        _invalid('Invalid reward-planning buff stack limits', path)
 
 
 def _validate_tier_one(sections, path):
@@ -732,7 +753,7 @@ def _validate_buff_exceptions(sections, path):
 def _validate_power_buffs(sections, path):
     buff_types = sections['buff_types']
     required_type_fields = {
-        'id', 'name', 'setting_label', 'description',
+        'id', 'name', 'setting_label', 'description', 'maximum_stacks',
     }
     if (
         not buff_types
@@ -752,7 +773,7 @@ def _validate_power_buffs(sections, path):
         _invalid('Duplicate power buff type IDs', path)
     for item in buff_types:
         maximum_stacks = item.get('maximum_stacks')
-        if maximum_stacks is not None and (
+        if (
             not isinstance(maximum_stacks, int)
             or isinstance(maximum_stacks, bool)
             or maximum_stacks < 1

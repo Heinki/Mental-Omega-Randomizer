@@ -266,6 +266,10 @@ def randomizer_unit_roster():
     templates = {}
     clone_ids = {}
     for source_id, target in BUFF_TARGETS.items():
+        # Hidden deploy/undeploy forms are cloned from installed/map rules at
+        # launch. They are not independent static roster/access identities.
+        if target.get('runtime_transform'):
+            continue
         list_name = ROSTER_CATEGORIES.get(target.get('category'))
         if not list_name:
             continue

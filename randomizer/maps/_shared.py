@@ -32,6 +32,7 @@ from randomizer.maps.ownership import (
     script_referenced_taskforce_unit_ids,
     scripted_enemy_house_pairs,
     taskforce_usage_houses,
+    techno_type_possible_houses,
     unit_usage_houses,
     unsafe_country_houses,
 )

@@ -778,11 +778,17 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
         # weapons. Preserve the variant's own target metadata.
         variant_target = dict(source_target)
         variant_target.update(BUFF_TARGETS.get(variant_id, {}))
+        if definition.get('category'):
+            variant_target['category'] = str(definition['category'])
+            variant_target['runtime_transform'] = True
         variant_target['weapons'] = {
             str(weapon_id).upper(): dict(stats)
             for weapon_id, stats in definition.get('weapons', {}).items()
         }
         variant_target['linked_buff_source'] = source_id
+        variant_target['linked_buff_weapon_only'] = bool(
+            definition.get('weapon_buffs_only', False)
+        )
         BUFF_TARGETS[variant_id] = variant_target
         UNIT_LABELS.setdefault(variant_id, variant_target['label'])
 

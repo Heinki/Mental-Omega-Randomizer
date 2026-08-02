@@ -88,9 +88,9 @@ def build_power_buff_rewards(power_rewards):
 
 
 def power_buff_stack_limit(reward):
-    """Return configured cap; area and extra payload stay unbounded."""
+    """Return the required configured cap for one power buff."""
     definition = POWER_BUFF_TYPE_BY_ID.get(reward.get('power_buff_type'))
-    if not definition or definition.get('maximum_stacks') is None:
+    if not definition:
         return None
     return max(1, int(definition['maximum_stacks']))
 

@@ -1265,6 +1265,9 @@
       ]
     },
     "native_runtime_identity_preserve_ids": {
+      "SECLIPSE": [
+        "EINS"
+      ],
       "EHEAD": [
         "ARMA",
         "CNTR",
@@ -1335,6 +1338,17 @@
       }
     },
     "techno_base_rules": {
+      "SECLIPSE": {
+        "EINS": {
+          "Agent": "yes",
+          "Infiltrate": "yes",
+          "CanPassiveAquire": "no",
+          "CanRetaliate": "no",
+          "StupidHunt": "yes",
+          "ReselectIfLimboed": "yes",
+          "RejoinTeamIfLimboed": "yes"
+        }
+      },
       "ASIREN": {
         "CLEG": {
           "Strength": "1500"
