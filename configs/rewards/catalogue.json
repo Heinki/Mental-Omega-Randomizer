@@ -598,26 +598,6 @@
         "factions": [
           "Neutral"
         ]
-      },
-      {
-        "name": "Tech Protector Access",
-        "description": "Allows one portable Tech Protector from any faction Construction Yard.",
-        "access_category": "special_building",
-        "special_reward": true,
-        "rules": {
-          "CASHLD": {
-            "TechLevel": "1",
-            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
-            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
-            "ForbiddenHouses": "none",
-            "PrerequisiteOverride": "CONYARD",
-            "BuildLimit": "1",
-            "BuildCat": "Tech"
-          }
-        },
-        "factions": [
-          "Neutral"
-        ]
       }
     ],
     "faction_access_rules": {
@@ -4185,6 +4165,16 @@
         "rules": {},
         "factions": [
           "Allies"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Tech Protector Access": {
+        "name": "Tech Protector Access (retired: unavailable artwork)",
+        "description": "Removed from randomizer production; native campaign Tech Protectors remain map-controlled.",
+        "rules": {},
+        "factions": [
+          "Neutral"
         ],
         "kind": "retired",
         "retired_reward": true

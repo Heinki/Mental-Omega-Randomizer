@@ -49,7 +49,7 @@ STABLE_APPEND_ORDER = (
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
     'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH', 'BRUTE2',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
-    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'CASHLD',
+    'ARTY', 'RANGER', 'LONGBO', 'GRAV',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 UNFINISHED_ASSET_IDS = frozenset({
@@ -198,17 +198,6 @@ TEMPLATE_VALUE_OVERRIDES = {
             for number in range(1, 13)
         },
         'BuildTimeMultiplier': '1',
-    },
-    'CASHLD': {
-        # Neutral map structure has no production contract. Portable reward
-        # supplies one without changing native placed Tech Protectors.
-        'Cost': '2000',
-        'Soylent': '1000',
-        'BuildLimit': '1',
-        'BuildCat': 'Tech',
-        'Capturable': 'no',
-        'NeedsEngineer': 'no',
-        'Prerequisite': 'CONYARD',
     },
     'CMIN': {
         'Dock': 'NAREFN,GAREFN,CAREFN,YARIREFN,FAREFN,YAMREF,GAOREP,MORPGAOREP',

@@ -409,18 +409,31 @@ def generated_unit_art_aliases(map_path, art_text):
         source_art = art_sections.get(image_id, {})
         cameo = source_art.get('cameopcx')
         alt_cameo = source_art.get('altcameopcx')
+        configured_cameo = GENERATED_UNIT_CAMEO_ASSETS.get(image_id)
         if name == 'jackal racer prototype':
             cameo = 'jackaicon.pcx'
             alt_cameo = 'jackauico.pcx'
-        elif image_id in GENERATED_UNIT_CAMEO_ASSETS:
-            definition = GENERATED_UNIT_CAMEO_ASSETS[image_id]
-            cameo = definition.get('source_pcx') or definition.get('pcx')
+        elif configured_cameo:
+            cameo = (
+                configured_cameo.get('source_pcx')
+                or configured_cameo.get('pcx')
+            )
             alt_cameo = cameo
         if (
             type_id not in art_sections
             and cameo
         ):
             aliases[type_id] = {
+                'CameoPCX': cameo,
+                'AltCameoPCX': alt_cameo or cameo,
+            }
+        # The sidebar reads the ArtType selected by Image=, not necessarily
+        # the generated TechnoType section above. Hidden/campaign models often
+        # have no installed cameo at all, so a clone-only alias is ignored and
+        # the engine displays its purple missing-cameo placeholder. Merge the
+        # configured cameo into the complete model art section as well.
+        if configured_cameo and cameo:
+            aliases[image_id] = {
                 'CameoPCX': cameo,
                 'AltCameoPCX': alt_cameo or cameo,
             }

@@ -330,8 +330,7 @@
       "ARTY",
       "RANGER",
       "LONGBO",
-      "GRAV",
-      "CASHLD"
+      "GRAV"
     ],
     "unit_sidebar_images": {
       "PERUN": {
@@ -396,9 +395,6 @@
       },
       "GRAV": {
         "source_pcx": "grav.pcx"
-      },
-      "CASHLD": {
-        "source_pcx": "forcicon.pcx"
       }
     },
     "unit_base_stats": {
@@ -3451,28 +3447,6 @@
             "range": 20
           }
         }
-      },
-      "CASHLD": {
-        "label": "Tech Protector",
-        "plural": "Tech Protectors",
-        "category": "defenses",
-        "factions": [
-          "Neutral"
-        ],
-        "cost": 2000,
-        "strength": 1000,
-        "sight": 6,
-        "guard_range": 10,
-        "allowed_buff_types": [
-          "production",
-          "cost",
-          "armor",
-          "health",
-          "sight",
-          "range"
-        ],
-        "trainable": false,
-        "special_reward": true
       },
       "QUICK": {
         "weapons": {
