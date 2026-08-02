@@ -1270,8 +1270,10 @@
         "CNTR",
         "COVE",
         "CTNK",
+        "DRIL",
         "EMPR",
-        "GHTNK"
+        "GHTNK",
+        "YENGINEER"
       ]
     },
     "objective_clone_event_refs": {
@@ -1450,14 +1452,6 @@
       "FEMPIRE": {
         "Events": {
           "01000367": "2,13,0,5,61,2,0,YUNRU"
-        }
-      },
-      "EHEAD": {
-        "01000557": {
-          "1": "5,2"
-        },
-        "01000558": {
-          "1": "5,2"
         }
       },
       "SHAND": {

@@ -3,6 +3,7 @@
 from ._shared import (
     all_section_value_maps,
     build_unit_usage_index,
+    comma_items,
     map_house_records,
     merge_ini_section_values,
     player_controlled_houses,
@@ -18,6 +19,36 @@ from .assistance import (
     stacked_house_buff_values,
 )
 
+
+_VETERAN_FIELD_CATEGORIES = {
+    'veteraninfantry': {'infantry'},
+    'veteranunits': {'units'},
+    'veteranaircraft': {'aircraft'},
+    'veteranbuildings': {'defenses', 'special_buildings'},
+}
+
+
+def _registered_veteran_buff_values(values, registered_techno_categories):
+    """Drop CountryType Veteran* references the engine cannot resolve."""
+    if registered_techno_categories is None:
+        return values
+    filtered = dict(values)
+    categories = {
+        str(type_id).upper(): str(category)
+        for type_id, category in registered_techno_categories.items()
+    }
+    for key, value in list(filtered.items()):
+        expected = _VETERAN_FIELD_CATEGORIES.get(str(key).lower())
+        if expected is None:
+            continue
+        valid = [
+            type_id
+            for type_id in comma_items(value)
+            if categories.get(str(type_id).upper()) in expected
+        ]
+        filtered[key] = ','.join(valid) if valid else None
+    return filtered
+
 def clone_player_country_for_house_buffs(
     lines,
     rewards,
@@ -26,6 +57,7 @@ def clone_player_country_for_house_buffs(
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
     excluded_buff_types=(),
+    registered_techno_categories=None,
 ):
     player_house = player_house_from_map(lines)
     if not player_house:
@@ -42,6 +74,10 @@ def clone_player_country_for_house_buffs(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
         excluded_buff_types=excluded_buff_types,
+    )
+    house_buff_values = _registered_veteran_buff_values(
+        house_buff_values,
+        registered_techno_categories,
     )
     if not house_buff_values:
         return (player_house, {})
@@ -64,6 +100,7 @@ def player_country_buff_rules(
     unit_specific_mode=False,
     excluded_player_houses=(),
     excluded_buff_types=(),
+    registered_techno_categories=None,
 ):
     sections = all_section_value_maps(lines)
     sections_by_lower = {name.lower(): values for name, values in sections.items()}
@@ -114,6 +151,10 @@ def player_country_buff_rules(
         unit_specific_mode=unit_specific_mode,
         excluded_buff_types=excluded_buff_types,
     )
+    house_buff_values = _registered_veteran_buff_values(
+        house_buff_values,
+        registered_techno_categories,
+    )
     if house_buff_values:
         if not shared_houses:
             rule_sections[player_country] = house_buff_values
@@ -157,6 +198,10 @@ def player_country_buff_rules(
                 share_basic_equivalent_buffs=share_basic_equivalent_buffs,
                 unit_specific_mode=unit_specific_mode,
                 excluded_buff_types=excluded_buff_types,
+            )
+            helper_buff_values = _registered_veteran_buff_values(
+                helper_buff_values,
+                registered_techno_categories,
             )
             if helper_buff_values:
                 rule_sections[helper_country] = helper_buff_values

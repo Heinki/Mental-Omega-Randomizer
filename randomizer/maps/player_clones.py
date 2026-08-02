@@ -51,6 +51,7 @@ def player_unit_clone_rules(
     helper_autobuild_support=None,
     forced_buildable_clone_ids=(),
     forced_isolated_clone_ids=(),
+    forced_compact_clone_ids=(),
     unlimited_build_limit_unit_ids=(),
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
@@ -305,6 +306,16 @@ def player_unit_clone_rules(
         veteran_clone_source_ids,
         reserved_ids,
     )
+    compact_payload_source_ids = {
+        str(unit_id).upper()
+        for unit_id in (forced_compact_clone_ids or ())
+        if str(unit_id).upper() not in compact_veteran_clone_ids
+    }
+    if compact_payload_source_ids:
+        compact_veteran_clone_ids.update(compact_player_clone_ids(
+            compact_payload_source_ids,
+            set(reserved_ids) | set(compact_veteran_clone_ids.values()),
+        ))
     defense_helper_houses = []
     defense_helper_country_names = set()
     for house in buffed_helper_houses:

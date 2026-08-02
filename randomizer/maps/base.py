@@ -132,7 +132,7 @@ def resolved_delivery_clone_rules(
     clone_handled,
     source_unit_ids,
 ):
-    """Point configured UnitDelivery payloads at current player clone IDs."""
+    """Point configured delivery/drop-pod payloads at player clone IDs."""
     configured_sources = {
         str(unit_id).upper() for unit_id in (source_unit_ids or ())
     }
@@ -150,7 +150,7 @@ def resolved_delivery_clone_rules(
         if not isinstance(values, dict):
             continue
         for key, value in values.items():
-            if str(key).lower() != 'deliver.types':
+            if str(key).lower() not in {'deliver.types', 'droppod.types'}:
                 continue
             resolved_value = ','.join(
                 replacements.get(type_id.upper(), type_id)

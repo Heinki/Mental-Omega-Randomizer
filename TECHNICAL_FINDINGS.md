@@ -570,18 +570,75 @@ with authored production still receive compatible starters.
   a second cleanup fault at gamemd `004F9AB1`. Disassembly shows the engine
   calling through a valid GHTNK object and reading its Owner at offset `+0x21C`;
   Owner was null immediately after the return paths reached their deletion
-  edge. This is a destructive action-37 use-after-delete, not another trigger
-  mismatch. The earlier guard-only experiment could not fix the separate type
-  corruption then present. With all six runtime identities now preserved,
-  scripts `01000557`/`01000558` keep the authored edge movement and use final
-  guard `5,2` instead of `37,0`. Return triggers and teams stay authored; fresh
-  live confirmation remains required.
+  edge. That looked like a destructive action-37 use-after-delete. The earlier
+  guard-only experiment could not isolate it because native wave identities
+  were still changed. With all six wave identities preserved, the scripts were
+  changed to final guard `5,2`; snapshot `20260802-015337` nevertheless failed
+  through the earlier invalid virtual target. This disproved action 37 as the
+  root cause.
+
+  The earlier comparison covered map-authored sections only and missed an
+  effective installed-rule change. TaskForce `01000387`, which creates the two
+  player reinforcement teams immediately before the failing transition,
+  contains two native `YENGINEER`s plus one native `DRIL`. Generated output
+  kept those references but changed installed `YENGINEER` from
+  `TechLevel=2`, no negative prerequisite, no cloak, and `Strength=90` to
+  `TechLevel=-1`, `Prerequisite.Negative=MORPOriginalGate`, cloak enabled, and
+  `Strength=103`. The exact-House gate belongs to the same PsiCorps House
+  creating the TeamType. Established TeamType behavior rejects that native
+  passenger while still allowing the native Driller, leaving both mixed
+  reinforcement teams incomplete before their return cleanup. The later GHTNK
+  transition exposes the stale team/object state; it does not create it. EHEAD
+  runtime preservation now includes `DRIL` and `YENGINEER` as well as the six
+  wave identities. Scripts `01000557`/`01000558` are restored to authored
+  `37,0`; no cleanup guard workaround remains. Focused regeneration found that
+  clone-stage preservation alone removed the gate but a later guarded/native
+  buff pass still restored cloak and changed Strength to `119`. Runtime
+  preservation is therefore re-applied after every clone, gate, assistance,
+  direct-buff, and weapon pass. The final EHEAD map matches effective original
+  rules for all eight reinforcement identities; its delivery, return, wave,
+  TaskForce, TeamType, ScriptType, trigger, placement, and registry chain is
+  exact. Foxtrot production/objective isolation remains intact. A 97-map real
+  saved-state launch audit passed with action lines at most 511 bytes and no
+  generated root maps left. Fresh live confirmation remains required.
 - Machinehead native/shared Foxtrot counting was also rejected. Player
-  production again uses the isolated build-only clone; native enemy placements
-  and TaskForces remain `FOX`. New `objective_clone_event_refs` retargets only
-  Events `01000926` and `01000942` to the actual launch clone ID, including a
-  compact veteran alias, so the 8/16 objectives count player-built Foxtrots
-  without a second trigger or shared native identity.
+  production, native enemy placements, TaskForces, and Events `01000926` and
+  `01000942` now all retain `FOX`. The 8/16 objectives keep one authored
+  identity and no second trigger.
+- Definitive Machinehead generated-map defect superseding the action-37 and
+  partial-YENGINEER-team theories: the active EHEAD map contained six unpacked
+  INI lines above the engine's 511-byte raw line limit.
+  `MORKnightfallSpawn DropPod.Types` was 602 bytes;
+  `MORKingsnakes Deliver.Types` 541; `MOREMPMineSpawn Deliver.Types` 629;
+  `MORPaladinAid Deliver.Types` 601; `MORCryomineSpawn Deliver.Types` 629; and
+  `MORGenomineSpawn Deliver.Types` 629. The engine debug log named those exact
+  six fields as parse failures and showed truncated values. Original EHEAD and
+  all 97 original campaign maps have zero unpacked lines over 511 bytes. Base
+  Mental Omega already registers 1,156 BuildingTypes and generated EHEAD reaches
+  1,179, exactly matching the recurring `> 512` warning; that warning is
+  inherited, not the Machinehead-specific regression. The 609 Ares pointer
+  warnings are also stable across snapshots.
+
+  The newest exception was `C0000005` at invalid EIP `000000B9`. Its callers
+  resolve to `BuildingClass::AI`, `TechnoClass::SelectAutoTarget`, and
+  `TechnoClass::CanAutoTargetObject`; older crashes used unrelated invalid
+  targets. This is downstream memory corruption from malformed live
+  SuperWeaponTypes, exposed when reinforcement arrival changes an armed
+  building's target scan, not evidence of a Team/Script loop or early delete.
+
+  UnitDelivery and DropPod payloads now use deterministic two-character player
+  clone IDs before repeated lists are serialized. Kingsnakes' fixed auxiliary
+  clone is `MORFKS`; exact payload counts remain 107/48/56/49/56/56. A final
+  generation invariant rejects every unpacked line above 511 bytes. Two other
+  parser failures, `VeteranInfantry=LUNRE` and `VeteranUnits=JACKALP`, referenced
+  sections without matching TechnoType registry entries; Country Veteran fields
+  now retain only IDs in the effective matching category registry. A real
+  saved-state launch-path audit generated all 97 missions with zero overlong
+  unpacked lines and zero invalid Veteran references. Focused EHEAD comparison
+  retained all native TaskForces, ScriptTypes, Triggers, Tags, original
+  placements, Foxtrot Events, and all eight protected reinforcement identities.
+  Fifteen intended player reinforcement TeamTypes change only
+  `VeteranLevel=1` to `2`. Fresh live confirmation remains required.
 - Power Hunger must never put `37,0` in delivery script `01001529`: that deletes
   both SAPC and SMCV. Unload mode `8,2` releases the SAPC from the delivery team.
   Local-47 action `01001542` now creates a separate Latin cleanup TeamType using

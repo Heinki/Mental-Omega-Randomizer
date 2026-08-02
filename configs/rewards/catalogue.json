@@ -1596,7 +1596,7 @@
         "techno_clones": {
           "F_KSNAK": {
             "list": "VehicleTypes",
-            "clone": "MORF_KSNAK",
+            "clone": "MORFKS",
             "values": {
               "PoweredBy": ""
             }

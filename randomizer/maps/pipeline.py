@@ -17,6 +17,7 @@ from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
+    MAX_MAP_ACTION_LINE_LENGTH,
     PLAYER_ORIGINAL_PRODUCTION_GATE_ID,
     TECHNO_TYPE_LISTS,
     append_static_startup_buildings,
@@ -245,6 +246,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         lines,
         native_map_sections,
     )
+    runtime_identity_preserve_ids = {
+        str(source_id).upper()
+        for source_id in MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS.get(
+            code, ()
+        )
+    }
     installed_superweapon_types, installed_rule_sections = installed_rules_registry()
     veteran_health_rules = veteran_armor_safety_rules(
         lines,
@@ -481,10 +488,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     remember_generated_techno_types(cloned_power_rules)
     for section, values in cloned_power_rules.items():
         rule_sections.setdefault(section, {}).update(values)
-    # UnitDelivery powers are factories too: their payload must use the same
-    # complete, health-validated player clone as production/reinforcements.
-    # Discover every configured payload, not only the few rewards carrying an
-    # older explicit clone hint.
+    # UnitDelivery and DropPod powers are factories too: their payload must use
+    # the same complete, health-validated player clone as production and
+    # reinforcements. Compact payload clone IDs also keep repeated type lists
+    # inside the engine's 511-byte INI line buffer.
     delivery_clone_ids = unique_in_order(
         [
             unit_id
@@ -497,7 +504,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             type_id.strip().upper()
             for values in cloned_power_rules.values()
             for key, value in values.items()
-            if str(key).lower() == 'deliver.types'
+            if str(key).lower() in {'deliver.types', 'droppod.types'}
             for type_id in str(value or '').split(',')
             if type_id.strip().upper() in BUFF_TARGETS
         ]
@@ -655,6 +662,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.append_log(f'Injected {len(rule_sections)} map rule section(s) into {scenario}.')
 
     generation_config = self.config.get('generation', {})
+    registered_techno_categories = {}
+    for category, list_section in TECHNO_TYPE_LISTS.items():
+        type_ids = list(installed_rule_sections.get(list_section, {}).values())
+        type_ids.extend(section_value_map_preserve(lines, list_section).values())
+        for type_id in type_ids:
+            if str(type_id).strip():
+                registered_techno_categories[str(type_id).strip().upper()] = category
     experimental_house_buffs = bool(generation_config.get('experimental_house_buffs', False))
     safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
     require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
@@ -668,6 +682,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
             excluded_buff_types=direct_only_country_buff_types,
+            registered_techno_categories=registered_techno_categories,
         )
         if house_buffs:
             buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
@@ -683,6 +698,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             unit_specific_mode=chaos_unit_specific_buffs,
             excluded_player_houses=excluded_player_houses,
             excluded_buff_types=direct_only_country_buff_types,
+            registered_techno_categories=registered_techno_categories,
         )
         if house_rule_sections:
             merge_ini_section_values(lines, house_rule_sections)
@@ -818,6 +834,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
             ),
             forced_isolated_clone_ids=delivery_clone_ids,
+            forced_compact_clone_ids=delivery_clone_ids,
             unlimited_build_limit_unit_ids=(
                 mission_buff_unit_ids
                 if self.active_reward_settings().get('unlimited_hero_units', False)
@@ -863,12 +880,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             str(source_id).upper()
             for source_id, details in clone_handled.items()
             if str((details or {}).get('clone_id') or '').strip()
-        }
-        runtime_identity_preserve_ids = {
-            str(source_id).upper()
-            for source_id in MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS.get(
-                code, ()
-            )
         }
         production_gate_source_ids = (
             (set(isolated_native_ids) - set(preserved_native_access_ids))
@@ -1204,6 +1215,27 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.',
                 error=True,
             )
+
+    # These identities participate in mission-authored mixed reinforcement
+    # teams. Restore them after every clone, gate, direct-buff, weapon, and
+    # assistance pass: an earlier restore allowed later passes to mutate an
+    # installed-only TaskForce passenger such as EHEAD's YENGINEER.
+    if runtime_identity_preserve_ids:
+        final_runtime_identity_rules = {}
+        for source_id in sorted(runtime_identity_preserve_ids):
+            original_values = native_map_sections.get(source_id, {})
+            current_values = section_value_map_preserve(lines, source_id)
+            if not original_values and not current_values:
+                continue
+            restored_values = {
+                key: None
+                for key in current_values
+                if key not in original_values
+            }
+            restored_values.update(original_values)
+            final_runtime_identity_rules[source_id] = restored_values
+        if final_runtime_identity_rules:
+            merge_ini_section_values(lines, final_runtime_identity_rules)
     static_power_providers = append_static_startup_buildings(
         lines,
         power_house_names,
@@ -1333,6 +1365,30 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.append_log(
             'Repaired generated TechnoType registry entries lost during rule '
             'batch merging: ' + ', '.join(repaired_registrations) + '.'
+        )
+
+    packed_sections = {
+        'PreviewPack', 'IsoMapPack5', 'OverlayPack', 'OverlayDataPack',
+    }
+    current_section = ''
+    overlong_lines = []
+    for line_number, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            current_section = stripped[1:-1].strip()
+        byte_length = len(line.encode('utf-8'))
+        if (
+            current_section not in packed_sections
+            and byte_length > MAX_MAP_ACTION_LINE_LENGTH
+        ):
+            overlong_lines.append(
+                f'[{current_section}] line {line_number} ({byte_length} bytes)'
+            )
+    if overlong_lines:
+        raise ValueError(
+            'Generated map exceeds the engine INI line limit of '
+            f'{MAX_MAP_ACTION_LINE_LENGTH} bytes: '
+            + '; '.join(overlong_lines[:8])
         )
 
     GENERATED_MAP_DIR.mkdir(parents=True, exist_ok=True)
