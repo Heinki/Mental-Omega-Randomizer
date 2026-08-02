@@ -345,7 +345,9 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         return [stacked(f'{prefix}Damage {stronger}% higher')]
     if buff_type == 'reload':
         multiplier = stacking_multiplier('reload', count)
-        faster = int(round((1.0 - multiplier) * 100))
+        # ROF is a delay between attacks. A x0.81 delay produces x1/0.81
+        # attacks per time, not merely 19% more fire rate.
+        faster = int(round(((1.0 / multiplier) - 1.0) * 100))
         return [stacked(f'{prefix}Fire rate {faster}% faster')]
     if buff_type == 'range':
         increase = stacking_amount('range', count)

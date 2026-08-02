@@ -1783,6 +1783,15 @@
         }
       }
     },
+    "time_freeze_immune_techno_ids": {
+      "SBLEED": [
+        "MORALES"
+      ],
+      "SRED": [
+        "MORALES",
+        "NAHAMM"
+      ]
+    },
     "all_conyard_defense_access_missions": [
       "SJUGGER"
     ],

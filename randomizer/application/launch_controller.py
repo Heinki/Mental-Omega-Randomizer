@@ -255,7 +255,13 @@ class LaunchController:
             )
             for section, values in starter_defense_rules.items():
                 rules.setdefault(section, {}).update(values)
-            return merge_required_rules(rules)
+            rules = merge_required_rules(rules)
+            # Starter defense unlocks are the final authority. Reviewed
+            # mission-wide defense passes must not replace their primary Yard
+            # and leave duplicate/missing alternative prerequisites.
+            for section, values in starter_defense_rules.items():
+                rules.setdefault(section, {}).update(values)
+            return rules
         # Every mode resolves an earned role to one clone for each faction.
         # Exact faction prerequisites keep foreign mappings dormant until the
         # matching production building is captured or constructed.
@@ -312,7 +318,10 @@ class LaunchController:
         )
         for section, values in starter_defense_rules.items():
             rules.setdefault(section, {}).update(values)
-        return merge_required_rules(rules)
+        rules = merge_required_rules(rules)
+        for section, values in starter_defense_rules.items():
+            rules.setdefault(section, {}).update(values)
+        return rules
 
     def cleanup_generated_root_maps(self):
         for path in list(GAME_ROOT.glob('*.MAP')) + list(GAME_ROOT.glob('*.map')):

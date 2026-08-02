@@ -268,9 +268,16 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
         if isinstance(values, dict)
     }
     deployed = []
+    mix_requests = []
     for definition in GENERATED_UNIT_CAMEO_ASSETS.values():
-        pcx_name = _asset_name(definition['pcx'], '.pcx')
+        pcx_value = definition.get('source_pcx') or definition.get('pcx')
+        pcx_name = _asset_name(pcx_value, '.pcx')
         if pcx_name.lower() not in requested:
+            continue
+        if definition.get('source_pcx'):
+            target = Path(target_dir) / pcx_name
+            mix_requests.append((pcx_name, target))
+            deployed.append(target)
             continue
         source = custom_image_path(
             _asset_name(definition['image'], '.png')
@@ -278,6 +285,9 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
         target = Path(target_dir) / pcx_name
         png_to_pcx(source, target)
         deployed.append(target)
+    if mix_requests:
+        from randomizer.ui.cameos import _extract_mix_files
+        _extract_mix_files(mix_requests)
     return deployed
 
 
@@ -403,7 +413,8 @@ def generated_unit_art_aliases(map_path, art_text):
             cameo = 'jackaicon.pcx'
             alt_cameo = 'jackauico.pcx'
         elif image_id in GENERATED_UNIT_CAMEO_ASSETS:
-            cameo = GENERATED_UNIT_CAMEO_ASSETS[image_id]['pcx']
+            definition = GENERATED_UNIT_CAMEO_ASSETS[image_id]
+            cameo = definition.get('source_pcx') or definition.get('pcx')
             alt_cameo = cameo
         if (
             type_id not in art_sections

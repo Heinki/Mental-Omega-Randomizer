@@ -235,7 +235,12 @@ def is_generated_hooked_map(path):
     except OSError:
         return False
 
-def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_ids=None):
+def remove_locked_techlevel_actions(
+    lines,
+    unlocked_tech_ids,
+    randomized_tech_ids=None,
+    preserved_action_ids=(),
+):
     start, end = find_section_bounds(lines, 'Actions')
     if start is None:
         return 0
@@ -247,6 +252,11 @@ def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_id
         )
     }
     unlocked = {section.upper() for section in unlocked_tech_ids}
+    preserved = {
+        str(action_id).strip().lower()
+        for action_id in (preserved_action_ids or ())
+        if str(action_id).strip()
+    }
     removed = 0
 
     for index in range(start + 1, end):
@@ -255,6 +265,8 @@ def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_id
             continue
 
         key, value = line.split('=', 1)
+        if key.strip().lower() in preserved:
+            continue
         count, groups = parse_action_groups(value)
         if not count or not groups:
             continue
@@ -275,7 +287,7 @@ def remove_locked_techlevel_actions(lines, unlocked_tech_ids, randomized_tech_id
     return removed
 
 
-def rewrite_techlevel_actions(lines, replacements):
+def rewrite_techlevel_actions(lines, replacements, preserved_action_ids=()):
     """Retarget native Action 106 unlocks to registered player clones."""
     replacements = {
         str(source).upper(): str(replacement)
@@ -284,6 +296,11 @@ def rewrite_techlevel_actions(lines, replacements):
     }
     if not replacements:
         return 0
+    preserved = {
+        str(action_id).strip().lower()
+        for action_id in (preserved_action_ids or ())
+        if str(action_id).strip()
+    }
 
     start, end = find_section_bounds(lines, 'Actions')
     if start is None:
@@ -294,6 +311,8 @@ def rewrite_techlevel_actions(lines, replacements):
         if '=' not in line:
             continue
         key, value = line.split('=', 1)
+        if key.strip().lower() in preserved:
+            continue
         count, groups = parse_action_groups(value)
         if not count or not groups:
             continue
@@ -492,7 +511,25 @@ def cloned_superweapon_plan(
             source_type
         )
         if isinstance(mission_techno_clones, dict):
-            techno_clones.update(mission_techno_clones)
+            for techno_source, mission_clone_spec in (
+                mission_techno_clones.items()
+            ):
+                if not isinstance(mission_clone_spec, dict):
+                    techno_clones[techno_source] = mission_clone_spec
+                    continue
+                merged_clone_spec = dict(
+                    techno_clones.get(techno_source) or {}
+                )
+                merged_values = dict(
+                    merged_clone_spec.get('values') or {}
+                )
+                merged_values.update(
+                    mission_clone_spec.get('values') or {}
+                )
+                merged_clone_spec.update(mission_clone_spec)
+                if merged_values:
+                    merged_clone_spec['values'] = merged_values
+                techno_clones[techno_source] = merged_clone_spec
         if isinstance(techno_clones, dict):
             for techno_source, clone_spec in techno_clones.items():
                 if not isinstance(clone_spec, dict):

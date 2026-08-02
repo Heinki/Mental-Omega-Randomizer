@@ -68,9 +68,11 @@ def run_self_check():
         transport_buffs = validate_transport_buff_eligibility()
         from randomizer.maps.special_buildings import (
             validate_ore_purifier_miner_docks,
+            validate_original_refinery_contract,
             validate_reprocessor_bounty_support,
         )
         ore_purifier_docks = validate_ore_purifier_miner_docks()
+        player_refineries = validate_original_refinery_contract()
         reprocessor_bounty = validate_reprocessor_bounty_support()
         from randomizer.rewards.catalogue import (
             AID_POWER_MAP_CONFIGS,
@@ -87,6 +89,21 @@ def run_self_check():
                 for reward in REWARD_POOL
                 if reward.get('kind') == 'buff'
             )
+        )
+        from randomizer.missions.access import access_catalog
+        from randomizer.missions.tier_one import TIER_ONE_DEFENSE_UNITS
+        runtime_access_catalog = access_catalog()
+        indexed_access_ids = {
+            str(entry[0]).upper() for entry in runtime_access_catalog
+        }
+        tier_one_defense_ids = {
+            unit_id
+            for family_ids in TIER_ONE_DEFENSE_UNITS.values()
+            for unit_id in family_ids
+        }
+        access_catalog_valid = bool(
+            runtime_access_catalog
+            and tier_one_defense_ids.issubset(indexed_access_ids)
         )
         from randomizer.ui.cameos import installed_rules_registry
         _installed_types, installed_sections = installed_rules_registry()
@@ -273,12 +290,16 @@ def run_self_check():
             'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
+            'access_catalog_valid': access_catalog_valid,
+            'access_catalog_entries': len(runtime_access_catalog),
             'deploy_clone_links_valid': not deploy_clone_link_gaps,
             'deploy_clone_link_gaps': deploy_clone_link_gaps,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and transport_buffs['stallion_capacity_enabled']
                 and transport_buffs['stallion_open_topped_excluded']
+                and transport_buffs['engineer_clone_identity_ids']
+                and transport_buffs['rhino_ammo_migrated_to_reload']
             ),
             'transport_buff_eligibility': transport_buffs,
             'reprocessor_bounty_support_valid': bool(
@@ -295,6 +316,11 @@ def run_self_check():
                 and not ore_purifier_docks['runtime_issues']
             ),
             'ore_purifier_miner_docks': ore_purifier_docks,
+            'original_refinery_contract_valid': bool(
+                len(player_refineries['pairs']) == 4
+                and not player_refineries['issues']
+            ),
+            'original_refinery_contract': player_refineries,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
             'reward_weight_connections_valid': (
@@ -322,10 +348,12 @@ def run_self_check():
                 'zephyr_bombardment_disabled_valid',
                 'portable_aid_powers_valid',
                 'all_buff_caps_valid',
+                'access_catalog_valid',
                 'deploy_clone_links_valid',
                 'transport_buff_eligibility_valid',
                 'reprocessor_bounty_support_valid',
                 'ore_purifier_miner_docks_valid',
+                'original_refinery_contract_valid',
                 'application_imported',
                 'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',

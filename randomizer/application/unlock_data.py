@@ -214,12 +214,18 @@ class UnlockDataController:
         if house_buff_groups:
             heading = 'Global / House-Wide Buffs'
             lines.extend([heading, '=' * len(heading)])
+            global_production_count = house_buff_groups.get(
+                ('All', 'production'), {}
+            ).get('count', 0)
             for scope, entry in sorted(
                 house_buff_groups.items(),
                 key=lambda item: house_wide_buff_label(item[0]).casefold(),
             ):
+                combined_count = entry['count']
+                if scope[1] == 'production' and scope[0] != 'All':
+                    combined_count += global_production_count
                 count = effective_buff_count(
-                    entry['reward'], entry['count']
+                    entry['reward'], combined_count
                 )
                 lines.extend(
                     house_wide_buff_effect_lines(
@@ -481,6 +487,12 @@ class UnlockDataController:
             scope = self.reward_house_wide_buff_scope(reward)
             if scope:
                 house_scopes.setdefault(scope, reward)
+        global_production_count = sum(
+            1
+            for reward in earned_rewards
+            if self.reward_house_wide_buff_scope(reward)
+            == ('All', 'production')
+        )
         for scope, reward in sorted(
             house_scopes.items(),
             key=lambda item: house_wide_buff_label(item[0]).casefold(),
@@ -519,6 +531,11 @@ class UnlockDataController:
                 'privacy': privacy,
                 'reward': reward,
                 'house_scope': scope,
+                'global_production_count': (
+                    global_production_count
+                    if scope[1] == 'production' and scope[0] != 'All'
+                    else 0
+                ),
             })
 
         for unit_id, target in BUFF_TARGETS.items():
@@ -737,6 +754,7 @@ class UnlockDataController:
                 1 for reward in earned if reward.get('kind') == 'buff'
             )
             if buff_count:
+                buff_count += int(entry.get('global_production_count', 0))
                 effect_lines.extend(house_wide_buff_effect_lines(
                     entry['house_scope'],
                     count=effective_buff_count(entry['reward'], buff_count),

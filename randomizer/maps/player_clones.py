@@ -166,6 +166,17 @@ def player_unit_clone_rules(
             'production', 'cost', 'speed', 'armor',
         }
     }
+    direct_house_wide_types = {'production'}
+    if direct_house_scoped_fallback:
+        direct_house_wide_types.update({'cost', 'armor'})
+    direct_house_wide_types.update(
+        forced_house_scoped_fallback_types.intersection({'cost', 'armor'})
+    )
+    unlocked_house_unit_ids = buildable_ids | {
+        str(unit_id).upper()
+        for unit_id in (additional_unlocked_tech_ids or ())
+        if str(unit_id).upper() in BUFF_TARGETS
+    }
     counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -173,6 +184,14 @@ def player_unit_clone_rules(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
         global_production_unit_ids=buildable_ids,
+        direct_house_wide_unit_ids_by_type={
+            buff_type: (
+                buildable_ids
+                if buff_type == 'production'
+                else unlocked_house_unit_ids
+            )
+            for buff_type in direct_house_wide_types
+        },
     )
     excluded_unit_ids = {
         str(unit_id or '').upper() for unit_id in excluded_unit_ids
@@ -202,12 +221,19 @@ def player_unit_clone_rules(
         )
         for unit_id, counts in fallback_counts.items():
             selected_counts = (
-                counts
+                {
+                    buff_type: count
+                    for buff_type, count in counts.items()
+                    if buff_type not in direct_house_wide_types
+                }
                 if direct_house_scoped_fallback
                 else {
                     buff_type: count
                     for buff_type, count in counts.items()
-                    if buff_type in forced_house_scoped_fallback_types
+                    if (
+                        buff_type in forced_house_scoped_fallback_types
+                        and buff_type not in direct_house_wide_types
+                    )
                 }
             )
             if selected_counts:

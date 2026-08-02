@@ -10,11 +10,17 @@ import zlib
 from pathlib import Path
 
 from randomizer.core.diagnostics import event as log_event
-from randomizer.core.paths import CAMEO_CACHE_DIR, GAME_ROOT, MAP_RENDERER_DIR
+from randomizer.core.paths import (
+    CAMEO_CACHE_DIR,
+    GAME_ROOT,
+    MAP_RENDERER_DIR,
+    SOURCE_DIR,
+)
 
 
 ART_CACHE_PATH = CAMEO_CACHE_DIR / 'artmo.ini'
 RULES_CACHE_PATH = CAMEO_CACHE_DIR / 'rulesmo.ini'
+BONUS_MIX_PATH = SOURCE_DIR / 'assets' / 'expandmo21 Bonus.mix'
 SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None
@@ -121,7 +127,15 @@ $decodedRequests = Get-Content -Raw {powershell_literal(request_path)} | Convert
 foreach($request in $decodedRequests) {{
     $pending.Add($request)
 }}
-foreach($mixPath in (Get-ChildItem {powershell_literal(GAME_ROOT / '*.mix')} | Sort-Object Name -Descending)) {{
+$mixPaths = @(
+    Get-ChildItem {powershell_literal(GAME_ROOT / '*.mix')} |
+        Sort-Object Name -Descending
+)
+# Installed archives always win. Curated Bonus MIX is fallback only.
+if(Test-Path -LiteralPath {powershell_literal(BONUS_MIX_PATH)}) {{
+    $mixPaths += Get-Item -LiteralPath {powershell_literal(BONUS_MIX_PATH)}
+}}
+foreach($mixPath in $mixPaths) {{
     if($pending.Count -eq 0) {{ break }}
     $foundHere = [Collections.Generic.List[object]]::new()
     $stream = [IO.File]::OpenRead($mixPath.FullName)
@@ -420,9 +434,14 @@ def ensure_unit_cameos(unit_ids):
     result = {}
     for unit_id in unit_ids:
         unit_id = str(unit_id).upper()
-        custom_image = UNIT_SIDEBAR_IMAGES.get(unit_id, {}).get('image')
+        sidebar_config = UNIT_SIDEBAR_IMAGES.get(unit_id, {})
+        custom_image = sidebar_config.get('image')
         if custom_image:
             result[unit_id] = custom_sidebar_preview(custom_image)
+            continue
+        source_pcx = sidebar_config.get('source_pcx')
+        if source_pcx:
+            requested[unit_id] = source_pcx
             continue
         art_id = art_names.get(unit_id)
         if not art_id:

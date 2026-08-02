@@ -100,6 +100,12 @@ _ENGINEER_CLONE_SAFETY = _MAP_CONFIG.get('engineer_clone_safety', {
     'identity_fields': {
         'Primary': 'DefuseKit',
         'Secondary': 'EngineerScanner',
+        'Engineer': 'yes',
+        'CanDrive': 'yes',
+        'GroupAs': 'Engineers',
+        'IFVMode': '1',
+        'PhysicalSize': '1',
+        'Size': '1',
         'Locomotor': '{4A582744-9839-11d1-B709-00A024DDAFD1}',
         'MovementZone': 'Infantry',
         'SpeedType': 'Foot',

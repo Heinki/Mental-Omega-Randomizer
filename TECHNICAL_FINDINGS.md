@@ -282,7 +282,7 @@ Ares self-healing supports every TechnoType, including BuildingTypes, but its de
 
 The former `guard_range` / Targeting Package reward was removed. `GuardRange` increases autonomous acquisition distance rather than weapon range and can pull units out of position into unsafe engagements. New seeds cannot generate it, and existing stored Targeting Package rewards canonicalize to the same unit's Recon Package vision reward.
 
-Unsafe raw type changes are never written onto an enemy/helper-shared original. Mandatory narrow player clones isolate supported direct TechnoType and WeaponType effects, including buildable defenses. Unsupported indirect/spawned paths remain skipped and logged. Movement ceilings exposed a build-only clone bookkeeping regression: the clone reported every buff as handled even though mission-authored placements/TaskForces deliberately stayed native, suppressing their health, sight, capability, and weapon buffs. Build-only or otherwise native-preserved mission identities now report only speed as handled. Their authored/default Speed remains unchanged, while every other ownership-safe unit/weapon effect continues through the guarded native pass. A later Hammer to Fall regression showed blanket TaskForce preservation was too broad for direct starts: action-referenced enemy/shared GI teams may stay native while exact UnitedStates placements safely use a locked buffed reference clone. Sources with ambiguous exact Event/Action references remain excluded. All four Engineer identities are a stricter case: safely rewritable map placements always use a locked `MORR*` copy built from authored clean values with cloak forcibly removed and no earned random buffs, while newly trained Engineers continue to use the independent buffed `MORP*` clone. That pass applies only its computed unhandled `direct_types`; testing the original count set would accidentally reapply handled speed whenever any non-speed effect remained.
+Unsafe raw type changes are never written onto an enemy/helper-shared original. Mandatory narrow player clones isolate supported direct TechnoType and WeaponType effects, including buildable defenses. Unsupported indirect/spawned paths remain skipped and logged. Movement ceilings exposed a build-only clone bookkeeping regression: the clone reported every buff as handled even though mission-authored placements/TaskForces deliberately stayed native, suppressing their health, sight, capability, and weapon buffs. Build-only or otherwise native-preserved mission identities now report only speed as handled. Their authored/default Speed remains unchanged, while every other ownership-safe unit/weapon effect continues through the guarded native pass. A later Hammer to Fall regression showed blanket TaskForce preservation was too broad for direct starts: action-referenced enemy/shared GI teams may stay native while exact UnitedStates placements safely use a locked buffed reference clone. Sources with ambiguous exact Event/Action references remain excluded. All four Engineer identities are stricter: campaign-authored placements, TaskForces, Events, and Actions always stay native so vehicle boarding, `CanDrive`, and exact mission semantics use the engine-reviewed identity. The duplicate native cameo is hidden only by the exact-House negative prerequisite, never a player `ForbiddenHouses` entry. Newly trained Engineers use independent buffed `MORP*` clones that forcibly restore `Engineer=yes`, `CanDrive=yes`, `GroupAs=Engineers`, `IFVMode=1`, size/physical size 1, and normal locomotion. That pass applies only its computed unhandled `direct_types`; testing the original count set would accidentally reapply handled speed whenever any non-speed effect remained.
 
 An experimental Phobos/Ares runtime-House AttachEffect pulse was tested and removed. Live testing showed that its owner filter did not reliably isolate the player and could buff enemy objects. Action `34` also exposed each hidden pulse as a continuously recharging default Mental Omega cameo despite `SW.ShowCameo=false`. The launcher therefore creates no `MORBuff*` superweapons, weapons, or warheads.
 
@@ -659,3 +659,85 @@ with authored production still receive compatible starters.
   x1.15 per stack but caps at x6 total damage, displayed as +500%, on stack 13.
   Planning stops assigning that unit's damage reward at 13; UI aggregation and
   generated WeaponTypes clamp legacy excess stacks to the same value.
+
+## August 2 House Buff and Time Freeze Audit
+
+- Root cause of faction-skewed house buffs was split application. Standard UI
+  and CountryType code aggregated production/cost/armor by category, but the
+  direct clone fallback retained only each reward source's own stack. Because
+  production is always clone-local and shared child countries force cost/armor
+  clone-local, most Allied/Epsilon/Foehn clones received zero or one stack;
+  safe Soviet CountryTypes appeared correct. Direct house-wide application now
+  removes those source-local counts, aggregates category plus global stacks,
+  clamps once, then writes every applicable owned clone. Country-safe paths
+  still emit reciprocal `Armor*Mult`; shared-country paths divide clone
+  Strength by the same received-damage multiplier. Unlocks combines global and
+  category production when showing live category percentages. Fire-rate text
+  uses inverse ROF delay, matching attacks per time.
+- Portable Time Freeze keeps its exact-House static provider and dual house
+  filters. Mission-critical immunity is additional, data-driven defense:
+  every configured exact TechnoType receives a mission-private custom armor
+  alias inheriting its normal armor, and only that alias receives `0%` verses
+  on the private warhead. SRED protects Morales and Hammer Defense without
+  exempting unrelated `moral` or `defense_b` objects, preventing scripted hero
+  stunlock and Hammer Defense EMP/AI sell behavior. SBLEED protects only its
+  scripted Morales. EBLOOD emits no combat immunity; its `PC-Player House`
+  provider owns the power and owner/allied denial prevents Dance of Blood from
+  freezing player objects.
+
+## August 2 T1 Defense and Campaign AI Power Audit
+
+- The missing-defense root had two layers. `ACCESS_CATALOG` was eagerly built
+  during the rewards/maps import cycle and permanently captured an empty reward
+  pool. After making it lazy, its parser still ignored ordinary `Prerequisite`
+  and indexed the normalized null `Prerequisite.List0=none` sentinel. Runtime
+  access discovery therefore returned no defense entries. The catalogue now
+  initializes on first use, parses normal/override/numbered prerequisites, and
+  rejects null sentinels. Standard's saved T1 defense marker expands to the five
+  displayed defenses exactly once. Every defense accepts any physical Allied,
+  Soviet, Epsilon, or Foehn Construction Yard, and starter rules apply after
+  mission-specific defense merges so primary/list prerequisites cannot be
+  duplicated or replaced.
+- Soviet 03 retained its original paradrop and back-air TeamTypes, TaskForces,
+  Scripts, Triggers, Actions, timings, and targets, but E1, GGI, COMA, and
+  JUMPJET first ended at launcher `TechLevel=-1`/`BuildLimit=0`. Restoring those
+  fields was necessary but not sufficient. Live debug later logged repeated
+  `[LAUNCH] ParaDropSpecial` without Paradrop 1/2 TeamType creation: the native
+  payloads still had `MORPOriginalGate`, and Ares checks negative prerequisites
+  while creating scripted/ParaDrop payloads. Every registered randomized native
+  type restores effective TechLevel/BuildLimit, but the exact-player negative
+  gate is now omitted for any non-player placement/TeamType consumer. Player
+  clone access remains independent. GAAIRC keeps its original SuperWeapon and
+  installed broad ownership; T1 preparation does not narrow it.
+- Action 106 filtering was global and removed enemy/story TechLevel actions for
+  randomized types; reviewed player clone retargeting could likewise rewrite
+  them. The pipeline now derives non-player trigger IDs from map House records
+  and preserves their authored Action groups through both rewrite and filter
+  passes. Player/helper-owned access actions remain eligible for clone
+  retargeting. Existing reviewed semantic mission fixes, such as SRED's duplicate
+  MCV-delivery suppression, remain authoritative.
+- A real 9,960-reward launch audit regenerated all 97 campaigns with zero
+  failures. It checked 255 T1 defense rules, 9,030 hostile TeamTypes plus their
+  TaskForces/Scripts, 14,927 payload entries and effective production fields,
+  13,364 hostile triggers, 822 original SuperWeapon fields, and 1,856
+  AITrigger entries. Soviet 03's Paradrop 1, Paradrop 2, Back Air Attack, and
+  GAAIRC chain passed focused and full audits. Live in-engine observation of
+  original timing and targets remains final confirmation.
+- The same live report exposed missing refinery miners. Refineries point at
+  installed native `FreeUnit` types. Player `ForbiddenHouses` and the negative
+  gate blocked them first; a later `TechLevel=11` hiding attempt still blocked
+  creation. Native CMIN/HARV/YMIN/NMIN now receive no generated section at all:
+  exact base TechLevel 1, Owner, prerequisite, and map overrides remain. Current
+  faction manual production uses that native miner. Only foreign factions get
+  MORP miner clones, and clone-builder companion gates are discarded for every
+  native free-miner source. Refineries receive no clone, registration,
+  replacement, or rule overlay.
+- Map `ForbiddenHouses=none` is authoritative. The old union reintroduced an
+  installed restriction even when campaign authors explicitly cleared it, and
+  null removal then exposed the installed fallback again. Literal `none` is
+  emitted when clearing an inherited restriction. Player-added forbidden
+  countries are also removed from a native type whenever they collide with an
+  authored non-player runtime House/country. Final 97-map generation validated
+  20,949 non-player runtime consumers and all 388 refinery/miner paths with zero
+  spawn gates, launcher-added ownership collisions, or missing/duplicate player
+  miner clones.

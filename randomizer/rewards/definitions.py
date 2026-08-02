@@ -486,6 +486,7 @@ def default_plural(label):
         'Stalin\'s Fist': 'Stalin\'s Fists',
         'Cloning Vats': 'Cloning Vats',
         'Soviet Cloning Vats': 'Soviet Cloning Vats',
+        'Hands of Ereshkigal': 'Hands of Ereshkigal',
     }
     return special.get(label, f'{label}s')
 
@@ -1081,6 +1082,11 @@ REWARD_ALIASES = {
     'Mind Control Access': 'Mastermind Access',
     'Base Construction Drill I': 'Faction Production Drill I',
     'Mind Control Unit Targeting Package I': 'Mastermind Recon Package I',
+    # Rhino's normal shell consumes ammunition, while its empty-magazine
+    # Tesla shell consumes none and is deliberately stronger. Increasing the
+    # magazine therefore delays the stronger weapon instead of providing a
+    # positive reserve benefit. Preserve old earned stacks as real ROF buffs.
+    'Rhino Heavy Tank Ammo Reserves I': 'Rhino Heavy Tank Weapon Tuning I',
 }
 for unit_id, legacy_labels in {
     'TRACTOR': ('Tyrant',),

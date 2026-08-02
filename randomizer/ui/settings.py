@@ -48,7 +48,9 @@ def buff_setting_amount_text(buff_type):
         name = 'Production' if buff_id == 'production' else 'Cost'
         return f'{name} (-{amount}%)'
     if buff_id == 'reload':
-        amount = round((1.0 - stacking_multiplier(buff_id, 1)) * 100)
+        amount = round(
+            ((1.0 / stacking_multiplier(buff_id, 1)) - 1.0) * 100
+        )
         return f'Fire rate (+{amount}%)'
     if buff_id in {'speed', 'health', 'damage'}:
         amount = round((stacking_multiplier(buff_id, 1) - 1.0) * 100)

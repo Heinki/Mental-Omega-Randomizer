@@ -23,6 +23,10 @@
           "ARMR": "Norio"
         },
         "units": {
+          "STHOR": "Super Thor Gunship",
+          "ARTY": "Old Artillery",
+          "RANGER": "Old Ranger",
+          "LONGBO": "Old Longbow",
           "QUICK": "Quickshifter",
           "CHRP": "Chrono Prison",
           "AHVYBOT2": "Future Tank Alpha",
@@ -98,6 +102,13 @@
           "LUNR": "Soviet Cosmonaut"
         },
         "units": {
+          "CZEP": "Kirov Command Airship",
+          "KSNK": "Old Heavy Tank",
+          "OTRK": "Old Demo Truck",
+          "MADU": "Old M.A.D. Tank",
+          "MAMU": "Old Mammoth Tank",
+          "V2": "Old V2 Launcher",
+          "ICBM": "Topol-M",
           "GRUMBLE": "Grumble",
           "SYCKLE": "Syckle",
           "IDRAG": "Iron Dragon",
@@ -146,12 +157,14 @@
       },
       "Epsilon": {
         "infantry": {
+          "CBRIS": "Space Commando",
           "INIT": "Initiate",
           "HARP": "Archer",
           "YDOG": "Epsilon Spook",
           "YENGINEER": "Epsilon Engineer",
           "DUNE": "Dunerider",
           "BRUTE": "Brute",
+          "BRUTE2": "Boomer Brute",
           "KAOS": "Bloatick",
           "YURI": "Epsilon Adept",
           "YURIPR": "Epsilon Elite",
@@ -168,6 +181,10 @@
           "LUNRE": "Epsilon Cosmonaut"
         },
         "units": {
+          "DHANDL": "Hands of Ereshkigal",
+          "SHINBOT": "Shin Tsurugi Decimator",
+          "HEPH": "Ganzir Defender",
+          "GRAV": "Gravitron",
           "YMIN": "Ghost Miner",
           "YTNK": "Gatling Tank",
           "LTNK": "Lasher Light Tank",
@@ -295,15 +312,154 @@
       "PHNT",
       "SEITAAD",
       "ARCH",
-      "REJU"
+      "REJU",
+      "STHOR",
+      "DHANDL",
+      "DHANDR",
+      "CBRIS",
+      "BRUTE2",
+      "CZEP",
+      "SHINBOT",
+      "HEPH",
+      "KSNK",
+      "OTRK",
+      "MADU",
+      "MAMU",
+      "V2",
+      "ICBM",
+      "ARTY",
+      "RANGER",
+      "LONGBO",
+      "GRAV",
+      "CASHLD"
     ],
     "unit_sidebar_images": {
       "PERUN": {
         "image": "perun_flagship.png",
         "pcx": "morperunicon.pcx"
+      },
+      "STHOR": {
+        "source_pcx": "sthor.pcx"
+      },
+      "CBRIS": {
+        "source_pcx": "cbrisicon.pcx"
+      },
+      "TENGU": {
+        "source_pcx": "tengu.pcx"
+      },
+      "YAHCR": {
+        "source_pcx": "antgehenna.pcx"
+      },
+      "DHANDL": {
+        "image": "hands_of_ereshkigal_left.png",
+        "pcx": "mordhandlicon.pcx"
+      },
+      "DHANDR": {
+        "image": "hands_of_ereshkigal_right.png",
+        "pcx": "mordhandricon.pcx"
+      },
+      "CZEP": {
+        "source_pcx": "zepicon.pcx"
+      },
+      "SHINBOT": {
+        "source_pcx": "shin.pcx"
+      },
+      "HEPH": {
+        "source_pcx": "ganzir.pcx"
+      },
+      "KSNK": {
+        "source_pcx": "ksnk.pcx"
+      },
+      "OTRK": {
+        "source_pcx": "otrk.pcx"
+      },
+      "MADU": {
+        "source_pcx": "madu.pcx"
+      },
+      "MAMU": {
+        "source_pcx": "mamu.pcx"
+      },
+      "V2": {
+        "source_pcx": "v2.pcx"
+      },
+      "ICBM": {
+        "source_pcx": "topolmicon.pcx"
+      },
+      "ARTY": {
+        "source_pcx": "arty.pcx"
+      },
+      "RANGER": {
+        "source_pcx": "ranger.pcx"
+      },
+      "LONGBO": {
+        "source_pcx": "longbow.pcx"
+      },
+      "GRAV": {
+        "source_pcx": "grav.pcx"
+      },
+      "CASHLD": {
+        "source_pcx": "forcicon.pcx"
       }
     },
     "unit_base_stats": {
+      "STHOR": [
+        2000,
+        15,
+        1200,
+        8,
+        8,
+        null
+      ],
+      "CZEP": [
+        3000,
+        5,
+        2250,
+        10,
+        10,
+        5
+      ],
+      "CBRIS": [
+        1500,
+        7,
+        300,
+        7,
+        7,
+        1
+      ],
+      "DHANDL": [
+        3000,
+        9,
+        3000,
+        12,
+        15,
+        null
+      ],
+      "SHINBOT": [
+        2500,
+        6,
+        2500,
+        7,
+        7,
+        null
+      ],
+      "HEPH": [
+        4000,
+        3,
+        2400,
+        10,
+        10,
+        null
+      ],
+      "KSNK": [850, 4, 330, 5, 5, null],
+      "OTRK": [1200, 5, 240, 5, 5, null],
+      "MADU": [1500, 4, 750, 5, 5, null],
+      "MAMU": [1500, 4, 640, 5, 5, null],
+      "V2": [1600, 4, 360, 6, 9, null],
+      "ICBM": [2000, 2, 500, 6, 9, null],
+      "ARTY": [900, 4, 330, 5, 5, null],
+      "RANGER": [400, 8, 200, 5, 5, null],
+      "LONGBO": [1100, 29, 250, 7, 7, 2],
+      "GRAV": [1600, 12, 880, 5, 5, null],
       "QUICK": [
         2000,
         3,
@@ -1440,6 +1596,14 @@
         5,
         null
       ],
+      "BRUTE2": [
+        500,
+        7,
+        450,
+        5,
+        14,
+        null
+      ],
       "KAOS": [
         350,
         10,
@@ -2146,6 +2310,8 @@
       ]
     },
     "transport_base_stats": {
+      "STHOR": {"passengers": 25, "open_topped": true},
+      "SHINBOT": {"passengers": 2, "open_topped": true},
       "AHMV": {"passengers": 2, "open_topped": false},
       "AMC": {"passengers": 1, "open_topped": false},
       "APOC": {"passengers": 1, "open_topped": true},
@@ -2430,6 +2596,22 @@
       ]
     ],
     "linked_buff_variants": {
+      "DHANDL": {
+        "DHANDR": {
+          "weapons": {
+            "DeathBolt": {
+              "damage": 75,
+              "rof": 2,
+              "range": 14
+            },
+            "DeathBoltAA": {
+              "damage": 75,
+              "rof": 2,
+              "range": 14
+            }
+          }
+        }
+      },
       "AMCV": {
         "GACNST": {
           "category": "defenses",
@@ -3104,6 +3286,194 @@
       }
     },
     "buff_targets": {
+      "STHOR": {
+        "weapons": {
+          "ThorHeavyGun": {
+            "damage": 160,
+            "rof": 40,
+            "range": 7.5
+          },
+          "ThorHeavyGunE": {
+            "damage": 160,
+            "rof": 40,
+            "range": 7.5
+          }
+        }
+      },
+      "CZEP": {
+        "weapons": {
+          "BlimpBombNuke": {
+            "damage": 500,
+            "rof": 195,
+            "range": 1
+          }
+        }
+      },
+      "CBRIS": {
+        "weapons": {
+          "SpaceComEMP": {
+            "rof": 20,
+            "range": 12
+          },
+          "SpaceComBeam": {
+            "damage": 120,
+            "rof": 20,
+            "range": 12
+          }
+        }
+      },
+      "BRUTE2": {
+        "weapons": {
+          "Punch": {
+            "damage": 85,
+            "rof": 50,
+            "range": 1.5
+          },
+          "Smash": {
+            "damage": 85,
+            "rof": 50,
+            "range": 1.5
+          }
+        }
+      },
+      "KSNK": {
+        "weapons": {
+          "120mmHeavy": {"damage": 50, "rof": 65, "range": 6},
+          "120mmHeavyE": {"damage": 50, "rof": 65, "range": 6}
+        }
+      },
+      "OTRK": {
+        "weapons": {
+          "Demobomb": {"damage": 180, "rof": 100, "range": 1.33},
+          "DemobombE": {"damage": 200, "rof": 100, "range": 1.33}
+        }
+      },
+      "MADU": {
+        "weapons": {
+          "Madbomb": {"damage": 275, "rof": 100, "range": 1.33}
+        }
+      },
+      "MAMU": {
+        "weapons": {
+          "120mmMammoth": {"damage": 80, "rof": 65, "range": 7},
+          "120mmMammothE": {"damage": 80, "rof": 65, "range": 7},
+          "MammothMissile": {"damage": 60, "rof": 55, "range": 7},
+          "MammothMissileE": {"damage": 60, "rof": 55, "range": 7}
+        }
+      },
+      "ARTY": {
+        "weapons": {
+          "ArtyCannon": {"damage": 70, "rof": 95, "range": 10},
+          "ArtyCannonE": {"damage": 70, "rof": 95, "range": 10}
+        }
+      },
+      "RANGER": {
+        "weapons": {
+          "RangerGun": {"damage": 25, "rof": 25, "range": 6},
+          "RangerGunE": {"damage": 25, "rof": 25, "range": 6}
+        }
+      },
+      "LONGBO": {
+        "weapons": {
+          "LongbowStrike": {"damage": 50, "rof": 60, "range": 7},
+          "LongbowStrikeE": {"damage": 50, "rof": 60, "range": 7}
+        }
+      },
+      "GRAV": {
+        "weapons": {
+          "GravitronField": {"damage": 80, "rof": 20, "range": 6}
+        }
+      },
+      "DHANDL": {
+        "weapons": {
+          "DeathBolt": {
+            "damage": 75,
+            "rof": 2,
+            "range": 14
+          },
+          "DeathBoltAA": {
+            "damage": 75,
+            "rof": 2,
+            "range": 14
+          }
+        }
+      },
+      "SHINBOT": {
+        "weapons": {
+          "ShinBeams": {
+            "damage": 40,
+            "rof": 2,
+            "range": 9.5
+          },
+          "ShinBeamsE": {
+            "damage": 40,
+            "rof": 2,
+            "range": 9.5
+          },
+          "ShinMissiles": {
+            "damage": 60,
+            "rof": 10,
+            "range": 9.5
+          },
+          "ShinMissilesE": {
+            "damage": 60,
+            "rof": 10,
+            "range": 9.5
+          },
+          "ShinCannons": {
+            "damage": 90,
+            "rof": 20,
+            "range": 10
+          },
+          "ShinCannonsE": {
+            "damage": 90,
+            "rof": 20,
+            "range": 10
+          }
+        }
+      },
+      "HEPH": {
+        "weapons": {
+          "Megalaser": {
+            "damage": 50,
+            "range": 20
+          },
+          "MegalaserE": {
+            "damage": 50,
+            "range": 20
+          },
+          "MegalaserAA": {
+            "damage": 50,
+            "range": 20
+          },
+          "MegalaserAAE": {
+            "damage": 50,
+            "range": 20
+          }
+        }
+      },
+      "CASHLD": {
+        "label": "Tech Protector",
+        "plural": "Tech Protectors",
+        "category": "defenses",
+        "factions": [
+          "Neutral"
+        ],
+        "cost": 2000,
+        "strength": 1000,
+        "sight": 6,
+        "guard_range": 10,
+        "allowed_buff_types": [
+          "production",
+          "cost",
+          "armor",
+          "health",
+          "sight",
+          "range"
+        ],
+        "trainable": false,
+        "special_reward": true
+      },
       "QUICK": {
         "weapons": {
           "Phalanx": {
@@ -4324,7 +4694,10 @@
       "REZNOV": 1,
       "KRUKOV": 1,
       "PERUN": 1,
-      "RHAD": 1
+      "RHAD": 1,
+      "CBRIS": 1,
+      "DHANDL": 1,
+      "HEPH": 1
     },
     "special_damage_fields": {
       "V3": {

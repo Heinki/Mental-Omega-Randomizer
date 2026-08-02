@@ -30,7 +30,6 @@ from randomizer.maps.ini import (
 )
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
-    REWARD_POOL,
     unit_role_equivalents,
 )
 from randomizer.config.static import load_static_config
@@ -148,6 +147,11 @@ ACCESS_PREREQUISITES = {}
 
 def _access_catalog():
     """Index access rewards by their target faction production category."""
+    # Import at call time. During the maps/rewards import cycle the facade
+    # temporarily exposes an empty placeholder which is later replaced, so a
+    # module-level imported reference can remain permanently stale.
+    from randomizer.rewards.catalogue import REWARD_POOL
+
     catalog = []
     seen = set()
     ACCESS_PREREQUISITES.clear()
@@ -160,23 +164,22 @@ def _access_catalog():
                 (str(value) for key, value in values.items() if key.lower() == 'techlevel'),
                 '',
             )
-            prerequisite_override = next(
-                (
-                    str(value).upper()
-                    for key, value in values.items()
-                    if key.lower() == 'prerequisiteoverride'
-                ),
-                '',
-            )
             prerequisites = []
-            if prerequisite_override and prerequisite_override != 'NONE':
-                prerequisites.append(prerequisite_override)
-            prerequisites.extend(
-                str(value).upper()
-                for key, value in values.items()
-                if key.lower().startswith('prerequisite.list')
-                and key.lower() != 'prerequisite.lists'
-            )
+            for key, value in values.items():
+                lowered = key.lower()
+                if not (
+                    lowered in {'prerequisite', 'prerequisiteoverride'}
+                    or (
+                        lowered.startswith('prerequisite.list')
+                        and lowered != 'prerequisite.lists'
+                    )
+                ):
+                    continue
+                prerequisites.extend(
+                    item.upper()
+                    for item in comma_items(value)
+                    if item.strip().upper() not in {'NONE', '<NONE>'}
+                )
             prerequisites = list(dict.fromkeys(prerequisites))
             if not tech_level or not prerequisites:
                 continue
@@ -198,10 +201,25 @@ def _access_catalog():
     return catalog
 
 
-ACCESS_CATALOG = _access_catalog()
+ACCESS_CATALOG = []
+
+
+def access_catalog():
+    """Return the access index after reward-module initialization completes.
+
+    ``missions.access`` participates in the maps/rewards import cycle. Building
+    this index eagerly can observe the public reward facade before
+    ``REWARD_POOL`` is populated and permanently freeze an empty catalogue.
+    Launch-time access resolution is safely past that cycle, so populate once
+    on first real use.
+    """
+    if not ACCESS_CATALOG:
+        ACCESS_CATALOG.extend(_access_catalog())
+    return ACCESS_CATALOG
 
 
 def _native_access_prerequisites(tech_id, fallback):
+    access_catalog()
     return ACCESS_PREREQUISITES.get(str(tech_id).upper(), (fallback,))
 
 
@@ -619,7 +637,7 @@ def mission_basic_unit_rules(
     # an alternative so this map rule never removes ordinary production.
     special_barracks = _special_infantry_factories(sections)
     if special_barracks:
-        for tech_id, tech_level, _family, category, prerequisite, native_owners in ACCESS_CATALOG:
+        for tech_id, tech_level, _family, category, prerequisite, native_owners in access_catalog():
             if category != 'infantry' or tech_id not in available_access:
                 continue
             access_rule = _build_access_rule(
@@ -642,7 +660,7 @@ def mission_basic_unit_rules(
         player_family in STALINS_FIST_FAMILIES
         and _map_provides_stalins_fist(lines, sections)
     ):
-        for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
+        for tech_id, tech_level, family, category, prerequisite, native_owners in access_catalog():
             if (
                 family != player_family
                 or category != 'vehicles'
@@ -662,7 +680,7 @@ def mission_basic_unit_rules(
             )
             unlocks.append((tech_id, tech_level, access_rule))
 
-    for tech_id, tech_level, family, category, prerequisite, native_owners in ACCESS_CATALOG:
+    for tech_id, tech_level, family, category, prerequisite, native_owners in access_catalog():
         if (family, category) not in expanded_categories:
             continue
         has_access = (
@@ -809,9 +827,20 @@ def always_available_transport_rules(
 
 
 def always_available_miner_rules(lines, additional_build_houses=()):
-    """Keep each faction miner available behind its refinery and factory."""
+    """Prepare foreign-faction miner clones behind their refinery and factory.
+
+    The player's native faction keeps its original miner.  That identity must
+    remain fully base-game buildable because a refinery's ``FreeUnit`` creation
+    obeys the miner TechLevel.  Cloning the native-faction miner would also put
+    two equivalent miner cameos in the vehicle factory.
+    """
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
+    player_families = {
+        country_family(records.get(house, {}))
+        for house in player_controlled_houses(lines, records=records)
+    }
+    player_families.discard('')
     player_countries = safe_build_countries(
         lines, records, additional_build_houses
     )
@@ -820,7 +849,9 @@ def always_available_miner_rules(lines, additional_build_houses=()):
     )
     required_houses = ','.join(player_countries)
     rules = {}
-    for _family, (tech_id, factory_id, refinery_id) in MINERS.items():
+    for family, (tech_id, factory_id, refinery_id) in MINERS.items():
+        if family in player_families:
+            continue
         rules[tech_id] = {
             'TechLevel': '1',
             'Owner': owners,

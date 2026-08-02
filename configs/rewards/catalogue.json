@@ -598,6 +598,26 @@
         "factions": [
           "Neutral"
         ]
+      },
+      {
+        "name": "Tech Protector Access",
+        "description": "Allows one portable Tech Protector from any faction Construction Yard.",
+        "access_category": "special_building",
+        "special_reward": true,
+        "rules": {
+          "CASHLD": {
+            "TechLevel": "1",
+            "Owner": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+            "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "CONYARD",
+            "BuildLimit": "1",
+            "BuildCat": "Tech"
+          }
+        },
+        "factions": [
+          "Neutral"
+        ]
       }
     ],
     "faction_access_rules": {

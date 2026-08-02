@@ -119,6 +119,13 @@ for mission_values in MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.values():
         for clone_values in power_values.values():
             clone_values['reference_keys'] = tuple(clone_values['reference_keys'])
 
+MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS = {
+    code: tuple(str(unit_id).upper() for unit_id in unit_ids)
+    for code, unit_ids in _MISSION_CONFIG.get(
+        'time_freeze_immune_techno_ids', {}
+    ).items()
+}
+
 # Missions needing every earned defense exposed through any Construction Yard.
 MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS = frozenset(_MISSION_CONFIG['all_conyard_defense_access_missions'])
 

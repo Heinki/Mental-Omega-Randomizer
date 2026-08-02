@@ -1179,7 +1179,10 @@ def build_player_clone_sections(
                     clone_values,
                     helper_support.get('prerequisites', ()),
                 )
-            if not build_only_clone:
+            if (
+                not build_only_clone
+                and target_unit_id not in ENGINEER_UNIT_IDS
+            ):
                 # Native type remains campaign AI identity. Exclude current
                 # player countries only when no story action still creates
                 # that exact source ID. A build-only clone deliberately keeps
@@ -1262,9 +1265,13 @@ def build_player_clone_sections(
         all_usage_friendly = bool(usage_names) and usage_names.issubset(
             allowed_houses
         )
+        preserve_native_engineer_references = (
+            target_unit_id in ENGINEER_UNIT_IDS
+        )
         safe_direct_rewrite = (
             unit_id in direct_friendly_ids
             and not excluded_build_only_clone
+            and not preserve_native_engineer_references
             and unit_id not in ambiguous_mission_event_ids
             and (
                 unit_id not in exact_reference_ids
@@ -1275,27 +1282,16 @@ def build_player_clone_sections(
             )
         )
         reference_clone_id = clone_id
-        starting_engineer_reference = (
-            safe_direct_rewrite and target_unit_id in ENGINEER_UNIT_IDS
-        )
-        if safe_direct_rewrite and (
-            'cloak' in direct_types or starting_engineer_reference
-        ):
+        if safe_direct_rewrite and 'cloak' in direct_types:
             # A cloaked infantry unit cannot reveal itself through its own
-            # Sight. Keep the fully buffed/cloaked production clone. Give
-            # map-authored player Engineers a clean, locked, non-cloaked
-            # identity even when no cloak reward is active; newly trained
-            # Engineers continue to use the normal production clone.
+            # Sight. Keep the fully buffed/cloaked production clone, while
+            # map-authored player references use a clean locked identity.
             reference_clone_id = _collision_safe_type_id(
                 f'MORR{unit_id}',
                 f'player-reference:{unit_id}',
                 reserved_ids,
             )
-            reference_values = dict(
-                clone_source_values
-                if starting_engineer_reference
-                else clone_values
-            )
+            reference_values = dict(clone_values)
             _remove_case_insensitive(
                 reference_values,
                 'Cloakable',
@@ -1317,7 +1313,7 @@ def build_player_clone_sections(
             reference_clone_id_by_source[unit_id] = reference_clone_id
         if safe_direct_rewrite:
             direct_replacements[unit_id] = reference_clone_id
-        if not build_only_clone:
+        if not build_only_clone and not preserve_native_engineer_references:
             replacements[unit_id] = (
                 reference_clone_id
                 if safe_direct_rewrite and all_usage_friendly
@@ -1329,7 +1325,7 @@ def build_player_clone_sections(
         # causing an immediate false mission failure (SNOISE Drakuv escorts).
         # _clone_reference_rules keeps enemy consumers native and splits shared
         # TaskForces, so reference-only clones are safe here.
-        if not build_only_clone:
+        if not build_only_clone and not preserve_native_engineer_references:
             taskforce_replacements[unit_id] = reference_clone_id
         elif (
             excluded_build_only_clone

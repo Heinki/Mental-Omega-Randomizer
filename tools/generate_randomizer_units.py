@@ -21,6 +21,8 @@ DEFAULT_RULES = ROOT.parent / 'RandomizerLauncherData' / 'cameo_cache' / 'rulesm
 DEFAULT_OUTPUT_DIR = ROOT / 'configs'
 SUPPLEMENTAL_SOURCE_FILES = (
     ROOT.parent / 'MapsMO' / 'Challenge' / 'c_revolution.map',
+    ROOT.parent / 'MapsMO' / 'Cooperative' / 'coop_sthunder.map',
+    ROOT.parent / 'MapsMO' / 'Cooperative' / 'coop_stoxic.map',
 )
 TYPE_LISTS = OrderedDict((
     ('infantry', 'InfantryTypes'),
@@ -45,8 +47,16 @@ STABLE_APPEND_ORDER = (
     'GRUMBLE', 'NAGRUM', 'SYCKLE', 'IDRAG',
     'TRACTOR', 'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
+    'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH', 'BRUTE2',
+    'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
+    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'CASHLD',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
+UNFINISHED_ASSET_IDS = frozenset({
+    # Bonus MIX supplies only Heavy Trooper art/cameos. No installed or
+    # campaign TechnoType rules exist; do not synthesize gameplay from KNIGHT.
+    'CAPU',
+})
 IMAGE_OVERRIDES = {
     # Mapper source calls the Mortar Quad art MORTAR, but installed artmo.ini
     # defines its cameo and sequence under [MOTOR].
@@ -93,6 +103,124 @@ TEMPLATE_VALUE_OVERRIDES = {
         'ElitePrimary': 'GharialBetaCannon',
         'EliteWeapon1': 'GharialBetaCannon',
         'InitialPayload.Nums': '0',
+    },
+    'ICBM': {
+        'BuildTimeMultiplier': '1',
+    },
+    'GRAV': {
+        'BuildTimeMultiplier': '1',
+    },
+    'DHANDL': {
+        'Name': 'Hand of Ereshkigal Left',
+        'GuardRange': '15',
+        'WeaponCount': '10',
+        'WeaponStages': '5',
+        'Stage1': '1',
+        'Stage2': '2',
+        'Stage3': '3',
+        'Stage4': '4',
+        'Stage5': '5',
+        'EliteStage1': '1',
+        'EliteStage2': '2',
+        'EliteStage3': '3',
+        'EliteStage4': '4',
+        'EliteStage5': '5',
+        'RateUp': '1',
+        'RateDown': '1',
+        'IsGattling': 'yes',
+        'Gattling.Cycle': 'yes',
+        **{
+            f'{prefix}Weapon{number}': (
+                'DeathBoltAA' if number % 2 == 0 else 'DeathBolt'
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 11)
+        },
+        'BuildTimeMultiplier': '1',
+    },
+    'DHANDR': {
+        'GuardRange': '15',
+        'WeaponCount': '10',
+        'WeaponStages': '5',
+        'Stage1': '1',
+        'Stage2': '2',
+        'Stage3': '3',
+        'Stage4': '4',
+        'Stage5': '5',
+        'EliteStage1': '1',
+        'EliteStage2': '2',
+        'EliteStage3': '3',
+        'EliteStage4': '4',
+        'EliteStage5': '5',
+        'RateUp': '1',
+        'RateDown': '1',
+        'IsGattling': 'yes',
+        'Gattling.Cycle': 'yes',
+        **{
+            f'{prefix}Weapon{number}': (
+                'DeathBoltAA' if number % 2 == 0 else 'DeathBolt'
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 11)
+        },
+        'BuildTimeMultiplier': '1',
+    },
+    'CBRIS': {
+        'BuildTimeMultiplier': '2',
+    },
+    'SHINBOT': {
+        'BuildTimeMultiplier': '1',
+    },
+    'HEPH': {
+        'WeaponCount': '12',
+        'WeaponStages': '6',
+        'Stage1': '1',
+        'Stage2': '2',
+        'Stage3': '3',
+        'Stage4': '4',
+        'Stage5': '5',
+        'Stage6': '6',
+        'EliteStage1': '1',
+        'EliteStage2': '2',
+        'EliteStage3': '3',
+        'EliteStage4': '4',
+        'EliteStage5': '5',
+        'EliteStage6': '6',
+        'RateUp': '1',
+        'RateDown': '1',
+        **{
+            f'{prefix}Weapon{number}': (
+                ('MegalaserAAE' if prefix else 'MegalaserAA')
+                if number % 2 == 0
+                else ('MegalaserE' if prefix else 'Megalaser')
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 13)
+        },
+        'BuildTimeMultiplier': '1',
+    },
+    'CASHLD': {
+        # Neutral map structure has no production contract. Portable reward
+        # supplies one without changing native placed Tech Protectors.
+        'Cost': '2000',
+        'Soylent': '1000',
+        'BuildLimit': '1',
+        'BuildCat': 'Tech',
+        'Capturable': 'no',
+        'NeedsEngineer': 'no',
+        'Prerequisite': 'CONYARD',
+    },
+    'CMIN': {
+        'Dock': 'NAREFN,GAREFN,CAREFN,YARIREFN,FAREFN,YAMREF,GAOREP,MORPGAOREP',
+    },
+    'HARV': {
+        'Dock': 'NAREFN,GAREFN,CAREFN,YARIREFN,FAREFN,YAMREF,GAOREP,MORPGAOREP',
+    },
+    'YMIN': {
+        'Dock': 'NAREFN,GAREFN,CAREFN,YARIREFN,FAREFN,YAMREF,GAOREP,MORPGAOREP',
+    },
+    'NMIN': {
+        'Dock': 'NAREFN,GAREFN,CAREFN,YARIREFN,FAREFN,YAMREF,GAOREP,MORPGAOREP',
     },
     'PROMEP': {
         'Name': 'Mastodon Prototype',
@@ -368,6 +496,11 @@ def main():
     )
     target_categories = {}
     for source_id, target in BUFF_TARGETS.items():
+        # Most transform-only forms are closed dynamically at launch and are
+        # intentionally absent from the committed buildable roster. Preserve
+        # only reviewed historical static variants.
+        if target.get('runtime_transform') and source_id not in STABLE_APPEND_IDS:
+            continue
         category = target.get('category')
         list_name = TYPE_LISTS.get(category)
         if not list_name:
@@ -377,6 +510,8 @@ def main():
 
     # Preserve mapper-reviewed extra infantry for later catalogue expansion.
     for source_id in reviewed_infantry:
+        if source_id in UNFINISHED_ASSET_IDS:
+            continue
         if source_id not in target_ids_by_list['InfantryTypes']:
             target_ids_by_list['InfantryTypes'].append(source_id)
             target_categories[source_id] = 'infantry-extra'
@@ -445,6 +580,46 @@ def main():
             source_id for source_id in STABLE_APPEND_ORDER
             if source_id in source_ids
         ]
+
+        # Keep committed section order byte-stable. Registry keys already stay
+        # stable; sorting definitions by those keys prevents one new review
+        # from moving hundreds of existing definitions in generated diffs.
+        output_path = args.output_dir / OUTPUT_GROUPS[group][0]
+        previous = read_sections(output_path) if output_path.is_file() else {}
+        registry_order = {}
+        list_ranks = {
+            list_name: list_rank
+            for list_rank, list_name in enumerate(dict.fromkeys(TYPE_LISTS.values()))
+        }
+        for list_rank, list_name in enumerate(dict.fromkeys(TYPE_LISTS.values())):
+            actual = case_name(previous, list_name)
+            for raw_key, clone_id in previous.get(actual, {}).items():
+                clone_id = str(clone_id).upper()
+                if not clone_id.startswith('MORP'):
+                    continue
+                try:
+                    key_rank = int(raw_key)
+                except ValueError:
+                    key_rank = 1_000_000
+                registry_order[clone_id[4:]] = (list_rank, key_rank)
+        stable_ranks = {
+            source_id: rank for rank, source_id in enumerate(STABLE_APPEND_ORDER)
+        }
+
+        def definition_order(source_id):
+            list_name = TYPE_LISTS[target_categories[source_id].split('-', 1)[0]]
+            list_rank, key_rank = registry_order.get(
+                source_id,
+                (list_ranks[list_name], 1_000_000),
+            )
+            if source_id in STABLE_APPEND_IDS:
+                return list_rank, 1, stable_ranks[source_id]
+            return list_rank, 0, key_rank
+
+        grouped_ids[group] = sorted(
+            grouped_ids[group],
+            key=definition_order,
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for group, source_ids in grouped_ids.items():

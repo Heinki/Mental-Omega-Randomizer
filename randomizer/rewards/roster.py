@@ -346,6 +346,7 @@ def validate_special_reward_build_times():
         unit_id.upper()
         for unit_id, target in BUFF_TARGETS.items()
         if target.get('special_reward')
+        and not target.get('runtime_transform')
         and target.get('category') in ROSTER_CATEGORIES
     )
     errors = []
@@ -393,6 +394,7 @@ def validate_transport_buff_eligibility():
     from randomizer.maps.buff_values import _active_direct_buff_counts
     from randomizer.rewards.display import canonical_reward
     from randomizer.rewards.definitions import (
+        ENGINEER_UNIT_IDS,
         EXISTING_OPEN_TOPPED_IDS,
         TRANSPORT_GUNNER_IDS,
         TRANSPORT_OPEN_TOPPED_BLOCKED_IDS,
@@ -461,6 +463,39 @@ def validate_transport_buff_eligibility():
         errors.append('Stallion legacy open_topped remains active')
     if 'SHAD' not in TRANSPORT_OPEN_TOPPED_BLOCKED_IDS:
         errors.append('Stallion is absent from mandatory OpenTopped exclusions')
+    engineer_identity = {
+        'Engineer': 'yes',
+        'CanDrive': 'yes',
+        'GroupAs': 'Engineers',
+        'IFVMode': '1',
+        'PhysicalSize': '1',
+        'Size': '1',
+        'Primary': 'DefuseKit',
+        'Secondary': 'EngineerScanner',
+        'Locomotor': '{4A582744-9839-11d1-B709-00A024DDAFD1}',
+        'MovementZone': 'Infantry',
+    }
+    for unit_id in sorted(ENGINEER_UNIT_IDS):
+        template = templates.get(unit_id, {})
+        for key, expected in engineer_identity.items():
+            _actual_key, actual = _case_insensitive_item(template, key)
+            if str(actual or '').lower() != expected.lower():
+                errors.append(
+                    f'{unit_id} clone lost {key}={expected}'
+                )
+    if ('HTNK', 'ammo') in reward_pairs:
+        errors.append('Rhino still offers harmful ammo capacity')
+    legacy_rhino_ammo = canonical_reward({
+        'name': 'Rhino Heavy Tank Ammo Reserves I',
+        'kind': 'buff',
+        'unit': 'HTNK',
+        'buff_type': 'ammo',
+    })
+    if (
+        legacy_rhino_ammo.get('unit') != 'HTNK'
+        or legacy_rhino_ammo.get('buff_type') != 'reload'
+    ):
+        errors.append('Legacy Rhino ammo does not migrate to weapon tuning')
     for unit_id in EXISTING_OPEN_TOPPED_IDS:
         template = templates.get(unit_id, {})
         open_topped = next(
@@ -482,4 +517,6 @@ def validate_transport_buff_eligibility():
         'stallion_capacity_enabled': True,
         'stallion_open_topped_excluded': True,
         'native_open_topped_ids': sorted(EXISTING_OPEN_TOPPED_IDS),
+        'engineer_clone_identity_ids': sorted(ENGINEER_UNIT_IDS),
+        'rhino_ammo_migrated_to_reload': True,
     }

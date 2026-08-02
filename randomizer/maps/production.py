@@ -9,7 +9,6 @@ from .buff_values import _register_map_type
 
 
 PLAYER_ORIGINAL_PRODUCTION_GATE_ID = 'MORPOriginalGate'
-HUMAN_LOCKED_TECH_LEVEL = '-1'
 
 
 def _value_case_insensitive(values, key, default=None):
@@ -29,16 +28,19 @@ def original_player_production_gate_rules(
     installed_sections,
     native_source_ids,
     existing_rule_sections=None,
+    native_sections=None,
+    negative_gate_exclusions=(),
 ):
     """Block native production for houses owning the hidden player gate.
 
     Native ownership, AI production, placements, TeamTypes, and exact campaign
     references remain unchanged. Ares evaluates ``Prerequisite.Negative`` for
     normal, alternate-prerequisite, captured-factory, and reverse-engineered
-    production. ``TechLevel=-1`` is the independent human-production lock:
-    Ares rejects that value only for a human-controlled house while AI houses
-    continue to satisfy it. The registered player clone is therefore the only
-    human cameo even if a mission does not count the hidden gate correctly.
+    production. Restore the authored native TechLevel and BuildLimit here:
+    campaign Autocreate teams obey both fields, so leaving randomizer locks on
+    the shared original silently disables AI paradrops and air attacks. The
+    exact-House hidden negative prerequisite keeps the human on isolated
+    clones without changing AI production eligibility.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -47,10 +49,19 @@ def original_player_production_gate_rules(
     }
     if not native_source_ids:
         return {}
+    negative_gate_exclusions = {
+        str(source_id).upper()
+        for source_id in (negative_gate_exclusions or ())
+        if str(source_id).strip()
+    }
 
     installed_by_lower = {
         str(section).lower(): values
         for section, values in (installed_sections or {}).items()
+    }
+    native_by_lower = {
+        str(section).lower(): values
+        for section, values in (native_sections or {}).items()
     }
     dummy_values = installed_by_lower.get('dummydummy')
     if not dummy_values:
@@ -109,8 +120,26 @@ def original_player_production_gate_rules(
                 _value_case_insensitive(values, 'Prerequisite.Negative', '')
             ))
         source_rules = rules.setdefault(source_id, {})
-        source_rules['Prerequisite.Negative'] = ','.join(unique_in_order(
-            negatives + [PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
-        ))
-        source_rules['TechLevel'] = HUMAN_LOCKED_TECH_LEVEL
+        negatives = [
+            prerequisite
+            for prerequisite in unique_in_order(negatives)
+            if prerequisite.upper() != PLAYER_ORIGINAL_PRODUCTION_GATE_ID.upper()
+        ]
+        source_rules['Prerequisite.Negative'] = (
+            ','.join(negatives)
+            if source_id in negative_gate_exclusions
+            else ','.join(negatives + [PLAYER_ORIGINAL_PRODUCTION_GATE_ID])
+        ) or None
+        installed_values = installed_by_lower.get(source_id.lower(), {})
+        native_values = native_by_lower.get(source_id.lower(), {})
+        source_rules['TechLevel'] = _value_case_insensitive(
+            native_values,
+            'TechLevel',
+            _value_case_insensitive(installed_values, 'TechLevel'),
+        )
+        source_rules['BuildLimit'] = _value_case_insensitive(
+            native_values,
+            'BuildLimit',
+            _value_case_insensitive(installed_values, 'BuildLimit'),
+        )
     return rules

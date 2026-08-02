@@ -12,6 +12,7 @@ from randomizer.maps.ini import (
 from randomizer.maps.ownership import (
     build_unit_usage_index,
     script_referenced_taskforce_unit_ids,
+    taskforce_usage_houses,
 )
 from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps.rules import (
@@ -67,6 +68,7 @@ from randomizer.maps.settings import (
     mission_house_color_rules,
 )
 from randomizer.maps.special_buildings import (
+    DEFAULT_REFINERY_MINER_IDS,
     ore_purifier_miner_dock_rules,
     reprocessor_bounty_rules,
 )
@@ -89,6 +91,7 @@ from randomizer.missions.overrides import (
     MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES,
     MISSION_MAP_SECTION_RULES,
     MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES,
+    MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS,
     MISSION_TEAM_HOUSE_OVERRIDES,
     MISSION_TECHNO_BASE_RULES,
 )
@@ -254,6 +257,38 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
     }
     installed_superweapon_types, installed_rule_sections = installed_rules_registry()
+    installed_building_ids = {
+        str(building_id).strip()
+        for building_id in installed_rule_sections.get(
+            'BuildingTypes', {}
+        ).values()
+        if str(building_id).strip()
+    }
+    refinery_building_ids = set()
+    refinery_free_unit_ids = set()
+    for building_id in installed_building_ids:
+        building_values = installed_rule_sections.get(building_id, {})
+        if str(next(
+            (
+                value for key, value in building_values.items()
+                if str(key).lower() == 'refinery'
+            ),
+            '',
+        )).lower() != 'yes':
+            continue
+        refinery_building_ids.add(str(building_id).upper())
+        for key, value in building_values.items():
+            if str(key).lower() not in {'freeunit', 'freeunit2'}:
+                continue
+            refinery_free_unit_ids.update(
+                unit_id.strip().upper()
+                for unit_id in str(value or '').split(',')
+                if unit_id.strip()
+            )
+    # Keep the reviewed four-faction contract available if an editable or
+    # preserved installed registry omits one of the source sections.
+    refinery_building_ids.update(DEFAULT_REFINERY_MINER_IDS)
+    refinery_free_unit_ids.update(DEFAULT_REFINERY_MINER_IDS.values())
     veteran_health_rules = veteran_armor_safety_rules(
         lines,
         installed_rule_sections,
@@ -384,6 +419,30 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     native_helpers = [
         house for house in native_helpers if house.lower() not in enemy_names
     ]
+    # TechLevel actions are House-scoped mission instructions. Player access
+    # isolation may rewrite/remove them only when their trigger belongs to the
+    # player or an opted-in helper. Enemy, story, and neutral actions must stay
+    # byte-for-byte authored or AI powers/production chains can disappear.
+    friendly_trigger_owners = set()
+    for house in unique_in_order(
+        list(player_controlled_houses(lines, records=records))
+        + list(native_helpers)
+    ):
+        record = records.get(house, {})
+        for identity in (
+            house,
+            str(house).removesuffix(' House'),
+            record.get('country', ''),
+            record.get('parent_country', ''),
+        ):
+            if str(identity or '').strip():
+                friendly_trigger_owners.add(str(identity).strip().lower())
+    preserved_ai_action_ids = {
+        str(trigger_id).strip().lower()
+        for trigger_id, trigger_value in source_triggers.items()
+        if str(trigger_value).split(',', 1)[0].strip().lower()
+        not in friendly_trigger_owners
+    }
     # Native helper timing, scripts, and triggers stay intact. Compatible
     # TaskForce slots use buffed clones, while native unit IDs remain
     # buildable for dynamic AI requests outside those TaskForces.
@@ -483,11 +542,85 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     if not power_houses:
         power_houses = [player_country_from_map(lines)]
-    mission_power_techno_clone_overrides = (
-        MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.get(
-            code, {}
-        )
+    mission_power_techno_clone_overrides = {
+        power_id: {
+            source_id: {
+                **clone_spec,
+                **(
+                    {'values': dict(clone_spec.get('values') or {})}
+                    if 'values' in clone_spec
+                    else {}
+                ),
+            }
+            for source_id, clone_spec in clone_specs.items()
+        }
+        for power_id, clone_specs in (
+            MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES.get(
+                code, {}
+            )
+        ).items()
+    }
+    time_freeze_immune_ids = MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS.get(
+        code, ()
     )
+    time_freeze_immune_armors = []
+    time_freeze_protected_types = []
+    if time_freeze_immune_ids:
+        installed_by_lower = {
+            str(section).lower(): values
+            for section, values in installed_rule_sections.items()
+        }
+        map_by_lower = {
+            str(section).lower(): values
+            for section, values in native_map_sections.items()
+        }
+        for immunity_index, unit_id in enumerate(time_freeze_immune_ids):
+            armor = ''
+            for values in (
+                map_by_lower.get(unit_id.lower(), {}),
+                installed_by_lower.get(unit_id.lower(), {}),
+            ):
+                armor = next(
+                    (
+                        str(value).strip()
+                        for key, value in values.items()
+                        if str(key).lower() == 'armor'
+                    ),
+                    '',
+                )
+                if armor:
+                    break
+            if armor:
+                # Ares custom armor aliases inherit every ordinary warhead's
+                # verses from the original armor. Give only this exact
+                # mission TechnoType a private alias, then make only the
+                # private Time Freeze warhead ineffective against it. This
+                # avoids making every defense_b building or moral infantry in
+                # the mission immune merely because one scripted object is.
+                immune_armor = f'MORTF{code}{immunity_index}'
+                rule_sections.setdefault('ArmorTypes', {})[
+                    immune_armor
+                ] = armor
+                rule_sections.setdefault(unit_id, {})['Armor'] = immune_armor
+                time_freeze_immune_armors.append(immune_armor)
+                time_freeze_protected_types.append(
+                    f'{unit_id} ({immune_armor} inherits {armor})'
+                )
+        if time_freeze_immune_armors:
+            warhead_spec = mission_power_techno_clone_overrides.setdefault(
+                'TimeFreezeSpecial', {}
+            ).setdefault('TimeFreezeWH', {
+                'clone': 'MORTimeFreezeWH',
+                'list': 'Warheads',
+            })
+            warhead_values = warhead_spec.setdefault('values', {})
+            for armor in unique_in_order(time_freeze_immune_armors):
+                warhead_values[f'Versus.{armor}'] = '0%'
+            self.append_log(
+                'Protected exact mission-critical Time Freeze targets: '
+                + ', '.join(time_freeze_protected_types)
+                + '.'
+            )
     (
         cloned_power_rules,
         superweapon_actions,
@@ -636,26 +769,125 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for house in usage_index.get(unit_id, ())
         }.intersection(player_usage_names)
     }
+    # Native TechnoTypes used by any non-player placement or TeamType must
+    # remain directly spawnable. Ares applies negative prerequisites while
+    # assembling campaign teams and ParaDrop payloads even when the owning AI
+    # House does not own the player's hidden gate. Exact player
+    # ForbiddenHouses still hides these originals from the human sidebar.
+    non_player_runtime_unit_ids = {
+        unit_id
+        for unit_id, usage_houses in usage_index.items()
+        if any(
+            str(house or '').strip().lower() not in player_usage_names
+            for house in usage_houses
+        )
+    }
+    # Static map placements ignore production prerequisites, while campaign
+    # TeamType creation does not.  Keep this narrower index so native miner
+    # cameos can be hidden when their only non-player use is an authored map
+    # placement, without breaking an AI/scripted miner TaskForce.
+    non_player_taskforce_unit_ids = set()
+    for taskforce_id, usage_houses in taskforce_usage_houses(
+        lines,
+        sections=native_map_sections,
+    ).items():
+        if not any(
+            str(house or '').strip().lower() not in player_usage_names
+            for house in usage_houses
+        ):
+            continue
+        for value in native_sections_by_lower.get(
+            str(taskforce_id).lower(), {}
+        ).values():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if (
+                len(tokens) >= 2
+                and tokens[0].isdigit()
+                and tokens[1]
+                and tokens[1].lower() not in {'none', '<none>'}
+            ):
+                non_player_taskforce_unit_ids.add(tokens[1].upper())
+    # Droppod TeamTypes are stricter than ordinary AI production. The engine
+    # can refuse Action 7 before creating the transport when a payload's
+    # native type receives any player-isolation overlay, even one aimed at a
+    # different country. Preserve only these authored non-player payload
+    # identities. Player/helper placements and teams must still follow their
+    # MORP clone rewrites; restoring every non-player-used native type erases
+    # that clone-aware split and breaks exact cloned-unit mission checks.
+    non_player_droppod_payload_ids = set()
+
+    def native_value(values, key, default=''):
+        wanted = str(key).lower()
+        return next(
+            (
+                value
+                for name, value in (values or {}).items()
+                if str(name).lower() == wanted
+            ),
+            default,
+        )
+
+    for team_id in native_map_sections.get('TeamTypes', {}).values():
+        team_values = native_map_sections.get(str(team_id), {})
+        if str(native_value(team_values, 'Droppod')).lower() != 'yes':
+            continue
+        if str(native_value(team_values, 'House')).lower() in player_usage_names:
+            continue
+        taskforce_id = str(native_value(team_values, 'TaskForce')).strip()
+        for key, value in native_map_sections.get(taskforce_id, {}).items():
+            tokens = [token.strip() for token in str(value).split(',')]
+            if (
+                str(key).isdigit()
+                and len(tokens) >= 2
+                and tokens[0].isdigit()
+                and tokens[1]
+                and tokens[1].lower() not in {'none', '<none>'}
+            ):
+                non_player_droppod_payload_ids.add(tokens[1].upper())
     preserved_native_access_ids = (
         set(native_techno_exclusions)
         | (player_story_unit_ids - safe_player_clone_unit_ids)
+        # Campaign-authored Engineer placements/teams deliberately stay on
+        # their native identity so vehicle boarding, CanDrive behavior, and
+        # exact mission triggers use the engine-reviewed type. The hidden
+        # negative prerequisite still suppresses its duplicate player cameo.
+        | set(ENGINEER_UNIT_IDS)
     )
-    for source_id in sorted(isolated_native_ids - preserved_native_access_ids):
-        forbidden = []
-        for source_values in (
-            installed_rule_sections.get(
-                installed_names.get(source_id.lower()), {}
-            ),
-            native_map_sections.get(native_names.get(source_id.lower()), {}),
-        ):
-            for key, value in source_values.items():
-                if str(key).lower() != 'forbiddenhouses':
-                    continue
-                forbidden.extend(
-                    item.strip()
-                    for item in str(value).split(',')
-                    if item.strip().lower() not in {'', 'none', '<none>'}
-                )
+    for source_id in sorted(
+        isolated_native_ids
+        - preserved_native_access_ids
+        - refinery_free_unit_ids
+        - refinery_building_ids
+    ):
+        installed_source_values = installed_rule_sections.get(
+            installed_names.get(source_id.lower()), {}
+        )
+        native_source_values = native_map_sections.get(
+            native_names.get(source_id.lower()), {}
+        )
+
+        def forbidden_value(values, missing=None):
+            return next(
+                (
+                    value
+                    for key, value in values.items()
+                    if str(key).lower() == 'forbiddenhouses'
+                ),
+                missing,
+            )
+
+        # A map-local value, including `none`, intentionally overrides the
+        # installed restriction. Unioning both resurrected restrictions that
+        # campaign authors explicitly cleared and blocked scripted AI teams.
+        effective_forbidden = forbidden_value(
+            native_source_values,
+            forbidden_value(installed_source_values, ''),
+        )
+        forbidden = [
+            item.strip()
+            for item in str(effective_forbidden or '').split(',')
+            if item.strip().lower() not in {'', 'none', '<none>'}
+        ]
         forbidden = unique_in_order(forbidden + list(player_native_exclusions))
         if forbidden:
             rule_sections.setdefault(source_id, {})['ForbiddenHouses'] = ','.join(
@@ -837,6 +1069,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             if reward_helpers
             else {'variants': [], 'support': {}}
         )
+        player_build_owner_ids = safe_build_countries(lines, records, ())
         (
             clone_rule_sections,
             _cloned_source_unit_ids,
@@ -853,7 +1086,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             require_unlocked_access=require_unlocked_access_for_buffs,
             additional_unlocked_tech_ids=buff_access_tech_ids,
             buildable_tech_ids=buildable_clone_ids,
-            build_owner_ids=safe_build_countries(lines, records, ()),
+            build_owner_ids=player_build_owner_ids,
             helper_autobuild_support=helper_autobuild.get('support'),
             forced_buildable_clone_ids=(
                 fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
@@ -876,9 +1109,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 MISSION_OBJECTIVE_CLONE_EVENT_REFS.get(code, {})
             ),
             scripted_player_buff_taskforces=(
-                MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ())
+                set(MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ()))
             ),
-            excluded_unit_ids=native_techno_exclusions,
+            excluded_unit_ids=(
+                set(native_techno_exclusions)
+                | (refinery_free_unit_ids - set(fallback_tech_ids))
+            ),
             build_only_excluded_unit_ids=native_build_only_clone_ids,
             excluded_player_houses=excluded_player_houses,
             owned_clone_ids=owned_clone_ids,
@@ -888,6 +1124,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 direct_only_country_buff_types
             ),
         )
+        # Clone preparation normally emits a native-source sidebar gate beside
+        # each player clone.  Never retain that companion section for refinery
+        # FreeUnit identities: Ares applies ForbiddenHouses/negative gates to
+        # refinery-spawned units too.  Foreign MORP miners remain registered and
+        # manually buildable; their native source stays untouched for FreeUnit.
+        for miner_id in refinery_free_unit_ids:
+            clone_rule_sections.pop(miner_id, None)
         mission_unlock_clone_replacements = {
             source_id: str(clone_handled.get(source_id, {}).get('clone_id') or '')
             for source_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ())
@@ -911,16 +1154,116 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         production_gate_source_ids = (
             (set(isolated_native_ids) - set(preserved_native_access_ids))
             | actual_clone_source_ids
+            | {
+                str(unit_id).upper()
+                for unit_id in self.randomized_tech_ids()
+                if str(unit_id).upper() in registered_techno_categories
+            }
         ) - (
             set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
             | runtime_identity_preserve_ids
+            | refinery_building_ids
+            | refinery_free_unit_ids
         )
         production_gate_rules = original_player_production_gate_rules(
             lines,
             installed_rule_sections,
             production_gate_source_ids,
             existing_rule_sections=clone_rule_sections,
+            native_sections=native_map_sections,
+            negative_gate_exclusions=non_player_runtime_unit_ids,
         )
+        # Refineries and their native FreeUnit miners receive no generated
+        # production gate.  TechLevel, ownership, prerequisites, and map-local
+        # overrides therefore remain exactly as authored.  Current-faction
+        # manual production uses that same native miner; only foreign faction
+        # production uses an isolated MORP clone.
+        # A campaign commonly has several runtime Houses sharing one
+        # CountryType. Launcher-added ForbiddenHouses is country-scoped, so it
+        # can also forbid an authored AI/helper House that uses the same
+        # country. For every non-player runtime consumer, remove only those
+        # player-added forbidden identities that collide with its authored
+        # House/country aliases. In such shared-country cases preserving the
+        # campaign team takes precedence over hiding a redundant native cameo.
+        player_forbidden_lower = {
+            str(owner).strip().lower()
+            for owner in player_native_exclusions
+            if str(owner).strip()
+        }
+        for source_id in sorted(
+            non_player_runtime_unit_ids.intersection(
+                production_gate_source_ids
+            )
+        ):
+            runtime_aliases = set()
+            for runtime_house in usage_index.get(source_id, ()):
+                runtime_house = str(runtime_house or '').strip()
+                if not runtime_house or runtime_house.lower() in {
+                    '<all>', '<none>', 'none',
+                }:
+                    continue
+                runtime_aliases.add(runtime_house.lower())
+                matching_records = [
+                    (house_name, house_values)
+                    for house_name, house_values in records.items()
+                    if runtime_house.lower() in {
+                        house_name.lower(),
+                        house_name.removesuffix(' House').lower(),
+                        str(house_values.get('country', '')).lower(),
+                    }
+                ]
+                for house_name, house_values in matching_records:
+                    runtime_aliases.add(house_name.lower())
+                    runtime_aliases.add(
+                        house_name.removesuffix(' House').lower()
+                    )
+                    for field in ('country', 'parent_country'):
+                        if house_values.get(field):
+                            runtime_aliases.add(
+                                str(house_values[field]).lower()
+                            )
+            colliding_forbidden = (
+                runtime_aliases & player_forbidden_lower
+            )
+            if not colliding_forbidden:
+                continue
+            pending_forbidden = next(
+                (
+                    value
+                    for key, value in production_gate_rules.get(
+                        source_id, {}
+                    ).items()
+                    if str(key).lower() == 'forbiddenhouses'
+                ),
+                None,
+            )
+            current_forbidden = next(
+                (
+                    value
+                    for key, value in section_value_map_preserve(
+                        lines, source_id
+                    ).items()
+                    if str(key).lower() == 'forbiddenhouses'
+                ),
+                '',
+            )
+            existing_forbidden = [
+                item.strip()
+                for item in str(
+                    current_forbidden
+                    if pending_forbidden is None
+                    else pending_forbidden
+                ).split(',')
+                if item.strip().lower() not in {'', 'none', '<none>'}
+            ]
+            remaining_forbidden = [
+                owner
+                for owner in unique_in_order(existing_forbidden)
+                if owner.lower() not in colliding_forbidden
+            ]
+            production_gate_rules.setdefault(source_id, {})[
+                'ForbiddenHouses'
+            ] = ','.join(remaining_forbidden) or 'none'
         remember_generated_techno_types(production_gate_rules)
         for section, values in production_gate_rules.items():
             clone_rule_sections.setdefault(section, {}).update(values)
@@ -1266,13 +1609,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 error=True,
             )
 
-    # These identities participate in mission-authored mixed reinforcement
-    # teams. Restore them after every clone, gate, direct-buff, weapon, and
-    # assistance pass: an earlier restore allowed later passes to mutate an
-    # installed-only TaskForce passenger such as EHEAD's YENGINEER.
-    if runtime_identity_preserve_ids:
+    # Restore reviewed native exceptions and strict non-player Droppod
+    # payloads after every clone, gate, direct-buff, weapon, and assistance
+    # pass. Do not broaden this to every non-player runtime identity: mixed
+    # player/helper story flows deliberately use rewritten clone references.
+    final_runtime_restore_ids = (
+        set(runtime_identity_preserve_ids)
+        | set(non_player_droppod_payload_ids)
+    ) - set(refinery_free_unit_ids)
+    if final_runtime_restore_ids:
         final_runtime_identity_rules = {}
-        for source_id in sorted(runtime_identity_preserve_ids):
+        for source_id in sorted(final_runtime_restore_ids):
             original_values = native_map_sections.get(source_id, {})
             current_values = section_value_map_preserve(lines, source_id)
             if not original_values and not current_values:
@@ -1342,6 +1689,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     rewritten_native_unlocks = rewrite_techlevel_actions(
         lines,
         mission_unlock_clone_replacements if self.state else {},
+        preserved_action_ids=preserved_ai_action_ids,
     )
     if rewritten_native_unlocks:
         self.append_log(
@@ -1360,6 +1708,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         lines,
         unlocked_tech_ids,
         randomized_tech_ids=randomized_tech_ids,
+        preserved_action_ids=preserved_ai_action_ids,
     )
     if removed_techlevel_actions:
         self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
@@ -1396,6 +1745,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         lines,
         unlocked_tech_ids,
         randomized_tech_ids=randomized_tech_ids,
+        preserved_action_ids=preserved_ai_action_ids,
     )
     if removed_after_patching:
         self.append_log(

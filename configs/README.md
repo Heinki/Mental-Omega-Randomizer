@@ -82,7 +82,7 @@ Add reviewed map exceptions to `missions.json`; do not add mission-code
 branches to the Python pipeline. Available sections cover player/helper houses,
 native clone exclusions, required access rules, base-section values, native
 unlock preservation, arbitrary map-section values, superweapon payload clones,
-and native variant buff rules.
+and native variant buff rules, plus reviewed Time Freeze immunity targets.
 An expansion map can use the same sections once its mission code is present in
 the catalogue/classification data.
 
@@ -91,6 +91,15 @@ bundled default exposes `AMCV` and `SMCV` only in Foehn 06 (`FREMNANT`). These
 remain original mission identities; no `MORP*` MCV clone is created. Replace
 that mission's list to change the available MCVs, or set it to `[]` to disable
 the exception. Missions absent from the mapping receive no original MCV access.
+
+`time_freeze_immune_techno_ids` maps mission codes to exact scripted
+TechnoTypes. Generation gives each target a mission-private armor alias that
+inherits its normal armor, then gives only that alias `0%` verses on the
+mission's private Time Freeze warhead. Other units sharing the original armor
+remain affected. Use only for mission-critical objects whose EMP/AttachEffect
+state can trigger AI selling, invalidate an objective chain, or permit
+script-breaking stunlock abuse. Power Hunger protects `MORALES` and `NAHAMM`;
+Bleed Red protects its scripted `MORALES` identity.
 
 `native_production_gate_exclusions` is narrower engine-safety policy for
 script-created native units. Power Hunger excludes `SAPC` because its player
@@ -211,6 +220,11 @@ For a custom power, copy `my_power.png` into that `assets` directory and set:
 
 Use a plain PNG filename and a unique PCX filename beginning with `mor`; no
 manual image conversion or `cameo_superweapon` fallback is needed.
+
+Map-only unit cameos use `rewards/unit_data.json:unit_sidebar_images`. Keep the
+existing `image` + namespaced `pcx` pair for bundled PNG artwork. Use a single
+`source_pcx` filename for game/Bonus MIX artwork. Installed game-root MIX files
+always win; `assets/expandmo21 Bonus.mix` is fallback only.
 
 `rewards/buff_exceptions.json` section `excluded_buff_type_ids` maps each buff type
 to TechnoType IDs that must not receive it. Use `all` for complete exclusions.

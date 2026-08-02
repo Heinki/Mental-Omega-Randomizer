@@ -12,6 +12,12 @@ REPROCESSOR_BOUNTY_CATEGORIES = frozenset({
     'infantry', 'units', 'aircraft',
 })
 ORE_PURIFIER_SOURCE_ID = 'GAOREP'
+DEFAULT_REFINERY_MINER_IDS = {
+    'GAREFN': 'CMIN',
+    'NAREFN': 'HARV',
+    'YARIREFN': 'YMIN',
+    'FAREFN': 'NMIN',
+}
 
 
 def _section_values(sections, section):
@@ -33,6 +39,43 @@ def _effective_section_values(map_sections, installed_sections, section):
     values = _section_values(installed_sections, section)
     values.update(_section_values(map_sections, section))
     return values
+
+
+def validate_original_refinery_contract():
+    """Self-check installed refinery IDs and their untouched FreeUnit pairs."""
+    from randomizer.ui.cameos import installed_rules_registry
+
+    _superweapons, installed_sections = installed_rules_registry()
+    registered = {
+        str(value).strip().upper()
+        for value in installed_sections.get('BuildingTypes', {}).values()
+        if str(value).strip()
+    }
+    pairs = {}
+    issues = []
+    for refinery_id, fallback_miner_id in DEFAULT_REFINERY_MINER_IDS.items():
+        values = _section_values(installed_sections, refinery_id)
+        free_units = [
+            item.upper()
+            for key in ('freeunit', 'freeunit2')
+            for item in comma_items(values.get(key, ''))
+            if item.lower() not in {'none', '<none>'}
+        ]
+        miner_id = free_units[0] if free_units else fallback_miner_id
+        pairs[refinery_id] = {'miner': miner_id, 'free_unit_count': len(free_units)}
+        if refinery_id not in registered:
+            issues.append(f'{refinery_id} is unregistered')
+        if len(free_units) != 1:
+            issues.append(f'{refinery_id} has {len(free_units)} free units')
+        miner_docks = {
+            dock.upper()
+            for dock in comma_items(
+                _section_values(installed_sections, miner_id).get('dock', '')
+            )
+        }
+        if refinery_id not in miner_docks:
+            issues.append(f'{miner_id} cannot dock at {refinery_id}')
+    return {'pairs': pairs, 'issues': issues}
 
 
 def ore_purifier_miner_dock_rules(lines, clone_handled):

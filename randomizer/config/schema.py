@@ -37,6 +37,7 @@ REQUIRED_SECTIONS = {
         'native_tech_unlock_ids': dict,
         'native_unlock_owned_access_rules': dict,
         'superweapon_techno_clone_overrides': dict,
+        'time_freeze_immune_techno_ids': dict,
         'all_conyard_defense_access_missions': list,
         'standard_starter_families_by_campaign': dict,
     },
@@ -188,6 +189,7 @@ def _validate_missions(sections, path):
         'original_mcv_access',
         'native_production_gate_exclusions',
         'native_runtime_identity_preserve_ids',
+        'time_freeze_immune_techno_ids',
     ):
         for code, unit_ids in sections.get(section, {}).items():
             if (
@@ -314,13 +316,21 @@ def _validate_unit_data(sections, path):
             )
         image_path = Path(str(config.get('image', '')))
         sidebar_pcx = Path(str(config.get('pcx', '')))
-        if (
-            image_path.name != str(config.get('image', ''))
-            or image_path.suffix.lower() != '.png'
-            or sidebar_pcx.name != str(config.get('pcx', ''))
-            or sidebar_pcx.suffix.lower() != '.pcx'
-            or not sidebar_pcx.name.lower().startswith('mor')
-        ):
+        source_pcx = Path(str(config.get('source_pcx', '')))
+        custom_pair = (
+            set(config) == {'image', 'pcx'}
+            and image_path.name == str(config.get('image', ''))
+            and image_path.suffix.lower() == '.png'
+            and sidebar_pcx.name == str(config.get('pcx', ''))
+            and sidebar_pcx.suffix.lower() == '.pcx'
+            and sidebar_pcx.name.lower().startswith('mor')
+        )
+        mix_source = (
+            set(config) == {'source_pcx'}
+            and source_pcx.name == str(config.get('source_pcx', ''))
+            and source_pcx.suffix.lower() == '.pcx'
+        )
+        if not custom_pair and not mix_source:
             _invalid(
                 f'Invalid custom unit sidebar image mapping for {unit_id!r}',
                 path,
