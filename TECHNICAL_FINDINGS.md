@@ -723,15 +723,14 @@ with authored production still receive compatible starters.
   AITrigger entries. Soviet 03's Paradrop 1, Paradrop 2, Back Air Attack, and
   GAAIRC chain passed focused and full audits. Live in-engine observation of
   original timing and targets remains final confirmation.
-- The same live report exposed missing refinery miners. Refineries point at
-  installed native `FreeUnit` types. Player `ForbiddenHouses` and the negative
-  gate blocked them first; a later `TechLevel=11` hiding attempt still blocked
-  creation. Native CMIN/HARV/YMIN/NMIN now receive no generated section at all:
-  exact base TechLevel 1, Owner, prerequisite, and map overrides remain. Current
-  faction manual production uses that native miner. Only foreign factions get
-  MORP miner clones, and clone-builder companion gates are discarded for every
-  native free-miner source. Refineries receive no clone, registration,
-  replacement, or rule overlay.
+- Later Golden Gate live proof superseded the native-FreeUnit attempt: a foreign
+  refinery could not create its native miner because that miner's Owner did not
+  match the current player, while captured factories exposed both native and
+  MORP cameos. All four original refinery identities now point their sole
+  `FreeUnit` at the matching player miner clone. Every clone has player Owner/
+  RequiredHouses, TechLevel 1, and exact factory+refinery prerequisites. Native
+  miner production is hidden; no refinery clone, alternate registration, or
+  `FreeUnit2` exists.
 - Map `ForbiddenHouses=none` is authoritative. The old union reintroduced an
   installed restriction even when campaign authors explicitly cleared it, and
   null removal then exposed the installed fallback again. Literal `none` is

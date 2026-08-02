@@ -827,20 +827,16 @@ def always_available_transport_rules(
 
 
 def always_available_miner_rules(lines, additional_build_houses=()):
-    """Prepare foreign-faction miner clones behind their refinery and factory.
+    """Prepare one player-owned clone for every faction miner.
 
-    The player's native faction keeps its original miner.  That identity must
-    remain fully base-game buildable because a refinery's ``FreeUnit`` creation
-    obeys the miner TechLevel.  Cloning the native-faction miner would also put
-    two equivalent miner cameos in the vehicle factory.
+    Original refinery identities remain in use, but their ``FreeUnit`` field
+    is retargeted to the matching player clone at final map generation.  The
+    native miner can therefore be hidden with the same production gate as every
+    other cloned unit without suppressing the refinery spawn or exposing two
+    equivalent factory cameos.
     """
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    player_families = {
-        country_family(records.get(house, {}))
-        for house in player_controlled_houses(lines, records=records)
-    }
-    player_families.discard('')
     player_countries = safe_build_countries(
         lines, records, additional_build_houses
     )
@@ -850,8 +846,6 @@ def always_available_miner_rules(lines, additional_build_houses=()):
     required_houses = ','.join(player_countries)
     rules = {}
     for family, (tech_id, factory_id, refinery_id) in MINERS.items():
-        if family in player_families:
-            continue
         rules[tech_id] = {
             'TechLevel': '1',
             'Owner': owners,

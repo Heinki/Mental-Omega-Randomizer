@@ -30,6 +30,7 @@ def original_player_production_gate_rules(
     existing_rule_sections=None,
     native_sections=None,
     negative_gate_exclusions=(),
+    player_forbidden_houses=(),
 ):
     """Block native production for houses owning the hidden player gate.
 
@@ -54,6 +55,11 @@ def original_player_production_gate_rules(
         for source_id in (negative_gate_exclusions or ())
         if str(source_id).strip()
     }
+    player_forbidden_houses = unique_in_order(
+        str(house).strip()
+        for house in (player_forbidden_houses or ())
+        if str(house).strip()
+    )
 
     installed_by_lower = {
         str(section).lower(): values
@@ -132,6 +138,18 @@ def original_player_production_gate_rules(
         ) or None
         installed_values = installed_by_lower.get(source_id.lower(), {})
         native_values = native_by_lower.get(source_id.lower(), {})
+        # Clone discovery finishes after the earlier native-overlay pass.  Add
+        # the player-country exclusion here, where every actual registered
+        # clone source is known.  This hides originals exposed by captured
+        # factories instead of leaving native and MORP cameos side by side.
+        effective_forbidden = _value_case_insensitive(
+            native_values,
+            'ForbiddenHouses',
+            _value_case_insensitive(installed_values, 'ForbiddenHouses', ''),
+        )
+        source_rules['ForbiddenHouses'] = ','.join(unique_in_order(
+            comma_items(effective_forbidden) + list(player_forbidden_houses)
+        )) or 'none'
         source_rules['TechLevel'] = _value_case_insensitive(
             native_values,
             'TechLevel',

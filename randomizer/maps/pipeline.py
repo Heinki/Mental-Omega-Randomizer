@@ -266,8 +266,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     }
     refinery_building_ids = set()
     refinery_free_unit_ids = set()
+    refinery_free_unit_by_building = {}
+    native_map_names = {
+        str(section).lower(): section for section in native_map_sections
+    }
     for building_id in installed_building_ids:
-        building_values = installed_rule_sections.get(building_id, {})
+        building_values = dict(installed_rule_sections.get(building_id, {}))
+        building_values.update(native_map_sections.get(
+            native_map_names.get(str(building_id).lower()), {}
+        ))
         if str(next(
             (
                 value for key, value in building_values.items()
@@ -278,17 +285,24 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             continue
         refinery_building_ids.add(str(building_id).upper())
         for key, value in building_values.items():
-            if str(key).lower() not in {'freeunit', 'freeunit2'}:
+            if str(key).lower() != 'freeunit':
                 continue
-            refinery_free_unit_ids.update(
+            free_units = [
                 unit_id.strip().upper()
                 for unit_id in str(value or '').split(',')
                 if unit_id.strip()
-            )
+            ]
+            if free_units:
+                refinery_free_unit_by_building[
+                    str(building_id).upper()
+                ] = free_units[0]
+                refinery_free_unit_ids.update(free_units)
     # Keep the reviewed four-faction contract available if an editable or
     # preserved installed registry omits one of the source sections.
     refinery_building_ids.update(DEFAULT_REFINERY_MINER_IDS)
     refinery_free_unit_ids.update(DEFAULT_REFINERY_MINER_IDS.values())
+    for refinery_id, miner_id in DEFAULT_REFINERY_MINER_IDS.items():
+        refinery_free_unit_by_building.setdefault(refinery_id, miner_id)
     veteran_health_rules = veteran_armor_safety_rules(
         lines,
         installed_rule_sections,
@@ -1124,13 +1138,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 direct_only_country_buff_types
             ),
         )
-        # Clone preparation normally emits a native-source sidebar gate beside
-        # each player clone.  Never retain that companion section for refinery
-        # FreeUnit identities: Ares applies ForbiddenHouses/negative gates to
-        # refinery-spawned units too.  Foreign MORP miners remain registered and
-        # manually buildable; their native source stays untouched for FreeUnit.
-        for miner_id in refinery_free_unit_ids:
-            clone_rule_sections.pop(miner_id, None)
         mission_unlock_clone_replacements = {
             source_id: str(clone_handled.get(source_id, {}).get('clone_id') or '')
             for source_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ())
@@ -1163,7 +1170,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
             | runtime_identity_preserve_ids
             | refinery_building_ids
-            | refinery_free_unit_ids
         )
         production_gate_rules = original_player_production_gate_rules(
             lines,
@@ -1172,12 +1178,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             existing_rule_sections=clone_rule_sections,
             native_sections=native_map_sections,
             negative_gate_exclusions=non_player_runtime_unit_ids,
+            player_forbidden_houses=player_native_exclusions,
         )
-        # Refineries and their native FreeUnit miners receive no generated
-        # production gate.  TechLevel, ownership, prerequisites, and map-local
-        # overrides therefore remain exactly as authored.  Current-faction
-        # manual production uses that same native miner; only foreign faction
-        # production uses an isolated MORP clone.
+        # Every registered player clone gets one final native-source exclusion
+        # here, after clone discovery. Earlier passes cannot know the complete
+        # map-local clone set and leaked captured-factory originals beside E1,
+        # GGI, miners, and other player copies.
         # A campaign commonly has several runtime Houses sharing one
         # CountryType. Launcher-added ForbiddenHouses is country-scoped, so it
         # can also forbid an authored AI/helper House that uses the same
@@ -1264,6 +1270,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             production_gate_rules.setdefault(source_id, {})[
                 'ForbiddenHouses'
             ] = ','.join(remaining_forbidden) or 'none'
+        # Keep each refinery's native BuildingType identity. Only retarget its
+        # one authored FreeUnit to the matching final player clone. The clone's
+        # Owner/RequiredHouses now match the refinery owner, while the native
+        # miner can be hidden like every other cloned production identity.
+        for refinery_id, miner_id in sorted(
+            refinery_free_unit_by_building.items()
+        ):
+            clone_id = str(
+                clone_handled.get(miner_id, {}).get('clone_id') or ''
+            ).strip()
+            if not clone_id or clone_id not in clone_rule_sections:
+                continue
+            production_gate_rules.setdefault(refinery_id, {})[
+                'FreeUnit'
+            ] = clone_id
         remember_generated_techno_types(production_gate_rules)
         for section, values in production_gate_rules.items():
             clone_rule_sections.setdefault(section, {}).update(values)
@@ -1630,6 +1651,53 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if key not in original_values
             }
             restored_values.update(original_values)
+            # Droppod payloads need their authored production prerequisites,
+            # but a player-country ForbiddenHouses value does not affect a
+            # payload owned by another country. Preserve that safe sidebar
+            # exclusion; clearing the entire section restored native E1/GGI
+            # cameos beside their player clones in Golden Gate.
+            runtime_aliases = set()
+            for runtime_house in usage_index.get(source_id, ()):
+                runtime_house = str(runtime_house or '').strip()
+                if not runtime_house or runtime_house.lower() in {
+                    '<all>', '<none>', 'none',
+                }:
+                    continue
+                runtime_aliases.add(runtime_house.lower())
+                for house_name, house_values in records.items():
+                    if runtime_house.lower() not in {
+                        house_name.lower(),
+                        house_name.removesuffix(' House').lower(),
+                        str(house_values.get('country', '')).lower(),
+                    }:
+                        continue
+                    runtime_aliases.add(house_name.lower())
+                    runtime_aliases.add(
+                        house_name.removesuffix(' House').lower()
+                    )
+                    for field in ('country', 'parent_country'):
+                        if house_values.get(field):
+                            runtime_aliases.add(
+                                str(house_values[field]).lower()
+                            )
+            if not runtime_aliases.intersection({
+                str(owner).strip().lower()
+                for owner in player_native_exclusions
+                if str(owner).strip()
+            }):
+                current_forbidden = next(
+                    (
+                        value
+                        for key, value in current_values.items()
+                        if str(key).lower() == 'forbiddenhouses'
+                    ),
+                    None,
+                )
+                if current_forbidden is not None:
+                    for key in list(restored_values):
+                        if str(key).lower() == 'forbiddenhouses':
+                            restored_values.pop(key, None)
+                    restored_values['ForbiddenHouses'] = current_forbidden
             final_runtime_identity_rules[source_id] = restored_values
         if final_runtime_identity_rules:
             merge_ini_section_values(lines, final_runtime_identity_rules)
