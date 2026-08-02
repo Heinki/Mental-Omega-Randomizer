@@ -78,6 +78,16 @@ def plan_seed_rewards(
             )
         )
 
+    def reward_prerequisites_met(reward):
+        required_any = {
+            str(unit_id).upper()
+            for unit_id in reward.get('requires_any_tech_ids', ())
+            if str(unit_id).strip()
+        }
+        return not required_any or any(
+            unit_access_earned(unit_id) for unit_id in required_any
+        )
+
     def buff_count_key(reward):
         unit = reward.get('unit')
         if share_role_buffs and unit and not reward.get('global_buff'):
@@ -171,6 +181,8 @@ def plan_seed_rewards(
             if name in used_access_names:
                 access.pop(index)
                 continue
+            if not reward_prerequisites_met(reward):
+                continue
             if unit_only and not is_unit_access(reward):
                 continue
             access.pop(index)
@@ -231,6 +243,8 @@ def plan_seed_rewards(
             name = reward.get('name')
             if reward.get('kind') == 'superweapon' and name in used_access_names:
                 continue
+            if not reward_prerequisites_met(reward):
+                continue
             count_key = buff_count_key(reward)
             if limit is not None and buff_counts.get(count_key, 0) >= limit:
                 continue
@@ -255,6 +269,7 @@ def plan_seed_rewards(
                 dict(reward)
                 for reward in configured_reward_pool()
                 if reward.get('kind') == 'buff'
+                and reward_prerequisites_met(reward)
                 and (
                     buff_stack_limit(reward) is None
                     or buff_counts.get(buff_count_key(reward), 0)
@@ -310,6 +325,8 @@ def plan_seed_rewards(
                 continue
             if reward.get('kind') != 'buff':
                 if reward.get('name') in used_access_names:
+                    continue
+                if not reward_prerequisites_met(reward):
                     continue
                 if unit_only and not is_unit_access(reward):
                     continue

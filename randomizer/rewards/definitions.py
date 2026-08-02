@@ -974,6 +974,11 @@ def build_aid_power_rewards():
             'superweapon_index': index,
             'special_reward': bool(definition.get('special_reward')),
         }
+        if definition.get('requires_any_tech_ids'):
+            reward['requires_any_tech_ids'] = [
+                str(unit_id).upper()
+                for unit_id in definition['requires_any_tech_ids']
+            ]
         if building_bound:
             reward['superweapon_grant_buildings'] = list(
                 modified_config['grant_buildings']
@@ -1016,6 +1021,20 @@ def build_aid_power_rewards():
                 str(unit_id).upper()
                 for unit_id in modified_config['delivery_player_clone_ids']
             ]
+        if modified_config and modified_config.get('player_clone_reference_fields'):
+            reward['superweapon_player_clone_reference_fields'] = {
+                str(field): [str(unit_id).upper() for unit_id in unit_ids]
+                for field, unit_ids in modified_config[
+                    'player_clone_reference_fields'
+                ].items()
+            }
+        if modified_config and modified_config.get('player_clone_value_overrides'):
+            reward['superweapon_player_clone_value_overrides'] = {
+                str(unit_id).upper(): dict(values)
+                for unit_id, values in modified_config[
+                    'player_clone_value_overrides'
+                ].items()
+            }
         rewards.append(reward)
     return rewards
 

@@ -72,7 +72,10 @@ def run_self_check():
         )
         ore_purifier_docks = validate_ore_purifier_miner_docks()
         reprocessor_bounty = validate_reprocessor_bounty_support()
-        from randomizer.rewards.catalogue import AID_POWER_MAP_CONFIGS
+        from randomizer.rewards.catalogue import (
+            AID_POWER_MAP_CONFIGS,
+            AID_POWER_UNLOCK_REWARDS,
+        )
         moon_configs = [
             config
             for config in AID_POWER_MAP_CONFIGS
@@ -92,6 +95,65 @@ def run_self_check():
         zephyr_disabled_valid = bool(
             len(zephyr_configs) == 1
             and zephyr_configs[0].get('disabled') is True
+        )
+        portable_power_ids = {
+            'BackwarpSpecial',
+            'NuclearPathSpecial',
+            'GearChangeSpecial',
+            'PsychicFlashSpecial',
+            'BlackoutMissileSpecial',
+            'NanochargeSpecial',
+        }
+        portable_rewards = {
+            reward.get('superweapon'): reward
+            for reward in AID_POWER_UNLOCK_REWARDS
+            if reward.get('superweapon') in portable_power_ids
+        }
+        portable_configs = {
+            config.get('superweapon'): config
+            for config in AID_POWER_MAP_CONFIGS
+            if config.get('superweapon') in portable_power_ids
+        }
+        cleared_power_gates = {
+            'IsPowered': 'false',
+            'SW.RequiredHouses': '',
+            'SW.ForbiddenHouses': '',
+            'SW.AuxBuildings': '',
+            'SW.NegBuildings': '',
+            'SW.Inhibitors': '',
+        }
+        portable_powers_valid = bool(
+            set(portable_rewards) == portable_power_ids
+            and set(portable_configs) == portable_power_ids
+            and all(
+                all(
+                    str(config.get('values', {}).get(key, '')).lower()
+                    == expected
+                    for key, expected in cleared_power_gates.items()
+                )
+                for config in portable_configs.values()
+            )
+            and set(
+                portable_rewards['PsychicFlashSpecial'].get(
+                    'requires_any_tech_ids', ()
+                )
+            ) == {'YARAIL', 'YAHADE'}
+            and portable_configs['PsychicFlashSpecial'].get(
+                'player_clone_reference_fields', {}
+            ).get('Battery.Overpower') == ['YARAIL', 'YAHADE']
+            and portable_configs['NanochargeSpecial'].get(
+                'player_clone_reference_fields', {}
+            ).get('SW.Designators') == ['LEVI', 'PROME']
+            and set(
+                portable_configs['NanochargeSpecial'].get(
+                    'player_clone_value_overrides', {}
+                )
+            ) == {'LEVI', 'PROME'}
+            and not any(
+                reward.get('superweapon')
+                in {'GoldenWindSpecial', 'BlasticadeSpecial'}
+                for reward in AID_POWER_UNLOCK_REWARDS
+            )
         )
         from randomizer.application import (
             advanced_settings as advanced_settings_module,
@@ -175,6 +237,7 @@ def run_self_check():
                 moon_initial_cooldown_valid
             ),
             'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
+            'portable_aid_powers_valid': portable_powers_valid,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and transport_buffs['stallion_capacity_enabled']
@@ -220,6 +283,7 @@ def run_self_check():
                 'special_reward_build_times_valid',
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_disabled_valid',
+                'portable_aid_powers_valid',
                 'transport_buff_eligibility_valid',
                 'reprocessor_bounty_support_valid',
                 'ore_purifier_miner_docks_valid',

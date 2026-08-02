@@ -227,14 +227,14 @@ Offensive and secondary rewards are also made independent from base power. Light
 
 Blasticade is excluded: it only activates existing owned Blast Trenches, so a building-free reward does nothing by itself. Golden Wind is also excluded because it only overpowers existing Spinblades. Harbinger and EM Pulse no longer require or grant separate Harbinger Tower/EMP Control Station construction access. M.A.D. Mine deploys exactly one mine, matching installed `Deliver.Types=FAMMIN`; EMP, Cryomine, and Genomine field powers deploy four mines, while Confusion and Stasis Grid powers deploy nine grid cells.
 
-The support/aid pool contains 75 active powers:
+The support/aid pool contains 81 active powers:
 
 | Faction | Included support/aid powers |
 |---|---|
-| Allies | Airborne, Bloodhounds, Lightning Rod, Ultra Miner, Kingsnakes, Paladin Aid, Force Shield, Target Painter, Sonar Pulse, Mercury Strike, Satellite Scan, Black Widow Alpha, Black Widow, Chronoboost, Cryoshot, Cryospear, Glacial Screen, Cryomine Field, Chronolift, Hunter-Seeker |
-| Soviets | Repair Drone, Tank Drop, Instant Shelter, Motor Ambush, Naval Mine, Terror Drop, Flame Tower, Drakuv, Repair Drones, Elite Reserves, Disruptor, Spy Plane, Smoke Bombs, EM Pulse, Irradiation Gamma, Overcharge, Wallbuster, Irradiation Beta, Rad Attack, Pack Attack, EMP Minefield |
-| Epsilon | Risen Monolith, Scout Raven, Vision, Magnetic Beam, Libra Clones, Bloatick Trap, Quick Fort, Ruiner, Hijackers, Shadow Ring, Kinetic Barrier, Geneburst, Toxic Strike, Regen Drugs, Wonder Drugs, Genomine Field |
-| Foehn | Spinblade, Megaarena, Knightfall, Harbinger, Sweeper Drop, Signal Jammer, Decoy Team, Decoy Squadron, M.A.D. Mine, Nanofiber Sync, Boid Blitz, Recon Sortie, Devourer, Chaos Touch, Confusion Grid, Stasis Grid |
+| Allies | Airborne, Bloodhounds, Lightning Rod, Ultra Miner, Kingsnakes, Paladin Aid, Force Shield, Target Painter, Sonar Pulse, Mercury Strike, Satellite Scan, Black Widow Alpha, Black Widow, Chronoboost, Cryoshot, Cryospear, Glacial Screen, Cryomine Field, Chronolift, Backwarp, Hunter-Seeker |
+| Soviets | Repair Drone, Tank Drop, Instant Shelter, Motor Ambush, Naval Mine, Terror Drop, Flame Tower, Drakuv, Repair Drones, Elite Reserves, Disruptor, Spy Plane, Smoke Bombs, EM Pulse, Irradiation Gamma, Overcharge, Wallbuster, Irradiation Beta, Rad Attack, Pack Attack, EMP Minefield, Nuclear Path, Gear Change |
+| Epsilon | Risen Monolith, Scout Raven, Vision, Magnetic Beam, Libra Clones, Bloatick Trap, Quick Fort, Ruiner, Hijackers, Shadow Ring, Kinetic Barrier, Geneburst, Toxic Strike, Regen Drugs, Wonder Drugs, Genomine Field, Psychic Flash |
+| Foehn | Spinblade, Megaarena, Knightfall, Harbinger, Sweeper Drop, Signal Jammer, Decoy Team, Decoy Squadron, M.A.D. Mine, Nanofiber Sync, Boid Blitz, Recon Sortie, Devourer, Chaos Touch, Confusion Grid, Stasis Grid, Blackout Missile, Nanocharge |
 | Neutral | Missile Strike, Maintenance |
 
 Neutral Missile Strike clones and registers its complete carrier/up/payload/
@@ -246,7 +246,7 @@ reuses the installed `MAINT` animation and `MaintAnimWH` repair loop. Both
 remove their visible Tech Structure dependency and remain available in every
 campaign filter.
 
-Source-object-only powers stay excluded because their cloned cameo would be inert without the original object: Blasticade, Golden Wind, Nanocharge, Gear Change, Psychic Flash, Blackout Missile, Nuclear Path, and Backwarp. Hunter-Seeker is the reviewed exception: one hidden exact-House provider supplies its launch building, while the copied power clears power, cost, house, auxiliary-building, designator, inhibitor, and AI gates.
+Backwarp, Nuclear Path, Blackout Missile, Gear Change, and Nanocharge use private map-local effect chains plus invisible exact-House startup providers, so their reward copies do not require the native Warpshop, Nuclear Reactor/Converter, Palace, Cyberkernel, Industrial Plant, or Nanofiber Loom. Psychic Flash directly targets Inferno Tower and Antares defense identities plus their current player clones; planning withholds it until either defense is unlocked. Nanocharge is targetable only while an owned Leviathan or Mastodon (including its current player clone) is on the field. Hunter-Seeker uses the same reviewed hidden-provider pattern. Blasticade and Golden Wind remain excluded because they still need preplaced Blast Trenches or Spinblades.
 
 Elite Reserves is the building-bound exception. Its clone is attached to Allied, Soviet, Epsilon, and Foehn Barracks variants and restricted to the player countries. It is never granted through action `34`, avoiding the proven crash while creating its internal `F_ERESB` academy marker. Selling or losing the granting Barracks removes that instance; rebuilding a Barracks restores access.
 

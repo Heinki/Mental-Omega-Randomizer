@@ -160,6 +160,51 @@ def resolved_delivery_clone_rules(
                 updates.setdefault(section, {})[key] = resolved_value
     return updates
 
+def resolved_power_player_clone_rules(
+    power_rule_sections,
+    clone_handled,
+    reference_fields,
+    clone_value_overrides,
+):
+    """Bind configured power fields to actual map-local player clone IDs."""
+    handled = {
+        str(source).upper(): str(details.get('clone_id') or '').strip()
+        for source, details in (clone_handled or {}).items()
+        if isinstance(details, dict)
+    }
+    normalized_fields = {
+        str(field).lower(): [str(unit_id).upper() for unit_id in unit_ids]
+        for field, unit_ids in (reference_fields or {}).items()
+    }
+    power_updates = {}
+    for section, values in (power_rule_sections or {}).items():
+        if not isinstance(values, dict):
+            continue
+        for key, value in values.items():
+            source_ids = normalized_fields.get(str(key).lower())
+            if not source_ids:
+                continue
+            resolved = list(comma_items(value))
+            if not {item.upper() for item in resolved}.intersection(source_ids):
+                continue
+            for source_id in source_ids:
+                if source_id not in {item.upper() for item in resolved}:
+                    resolved.append(source_id)
+                clone_id = handled.get(source_id)
+                if clone_id:
+                    resolved.append(clone_id)
+            resolved_value = ','.join(unique_in_order(resolved))
+            if resolved_value != str(value):
+                power_updates.setdefault(section, {})[key] = resolved_value
+
+    clone_updates = {}
+    for source_id, values in (clone_value_overrides or {}).items():
+        clone_id = handled.get(str(source_id).upper())
+        if clone_id and isinstance(values, dict):
+            clone_updates.setdefault(clone_id, {}).update(values)
+    return power_updates, clone_updates
+
+
 def now_stamp():
     return datetime.now().strftime('%Y%m%d-%H%M%S')
 

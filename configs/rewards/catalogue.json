@@ -1124,6 +1124,13 @@
         "index": 64
       },
       {
+        "name": "Backwarp Power",
+        "description": "Restores friendly units and structures in the selected area without requiring an Experimental Warpshop.",
+        "faction": "Allies",
+        "superweapon": "BackwarpSpecial",
+        "index": 17
+      },
+      {
         "name": "Repair Drone Power",
         "description": "Drops 1 Repair Drone at the selected area.",
         "faction": "Soviets",
@@ -1278,6 +1285,20 @@
         "index": 59
       },
       {
+        "name": "Nuclear Path Power",
+        "description": "Empowers friendly ground units in the selected area without requiring a Nuclear Reactor, Nuclear Converter, or Palace.",
+        "faction": "Soviets",
+        "superweapon": "NuclearPathSpecial",
+        "index": 123
+      },
+      {
+        "name": "Gear Change Power",
+        "description": "Disables owned factories briefly and grants funds without requiring an Industrial Plant.",
+        "faction": "Soviets",
+        "superweapon": "GearChangeSpecial",
+        "index": 73
+      },
+      {
         "name": "Risen Monolith Power",
         "description": "Deploys a temporary Risen Monolith at the selected area.",
         "faction": "Epsilon",
@@ -1390,6 +1411,17 @@
         "index": 84
       },
       {
+        "name": "Psychic Flash Power",
+        "description": "Temporarily overpowers owned Inferno Towers and Antares Batteries without requiring a Pandora Hub.",
+        "faction": "Epsilon",
+        "superweapon": "PsychicFlashSpecial",
+        "index": 102,
+        "requires_any_tech_ids": [
+          "YARAIL",
+          "YAHADE"
+        ]
+      },
+      {
         "name": "Spinblade Power",
         "description": "Deploys a Spinblade support structure at the selected area.",
         "faction": "Foehn",
@@ -1500,6 +1532,20 @@
         "faction": "Foehn",
         "superweapon": "StasisGridSpawn",
         "index": 63
+      },
+      {
+        "name": "Blackout Missile Power",
+        "description": "Launches a Blackout Missile at the selected area without requiring a Cyberkernel expansion.",
+        "faction": "Foehn",
+        "superweapon": "BlackoutMissileSpecial",
+        "index": 55
+      },
+      {
+        "name": "Nanocharge Power",
+        "description": "Nanocharges owned Leviathans and Mastodons while at least one is present, without requiring a Nanofiber Loom expansion.",
+        "faction": "Foehn",
+        "superweapon": "NanochargeSpecial",
+        "index": 56
       },
       {
         "name": "Missile Strike Power",
@@ -3234,6 +3280,470 @@
               "AffectsAllies": "yes",
               "AffectsEnemies": "no"
             }
+          }
+        }
+      },
+      {
+        "superweapon": "BackwarpSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.RangeMaximum": "384",
+          "SW.RangeMinimum": "0",
+          "EMPulse.Cannons": "MORBackwarpProvider"
+        },
+        "techno_clones": {
+          "BackwarpProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORBackwarpProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Backwarp Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "Primary": "MORBackwarpWeapon",
+              "EMPulseCannon": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "BackwarpWeapon": {
+            "source": "BackwarpWeapon1",
+            "clone": "MORBackwarpWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORBackwarpP",
+              "Warhead": "MORBackwarpWH"
+            }
+          },
+          "BackwarpProjectile": {
+            "source": "BackwarpP1",
+            "clone": "MORBackwarpP",
+            "list": "Projectiles"
+          },
+          "BackwarpWarhead": {
+            "source": "BackwarpWH",
+            "clone": "MORBackwarpWH",
+            "list": "Warheads"
+          }
+        }
+      },
+      {
+        "superweapon": "NuclearPathSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.RangeMaximum": "384",
+          "SW.RangeMinimum": "0",
+          "EMPulse.Cannons": "MORNuclearPathProvider"
+        },
+        "techno_clones": {
+          "NuclearPathProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORNuclearPathProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Nuclear Path Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "Primary": "MORNuclearPathWeapon",
+              "EMPulseCannon": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "NuclearPathWeapon": {
+            "source": "NuclearPathWeapon",
+            "clone": "MORNuclearPathWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORNuclearPathP",
+              "Warhead": "MORNuclearPathWH"
+            }
+          },
+          "NuclearPathProjectile": {
+            "source": "GeneburstP",
+            "clone": "MORNuclearPathP",
+            "list": "Projectiles"
+          },
+          "NuclearPathWarhead": {
+            "source": "NuclearPathWH",
+            "clone": "MORNuclearPathWH",
+            "list": "Warheads"
+          }
+        }
+      },
+      {
+        "superweapon": "GearChangeSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "None",
+          "HunterSeeker.Type": "MORGearSpawner",
+          "HunterSeeker.Buildings": "MORGearProvider"
+        },
+        "techno_clones": {
+          "GearProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORGearProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "HunterSeeker.Buildings"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Gear Change Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "GearSpawner": {
+            "source": "GCHF",
+            "clone": "MORGearSpawner",
+            "list": "VehicleTypes",
+            "reference_keys": [
+              "HunterSeeker.Type"
+            ],
+            "values": {
+              "Primary": "MORGearTrigger",
+              "TechLevel": "-1"
+            }
+          },
+          "GearTrigger": {
+            "source": "ShutDownFake",
+            "clone": "MORGearTrigger",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORGearProjectile",
+              "Warhead": "MORGearCasterWH"
+            }
+          },
+          "GearProjectile": {
+            "source": "ShutDownFakeP",
+            "clone": "MORGearProjectile",
+            "list": "Projectiles",
+            "values": {
+              "AirburstWeapon": "MORGearShutdown"
+            }
+          },
+          "GearShutdown": {
+            "source": "ShutDownFactories",
+            "clone": "MORGearShutdown",
+            "list": "WeaponTypes",
+            "values": {
+              "Warhead": "MORGearWH"
+            }
+          },
+          "GearCasterWarhead": {
+            "source": "TargetAllCaster",
+            "clone": "MORGearCasterWH",
+            "list": "Warheads"
+          },
+          "GearWarhead": {
+            "source": "ShutDownFactoriesWH",
+            "clone": "MORGearWH",
+            "list": "Warheads"
+          }
+        }
+      },
+      {
+        "superweapon": "PsychicFlashSpecial",
+        "player_clone_reference_fields": {
+          "Battery.Overpower": [
+            "YARAIL",
+            "YAHADE"
+          ]
+        },
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "Battery.Overpower": "YARAIL,YAHADE"
+        }
+      },
+      {
+        "superweapon": "BlackoutMissileSpecial",
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.RangeMaximum": "384",
+          "SW.RangeMinimum": "0",
+          "EMPulse.Cannons": "MORBlackoutProvider"
+        },
+        "techno_clones": {
+          "BlackoutProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORBlackoutProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "EMPulse.Cannons"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Blackout Missile Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "Primary": "MORBlackoutWeapon",
+              "EMPulseCannon": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "BlackoutWeapon": {
+            "source": "BlackoutMissileWeapon",
+            "clone": "MORBlackoutWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORBlackoutP",
+              "Warhead": "MORBlackoutWH",
+              "MinimumRange": null
+            }
+          },
+          "BlackoutProjectile": {
+            "source": "BlackoutMissileP",
+            "clone": "MORBlackoutP",
+            "list": "Projectiles"
+          },
+          "BlackoutWarhead": {
+            "source": "BlackoutMissileWH",
+            "clone": "MORBlackoutWH",
+            "list": "Warheads"
+          }
+        }
+      },
+      {
+        "superweapon": "NanochargeSpecial",
+        "player_clone_reference_fields": {
+          "SW.Designators": [
+            "LEVI",
+            "PROME"
+          ]
+        },
+        "player_clone_value_overrides": {
+          "LEVI": {
+            "DesignatorRange": "384"
+          },
+          "PROME": {
+            "DesignatorRange": "384"
+          }
+        },
+        "values": {
+          "IsPowered": "false",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": "",
+          "SW.AuxBuildings": "",
+          "SW.NegBuildings": "",
+          "SW.Designators": "LEVI,PROME",
+          "SW.Inhibitors": "",
+          "SW.AnyInhibitor": "no",
+          "SW.AutoFire": "no",
+          "SW.ManualFire": "yes",
+          "SW.ShowCameo": "yes",
+          "SW.UseAITargeting": "no",
+          "SW.AITargeting": "HunterSeeker",
+          "HunterSeeker.Type": "MORNanoSpawner",
+          "HunterSeeker.Buildings": "MORNanoProvider"
+        },
+        "techno_clones": {
+          "NanoProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORNanoProvider",
+            "list": "BuildingTypes",
+            "reference_keys": [
+              "HunterSeeker.Buildings"
+            ],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Nanocharge Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "NanoSpawner": {
+            "source": "NCHF",
+            "clone": "MORNanoSpawner",
+            "list": "VehicleTypes",
+            "reference_keys": [
+              "HunterSeeker.Type"
+            ],
+            "values": {
+              "DeathWeapon": "MORNanoWeapon",
+              "TechLevel": "-1"
+            }
+          },
+          "NanoWeapon": {
+            "source": "Nanocharge",
+            "clone": "MORNanoWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Warhead": "MORNanoWH"
+            }
+          },
+          "NanoWarhead": {
+            "source": "NanochargeWH",
+            "clone": "MORNanoWH",
+            "list": "Warheads"
           }
         }
       },

@@ -803,7 +803,38 @@ def _validate_power_buffs(sections, path):
 
 
 def _validate_catalogue(sections, path):
+    aid_reward_names = []
+    aid_reward_powers = []
+    for definition in sections['aid_power_rewards']:
+        if not isinstance(definition, dict):
+            _invalid('Invalid aid-power reward entry', path)
+        aid_reward_names.append(str(definition.get('name') or '').casefold())
+        aid_reward_powers.append(
+            str(definition.get('superweapon') or '').casefold()
+        )
+        required_any = definition.get('requires_any_tech_ids')
+        if required_any is not None and (
+            not isinstance(required_any, list)
+            or not required_any
+            or not all(_is_nonempty_string(item) for item in required_any)
+            or len({item.upper() for item in required_any}) != len(required_any)
+        ):
+            _invalid(
+                'Invalid requires_any_tech_ids for '
+                f'{definition.get("superweapon")!r}',
+                path,
+            )
+    if (
+        len(aid_reward_names) != len(set(aid_reward_names))
+        or len(aid_reward_powers) != len(set(aid_reward_powers))
+    ):
+        _invalid('Duplicate aid-power reward name or SuperWeaponType', path)
+
+    configured_powers = []
     for config in sections['aid_power_map_configs']:
+        configured_powers.append(
+            str(config.get('superweapon') or '').casefold()
+        )
         if (
             'provider_only' in config
             and not isinstance(config['provider_only'], bool)
@@ -830,6 +861,55 @@ def _validate_catalogue(sections, path):
                 f'{config.get("superweapon")!r}',
                 path,
             )
+        reference_fields = config.get('player_clone_reference_fields')
+        if reference_fields is not None and (
+            not isinstance(reference_fields, dict)
+            or not reference_fields
+            or any(
+                not _is_nonempty_string(field)
+                or not isinstance(unit_ids, list)
+                or not unit_ids
+                or not all(_is_nonempty_string(unit_id) for unit_id in unit_ids)
+                or len({unit_id.upper() for unit_id in unit_ids}) != len(unit_ids)
+                for field, unit_ids in reference_fields.items()
+            )
+        ):
+            _invalid(
+                'Invalid player-clone reference fields for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
+        clone_overrides = config.get('player_clone_value_overrides')
+        if clone_overrides is not None and (
+            not isinstance(clone_overrides, dict)
+            or not clone_overrides
+            or any(
+                not _is_nonempty_string(unit_id)
+                or not isinstance(values, dict)
+                or not values
+                or not all(_is_nonempty_string(field) for field in values)
+                for unit_id, values in clone_overrides.items()
+            )
+        ):
+            _invalid(
+                'Invalid player-clone value overrides for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
+        referenced_clone_ids = {
+            str(unit_id).upper()
+            for unit_ids in (reference_fields or {}).values()
+            for unit_id in unit_ids
+        }
+        override_clone_ids = {
+            str(unit_id).upper() for unit_id in (clone_overrides or {})
+        }
+        if not override_clone_ids.issubset(referenced_clone_ids):
+            _invalid(
+                'Player-clone value overrides must target referenced IDs for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
         image_name = config.get('sidebar_image')
         if not image_name:
             continue
@@ -847,6 +927,8 @@ def _validate_catalogue(sections, path):
                 f'{config.get("superweapon")!r}',
                 path,
             )
+    if len(configured_powers) != len(set(configured_powers)):
+        _invalid('Duplicate aid-power map SuperWeaponType config', path)
 
 
 CONFIG_VALIDATORS = {

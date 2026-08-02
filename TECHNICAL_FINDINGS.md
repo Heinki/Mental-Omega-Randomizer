@@ -421,7 +421,7 @@ Installed delivery/reinforcement indices are:
 
 `MORV3TestSpecial` is wholly custom and therefore has no installed index; when enabled, it is appended to each generated map's runtime `SuperWeaponTypes` list before action `34` receives its calculated index.
 
-Additional eligible standalone support indices are Allies `10,11,12,22,24,41,50,64,78,92,103,104,127`; Soviets `8,14,19,25,42,59,69,120,121,122`; Epsilon `31,37,38,44,84,105,109`; Foehn `40,46,49,57,63,74,106`.
+Additional eligible standalone support indices are Allies `10,11,12,17,22,24,41,50,64,78,92,103,104,127`; Soviets `8,14,19,25,42,59,69,73,120,121,122,123`; Epsilon `31,37,38,44,84,102,105,109`; Foehn `40,46,49,55,56,57,63,74,106`.
 
 Action `129` is not used because it changes the charge of a building-backed instance. A constructed matching building may consolidate with the granted instance; independent duplicate cameos are not guaranteed.
 
@@ -513,7 +513,7 @@ with authored production still receive compatible starters.
 - Mandatory standalone player clones have static 97-map generation coverage plus successful live isolation, sidebar, and helper-production tests. Loading cost, save/load behavior, and wider campaign trigger compatibility still need continued validation.
 - Direct unit/weapon buffs are skipped when a denied enemy shares the affected global type.
 - Matching power buildings may share the granted power instead of creating an independent copy.
-- Source-object-only powers such as Blasticade, Golden Wind, Nanocharge, Gear Change, Psychic Flash, Blackout Missile, Nuclear Path, and Backwarp remain excluded because a building-free copy cannot perform their intended effect without the associated object. Hunter-Seeker is the reviewed exception and uses one hidden exact-House provider bound through `HunterSeeker.Buildings`.
+- Backwarp, Nuclear Path, and Blackout Missile use private EMPulse weapon/projectile/warhead chains fired by invisible exact-House startup cannons. Gear Change and Nanocharge use private Hunter-Seeker payload chains plus invisible exact-House providers. All five clear live-power, house, auxiliary-building, negative-building, inhibitor, and inherited designator gates; none requires its native tech structure. Psychic Flash clears those same availability gates and overpowers only `YARAIL`/`YAHADE` plus their current map-local player clones. Seed planning withholds Psychic Flash until either defense access reward is already earned. Nanocharge deliberately restores a designator gate for `LEVI`/`PROME` and their player clones, whose generated copies receive `DesignatorRange=384`; the power therefore cannot be used without an owned Leviathan or Mastodon on the field. Blasticade and Golden Wind remain excluded because their effects require preplaced Blast Trenches or Spinblades. Grinder is skipped because its native mobile form already deploys into the linked grinder building, and Old Mobile Gap Generator is skipped as obsolete campaign novelty.
 - Game-speed behavior needs validation across more campaign maps.
 
 ## July 26 Context and Sidebar Rules

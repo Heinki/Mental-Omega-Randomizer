@@ -38,6 +38,7 @@ from randomizer.maps.rules import (
     player_unit_clone_rules,
     resolved_academy_clone_rules,
     resolved_delivery_clone_rules,
+    resolved_power_player_clone_rules,
     resolved_map_section_rules,
     remove_locked_techlevel_actions,
     reconcile_generated_techno_registrations,
@@ -433,6 +434,25 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         earned_rewards,
         installed_rule_sections,
     )
+    power_player_clone_reference_fields = {}
+    power_player_clone_value_overrides = {}
+    for reward in canonical_rewards(launch_power_rewards):
+        for field, unit_ids in reward.get(
+            'superweapon_player_clone_reference_fields', {}
+        ).items():
+            power_player_clone_reference_fields.setdefault(field, []).extend(
+                unit_ids
+            )
+        for unit_id, values in reward.get(
+            'superweapon_player_clone_value_overrides', {}
+        ).items():
+            power_player_clone_value_overrides.setdefault(
+                unit_id, {}
+            ).update(values)
+    power_player_clone_reference_fields = {
+        field: unique_in_order(unit_ids)
+        for field, unit_ids in power_player_clone_reference_fields.items()
+    }
     expected_generated_techno_types = {
         list_section: []
         for list_section in dict.fromkeys(TECHNO_TYPE_LISTS.values())
@@ -508,6 +528,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for type_id in str(value or '').split(',')
             if type_id.strip().upper() in BUFF_TARGETS
         ]
+    )
+    power_reference_clone_ids = unique_in_order(
+        unit_id
+        for unit_ids in power_player_clone_reference_fields.values()
+        for unit_id in unit_ids
     )
     building_bound_power_names = [
         reward_display_name(reward)
@@ -833,7 +858,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             forced_buildable_clone_ids=(
                 fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
             ),
-            forced_isolated_clone_ids=delivery_clone_ids,
+            forced_isolated_clone_ids=unique_in_order(
+                delivery_clone_ids + power_reference_clone_ids
+            ),
             forced_compact_clone_ids=delivery_clone_ids,
             unlimited_build_limit_unit_ids=(
                 mission_buff_unit_ids
@@ -1063,6 +1090,27 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             merge_ini_section_values(lines, delivery_clone_rules)
             self.append_log(
                 'Resolved unit-delivery payloads to current player clone IDs.'
+            )
+        (
+            power_player_clone_rules,
+            power_player_clone_overrides,
+        ) = resolved_power_player_clone_rules(
+            cloned_power_rules,
+            clone_handled,
+            power_player_clone_reference_fields,
+            power_player_clone_value_overrides,
+        )
+        if power_player_clone_rules or power_player_clone_overrides:
+            merge_ini_section_values(
+                lines,
+                {
+                    **power_player_clone_rules,
+                    **power_player_clone_overrides,
+                },
+            )
+            self.append_log(
+                'Resolved power target/designator restrictions to current '
+                'player clone IDs.'
             )
         if clone_warnings:
             self.append_log(
