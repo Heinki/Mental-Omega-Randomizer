@@ -166,17 +166,6 @@ def player_unit_clone_rules(
             'production', 'cost', 'speed', 'armor',
         }
     }
-    direct_house_wide_types = {'production'}
-    if direct_house_scoped_fallback:
-        direct_house_wide_types.update({'cost', 'armor'})
-    direct_house_wide_types.update(
-        forced_house_scoped_fallback_types.intersection({'cost', 'armor'})
-    )
-    unlocked_house_unit_ids = buildable_ids | {
-        str(unit_id).upper()
-        for unit_id in (additional_unlocked_tech_ids or ())
-        if str(unit_id).upper() in BUFF_TARGETS
-    }
     counts_by_unit = _active_direct_buff_counts(
         rewards,
         require_unlocked_access=require_unlocked_access,
@@ -184,14 +173,6 @@ def player_unit_clone_rules(
         share_basic_equivalent_buffs=share_basic_equivalent_buffs,
         unit_specific_mode=unit_specific_mode,
         global_production_unit_ids=buildable_ids,
-        direct_house_wide_unit_ids_by_type={
-            buff_type: (
-                buildable_ids
-                if buff_type == 'production'
-                else unlocked_house_unit_ids
-            )
-            for buff_type in direct_house_wide_types
-        },
     )
     excluded_unit_ids = {
         str(unit_id or '').upper() for unit_id in excluded_unit_ids
@@ -221,19 +202,12 @@ def player_unit_clone_rules(
         )
         for unit_id, counts in fallback_counts.items():
             selected_counts = (
-                {
-                    buff_type: count
-                    for buff_type, count in counts.items()
-                    if buff_type not in direct_house_wide_types
-                }
+                dict(counts)
                 if direct_house_scoped_fallback
                 else {
                     buff_type: count
                     for buff_type, count in counts.items()
-                    if (
-                        buff_type in forced_house_scoped_fallback_types
-                        and buff_type not in direct_house_wide_types
-                    )
+                    if buff_type in forced_house_scoped_fallback_types
                 }
             )
             if selected_counts:
@@ -261,6 +235,44 @@ def player_unit_clone_rules(
         for item in (forced_isolated_clone_ids or ())
         if str(item).upper() in BUFF_TARGETS
     )
+    source_by_owned_clone = {
+        str(clone_id).upper(): str(source_id).upper()
+        for source_id, clone_id in owned_clone_ids.items()
+    }
+    initial_payload_source_ids = set()
+    for carrier_id in buildable_ids:
+        payload_types = comma_items(_value_case_insensitive(
+            owned_clone_templates.get(carrier_id, {}),
+            'InitialPayload.Types',
+            '',
+        ))
+        raw_payload_counts = comma_items(_value_case_insensitive(
+            owned_clone_templates.get(carrier_id, {}),
+            'InitialPayload.Nums',
+            '',
+        ))
+        payload_counts = []
+        for raw_count in raw_payload_counts:
+            try:
+                payload_counts.append(int(raw_count))
+            except (TypeError, ValueError):
+                payload_counts.append(0)
+        for index, payload_type in enumerate(payload_types):
+            payload_count = (
+                payload_counts[min(index, len(payload_counts) - 1)]
+                if payload_counts else 1
+            )
+            if payload_count <= 0:
+                continue
+            payload_source = source_by_owned_clone.get(
+                str(payload_type).upper(),
+                str(payload_type).upper(),
+            )
+            if payload_source in BUFF_TARGETS:
+                initial_payload_source_ids.add(payload_source)
+    # Initial payloads must use registered player-owned identities even when
+    # their support types have no independent access or buff reward.
+    forced_clone_ids.update(initial_payload_source_ids)
     unlimited_limit_ids = {
         str(item).upper()
         for item in (unlimited_build_limit_unit_ids or ())
@@ -400,6 +412,7 @@ def player_unit_clone_rules(
         direct_house_scoped_fallback=direct_house_scoped_fallback,
         excluded_unit_ids=excluded_unit_ids,
         forced_clone_ids=forced_clone_ids,
+        initial_payload_source_ids=initial_payload_source_ids,
         helper_autobuild_support=helper_autobuild_support,
         installed_name_by_lower=installed_name_by_lower,
         installed_sections=installed_sections,

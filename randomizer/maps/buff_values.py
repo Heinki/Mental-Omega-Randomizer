@@ -13,8 +13,6 @@ from ._shared import (
     buffs_with_unlocked_access,
     capped_movement_speed,
     expand_equivalent_role_buffs,
-    house_category_suffix,
-    house_wide_buff_scope,
     linked_buff_variant_ids,
     map_house_records,
     player_controlled_houses,
@@ -241,7 +239,6 @@ def _active_direct_buff_counts(
     include_house_scoped_fallback=False,
     house_scoped_only=False,
     global_production_unit_ids=None,
-    direct_house_wide_unit_ids_by_type=None,
 ):
     """Group applicable direct TechnoType/WeaponType buffs by source unit."""
     grouped_counts = {}
@@ -300,11 +297,10 @@ def _active_direct_buff_counts(
             'production', 'cost', 'speed', 'armor',
         }:
             continue
-        # CountryType BuildTime*Mult values are accepted by the parser but do
-        # not change live campaign production timing reliably. Production is
-        # therefore always written to the owned TechnoType clone through
-        # BuildTimeMultiplier. Chaos additionally keeps its other formerly
-        # house-scoped buffs clone-local.
+        # Production is always written to the exact owned TechnoType clone;
+        # CountryType BuildTime*Mult is not reliable in campaign play. Cost
+        # and armor are also clone-required so unit rewards never expand into
+        # category-wide effects. Chaos keeps speed clone-local as before.
         direct_chaos_types = {'production'}
         if unit_specific_mode:
             direct_chaos_types.update({'cost', 'speed', 'armor'})
@@ -370,71 +366,6 @@ def _active_direct_buff_counts(
     for (unit_id, buff_type), count in grouped_counts.items():
         counts_by_unit.setdefault(unit_id, {})[buff_type] = count
 
-    # Standard-mode production is always clone-local because CountryType
-    # BuildTime*Mult is not reliable in campaign play. Cost/armor use this
-    # same path whenever a player country is shared with a denied House. A
-    # house-wide reward is category-wide, so every applicable owned clone must
-    # receive the combined category stacks. Applying each reward only to its
-    # source unit makes shared-country factions lose nearly all stacks while a
-    # safe country (commonly Soviet) appears correct.
-    direct_house_wide_unit_ids_by_type = {
-        str(buff_type).lower(): {
-            str(unit_id).upper()
-            for unit_id in (unit_ids or ())
-        }
-        for buff_type, unit_ids in (
-            direct_house_wide_unit_ids_by_type or {}
-        ).items()
-    }
-    if direct_house_wide_unit_ids_by_type and not unit_specific_mode:
-        scope_counts = {}
-        scope_limits = {}
-        for reward in active_rewards:
-            scope = house_wide_buff_scope(reward, unit_specific_mode=False)
-            if not scope:
-                continue
-            suffix, buff_type = scope
-            buff_type = str(buff_type).lower()
-            if buff_type not in direct_house_wide_unit_ids_by_type:
-                continue
-            key = (suffix, buff_type)
-            scope_counts[key] = scope_counts.get(key, 0) + 1
-            limit = buff_stack_limit(reward)
-            if limit is not None:
-                scope_limits[key] = int(limit)
-                scope_counts[key] = min(scope_counts[key], int(limit))
-
-        for buff_type in direct_house_wide_unit_ids_by_type:
-            for counts in counts_by_unit.values():
-                counts.pop(buff_type, None)
-        counts_by_unit = {
-            unit_id: counts
-            for unit_id, counts in counts_by_unit.items()
-            if counts
-        }
-
-        for buff_type, unit_ids in direct_house_wide_unit_ids_by_type.items():
-            global_key = ('All', buff_type)
-            global_count = scope_counts.get(global_key, 0)
-            global_limit = scope_limits.get(global_key)
-            for unit_id in unit_ids:
-                target = BUFF_TARGETS.get(unit_id, {})
-                if not target:
-                    continue
-                category_key = (house_category_suffix(target), buff_type)
-                count = global_count + scope_counts.get(category_key, 0)
-                limits = [
-                    limit
-                    for limit in (
-                        global_limit,
-                        scope_limits.get(category_key),
-                    )
-                    if limit is not None
-                ]
-                if limits:
-                    count = min(count, min(limits))
-                if count:
-                    counts_by_unit.setdefault(unit_id, {})[buff_type] = count
     return counts_by_unit
 
 def _allowed_buff_house_names(

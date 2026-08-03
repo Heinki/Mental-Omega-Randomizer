@@ -21,6 +21,8 @@ from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_co
 from randomizer.rewards.roster import (
     MAX_PLAYER_BUILD_TIME_MULTIPLIER,
     ROSTER_FILENAMES,
+    validate_hidden_passenger_payloads,
+    validate_house_wide_buff_policy,
     validate_randomizer_unit_health,
     validate_randomizer_unit_roster,
     validate_special_reward_build_times,
@@ -63,9 +65,11 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        hidden_passenger_payloads = validate_hidden_passenger_payloads()
         unit_health = validate_randomizer_unit_health()
         special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
+        house_wide_buffs = validate_house_wide_buff_policy()
         from randomizer.maps.special_buildings import (
             validate_ore_purifier_miner_docks,
             validate_original_refinery_contract,
@@ -273,6 +277,14 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'hidden_passenger_payloads_valid': bool(
+                set(hidden_passenger_payloads) == {'STHOR', 'SALA'}
+                and all(
+                    details['payload_size'] == details['capacity']
+                    for details in hidden_passenger_payloads.values()
+                )
+            ),
+            'hidden_passenger_payloads': hidden_passenger_payloads,
             'randomizer_unit_health_valid': bool(
                 unit_health['types'] == unit_roster['types']
                 and unit_health['minimum_strength'] >= 2
@@ -296,12 +308,23 @@ def run_self_check():
             'deploy_clone_link_gaps': deploy_clone_link_gaps,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
+                and set(
+                    transport_buffs[
+                        'hidden_weapon_passenger_capacity_excluded'
+                    ]
+                ) == {'SALA', 'STHOR'}
                 and transport_buffs['stallion_capacity_enabled']
                 and transport_buffs['stallion_open_topped_excluded']
                 and transport_buffs['engineer_clone_identity_ids']
                 and transport_buffs['rhino_ammo_migrated_to_reload']
             ),
             'transport_buff_eligibility': transport_buffs,
+            'house_wide_buff_policy_valid': bool(
+                house_wide_buffs['house_wide_scopes']
+                == [['All', 'production']]
+                and house_wide_buffs['all_production_direct_results']
+            ),
+            'house_wide_buff_policy': house_wide_buffs,
             'reprocessor_bounty_support_valid': bool(
                 reprocessor_bounty['runtime_enablers']
                 and all(
@@ -342,6 +365,7 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'hidden_passenger_payloads_valid',
                 'randomizer_unit_health_valid',
                 'special_reward_build_times_valid',
                 'moon_reinforcements_initial_cooldown_valid',
@@ -351,6 +375,7 @@ def run_self_check():
                 'access_catalog_valid',
                 'deploy_clone_links_valid',
                 'transport_buff_eligibility_valid',
+                'house_wide_buff_policy_valid',
                 'reprocessor_bounty_support_valid',
                 'ore_purifier_miner_docks_valid',
                 'original_refinery_contract_valid',

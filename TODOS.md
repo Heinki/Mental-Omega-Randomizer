@@ -24,6 +24,7 @@ BUGS AND IMPROVEMENTS
 -also I think the PE in phase 3 might be slightly bugged, atleast, it refused to retreat despite being on red health and just casually sniped the MOD
 - Generating seed is very slow and laggy
 - Space commando not buildable
+- Special Brute other name as it has the same icon
 
 New Game mode idea
 ------------------------------

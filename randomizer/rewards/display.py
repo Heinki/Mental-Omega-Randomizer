@@ -111,8 +111,11 @@ HOUSE_CATEGORY_SUFFIXES = {
     'defenses': 'Defenses',
 }
 
-HOUSE_SCOPED_BUFF_TYPES = {'production', 'cost', 'armor', 'veteran'}
-HOUSE_WIDE_BUFF_TYPES = {'production', 'cost', 'armor'}
+# Only the dedicated global-production reward is house-wide. Ordinary unit
+# rewards stay attached to their exact TechnoType; veterancy still needs the
+# CountryType Veteran* lists because the engine exposes no per-type equivalent.
+HOUSE_SCOPED_BUFF_TYPES = {'production', 'veteran'}
+HOUSE_WIDE_BUFF_TYPES = {'production'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'passenger_capacity', 'open_topped',
@@ -121,7 +124,7 @@ UNIT_STAT_BUFF_TYPES = {
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = (
     MAP_GUARDED_BUFF_TYPES
-    | {'speed', 'build_limit', 'building_limit'}
+    | {'cost', 'armor', 'speed', 'build_limit', 'building_limit'}
 )
 def reward_display_name(reward):
     reward = canonical_reward(reward)
@@ -142,7 +145,7 @@ def house_category_suffix(target):
 
 
 def house_wide_buff_scope(reward, unit_specific_mode=False):
-    """Return actual CountryType category effect, excluding exact-unit lists."""
+    """Return the sole supported global buff scope: all production time."""
     reward = canonical_reward(reward)
     if (
         reward.get('kind') != 'buff'
@@ -153,11 +156,9 @@ def house_wide_buff_scope(reward, unit_specific_mode=False):
     target = BUFF_TARGETS.get(str(reward.get('unit') or '').upper(), {})
     if not target or buff_type not in HOUSE_WIDE_BUFF_TYPES:
         return None
-    if buff_type == 'production' and target.get('global_production'):
-        return ('All', buff_type)
-    if unit_specific_mode:
+    if buff_type != 'production' or not target.get('global_production'):
         return None
-    return (house_category_suffix(target), buff_type)
+    return ('All', buff_type)
 
 
 def house_wide_buff_label(scope):

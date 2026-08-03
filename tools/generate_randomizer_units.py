@@ -324,7 +324,34 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'SALA': {
         'Passengers.Allowed': 'MORPSALA_1,MORPSALA_2',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'Passengers': '4',
+        'PipScale': 'none',
         'InitialPayload.Types': 'MORPSALA_1,MORPSALA_2',
+        'InitialPayload.Nums': '3,1',
+        'SizeLimit': '1',
+        'OpenTopped': 'yes',
+        'NoManualUnload': 'yes',
+        'NoManualEnter': 'yes',
+    },
+    'STHOR': {
+        # Super Thor's payload is its complete portable weapon system. Keep
+        # passengers inaccessible and account for their full combined Size:
+        # 5 GGI + 5 ENFO + 1 HCRUIS = 28.
+        'Passengers.Allowed': 'MORPGGI,MORPENFO,MORPHCRUIS',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'Passengers': '28',
+        'PipScale': 'none',
+        'InitialPayload.Types': 'MORPGGI,MORPENFO,MORPHCRUIS',
+        'InitialPayload.Nums': '5,5,1',
+        'SizeLimit': '18',
+        'OpenTopped': 'yes',
+        'NoManualUnload': 'yes',
+        'NoManualEnter': 'yes',
     },
     'ARCH': {
         'Convert.Deploy': 'MORPARCH2',
@@ -333,6 +360,14 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Convert.Deploy': 'MORPARCH',
         'ReversedAs': 'MORPARCH',
     },
+}
+TEMPLATE_VALUE_REMOVALS = {
+    # TARGETMARK belongs to the co-op objective presentation, not the portable
+    # player reward. Its otherwise-unused duration is removed with it.
+    'STHOR': frozenset({
+        'attacheffect.animation',
+        'attacheffect.duration',
+    }),
 }
 
 
@@ -533,6 +568,10 @@ def main():
             elif not any(key.lower() == 'image' and value for key, value in values.items()):
                 values['Image'] = source_id
             values.update(TEMPLATE_VALUE_OVERRIDES.get(source_id, {}))
+            removed_keys = TEMPLATE_VALUE_REMOVALS.get(source_id, ())
+            for key in list(values):
+                if str(key).lower() in removed_keys:
+                    del values[key]
             definitions[source_id] = values
 
     if missing:

@@ -164,7 +164,12 @@ MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
     # not as ordinary cargo. More seats or OpenTopped mixes incompatible
     # passenger logics, so both rewards are absent from every selection path.
-    'passenger_capacity': TRANSPORT_GUNNER_IDS,
+    # Salamander and Super Thor fill every authored seat with invisible
+    # passengers that are weapon systems. Capacity stacks would expose empty
+    # cargo slots and alter their fixed weapon payload contract.
+    'passenger_capacity': (
+        TRANSPORT_GUNNER_IDS | frozenset({'SALA', 'STHOR'})
+    ),
     # Stallion is weaponless and explicitly cannot passively acquire targets;
     # live verification found that its passengers therefore never fire.
     'open_topped': (

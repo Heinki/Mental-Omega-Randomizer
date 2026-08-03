@@ -76,6 +76,7 @@ class PlayerCloneContext:
     direct_house_scoped_fallback: bool
     excluded_unit_ids: set[str]
     forced_clone_ids: set[str]
+    initial_payload_source_ids: set[str]
     helper_autobuild_support: dict[str, dict[str, list[str]]]
     installed_name_by_lower: dict[str, str]
     installed_sections: dict[str, dict[str, Any]]
@@ -146,6 +147,7 @@ def build_player_clone_sections(
     direct_house_scoped_fallback = context.direct_house_scoped_fallback
     excluded_unit_ids = context.excluded_unit_ids
     forced_clone_ids = context.forced_clone_ids
+    initial_payload_source_ids = context.initial_payload_source_ids
     helper_autobuild_support = context.helper_autobuild_support
     installed_name_by_lower = context.installed_name_by_lower
     installed_sections = context.installed_sections
@@ -628,11 +630,14 @@ def build_player_clone_sections(
             and unit_id in build_only_excluded_unit_ids
             and unit_id in buildable_ids
         )
+        initial_payload_clone = unit_id in initial_payload_source_ids
         hero_build_only_clone = (
             mission_hero_cloak and unit_id in buildable_ids
         )
         allowed_build_only_clone = (
-            excluded_build_only_clone or hero_build_only_clone
+            excluded_build_only_clone
+            or hero_build_only_clone
+            or initial_payload_clone
         )
         if (
             unit_id in excluded_unit_ids
@@ -647,7 +652,10 @@ def build_player_clone_sections(
             continue
         scripted_build_only_clone = (
             unit_id in scripted_team_unit_ids
-            and unit_id in buildable_ids
+            and (
+                unit_id in buildable_ids
+                or initial_payload_clone
+            )
         )
         if (
             unit_id in scripted_team_unit_ids
@@ -668,6 +676,7 @@ def build_player_clone_sections(
         target = BUFF_TARGETS.get(target_unit_id, {})
         build_only_clone = (
             excluded_build_only_clone
+            or initial_payload_clone
             or linked_excluded_reference_clone
             or linked_script_reference_clone
             or scripted_build_only_clone
@@ -694,13 +703,20 @@ def build_player_clone_sections(
         list_section = TECHNO_TYPE_LISTS.get(identity_target.get('category'))
         if not list_section:
             continue
+        owned_template = owned_clone_templates.get(unit_id)
         source_unit = (
             map_name_by_lower.get(unit_id.lower())
             or installed_name_by_lower.get(unit_id.lower())
         )
         if not source_unit:
-            missing.append(unit_id)
-            continue
+            if owned_template:
+                # Reviewed map-only reward templates are complete standalone
+                # definitions. Their source ID may not exist in installed
+                # rules or the selected mission (for example Super Thor).
+                source_unit = unit_id
+            else:
+                missing.append(unit_id)
+                continue
 
         unit_usage = unit_usage_houses(lines, unit_id, usage_index)
         direct_types = set(counts) - WEAPON_STAT_BUFF_TYPES
@@ -742,7 +758,6 @@ def build_player_clone_sections(
             # generic production-gate cleanup; NACLONS otherwise became
             # unlimited before its earned building-limit stacks were added.
             clone_build_limit = str(target['build_limit'])
-        owned_template = owned_clone_templates.get(unit_id)
         clone_source_values = dict(owned_template or effective_unit_values)
         mission_player_override = bool(
             owned_template is not None
@@ -1212,6 +1227,34 @@ def build_player_clone_sections(
             # inherited their native TechLevel and leaked into the sidebar;
             # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
+            if unit_id in initial_payload_source_ids:
+                # InitialPayload creation must not inherit native faction or
+                # prerequisite gates. Keep support types locked, owned by the
+                # carrier's player, and unselectable outside their parent.
+                if owner_ids:
+                    clone_values['Owner'] = ','.join(
+                        production_owner_countries(
+                            lines,
+                            owner_ids,
+                            sections=map_sections,
+                        )
+                    )
+                    clone_values['RequiredHouses'] = ','.join(owner_ids)
+                clone_values['Selectable'] = 'no'
+                _remove_case_insensitive(
+                    clone_values,
+                    'ForbiddenHouses',
+                    'FactoryOwners',
+                    'FactoryOwners.Forbidden',
+                    'Prerequisite',
+                    'PrerequisiteOverride',
+                    'Prerequisite.Lists',
+                    'Prerequisite.Negative',
+                    'Prerequisite.StolenTechs',
+                )
+                for key in list(clone_values):
+                    if str(key).lower().startswith('prerequisite.list'):
+                        clone_values.pop(key, None)
             if linked_buildable_variant:
                 linked_helper_ids = helper_autobuild_support.get(
                     target_unit_id, {}

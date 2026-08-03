@@ -33,6 +33,39 @@ MANDATORY_TEMPLATE_OVERRIDES = {
     'NAIRDM': {
         'Cloakable.Allowed': 'no',
     },
+    # Preserved editable packaged rosters may predate hidden-payload fixes.
+    # Enforce interaction/UI safety in memory even when those files remain
+    # authoritative for every unrelated value.
+    'SALA': {
+        'Passengers.Allowed': 'MORPSALA_1,MORPSALA_2',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'Passengers': '4',
+        'PipScale': 'none',
+        'InitialPayload.Types': 'MORPSALA_1,MORPSALA_2',
+        'InitialPayload.Nums': '3,1',
+        'SizeLimit': '1',
+        'OpenTopped': 'yes',
+        'NoManualUnload': 'yes',
+        'NoManualEnter': 'yes',
+    },
+    'STHOR': {
+        'AttachEffect.Animation': 'none',
+        'AttachEffect.Duration': '0',
+        'Passengers.Allowed': 'MORPGGI,MORPENFO,MORPHCRUIS',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'Passengers': '28',
+        'PipScale': 'none',
+        'InitialPayload.Types': 'MORPGGI,MORPENFO,MORPHCRUIS',
+        'InitialPayload.Nums': '5,5,1',
+        'SizeLimit': '18',
+        'OpenTopped': 'yes',
+        'NoManualUnload': 'yes',
+        'NoManualEnter': 'yes',
+    },
 }
 MAX_PLAYER_BUILD_TIME_MULTIPLIER = 10.0
 BUILD_TIME_MULTIPLIER_KEYS = frozenset({
@@ -305,6 +338,155 @@ def validate_randomizer_unit_roster():
     }
 
 
+def validate_hidden_passenger_payloads():
+    """Audit portable weapon-passenger payloads and hidden UI controls."""
+    _paths, clone_ids, templates = randomizer_unit_roster()
+    expected = {
+        'STHOR': {
+            'sources': ('GGI', 'ENFO', 'HCRUIS'),
+            'counts': (5, 5, 1),
+            'capacity': 28,
+            'size_limit': 18,
+            'weapons': {
+                'STHOR': {
+                    'Primary': 'ThorHeavyGun',
+                    'ElitePrimary': 'ThorHeavyGun',
+                },
+                'GGI': {
+                    'Primary': 'MissileLauncher',
+                    'ElitePrimary': 'MissileLauncherE',
+                    'Secondary': 'MissileLauncherDep',
+                    'EliteSecondary': 'MissileLauncherDepE',
+                    'OpenTransportWeapon': '1',
+                },
+                'ENFO': {
+                    'Primary': 'EnforcerGun',
+                    'ElitePrimary': 'EnforcerGunE',
+                    'Secondary': 'EnforcerGun2',
+                    'EliteSecondary': 'EnforcerGun2E',
+                    'OpenTransportWeapon': '1',
+                },
+                'HCRUIS': {
+                    'Primary': 'CruiserCannonA',
+                    'ElitePrimary': 'CruiserCannonAE',
+                    'Secondary': 'CruiserCannonB',
+                    'EliteSecondary': 'CruiserCannonBE',
+                },
+            },
+        },
+        'SALA': {
+            'sources': ('SALA_1', 'SALA_2'),
+            'counts': (3, 1),
+            'capacity': 4,
+            'size_limit': 1,
+            'weapons': {
+                'SALA': {
+                    'Weapon1': 'SalamanderBow',
+                    'EliteWeapon1': 'SalamanderBow',
+                    'Weapon2': 'SalamanderBowAA',
+                    'EliteWeapon2': 'SalamanderBowAA',
+                    'Weapon3': 'SalamanderBow',
+                    'EliteWeapon3': 'SalamanderBow',
+                    'Weapon4': 'SalamanderBowAA',
+                    'EliteWeapon4': 'SalamanderBowAA',
+                },
+                'SALA_1': {
+                    'Primary': 'SalamanderBeam',
+                    'Secondary': 'SalamanderBeamAA',
+                },
+                'SALA_2': {
+                    'Primary': 'SalamanderField',
+                },
+            },
+        },
+    }
+    errors = []
+    report = {}
+    for carrier_id, contract in expected.items():
+        carrier = templates.get(carrier_id, {})
+        payload_ids = tuple(
+            item.strip().upper()
+            for item in str(_case_insensitive_item(
+                carrier, 'InitialPayload.Types'
+            )[1] or '').split(',')
+            if item.strip()
+        )
+        allowed_ids = tuple(
+            item.strip().upper()
+            for item in str(_case_insensitive_item(
+                carrier, 'Passengers.Allowed'
+            )[1] or '').split(',')
+            if item.strip()
+        )
+        payload_counts = tuple(
+            int(item.strip())
+            for item in str(_case_insensitive_item(
+                carrier, 'InitialPayload.Nums'
+            )[1] or '').split(',')
+            if item.strip()
+        )
+        expected_ids = tuple(
+            clone_ids[source_id] for source_id in contract['sources']
+        )
+        if payload_ids != expected_ids or allowed_ids != expected_ids:
+            errors.append(f'{carrier_id} payload/allowed types differ')
+        if payload_counts != contract['counts']:
+            errors.append(f'{carrier_id} payload counts differ')
+        required_carrier_values = {
+            'Passengers': str(contract['capacity']),
+            'SizeLimit': str(contract['size_limit']),
+            'PipScale': 'none',
+            'OpenTopped': 'yes',
+            'NoManualEnter': 'yes',
+            'NoManualUnload': 'yes',
+            'Survivor.RookiePassengerChance': '0%',
+            'Survivor.VeteranPassengerChance': '0%',
+            'Survivor.ElitePassengerChance': '0%',
+        }
+        for key, wanted in required_carrier_values.items():
+            _actual_key, actual = _case_insensitive_item(carrier, key)
+            if str(actual or '').lower() != wanted.lower():
+                errors.append(f'{carrier_id}.{key}={actual!r}')
+        payload_size = 0
+        for source_id, count in zip(contract['sources'], contract['counts']):
+            _size_key, raw_size = _case_insensitive_item(
+                templates.get(source_id, {}), 'Size'
+            )
+            try:
+                payload_size += int(raw_size) * count
+            except (TypeError, ValueError):
+                errors.append(f'{source_id}.Size={raw_size!r}')
+        if payload_size != contract['capacity']:
+            errors.append(
+                f'{carrier_id} payload size {payload_size} != '
+                f'{contract["capacity"]}'
+            )
+        for source_id, weapon_values in contract['weapons'].items():
+            template = templates.get(source_id, {})
+            for key, wanted in weapon_values.items():
+                _actual_key, actual = _case_insensitive_item(template, key)
+                if str(actual or '') != wanted:
+                    errors.append(f'{source_id}.{key}={actual!r}')
+        report[carrier_id] = {
+            'payload_types': list(payload_ids),
+            'payload_counts': list(payload_counts),
+            'payload_size': payload_size,
+            'capacity': contract['capacity'],
+        }
+    thor = templates.get('STHOR', {})
+    _marker_key, marker = _case_insensitive_item(
+        thor, 'AttachEffect.Animation'
+    )
+    if str(marker or '').strip().lower() not in {'', 'none', '<none>'}:
+        errors.append(f'STHOR.AttachEffect.Animation={marker!r}')
+    if errors:
+        raise ValueError(
+            'Hidden passenger payload validation failed: '
+            + '; '.join(errors)
+        )
+    return report
+
+
 def validate_randomizer_unit_health():
     """Audit the authoritative player templates used by every spawn path."""
     _paths, clone_ids, templates = randomizer_unit_roster()
@@ -403,6 +585,7 @@ def validate_transport_buff_eligibility():
 
     _paths, _clone_ids, templates = randomizer_unit_roster()
     template_gunners = randomizer_unit_ids_with_behavior('Gunner', 'yes')
+    hidden_weapon_passenger_ids = frozenset({'SALA', 'STHOR'})
     reward_pairs = {
         (str(reward.get('unit', '')).upper(), reward.get('buff_type'))
         for reward in UNIT_BUFF_REWARDS
@@ -417,6 +600,15 @@ def validate_transport_buff_eligibility():
         }
         for unit_id in template_gunners
         for buff_type in ('passenger_capacity', 'open_topped')
+    ] + [
+        {
+            '_runtime_canonical': True,
+            'name': f'Forced {unit_id} passenger_capacity',
+            'kind': 'buff',
+            'unit': unit_id,
+            'buff_type': 'passenger_capacity',
+        }
+        for unit_id in hidden_weapon_passenger_ids
     ] + [{
         '_runtime_canonical': True,
         'name': 'Forced Stallion open_topped',
@@ -449,6 +641,19 @@ def validate_transport_buff_eligibility():
             })
             if legacy.get('kind') != 'retired':
                 errors.append(f'{unit_id} legacy {buff_type} remains active')
+    for unit_id in hidden_weapon_passenger_ids:
+        if (unit_id, 'passenger_capacity') in reward_pairs:
+            errors.append(f'{unit_id} still offers passenger_capacity')
+        legacy = canonical_reward({
+            'name': f'Legacy {unit_id} Passenger Capacity I',
+            'kind': 'buff',
+            'unit': unit_id,
+            'buff_type': 'passenger_capacity',
+        })
+        if legacy.get('kind') != 'retired':
+            errors.append(
+                f'{unit_id} legacy passenger_capacity remains active'
+            )
     if ('SHAD', 'passenger_capacity') not in reward_pairs:
         errors.append('Stallion lost passenger_capacity')
     if ('SHAD', 'open_topped') in reward_pairs:
@@ -514,9 +719,98 @@ def validate_transport_buff_eligibility():
         raise ValueError('Transport buff eligibility failed: ' + '; '.join(errors))
     return {
         'gunner_ids': sorted(template_gunners),
+        'hidden_weapon_passenger_capacity_excluded': sorted(
+            hidden_weapon_passenger_ids
+        ),
         'stallion_capacity_enabled': True,
         'stallion_open_topped_excluded': True,
         'native_open_topped_ids': sorted(EXISTING_OPEN_TOPPED_IDS),
         'engineer_clone_identity_ids': sorted(ENGINEER_UNIT_IDS),
         'rhino_ammo_migrated_to_reload': True,
+    }
+
+
+def validate_house_wide_buff_policy():
+    """Audit that only All Production expands beyond one unit identity."""
+    from randomizer.maps.assistance import stacked_house_buff_values
+    from randomizer.maps.buff_values import _active_direct_buff_counts
+    from randomizer.rewards.definitions import (
+        UNIT_BUFF_REWARDS,
+        linked_buff_variant_ids,
+    )
+    from randomizer.rewards.display import house_wide_buff_scope
+
+    forbidden_house_types = {'armor', 'health', 'damage', 'cost'}
+    scopes = []
+    representatives = {}
+    global_production_reward = None
+    for reward in UNIT_BUFF_REWARDS:
+        scope = house_wide_buff_scope(reward)
+        if scope:
+            scopes.append((reward, scope))
+        buff_type = reward.get('buff_type')
+        if (
+            buff_type in forbidden_house_types | {'production'}
+            and not reward.get('global_buff')
+        ):
+            representatives.setdefault(buff_type, reward)
+        if scope == ('All', 'production'):
+            global_production_reward = reward
+
+    errors = []
+    scope_set = {scope for _reward, scope in scopes}
+    if scope_set != {('All', 'production')}:
+        errors.append(f'unexpected house-wide scopes: {sorted(scope_set)}')
+    if not global_production_reward:
+        errors.append('All Production reward is absent')
+    if any(
+        reward.get('buff_type') in forbidden_house_types
+        for reward, _scope in scopes
+    ):
+        errors.append('redundant stat/cost house-wide scope remains')
+
+    direct_results = {}
+    for buff_type in sorted(forbidden_house_types | {'production'}):
+        reward = representatives.get(buff_type)
+        if not reward:
+            errors.append(f'no individual {buff_type} reward to audit')
+            continue
+        unit_id = str(reward['unit']).upper()
+        counts = _active_direct_buff_counts(
+            [reward],
+            require_unlocked_access=False,
+        )
+        affected_ids = set(counts)
+        allowed_ids = set(linked_buff_variant_ids(unit_id))
+        if unit_id not in counts or not affected_ids.issubset(allowed_ids):
+            errors.append(
+                f'{buff_type} escaped exact unit identity: {sorted(affected_ids)}'
+            )
+        if stacked_house_buff_values(
+            [reward], require_unlocked_access=False
+        ):
+            errors.append(f'individual {buff_type} still writes CountryType')
+        direct_results[buff_type] = sorted(affected_ids)
+
+    global_results = {}
+    if global_production_reward:
+        global_results = _active_direct_buff_counts(
+            [global_production_reward],
+            require_unlocked_access=False,
+            global_production_unit_ids={'E1', 'HTNK'},
+        )
+        if set(global_results) != {'E1', 'HTNK'} or any(
+            counts != {'production': 1}
+            for counts in global_results.values()
+        ):
+            errors.append(
+                f'All Production did not reach all audited units: {global_results}'
+            )
+
+    if errors:
+        raise ValueError('House-wide buff policy failed: ' + '; '.join(errors))
+    return {
+        'house_wide_scopes': [list(scope) for scope in sorted(scope_set)],
+        'individual_direct_results': direct_results,
+        'all_production_direct_results': global_results,
     }
