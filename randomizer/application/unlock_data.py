@@ -16,6 +16,7 @@ from ._dependencies import (
     house_wide_buff_effect_lines,
     house_wide_buff_label,
     house_wide_buff_scope,
+    is_max_rewards_achieved_reward,
     mission_assistance_multipliers,
     reward_cameo_token,
     reward_display_name,
@@ -179,6 +180,12 @@ class UnlockDataController:
             for unit_id in starting_defense_ids:
                 lines.append(unit_display_label(unit_id))
             lines.append('')
+        if any(
+            is_max_rewards_achieved_reward(reward)
+            for reward in self.state.get('starting_rewards', [])
+        ):
+            heading = 'Starting Rewards'
+            lines.extend([heading, '=' * len(heading), 'Max rewards achieved.', ''])
         selected = self.selected_mission()
         if selected and self.failure_assistance_enabled():
             code = selected['code']
@@ -194,11 +201,15 @@ class UnlockDataController:
                 ])
 
         earned = []
+        manual_names = self.manual_starting_reward_names_in_state()
         for reward in self.earned_rewards_from_checks():
             canonical = canonical_reward(reward)
             if (
                 not canonical.get('retired_reward')
-                and not self.standard_foehn_unit_reward(canonical)
+                and (
+                    canonical.get('name') in manual_names
+                    or not self.standard_foehn_unit_reward(canonical)
+                )
             ):
                 earned.append(canonical)
         if not earned:
@@ -330,9 +341,13 @@ class UnlockDataController:
         unit_ids.update(self.display_starting_tier_one_defense_ids())
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
+        manual_names = self.manual_starting_reward_names_in_state()
         for reward in self.earned_rewards_from_checks():
             reward = canonical_reward(reward)
-            if self.standard_foehn_unit_reward(reward):
+            if (
+                reward.get('name') not in manual_names
+                and self.standard_foehn_unit_reward(reward)
+            ):
                 continue
             if reward.get('kind') == 'buff' and reward.get('unit'):
                 if not self.reward_house_wide_buff_scope(reward):
@@ -468,6 +483,18 @@ class UnlockDataController:
             canonical_reward(reward)
             for reward in (self.earned_rewards_from_checks() if self.state else [])
         ]
+        manual_unlock_keys = {
+            key
+            for reward in (
+                canonical_reward(reward)
+                for reward in (
+                    self.state.get('manual_starting_rewards', [])
+                    if self.state else []
+                )
+            )
+            if reward.get('kind') != 'buff'
+            for key in self.unlock_dashboard_reward_keys(reward)
+        }
         # Buff rules can contain TechLevel for clone construction but do not
         # grant access. Only non-buff rewards may make a card "unlocked".
         earned_access = unlocked_reward_tech_ids(earned_rewards)
@@ -589,7 +616,9 @@ class UnlockDataController:
                 if source_data['assigned']
                 else 'unavailable'
             )
-            if unit_id in starting_access:
+            if key in manual_unlock_keys:
+                condition = 'Preselected unlock'
+            elif unit_id in starting_access:
                 condition = 'Pre-generation settings'
             elif unit_id in ALWAYS_AVAILABLE_TECH_IDS or not randomize_access:
                 condition = 'Pre-generation settings'
@@ -649,7 +678,10 @@ class UnlockDataController:
                     else 'Special Buildings'
                 ),
                 'status': status,
-                'condition': '',
+                'condition': (
+                    'Preselected unlock'
+                    if key in manual_unlock_keys else ''
+                ),
                 'sources': source_data,
                 'privacy': privacy,
                 'reward': reward,
@@ -696,7 +728,10 @@ class UnlockDataController:
                     'Special' if reward.get('special_reward') else 'Superweapons'
                 ),
                 'status': status,
-                'condition': '',
+                'condition': (
+                    'Preselected unlock'
+                    if key in manual_unlock_keys else ''
+                ),
                 'sources': source_data,
                 'privacy': privacy,
                 'reward': reward,
@@ -734,7 +769,10 @@ class UnlockDataController:
 
         if entry.get('condition'):
             lines.append(f'Condition: {entry["condition"]}')
-        if earned_source_names:
+        if (
+            earned_source_names
+            and entry.get('condition') != 'Preselected unlock'
+        ):
             lines.append('Earned from: ' + compact_sources(earned_source_names))
         if entry['status'] == 'available' and available_source_names:
             lines.append('Available from: ' + compact_sources(available_source_names))

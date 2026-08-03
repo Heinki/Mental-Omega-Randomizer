@@ -100,6 +100,15 @@ class SeedController:
                 error=True,
             )
             return
+        if (
+            reward_settings['starting_reward_count'] > 0
+            and not reward_settings['starting_reward_types']
+        ):
+            self.append_log(
+                'Cannot generate seed: Starting Rewards has no allowed reward types.',
+                error=True,
+            )
+            return
 
         generation_context = {
             'campaign_filter': self.campaign_var.get(),
@@ -199,12 +208,19 @@ class SeedController:
                 'Cannot generate seed: selected reward settings produce no available rewards.'
             )
 
+        manual_starting_rewards = self.configured_manual_starting_rewards()
+        random_starting_rewards = self.generate_starting_reward_plan(
+            seed,
+            initial_rewards=manual_starting_rewards,
+        )
+        starting_rewards = manual_starting_rewards + random_starting_rewards
         mission_checks = self.build_mission_checks(
             mission_codes,
             seed,
             rewards_per_check=rewards_per_check,
             progression_mode=progression_mode,
             grid=grid,
+            starting_rewards=starting_rewards,
         )
         rewards = [
             reward
@@ -235,7 +251,12 @@ class SeedController:
             'started_missions': [],
             'mission_failure_stacks': {},
             'mission_assistance_units': {},
-            'earned_rewards': [],
+            'earned_rewards': [
+                reward for reward in starting_rewards
+                if not reward.get('max_rewards_achieved')
+            ],
+            'starting_rewards': starting_rewards,
+            'manual_starting_rewards': manual_starting_rewards,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'reward_queue': rewards,
@@ -253,6 +274,9 @@ class SeedController:
             'rewards_per_check': rewards_per_check,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
+            'starting_rewards': starting_rewards,
+            'manual_starting_rewards': manual_starting_rewards,
+            'random_starting_rewards': random_starting_rewards,
             'campaign_counts': campaign_counts,
             'campaign_limits': campaign_limits,
             'progression_mode': progression_mode,
@@ -274,6 +298,9 @@ class SeedController:
         rewards_per_check = result['rewards_per_check']
         starting_defense_ids = result['starting_defense_ids']
         starting_unit_ids = result['starting_unit_ids']
+        starting_rewards = result['starting_rewards']
+        manual_starting_rewards = result['manual_starting_rewards']
+        random_starting_rewards = result['random_starting_rewards']
         campaign_counts = result['campaign_counts']
         campaign_limits = result['campaign_limits']
         progression_mode = result['progression_mode']
@@ -316,6 +343,14 @@ class SeedController:
                 )
                 + '.'
             )
+        if manual_starting_rewards:
+            self.append_log(
+                'Starting unlocks: ' + reward_names(manual_starting_rewards)
+            )
+        if random_starting_rewards:
+            self.append_log(
+                'Random starting rewards: ' + reward_names(random_starting_rewards)
+            )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
             if progression_mode == 'Classic':
                 self.append_log(
@@ -342,6 +377,10 @@ class SeedController:
             reward_settings=result['reward_settings'],
             starting_defense_ids=starting_defense_ids,
             starting_unit_ids=starting_unit_ids,
+            starting_rewards=[reward.get('name') for reward in starting_rewards],
+            manual_starting_rewards=[
+                reward.get('name') for reward in manual_starting_rewards
+            ],
         )
 
     def handle_seed_generation_error(self, exc, detail):

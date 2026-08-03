@@ -393,6 +393,7 @@ def cloned_superweapon_plan(
     superweapon_rule_overrides=None,
     superweapon_techno_clone_overrides=None,
     superweapon_required_houses=(),
+    superweapon_aux_buildings=None,
 ):
     """Create isolated map-local copies and safe grants.
 
@@ -406,6 +407,7 @@ def cloned_superweapon_plan(
     superweapon_techno_clone_overrides = (
         superweapon_techno_clone_overrides or {}
     )
+    superweapon_aux_buildings = superweapon_aux_buildings or {}
     if not installed_superweapon_types:
         return {}, [], [], [], [], ['SuperWeaponTypes']
     installed_lookup = {type_id.lower() for type_id in installed_superweapon_types}
@@ -503,6 +505,16 @@ def cloned_superweapon_plan(
         mission_overrides = superweapon_rule_overrides.get(source_type)
         if isinstance(mission_overrides, dict):
             clone_values.update(mission_overrides)
+        faction_aux_buildings = superweapon_aux_buildings.get(
+            source_type.upper(), ()
+        )
+        if faction_aux_buildings:
+            # Action-34 and static-provider powers still honor Ares
+            # SW.AuxBuildings.  Any listed building satisfies this gate, so a
+            # foreign power stays absent until matching technology is captured.
+            clone_values['SW.AuxBuildings'] = ','.join(
+                unique_in_order(faction_aux_buildings)
+            )
         clone_values['SW.AllowPlayer'] = 'yes'
         clone_values['SW.AllowAI'] = 'no'
 

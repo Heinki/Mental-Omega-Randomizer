@@ -36,6 +36,16 @@ from randomizer.rewards.weights import (
     normalize_reward_weights,
     reward_selection_weight,
 )
+from randomizer.rewards.starting import (
+    DEFAULT_STARTING_REWARD_TYPES,
+    MAX_STARTING_REWARD_COUNT,
+    STARTING_REWARD_TYPE_DEFINITIONS,
+    STARTING_UNLOCK_CATEGORY_LABELS,
+    filter_starting_reward_pool,
+    normalize_starting_reward_count,
+    normalize_starting_reward_types,
+    normalize_starting_unlock_reward_names,
+)
 from randomizer.launch.options import (
     choice_label_from_ini,
     patch_large_ini_key,

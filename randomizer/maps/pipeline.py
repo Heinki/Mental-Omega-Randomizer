@@ -56,6 +56,7 @@ from randomizer.maps.progress_hooks import (
     pending_check_hook_plan,
 )
 from randomizer.maps.houses import (
+    country_family,
     map_house_records,
     player_controlled_houses,
     player_country_from_map,
@@ -96,6 +97,7 @@ from randomizer.missions.overrides import (
     MISSION_TECHNO_BASE_RULES,
 )
 from randomizer.missions.safety import safe_build_countries
+from randomizer.missions.access import PRODUCTION_BUILDINGS
 from randomizer.missions.catalogue import normalize_faction
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT, GENERATED_MAP_DIR
 from randomizer.rewards.catalogue import (
@@ -503,8 +505,61 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             allowed_unit_ids=mission_effective_tech_ids,
         )
         share_basic_equivalent_buffs = False
+    power_aux_buildings = {}
+    power_launch_inputs = list(earned_rewards)
+    if self.active_reward_mode() != 'Chaos (Experimental)':
+        player_house = player_house_from_map(lines, records=records)
+        player_family = country_family(records.get(player_house, {}))
+        family_labels = {
+            'allies': 'Allies',
+            'soviets': 'Soviets',
+            'epsilon': 'Epsilon',
+            'foehn': 'Foehn',
+        }
+        player_faction = family_labels.get(
+            player_family,
+            normalize_faction(mission.get('side', '')),
+        )
+        faction_families = {
+            label: family for family, label in family_labels.items()
+        }
+        installed_building_ids_upper = {
+            str(item).upper() for item in installed_building_ids
+        }
+        gated_power_names = set()
+        for reward in canonical_rewards(earned_rewards):
+            if reward.get('kind') != 'superweapon':
+                continue
+            reward_factions = set(reward.get('factions') or ())
+            if (
+                not reward_factions
+                or 'Neutral' in reward_factions
+                or player_faction in reward_factions
+            ):
+                continue
+            aux_buildings = unique_in_order(
+                building_id
+                for faction in reward_factions
+                for family in (faction_families.get(faction),)
+                if family
+                for category_ids in PRODUCTION_BUILDINGS.get(
+                    family, {}
+                ).values()
+                for building_id in sorted(category_ids)
+                if str(building_id).upper() in installed_building_ids_upper
+            )
+            power_id = str(reward.get('superweapon') or '').upper()
+            if power_id and aux_buildings:
+                power_aux_buildings[power_id] = aux_buildings
+                gated_power_names.add(reward_display_name(reward))
+        if gated_power_names:
+            self.append_log(
+                'Gated foreign power rewards behind captured faction tech: '
+                + ', '.join(sorted(gated_power_names))
+                + '.'
+            )
     launch_power_rewards = apply_power_buffs_to_unlock_rewards(
-        earned_rewards,
+        power_launch_inputs,
         installed_rule_sections,
     )
     power_player_clone_reference_fields = {}
@@ -651,6 +706,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             mission_power_techno_clone_overrides
         ),
         superweapon_required_houses=power_houses,
+        superweapon_aux_buildings=power_aux_buildings,
     )
     remember_generated_techno_types(cloned_power_rules)
     for section, values in cloned_power_rules.items():
@@ -1189,8 +1245,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         # can also forbid an authored AI/helper House that uses the same
         # country. For every non-player runtime consumer, remove only those
         # player-added forbidden identities that collide with its authored
-        # House/country aliases. In such shared-country cases preserving the
-        # campaign team takes precedence over hiding a redundant native cameo.
+        # House/country aliases. Player-owned placements and teams must not
+        # participate in this collision set: including them removed the exact
+        # player country from the native gate and exposed original cameos
+        # beside their MORP clones.
         player_forbidden_lower = {
             str(owner).strip().lower()
             for owner in player_native_exclusions
@@ -1207,6 +1265,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if not runtime_house or runtime_house.lower() in {
                     '<all>', '<none>', 'none',
                 }:
+                    continue
+                if runtime_house.lower() in player_usage_names:
                     continue
                 runtime_aliases.add(runtime_house.lower())
                 matching_records = [
@@ -1662,6 +1722,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if not runtime_house or runtime_house.lower() in {
                     '<all>', '<none>', 'none',
                 }:
+                    continue
+                if runtime_house.lower() in player_usage_names:
                     continue
                 runtime_aliases.add(runtime_house.lower())
                 for house_name, house_values in records.items():

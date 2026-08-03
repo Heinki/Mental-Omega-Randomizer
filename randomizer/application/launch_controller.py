@@ -187,10 +187,9 @@ class LaunchController:
                     rules.setdefault(unit_id, {}).update(values)
 
             if mission_code in MISSIONS_WITH_ALL_CONYARD_DEFENSE_ACCESS:
-                # Juggernaut eventually hands the player an SMCV. Expose every
-                # earned defense through any construction yard, including
-                # cross-faction Chaos rewards; do not reduce this to the two
-                # native Action 106 defenses.
+                # Juggernaut eventually hands the player an SMCV. Chaos may
+                # share earned defenses across all Yards. Standard must keep
+                # each mapped faction defense behind physical captured tech.
                 earned_defense_rewards = [
                     reward
                     for reward in self.active_launch_rewards()
@@ -201,11 +200,22 @@ class LaunchController:
                         for tech_id in reward.get('rules', {})
                     )
                 ]
-                defense_rules = chaos_earned_access_rules(
-                    lines,
-                    earned_defense_rewards,
-                    additional_build_houses=(),
-                )
+                if self.active_reward_mode() == 'Chaos (Experimental)':
+                    defense_rules = chaos_earned_access_rules(
+                        lines,
+                        earned_defense_rewards,
+                        additional_build_houses=(),
+                    )
+                else:
+                    defense_rules = mission_basic_unit_rules(
+                        lines,
+                        earned_access_ids=tech_ids_for_rewards(
+                            earned_defense_rewards
+                        ),
+                        translate_equivalents=True,
+                        additional_build_houses=(),
+                        additional_production_houses=production_houses,
+                    )
                 for section, values in defense_rules.items():
                     rules.setdefault(section, {}).update(values)
             for section, values in mission_required_rules.items():
@@ -213,11 +223,15 @@ class LaunchController:
             return rules
 
         if self.active_reward_mode() == 'Chaos (Experimental)':
-            rules = chaos_earned_access_rules(
+            chaos_access_rules = chaos_earned_access_rules(
                 lines,
                 self.active_launch_rewards(),
                 additional_build_houses=(),
             )
+            rules = {
+                section: dict(values)
+                for section, values in chaos_access_rules.items()
+            }
             transport_rules = always_available_transport_rules(
                 lines,
                 chaos_mode=True,
@@ -257,11 +271,19 @@ class LaunchController:
             for section, values in starter_defense_rules.items():
                 rules.setdefault(section, {}).update(values)
             rules = merge_required_rules(rules)
-            # Starter defense unlocks are the final authority. Reviewed
-            # mission-wide defense passes must not replace their primary Yard
-            # and leave duplicate/missing alternative prerequisites.
-            for section, values in starter_defense_rules.items():
-                rules.setdefault(section, {}).update(values)
+            # Mission exceptions may add factories or remove limits, but they
+            # must not narrow Chaos back to one faction's production. Reapply
+            # every Chaos access family after those overrides. Standard never
+            # enters this path and retains exact captured-faction gates.
+            for chaos_rules in (
+                chaos_access_rules,
+                transport_rules,
+                engineer_rules,
+                starter_rules,
+                starter_defense_rules,
+            ):
+                for section, values in chaos_rules.items():
+                    rules.setdefault(section, {}).update(values)
             return rules
         # Every mode resolves an earned role to one clone for each faction.
         # Exact faction prerequisites keep foreign mappings dormant until the

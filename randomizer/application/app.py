@@ -17,6 +17,7 @@ from ._dependencies import (
     POWER_BUFF_WEIGHT_TYPES,
     PROGRESSION_MODES,
     REWARD_MODES,
+    STARTING_REWARD_TYPE_DEFINITIONS,
     UNIT_BUFF_WEIGHT_TYPES,
     WINDOW_ICON_PATH,
     clamp_int,
@@ -32,6 +33,7 @@ from .window import WindowController
 from .state_controller import StateController
 from .reward_controller import RewardController
 from .advanced_settings import AdvancedSettingsController
+from .starting_unlocks import StartingUnlocksController
 from .power_buff_settings import PowerBuffSettingsController
 from .progression_controller import ProgressionController
 from .seed_controller import SeedController
@@ -45,6 +47,7 @@ class LauncherApp(
     StateController,
     RewardController,
     AdvancedSettingsController,
+    StartingUnlocksController,
     PowerBuffSettingsController,
     ProgressionController,
     SeedController,
@@ -208,6 +211,9 @@ class LauncherApp(
             value=bool(generation_config.get('prioritize_no_build_missions', False))
         )
         reward_settings = self.config_reward_settings()
+        self.manual_starting_reward_names = set(
+            reward_settings['starting_unlock_rewards']
+        )
         enabled_buff_types = set(reward_settings['enabled_buff_types'])
         self.buff_allied_helpers_var = tk.BooleanVar(
             value=bool(generation_config.get('buff_allied_helpers', False))
@@ -224,6 +230,18 @@ class LauncherApp(
         self.start_with_tier_one_defenses_var = tk.BooleanVar(
             value=reward_settings['start_with_tier_one_defenses']
         )
+        self.starting_reward_count_var = tk.StringVar(
+            value=str(reward_settings['starting_reward_count'])
+        )
+        allowed_starting_reward_types = set(
+            reward_settings['starting_reward_types']
+        )
+        self.starting_reward_type_vars = {
+            definition['id']: tk.BooleanVar(
+                value=definition['id'] in allowed_starting_reward_types
+            )
+            for definition in STARTING_REWARD_TYPE_DEFINITIONS
+        }
         self.include_defensive_buildings_var = tk.BooleanVar(
             value=reward_settings['include_defensive_buildings']
         )

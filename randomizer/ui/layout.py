@@ -375,9 +375,9 @@ def _build_right_panel(self, main_frame):
     WidgetTooltip(
         self.reward_mode_combo,
         'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
-        'Chaos draws units from all four factions, forces randomized access/tech locking, and lets '
-        'earned units use matching production structures that the mission gives the player. It does '
-        'not grant foreign production structures.',
+        'Chaos draws exact unit unlocks from all four factions, forces randomized access/tech locking, '
+        'and lets every compatible Barracks, factory, airfield, shipyard, or Construction Yard build '
+        'the unlocked roster. It does not grant production structures.',
     )
 
     ttk.Label(options_row, text='Progression').grid(row=8, column=0, sticky='w', pady=(6, 0), padx=(0, 8))

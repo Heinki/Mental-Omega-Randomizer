@@ -1,15 +1,19 @@
 """Advanced and gameplay settings widgets."""
 
+from .starting_unlocks import build_starting_unlocks_tab
+
 from ._builder_dependencies import (
     BUFF_TYPES,
     EVA_VOICE_CHOICES,
     IntegerSlider,
     MAIN_REWARD_WEIGHT_TYPES,
+    MAX_STARTING_REWARD_COUNT,
     MAX_REWARD_WEIGHT,
     PLAYER_COLORS,
     POWER_BUFF_TYPES,
     POWER_BUFF_WEIGHT_TYPES,
     REWARD_POOL,
+    STARTING_REWARD_TYPE_DEFINITIONS,
     UNIT_BUFF_WEIGHT_TYPES,
     WidgetTooltip,
     buff_stack_limit,
@@ -366,6 +370,7 @@ def _build_advanced_tab(self, workspace_tabs):
         )
     self.advanced_pool_canvases['power_buffs'] = power_buff_canvas
     self.advanced_pool_frames['power_buffs'] = power_buff_content
+    build_starting_unlocks_tab(self, advanced_notebook)
 
 def _build_gameplay_settings(self, settings_frame):
     self.settings_intro_label = ttk.Label(
@@ -653,6 +658,70 @@ def _build_gameplay_settings(self, settings_frame):
         self.include_power_buff_rewards_check,
         'Adds only buffs valid for already-unlocked powers. Native mission powers remain unchanged.',
     )
+
+    ttk.Separator(reward_frame, orient='horizontal').grid(
+        row=13, column=0, sticky='ew', pady=(8, 6)
+    )
+    starting_rewards_frame = ttk.Frame(reward_frame)
+    starting_rewards_frame.grid(row=14, column=0, sticky='ew')
+    starting_rewards_frame.columnconfigure(1, weight=1)
+    ttk.Label(starting_rewards_frame, text='Starting Rewards').grid(
+        row=0, column=0, sticky='w', padx=(0, 8)
+    )
+    self.starting_reward_count_spinbox = ttk.Spinbox(
+        starting_rewards_frame,
+        from_=0,
+        to=MAX_STARTING_REWARD_COUNT,
+        textvariable=self.starting_reward_count_var,
+        width=8,
+    )
+    self.starting_reward_count_spinbox.grid(row=0, column=1, sticky='w')
+    ttk.Button(
+        starting_rewards_frame,
+        text='Configure Starting Unlocks...',
+        command=self.show_starting_unlocks_settings,
+    ).grid(row=0, column=2, sticky='e', padx=(8, 0))
+    WidgetTooltip(
+        self.starting_reward_count_spinbox,
+        'Number of random content unlocks received when the seed is created. '
+        'Buffs remain normal progression rewards. '
+        'Zero disables Starting Rewards.',
+    )
+    ttk.Label(
+        starting_rewards_frame,
+        text='Choose exactly which rewards you want to start with.',
+        style='Muted.TLabel',
+    ).grid(row=1, column=0, columnspan=3, sticky='w', pady=(6, 0))
+    ttk.Label(
+        starting_rewards_frame,
+        text='Allowed types',
+        style='Muted.TLabel',
+    ).grid(row=2, column=0, columnspan=3, sticky='w', pady=(6, 2))
+    allowed_types_frame = ttk.Frame(starting_rewards_frame)
+    allowed_types_frame.grid(row=3, column=0, columnspan=3, sticky='ew')
+    for column in range(2):
+        allowed_types_frame.columnconfigure(column, weight=1)
+    self.starting_reward_type_checks = {}
+    for index, definition in enumerate(STARTING_REWARD_TYPE_DEFINITIONS):
+        reward_type = definition['id']
+        check = ttk.Checkbutton(
+            allowed_types_frame,
+            text=definition['label'],
+            variable=self.starting_reward_type_vars[reward_type],
+        )
+        check.grid(
+            row=index // 2,
+            column=index % 2,
+            sticky='w',
+            padx=(0, 8),
+            pady=(0, 2),
+        )
+        self.starting_reward_type_checks[reward_type] = check
+        WidgetTooltip(
+            check,
+            definition['description']
+            + ' Existing pool toggles, exclusions, weights, prerequisites, and caps still apply.',
+        )
 
     buff_frame = ttk.LabelFrame(
         settings_frame,

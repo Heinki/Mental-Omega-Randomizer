@@ -1,9 +1,9 @@
-"""Mission-local access translation for mixed campaign production.
+"""Mode-specific access rules for campaign production.
 
-The randomizer locks unit access globally, but campaign maps sometimes hand
-the player another faction's production during the mission. Every mode maps an
-earned role to one equivalent per available faction, each behind that faction's
-exact production building.
+Standard keeps each faction behind its physical production. Chaos instead
+shares unlocked units across every compatible production building category.
+Keep those policies separate: Standard capture translation must never become
+the filter for Chaos access.
 """
 
 from randomizer.core.collections import comma_items, unique_in_order
@@ -463,14 +463,22 @@ def single_engineer_rules(
     records = map_house_records(lines, sections=sections)
     special_barracks = list(_special_infantry_factories(sections))
     player_family = _player_family(lines, records)
-    # Standard campaigns contain only the three original factions. Chaos also
-    # installs Foehn's Engineer. A foreign Engineer remains
-    # unavailable until the player captures or constructs that faction's
-    # barracks, then appears without mission-specific capture allowlists.
+    # Chaos installs all four Engineers and shares compatible Barracks.
+    # Standard prepares only physically present production families, retaining
+    # each exact barracks gate until that foreign building is captured.
+    available_families = (
+        set(ENGINEER_BY_FAMILY)
+        if chaos_mode
+        else mission_production_families(
+            lines,
+            house_records=records,
+            include_capturable=True,
+        )
+    )
     active_families = [
         family
         for family in ENGINEER_BY_FAMILY
-        if chaos_mode or family != 'foehn'
+        if family in available_families
     ]
 
     player_countries = safe_build_countries(
@@ -492,11 +500,6 @@ def single_engineer_rules(
         native_barracks = production.get('infantry')
         if not engineer_id or not native_barracks:
             continue
-        prerequisites = [native_barracks]
-        # Map-local generic infantry factories serve the player's native
-        # Engineer. Foreign captured barracks retain their own Engineer.
-        if family == player_family:
-            prerequisites.extend(special_barracks)
         forbidden_native_owners = {
             item.lower()
             for item in comma_items(
@@ -524,7 +527,17 @@ def single_engineer_rules(
         rule.update(safe_engineer_identity_values(
             BUFF_TARGETS[engineer_id], remove_unsafe=True
         ))
-        rule.update(_alternative_prerequisite_rules(prerequisites))
+        if chaos_mode:
+            rule.update(_chaos_prerequisite_rules(
+                'infantry',
+                native_barracks,
+                special_barracks,
+            ))
+        else:
+            rule.update(_standard_prerequisite_rules(
+                native_barracks,
+                special_barracks if family == player_family else (),
+            ))
         rules[engineer_id] = rule
 
     return rules
@@ -632,13 +645,22 @@ def mission_basic_unit_rules(
         additional_build_houses,
     )
 
-    # Special map-local barracks intentionally share every exact unlocked
-    # infantry type, regardless of faction. Keep each unit's native barracks as
-    # an alternative so this map rule never removes ordinary production.
+    # A map-local generic Barracks follows the current Standard player family.
+    # It may resolve an unlocked role to that family's infantry, but must not
+    # expose unrelated exact-faction rewards before foreign production capture.
     special_barracks = _special_infantry_factories(sections)
     if special_barracks:
-        for tech_id, tech_level, _family, category, prerequisite, native_owners in access_catalog():
-            if category != 'infantry' or tech_id not in available_access:
+        for tech_id, tech_level, family, category, prerequisite, native_owners in access_catalog():
+            has_access = (
+                bool(unit_role_equivalents(tech_id).intersection(available_access))
+                if translate_equivalents
+                else tech_id in available_access
+            )
+            if (
+                category != 'infantry'
+                or family != player_family
+                or not has_access
+            ):
                 continue
             access_rule = _build_access_rule(
                 lines,
@@ -714,7 +736,7 @@ def mission_basic_unit_rules(
         rules[tech_id] = dict(rule or {'TechLevel': tech_level})
     for section, values in single_engineer_rules(
         lines,
-        chaos_mode=True,
+        chaos_mode=False,
         additional_build_houses=additional_build_houses,
     ).items():
         rules[section] = values
@@ -781,7 +803,16 @@ def _alternative_prerequisite_rules(alternatives):
 
 
 def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
-    """Require the mapped item's own faction production building."""
+    """Allow a Chaos item from every compatible faction factory."""
+    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+    if not alternatives and fallback:
+        alternatives.append(fallback)
+    alternatives.extend(extra_alternatives)
+    return _alternative_prerequisite_rules(alternatives)
+
+
+def _standard_prerequisite_rules(fallback, extra_alternatives=()):
+    """Keep Standard access behind its exact faction production."""
     alternatives = [fallback] if fallback else []
     alternatives.extend(extra_alternatives)
     return _alternative_prerequisite_rules(alternatives)
@@ -821,7 +852,10 @@ def always_available_transport_rules(
             'RequiredHouses': required_houses,
             'ForbiddenHouses': 'none',
         }
-        values.update(_chaos_prerequisite_rules('naval', prerequisite))
+        if chaos_mode:
+            values.update(_chaos_prerequisite_rules('naval', prerequisite))
+        else:
+            values.update(_standard_prerequisite_rules(prerequisite))
         rules[tech_id] = values
     return rules
 

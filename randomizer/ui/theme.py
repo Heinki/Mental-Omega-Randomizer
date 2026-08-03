@@ -95,6 +95,7 @@ def apply_color_mode(self):
         foreground=foreground,
         bordercolor=border,
     )
+    style.configure('StartingUnlocks.Treeview', rowheight=52)
     style.map(
         'Treeview',
         background=[('selected', selected)],

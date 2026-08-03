@@ -2,6 +2,7 @@
 
 from .access import (
     CHAOS_PRIMARY_PRODUCTION,
+    CHAOS_PRODUCTION_ALTERNATIVES,
     PRODUCTION_LOOKUP,
     STANDARD_TIER_ONE_FAMILIES,
     TIER_ONE_AIRFIELDS,
@@ -21,6 +22,7 @@ from .access import (
     _mission_production_buildings,
     _native_access_prerequisites,
     _player_family,
+    _special_factory_alternatives,
     all_section_value_maps,
     chaos_cameo_priority_rules,
     country_family,
@@ -29,7 +31,6 @@ from .access import (
     player_house_from_map,
     production_owner_countries,
     safe_build_countries,
-    unit_role_equivalents,
 )
 
 def tier_one_unit_ids(families):
@@ -177,10 +178,9 @@ def _tier_one_airfield_rules(
         return {}
 
     if chaos_mode:
-        # Foreign aircraft require their own faction airfield. Prepare that
-        # airfield behind its matching Construction Yard so capture remains
-        # the only way to activate foreign air production.
-        conyards = ()
+        # Chaos shares unlocked production buildings across factions. Any
+        # Construction Yard may build the selected aircraft's airfield.
+        conyards = CHAOS_PRODUCTION_ALTERNATIVES['base']
         airfield_families = set(aircraft_families)
     else:
         conyards = ()
@@ -272,28 +272,23 @@ def starting_tier_one_defense_rules(
                     for family, _category in production_categories
                     if family in allowed_families
                 )
-        # The saved Standard marker represents every displayed basic defense,
-        # not merely the one matching the current CountryType. Make every
-        # legitimately unlocked family available through any owned Yard. The
-        # prerequisite remains physical, but an absent foreign Yard can no
-        # longer make an icon shown as unlocked silently unbuildable.
+        # Standard resolves the abstract starter roles only for physically
+        # present production families. Foreign versions may be prepared, but
+        # their exact Yard remains required until capture.
         eligible_families = tuple(
             family
             for family in STANDARD_TIER_ONE_FAMILIES
             if family in allowed_families
             and (
-                (
-                    marker_selected
-                    and (base_families or allow_player_family_fallback)
+                (marker_selected and family in base_families)
+                or (
+                    not marker_selected
+                    and any(
+                        unit_id in selected_ids
+                        for unit_id in TIER_ONE_DEFENSE_UNITS.get(family, ())
+                    )
                 )
-                or family in base_families
             )
-        )
-        # Standard unlock icons are global. Any playable construction yard,
-        # including Foehn's, must satisfy their physical build prerequisite.
-        construction_yards = tuple(
-            CHAOS_PRIMARY_PRODUCTION[family]['base']
-            for family in CHAOS_PRIMARY_PRODUCTION
         )
 
     catalog_by_id = {
@@ -351,9 +346,7 @@ def starting_tier_one_defense_rules(
                     player_countries,
                     tech_level,
                     native_owners,
-                    prerequisite_alternatives=(
-                        construction_yards or (prerequisite,)
-                    ),
+                    prerequisite_alternatives=(prerequisite,),
                 )
     return rules
 
@@ -536,21 +529,36 @@ def chaos_earned_access_rules(
             if tech_level:
                 earned_access_ids.add(tech_id.upper())
 
-    # One earned role prepares exactly one clone mapping per faction. Each
-    # target retains its own Barracks/War Factory/airfield/naval prerequisite;
-    # owning another faction's same-category factory cannot unlock it.
-    for tech_id, tech_level, _family, _category, prerequisite, native_owners in access_catalog():
-        if not unit_role_equivalents(tech_id).intersection(earned_access_ids):
-            continue
+    # Chaos keeps exact unlocked identities, then exposes each from every
+    # compatible factory category. Standard role/faction translation must not
+    # filter this path; Foehn access works in non-Foehn campaigns.
+    entries_by_tech = {}
+    for entry in access_catalog():
+        tech_id = entry[0]
+        if tech_id in earned_access_ids:
+            entries_by_tech.setdefault(tech_id, []).append(entry)
+    special_alternatives = {
+        category: _special_factory_alternatives(lines, category, sections)
+        for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
+    }
+    for tech_id, entries in entries_by_tech.items():
+        tech_level = entries[0][1]
+        native_owners = entries[0][5]
+        alternatives = []
+        for _tech_id, _level, _family, category, prerequisite, _owners in entries:
+            alternatives.extend(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+            alternatives.extend(special_alternatives.get(category, ()))
+            if not CHAOS_PRODUCTION_ALTERNATIVES.get(category):
+                alternatives.extend(_native_access_prerequisites(
+                    tech_id, prerequisite
+                ))
         rules[tech_id] = _build_access_rule(
             lines,
             sections,
             player_countries,
             tech_level,
             native_owners,
-            prerequisite_alternatives=_native_access_prerequisites(
-                tech_id, prerequisite
-            ),
+            prerequisite_alternatives=alternatives,
         )
     for section, values in chaos_cameo_priority_rules(player_family).items():
         rules.setdefault(section, {}).update(values)

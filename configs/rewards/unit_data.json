@@ -25,6 +25,7 @@
         "units": {
           "STARDUSTB": "Paradox Engine",
           "STHOR": "Super Thor Gunship",
+          "SHINBOT": "Shin Tsurugi Decimator",
           "ARTY": "Old Artillery",
           "RANGER": "Old Ranger",
           "LONGBO": "Old Longbow",
@@ -183,7 +184,6 @@
         },
         "units": {
           "DHANDL": "Hands of Ereshkigal",
-          "SHINBOT": "Shin Tsurugi Decimator",
           "HEPH": "Ganzir Defender",
           "GRAV": "Gravitron",
           "YMIN": "Ghost Miner",

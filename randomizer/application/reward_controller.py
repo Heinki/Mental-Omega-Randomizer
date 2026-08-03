@@ -14,10 +14,13 @@ from ._dependencies import (
     canonical_rewards,
     check_rewards,
     clamp_int,
+    filter_starting_reward_pool,
     linked_buff_variant_ids,
     log_event,
     MAX_REWARDS_ACHIEVED_REWARD,
     normalize_reward_weights,
+    normalize_starting_reward_count,
+    normalize_starting_reward_types,
     parse_missions,
     plan_seed_rewards,
     mission_player_production_houses,
@@ -105,20 +108,31 @@ class RewardController:
             and set(reward.get('factions') or ()) == {'Foehn'}
         )
 
+    def manual_starting_reward_names_in_state(self):
+        return {
+            canonical_reward(reward).get('name')
+            for reward in self.state.get('manual_starting_rewards', [])
+        }
+
     def active_launch_rewards(self):
         rewards = canonical_rewards(
             self.earned_rewards_from_checks() if self.state else []
         )
+        manual_names = self.manual_starting_reward_names_in_state()
+
+        def is_manual(reward):
+            return reward.get('name') in manual_names
+
         if not self.active_reward_settings().get('include_special_rewards', True):
             rewards = [
                 reward
                 for reward in rewards
-                if not self.reward_is_special_reward(reward)
+                if is_manual(reward) or not self.reward_is_special_reward(reward)
             ]
         rewards = [
             reward
             for reward in rewards
-            if not self.standard_foehn_unit_reward(reward)
+            if is_manual(reward) or not self.standard_foehn_unit_reward(reward)
         ]
         allowed_factions = self.active_launch_reward_factions()
         if allowed_factions is None:
@@ -127,7 +141,8 @@ class RewardController:
             reward
             for reward in rewards
             if (
-                not reward.get('factions')
+                is_manual(reward)
+                or not reward.get('factions')
                 or allowed_factions.intersection(reward.get('factions', ()))
             )
         ]
@@ -286,6 +301,80 @@ class RewardController:
 
     def configured_reward_pool(self):
         return self.filter_reward_pool(REWARD_POOL)
+
+    def configured_manual_starting_rewards(self):
+        """Resolve exact selected rewards, omitting duplicate TechnoType access."""
+        selected = set(self.active_starting_unlock_names())
+        seen_tech_ids = (
+            set(self.active_starting_tier_one_access_ids())
+            | set(ALWAYS_AVAILABLE_TECH_IDS)
+        )
+        rewards = []
+        for source in REWARD_POOL:
+            reward = canonical_reward(source)
+            if reward.get('name') not in selected:
+                continue
+            if (
+                reward.get('kind') in {'buff', 'message', 'retired'}
+                or not self.reward_is_permanent_starting_unlock(reward)
+            ):
+                continue
+            tech_ids = tech_ids_for_rewards([reward])
+            if reward.get('kind') != 'buff' and tech_ids & seen_tech_ids:
+                continue
+            rewards.append(dict(reward))
+            if reward.get('kind') != 'buff':
+                seen_tech_ids.update(tech_ids)
+        return rewards
+
+    def generate_starting_reward_plan(self, seed, initial_rewards=()):
+        """Roll pre-run rewards on an RNG stream isolated from mission slots."""
+        settings = self.active_reward_settings()
+        count = normalize_starting_reward_count(
+            settings.get('starting_reward_count', 0)
+        )
+        if count <= 0:
+            return []
+        allowed_types = normalize_starting_reward_types(
+            settings.get('starting_reward_types')
+        )
+        code = '__starting_rewards__'
+
+        def allowed_pool(pool):
+            return filter_starting_reward_pool(pool, allowed_types)
+
+        plan = plan_seed_rewards(
+            [code],
+            seed,
+            {code: count},
+            progression_mode='Starting Rewards',
+            grid=None,
+            reward_factions_for_code=self.reward_factions_for_code,
+            reward_pool_for_code=lambda _code: allowed_pool(
+                self.reward_pool_for_code(code)
+            ),
+            configured_reward_pool=lambda: allowed_pool(
+                self.configured_reward_pool()
+            ),
+            starting_unlocked_tech_ids=(
+                self.active_starting_tier_one_access_ids()
+            ),
+            initial_rewards=initial_rewards,
+            require_access_for_unit_buffs=self.randomize_unit_access_enabled(),
+            share_role_buffs=self.share_chaos_role_buffs_enabled(),
+            reward_weights=settings.get('reward_weights'),
+            rng_namespace='starting-rewards',
+            avoid_unlocked_access=True,
+            blocked_reward_names=self.active_starting_unlock_names(),
+        )
+        rewards = plan[code]
+        real_rewards = [
+            reward for reward in rewards
+            if not is_max_rewards_achieved_reward(reward)
+        ]
+        if len(real_rewards) != len(rewards):
+            real_rewards.append(dict(MAX_REWARDS_ACHIEVED_REWARD))
+        return real_rewards
 
     def reward_is_defensive_building(self, reward):
         if reward.get('access_category') == 'defense':
@@ -475,12 +564,16 @@ class RewardController:
         self.state['mission_checks'] = self.build_mission_checks(
             mission_codes,
             self.state.get('seed', ''),
-            self.state.get('earned_rewards', []) if schema_current else [],
+            (
+                self.earned_rewards_from_checks(include_starting=False)
+                if schema_current else []
+            ),
             self.state.get('completed_missions', []),
             preserved_checks=self.state.get('mission_checks', {}) if schema_current else {},
             rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
             progression_mode=self.state.get('progression_mode'),
             grid=self.state.get('grid'),
+            starting_rewards=self.state.get('starting_rewards', []),
         )
         self.state['mission_objectives'] = summary
         grid = self.state.get('grid', {})
@@ -517,9 +610,11 @@ class RewardController:
         rewards_per_check=DEFAULT_REWARDS_PER_CHECK,
         progression_mode=None,
         grid=None,
+        starting_rewards=None,
     ):
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
         earned_rewards = list(earned_rewards or [])
+        starting_rewards = list(starting_rewards or [])
         completed_missions = list(completed_missions or [])
         rewards_per_check = clamp_int(rewards_per_check, 1, MAX_REWARDS_PER_CHECK, DEFAULT_REWARDS_PER_CHECK)
         completed = set(completed_missions)
@@ -563,7 +658,8 @@ class RewardController:
             slots_by_code,
             progression_mode=progression_mode,
             grid=grid,
-            initial_rewards=earned_rewards,
+            initial_rewards=starting_rewards + earned_rewards,
+            avoid_unlocked_access=bool(starting_rewards),
         )
 
         for code in mission_codes:
@@ -626,6 +722,7 @@ class RewardController:
         progression_mode=None,
         grid=None,
         initial_rewards=(),
+        avoid_unlocked_access=False,
     ):
         if progression_mode is None:
             progression_mode = (
@@ -653,10 +750,16 @@ class RewardController:
             reward_weights=self.active_reward_settings().get(
                 'reward_weights'
             ),
+            avoid_unlocked_access=avoid_unlocked_access,
+            blocked_reward_names=self.active_starting_unlock_names(),
         )
 
-    def earned_rewards_from_checks(self):
-        earned = []
+    def earned_rewards_from_checks(self, include_starting=True):
+        earned = [
+            reward
+            for reward in self.state.get('starting_rewards', [])
+            if include_starting and not is_max_rewards_achieved_reward(reward)
+        ]
         for code in self.state.get('mission_order', []):
             for check in self.state.get('mission_checks', {}).get(code, []):
                 if check.get('unlocked') or check.get('released'):

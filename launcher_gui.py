@@ -96,6 +96,23 @@ def run_self_check():
                 if reward.get('kind') == 'buff'
             )
         )
+        shin_access = [
+            reward for reward in REWARD_POOL
+            if reward.get('name') == 'Shin Tsurugi Decimator Access'
+        ]
+        shin_allied_tech_valid = bool(
+            len(shin_access) == 1
+            and shin_access[0].get('factions') == ['Allies']
+            and shin_access[0].get('rules', {}).get('SHINBOT', {}).get(
+                'Prerequisite'
+            ) == 'GAWEAP'
+            and BUFF_TARGETS.get('SHINBOT', {}).get('factions') == ['Allies']
+            and all(
+                reward.get('factions') == ['Allies']
+                for reward in REWARD_POOL
+                if reward.get('unit') == 'SHINBOT'
+            )
+        )
         from randomizer.missions.access import access_catalog
         from randomizer.missions.tier_one import TIER_ONE_DEFENSE_UNITS
         runtime_access_catalog = access_catalog()
@@ -214,6 +231,7 @@ def run_self_check():
             advanced_settings as advanced_settings_module,
             app as application_module,
             reward_controller as reward_controller_module,
+            starting_unlocks as starting_unlocks_module,
             state_controller as state_controller_module,
         )
         required_runtime_symbols = {
@@ -240,8 +258,15 @@ def run_self_check():
                 'UNIT_BUFF_WEIGHT_TYPES',
                 'clamp_reward_weight',
                 'normalize_reward_weights',
+                'normalize_starting_reward_count',
+                'normalize_starting_reward_types',
+                'normalize_starting_unlock_reward_names',
                 'read_portable_settings',
                 'write_portable_settings',
+            ),
+            starting_unlocks_module: (
+                'STARTING_UNLOCK_CATEGORY_LABELS',
+                'normalize_starting_unlock_reward_names',
             ),
         }
         missing_runtime_symbols = [
@@ -250,6 +275,23 @@ def run_self_check():
             for name in names
             if not hasattr(module, name)
         ]
+        starting_unlock_controller = (
+            starting_unlocks_module.StartingUnlocksController()
+        )
+        starting_unlock_entries = starting_unlock_controller.starting_unlock_entries()
+        starting_unlock_catalogue_valid = bool(
+            starting_unlock_entries
+            and all(
+                starting_unlock_controller.reward_is_permanent_starting_unlock(
+                    entry['reward']
+                )
+                for entry in starting_unlock_entries
+            )
+            and not any(
+                entry['reward'].get('kind') == 'buff'
+                for entry in starting_unlock_entries
+            )
+        )
         state_stub = object.__new__(state_controller_module.StateController)
         state_stub.config = {'generation': {}}
         runtime_reward_settings = (
@@ -260,6 +302,13 @@ def run_self_check():
         reward_weight_connections_valid = bool(
             not missing_runtime_symbols
             and runtime_reward_settings.get('reward_weights')
+            and runtime_reward_settings.get('starting_reward_count') == 0
+            and set(runtime_reward_settings.get('starting_reward_types', ()))
+            == {
+                'access', 'superweapon',
+                'secondary_superweapon', 'aid_power',
+            }
+            and runtime_reward_settings.get('starting_unlock_rewards') == []
         )
         checks = {
             'app_version': APP_VERSION,
@@ -315,6 +364,7 @@ def run_self_check():
             'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
+            'shin_allied_tech_valid': shin_allied_tech_valid,
             'access_catalog_valid': access_catalog_valid,
             'access_catalog_entries': len(runtime_access_catalog),
             'deploy_clone_links_valid': not deploy_clone_link_gaps,
@@ -359,6 +409,7 @@ def run_self_check():
             'original_refinery_contract': player_refineries,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
+            'starting_unlock_catalogue_valid': starting_unlock_catalogue_valid,
             'reward_weight_connections_valid': (
                 reward_weight_connections_valid
             ),
@@ -386,6 +437,7 @@ def run_self_check():
                 'zephyr_bombardment_disabled_valid',
                 'portable_aid_powers_valid',
                 'all_buff_caps_valid',
+                'shin_allied_tech_valid',
                 'access_catalog_valid',
                 'deploy_clone_links_valid',
                 'transport_buff_eligibility_valid',
@@ -394,6 +446,7 @@ def run_self_check():
                 'ore_purifier_miner_docks_valid',
                 'original_refinery_contract_valid',
                 'application_imported',
+                'starting_unlock_catalogue_valid',
                 'reward_weight_connections_valid',
                 'deterministic_seed_rng_works',
             )

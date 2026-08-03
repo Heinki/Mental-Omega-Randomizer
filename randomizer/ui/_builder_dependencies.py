@@ -21,6 +21,11 @@ from randomizer.rewards.weights import (
     POWER_BUFF_WEIGHT_TYPES,
     UNIT_BUFF_WEIGHT_TYPES,
 )
+from randomizer.rewards.starting import (
+    MAX_STARTING_REWARD_COUNT,
+    STARTING_REWARD_TYPE_DEFINITIONS,
+    STARTING_UNLOCK_CATEGORY_LABELS,
+)
 from randomizer.ui.tooltips import TreeTooltip, WidgetTooltip
 from randomizer.ui.integer_slider import IntegerSlider
 from randomizer.ui.config import (

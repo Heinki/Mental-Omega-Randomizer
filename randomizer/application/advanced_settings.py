@@ -622,6 +622,7 @@ class AdvancedSettingsController:
 
         self.refresh_advanced_buff_view()
         self.refresh_advanced_power_buff_view()
+        self.refresh_starting_unlocks_view()
 
         included_missions = len(visible_missions) - len(
             {mission['code'].upper() for mission in visible_missions}
@@ -828,13 +829,28 @@ class AdvancedSettingsController:
         self.include_power_buff_rewards_check.configure(
             state='normal' if power_rewards_enabled else 'disabled'
         )
-        power_buffs_enabled = bool(
-            power_rewards_enabled
-            and self.include_power_buff_rewards_var.get()
-        )
+        starting_type_enabled = {
+            'access': bool(self.randomize_unit_access_var.get()),
+            'superweapon': bool(self.include_superweapon_rewards_var.get()),
+            'secondary_superweapon': bool(
+                self.include_secondary_superweapon_rewards_var.get()
+            ),
+            'aid_power': bool(self.include_aid_power_rewards_var.get()),
+        }
+        for reward_type, check in getattr(
+            self, 'starting_reward_type_checks', {}
+        ).items():
+            check.configure(
+                state='normal' if starting_type_enabled[reward_type] else 'disabled'
+            )
         for check in getattr(self, 'power_buff_type_checks', []):
             check.configure(
-                state='normal' if power_buffs_enabled else 'disabled'
+                state=(
+                    'normal'
+                    if power_rewards_enabled
+                    and self.include_power_buff_rewards_var.get()
+                    else 'disabled'
+                )
             )
         self.prioritize_no_build_missions_check.configure(
             state=(

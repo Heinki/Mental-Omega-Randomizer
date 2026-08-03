@@ -55,6 +55,12 @@ FACTION_UNIT_ROSTERS = {
     }
     for faction, categories in _UNIT_DATA_CONFIG['faction_unit_rosters'].items()
 }
+# Mandatory 3.3.6 ownership correction. Preserve it even when an older
+# portable/external roster catalogue still classifies SHINBOT as Epsilon.
+for faction_categories in FACTION_UNIT_ROSTERS.values():
+    for roster_units in faction_categories.values():
+        roster_units.pop('SHINBOT', None)
+FACTION_UNIT_ROSTERS['Allies']['units']['SHINBOT'] = 'Shin Tsurugi Decimator'
 SPECIAL_REWARD_UNIT_IDS = frozenset(
     str(unit_id).upper()
     for unit_id in _UNIT_DATA_CONFIG.get('special_reward_unit_ids', ())

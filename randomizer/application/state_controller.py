@@ -21,6 +21,7 @@ from ._dependencies import (
     REWARD_MODES,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
     STARTING_UNLOCKED_MISSIONS,
+    STARTING_REWARD_TYPE_DEFINITIONS,
     STATE_PATH,
     atomic_write_json,
     check_rewards,
@@ -37,6 +38,9 @@ from ._dependencies import (
     normalize_completed_checks,
     normalize_failure_stacks,
     normalize_reward_weights,
+    normalize_starting_reward_count,
+    normalize_starting_reward_types,
+    normalize_starting_unlock_reward_names,
     random,
     random_chaos_tier_one_defense_ids,
     random_chaos_tier_one_unit_ids,
@@ -51,9 +55,7 @@ from ._dependencies import (
     valid_choice,
     write_portable_settings,
 )
-
 class StateController:
-
     def load_state(self):
         if not STATE_PATH.exists():
             return {}
@@ -62,17 +64,14 @@ class StateController:
         except Exception:
             log_event('state_load_failed', level=logging.ERROR, traceback=traceback.format_exc())
         return {}
-
     def migrate_state(self):
         if not self.state:
             return
-
         changed = False
         if 'mission_goal' not in self.state:
             self.state['mission_goal'] = len(self.state.get('mission_order', [])) or DEFAULT_MISSION_GOAL
             changed = True
-
-        old_earned = self.state.get('earned_rewards', [])
+        old_earned = self.earned_rewards_from_checks(include_starting=False) if self.state.get('starting_rewards') and self.state.get('mission_checks') else self.state.get('earned_rewards', [])
         old_queue = self.state.get('reward_queue', [])
         discard_old_reward_history = False
         if any('spawn' in reward for reward in old_earned + old_queue):
@@ -82,7 +81,6 @@ class StateController:
             self.state['earned_rewards'] = []
             self.state['reward_queue'] = []
             changed = True
-
         previous_schema = self.state.get('check_schema_version')
         schema_changed = previous_schema != CHECK_SCHEMA_VERSION
         preserve_capped_reward_history = (
@@ -106,6 +104,7 @@ class StateController:
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
+                starting_rewards=self.state.get('starting_rewards', []),
             )
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
             self.state['reward_queue'] = [
@@ -116,12 +115,10 @@ class StateController:
             ]
             self.state['check_schema_version'] = CHECK_SCHEMA_VERSION
             changed = True
-
         changed = normalize_completed_checks(self.state) or changed
         changed = normalize_failure_stacks(self.state) or changed
         changed = normalize_assistance_units(self.state, BUFF_TARGETS) or changed
         completed = self.state['completed_missions']
-
         if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
             existing_grid = self.state['grid']
             if existing_grid.get('layout_version') != 3:
@@ -159,8 +156,6 @@ class StateController:
 
         if changed:
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
-
-        if changed:
             self.save_state()
 
     def save_state(self):
@@ -221,6 +216,9 @@ class StateController:
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
+            'starting_reward_count': normalize_starting_reward_count(generation_config.get('starting_reward_count', 0)),
+            'starting_reward_types': normalize_starting_reward_types(generation_config.get('starting_reward_types')),
+            'starting_unlock_rewards': self.filter_permanent_starting_unlock_names(generation_config.get('starting_unlock_rewards')) if hasattr(self, 'filter_permanent_starting_unlock_names') else normalize_starting_unlock_reward_names(generation_config.get('starting_unlock_rewards')),
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
             'include_special_rewards': include_special_rewards,
@@ -335,6 +333,13 @@ class StateController:
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
+            'starting_reward_count': normalize_starting_reward_count(self.starting_reward_count_var.get()),
+            'starting_reward_types': normalize_starting_reward_types([
+                definition['id']
+                for definition in STARTING_REWARD_TYPE_DEFINITIONS
+                if self.starting_reward_type_vars[definition['id']].get()
+            ]),
+            'starting_unlock_rewards': self.canonical_starting_unlock_names(),
             'include_defensive_buildings': include_defensive_buildings,
             'include_special_buildings': include_special_buildings,
             'include_special_rewards': include_special_rewards,
@@ -389,6 +394,9 @@ class StateController:
         settings.setdefault('randomize_unit_access', True)
         settings.setdefault('start_with_tier_one_units', False)
         settings.setdefault('start_with_tier_one_defenses', False)
+        settings['starting_reward_count'] = normalize_starting_reward_count(settings.get('starting_reward_count', 0))
+        settings['starting_reward_types'] = normalize_starting_reward_types(settings.get('starting_reward_types'))
+        settings['starting_unlock_rewards'] = self.filter_permanent_starting_unlock_names(settings.get('starting_unlock_rewards')) if hasattr(self, 'filter_permanent_starting_unlock_names') else normalize_starting_unlock_reward_names(settings.get('starting_unlock_rewards'))
         settings.setdefault('include_defensive_buildings', True)
         settings.setdefault('include_special_buildings', True)
         settings.setdefault('include_special_rewards', True)
@@ -717,6 +725,9 @@ class StateController:
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
         self.config['generation']['start_with_tier_one_defenses'] = reward_settings['start_with_tier_one_defenses']
+        self.config['generation']['starting_reward_count'] = reward_settings['starting_reward_count']
+        self.config['generation']['starting_reward_types'] = reward_settings['starting_reward_types']
+        self.config['generation']['starting_unlock_rewards'] = reward_settings['starting_unlock_rewards']
         self.config['generation']['include_defensive_buildings'] = reward_settings['include_defensive_buildings']
         self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
         self.config['generation']['include_special_rewards'] = reward_settings['include_special_rewards']
@@ -822,7 +833,7 @@ class StateController:
         self.config = config
         generation = self.config.get('generation', {})
         reward_settings = self.config_reward_settings()
-
+        generation['starting_unlock_rewards'] = reward_settings['starting_unlock_rewards']
         self.dark_mode_var.set(bool(self.config.get('dark_mode', False)))
         self.hide_reward_details_var.set(bool(
             self.config.get('hide_reward_details', False)
@@ -942,6 +953,13 @@ class StateController:
         }
         for key, variable in setting_vars.items():
             variable.set(bool(reward_settings[key]))
+        self.starting_reward_count_var.set(str(reward_settings['starting_reward_count']))
+        allowed_starting_types = set(reward_settings['starting_reward_types'])
+        for definition in STARTING_REWARD_TYPE_DEFINITIONS:
+            self.starting_reward_type_vars[definition['id']].set(
+                definition['id'] in allowed_starting_types
+            )
+        self.manual_starting_reward_names = set(reward_settings['starting_unlock_rewards'])
 
         enabled_unit_buffs = set(reward_settings['enabled_buff_types'])
         for buff_type in BUFF_TYPES:

@@ -25,6 +25,13 @@ that overlap only with full reward-plan and 97-map parity coverage.
   reward-weight, and future Archipelago settings used when active YAML keys are
   absent. `generation.reward_weights` stores bounded `0`–`100` main,
   unit-buff, and power-buff selection weights; absent legacy keys use `100`.
+  `generation.starting_reward_count` and `starting_reward_types` control the
+  separately seeded pre-mission unlock grant; allowed families are access,
+  offensive powers, secondary powers, and aid powers. Buff-family IDs from
+  legacy or portable settings are discarded; legacy configs default to zero.
+  `generation.starting_unlock_rewards` stores portable canonical reward names
+  manually selected in Advanced -> Starting Unlocks; only permanent content
+  access/power rewards survive normalization, and legacy configs default empty.
 - `missions.json`: mission build classifications, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
   access rules, original mission-only MCV access, native-variant buff
