@@ -1268,6 +1268,9 @@
     "native_production_gate_exclusions": {
       "SRED": [
         "SAPC"
+      ],
+      "SEARTH": [
+        "SDRN"
       ]
     },
     "native_runtime_identity_preserve_ids": {
@@ -1342,6 +1345,14 @@
         "INIT": {
           "Owner": "USSR,Latin,Special",
           "RequiredHouses": "USSR,Latin,Special",
+          "ForbiddenHouses": "none"
+        }
+      },
+      "SEARTH": {
+        "SDRN": {
+          "TechLevel": "3",
+          "BuildLimit": null,
+          "Prerequisite": "SOVWEAP",
           "ForbiddenHouses": "none"
         }
       }

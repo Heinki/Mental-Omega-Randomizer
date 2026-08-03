@@ -1520,6 +1520,80 @@ def build_player_clone_sections(
                 'Prerequisite.Negative',
                 'Prerequisite.StolenTechs',
             )
+
+    # Production prerequisites must follow cloned deploy targets too.  A
+    # placed mobile factory can use a reference clone (for example
+    # MORRMWF -> MORRNAFIST when cloak is suppressed on mission placements),
+    # while unlocked vehicles still name the authored NAFIST prerequisite.
+    # The engine compares exact BuildingType identities, so that mismatch
+    # leaves the cloned factory's production sidebar empty.  Retain the native
+    # path for launches where the authored factory stays native, and add every
+    # actual player factory form prepared for this launch.
+    runtime_factory_clones = {}
+    for factory_source, factory_clone_id in clone_id_by_source.items():
+        factory_values = section_rules.get(factory_clone_id, {})
+        factory_kind = str(
+            _value_case_insensitive(factory_values, 'Factory', '') or ''
+        ).strip()
+        if not factory_kind or factory_kind.lower() in {'none', '<none>'}:
+            continue
+        runtime_factory_clones[factory_source.upper()] = unique_in_order(
+            clone_id
+            for clone_id in (
+                factory_clone_id,
+                reference_clone_id_by_source.get(factory_source, ''),
+            )
+            if clone_id
+        )
+
+    # Native mission units can use a GenericPrerequisite rather than an exact
+    # BuildingType (SEARTH's Repair Drone uses SOVWEAP).  Rebind those generic
+    # factory groups as well, preserving their installed/map-authored members.
+    generic_prerequisites = {}
+    for source_sections in (installed_sections, map_sections):
+        for section_name, values in source_sections.items():
+            if str(section_name).lower() != 'genericprerequisites':
+                continue
+            generic_prerequisites.update(values)
+    for generic_id, generic_value in generic_prerequisites.items():
+        building_ids = comma_items(generic_value)
+        expanded_ids = list(building_ids)
+        for factory_source, factory_clone_ids in runtime_factory_clones.items():
+            if factory_source not in {
+                building_id.upper() for building_id in building_ids
+            }:
+                continue
+            expanded_ids.extend(factory_clone_ids)
+        expanded_ids = unique_in_order(expanded_ids)
+        if expanded_ids != building_ids:
+            section_rules.setdefault('GenericPrerequisites', {})[
+                generic_id
+            ] = ','.join(expanded_ids)
+
+    for unit_source in sorted(buildable_ids):
+        unit_clone_id = clone_id_by_source.get(unit_source)
+        unit_values = section_rules.get(unit_clone_id, {})
+        if not unit_values:
+            continue
+        prerequisite_ids = {
+            item.upper()
+            for key, value in unit_values.items()
+            if (
+                str(key).lower() == 'prerequisite'
+                or re.fullmatch(
+                    r'prerequisite\.list\d+', str(key), re.IGNORECASE
+                )
+            )
+            for item in comma_items(value)
+        }
+        for factory_source, factory_clone_ids in runtime_factory_clones.items():
+            if factory_source not in prerequisite_ids:
+                continue
+            _append_prerequisite_alternatives(
+                unit_values,
+                factory_clone_ids,
+            )
+
     # A transform target is not factory-buildable, but the engine still
     # validates its ownership when DeploysInto/UndeploysInto changes type.
     # Copy the root clone's exact ownership onto every linked form even when

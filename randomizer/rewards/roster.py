@@ -27,6 +27,12 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Keep the distinct installed tooltip when an older editable packaged
+    # roster still points the Command Airship at the normal Kirov CSF key.
+    'CZEP': {
+        'Name': 'Kirov Command Airship',
+        'UIName': 'NAME:CZEP',
+    },
     # Preserved packaged rosters may retain the campaign-only lunar gate.
     'CBRIS': {
         'Prerequisite.RequiredTheaters': None,
