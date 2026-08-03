@@ -411,6 +411,28 @@ def validate_special_roster_contracts():
                 for key, value in sections[actual_list].items()
                 if str(value).upper() == str(clone_id or '').upper()
             )
+        # Packaged installs preserve editable visible rosters. When an older
+        # visible file lacks a newly bundled identity, randomizer_unit_roster()
+        # correctly supplies its registration/template from bundled data.
+        # Audit that effective fallback instead of reporting a false failure.
+        if not matches and FROZEN:
+            for name in ROSTER_FILENAMES:
+                bundled_path = SOURCE_DIR / 'configs' / name
+                if not bundled_path.is_file():
+                    continue
+                sections = _read_sections(bundled_path)
+                actual_list = next(
+                    (
+                        section for section in sections
+                        if section.lower() == list_name.lower()
+                    ),
+                    None,
+                )
+                matches.extend(
+                    (f'bundled:{bundled_path.name}', str(key))
+                    for key, value in sections.get(actual_list, {}).items()
+                    if str(value).upper() == str(clone_id or '').upper()
+                )
         registrations[source_id] = matches
         if len(matches) != 1:
             errors.append(
