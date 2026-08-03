@@ -4701,7 +4701,8 @@
       "CBRIS": 1,
       "STARDUSTB": 1,
       "DHANDL": 1,
-      "HEPH": 1
+      "HEPH": 1,
+      "SHINBOT": 1
     },
     "special_damage_fields": {
       "V3": {

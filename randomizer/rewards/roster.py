@@ -380,6 +380,47 @@ def validate_randomizer_unit_roster():
     }
 
 
+def validate_limited_hero_build_limits():
+    """Audit capped hero clones and their command-capacity rewards."""
+    from randomizer.rewards.definitions import (
+        BUFF_TARGETS,
+        LIMITED_HERO_BUILD_LIMITS,
+        UNIT_BUFF_REWARDS,
+    )
+
+    _paths, _clone_ids, templates = randomizer_unit_roster()
+    reward_pairs = {
+        (str(reward.get('unit', '')).upper(), reward.get('buff_type'))
+        for reward in UNIT_BUFF_REWARDS
+    }
+    errors = []
+    for unit_id, expected_limit in LIMITED_HERO_BUILD_LIMITS.items():
+        target_limit = BUFF_TARGETS.get(unit_id, {}).get('build_limit')
+        _key, template_limit = _case_insensitive_item(
+            templates.get(unit_id, {}),
+            'BuildLimit',
+        )
+        if target_limit != expected_limit:
+            errors.append(
+                f'{unit_id} target limit {target_limit!r} != {expected_limit}'
+            )
+        if str(template_limit or '') != str(expected_limit):
+            errors.append(
+                f'{unit_id} clone limit {template_limit!r} != {expected_limit}'
+            )
+        if (unit_id, 'build_limit') not in reward_pairs:
+            errors.append(f'{unit_id} lacks command-capacity reward')
+    if errors:
+        raise ValueError(
+            'Limited hero build-limit validation failed: ' + '; '.join(errors)
+        )
+    return {
+        'types': len(LIMITED_HERO_BUILD_LIMITS),
+        'unit_ids': sorted(LIMITED_HERO_BUILD_LIMITS),
+        'command_capacity_rewards': len(LIMITED_HERO_BUILD_LIMITS),
+    }
+
+
 def validate_special_roster_contracts():
     """Audit Space Commando, Boomer Brute, and Paradox production identity."""
     from randomizer.rewards.catalogue import (

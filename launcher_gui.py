@@ -23,6 +23,7 @@ from randomizer.rewards.roster import (
     ROSTER_FILENAMES,
     validate_hidden_passenger_payloads,
     validate_house_wide_buff_policy,
+    validate_limited_hero_build_limits,
     validate_randomizer_unit_health,
     validate_randomizer_unit_roster,
     validate_special_roster_contracts,
@@ -66,6 +67,7 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        limited_hero_limits = validate_limited_hero_build_limits()
         special_roster = validate_special_roster_contracts()
         hidden_passenger_payloads = validate_hidden_passenger_payloads()
         unit_health = validate_randomizer_unit_health()
@@ -328,6 +330,12 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'limited_hero_build_limits_valid': bool(
+                limited_hero_limits['types']
+                == limited_hero_limits['command_capacity_rewards']
+                and 'SHINBOT' in limited_hero_limits['unit_ids']
+            ),
+            'limited_hero_build_limits': limited_hero_limits,
             'special_roster_contracts_valid': bool(
                 special_roster['space_commando_theater_gate_removed']
                 and special_roster['boomer_unique_name'] == 'Boomer Brute'
@@ -429,6 +437,7 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'limited_hero_build_limits_valid',
                 'special_roster_contracts_valid',
                 'hidden_passenger_payloads_valid',
                 'randomizer_unit_health_valid',
