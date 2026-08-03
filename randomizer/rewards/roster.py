@@ -27,6 +27,16 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Preserved packaged rosters may retain the campaign-only lunar gate.
+    'CBRIS': {
+        'Prerequisite.RequiredTheaters': None,
+    },
+    # Use installed CSF key Name:Boomer so this never shares Brute's sidebar
+    # name even when an older editable roster remains authoritative.
+    'BRUTE2': {
+        'Name': 'Boomer Brute',
+        'UIName': 'Name:Boomer',
+    },
     # Old packaged editable roster files are preserved across upgrades. Keep
     # this EMPulse field generator uncloaked even when its visible file predates
     # the reviewed static-template correction.
@@ -65,6 +75,32 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'OpenTopped': 'yes',
         'NoManualUnload': 'yes',
         'NoManualEnter': 'yes',
+    },
+    'STARDUSTB': {
+        'Name': 'The Paradox Engine',
+        'BuildTimeMultiplier': '1',
+        'IsGattling': 'yes',
+        'Turret': 'no',
+        'TurretCount': '1',
+        'CanPassiveAquire': 'yes',
+        'CanRetaliate': 'yes',
+        'WeaponCount': '6',
+        'WeaponStages': '3',
+        'Stage1': '40',
+        'Stage2': '80',
+        'Stage3': '120',
+        'EliteStage1': '40',
+        'EliteStage2': '80',
+        'EliteStage3': '120',
+        'RateUp': '5',
+        'RateDown': '10',
+        **{
+            f'{prefix}Weapon{number}': (
+                'ParadoxMedusa' if number % 2 == 0 else 'ParadoxPrism'
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 7)
+        },
     },
 }
 MAX_PLAYER_BUILD_TIME_MULTIPLIER = 10.0
@@ -335,6 +371,161 @@ def validate_randomizer_unit_roster():
         'files': len(paths),
         'types': len(clone_ids),
         'templates': len(templates),
+    }
+
+
+def validate_special_roster_contracts():
+    """Audit Space Commando, Boomer Brute, and Paradox production identity."""
+    from randomizer.rewards.catalogue import (
+        BUFF_TARGETS,
+        REWARD_POOL,
+        UNIT_SIDEBAR_IMAGES,
+    )
+    from randomizer.rewards.rules import tech_ids_for_rewards
+
+    paths, clone_ids, templates = randomizer_unit_roster()
+    errors = []
+    registrations = {}
+    expected_lists = {
+        'CBRIS': 'InfantryTypes',
+        'BRUTE2': 'InfantryTypes',
+        'STARDUSTB': 'VehicleTypes',
+    }
+    for source_id, list_name in expected_lists.items():
+        clone_id = clone_ids.get(source_id)
+        matches = []
+        for path in paths:
+            sections = _read_sections(path)
+            actual_list = next(
+                (
+                    section
+                    for section in sections
+                    if section.lower() == list_name.lower()
+                ),
+                None,
+            )
+            if not actual_list:
+                continue
+            matches.extend(
+                (path.name, str(key))
+                for key, value in sections[actual_list].items()
+                if str(value).upper() == str(clone_id or '').upper()
+            )
+        registrations[source_id] = matches
+        if len(matches) != 1:
+            errors.append(
+                f'{source_id} has {len(matches)} {list_name} registrations'
+            )
+
+    commando = templates.get('CBRIS', {})
+    _key, theater_gate = _case_insensitive_item(
+        commando, 'Prerequisite.RequiredTheaters'
+    )
+    if str(theater_gate or '').strip().lower() not in {'', 'none', '<none>'}:
+        errors.append(f'CBRIS retains theater gate {theater_gate!r}')
+
+    brute = templates.get('BRUTE2', {})
+    _key, brute_name = _case_insensitive_item(brute, 'Name')
+    _key, brute_ui_name = _case_insensitive_item(brute, 'UIName')
+    if str(brute_name) != 'Boomer Brute':
+        errors.append(f'BRUTE2.Name={brute_name!r}')
+    if str(brute_ui_name).lower() != 'name:boomer':
+        errors.append(f'BRUTE2.UIName={brute_ui_name!r}')
+
+    paradox = templates.get('STARDUSTB', {})
+    paradox_required = {
+        'Image': 'STARDUST',
+        'Name': 'The Paradox Engine',
+        'BuildLimit': '1',
+        'BuildTimeMultiplier': '1',
+        'IsGattling': 'yes',
+        'Turret': 'no',
+        'TurretCount': '1',
+        'CanPassiveAquire': 'yes',
+        'CanRetaliate': 'yes',
+        'WeaponCount': '6',
+        'WeaponStages': '3',
+        'Stage1': '40',
+        'Stage2': '80',
+        'Stage3': '120',
+        'RateUp': '5',
+        'RateDown': '10',
+        'OpportunityFire': 'yes',
+        'PreventAttackMove': 'no',
+        'HoverAttack': 'yes',
+        'Locomotor': '{92612C46-F71F-11d1-AC9F-006008055BB5}',
+        'MovementZone': 'Fly',
+        **{
+            f'{prefix}Weapon{number}': (
+                'ParadoxMedusa' if number % 2 == 0 else 'ParadoxPrism'
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 7)
+        },
+    }
+    for key, expected in paradox_required.items():
+        _actual_key, actual = _case_insensitive_item(paradox, key)
+        if str(actual or '').lower() != expected.lower():
+            errors.append(f'STARDUSTB.{key}={actual!r}')
+    ammo_key, ammo_value = _case_insensitive_item(paradox, 'Ammo')
+    if ammo_key is not None and str(ammo_value).strip() not in {'', '-1'}:
+        errors.append(f'STARDUSTB.Ammo={ammo_value!r}')
+    paradox_target = BUFF_TARGETS.get('STARDUSTB', {})
+    if (
+        paradox_target.get('category') != 'units'
+        or paradox_target.get('factions') != ['Allies']
+        or not paradox_target.get('special_reward')
+        or paradox_target.get('build_limit') != 1
+    ):
+        errors.append(f'STARDUSTB target metadata={paradox_target!r}')
+    if 'STARDUST' in clone_ids:
+        errors.append('AI-only STARDUST has a player clone')
+
+    cameo = UNIT_SIDEBAR_IMAGES.get('STARDUSTB', {})
+    if cameo != {
+        'image': 'paradox_engine.png',
+        'pcx': 'morparadoxicon.pcx',
+        'art_id': 'STARDUST',
+    }:
+        errors.append(f'STARDUSTB cameo mapping={cameo!r}')
+    cameo_path = SOURCE_DIR / 'assets' / 'paradox_engine.png'
+    if not cameo_path.is_file():
+        errors.append('Paradox Engine cameo asset is missing')
+
+    access_counts = {}
+    for source_id in expected_lists:
+        access_counts[source_id] = sum(
+            1
+            for reward in REWARD_POOL
+            if reward.get('kind') != 'buff'
+            and source_id in tech_ids_for_rewards([reward])
+        )
+        if access_counts[source_id] != 1:
+            errors.append(
+                f'{source_id} has {access_counts[source_id]} access rewards'
+            )
+    if any(
+        'STARDUST' in tech_ids_for_rewards([reward])
+        for reward in REWARD_POOL
+    ):
+        errors.append('AI-only STARDUST appears in reward rules')
+
+    if errors:
+        raise ValueError(
+            'Special roster contract validation failed: ' + '; '.join(errors)
+        )
+    return {
+        'clone_ids': {
+            source_id: clone_ids[source_id]
+            for source_id in expected_lists
+        },
+        'registrations': registrations,
+        'access_counts': access_counts,
+        'space_commando_theater_gate_removed': True,
+        'boomer_unique_name': str(brute_name),
+        'paradox_source_id': 'STARDUSTB',
+        'paradox_ai_alias_excluded': True,
+        'paradox_cameo': cameo,
     }
 
 

@@ -13,21 +13,40 @@ from randomizer.maps.hooks import (
     trigger_action_ids_by_name,
 )
 
+NEXT_OBJECTIVE_CHECK_ID = '__next_objective__'
+
+
+def _action_has_real_objective_completion(groups):
+    """Return whether Action 19 commits an objective completion."""
+    return any(
+        len(group) >= 3
+        and group[0] == '19'
+        and group[2].lower() == 'objectivecomplete'
+        for group in groups
+    )
+
 
 def pending_check_hook_plan(lines, checks):
-    """Pair stored checks with map actions before filtering completed checks.
-
-    Pairing first preserves Objective 2 to Action 2 after Objective 1 was
-    already completed in an earlier launch.
-    """
+    """Hook real completion events and the mission victory action."""
     objective_action_ids = action_line_ids(
         lines,
         lambda groups: (
-            action_has_objective_complete(groups)
+            _action_has_real_objective_completion(groups)
             and not action_has_code(groups, 1)
             and not action_has_code(groups, 67)
         ),
     )
+    # A few legacy maps only expose EVA/UI completion actions. Retain the
+    # old signatures as a fallback, but never mix echoes with Action 19.
+    if not objective_action_ids:
+        objective_action_ids = action_line_ids(
+            lines,
+            lambda groups: (
+                action_has_objective_complete(groups)
+                and not action_has_code(groups, 1)
+                and not action_has_code(groups, 67)
+            ),
+        )
     victory_action_ids = unique_in_order(
         action_line_ids(lines, lambda groups: action_has_code(groups, 1))
         + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
@@ -41,9 +60,15 @@ def pending_check_hook_plan(lines, checks):
     objective_checks = [
         check for check in checks if check.get('id') != 'victory'
     ]
-    for check, action_id in zip(objective_checks, objective_action_ids):
-        if not check.get('unlocked'):
-            plan.append((check, action_id))
+    completed_objectives = sum(
+        1 for check in objective_checks if check.get('unlocked')
+    )
+    for index, action_id in enumerate(objective_action_ids, start=1):
+        plan.append(({
+            'id': NEXT_OBJECTIVE_CHECK_ID,
+            'marker_id': f'E{index:04d}',
+            'name': 'objective completion event',
+        }, action_id))
 
     victory_check = next(
         (check for check in checks if check.get('id') == 'victory'),
@@ -55,7 +80,7 @@ def pending_check_hook_plan(lines, checks):
             plan.append((victory_check, victory_action_ids[0]))
         else:
             missing_victory = True
-    return plan, missing_victory
+    return plan, missing_victory, completed_objectives
 
 
 def inject_check_markers(lines, mission_code, plan, house):
@@ -65,7 +90,7 @@ def inject_check_markers(lines, mission_code, plan, house):
     for index, (check, action_id) in enumerate(plan, start=1):
         marker = hook_marker_name(
             mission_code,
-            check.get('id', f'check_{index}'),
+            check.get('marker_id', check.get('id', f'check_{index}')),
         )
         team_id = f'RND{index:05d}'
         taskforce_id = f'RNT{index:05d}'

@@ -1087,6 +1087,12 @@
       "EHEAD": [
         "LIBRA"
       ],
+      "EMIGDAL": [
+        "LIBRA",
+        "LIBRA2",
+        "LIBRA4",
+        "STARDUSTB"
+      ],
       "ETOTAL": [
         "ASSN",
         "LIBRA",
@@ -1268,6 +1274,9 @@
       "SECLIPSE": [
         "EINS"
       ],
+      "EMIGDAL": [
+        "STARDUSTB"
+      ],
       "EHEAD": [
         "ARMA",
         "CNTR",
@@ -1409,6 +1418,24 @@
       }
     },
     "map_section_rules": {
+      "EMIGDAL": {
+        "01003320": {
+          "House": "Paradox",
+          "TaskForce": "01003227",
+          "Script": "01003296",
+          "Tag": "01003428",
+          "VeteranLevel": "3",
+          "AreTeamMembersRecruitable": "yes"
+        },
+        "01003337": {
+          "House": "Paradox",
+          "TaskForce": "01003227",
+          "Script": "01003336",
+          "VeteranLevel": "3",
+          "Recruiter": "yes",
+          "Full": "yes"
+        }
+      },
       "SFATAL": {
         "YTUNNEL": {
           "Passengers.Allowed": {
@@ -1743,6 +1770,7 @@
       "EMIGDAL": {
         "source_unit": "LIBRA",
         "native_units": [
+          "LIBRA",
           "LIBRA2",
           "LIBRA4"
         ]

@@ -317,13 +317,18 @@ def _validate_unit_data(sections, path):
         image_path = Path(str(config.get('image', '')))
         sidebar_pcx = Path(str(config.get('pcx', '')))
         source_pcx = Path(str(config.get('source_pcx', '')))
+        art_id = str(config.get('art_id', '')).strip()
         custom_pair = (
-            set(config) == {'image', 'pcx'}
+            set(config) in ({'image', 'pcx'}, {'image', 'pcx', 'art_id'})
             and image_path.name == str(config.get('image', ''))
             and image_path.suffix.lower() == '.png'
             and sidebar_pcx.name == str(config.get('pcx', ''))
             and sidebar_pcx.suffix.lower() == '.pcx'
             and sidebar_pcx.name.lower().startswith('mor')
+            and (
+                'art_id' not in config
+                or (art_id and Path(art_id).name == art_id)
+            )
         )
         mix_source = (
             set(config) == {'source_pcx'}

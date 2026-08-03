@@ -19,6 +19,7 @@ from ._dependencies import (
     MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
+    NEXT_OBJECTIVE_CHECK_ID,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
     REWARD_POOL,
@@ -622,21 +623,51 @@ throw "Map $name was not found in expandmo*.mix"
         code = self.active_hook['mission_code']
         markers = self.active_hook.get('markers', {})
         seen = self.active_hook.setdefault('seen', set())
-        for marker, check_id in markers.items():
-            if marker in seen:
-                continue
-            if f'[LAUNCH] {marker}' in text or marker in text:
-                seen.add(marker)
-                unlocked = self.unlock_mission_check(code, check_id, 'In-game hook')
-                if check_id == 'victory' and unlocked:
-                    self.schedule_game_close_after_victory()
-
         # A normal game startup emits more than one Init_Clear message before
         # the scenario becomes interactive. Only an Init_Clear that occurs
         # after Capture_Mouse marks a genuine in-game restart. Process the log
         # in order so startup messages in the same polling chunk are not
         # mistaken for failed attempts.
         for line in text.splitlines():
+            for marker, check_id in markers.items():
+                if marker in seen or marker not in line:
+                    continue
+                seen.add(marker)
+                if check_id == NEXT_OBJECTIVE_CHECK_ID:
+                    event_index = self.active_hook.setdefault(
+                        'objective_events_seen',
+                        0,
+                    )
+                    self.active_hook['objective_events_seen'] = event_index + 1
+                    if event_index < self.active_hook.get(
+                        'completed_objective_checks',
+                        0,
+                    ):
+                        continue
+                    next_check = next(
+                        (
+                            check for check in self.mission_checks(code)
+                            if check.get('id') != 'victory'
+                            and not check.get('unlocked')
+                        ),
+                        None,
+                    )
+                    if next_check:
+                        self.unlock_mission_check(
+                            code,
+                            next_check['id'],
+                            'In-game objective completion',
+                        )
+                    continue
+
+                unlocked = self.unlock_mission_check(
+                    code,
+                    check_id,
+                    'In-game hook',
+                )
+                if check_id == 'victory' and unlocked:
+                    self.schedule_game_close_after_victory()
+
             if 'MapClass::Init_Clear entry' in line:
                 if self.active_hook.get('scenario_ready'):
                     self.active_hook['scenario_ready'] = False

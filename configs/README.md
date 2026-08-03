@@ -225,6 +225,8 @@ Map-only unit cameos use `rewards/unit_data.json:unit_sidebar_images`. Keep the
 existing `image` + namespaced `pcx` pair for bundled PNG artwork. Use a single
 `source_pcx` filename for game/Bonus MIX artwork. Installed game-root MIX files
 always win; `assets/expandmo21 Bonus.mix` is fallback only.
+When a TechnoType uses a different `Image=`, add `art_id` to the PNG mapping so
+the same cameo is merged into that complete installed art section.
 
 `rewards/buff_exceptions.json` section `excluded_buff_type_ids` maps each buff type
 to TechnoType IDs that must not receive it. Use `all` for complete exclusions.

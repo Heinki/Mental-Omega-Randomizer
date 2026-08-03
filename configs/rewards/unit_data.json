@@ -23,6 +23,7 @@
           "ARMR": "Norio"
         },
         "units": {
+          "STARDUSTB": "Paradox Engine",
           "STHOR": "Super Thor Gunship",
           "ARTY": "Old Artillery",
           "RANGER": "Old Ranger",
@@ -314,6 +315,7 @@
       "ARCH",
       "REJU",
       "STHOR",
+      "STARDUSTB",
       "DHANDL",
       "DHANDR",
       "CBRIS",
@@ -339,6 +341,11 @@
       },
       "STHOR": {
         "source_pcx": "sthor.pcx"
+      },
+      "STARDUSTB": {
+        "image": "paradox_engine.png",
+        "pcx": "morparadoxicon.pcx",
+        "art_id": "STARDUST"
       },
       "CBRIS": {
         "source_pcx": "cbrisicon.pcx"
@@ -398,6 +405,14 @@
       }
     },
     "unit_base_stats": {
+      "STARDUSTB": [
+        5000,
+        7,
+        5000,
+        18,
+        18,
+        null
+      ],
       "STHOR": [
         2000,
         15,
@@ -3282,6 +3297,20 @@
       }
     },
     "buff_targets": {
+      "STARDUSTB": {
+        "weapons": {
+          "ParadoxPrism": {
+            "damage": 220,
+            "rof": 40,
+            "range": 18
+          },
+          "ParadoxMedusa": {
+            "damage": 55,
+            "rof": 10,
+            "range": 18
+          }
+        }
+      },
       "STHOR": {
         "weapons": {
           "ThorHeavyGun": {
@@ -4670,6 +4699,7 @@
       "PERUN": 1,
       "RHAD": 1,
       "CBRIS": 1,
+      "STARDUSTB": 1,
       "DHANDL": 1,
       "HEPH": 1
     },

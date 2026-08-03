@@ -1781,7 +1781,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if removed_techlevel_actions:
         self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
     checks = self.mission_checks(code) if self.state else []
-    patch_plan, missing_victory = pending_check_hook_plan(lines, checks)
+    patch_plan, missing_victory, completed_objectives = pending_check_hook_plan(
+        lines,
+        checks,
+    )
     if missing_victory:
         self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
 
@@ -1879,6 +1882,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         'scenario': scenario,
         'markers': markers,
         'seen': set(),
+        'completed_objective_checks': completed_objectives,
+        'objective_events_seen': 0,
         'offset': DEBUG_LOG.stat().st_size if DEBUG_LOG.exists() else 0,
         'root_map': root_map,
     }

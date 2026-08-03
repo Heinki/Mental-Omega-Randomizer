@@ -25,6 +25,21 @@ class CustomAssetError(ValueError):
     """Raised when a configured custom image cannot be converted safely."""
 
 
+def _configured_cameo_for_art_id(art_id):
+    wanted = str(art_id or '').upper()
+    direct = GENERATED_UNIT_CAMEO_ASSETS.get(wanted)
+    if direct:
+        return direct
+    return next(
+        (
+            definition
+            for definition in GENERATED_UNIT_CAMEO_ASSETS.values()
+            if str(definition.get('art_id') or '').upper() == wanted
+        ),
+        None,
+    )
+
+
 def _asset_name(value, suffix):
     name = Path(str(value or '')).name
     if not name or name != str(value) or Path(name).suffix.lower() != suffix:
@@ -409,7 +424,7 @@ def generated_unit_art_aliases(map_path, art_text):
         source_art = art_sections.get(image_id, {})
         cameo = source_art.get('cameopcx')
         alt_cameo = source_art.get('altcameopcx')
-        configured_cameo = GENERATED_UNIT_CAMEO_ASSETS.get(image_id)
+        configured_cameo = _configured_cameo_for_art_id(image_id)
         if name == 'jackal racer prototype':
             cameo = 'jackaicon.pcx'
             alt_cameo = 'jackauico.pcx'

@@ -49,7 +49,7 @@ STABLE_APPEND_ORDER = (
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
     'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH', 'BRUTE2',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
-    'ARTY', 'RANGER', 'LONGBO', 'GRAV',
+    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 UNFINISHED_ASSET_IDS = frozenset({
@@ -93,6 +93,9 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'RHAD': {
         'BuildLimit': '1',
+    },
+    'YURIX': {
+        'BuildTimeMultiplier': '2',
     },
     'GHTNKP': {
         'Name': 'Gharial Prototype',
@@ -167,6 +170,38 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'CBRIS': {
         'BuildTimeMultiplier': '2',
+    },
+    'BRUTE2': {
+        'Name': 'Boomer Brute',
+        'UIName': 'Name:Boomer',
+    },
+    'STARDUSTB': {
+        # Installed STARDUSTB is the player Paradox identity. STARDUST is its
+        # non-selectable AI alias and must never become a second reward.
+        'Name': 'The Paradox Engine',
+        'BuildTimeMultiplier': '1',
+        'IsGattling': 'yes',
+        'Turret': 'no',
+        'TurretCount': '1',
+        'CanPassiveAquire': 'yes',
+        'CanRetaliate': 'yes',
+        'WeaponCount': '6',
+        'WeaponStages': '3',
+        'Stage1': '40',
+        'Stage2': '80',
+        'Stage3': '120',
+        'EliteStage1': '40',
+        'EliteStage2': '80',
+        'EliteStage3': '120',
+        'RateUp': '5',
+        'RateDown': '10',
+        **{
+            f'{prefix}Weapon{number}': (
+                'ParadoxMedusa' if number % 2 == 0 else 'ParadoxPrism'
+            )
+            for prefix in ('', 'Elite')
+            for number in range(1, 7)
+        },
     },
     'SHINBOT': {
         'BuildTimeMultiplier': '1',
@@ -362,6 +397,11 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
 }
 TEMPLATE_VALUE_REMOVALS = {
+    # Portable Space Commando production is valid in every theater. Installed
+    # CBRIS is intentionally lunar-only for its campaign role.
+    'CBRIS': frozenset({
+        'prerequisite.requiredtheaters',
+    }),
     # TARGETMARK belongs to the co-op objective presentation, not the portable
     # player reward. Its otherwise-unused duration is removed with it.
     'STHOR': frozenset({
@@ -560,6 +600,24 @@ def main():
                     continue
                 source_values = source_sections[source_name]
             values = OrderedDict(source_values)
+            if source_id in SPECIAL_REWARD_UNIT_IDS:
+                normal_multiplier = (
+                    '2' if target_categories[source_id] == 'infantry' else '1'
+                )
+                for key, value in list(values.items()):
+                    lowered = str(key).lower()
+                    if (
+                        lowered in {
+                            'buildtimemultiplier',
+                            'buildtime.multiplefactory',
+                        }
+                        and str(value).strip() == '121'
+                    ):
+                        values[key] = (
+                            normal_multiplier
+                            if lowered == 'buildtimemultiplier'
+                            else '1'
+                        )
             if source_id in IMAGE_OVERRIDES:
                 for key in list(values):
                     if key.lower() == 'image':
