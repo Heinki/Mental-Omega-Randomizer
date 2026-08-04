@@ -3,6 +3,11 @@
 from randomizer.config.tuning import mission_assistance_stack_count
 
 from ._dependencies import (
+    ARSENAL_FACTIONS,
+    ARSENAL_MODE,
+    ARSENAL_POWER_TYPES,
+    ARSENAL_TIERS,
+    ARSENAL_UNIT_TYPES,
     BUFF_TARGETS,
     BUFF_TYPES,
     CAMPAIGN_FILTERS,
@@ -35,6 +40,7 @@ from ._dependencies import (
     logging,
     messagebox,
     normalize_assistance_units,
+    normalize_arsenal_settings,
     normalize_completed_checks,
     normalize_failure_stacks,
     normalize_reward_weights,
@@ -166,6 +172,9 @@ class StateController:
 
     def config_reward_settings(self):
         generation_config = self.config.get('generation', {})
+        arsenal_settings = normalize_arsenal_settings(
+            generation_config.get('arsenal')
+        )
         enabled_reward_types = generation_config.get('enabled_reward_types', ['access', 'buff', 'superweapon'])
         enabled_buff_types = generation_config.get('enabled_buff_types')
         if not isinstance(enabled_buff_types, list):
@@ -214,10 +223,11 @@ class StateController:
             generation_config.get('reward_weights')
         )
         if generation_config.get('reward_mode') in {
-            'Chaos', 'Chaos (Experimental)'
+            'Chaos', 'Chaos (Experimental)', ARSENAL_MODE,
         }:
             randomize_access = True
         return {
+            'arsenal': arsenal_settings,
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
@@ -286,8 +296,25 @@ class StateController:
     def current_reward_settings(self):
         if 'randomize_unit_access_var' not in self.__dict__:
             return self.config_reward_settings()
-        chaos_mode = self.reward_mode_var.get() == 'Chaos'
-        randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
+        all_faction_mode = self.reward_mode_var.get() in {'Chaos', ARSENAL_MODE}
+        randomize_access = all_faction_mode or bool(self.randomize_unit_access_var.get())
+        arsenal_settings = normalize_arsenal_settings({
+            'factions': [
+                faction for faction in ARSENAL_FACTIONS
+                if self.arsenal_faction_vars[faction].get()
+            ],
+            'roster_sizes': {
+                tier: {
+                    unit_type: self.arsenal_roster_size_vars[tier][unit_type].get()
+                    for unit_type in ARSENAL_UNIT_TYPES
+                }
+                for tier in ARSENAL_TIERS
+            },
+            'power_counts': {
+                power_type: self.arsenal_power_count_vars[power_type].get()
+                for power_type in ARSENAL_POWER_TYPES
+            },
+        })
         start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
         start_with_tier_one_defenses = bool(
             self.start_with_tier_one_defenses_var.get()
@@ -335,6 +362,7 @@ class StateController:
             },
         })
         return {
+            'arsenal': arsenal_settings,
             'randomize_unit_access': randomize_access,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
@@ -397,6 +425,9 @@ class StateController:
         else:
             settings = self.current_reward_settings()
         settings.setdefault('randomize_unit_access', True)
+        settings['arsenal'] = normalize_arsenal_settings(
+            settings.get('arsenal')
+        )
         settings.setdefault('start_with_tier_one_units', False)
         settings.setdefault('start_with_tier_one_defenses', False)
         settings['starting_reward_count'] = normalize_starting_reward_count(settings.get('starting_reward_count', 0))
@@ -415,7 +446,7 @@ class StateController:
         # Legacy seeds may contain experimental_player_unit_clones. Clone
         # isolation is mandatory now, so the stored flag is deliberately ignored.
         settings.pop('experimental_player_unit_clones', None)
-        if self.active_reward_mode() == 'Chaos':
+        if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
             settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
         settings.setdefault('include_superweapon_rewards', False)
@@ -444,6 +475,8 @@ class StateController:
 
     def starting_tier_one_unit_ids_for_seed(self, seed, reward_settings=None):
         settings = reward_settings or self.active_reward_settings()
+        if self.active_reward_mode() == ARSENAL_MODE:
+            return []
         if not settings.get('start_with_tier_one_units', False):
             return []
         excluded_ids = {
@@ -525,6 +558,8 @@ class StateController:
         seed=None,
     ):
         settings = reward_settings or self.active_reward_settings()
+        if self.active_reward_mode() == ARSENAL_MODE:
+            return []
         if not settings.get('start_with_tier_one_defenses', False):
             return []
         excluded_ids = {
@@ -751,6 +786,7 @@ class StateController:
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
         self.config['generation']['enabled_power_buff_types'] = reward_settings['enabled_power_buff_types']
         self.config['generation']['reward_weights'] = reward_settings['reward_weights']
+        self.config['generation']['arsenal'] = reward_settings['arsenal']
         self.config['generation']['reward_mode'] = self.reward_mode_var.get()
         self.config['generation'].pop('close_game_on_victory', None)
         self.config.setdefault('archipelago', {}).setdefault('enabled', False)
@@ -943,6 +979,21 @@ class StateController:
                 'excluded_power_buff_types'
             ].items()
         }
+        arsenal_settings = reward_settings['arsenal']
+        enabled_arsenal_factions = set(arsenal_settings['factions'])
+        for faction in ARSENAL_FACTIONS:
+            self.arsenal_faction_vars[faction].set(
+                faction in enabled_arsenal_factions
+            )
+        for tier in ARSENAL_TIERS:
+            for unit_type in ARSENAL_UNIT_TYPES:
+                self.arsenal_roster_size_vars[tier][unit_type].set(
+                    arsenal_settings['roster_sizes'][tier][unit_type]
+                )
+        for power_type in ARSENAL_POWER_TYPES:
+            self.arsenal_power_count_vars[power_type].set(
+                arsenal_settings['power_counts'][power_type]
+            )
 
         setting_vars = {
             'randomize_unit_access': self.randomize_unit_access_var,

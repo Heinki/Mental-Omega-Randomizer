@@ -1,6 +1,7 @@
 """Manual Starting Unlocks catalogue, selection, and navigation."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     BUFF_TARGETS,
     CAMPAIGN_FILTERS,
     REWARD_POOL,
@@ -125,6 +126,16 @@ class StartingUnlocksController:
         return self._starting_unlock_entries
 
     def starting_unlock_visible_for_campaign(self, entry):
+        if self.reward_mode_var.get() == ARSENAL_MODE:
+            selected_factions = {
+                faction for faction, variable in self.arsenal_faction_vars.items()
+                if variable.get()
+            }
+            return bool(
+                set(entry['factions']).intersection(
+                    selected_factions | {'Neutral'}
+                )
+            )
         selected = self.campaign_var.get()
         factions = set(entry['factions'])
         if selected == CAMPAIGN_FILTERS[0]:

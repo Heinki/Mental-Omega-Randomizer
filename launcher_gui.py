@@ -93,6 +93,49 @@ def run_self_check():
             buff_stack_limit,
             linked_buff_variant_ids,
         )
+        from randomizer.config.player import DEFAULT_CONFIG
+        from randomizer.rewards.arsenal import (
+            ARSENAL_MODE,
+            arsenal_reward_pool,
+            generate_mission_arsenals,
+            reward_matches_arsenal,
+        )
+        from randomizer.ui.config import REWARD_MODES
+        arsenal_settings = DEFAULT_CONFIG['generation']
+        arsenal_codes = ('AREDDAWN', 'AEAGLESFLY')
+        arsenal_first = generate_mission_arsenals(
+            'MO-SELF-CHECK',
+            arsenal_codes,
+            arsenal_settings,
+            arsenal_settings.get('arsenal'),
+        )
+        arsenal_second = generate_mission_arsenals(
+            'MO-SELF-CHECK',
+            arsenal_codes,
+            arsenal_settings,
+            arsenal_settings.get('arsenal'),
+        )
+        arsenal_contract_valid = bool(
+            ARSENAL_MODE in REWARD_MODES
+            and arsenal_first == arsenal_second
+            and all(
+                arsenal.get('seed_fixed')
+                and arsenal.get('units')
+                and not any(
+                    set(entry.get('equivalent_ids', ())).intersection(
+                        other.get('equivalent_ids', ())
+                    )
+                    for index, entry in enumerate(arsenal.get('units', ()))
+                    for other in arsenal.get('units', ())[index + 1:]
+                )
+                and all(
+                    reward.get('kind') == 'buff'
+                    and reward_matches_arsenal(reward, arsenal)
+                    for reward in arsenal_reward_pool(REWARD_POOL, arsenal)
+                )
+                for arsenal in arsenal_first.values()
+            )
+        )
         all_buff_caps_valid = bool(
             any(reward.get('kind') == 'buff' for reward in REWARD_POOL)
             and all(
@@ -267,6 +310,7 @@ def run_self_check():
                 'reward_selection_weight',
             ),
             state_controller_module: (
+                'normalize_arsenal_settings',
                 'MAIN_REWARD_WEIGHT_TYPES',
                 'POWER_BUFF_WEIGHT_TYPES',
                 'UNIT_BUFF_WEIGHT_TYPES',
@@ -435,6 +479,7 @@ def run_self_check():
             'reward_weight_connections_valid': (
                 reward_weight_connections_valid
             ),
+            'randomizer_arsenal_contract_valid': arsenal_contract_valid,
             'missing_runtime_symbols': missing_runtime_symbols,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
@@ -472,6 +517,7 @@ def run_self_check():
                 'application_imported',
                 'starting_unlock_catalogue_valid',
                 'reward_weight_connections_valid',
+                'randomizer_arsenal_contract_valid',
                 'deterministic_seed_rng_works',
             )
         )

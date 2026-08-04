@@ -114,6 +114,7 @@ from randomizer.ui.config import (
     RAINBOWIZER_COLORS,
 )
 from randomizer.rewards.roster import randomizer_unit_roster
+from randomizer.rewards.arsenal import ARSENAL_MODE
 
 
 def prepare_hooked_map(self, mission, extra_rules=None):
@@ -126,11 +127,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         (
             self.state
             and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-            and self.active_reward_mode() != 'Chaos'
+            and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
         )
         or self.share_chaos_role_buffs_enabled()
     )
-    chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos'
+    chaos_unit_specific_buffs = self.active_reward_mode() in {
+        'Chaos', ARSENAL_MODE,
+    }
     buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
 
     scenario = mission.get('scenario')
@@ -489,12 +492,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             + (', '.join(reward_helpers) if reward_helpers else 'none')
             + '. Helper teams use buffed clones; native IDs remain buildable queue fallbacks.'
         )
-    earned_rewards = self.active_launch_rewards() if self.state else []
+    earned_rewards = (
+        self.launch_rewards_for_mission(code) if self.state else []
+    )
     standard_single_campaign = bool(
         self.state
         and self.state.get('campaign_filter')
         in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-        and self.active_reward_mode() != 'Chaos'
+        and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
     )
     if standard_single_campaign:
         # Translate a buff only to role peers the current mission can actually
@@ -508,7 +513,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         share_basic_equivalent_buffs = False
     power_aux_buildings = {}
     power_launch_inputs = list(earned_rewards)
-    if self.active_reward_mode() != 'Chaos':
+    if self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}:
         player_house = player_house_from_map(lines, records=records)
         player_family = country_family(records.get(player_house, {}))
         family_labels = {

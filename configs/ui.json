@@ -55,7 +55,8 @@
     ],
     "reward_modes": [
       "Standard",
-      "Chaos"
+      "Chaos",
+      "Randomizer Arsenal"
     ],
     "progression_modes": [
       "Classic",

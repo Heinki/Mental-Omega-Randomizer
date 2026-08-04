@@ -519,6 +519,7 @@ def chaos_earned_access_rules(
     rules = {}
     player_family = _player_family(lines, records)
     earned_access_ids = set()
+    earned_tech_levels = {}
     for reward in earned_rewards:
         if reward.get('kind') in {'buff', 'superweapon'}:
             continue
@@ -529,6 +530,7 @@ def chaos_earned_access_rules(
             )
             if tech_level:
                 earned_access_ids.add(tech_id.upper())
+                earned_tech_levels[tech_id.upper()] = tech_level
 
     # Chaos keeps exact unlocked identities, then exposes each from every
     # compatible factory category. Standard role/faction translation must not
@@ -550,7 +552,7 @@ def chaos_earned_access_rules(
         for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
     }
     for tech_id, entries in entries_by_tech.items():
-        tech_level = entries[0][1]
+        tech_level = earned_tech_levels.get(tech_id, entries[0][1])
         native_owners = entries[0][5]
         alternatives = []
         for _tech_id, _level, _family, category, prerequisite, _owners in entries:

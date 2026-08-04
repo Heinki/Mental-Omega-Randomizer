@@ -30,6 +30,7 @@ class UnlockViewController:
             tuple(
                 (
                     entry['key'], entry['status'], entry['condition'], entry['privacy'],
+                    entry.get('arsenal_mission_label', ''),
                     tuple(source for source, _ in entry['sources']['earned']),
                     tuple(source for source, _ in entry['sources']['available']),
                     tuple(source for source, _ in entry['sources']['available_unlocks']),

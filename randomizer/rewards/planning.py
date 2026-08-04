@@ -55,7 +55,10 @@ def plan_seed_rewards(
     reward_factions_for_code,
     reward_pool_for_code,
     configured_reward_pool,
+    reward_pool_cache_key_for_code=None,
+    allow_cross_pool_fallback=True,
     starting_unlocked_tech_ids=(),
+    starting_unlocked_power_ids=(),
     initial_rewards=(),
     require_access_for_unit_buffs=True,
     share_role_buffs=False,
@@ -75,7 +78,11 @@ def plan_seed_rewards(
         set(starting_unlocked_tech_ids)
         | set(ALWAYS_AVAILABLE_TECH_IDS)
     )
-    seed_unlocked_power_ids = set()
+    seed_unlocked_power_ids = {
+        str(power_id).upper()
+        for power_id in starting_unlocked_power_ids
+        if str(power_id).strip()
+    }
     buff_counts = {}
     unit_buff_counts = {}
     power_buff_counts = {}
@@ -190,7 +197,11 @@ def plan_seed_rewards(
     access_by_code = {}
     buffs_by_code = {}
     for code in mission_codes:
-        pool_key = tuple(sorted(reward_factions_for_code(code)))
+        pool_key = (
+            reward_pool_cache_key_for_code(code)
+            if reward_pool_cache_key_for_code is not None
+            else tuple(sorted(reward_factions_for_code(code)))
+        )
         if pool_key not in pool_cache:
             canonical_pool = tuple(
                 reward
@@ -438,7 +449,7 @@ def plan_seed_rewards(
                 ):
                     continue
             candidates.append(reward)
-        if not candidates:
+        if not candidates and allow_cross_pool_fallback:
             for reward, limit, count_key, unit, power_id in configured_buffs():
                 if not reward_prerequisites_met(reward):
                     continue

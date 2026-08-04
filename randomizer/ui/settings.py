@@ -3,6 +3,10 @@
 from .starting_unlocks import build_starting_unlocks_tab
 
 from ._builder_dependencies import (
+    ARSENAL_FACTIONS,
+    ARSENAL_POWER_TYPES,
+    ARSENAL_TIERS,
+    ARSENAL_UNIT_TYPES,
     BUFF_TYPES,
     EVA_VOICE_CHOICES,
     IntegerSlider,
@@ -676,11 +680,14 @@ def _build_gameplay_settings(self, settings_frame):
         width=8,
     )
     self.starting_reward_count_spinbox.grid(row=0, column=1, sticky='w')
-    ttk.Button(
+    self.starting_unlocks_settings_button = ttk.Button(
         starting_rewards_frame,
         text='Configure Starting Unlocks...',
         command=self.show_starting_unlocks_settings,
-    ).grid(row=0, column=2, sticky='e', padx=(8, 0))
+    )
+    self.starting_unlocks_settings_button.grid(
+        row=0, column=2, sticky='e', padx=(8, 0)
+    )
     WidgetTooltip(
         self.starting_reward_count_spinbox,
         'Number of random content unlocks received when the seed is created. '
@@ -723,13 +730,97 @@ def _build_gameplay_settings(self, settings_frame):
             + ' Existing pool toggles, exclusions, weights, prerequisites, and caps still apply.',
         )
 
+    arsenal_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Randomizer Arsenal',
+        padding=(8, 8, 8, 8),
+    )
+    self.arsenal_frame = arsenal_frame
+    arsenal_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+    ttk.Label(
+        arsenal_frame,
+        text=(
+            'Each mission receives one seed-fixed mixed roster. Counts request '
+            'unique, non-equivalent units in each TechLevel tier.'
+        ),
+        style='Muted.TLabel',
+        wraplength=620,
+        justify='left',
+    ).grid(row=0, column=0, columnspan=5, sticky='ew', pady=(0, 6))
+    faction_frame = ttk.Frame(arsenal_frame)
+    faction_frame.grid(row=1, column=0, columnspan=5, sticky='ew', pady=(0, 6))
+    ttk.Label(faction_frame, text='Factions:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    self.arsenal_faction_checks = {}
+    for column, faction in enumerate(ARSENAL_FACTIONS, start=1):
+        check = ttk.Checkbutton(
+            faction_frame,
+            text=faction,
+            variable=self.arsenal_faction_vars[faction],
+            command=self.refresh_advanced_pool_views,
+        )
+        check.grid(row=0, column=column, sticky='w', padx=(0, 8))
+        self.arsenal_faction_checks[faction] = check
+    type_labels = {
+        'infantry': 'Infantry',
+        'vehicles': 'Vehicles',
+        'aircraft': 'Aircraft',
+        'naval': 'Naval',
+    }
+    tier_labels = {'tier_1': 'Tier 1', 'tier_2': 'Tier 2', 'tier_3': 'Tier 3'}
+    ttk.Label(arsenal_frame, text='Tier').grid(row=2, column=0, sticky='w')
+    for column, unit_type in enumerate(ARSENAL_UNIT_TYPES, start=1):
+        ttk.Label(arsenal_frame, text=type_labels[unit_type]).grid(
+            row=2, column=column, sticky='w', padx=(4, 0)
+        )
+    self.arsenal_roster_size_spinboxes = {}
+    for row, tier in enumerate(ARSENAL_TIERS, start=3):
+        ttk.Label(arsenal_frame, text=tier_labels[tier]).grid(
+            row=row, column=0, sticky='w', pady=(3, 0)
+        )
+        for column, unit_type in enumerate(ARSENAL_UNIT_TYPES, start=1):
+            spinbox = ttk.Spinbox(
+                arsenal_frame,
+                from_=0,
+                to=20,
+                width=6,
+                textvariable=self.arsenal_roster_size_vars[tier][unit_type],
+            )
+            spinbox.grid(
+                row=row, column=column, sticky='w', padx=(4, 0), pady=(3, 0)
+            )
+            self.arsenal_roster_size_spinboxes[(tier, unit_type)] = spinbox
+    power_frame = ttk.Frame(arsenal_frame)
+    power_frame.grid(row=6, column=0, columnspan=5, sticky='ew', pady=(8, 0))
+    ttk.Label(power_frame, text='Powers per mission:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    power_labels = {
+        'offensive': 'Offensive', 'secondary': 'Secondary', 'aid': 'Aid',
+    }
+    self.arsenal_power_count_spinboxes = {}
+    for index, power_type in enumerate(ARSENAL_POWER_TYPES):
+        ttk.Label(power_frame, text=power_labels[power_type]).grid(
+            row=0, column=1 + index * 2, sticky='w', padx=(5, 3)
+        )
+        spinbox = ttk.Spinbox(
+            power_frame,
+            from_=0,
+            to=20,
+            width=6,
+            textvariable=self.arsenal_power_count_vars[power_type],
+        )
+        spinbox.grid(row=0, column=2 + index * 2, sticky='w')
+        self.arsenal_power_count_spinboxes[power_type] = spinbox
+
     buff_frame = ttk.LabelFrame(
         settings_frame,
         text='Units / Buildings',
         padding=(8, 8, 8, 8),
     )
     self.buff_frame = buff_frame
-    buff_frame.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+    buff_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
         buff_frame.columnconfigure(column, weight=1)
     self.buff_type_checks = []
@@ -761,7 +852,7 @@ def _build_gameplay_settings(self, settings_frame):
         padding=(8, 8, 8, 8),
     )
     self.power_buff_frame = power_buff_frame
-    power_buff_frame.grid(row=6, column=0, sticky='ew', pady=(8, 0))
+    power_buff_frame.grid(row=7, column=0, sticky='ew', pady=(8, 0))
     for column in range(2):
         power_buff_frame.columnconfigure(column, weight=1)
     self.power_buff_type_checks = []
@@ -790,7 +881,7 @@ def _build_gameplay_settings(self, settings_frame):
     )
     self.weight_settings_frame = weight_settings_frame
     weight_settings_frame.grid(
-        row=7, column=0, sticky='ew', pady=(8, 0)
+        row=8, column=0, sticky='ew', pady=(8, 0)
     )
     weight_settings_frame.columnconfigure(0, weight=1)
     self.reward_weight_slider_controls = []
@@ -889,7 +980,7 @@ def _build_gameplay_settings(self, settings_frame):
         padding=(8, 8, 8, 8),
     )
     self.assistance_frame = assistance_frame
-    assistance_frame.grid(row=8, column=0, sticky='ew', pady=(8, 0))
+    assistance_frame.grid(row=9, column=0, sticky='ew', pady=(8, 0))
     self.failure_assistance_check = ttk.Checkbutton(
         assistance_frame,
         text='Strengthen failed missions on retry',
@@ -922,7 +1013,7 @@ def _build_gameplay_settings(self, settings_frame):
         padding=(8, 8, 8, 8),
     )
     self.appearance_frame = appearance_frame
-    appearance_frame.grid(row=9, column=0, sticky='ew', pady=(8, 0))
+    appearance_frame.grid(row=10, column=0, sticky='ew', pady=(8, 0))
     self.dark_mode_check = ttk.Checkbutton(
         appearance_frame,
         text='Dark mode',

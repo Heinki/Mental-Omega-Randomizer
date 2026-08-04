@@ -1,6 +1,7 @@
 """Advanced reward-pool controls and setting dependencies."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
     BUFF_TYPES,
@@ -178,6 +179,15 @@ class AdvancedSettingsController:
         ).intersection(self.excluded_unit_access_ids):
             return False
         selected_campaign = self.campaign_var.get()
+        if self.reward_mode_var.get() == ARSENAL_MODE:
+            selected_factions = {
+                faction for faction, variable in self.arsenal_faction_vars.items()
+                if variable.get()
+            }
+            return (
+                entry.get('faction') == 'Neutral'
+                or entry.get('faction') in selected_factions
+            )
         return (
             selected_campaign == CAMPAIGN_FILTERS[0]
             or entry.get('faction') == 'Neutral'
@@ -477,8 +487,18 @@ class AdvancedSettingsController:
                 child.destroy()
 
         selected_campaign = self.campaign_var.get()
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        arsenal_factions = {
+            faction for faction, variable in self.arsenal_faction_vars.items()
+            if variable.get()
+        }
 
         def visible_for_campaign(entry):
+            if arsenal_mode:
+                return (
+                    entry.get('faction') == 'Neutral'
+                    or entry.get('faction') in arsenal_factions
+                )
             return (
                 selected_campaign == CAMPAIGN_FILTERS[0]
                 or entry.get('faction') == 'Neutral'
@@ -634,7 +654,8 @@ class AdvancedSettingsController:
         included_powers = len(visible_power_ids - self.excluded_superweapon_ids)
         self.advanced_pool_status_label.configure(
             text=(
-                f'{selected_campaign}: missions {included_missions}/{len(visible_missions)}, '
+                f'{ARSENAL_MODE if arsenal_mode else selected_campaign}: '
+                f'missions {included_missions}/{len(visible_missions)}, '
                 f'units/buildings {included_units}/{len(visible_unit_ids)}, '
                 f'superpowers {included_powers}/{len(visible_power_ids)} included'
             )
@@ -657,6 +678,11 @@ class AdvancedSettingsController:
 
     def set_advanced_pool_all(self, pool_key, include):
         selected_campaign = self.campaign_var.get()
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        arsenal_factions = {
+            faction for faction, variable in self.arsenal_faction_vars.items()
+            if variable.get()
+        }
         if pool_key == 'missions':
             mission_entries = [
                 {'id': mission['code'].upper(), 'faction': normalize_faction(mission.get('side', ''))}
@@ -707,9 +733,18 @@ class AdvancedSettingsController:
             target = self.excluded_superweapon_ids
         all_ids = {
             entry['id'] for entry in entries
-            if selected_campaign == CAMPAIGN_FILTERS[0]
-            or entry.get('faction') == 'Neutral'
-            or entry.get('faction') == selected_campaign
+            if (
+                (
+                    entry.get('faction') == 'Neutral'
+                    or entry.get('faction') in arsenal_factions
+                )
+                if arsenal_mode
+                else (
+                    selected_campaign == CAMPAIGN_FILTERS[0]
+                    or entry.get('faction') == 'Neutral'
+                    or entry.get('faction') == selected_campaign
+                )
+            )
         }
         if include:
             target.difference_update(all_ids)
@@ -773,6 +808,7 @@ class AdvancedSettingsController:
         if not hasattr(self, 'randomize_unit_access_check'):
             return
         chaos_mode = self.reward_mode_var.get() == 'Chaos'
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         buffs_enabled = bool(self.include_buff_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         special_buildings_enabled = bool(self.include_special_buildings_var.get())
@@ -781,12 +817,14 @@ class AdvancedSettingsController:
             self.include_secondary_superweapon_rewards_var.get(),
             self.include_aid_power_rewards_var.get(),
         ))
-        if chaos_mode:
+        if chaos_mode or arsenal_mode:
             self.randomize_unit_access_var.set(True)
             self.randomize_unit_access_check.configure(state='disabled')
         else:
             self.randomize_unit_access_check.configure(state='normal')
-        if chaos_mode or self.campaign_var.get() == 'All Campaigns':
+        if chaos_mode or (
+            not arsenal_mode and self.campaign_var.get() == 'All Campaigns'
+        ):
             self.share_chaos_role_buffs_check.grid()
         else:
             self.share_chaos_role_buffs_check.grid_remove()
@@ -814,10 +852,16 @@ class AdvancedSettingsController:
                 )
             )
         self.include_defensive_buildings_check.configure(
-            state='normal' if reward_source_enabled else 'disabled'
+            state=(
+                'normal' if reward_source_enabled and not arsenal_mode
+                else 'disabled'
+            )
         )
         self.include_special_buildings_check.configure(
-            state='normal' if reward_source_enabled else 'disabled'
+            state=(
+                'normal' if reward_source_enabled and not arsenal_mode
+                else 'disabled'
+            )
         )
         self.include_special_rewards_check.configure(
             state=(
@@ -840,9 +884,38 @@ class AdvancedSettingsController:
         for reward_type, check in getattr(
             self, 'starting_reward_type_checks', {}
         ).items():
-            check.configure(
-                state='normal' if starting_type_enabled[reward_type] else 'disabled'
-            )
+            check.configure(state=(
+                'normal'
+                if starting_type_enabled[reward_type] and not arsenal_mode
+                else 'disabled'
+            ))
+        self.starting_reward_count_spinbox.configure(
+            state='disabled' if arsenal_mode else 'normal'
+        )
+        self.starting_unlocks_settings_button.configure(
+            state='disabled' if arsenal_mode else 'normal'
+        )
+        self.start_with_tier_one_units_check.configure(
+            state='disabled' if arsenal_mode else 'normal'
+        )
+        self.start_with_tier_one_defenses_check.configure(
+            state='disabled' if arsenal_mode else 'normal'
+        )
+        if arsenal_mode:
+            self.arsenal_frame.grid()
+        else:
+            self.arsenal_frame.grid_remove()
+        power_toggle_by_type = {
+            'offensive': self.include_superweapon_rewards_var,
+            'secondary': self.include_secondary_superweapon_rewards_var,
+            'aid': self.include_aid_power_rewards_var,
+        }
+        for power_type, spinbox in self.arsenal_power_count_spinboxes.items():
+            spinbox.configure(state=(
+                'normal'
+                if arsenal_mode and power_toggle_by_type[power_type].get()
+                else 'disabled'
+            ))
         for check in getattr(self, 'power_buff_type_checks', []):
             check.configure(
                 state=(

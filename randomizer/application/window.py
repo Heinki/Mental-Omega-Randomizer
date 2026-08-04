@@ -317,6 +317,7 @@ class WindowController:
             'map_colors_frame',
             'mission_pool_frame',
             'reward_frame',
+            'arsenal_frame',
             'buff_frame',
             'power_buff_frame',
             'weight_settings_frame',
@@ -326,9 +327,11 @@ class WindowController:
         if not all(hasattr(self, name) for name in required):
             return
         wide = int(width or 0) >= 720
-        if self.__dict__.get('_settings_layout_wide') == wide:
+        buff_columns = 1 if int(width or 0) < 600 else 2
+        layout_signature = (wide, buff_columns)
+        if self.__dict__.get('_settings_layout_signature') == layout_signature:
             return
-        self._settings_layout_wide = wide
+        self._settings_layout_signature = layout_signature
         widgets = [getattr(self, name) for name in required]
         for widget in widgets:
             widget.grid_forget()
@@ -362,25 +365,53 @@ class WindowController:
             self.reward_frame.grid(
                 row=3, column=0, sticky='nsew', padx=(0, 4), pady=(8, 0)
             )
-            self.buff_frame.grid(
+            self.appearance_frame.grid(
                 row=3, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
             )
-            self.power_buff_frame.grid(
-                row=4, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            self.buff_frame.grid(
+                row=4,
+                column=0,
+                columnspan=2,
+                sticky='nsew',
+                pady=(8, 0),
             )
-            self.weight_settings_frame.grid(
+            self.arsenal_frame.grid(
                 row=5,
                 column=0,
                 columnspan=2,
                 sticky='nsew',
                 pady=(8, 0),
             )
-            self.appearance_frame.grid(
-                row=6, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+            self.power_buff_frame.grid(
+                row=6,
+                column=0,
+                columnspan=2,
+                sticky='nsew',
+                pady=(8, 0),
+            )
+            self.weight_settings_frame.grid(
+                row=7,
+                column=0,
+                columnspan=2,
+                sticky='nsew',
+                pady=(8, 0),
             )
         else:
             for row, widget in enumerate(widgets[1:], start=1):
                 widget.grid(row=row, column=0, sticky='ew', pady=(8, 0))
+        if self.reward_mode_var.get() != 'Randomizer Arsenal':
+            self.arsenal_frame.grid_remove()
+        for frame, checks in (
+            (self.buff_frame, self.buff_type_checks),
+            (self.power_buff_frame, self.power_buff_type_checks),
+        ):
+            frame.columnconfigure(0, weight=1)
+            frame.columnconfigure(1, weight=1 if buff_columns == 2 else 0)
+            for index, check in enumerate(checks):
+                check.grid_configure(
+                    row=index // buff_columns,
+                    column=index % buff_columns,
+                )
         self.on_settings_content_configure()
 
     def on_settings_canvas_configure(self, event):

@@ -27,6 +27,20 @@ from randomizer.rewards.planning import (
     is_max_rewards_achieved_reward,
     plan_seed_rewards,
 )
+from randomizer.rewards.arsenal import (
+    ARSENAL_FACTIONS,
+    ARSENAL_MODE,
+    ARSENAL_POWER_TYPES,
+    ARSENAL_TIERS,
+    ARSENAL_UNIT_TYPES,
+    arsenal_launch_rewards,
+    arsenal_power_ids,
+    arsenal_reward_pool,
+    arsenal_unit_ids,
+    generate_mission_arsenals,
+    normalize_arsenal_settings,
+    reward_matches_arsenal,
+)
 from randomizer.rewards.weights import (
     DEFAULT_REWARD_WEIGHT,
     MAIN_REWARD_WEIGHT_TYPES,

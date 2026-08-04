@@ -1,6 +1,7 @@
 """Deterministic seed creation and mission-check completion."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     CAMPAIGN_FILTERS,
     CHECK_SCHEMA_VERSION,
     CONFIG_PATH,
@@ -18,6 +19,7 @@ from ._dependencies import (
     classic_mission_order,
     create_grid,
     filter_missions_by_build_settings,
+    generate_mission_arsenals,
     grid_opening_mission_count,
     log_event,
     messagebox,
@@ -61,6 +63,42 @@ class SeedController:
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
         reward_settings = self.current_reward_settings()
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        if arsenal_mode:
+            reward_settings = dict(reward_settings)
+            reward_settings.update({
+                'randomize_unit_access': True,
+                'start_with_tier_one_units': False,
+                'start_with_tier_one_defenses': False,
+                'starting_reward_count': 0,
+                'starting_unlock_rewards': [],
+            })
+            arsenal_settings = reward_settings['arsenal']
+            if not arsenal_settings['factions']:
+                self.append_log(
+                    'Cannot generate seed: Randomizer Arsenal needs at least one faction.',
+                    error=True,
+                )
+                return
+            if not any(
+                count
+                for tier in arsenal_settings['roster_sizes'].values()
+                for count in tier.values()
+            ) and not any(arsenal_settings['power_counts'].values()):
+                self.append_log(
+                    'Cannot generate seed: Randomizer Arsenal roster sizes are all zero.',
+                    error=True,
+                )
+                return
+            if not (
+                reward_settings['include_buff_rewards']
+                or reward_settings['include_power_buff_rewards']
+            ):
+                self.append_log(
+                    'Cannot generate seed: Randomizer Arsenal rewards must enable unit or power buffs.',
+                    error=True,
+                )
+                return
         power_sources_enabled = any((
             reward_settings['include_superweapon_rewards'],
             reward_settings['include_secondary_superweapon_rewards'],
@@ -203,15 +241,58 @@ class SeedController:
                 )
             except ValueError as exc:
                 raise ValueError(f'Cannot generate grid: {exc}.') from exc
-        if not any(self.reward_pool_for_code(code) for code in mission_codes):
+        mission_arsenals = {}
+        if options['reward_mode'] == ARSENAL_MODE:
+            mission_arsenals = generate_mission_arsenals(
+                seed,
+                mission_codes,
+                reward_settings,
+                reward_settings.get('arsenal'),
+            )
+            empty_codes = [
+                code for code, arsenal in mission_arsenals.items()
+                if not arsenal.get('units') and not arsenal.get('powers')
+            ]
+            if empty_codes:
+                raise ValueError(
+                    'Cannot generate seed: Arsenal exclusions leave no content for '
+                    + ', '.join(empty_codes[:5])
+                    + ('.' if len(empty_codes) <= 5 else ', and more.')
+                )
+            self._arsenal_override = mission_arsenals
+        empty_reward_codes = (
+            [
+                code for code in mission_codes
+                if not self.reward_pool_for_code(code)
+            ]
+            if options['reward_mode'] == ARSENAL_MODE
+            else (
+                [] if any(
+                    self.reward_pool_for_code(code) for code in mission_codes
+                ) else list(mission_codes[:1])
+            )
+        )
+        if empty_reward_codes:
+            detail = (
+                ' for ' + ', '.join(empty_reward_codes[:5])
+                + (', and more' if len(empty_reward_codes) > 5 else '')
+                if options['reward_mode'] == ARSENAL_MODE else ''
+            )
             raise ValueError(
-                'Cannot generate seed: selected reward settings produce no available rewards.'
+                'Cannot generate seed: selected reward settings produce no '
+                f'available rewards{detail}.'
             )
 
-        manual_starting_rewards = self.configured_manual_starting_rewards()
-        random_starting_rewards = self.generate_starting_reward_plan(
-            seed,
-            initial_rewards=manual_starting_rewards,
+        manual_starting_rewards = (
+            [] if options['reward_mode'] == ARSENAL_MODE
+            else self.configured_manual_starting_rewards()
+        )
+        random_starting_rewards = (
+            [] if options['reward_mode'] == ARSENAL_MODE
+            else self.generate_starting_reward_plan(
+                seed,
+                initial_rewards=manual_starting_rewards,
+            )
         )
         starting_rewards = manual_starting_rewards + random_starting_rewards
         mission_checks = self.build_mission_checks(
@@ -263,6 +344,7 @@ class SeedController:
             'mission_checks': mission_checks,
             'mission_objectives': mission_objectives,
             'reward_settings': reward_settings,
+            'mission_arsenals': mission_arsenals,
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
         if grid is not None:
@@ -292,6 +374,7 @@ class SeedController:
         self._reward_settings_override = None
         self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
+        self._arsenal_override = None
         self._seed_generation_context = None
         seed = result['seed']
         mission_goal = result['mission_goal']
@@ -387,6 +470,7 @@ class SeedController:
         self._reward_settings_override = None
         self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
+        self._arsenal_override = None
         self._seed_generation_context = None
         message = str(exc) or 'Seed generation failed.'
         self.append_log(message, error=True)

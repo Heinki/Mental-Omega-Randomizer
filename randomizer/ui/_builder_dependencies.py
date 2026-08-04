@@ -26,6 +26,12 @@ from randomizer.rewards.starting import (
     STARTING_REWARD_TYPE_DEFINITIONS,
     STARTING_UNLOCK_CATEGORY_LABELS,
 )
+from randomizer.rewards.arsenal import (
+    ARSENAL_FACTIONS,
+    ARSENAL_POWER_TYPES,
+    ARSENAL_TIERS,
+    ARSENAL_UNIT_TYPES,
+)
 from randomizer.ui.tooltips import TreeTooltip, WidgetTooltip
 from randomizer.ui.integer_slider import IntegerSlider
 from randomizer.ui.config import (

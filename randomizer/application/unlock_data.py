@@ -3,6 +3,7 @@
 from randomizer.config.tuning import mission_assistance_stack_count
 
 from ._dependencies import (
+    ARSENAL_MODE,
     ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
     FACTION_ORDER,
@@ -20,6 +21,7 @@ from ._dependencies import (
     mission_assistance_multipliers,
     reward_cameo_token,
     reward_display_name,
+    reward_matches_arsenal,
     reward_rule_summary,
     tech_ids_for_rewards,
     unit_display_label,
@@ -47,7 +49,7 @@ class UnlockDataController:
         return house_wide_buff_scope(
             reward,
             unit_specific_mode=(
-                self.active_reward_mode() == 'Chaos'
+                self.active_reward_mode() in {'Chaos', ARSENAL_MODE}
             ),
         )
 
@@ -165,7 +167,7 @@ class UnlockDataController:
         if not self.state:
             return 'No randomizer seed generated yet.'
 
-        lines = []
+        lines = self.mission_arsenal_summary_lines()
         starting_unit_ids = self.display_starting_tier_one_unit_ids()
         if starting_unit_ids:
             heading = 'Starting Tier 1 Units'
@@ -334,11 +336,117 @@ class UnlockDataController:
 
         return '\n'.join(lines).rstrip()
 
+    def mission_arsenal_summary_lines(self):
+        """Describe selected mission's temporary roster inside existing Summary."""
+        if not self.state or self.active_reward_mode() != ARSENAL_MODE:
+            return []
+        selected = self.selected_mission()
+        if not selected:
+            return [
+                'Mission Arsenal',
+                '===============',
+                'Select a mission to inspect its seed-fixed temporary arsenal.',
+                '',
+            ]
+        code = selected.get('code', '')
+        arsenal = self.mission_arsenal(code)
+        heading = f'Mission Arsenal - {selected.get("title", code)} ({code})'
+        lines = [
+            heading,
+            '=' * len(heading),
+            'Seed-fixed for this mission. Temporary; no permanent unit or power unlocks.',
+            '',
+        ]
+        if not arsenal:
+            lines.extend(('Mission is not part of the current seed.', ''))
+            return lines
+        tier_labels = {
+            'tier_1': 'Tier 1 (TechLevel 1-2)',
+            'tier_2': 'Tier 2 (TechLevel 3-6)',
+            'tier_3': 'Tier 3 (TechLevel 7+)',
+        }
+        type_labels = {
+            'infantry': 'Infantry',
+            'vehicles': 'Vehicles',
+            'aircraft': 'Aircraft',
+            'naval': 'Naval',
+        }
+        for tier in ('tier_1', 'tier_2', 'tier_3'):
+            tier_units = [
+                entry for entry in arsenal.get('units', ())
+                if entry.get('tier') == tier
+            ]
+            if not tier_units:
+                continue
+            lines.append(tier_labels[tier])
+            for unit_type in ('infantry', 'vehicles', 'aircraft', 'naval'):
+                units = [
+                    entry for entry in tier_units
+                    if entry.get('production_type') == unit_type
+                ]
+                if units:
+                    lines.append(
+                        f'  {type_labels[unit_type]}: '
+                        + ', '.join(
+                            f'{entry.get("label", entry.get("unit_id", "?"))} '
+                            f'[{entry.get("faction", "?")}]'
+                            for entry in units
+                        )
+                    )
+            lines.append('')
+        power_rewards = {
+            canonical_reward(reward).get('name'): canonical_reward(reward)
+            for reward in REWARD_POOL
+            if canonical_reward(reward).get('kind') == 'superweapon'
+        }
+        lines.append('Temporary powers')
+        powers = arsenal.get('powers', ())
+        if powers:
+            for power_type in ('offensive', 'secondary', 'aid'):
+                selected_powers = [
+                    entry for entry in powers
+                    if entry.get('power_type') == power_type
+                ]
+                if selected_powers:
+                    values = []
+                    for entry in selected_powers:
+                        reward = power_rewards.get(entry.get('reward_name'), {})
+                        values.append(
+                            reward_cameo_token(reward)
+                            + entry.get('label', entry.get('power_id', '?'))
+                        )
+                    lines.append(f'  {power_type.title()}: ' + ', '.join(values))
+        else:
+            lines.append('  None')
+        lines.extend(('', 'Active mission buffs'))
+        counts = {}
+        for reward in self.earned_rewards_from_checks():
+            reward = canonical_reward(reward)
+            if reward_matches_arsenal(reward, arsenal):
+                name = reward_display_name(reward)
+                counts[name] = counts.get(name, 0) + 1
+        if counts:
+            for name in sorted(counts, key=str.casefold):
+                suffix = f' x{counts[name]}' if counts[name] > 1 else ''
+                lines.append(f'  {name}{suffix}')
+        else:
+            lines.append('  None earned yet')
+        lines.append('')
+        return lines
+
     def current_unlock_unit_ids(self):
         if not self.state:
             return []
         unit_ids = set(self.display_starting_tier_one_unit_ids())
         unit_ids.update(self.display_starting_tier_one_defense_ids())
+        if self.active_reward_mode() == ARSENAL_MODE:
+            selected = self.selected_mission()
+            arsenal = self.mission_arsenal(selected.get('code', '')) if selected else {}
+            unit_ids.update(
+                str(entry.get('unit_id') or '').upper()
+                for entry in arsenal.get('units', ())
+                if entry.get('unit_id')
+            )
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         manual_names = self.manual_starting_reward_names_in_state()
@@ -545,12 +653,35 @@ class UnlockDataController:
             if reward.get('kind') != 'buff'
             for key in self.unlock_dashboard_reward_keys(reward)
         }
+        arsenal_mode = self.active_reward_mode() == ARSENAL_MODE
+        selected_mission = self.selected_mission() if arsenal_mode else None
+        selected_arsenal = (
+            self.mission_arsenal(selected_mission.get('code', ''))
+            if selected_mission else {}
+        )
+        selected_arsenal_units = {
+            str(entry.get('unit_id') or '').upper()
+            for entry in selected_arsenal.get('units', ())
+            if entry.get('unit_id')
+        }
+        selected_arsenal_powers = {
+            str(entry.get('power_id') or '').upper()
+            for entry in selected_arsenal.get('powers', ())
+            if entry.get('power_id')
+        }
+        arsenal_mission_label = (
+            f'{selected_mission.get("title", selected_mission.get("code", ""))} '
+            f'({selected_mission.get("code", "")})'
+            if selected_mission else ''
+        )
         # Buff rules can contain TechLevel for clone construction but do not
         # grant access. Only non-buff rewards may make a card "unlocked".
         earned_access = unlocked_reward_tech_ids(earned_rewards)
         starting_access = self.active_starting_tier_one_access_ids()
         randomize_access = self.randomize_unit_access_enabled()
-        foehn_units_available = self.active_reward_mode() == 'Chaos'
+        foehn_units_available = self.active_reward_mode() in {
+            'Chaos', ARSENAL_MODE,
+        }
 
         entries = []
         category_labels = {
@@ -644,29 +775,40 @@ class UnlockDataController:
                     'assigned': [], 'earned': [], 'earned_unlocks': [], 'available': [],
                     'available_unlocks': [], 'available_codes': [],
                 }
-            unlocked = bool(
-                (factions[0] != 'Foehn' or foehn_units_available or special_reward)
-                and (
-                    not randomize_access
-                    or unit_id in ALWAYS_AVAILABLE_TECH_IDS
-                    or unit_id in starting_access
-                    or unit_id in earned_access
-                    or any(
-                        reward.get('kind') != 'buff'
-                        for _source, reward in source_data['earned']
+            arsenal_selected = arsenal_mode and unit_id in selected_arsenal_units
+            unlocked = (
+                arsenal_selected
+                if arsenal_mode
+                else bool(
+                    (factions[0] != 'Foehn' or foehn_units_available or special_reward)
+                    and (
+                        not randomize_access
+                        or unit_id in ALWAYS_AVAILABLE_TECH_IDS
+                        or unit_id in starting_access
+                        or unit_id in earned_access
+                        or any(
+                            reward.get('kind') != 'buff'
+                            for _source, reward in source_data['earned']
+                        )
                     )
                 )
             )
             status = (
-                'unlocked'
-                if unlocked
-                else 'available'
-                if source_data['available_unlocks'] and not privacy
-                else 'locked'
-                if source_data['assigned']
-                else 'unavailable'
+                ('unlocked' if arsenal_selected else 'unavailable')
+                if arsenal_mode
+                else (
+                    'unlocked'
+                    if unlocked
+                    else 'available'
+                    if source_data['available_unlocks'] and not privacy
+                    else 'locked'
+                    if source_data['assigned']
+                    else 'unavailable'
+                )
             )
-            if key in manual_unlock_keys:
+            if arsenal_selected:
+                condition = 'Seed-fixed temporary mission arsenal'
+            elif key in manual_unlock_keys:
                 condition = 'Preselected unlock'
             elif unit_id in starting_access:
                 condition = 'Pre-generation settings'
@@ -687,6 +829,9 @@ class UnlockDataController:
                 'condition': condition,
                 'sources': source_data,
                 'privacy': privacy,
+                'arsenal_mode': arsenal_mode,
+                'arsenal_selected': arsenal_selected,
+                'arsenal_mission_label': arsenal_mission_label,
             })
 
         special_rewards = {
@@ -759,14 +904,21 @@ class UnlockDataController:
                     'available_unlocks': [], 'available_codes': [],
                 }
             )
+            arsenal_selected = (
+                arsenal_mode and str(power_id).upper() in selected_arsenal_powers
+            )
             status = (
-                'unlocked'
-                if source_data['earned_unlocks']
-                else 'available'
-                if source_data['available_unlocks'] and not privacy
-                else 'locked'
-                if source_data['assigned']
-                else 'unavailable'
+                ('unlocked' if arsenal_selected else 'unavailable')
+                if arsenal_mode
+                else (
+                    'unlocked'
+                    if source_data['earned_unlocks']
+                    else 'available'
+                    if source_data['available_unlocks'] and not privacy
+                    else 'locked'
+                    if source_data['assigned']
+                    else 'unavailable'
+                )
             )
             entries.append({
                 'key': key,
@@ -779,12 +931,18 @@ class UnlockDataController:
                 ),
                 'status': status,
                 'condition': (
-                    'Preselected unlock'
-                    if key in manual_unlock_keys else ''
+                    'Seed-fixed temporary mission arsenal'
+                    if arsenal_selected
+                    else 'Preselected unlock'
+                    if key in manual_unlock_keys
+                    else ''
                 ),
                 'sources': source_data,
                 'privacy': privacy,
                 'reward': reward,
+                'arsenal_mode': arsenal_mode,
+                'arsenal_selected': arsenal_selected,
+                'arsenal_mission_label': arsenal_mission_label,
             })
         # One final shared pass covers units, defenses/buildings, support
         # powers, and superweapons without category-specific drift.
@@ -800,8 +958,19 @@ class UnlockDataController:
             'locked': 'Locked',
             'unavailable': 'Unavailable in this seed',
         }
+        arsenal_entry = bool(
+            entry.get('arsenal_mode')
+            and entry.get('kind') in {'unit', 'power'}
+        )
+        status_label = (
+            'Active in selected mission'
+            if arsenal_entry and entry.get('arsenal_selected')
+            else 'Not in selected mission arsenal'
+            if arsenal_entry
+            else status_labels[entry['status']]
+        )
         lines = [
-            f'{entry["label"]} — {status_labels[entry["status"]]}',
+            f'{entry["label"]} - {status_label}',
             '─' * min(48, max(12, len(entry['label']) + 12)),
         ]
         sources = entry['sources']
@@ -824,9 +993,12 @@ class UnlockDataController:
 
         if entry.get('condition'):
             lines.append(f'Condition: {entry["condition"]}')
+        if arsenal_entry and entry.get('arsenal_mission_label'):
+            lines.append(f'Mission: {entry["arsenal_mission_label"]}')
         if (
             earned_source_names
             and entry.get('condition') != 'Preselected unlock'
+            and (not arsenal_entry or entry.get('arsenal_selected'))
         ):
             lines.append('Earned from: ' + compact_sources(earned_source_names))
         if entry['status'] == 'available' and available_source_names:
@@ -838,7 +1010,11 @@ class UnlockDataController:
                 else 'Access not currently available.'
             )
         elif entry['status'] == 'unavailable':
-            lines.append('Not assigned by this seed and current reward settings.')
+            lines.append(
+                'Not part of this mission\'s seed-fixed temporary arsenal.'
+                if arsenal_entry
+                else 'Not assigned by this seed and current reward settings.'
+            )
 
         earned = [reward for _, reward in sources['earned']]
         effect_lines = []
@@ -855,11 +1031,16 @@ class UnlockDataController:
                 ))
         else:
             buffs = {}
-            active_effect_rewards = (
-                earned
-                if entry.get('kind') != 'power' or entry['status'] == 'unlocked'
-                else ()
-            )
+            active_effect_rewards = earned
+            if (
+                (arsenal_entry and not entry.get('arsenal_selected'))
+                or (
+                    not arsenal_entry
+                    and entry.get('kind') == 'power'
+                    and entry['status'] != 'unlocked'
+                )
+            ):
+                active_effect_rewards = ()
             for reward in active_effect_rewards:
                 if reward.get('kind') == 'buff':
                     key = (
@@ -888,10 +1069,34 @@ class UnlockDataController:
             lines.append('Current effects:')
             lines.extend(f'• {line}' for line in effect_lines)
 
+        inactive_arsenal_buffs = [
+            reward
+            for reward in earned
+            if arsenal_entry
+            and not entry.get('arsenal_selected')
+            and reward.get('kind') == 'buff'
+        ]
+        if inactive_arsenal_buffs:
+            deferred = {}
+            for reward in inactive_arsenal_buffs:
+                key = reward.get('buff_type') or reward.get('power_buff_type')
+                deferred.setdefault(
+                    key, {'reward': reward, 'count': 0}
+                )['count'] += 1
+            lines.append('Earned buffs inactive in this mission:')
+            for buff in deferred.values():
+                for summary in buff_effect_lines(
+                    buff['reward'],
+                    count=buff['count'],
+                    include_label=False,
+                ):
+                    lines.append(f'  {summary}')
+
         deferred_power_buffs = [
             reward
             for reward in earned
-            if entry.get('kind') == 'power'
+            if not arsenal_entry
+            and entry.get('kind') == 'power'
             and entry['status'] != 'unlocked'
             and reward.get('kind') == 'buff'
         ]

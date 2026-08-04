@@ -1,6 +1,7 @@
 """Advanced-tab controls for superweapon and aid-power buff rewards."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     CAMPAIGN_FILTERS,
     FACTION_TILE_COLORS,
     POWER_BUFF_TYPES,
@@ -22,6 +23,11 @@ class PowerBuffSettingsController:
     def power_buff_entries(self):
         entries = []
         selected_campaign = self.campaign_var.get()
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        arsenal_factions = {
+            faction for faction, variable in self.arsenal_faction_vars.items()
+            if variable.get()
+        }
         enabled_categories = {
             category
             for category, enabled in (
@@ -49,7 +55,12 @@ class PowerBuffSettingsController:
                 not power_id
                 or power_id in self.excluded_superweapon_ids
                 or (
-                    selected_campaign != CAMPAIGN_FILTERS[0]
+                    arsenal_mode
+                    and faction not in arsenal_factions | {'Neutral'}
+                )
+                or (
+                    not arsenal_mode
+                    and selected_campaign != CAMPAIGN_FILTERS[0]
                     and faction not in {selected_campaign, 'Neutral'}
                 )
             ):

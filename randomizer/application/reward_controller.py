@@ -1,6 +1,7 @@
 """Reward filtering, mission checks, and earned reward state."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     ALWAYS_AVAILABLE_TECH_IDS,
     BATTLE_CLIENT_INI,
     BUFF_TARGETS,
@@ -28,6 +29,10 @@ from ._dependencies import (
     tech_ids_for_rewards,
     reward_selection_weight,
     is_max_rewards_achieved_reward,
+    arsenal_launch_rewards,
+    arsenal_power_ids,
+    arsenal_reward_pool,
+    arsenal_unit_ids,
     unit_display_label,
     unit_role_equivalents,
     unlocked_reward_tech_ids,
@@ -83,7 +88,7 @@ class RewardController:
         Canonicalizing and filtering again at launch prevents an old catalog
         mistake from leaking foreign technology into a single-faction seed.
         """
-        if self.active_reward_mode() == 'Chaos':
+        if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
             return None
         selected = (self.state or {}).get('campaign_filter', '')
         if selected == 'Foehn':
@@ -100,7 +105,7 @@ class RewardController:
         """Keep native Foehn unit access exclusive to Chaos reward mode."""
         reward = canonical_reward(reward)
         return bool(
-            self.active_reward_mode() != 'Chaos'
+            self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
             and reward.get('kind') != 'superweapon'
             and reward.get('access_category') != 'special_building'
             and not self.reward_is_special_building(reward)
@@ -147,6 +152,19 @@ class RewardController:
             )
         ]
 
+    def mission_arsenal(self, code):
+        code = str(code or '').upper()
+        override = self.__dict__.get('_arsenal_override')
+        if isinstance(override, dict):
+            return override.get(code, {})
+        return (self.state or {}).get('mission_arsenals', {}).get(code, {})
+
+    def launch_rewards_for_mission(self, code):
+        rewards = self.active_launch_rewards()
+        if self.active_reward_mode() != ARSENAL_MODE:
+            return rewards
+        return arsenal_launch_rewards(self.mission_arsenal(code), rewards)
+
     def active_unlocked_reward_tech_ids(self):
         return unlocked_reward_tech_ids(self.active_launch_rewards())
 
@@ -162,6 +180,10 @@ class RewardController:
             for unit_id in (additional_tech_ids or ())
             if unit_id
         }
+        if self.active_reward_mode() == ARSENAL_MODE:
+            return arsenal_unit_ids(
+                self.mission_arsenal(mission.get('code'))
+            ) | additional
         unlocked = set(self.active_unlocked_reward_tech_ids())
         if self.active_reward_mode() == 'Chaos':
             return unlocked | additional
@@ -271,6 +293,11 @@ class RewardController:
 
     def reward_pool_for_code(self, code):
         reward_mode = self.active_reward_mode()
+        if reward_mode == ARSENAL_MODE:
+            return arsenal_reward_pool(
+                self.configured_reward_pool(),
+                self.mission_arsenal(code),
+            )
         if reward_mode == 'Chaos':
             return self.configured_reward_pool()
         factions = self.reward_factions_for_code(code)
@@ -534,6 +561,12 @@ class RewardController:
         ]
 
     def reward_factions_for_code(self, _code):
+        if self.active_reward_mode() == ARSENAL_MODE:
+            return set(
+                self.active_reward_settings().get('arsenal', {}).get(
+                    'factions', ()
+                )
+            )
         generation_context = self.__dict__.get('_seed_generation_context') or {}
         selected = generation_context.get('campaign_filter')
         if selected is None:
@@ -734,6 +767,13 @@ class RewardController:
             )
         if grid is None and getattr(self, 'state', None):
             grid = self.state.get('grid')
+        arsenal_units = set()
+        arsenal_powers = set()
+        if self.active_reward_mode() == ARSENAL_MODE:
+            for code in mission_codes:
+                arsenal = self.mission_arsenal(code)
+                arsenal_units.update(arsenal_unit_ids(arsenal))
+                arsenal_powers.update(arsenal_power_ids(arsenal))
         return plan_seed_rewards(
             mission_codes,
             seed,
@@ -743,7 +783,18 @@ class RewardController:
             reward_factions_for_code=self.reward_factions_for_code,
             reward_pool_for_code=self.reward_pool_for_code,
             configured_reward_pool=self.configured_reward_pool,
-            starting_unlocked_tech_ids=self.active_starting_tier_one_access_ids(),
+            reward_pool_cache_key_for_code=(
+                (lambda code: ('arsenal', str(code).upper()))
+                if self.active_reward_mode() == ARSENAL_MODE
+                else None
+            ),
+            allow_cross_pool_fallback=(
+                self.active_reward_mode() != ARSENAL_MODE
+            ),
+            starting_unlocked_tech_ids=(
+                arsenal_units or self.active_starting_tier_one_access_ids()
+            ),
+            starting_unlocked_power_ids=arsenal_powers,
             initial_rewards=initial_rewards,
             require_access_for_unit_buffs=self.randomize_unit_access_enabled(),
             share_role_buffs=self.share_chaos_role_buffs_enabled(),

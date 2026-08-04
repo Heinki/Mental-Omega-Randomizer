@@ -1,6 +1,7 @@
 """Mission file preparation, game process control, and log watching."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     BUFF_TARGETS,
     DEBUG_LOG,
     DIFFICULTIES,
@@ -149,7 +150,9 @@ class LaunchController:
             for section, values in mcv_rules.items():
                 rules.setdefault(section, {}).update(values)
 
-            already_available_ids = set(self.active_unlocked_reward_tech_ids())
+            already_available_ids = set(tech_ids_for_rewards(
+                self.launch_rewards_for_mission(mission_code)
+            ))
             already_available_ids.update(
                 self.active_starting_tier_one_expanded_ids()
             )
@@ -163,7 +166,7 @@ class LaunchController:
                 )
             } - already_available_ids
             if delayed_native_ids:
-                if self.active_reward_mode() == 'Chaos':
+                if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
                     delayed_rewards = [
                         reward
                         for reward in REWARD_POOL
@@ -204,7 +207,7 @@ class LaunchController:
                 # each mapped faction defense behind physical captured tech.
                 earned_defense_rewards = [
                     reward
-                    for reward in self.active_launch_rewards()
+                    for reward in self.launch_rewards_for_mission(mission_code)
                     if reward.get('kind') not in {'buff', 'superweapon'}
                     and any(
                         BUFF_TARGETS.get(str(tech_id).upper(), {}).get('category')
@@ -212,7 +215,7 @@ class LaunchController:
                         for tech_id in reward.get('rules', {})
                     )
                 ]
-                if self.active_reward_mode() == 'Chaos':
+                if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
                     defense_rules = chaos_earned_access_rules(
                         lines,
                         earned_defense_rewards,
@@ -240,10 +243,10 @@ class LaunchController:
                 rules.setdefault(section, {}).update(values)
             return rules
 
-        if self.active_reward_mode() == 'Chaos':
+        if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
             chaos_access_rules = chaos_earned_access_rules(
                 lines,
-                self.active_launch_rewards(),
+                self.launch_rewards_for_mission(mission_code),
                 additional_build_houses=(),
                 excluded_special_infantry_factories=(
                     excluded_special_infantry_factories

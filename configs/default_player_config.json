@@ -28,6 +28,15 @@
       },
       "generation": {
         "reward_mode": "Standard",
+        "arsenal": {
+          "factions": ["Allies", "Soviets", "Epsilon", "Foehn"],
+          "roster_sizes": {
+            "tier_1": {"infantry": 3, "vehicles": 2, "aircraft": 0, "naval": 0},
+            "tier_2": {"infantry": 3, "vehicles": 3, "aircraft": 1, "naval": 1},
+            "tier_3": {"infantry": 2, "vehicles": 2, "aircraft": 1, "naval": 1}
+          },
+          "power_counts": {"offensive": 1, "secondary": 0, "aid": 1}
+        },
         "starting_unlocked_missions": 3,
         "include_no_build_missions": true,
         "include_no_build_production_missions": true,

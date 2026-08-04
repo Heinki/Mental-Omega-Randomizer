@@ -1,6 +1,10 @@
 """Compose launcher controllers into the Tk application."""
 
 from ._dependencies import (
+    ARSENAL_FACTIONS,
+    ARSENAL_POWER_TYPES,
+    ARSENAL_TIERS,
+    ARSENAL_UNIT_TYPES,
     APP_VERSION,
     BUFF_TYPES,
     CAMPAIGN_FILTERS,
@@ -24,6 +28,7 @@ from ._dependencies import (
     load_config,
     log_event,
     normalize_reward_weights,
+    normalize_arsenal_settings,
     queue,
     tk,
     valid_choice,
@@ -83,6 +88,7 @@ class LauncherApp(
         self._reward_settings_override = None
         self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
+        self._arsenal_override = None
         self.active_game_process = None
         self.active_hook = None
         self.active_mission_attempt = None
@@ -134,6 +140,29 @@ class LauncherApp(
         )
         self.rewards_per_check_var = tk.IntVar(value=default_rewards_per_check)
         generation_config = self.config.get('generation', {})
+        arsenal_settings = normalize_arsenal_settings(
+            generation_config.get('arsenal')
+        )
+        enabled_arsenal_factions = set(arsenal_settings['factions'])
+        self.arsenal_faction_vars = {
+            faction: tk.BooleanVar(value=faction in enabled_arsenal_factions)
+            for faction in ARSENAL_FACTIONS
+        }
+        self.arsenal_roster_size_vars = {
+            tier: {
+                unit_type: tk.IntVar(
+                    value=arsenal_settings['roster_sizes'][tier][unit_type]
+                )
+                for unit_type in ARSENAL_UNIT_TYPES
+            }
+            for tier in ARSENAL_TIERS
+        }
+        self.arsenal_power_count_vars = {
+            power_type: tk.IntVar(
+                value=arsenal_settings['power_counts'][power_type]
+            )
+            for power_type in ARSENAL_POWER_TYPES
+        }
         self.excluded_mission_codes = {
             str(code).upper()
             for code in generation_config.get('excluded_mission_codes', [])

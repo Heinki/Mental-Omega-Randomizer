@@ -377,7 +377,9 @@ def _build_right_panel(self, main_frame):
         'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
         'Chaos draws exact unit unlocks from all four factions, forces randomized access/tech locking, '
         'and lets every compatible Barracks, factory, airfield, shipyard, or Construction Yard build '
-        'the unlocked roster. It does not grant production structures.',
+        'the unlocked roster. It does not grant production structures. Randomizer Arsenal creates a '
+        'seed-fixed temporary mixed-faction roster and power set for each mission. Arsenal rewards are '
+        'buffs only, target content present in that mission, and never permanently unlock units or powers.',
     )
 
     ttk.Label(options_row, text='Progression').grid(row=8, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
