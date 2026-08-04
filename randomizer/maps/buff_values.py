@@ -9,6 +9,7 @@ from ._shared import (
     MANDATORY_EXCLUDED_BUFF_TYPE_IDS,
     RANDOMIZER_TYPE_LIST_KEY_START,
     WEAPON_STAT_BUFF_TYPES,
+    all_section_value_maps,
     buff_stack_limit,
     buffs_with_unlocked_access,
     capped_movement_speed,
@@ -401,9 +402,17 @@ def _allowed_buff_house_names(
         ))
     return records, {name.lower() for name in allowed_names if name}
 
-def _register_map_type(section_rules, lines, installed_sections, list_section, type_id):
+def _register_map_type(
+    section_rules,
+    lines,
+    installed_sections,
+    list_section,
+    type_id,
+    map_entries=None,
+):
     installed_entries = installed_sections.get(list_section, {})
-    map_entries = section_value_map_preserve(lines, list_section)
+    if map_entries is None:
+        map_entries = section_value_map_preserve(lines, list_section)
     pending_entries = section_rules.setdefault(list_section, {})
     registered = {
         str(value).lower()
@@ -439,14 +448,19 @@ def reconcile_generated_techno_registrations(
     repair_rules = {}
     repaired = []
     missing_definitions = []
+    map_sections = {
+        str(section).lower(): values
+        for section, values in all_section_value_maps(lines).items()
+    }
     for list_section, type_ids in expected_by_list.items():
+        map_entries = map_sections.get(list_section.lower(), {})
         for type_id in unique_in_order(
             str(value or '').strip() for value in type_ids
         ):
             if not type_id:
                 continue
             if not (
-                section_value_map_preserve(lines, type_id)
+                map_sections.get(type_id.lower())
                 or installed_sections.get(type_id, {})
             ):
                 missing_definitions.append(type_id)
@@ -457,7 +471,7 @@ def reconcile_generated_techno_registrations(
                     installed_sections.get(list_section, {}).values()
                 )
                 + list(
-                    section_value_map_preserve(lines, list_section).values()
+                    map_entries.values()
                 )
                 + list(repair_rules.get(list_section, {}).values())
             }
@@ -467,6 +481,7 @@ def reconcile_generated_techno_registrations(
                 installed_sections,
                 list_section,
                 type_id,
+                map_entries=map_entries,
             )
             if type_id.lower() not in before:
                 repaired.append(type_id)

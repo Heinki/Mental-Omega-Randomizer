@@ -227,7 +227,7 @@ def house_wide_buff_effect_lines(
     return [text]
 
 
-def buff_stack_limit(reward):
+def _uncached_buff_stack_limit(reward):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return None
@@ -312,6 +312,22 @@ def buff_stack_limit(reward):
     if buff_type in {'open_topped', 'cloak', 'sensors', 'veteran'}:
         return 1
     return None
+
+
+_BUFF_STACK_LIMIT_BY_NAME = {}
+
+
+def buff_stack_limit(reward):
+    """Return immutable catalogue limits without recalculating stat curves."""
+    reward = canonical_reward(reward)
+    reward_name = reward.get('name')
+    if reward_name and REWARD_BY_NAME.get(reward_name) is reward:
+        if reward_name not in _BUFF_STACK_LIMIT_BY_NAME:
+            _BUFF_STACK_LIMIT_BY_NAME[reward_name] = (
+                _uncached_buff_stack_limit(reward)
+            )
+        return _BUFF_STACK_LIMIT_BY_NAME[reward_name]
+    return _uncached_buff_stack_limit(reward)
 
 
 def effective_buff_count(reward, count):

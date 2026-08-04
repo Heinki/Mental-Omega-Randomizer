@@ -29,6 +29,9 @@ def read_json_object(path):
     return data
 
 
-def atomic_write_json(path, data):
+def atomic_write_json(path, data, *, indent=2):
     """Serialize an object consistently through atomic text replacement."""
-    atomic_write_text(path, json.dumps(data, indent=2))
+    options = {'indent': indent}
+    if indent is None:
+        options['separators'] = (',', ':')
+    atomic_write_text(path, json.dumps(data, **options))

@@ -204,8 +204,7 @@ class UnlockDataController:
 
         earned = []
         manual_names = self.manual_starting_reward_names_in_state()
-        for reward in self.earned_rewards_from_checks():
-            canonical = canonical_reward(reward)
+        for canonical in self.canonical_earned_rewards():
             if (
                 not canonical.get('retired_reward')
                 and (
@@ -420,8 +419,7 @@ class UnlockDataController:
             lines.append('  None')
         lines.extend(('', 'Active mission buffs'))
         counts = {}
-        for reward in self.earned_rewards_from_checks():
-            reward = canonical_reward(reward)
+        for reward in self.canonical_earned_rewards():
             if reward_matches_arsenal(reward, arsenal):
                 name = reward_display_name(reward)
                 counts[name] = counts.get(name, 0) + 1
@@ -450,8 +448,7 @@ class UnlockDataController:
         share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
         manual_names = self.manual_starting_reward_names_in_state()
-        for reward in self.earned_rewards_from_checks():
-            reward = canonical_reward(reward)
+        for reward in self.canonical_earned_rewards():
             if (
                 reward.get('name') not in manual_names
                 and self.standard_foehn_unit_reward(reward)
@@ -494,9 +491,19 @@ class UnlockDataController:
             key=self.unit_faction_sort_key,
         )
 
-    def unlock_dashboard_reward_keys(self, reward):
+    def unlock_dashboard_reward_keys(
+        self,
+        reward,
+        *,
+        share_role_buffs=None,
+        share_foehn_roles=None,
+    ):
         """Return catalogue icons affected by one serialized reward."""
         reward = canonical_reward(reward)
+        if share_role_buffs is None:
+            share_role_buffs = self.share_chaos_role_buffs_enabled()
+        if share_foehn_roles is None:
+            share_foehn_roles = self.foehn_standard_bundles_enabled()
         keys = set()
         house_scope = self.reward_house_wide_buff_scope(reward)
         if house_scope:
@@ -508,10 +515,10 @@ class UnlockDataController:
             keys.add(f'unit:{unit_id}')
             if (
                 not reward.get('global_buff')
-                and (self.share_chaos_role_buffs_enabled() or self.foehn_standard_bundles_enabled())
+                and (share_role_buffs or share_foehn_roles)
             ):
                 equivalents = unit_role_equivalents(unit_id)
-                if self.foehn_standard_bundles_enabled():
+                if share_foehn_roles:
                     equivalents = {
                         equivalent
                         for equivalent in equivalents
@@ -535,9 +542,14 @@ class UnlockDataController:
 
     def unlock_dashboard_sources(self):
         """Index assigned, earned, and presently playable rewards by icon."""
+        cached = self.__dict__.get('_unlock_dashboard_sources_cache')
+        if cached is not None:
+            return cached
         indexed = {}
         if not self.state:
             return indexed
+        share_role_buffs = self.share_chaos_role_buffs_enabled()
+        share_foehn_roles = self.foehn_standard_bundles_enabled()
         playable = {
             code
             for code in self.unlocked_mission_codes()
@@ -553,7 +565,11 @@ class UnlockDataController:
                     reward = canonical_reward(reward)
                     if reward.get('retired_reward'):
                         continue
-                    for key in self.unlock_dashboard_reward_keys(reward):
+                    for key in self.unlock_dashboard_reward_keys(
+                        reward,
+                        share_role_buffs=share_role_buffs,
+                        share_foehn_roles=share_foehn_roles,
+                    ):
                         entry = indexed.setdefault(
                             key,
                             {
@@ -586,7 +602,11 @@ class UnlockDataController:
             reward = canonical_reward(reward)
             if reward.get('retired_reward'):
                 continue
-            for key in self.unlock_dashboard_reward_keys(reward):
+            for key in self.unlock_dashboard_reward_keys(
+                reward,
+                share_role_buffs=share_role_buffs,
+                share_foehn_roles=share_foehn_roles,
+            ):
                 entry = indexed.setdefault(
                     key,
                     {
@@ -603,6 +623,7 @@ class UnlockDataController:
                 entry['earned'].append(item)
                 if reward.get('kind') != 'buff':
                     entry['earned_unlocks'].append(item)
+        self._unlock_dashboard_sources_cache = indexed
         return indexed
 
     def preselected_unlock_rewards(self):
@@ -643,10 +664,9 @@ class UnlockDataController:
             and self.active_progression_mode() == 'Grid Mode'
             and self.hide_locked_grid_missions_var.get()
         )
-        earned_rewards = [
-            canonical_reward(reward)
-            for reward in (self.earned_rewards_from_checks() if self.state else [])
-        ]
+        earned_rewards = list(
+            self.canonical_earned_rewards() if self.state else ()
+        )
         manual_unlock_keys = {
             key
             for reward in self.preselected_unlock_rewards()
@@ -1150,7 +1170,7 @@ class UnlockDataController:
                 return
             self.advanced_unit_cameo_paths = None
             self.unlock_dashboard_signature = None
-            self.unlock_dashboard_structure_signature = None
+            self.unlock_dashboard_structure_signatures = {}
             self.refresh_advanced_pool_views()
             self.refresh_progress_view()
 

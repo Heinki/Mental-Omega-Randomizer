@@ -231,7 +231,7 @@ def _read_ini_sections(path):
     return sections
 
 
-def _extract_ini_key_mapping(cache_path, source_name, key_name, upper_value=False):
+def _extract_ini_key_mapping(cache_path, source_name, key_name):
     """Return safe values for one INI key, indexed by upper-case section."""
     if not cache_path.exists():
         extract_mix_files([(source_name, cache_path)])
@@ -247,7 +247,7 @@ def _extract_ini_key_mapping(cache_path, source_name, key_name, upper_value=Fals
         if not section or key.lower() != key_name.lower():
             continue
         if SAFE_ASSET_NAME.fullmatch(value):
-            mapping[section] = value.upper() if upper_value else value
+            mapping[section] = value
     return mapping
 
 
@@ -287,29 +287,40 @@ def art_cameo_names():
     return mapping
 
 
+def _load_rules_asset_names():
+    """Populate Image and SidebarPCX maps in one rules-file pass."""
+    global _RULES_ART_NAMES, _RULES_SIDEBAR_NAMES
+    if _RULES_ART_NAMES is not None and _RULES_SIDEBAR_NAMES is not None:
+        return
+    if not RULES_CACHE_PATH.exists():
+        extract_mix_files([('RULESMO.INI', RULES_CACHE_PATH)])
+    if not RULES_CACHE_PATH.exists():
+        return
+    art_names = {}
+    sidebar_names = {}
+    section = ''
+    for record_type, key, value in _iter_ini_records(RULES_CACHE_PATH):
+        if record_type == 'section':
+            section = key.upper()
+        elif section and SAFE_ASSET_NAME.fullmatch(value):
+            lowered_key = key.lower()
+            if lowered_key == 'image':
+                art_names[section] = value.upper()
+            elif lowered_key == 'sidebarpcx':
+                sidebar_names[section] = value
+    _RULES_ART_NAMES = art_names
+    _RULES_SIDEBAR_NAMES = sidebar_names
+
+
 def rules_art_names():
-    global _RULES_ART_NAMES
-    if _RULES_ART_NAMES is not None:
-        return _RULES_ART_NAMES
-    mapping = _extract_ini_key_mapping(
-        RULES_CACHE_PATH, 'RULESMO.INI', 'Image', upper_value=True
-    )
-    if mapping or RULES_CACHE_PATH.exists():
-        _RULES_ART_NAMES = mapping
-    return mapping
+    _load_rules_asset_names()
+    return _RULES_ART_NAMES or {}
 
 
 def rules_sidebar_names():
     """Return installed SidebarPCX filenames keyed by rules section."""
-    global _RULES_SIDEBAR_NAMES
-    if _RULES_SIDEBAR_NAMES is not None:
-        return _RULES_SIDEBAR_NAMES
-    mapping = _extract_ini_key_mapping(
-        RULES_CACHE_PATH, 'RULESMO.INI', 'SidebarPCX'
-    )
-    if mapping or RULES_CACHE_PATH.exists():
-        _RULES_SIDEBAR_NAMES = mapping
-    return mapping
+    _load_rules_asset_names()
+    return _RULES_SIDEBAR_NAMES or {}
 
 
 def png_chunk(kind, payload):

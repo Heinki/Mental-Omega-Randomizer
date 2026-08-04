@@ -168,7 +168,11 @@ class StateController:
             self.save_state()
 
     def save_state(self):
-        atomic_write_json(STATE_PATH, self.state)
+        self.__dict__.pop('_active_reward_settings_cache', None)
+        self.__dict__.pop('_canonical_earned_rewards_cache', None)
+        self.__dict__.pop('_unlock_dashboard_sources_cache', None)
+        self.__dict__.pop('_configured_reward_pool_cache', None)
+        atomic_write_json(STATE_PATH, self.state, indent=None)
 
     def config_reward_settings(self):
         generation_config = self.config.get('generation', {})
@@ -419,11 +423,25 @@ class StateController:
     def active_reward_settings(self):
         override = self.__dict__.get('_reward_settings_override')
         if override is not None:
-            settings = dict(override)
+            source = override
         elif self.state and isinstance(self.state.get('reward_settings'), dict):
-            settings = dict(self.state.get('reward_settings', {}))
+            source = self.state.get('reward_settings', {})
         else:
-            settings = self.current_reward_settings()
+            source = None
+        reward_mode = self.active_reward_mode()
+        cached = self.__dict__.get('_active_reward_settings_cache')
+        if (
+            source is not None
+            and cached is not None
+            and cached[0] is source
+            and cached[1] == reward_mode
+        ):
+            return cached[2]
+        settings = (
+            dict(source)
+            if source is not None
+            else self.current_reward_settings()
+        )
         settings.setdefault('randomize_unit_access', True)
         settings['arsenal'] = normalize_arsenal_settings(
             settings.get('arsenal')
@@ -446,7 +464,7 @@ class StateController:
         # Legacy seeds may contain experimental_player_unit_clones. Clone
         # isolation is mandatory now, so the stored flag is deliberately ignored.
         settings.pop('experimental_player_unit_clones', None)
-        if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
+        if reward_mode in {'Chaos', ARSENAL_MODE}:
             settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
         settings.setdefault('include_superweapon_rewards', False)
@@ -468,6 +486,10 @@ class StateController:
         settings['reward_weights'] = normalize_reward_weights(
             settings.get('reward_weights')
         )
+        if source is not None:
+            self._active_reward_settings_cache = (
+                source, reward_mode, settings
+            )
         return settings
 
     def randomize_unit_access_enabled(self):

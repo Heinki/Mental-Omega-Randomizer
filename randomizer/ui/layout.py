@@ -481,6 +481,11 @@ def _build_info_tabs(self, info_tabs):
     unlocks_notebook = ttk.Notebook(unlocks_frame, style='Unlocks.TNotebook')
     self.unlocks_notebook = unlocks_notebook
     unlocks_notebook.grid(row=1, column=0, sticky='nsew')
+    unlocks_notebook.bind(
+        '<<NotebookTabChanged>>',
+        self.on_unlock_dashboard_tab_changed,
+        add='+',
+    )
     self.unlock_icon_canvases = {}
     self.unlock_icon_frames = {}
     for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn', 'Neutral'):
@@ -552,3 +557,8 @@ def _build_info_tabs(self, info_tabs):
     self.bind_all('<Control-f>', self.focus_unlock_search, add='+')
     self.bind_all('<F3>', self.find_unlock_next, add='+')
     self.bind_all('<Shift-F3>', self.find_unlock_previous, add='+')
+    info_tabs.bind(
+        '<<NotebookTabChanged>>',
+        self.on_info_tab_changed,
+        add='+',
+    )

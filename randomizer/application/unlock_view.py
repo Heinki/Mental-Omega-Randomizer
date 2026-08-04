@@ -21,12 +21,45 @@ from ._dependencies import (
 
 class UnlockViewController:
 
+    def unlocks_view_visible(self):
+        return bool(
+            hasattr(self, 'info_tabs')
+            and hasattr(self, 'unlocks_tab')
+            and self.info_tabs.select() == str(self.unlocks_tab)
+        )
+
+    def refresh_unlocks_view(self):
+        if not getattr(self, '_unlocks_view_dirty', False):
+            return
+        self._unlocks_view_dirty = False
+        if not self.state:
+            self.set_unlocks_text('No randomizer seed generated yet.')
+            return
+        self.set_unlocks_text(
+            self.current_unlocks_text(),
+            self.current_unlock_unit_ids(),
+        )
+
+    def on_unlock_dashboard_tab_changed(self, _event=None):
+        if self.unlocks_view_visible():
+            self.after_idle(self.refresh_unlock_dashboard)
+
     def refresh_unlock_dashboard(self):
         if not hasattr(self, 'unlock_icon_frames'):
             return
         entries = self.unlock_dashboard_entries()
+        selected_tab = self.unlocks_notebook.select()
+        selected_faction = (
+            self.unlocks_notebook.tab(selected_tab, 'text')
+            if selected_tab else ''
+        )
+        selected_entries = [
+            entry for entry in entries
+            if entry['faction'] == selected_faction
+        ]
         signature = (
             bool(self.dark_mode_var.get()),
+            selected_faction,
             tuple(
                 (
                     entry['key'], entry['status'], entry['condition'], entry['privacy'],
@@ -73,18 +106,23 @@ class UnlockViewController:
                     entry['label'], entry['kind'], entry['id'],
                     str((entry.get('reward') or {}).get('superweapon_sidebar_image', '')),
                 )
-                for entry in entries
+                for entry in selected_entries
             ),
         )
         cards = getattr(self, 'unlock_dashboard_cards', {})
+        structure_signatures = getattr(
+            self, 'unlock_dashboard_structure_signatures', {}
+        )
+        selected_keys = {entry['key'] for entry in selected_entries}
         if (
-            structure_signature == getattr(self, 'unlock_dashboard_structure_signature', None)
-            and set(cards) == {entry['key'] for entry in entries}
+            selected_faction in self.unlock_icon_frames
+            and structure_signature == structure_signatures.get(selected_faction)
+            and selected_keys.issubset(cards)
         ):
             # Completion changes statuses and tooltips, not catalogue layout.
             # Updating four canvas rectangles is dramatically cheaper than
             # destroying/recreating hundreds of widgets and reloading cameos.
-            for entry in entries:
+            for entry in selected_entries:
                 record = cards[entry['key']]
                 card = record['card']
                 card.unlock_entry = entry
@@ -103,8 +141,12 @@ class UnlockViewController:
                 )
             return
 
-        self.unlock_dashboard_structure_signature = structure_signature
+        if selected_faction not in self.unlock_icon_frames:
+            return
+        structure_signatures[selected_faction] = structure_signature
+        self.unlock_dashboard_structure_signatures = structure_signatures
 
+        entries = selected_entries
         unit_ids = [entry['id'] for entry in entries if entry['kind'] == 'unit']
         power_entries = [entry for entry in entries if entry['kind'] == 'power']
         try:
@@ -176,11 +218,20 @@ class UnlockViewController:
                  'Defenses': 3, 'Special': 4, 'Special Buildings': 5,
                  'Superweapons': 6, 'Global Buffs': 0,
                  'House-Wide Buffs': 1}
-        self.unlock_dashboard_sections = {}
-        self.unlock_dashboard_columns = {}
-        self.unlock_dashboard_cards = {}
+        self.unlock_dashboard_sections = getattr(
+            self, 'unlock_dashboard_sections', {}
+        )
+        self.unlock_dashboard_columns = getattr(
+            self, 'unlock_dashboard_columns', {}
+        )
+        self.unlock_dashboard_cards = cards
         for faction, content in self.unlock_icon_frames.items():
+            if faction != selected_faction:
+                continue
             canvas = self.unlock_icon_canvases[faction]
+            for key, record in tuple(self.unlock_dashboard_cards.items()):
+                if record.get('faction') == faction:
+                    self.unlock_dashboard_cards.pop(key, None)
             for child in content.winfo_children():
                 child.destroy()
             faction_entries = sorted(
@@ -251,6 +302,7 @@ class UnlockViewController:
                         'card': card,
                         'overlay': overlay_id,
                         'tooltip': tooltip,
+                        'faction': faction,
                     }
                 row += (len(category_entries) + 3) // 4
                 layout_sections.append((heading, cards))
@@ -268,7 +320,9 @@ class UnlockViewController:
         if not self.state:
             self.progress_label.config(text='No randomizer seed generated. Vanilla mission launching is still available.')
             self.set_rewards_text('')
-            self.set_unlocks_text('No randomizer seed generated yet.')
+            self._unlocks_view_dirty = True
+            if self.unlocks_view_visible():
+                self.refresh_unlocks_view()
             return
 
         completed = len(self.state.get('completed_missions', []))
@@ -396,7 +450,9 @@ class UnlockViewController:
             lines.append('No rewards earned yet.')
 
         self.set_rewards_text('\n'.join(lines))
-        self.set_unlocks_text(self.current_unlocks_text(), self.current_unlock_unit_ids())
+        self._unlocks_view_dirty = True
+        if self.unlocks_view_visible():
+            self.refresh_unlocks_view()
 
     def set_rewards_text(self, text):
         self.rewards_text.configure(state='normal')

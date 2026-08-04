@@ -346,28 +346,41 @@ class LauncherApp(
         self.advanced_pool_images = {}
         self.cameo_retry_count = 0
         self.cameo_retry_after_id = None
+        self._unlocks_view_dirty = True
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
         self.create_widgets()
-        self.show_busy(
+        self.after(40, self.process_ui_queue)
+
+        self.after_idle(self.start_initial_load)
+
+    def start_initial_load(self):
+        self.run_in_background(
             'Loading randomizer…',
             'Reading missions and restoring the current run. Please wait.',
+            self.load_missions,
+            self.finish_initial_load,
+            self.handle_initial_load_error,
         )
-        try:
-            self.refresh_missions()
-            self.refresh_progress_view()
-        finally:
-            self.hide_busy()
-        self.after(40, self.process_ui_queue)
+
+    def finish_initial_load(self, missions):
+        self.apply_missions(missions)
+        self.refresh_progress_view()
+        self.initial_load_complete = True
         log_event(
             'launcher_ready',
             missions=len(self.missions),
             has_seed=bool(self.state),
             seed=self.state.get('seed', ''),
         )
+
+    def handle_initial_load_error(self, exc, detail):
+        self.initial_load_complete = True
+        self.append_log(f'Launcher startup failed: {exc}', error=True)
+        log_event('launcher_startup_failed', error=str(exc), traceback=detail)
 
 
 def main():

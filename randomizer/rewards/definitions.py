@@ -11,7 +11,6 @@ from randomizer.config.tuning import (
     REWARD_PLANNING,
 )
 from randomizer.rewards.power_buff_definitions import (
-    POWER_BUFF_TYPES,
     build_power_buff_rewards,
 )
 from randomizer.rewards.roster import randomizer_unit_ids_with_behavior
@@ -227,15 +226,25 @@ UNIT_ROLE_EQUIVALENCE_GROUPS = tuple(
     frozenset(group)
     for group in _UNIT_DATA_CONFIG['unit_role_equivalence_groups']
 )
+_UNIT_ROLE_EQUIVALENTS_BY_ID = {}
+for _equivalence_group in UNIT_ROLE_EQUIVALENCE_GROUPS:
+    for _equivalent_unit_id in _equivalence_group:
+        _UNIT_ROLE_EQUIVALENTS_BY_ID.setdefault(
+            _equivalent_unit_id, set()
+        ).update(_equivalence_group)
+_UNIT_ROLE_EQUIVALENTS_BY_ID = {
+    unit_id: frozenset(equivalents)
+    for unit_id, equivalents in _UNIT_ROLE_EQUIVALENTS_BY_ID.items()
+}
 
 
 def unit_role_equivalents(unit_id):
     unit_id = str(unit_id or '').upper()
-    equivalents = {unit_id} if unit_id else set()
-    for group in UNIT_ROLE_EQUIVALENCE_GROUPS:
-        if unit_id in group:
-            equivalents.update(group)
-    return frozenset(equivalents)
+    if not unit_id:
+        return frozenset()
+    return _UNIT_ROLE_EQUIVALENTS_BY_ID.get(
+        unit_id, frozenset((unit_id,))
+    )
 
 FACTION_DEFENSE_ROSTERS = dict(_UNIT_DATA_CONFIG['faction_defense_rosters'])
 

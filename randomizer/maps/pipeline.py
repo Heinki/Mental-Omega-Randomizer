@@ -4,6 +4,7 @@ from randomizer.core.collections import unique_in_order
 from randomizer.ui.cameos import installed_rules_registry
 from randomizer.maps.assets import deploy_superweapon_sidebar_assets
 from randomizer.maps.ini import (
+    IniLines,
     all_section_value_maps,
     merge_ini_section_values,
     read_text,
@@ -182,7 +183,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
 
     source_path = self.extract_campaign_map(scenario)
-    lines = read_text(source_path).splitlines()
+    lines = IniLines(read_text(source_path).splitlines())
     color_rules = mission_house_color_rules(
         lines,
         player_color=self.player_color_var.get(),

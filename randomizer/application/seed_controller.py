@@ -184,6 +184,7 @@ class SeedController:
                     self.prioritize_no_build_missions_var.get()
                 ),
             },
+            '_progress': self.queue_busy_progress,
         }
         self.run_in_background(
             'Generating new randomizer run…',
@@ -194,6 +195,8 @@ class SeedController:
         )
 
     def build_seed_generation(self, options):
+        progress = options.get('_progress') or (lambda *_args: None)
+        progress('Building deterministic mission order.', 1, 5)
         seed = options['seed']
         seed_missions = options['seed_missions']
         mission_goal = options['mission_goal']
@@ -243,6 +246,7 @@ class SeedController:
                 raise ValueError(f'Cannot generate grid: {exc}.') from exc
         mission_arsenals = {}
         if options['reward_mode'] == ARSENAL_MODE:
+            progress('Building seed-fixed mission arsenals.', 2, 5)
             mission_arsenals = generate_mission_arsenals(
                 seed,
                 mission_codes,
@@ -283,6 +287,7 @@ class SeedController:
                 f'available rewards{detail}.'
             )
 
+        progress('Selecting starting rewards.', 2, 5)
         manual_starting_rewards = (
             [] if options['reward_mode'] == ARSENAL_MODE
             else self.configured_manual_starting_rewards()
@@ -295,6 +300,7 @@ class SeedController:
             )
         )
         starting_rewards = manual_starting_rewards + random_starting_rewards
+        progress('Planning base mission rewards.', 3, 5)
         mission_checks = self.build_mission_checks(
             mission_codes,
             seed,
@@ -302,7 +308,9 @@ class SeedController:
             progression_mode=progression_mode,
             grid=grid,
             starting_rewards=starting_rewards,
+            progress=progress,
         )
+        progress('Finalizing generated run.', 5, 5)
         rewards = [
             reward
             for code in mission_codes

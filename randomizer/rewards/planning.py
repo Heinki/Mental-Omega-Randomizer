@@ -95,24 +95,25 @@ def plan_seed_rewards(
         if str(name).strip()
     }
     reward_metadata = {}
+    accessible_unit_ids = set(seed_unlocked_tech_ids)
+    access_equivalents_by_unit = {}
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
         for code in mission_codes
     }
     global_index = 0
 
-    def unit_access_earned(unit, equivalents=None):
-        return (
-            unit in seed_unlocked_tech_ids
-            or (
-                share_role_buffs
-                and bool(
-                    (equivalents or unit_role_equivalents(unit)).intersection(
-                        seed_unlocked_tech_ids
-                    )
-                )
-            )
+    def track_access_unit(unit):
+        if not unit or unit in access_equivalents_by_unit:
+            return
+        equivalents = (
+            unit_role_equivalents(unit)
+            if share_role_buffs
+            else frozenset((unit,))
         )
+        access_equivalents_by_unit[unit] = equivalents
+        if not equivalents.isdisjoint(seed_unlocked_tech_ids):
+            accessible_unit_ids.add(unit)
 
     def reward_prerequisites_met(reward):
         metadata = reward_metadata.get(id(reward), {})
@@ -124,7 +125,7 @@ def plan_seed_rewards(
                 if str(unit_id).strip()
             )
         return not required_any or any(
-            unit_access_earned(unit_id) for unit_id in required_any
+            unit_id in accessible_unit_ids for unit_id in required_any
         )
 
     def access_already_unlocked(reward):
@@ -232,6 +233,12 @@ def plan_seed_rewards(
     pool_by_code = {}
     access_by_code = {}
     buffs_by_code = {}
+    active_buff_pool_by_key = {}
+    active_buff_pools_by_id = {}
+    buff_pool_ids_by_count_key = {}
+    buff_pool_id_by_code = {}
+    global_buff_entries_by_pool_id = {}
+    balanced_candidates_by_pool_id = {}
     for code in mission_codes:
         pool_key = (
             reward_pool_cache_key_for_code(code)
@@ -279,6 +286,11 @@ def plan_seed_rewards(
                         reward, reward_weights
                     ) if use_weighted_draws else 1,
                     'main_type': main_type,
+                    'target_key': (
+                        ('power', power_id)
+                        if reward.get('power_buff_type') and power_id
+                        else ('unit', unit)
+                    ),
                     'sub_type': (
                         unit_buff_weight_type(reward.get('buff_type'))
                         if main_type == 'unit_buffs'
@@ -288,12 +300,10 @@ def plan_seed_rewards(
                         if main_type == 'power_buffs'
                         else None
                     ),
-                    'unit_equivalents': (
-                        unit_role_equivalents(unit)
-                        if unit and share_role_buffs
-                        else frozenset()
-                    ),
                 }
+                track_access_unit(unit)
+                for required_unit_id in metadata['required_any']:
+                    track_access_unit(required_unit_id)
                 reward_metadata[id(reward)] = metadata
                 if reward.get('kind') != 'buff':
                     continue
@@ -329,7 +339,115 @@ def plan_seed_rewards(
         rng.shuffle(access)
         pool_by_code[code] = canonical_pool
         access_by_code[code] = access
-        buffs_by_code[code] = buff_metadata
+        active_buffs = active_buff_pool_by_key.get(pool_key)
+        if active_buffs is None:
+            active_buffs = [
+                entry
+                for entry in buff_metadata
+                if (
+                    entry[1] is None
+                    or buff_counts.get(entry[2], 0) < entry[1]
+                )
+            ]
+            active_buff_pool_by_key[pool_key] = active_buffs
+            pool_id = id(active_buffs)
+            active_buff_pools_by_id[pool_id] = active_buffs
+            for entry in active_buffs:
+                buff_pool_ids_by_count_key.setdefault(
+                    entry[2], set()
+                ).add(pool_id)
+            global_buff_entries_by_pool_id[pool_id] = [
+                entry for entry in active_buffs if entry[5]
+            ]
+        buffs_by_code[code] = active_buffs
+        buff_pool_id_by_code[code] = id(active_buffs)
+
+    def retire_capped_buff(count_key, limit):
+        if limit is None or buff_counts.get(count_key, 0) < limit:
+            return
+        pool_ids = buff_pool_ids_by_count_key.get(count_key, ())
+        count = buff_counts.get(count_key, 0)
+        still_active = False
+        for pool_id in pool_ids:
+            active_buffs = active_buff_pools_by_id[pool_id]
+            active_buffs[:] = [
+                entry for entry in active_buffs
+                if (
+                    entry[2] != count_key
+                    or entry[1] is None
+                    or count < entry[1]
+                )
+            ]
+            still_active = still_active or any(
+                entry[2] == count_key for entry in active_buffs
+            )
+        if not still_active:
+            buff_pool_ids_by_count_key.pop(count_key, None)
+
+    def affected_target_keys(target_key):
+        target_type, target_id = target_key
+        if target_type == 'power':
+            return {(target_type, target_id)}
+        units = (
+            unit_role_equivalents(target_id)
+            if share_role_buffs and target_id
+            else (target_id,)
+        )
+        return {('unit', unit) for unit in units}
+
+    def balanced_candidates(code):
+        pool_id = buff_pool_id_by_code[code]
+        cached = balanced_candidates_by_pool_id.get(pool_id)
+        if cached is not None:
+            return cached
+        candidates = []
+        least_buffs = None
+        for (
+            reward,
+            limit,
+            count_key,
+            unit,
+            power_id,
+            is_global,
+            is_power_buff,
+        ) in buffs_by_code.get(code, ()):
+            if is_global:
+                continue
+            if limit is not None and buff_counts.get(count_key, 0) >= limit:
+                continue
+            if is_power_buff:
+                if power_id not in seed_unlocked_power_ids:
+                    continue
+                target_count = power_buff_counts.get(power_id, 0)
+            else:
+                if (
+                    require_access_for_unit_buffs
+                    and unit not in accessible_unit_ids
+                ):
+                    continue
+                target_count = unit_buff_counts.get(unit, 0)
+            if least_buffs is None or target_count < least_buffs:
+                least_buffs = target_count
+                candidates = [(reward, reward_metadata[id(reward)]['target_key'])]
+            elif target_count == least_buffs:
+                candidates.append((
+                    reward,
+                    reward_metadata[id(reward)]['target_key'],
+                ))
+        balanced_candidates_by_pool_id[pool_id] = candidates
+        return candidates
+
+    def record_drawn_buff(reward):
+        metadata = reward_metadata.get(id(reward), {})
+        count_key = metadata.get('count_key')
+        if count_key is None:
+            count_key = buff_count_key(reward)
+        buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
+        record_buff_target(reward)
+        limit = metadata.get('limit')
+        if 'limit' not in metadata:
+            limit = buff_stack_limit(reward)
+        retire_capped_buff(count_key, limit)
 
     def is_unit_access(reward):
         metadata = reward_metadata.get(id(reward))
@@ -366,44 +484,14 @@ def plan_seed_rewards(
         if not buffs:
             return None
 
-        unit_candidates = []
-        global_candidates = []
-        least_buffs = None
-        for (
-            reward,
-            limit,
-            count_key,
-            unit,
-            power_id,
-            is_global,
-            is_power_buff,
-        ) in buffs:
-            if (
-                limit is not None
-                and buff_counts.get(count_key, 0) >= limit
-            ):
-                continue
-            if is_global:
-                global_candidates.append(reward)
-                continue
-            if is_power_buff:
-                if power_id not in seed_unlocked_power_ids:
-                    continue
-            elif (
-                require_access_for_unit_buffs
-                and not unit_access_earned(unit)
-            ):
-                continue
-            target_count = (
-                power_buff_counts.get(power_id, 0)
-                if is_power_buff
-                else unit_buff_counts.get(unit, 0)
-            )
-            if least_buffs is None or target_count < least_buffs:
-                least_buffs = target_count
-                unit_candidates = [reward]
-            elif target_count == least_buffs:
-                unit_candidates.append(reward)
+        pool_id = buff_pool_id_by_code[code]
+        global_candidates = [
+            reward
+            for reward, limit, count_key, *_rest
+            in global_buff_entries_by_pool_id.get(pool_id, ())
+            if limit is None or buff_counts.get(count_key, 0) < limit
+        ]
+        unit_candidates = balanced_candidates(code)
 
         if prefer_global and global_candidates:
             candidates = global_candidates
@@ -413,11 +501,26 @@ def plan_seed_rewards(
             candidates = global_candidates
         if not candidates:
             return None
-
-        reward = dict(rng.choice(candidates))
-        count_key = buff_count_key(reward)
-        buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-        record_buff_target(reward)
+        if candidates is unit_candidates:
+            source_reward, selected_target_key = rng.choice(candidates)
+        else:
+            source_reward = rng.choice(candidates)
+            selected_target_key = None
+        reward = dict(source_reward)
+        record_drawn_buff(reward)
+        if candidates is unit_candidates:
+            affected = affected_target_keys(selected_target_key)
+            remaining_candidates = [
+                candidate for candidate in unit_candidates
+                if candidate[1] not in affected
+            ]
+            if remaining_candidates:
+                balanced_candidates_by_pool_id[pool_id] = remaining_candidates
+            else:
+                balanced_candidates_by_pool_id.pop(pool_id, None)
+            for other_pool_id in tuple(balanced_candidates_by_pool_id):
+                if other_pool_id != pool_id:
+                    balanced_candidates_by_pool_id.pop(other_pool_id, None)
         return reward
 
     configured_buff_metadata = None
@@ -440,6 +543,7 @@ def plan_seed_rewards(
                     reward.get('unit'),
                     str(reward.get('superweapon') or '').upper(),
                 ))
+                track_access_unit(reward.get('unit'))
             configured_buff_metadata = tuple(configured_buff_metadata)
         return configured_buff_metadata
 
@@ -477,7 +581,7 @@ def plan_seed_rewards(
                     require_access_for_unit_buffs
                     and unit
                     and not reward.get('global_buff')
-                    and not unit_access_earned(unit)
+                    and unit not in accessible_unit_ids
                 ):
                     continue
             candidates.append(reward)
@@ -500,7 +604,7 @@ def plan_seed_rewards(
                     and unit
                     and not reward.get('global_buff')
                     and not reward.get('power_buff_type')
-                    and not unit_access_earned(unit)
+                    and unit not in accessible_unit_ids
                 ):
                     continue
                 candidates.append(reward)
@@ -508,9 +612,8 @@ def plan_seed_rewards(
             return None
         reward = dict(rng.choice(candidates))
         if reward.get('kind') == 'buff':
-            count_key = buff_count_key(reward)
-            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-            record_buff_target(reward)
+            record_drawn_buff(reward)
+            balanced_candidates_by_pool_id.clear()
         else:
             used_access_names.add(reward.get('name'))
         return reward
@@ -566,9 +669,7 @@ def plan_seed_rewards(
                 require_access_for_unit_buffs
                 and unit
                 and not metadata['is_global']
-                and not unit_access_earned(
-                    unit, metadata['unit_equivalents']
-                )
+                and unit not in accessible_unit_ids
             ):
                 continue
             candidates.append(reward)
@@ -633,9 +734,8 @@ def plan_seed_rewards(
             candidates = least_candidates
         reward = dict(rng.choice(candidates))
         if reward.get('kind') == 'buff':
-            count_key = buff_count_key(reward)
-            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
-            record_buff_target(reward)
+            record_drawn_buff(reward)
+            balanced_candidates_by_pool_id.clear()
         else:
             used_access_names.add(reward.get('name'))
         return reward
@@ -688,14 +788,23 @@ def plan_seed_rewards(
                 reward = draw_repeatable_fallback(code)
         if reward is not None:
             plan[code][slot_index] = reward
-            seed_unlocked_tech_ids.update(tech_ids_for_rewards([reward]))
+            unlocked_tech_ids = tech_ids_for_rewards([reward])
+            if not unlocked_tech_ids.issubset(seed_unlocked_tech_ids):
+                new_tech_ids = unlocked_tech_ids - seed_unlocked_tech_ids
+                seed_unlocked_tech_ids.update(unlocked_tech_ids)
+                accessible_unit_ids.update(new_tech_ids)
+                for unit, equivalents in access_equivalents_by_unit.items():
+                    if not new_tech_ids.isdisjoint(equivalents):
+                        accessible_unit_ids.add(unit)
+                balanced_candidates_by_pool_id.clear()
             if (
                 reward.get('kind') == 'superweapon'
                 and reward.get('superweapon')
             ):
-                seed_unlocked_power_ids.add(
-                    str(reward['superweapon']).upper()
-                )
+                power_id = str(reward['superweapon']).upper()
+                if power_id not in seed_unlocked_power_ids:
+                    seed_unlocked_power_ids.add(power_id)
+                    balanced_candidates_by_pool_id.clear()
         else:
             # Preserve slot positions so one exhausted draw cannot shift later
             # mission/check assignments. UI compacts repeated markers to one

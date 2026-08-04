@@ -329,7 +329,27 @@ class RewardController:
         return self.bundle_foehn_standard_access(self.filter_reward_pool(pool))
 
     def configured_reward_pool(self):
-        return self.filter_reward_pool(REWARD_POOL)
+        settings = self.active_reward_settings()
+        reward_mode = self.active_reward_mode()
+        starting_access_ids = frozenset(
+            self.active_starting_tier_one_access_ids()
+        )
+        cached = self.__dict__.get('_configured_reward_pool_cache')
+        if (
+            cached is not None
+            and cached[0] is settings
+            and cached[1] == reward_mode
+            and cached[2] == starting_access_ids
+        ):
+            return cached[3]
+        pool = self.filter_reward_pool(REWARD_POOL)
+        self._configured_reward_pool_cache = (
+            settings,
+            reward_mode,
+            starting_access_ids,
+            pool,
+        )
+        return pool
 
     def configured_manual_starting_rewards(self):
         """Resolve exact selected rewards, omitting duplicate TechnoType access."""
@@ -652,6 +672,7 @@ class RewardController:
         progression_mode=None,
         grid=None,
         starting_rewards=None,
+        progress=None,
     ):
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
         earned_rewards = list(earned_rewards or [])
@@ -716,6 +737,8 @@ class RewardController:
             initial_rewards=starting_rewards + earned_rewards,
             avoid_unlocked_access=bool(starting_rewards),
         )
+        if progress is not None:
+            progress('Planning mission multiplier rewards.', 0, 1)
         bonus_slots_by_code = {
             code: (
                 len(templates_by_code[code])
@@ -734,6 +757,7 @@ class RewardController:
             progression_mode=progression_mode,
             grid=grid,
             initial_rewards=starting_rewards + earned_rewards,
+            progress=progress,
         )
 
         for code in mission_codes:
@@ -810,6 +834,7 @@ class RewardController:
         progression_mode=None,
         grid=None,
         initial_rewards=(),
+        progress=None,
     ):
         """Plan valid completion bonuses without changing base assignments."""
         bonus_plan = {code: [] for code in mission_codes}
@@ -818,10 +843,23 @@ class RewardController:
             for code in mission_codes
         }
         prior_bonus_rewards = []
+        bonus_codes = [
+            code for code in mission_codes
+            if max(0, int(slots_by_code.get(code, 0))) > 0
+        ]
+        bonus_total = len(bonus_codes)
+        bonus_index = 0
         for code in mission_codes:
             slot_count = max(0, int(slots_by_code.get(code, 0)))
             if slot_count <= 0:
                 continue
+            bonus_index += 1
+            if progress is not None:
+                progress(
+                    f'Planning mission bonuses: {bonus_index}/{bonus_total}.',
+                    bonus_index,
+                    bonus_total,
+                )
             reserved = [
                 reward
                 for other_code in mission_codes
@@ -958,6 +996,18 @@ class RewardController:
                     )
         return earned
 
+    def canonical_earned_rewards(self):
+        """Return one cached canonical view of current earned reward history."""
+        cached = self.__dict__.get('_canonical_earned_rewards_cache')
+        if cached is not None:
+            return cached
+        rewards = tuple(
+            canonical_reward(reward)
+            for reward in self.earned_rewards_from_checks()
+        )
+        self._canonical_earned_rewards_cache = rewards
+        return rewards
+
     def release_remaining_grid_rewards(self):
         """Release pending Grid rewards without marking optional missions complete."""
         released_rewards = []
@@ -974,7 +1024,17 @@ class RewardController:
 
     def refresh_missions(self):
         self.append_log('Refreshing mission list...')
-        self.missions = parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
+        self.apply_missions(
+            parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
+        )
+
+    def load_missions(self):
+        """Read mission catalogue without touching Tk state."""
+        return parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
+
+    def apply_missions(self, missions):
+        """Apply a previously parsed mission catalogue to launcher widgets."""
+        self.missions = missions
         self._mission_by_code = {mission['code']: mission for mission in self.missions}
         self.mission_goal_spinbox.configure(to=max(1, len(self.missions)))
         if self.missions and self.mission_goal_var.get() > len(self.missions):
@@ -982,7 +1042,12 @@ class RewardController:
         self.update_mission_goal_limit()
         self.sync_state_mission_objectives()
         self.redraw_mission_tree()
-        self.refresh_advanced_pool_views()
+        if (
+            hasattr(self, 'workspace_tabs')
+            and hasattr(self, 'advanced_tab')
+            and self.workspace_tabs.select() == str(self.advanced_tab)
+        ):
+            self.refresh_advanced_pool_views()
 
         if not self.missions:
             self.append_log('No missions found. Check INI/BattleClient.ini and game root paths.', error=True)

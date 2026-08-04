@@ -79,6 +79,16 @@ class WindowController:
         ):
             self.after_idle(self.resize_grid_canvas_window)
 
+    def on_info_tab_changed(self, _event=None):
+        if (
+            not getattr(self, '_unlocks_view_dirty', False)
+            or not hasattr(self, 'info_tabs')
+            or not hasattr(self, 'unlocks_tab')
+            or self.info_tabs.select() != str(self.unlocks_tab)
+        ):
+            return
+        self.after_idle(self.refresh_unlocks_view)
+
     def ui_palette(self):
         return DARK_UI_PALETTE if self.dark_mode_var.get() else LIGHT_UI_PALETTE
 
@@ -206,6 +216,9 @@ class WindowController:
             self.update_busy_elapsed()
         self.busy_overlay.place(x=0, y=0, relwidth=1, relheight=1)
         self.busy_overlay.lift()
+        self.busy_progress.configure(
+            mode='indeterminate', maximum=100, value=0
+        )
         self.busy_progress.start(12)
         self.configure(cursor='wait')
         try:
@@ -243,6 +256,29 @@ class WindowController:
         self.busy_overlay.place_forget()
         self.configure(cursor='')
 
+    def queue_busy_progress(self, detail, current=None, total=None):
+        """Queue a real worker stage without reading Tk from that worker."""
+        self.ui_queue.put(('progress', (detail, current, total)))
+
+    def update_busy_progress(self, detail, current=None, total=None):
+        if not self.busy_depth:
+            return
+        self.busy_detail_text = detail
+        if total is not None and current is not None and total > 0:
+            self.busy_progress.stop()
+            self.busy_progress.configure(
+                mode='determinate',
+                maximum=total,
+                value=max(0, min(current, total)),
+            )
+        else:
+            self.busy_progress.configure(mode='indeterminate')
+            self.busy_progress.start(12)
+        elapsed = max(0, int(time.monotonic() - self.busy_started_at))
+        self.busy_detail.configure(
+            text=f'{self.busy_detail_text}\nElapsed: {elapsed}s',
+        )
+
     def run_in_background(self, title, detail, callback, on_success, on_error):
         """Run filesystem/CPU work without blocking Tk's event loop."""
         self.show_busy(title, detail)
@@ -251,7 +287,7 @@ class WindowController:
             previous_switch_interval = sys.getswitchinterval()
             # Reward planning is Python-heavy. A shorter handoff interval keeps
             # Tk's elapsed label and indeterminate bar repainting smoothly.
-            sys.setswitchinterval(min(previous_switch_interval, 0.001))
+            sys.setswitchinterval(min(previous_switch_interval, 0.0005))
             try:
                 result = callback()
             except Exception as exc:
@@ -300,6 +336,8 @@ class WindowController:
                         self.append_log_to_widgets(message, error=error)
                     elif kind == 'callback':
                         payload()
+                    elif kind == 'progress':
+                        self.update_busy_progress(*payload)
             except queue.Empty:
                 pass
         finally:

@@ -936,7 +936,12 @@ class AdvancedSettingsController:
             )
         )
         self.refresh_progression_setting_states()
-        self.refresh_advanced_pool_views()
+        if (
+            hasattr(self, 'workspace_tabs')
+            and hasattr(self, 'advanced_tab')
+            and self.workspace_tabs.select() == str(self.advanced_tab)
+        ):
+            self.refresh_advanced_pool_views()
 
     def update_mission_goal_limit(self):
         if not self.missions:

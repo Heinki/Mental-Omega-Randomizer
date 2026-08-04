@@ -5,6 +5,71 @@ retain their original ordering, so ConfigParser is not suitable here.
 """
 
 
+class IniLines(list):
+    """Mutable map lines with read indexes invalidated by every mutation."""
+
+    def __init__(self, values=()):
+        super().__init__(values)
+        self._invalidate_indexes()
+
+    def _invalidate_indexes(self):
+        self._section_bounds_cache = {}
+        self._section_values_cache = {}
+        self._section_values_preserve_cache = {}
+        self._all_sections_cache = None
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self._invalidate_indexes()
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._invalidate_indexes()
+
+    def __iadd__(self, values):
+        result = super().__iadd__(values)
+        self._invalidate_indexes()
+        return result
+
+    def __imul__(self, count):
+        result = super().__imul__(count)
+        self._invalidate_indexes()
+        return result
+
+    def append(self, value):
+        super().append(value)
+        self._invalidate_indexes()
+
+    def extend(self, values):
+        super().extend(values)
+        self._invalidate_indexes()
+
+    def insert(self, index, value):
+        super().insert(index, value)
+        self._invalidate_indexes()
+
+    def pop(self, index=-1):
+        value = super().pop(index)
+        self._invalidate_indexes()
+        return value
+
+    def remove(self, value):
+        super().remove(value)
+        self._invalidate_indexes()
+
+    def clear(self):
+        super().clear()
+        self._invalidate_indexes()
+
+    def reverse(self):
+        super().reverse()
+        self._invalidate_indexes()
+
+    def sort(self, *args, **kwargs):
+        super().sort(*args, **kwargs)
+        self._invalidate_indexes()
+
+
 def read_text(path):
     return path.read_text(encoding='utf-8', errors='ignore')
 
@@ -43,15 +108,25 @@ def set_ini_value_lines(text, section, key, value):
 
 def find_section_bounds(lines, section):
     wanted = section.lower()
+    if isinstance(lines, IniLines):
+        cached = lines._section_bounds_cache.get(wanted)
+        if cached is not None:
+            return cached
     start = None
     for index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             if start is not None:
-                return (start, index)
+                bounds = (start, index)
+                if isinstance(lines, IniLines):
+                    lines._section_bounds_cache[wanted] = bounds
+                return bounds
             if stripped[1:-1].strip().lower() == wanted:
                 start = index
-    return (None, None) if start is None else (start, len(lines))
+    bounds = (None, None) if start is None else (start, len(lines))
+    if isinstance(lines, IniLines):
+        lines._section_bounds_cache[wanted] = bounds
+    return bounds
 
 
 def section_lines(lines, section):
@@ -60,24 +135,43 @@ def section_lines(lines, section):
 
 
 def section_value_map(lines, section):
+    cache_key = section.lower()
+    if isinstance(lines, IniLines):
+        cached = lines._section_values_cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
     values = {}
     for line in section_lines(lines, section):
         if '=' in line:
             key, value = line.split('=', 1)
             values[key.strip().lower()] = value.strip()
+    if isinstance(lines, IniLines):
+        lines._section_values_cache[cache_key] = dict(values)
     return values
 
 
 def section_value_map_preserve(lines, section):
+    cache_key = section.lower()
+    if isinstance(lines, IniLines):
+        cached = lines._section_values_preserve_cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
     values = {}
     for line in section_lines(lines, section):
         if '=' in line:
             key, value = line.split('=', 1)
             values[key.strip()] = value.strip()
+    if isinstance(lines, IniLines):
+        lines._section_values_preserve_cache[cache_key] = dict(values)
     return values
 
 
 def all_section_value_maps(lines):
+    if isinstance(lines, IniLines) and lines._all_sections_cache is not None:
+        return {
+            section: dict(values)
+            for section, values in lines._all_sections_cache.items()
+        }
     sections = {}
     current_values = None
     for line in lines:
@@ -88,6 +182,10 @@ def all_section_value_maps(lines):
         elif current_values is not None and '=' in line:
             key, value = line.split('=', 1)
             current_values[key.strip().lower()] = value.strip()
+    if isinstance(lines, IniLines):
+        lines._all_sections_cache = {
+            section: dict(values) for section, values in sections.items()
+        }
     return sections
 
 
