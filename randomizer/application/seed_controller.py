@@ -541,6 +541,16 @@ class SeedController:
             f'{source}: {code} {target.get("name", check_id)} complete. '
             + reward_note
         )
+        reward_summary = self.mission_reward_summary(code)
+        if check_id == 'victory':
+            final_note = (
+                f'Mission Reward Multiplier: x{reward_summary["multiplier"]}. '
+                f'Base rewards: {reward_summary["base_rewards"]}. '
+                f'Final rewards: {reward_summary["final_rewards"]}.'
+            )
+            if reward_summary['max_rewards_achieved']:
+                final_note += ' Max rewards achieved.'
+            self.append_log(final_note)
         log_event(
             'mission_check_unlocked',
             seed=self.state.get('seed', ''),
@@ -550,6 +560,9 @@ class SeedController:
             source=source,
             rewards=[reward.get('name') for reward in earned_now],
             previously_released_rewards=len(previously_released_rewards),
+            reward_multiplier=reward_summary['multiplier'],
+            base_rewards=reward_summary['base_rewards'],
+            final_rewards=reward_summary['final_rewards'],
         )
         if check_id == 'victory' and len(earned_now) > len(check_rewards(target)):
             self.append_log('Victory granted any missed objective rewards for this mission.')

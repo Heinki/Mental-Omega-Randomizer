@@ -26,6 +26,8 @@ from ._dependencies import (
     plan_seed_rewards,
     mission_player_production_houses,
     mission_production_families,
+    mission_reward_class,
+    mission_reward_multiplier,
     tech_ids_for_rewards,
     reward_selection_weight,
     is_max_rewards_achieved_reward,
@@ -590,6 +592,9 @@ class RewardController:
         mission_codes = self.state.get('mission_order', [])
         summary = self.state_objective_summary(mission_codes)
         schema_current = self.state.get('check_schema_version') == CHECK_SCHEMA_VERSION
+        preserve_history = schema_current or self.state.get(
+            'check_schema_version'
+        ) in {16, 17}
         checks_present = 'mission_checks' in self.state
         if schema_current and checks_present and self.state.get('mission_objectives') == summary:
             return
@@ -599,10 +604,13 @@ class RewardController:
             self.state.get('seed', ''),
             (
                 self.earned_rewards_from_checks(include_starting=False)
-                if schema_current else []
+                if preserve_history else []
             ),
             self.state.get('completed_missions', []),
-            preserved_checks=self.state.get('mission_checks', {}) if schema_current else {},
+            preserved_checks=(
+                self.state.get('mission_checks', {})
+                if preserve_history else {}
+            ),
             rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
             progression_mode=self.state.get('progression_mode'),
             grid=self.state.get('grid'),
@@ -678,27 +686,61 @@ class RewardController:
                     check_id == 'objective_1' and code in completed_rewards
                 )
             }
-        slots_by_code = {
+        multipliers_by_code = {}
+        for code in mission_codes:
+            old_multiplier = next((
+                check.get('reward_multiplier')
+                for check in preserved_checks.get(code, [])
+                if isinstance(check.get('reward_multiplier'), int)
+                and not isinstance(check.get('reward_multiplier'), bool)
+                and check.get('reward_multiplier') >= 1
+            ), None)
+            multipliers_by_code[code] = (
+                old_multiplier
+                if old_multiplier is not None
+                else mission_reward_multiplier(code)
+            )
+        base_slots_by_code = {
             code: (
                 len(templates_by_code[code])
                 - len(preserved_reward_check_ids[code])
             ) * rewards_per_check
             for code in mission_codes
         }
-        rewards_by_code = self.generate_seed_reward_plan(
+        base_rewards_by_code = self.generate_seed_reward_plan(
             mission_codes,
             seed,
-            slots_by_code,
+            base_slots_by_code,
             progression_mode=progression_mode,
             grid=grid,
             initial_rewards=starting_rewards + earned_rewards,
             avoid_unlocked_access=bool(starting_rewards),
         )
+        bonus_slots_by_code = {
+            code: (
+                len(templates_by_code[code])
+                * rewards_per_check
+                * (multipliers_by_code[code] - 1)
+                if 'victory' not in preserved_reward_check_ids[code]
+                else 0
+            )
+            for code in mission_codes
+        }
+        bonus_rewards_by_code = self.generate_mission_bonus_reward_plan(
+            mission_codes,
+            seed,
+            bonus_slots_by_code,
+            base_rewards_by_code,
+            progression_mode=progression_mode,
+            grid=grid,
+            initial_rewards=starting_rewards + earned_rewards,
+        )
 
         for code in mission_codes:
             mission_checks = []
-            rewards = rewards_by_code.get(code, [])
-            reward_index = 0
+            base_rewards = base_rewards_by_code.get(code, [])
+            bonus_rewards = bonus_rewards_by_code.get(code, [])
+            base_reward_index = 0
             old_checks = {
                 check.get('id'): check
                 for check in preserved_checks.get(code, [])
@@ -720,7 +762,11 @@ class RewardController:
                     unlocked = code in completed
                     released = False
                 else:
-                    rewards_for_check = rewards[reward_index:reward_index + rewards_per_check]
+                    rewards_for_check = base_rewards[
+                        base_reward_index:base_reward_index + rewards_per_check
+                    ]
+                    if check_id == 'victory':
+                        rewards_for_check += bonus_rewards
                     real_rewards = [
                         reward for reward in rewards_for_check
                         if not is_max_rewards_achieved_reward(reward)
@@ -732,7 +778,7 @@ class RewardController:
                     unlocked = False
                     released = False
                 if check_id not in preserved_reward_check_ids[code]:
-                    reward_index += rewards_per_check
+                    base_reward_index += rewards_per_check
                 primary_reward = rewards_for_check[0] if rewards_for_check else {}
                 mission_checks.append({
                     'id': check_id,
@@ -740,12 +786,64 @@ class RewardController:
                     'hint': hint,
                     'reward': primary_reward,
                     'rewards': rewards_for_check,
+                    'base_reward_count': rewards_per_check,
+                    'multiplier_bonus_count': (
+                        bonus_slots_by_code[code]
+                        if check_id == 'victory' else 0
+                    ),
+                    'reward_multiplier': multipliers_by_code[code],
+                    'reward_class': mission_reward_class(code),
                     'unlocked': unlocked or code in completed,
                     'released': released and code not in completed,
                 })
             checks[code] = mission_checks
 
         return checks
+
+    def generate_mission_bonus_reward_plan(
+        self,
+        mission_codes,
+        seed,
+        slots_by_code,
+        base_rewards_by_code,
+        *,
+        progression_mode=None,
+        grid=None,
+        initial_rewards=(),
+    ):
+        """Plan valid completion bonuses without changing base assignments."""
+        bonus_plan = {code: [] for code in mission_codes}
+        all_base_rewards = {
+            code: list(base_rewards_by_code.get(code, ()))
+            for code in mission_codes
+        }
+        prior_bonus_rewards = []
+        for code in mission_codes:
+            slot_count = max(0, int(slots_by_code.get(code, 0)))
+            if slot_count <= 0:
+                continue
+            reserved = [
+                reward
+                for other_code in mission_codes
+                if other_code != code
+                for reward in all_base_rewards[other_code]
+            ] + prior_bonus_rewards
+            plan = self.generate_seed_reward_plan(
+                [code],
+                seed,
+                {code: slot_count},
+                progression_mode=progression_mode,
+                grid=None,
+                initial_rewards=(
+                    list(initial_rewards) + all_base_rewards[code]
+                ),
+                avoid_unlocked_access=True,
+                rng_namespace=f'mission-reward-multiplier:{code}',
+                reserved_rewards=reserved,
+            )
+            bonus_plan[code] = plan.get(code, [])
+            prior_bonus_rewards.extend(bonus_plan[code])
+        return bonus_plan
 
     def generate_seed_reward_plan(
         self,
@@ -756,6 +854,8 @@ class RewardController:
         grid=None,
         initial_rewards=(),
         avoid_unlocked_access=False,
+        rng_namespace='seed-rewards',
+        reserved_rewards=(),
     ):
         if progression_mode is None:
             progression_mode = (
@@ -803,7 +903,45 @@ class RewardController:
             ),
             avoid_unlocked_access=avoid_unlocked_access,
             blocked_reward_names=self.active_starting_unlock_names(),
+            rng_namespace=rng_namespace,
+            reserved_rewards=reserved_rewards,
         )
+
+    def mission_reward_summary(self, code):
+        checks = self.mission_checks(code)
+        if not checks:
+            return {
+                'multiplier': mission_reward_multiplier(code),
+                'base_rewards': 0,
+                'final_rewards': 0,
+                'max_rewards_achieved': False,
+            }
+        multiplier = next((
+            check.get('reward_multiplier')
+            for check in checks
+            if isinstance(check.get('reward_multiplier'), int)
+            and check.get('reward_multiplier') >= 1
+        ), mission_reward_multiplier(code))
+        base_rewards = sum(
+            max(0, int(check.get('base_reward_count', 0)))
+            for check in checks
+        )
+        final_rewards = sum(
+            1
+            for check in checks
+            for reward in check_rewards(check)
+            if not is_max_rewards_achieved_reward(reward)
+        )
+        return {
+            'multiplier': multiplier,
+            'base_rewards': base_rewards,
+            'final_rewards': final_rewards,
+            'max_rewards_achieved': any(
+                is_max_rewards_achieved_reward(reward)
+                for check in checks
+                for reward in check_rewards(check)
+            ),
+        }
 
     def earned_rewards_from_checks(self, include_starting=True):
         earned = [

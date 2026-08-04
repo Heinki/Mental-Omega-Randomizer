@@ -11,6 +11,7 @@ from randomizer.config.static import load_static_config
 
 _MISSION_CONFIG = load_static_config('missions.json')
 _MISSION_CATALOGUE = _MISSION_CONFIG['catalogue']
+_MISSION_REWARD_CONFIG = _MISSION_CONFIG['mission_reward_multipliers']
 
 
 FACTION_ORDER = tuple(_MISSION_CATALOGUE['faction_order'])
@@ -23,6 +24,27 @@ FALLBACK_STAGE_SCORE = int(_MISSION_CATALOGUE['fallback_stage_score'])
 FINALE_STAGE_SCORE = int(_MISSION_CATALOGUE['finale_stage_score'])
 FINALE_MISSION_CODES = frozenset(_MISSION_CATALOGUE['finale_mission_codes'])
 OPERATION_MISSION_CODES = frozenset(_MISSION_CATALOGUE['operation_mission_codes'])
+
+MISSION_REWARD_CLASS_MULTIPLIERS = {
+    str(class_name): int(multiplier)
+    for class_name, multiplier in _MISSION_REWARD_CONFIG[
+        'class_multipliers'
+    ].items()
+}
+MISSION_REWARD_CLASS_BY_CODE = {
+    str(code).upper(): str(class_name)
+    for class_name, codes in _MISSION_REWARD_CONFIG['mission_classes'].items()
+    for code in codes
+}
+MISSION_REWARD_MULTIPLIER_OVERRIDES = {
+    str(code).upper(): int(multiplier)
+    for code, multiplier in _MISSION_REWARD_CONFIG.get(
+        'mission_overrides', {}
+    ).items()
+}
+DEFAULT_MISSION_REWARD_MULTIPLIER = int(
+    _MISSION_REWARD_CONFIG['default_multiplier']
+)
 
 BASE_BUILD = 'base_build'
 TRUE_NO_BUILD = 'true_no_build'
@@ -56,6 +78,21 @@ NO_BUILD_MISSION_FLAGS = {
 # is kept out of a protected opening while another eligible mission exists,
 # including no-build operation TIME CAPSULE because its difficulty is high.
 LATE_FOEHN_MISSION_CODES = frozenset(_MISSION_CATALOGUE['late_foehn_mission_codes'])
+
+
+def mission_reward_class(code):
+    return MISSION_REWARD_CLASS_BY_CODE.get(str(code or '').upper(), '')
+
+
+def mission_reward_multiplier(code):
+    code = str(code or '').upper()
+    if code in MISSION_REWARD_MULTIPLIER_OVERRIDES:
+        return MISSION_REWARD_MULTIPLIER_OVERRIDES[code]
+    class_name = MISSION_REWARD_CLASS_BY_CODE.get(code)
+    return MISSION_REWARD_CLASS_MULTIPLIERS.get(
+        class_name,
+        DEFAULT_MISSION_REWARD_MULTIPLIER,
+    )
 
 
 def normalize_faction(side):
@@ -156,6 +193,8 @@ def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
             'true_no_build': code in TRUE_NO_BUILD_MISSION_CODES,
             'no_build_production': code in NO_BUILD_PRODUCTION_MISSION_CODES,
             'operation': code in OPERATION_MISSION_CODES,
+            'reward_class': mission_reward_class(code),
+            'reward_multiplier': mission_reward_multiplier(code),
         })
     return missions
 

@@ -101,6 +101,20 @@ def run_self_check():
             reward_matches_arsenal,
         )
         from randomizer.ui.config import REWARD_MODES
+        from randomizer.missions.catalogue import (
+            MISSION_BUILD_CLASSIFICATIONS,
+            MISSION_REWARD_CLASS_BY_CODE,
+            mission_reward_multiplier,
+        )
+        mission_reward_multipliers_valid = bool(
+            set(MISSION_REWARD_CLASS_BY_CODE)
+            == set(MISSION_BUILD_CLASSIFICATIONS)
+            and len(MISSION_REWARD_CLASS_BY_CODE) == 97
+            and mission_reward_multiplier('AREDDAWN') == 1
+            and mission_reward_multiplier('ASIREN') == 2
+            and mission_reward_multiplier('APANIC') == 3
+            and mission_reward_multiplier('FREMNANT') == 3
+        )
         arsenal_settings = DEFAULT_CONFIG['generation']
         arsenal_codes = ('AREDDAWN', 'AEAGLESFLY')
         arsenal_first = generate_mission_arsenals(
@@ -480,6 +494,9 @@ def run_self_check():
                 reward_weight_connections_valid
             ),
             'randomizer_arsenal_contract_valid': arsenal_contract_valid,
+            'mission_reward_multipliers_valid': (
+                mission_reward_multipliers_valid
+            ),
             'missing_runtime_symbols': missing_runtime_symbols,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
@@ -518,6 +535,7 @@ def run_self_check():
                 'starting_unlock_catalogue_valid',
                 'reward_weight_connections_valid',
                 'randomizer_arsenal_contract_valid',
+                'mission_reward_multipliers_valid',
                 'deterministic_seed_rng_works',
             )
         )

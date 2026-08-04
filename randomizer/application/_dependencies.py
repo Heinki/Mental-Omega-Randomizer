@@ -101,6 +101,8 @@ from randomizer.missions.catalogue import (
     filter_missions_by_build_settings,
     normalize_faction,
     parse_missions,
+    mission_reward_class,
+    mission_reward_multiplier,
     seed_campaign_limits,
     seed_mission_order,
 )
@@ -227,7 +229,7 @@ from randomizer.ui.theme import apply_color_mode as apply_launcher_color_mode
 from randomizer.ui.tooltips import WidgetTooltip
 
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
-CHECK_SCHEMA_VERSION = 17
+CHECK_SCHEMA_VERSION = 18
 HOOK_POLL_MS = 1500
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024

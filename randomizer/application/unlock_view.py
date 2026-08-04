@@ -332,6 +332,20 @@ class UnlockViewController:
                 else:
                     lines.append('Completing this node does not unlock a currently locked neighbor.')
             lines.append(f'Reward progress: {done_checks}/{total_checks}')
+            reward_summary = self.mission_reward_summary(code)
+            lines.append(
+                'Mission Reward Multiplier: '
+                f'x{reward_summary["multiplier"]}'
+            )
+            lines.append(
+                f'Base rewards: {reward_summary["base_rewards"]}'
+            )
+            final_reward_text = (
+                f'Final rewards: {reward_summary["final_rewards"]}'
+            )
+            if reward_summary['max_rewards_achieved']:
+                final_reward_text += '  •  Max rewards achieved'
+            lines.append(final_reward_text)
             if self.failure_assistance_enabled():
                 assistance_stacks = self.mission_failure_stack(code)
                 if assistance_stacks:
@@ -359,6 +373,14 @@ class UnlockViewController:
                 lines.append(
                     f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
                 )
+                bonus_count = max(
+                    0,
+                    int(check.get('multiplier_bonus_count', 0)),
+                )
+                if bonus_count:
+                    lines.append(
+                        f'   Mission completion multiplier bonus: +{bonus_count} reward(s)'
+                    )
                 hint = check.get('hint')
                 if hint:
                     lines.append(f'   {hint}')

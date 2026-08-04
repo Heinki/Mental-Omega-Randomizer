@@ -6,6 +6,8 @@ config family can now find its contract without reading packaging behavior.
 
 from pathlib import Path
 
+from randomizer.config.mission_rewards import validate_mission_reward_config
+
 
 class StaticConfigError(RuntimeError):
     """Raised when required static configuration is missing or malformed."""
@@ -17,6 +19,7 @@ REQUIRED_SECTIONS = {
     },
     'missions.json': {
         'catalogue': dict,
+        'mission_reward_multipliers': dict,
         'build_classifications': dict,
         'house_config': dict,
         'player_production_houses': dict,
@@ -186,6 +189,8 @@ def _validate_missions(sections, path):
     }
     if invalid:
         _invalid(f'Invalid mission build classifications: {invalid}', path)
+
+    validate_mission_reward_config(sections, path, _invalid)
 
     for section in (
         'original_mcv_access',

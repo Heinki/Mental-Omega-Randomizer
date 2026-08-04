@@ -48,6 +48,43 @@
         "FREMNANT"
       ]
     },
+    "mission_reward_multipliers": {
+      "default_multiplier": 1,
+      "class_multipliers": {
+        "act_1": 1,
+        "act_2": 2,
+        "finale": 3,
+        "operation": 1
+      },
+      "mission_classes": {
+        "act_1": [
+          "AREDDAWN", "AEAGLESFLY", "AROADTRIP", "AHEAVENHELL", "ABADAPPLE",
+          "ABMIND", "AHAMMERFALL", "AWRONGSIDE", "AZEROSIGNAL", "AGARDENER",
+          "SBLEED", "SGGATE", "SHBD", "SSIDE", "SPEACE", "SRECH", "SIDLE",
+          "SDEATH", "SROAD", "SOPEN", "EPEACE", "EACCEL", "ESCRAP", "ESHIP",
+          "EHUMAN", "ELAND", "ETHINK", "ELORD", "EFIELDS", "EFOCUS",
+          "FNOBODY", "FKILL", "FEMPIRE", "FBEYOND"
+        ],
+        "act_2": [
+          "ASIREN", "APUPPET", "ASTONE", "AGHOST", "ABOTTLE", "AHYST",
+          "ASTORM", "APARA", "ARELE", "AINSOMNIA", "SRAVEN", "SAWAKE",
+          "SEXIST", "SFIRE", "SJUGGER", "SHEART", "SRED", "STHREAD", "SMELT",
+          "SEARTH", "EDILEMMA", "EHUEHUE", "EBREED", "EDIVER", "EGODSEND",
+          "ELIZARD", "EBLOOD", "EHEAD", "ESANDS", "ETOTAL"
+        ],
+        "finale": [
+          "APANIC", "ASUNLIGHT", "AWITHER", "AHAMARTIA", "SMACHINE", "SDRAGON",
+          "SFATAL", "SHAND", "ESING", "EMOON", "EREALITY", "EMIGDAL", "FPOINT",
+          "FREMNANT"
+        ],
+        "operation": [
+          "ADEMON", "AOBST", "ACONV", "AFULL", "AGRID", "ASOMNIA", "SARCHE",
+          "SECLIPSE", "STROPH", "SNOISE", "SDAWN", "SARMS", "ETACI", "EASHES",
+          "ERAGE", "ESPLIT", "ENIGHT", "ESURV", "FCAPSULE"
+        ]
+      },
+      "mission_overrides": {}
+    },
     "build_classifications": {
       "AREDDAWN": "base_build",
       "AEAGLESFLY": "base_build",

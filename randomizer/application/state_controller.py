@@ -92,8 +92,8 @@ class StateController:
             changed = True
         previous_schema = self.state.get('check_schema_version')
         schema_changed = previous_schema != CHECK_SCHEMA_VERSION
-        preserve_capped_reward_history = (
-            previous_schema == 16 and not discard_old_reward_history
+        preserve_reward_history = (
+            previous_schema in {16, 17} and not discard_old_reward_history
         )
         if self.missions and (schema_changed or 'mission_checks' not in self.state):
             self.state['mission_checks'] = self.build_mission_checks(
@@ -101,13 +101,13 @@ class StateController:
                 self.state.get('seed', ''),
                 (
                     old_earned
-                    if not schema_changed or preserve_capped_reward_history
+                    if not schema_changed or preserve_reward_history
                     else []
                 ),
                 self.state.get('completed_missions', []),
                 preserved_checks=(
                     self.state.get('mission_checks', {})
-                    if not schema_changed or preserve_capped_reward_history
+                    if not schema_changed or preserve_reward_history
                     else {}
                 ),
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),

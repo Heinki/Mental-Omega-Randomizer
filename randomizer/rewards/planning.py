@@ -66,6 +66,7 @@ def plan_seed_rewards(
     rng_namespace='seed-rewards',
     avoid_unlocked_access=False,
     blocked_reward_names=(),
+    reserved_rewards=(),
 ):
     """Assign rewards without reading GUI or mutable launcher state.
 
@@ -129,11 +130,18 @@ def plan_seed_rewards(
     def access_already_unlocked(reward):
         if not avoid_unlocked_access or reward.get('kind') == 'buff':
             return False
+        power_id = str(reward.get('superweapon') or '').upper()
+        if power_id and power_id in (
+            seed_unlocked_power_ids | reserved_power_ids
+        ):
+            return True
         metadata = reward_metadata.get(id(reward), {})
         reward_tech_ids = metadata.get('tech_ids')
         if reward_tech_ids is None:
             reward_tech_ids = tech_ids_for_rewards([reward])
-        return bool(set(reward_tech_ids).intersection(seed_unlocked_tech_ids))
+        return bool(set(reward_tech_ids).intersection(
+            seed_unlocked_tech_ids | reserved_tech_ids
+        ))
 
     def buff_count_key(reward):
         unit = reward.get('unit')
@@ -189,6 +197,34 @@ def plan_seed_rewards(
             seed_unlocked_power_ids.add(
                 str(reward['superweapon']).upper()
             )
+
+    # Future rewards can reserve unique access names and finite buff capacity
+    # without making their technology available to this draw. Mission bonus
+    # streams use this to stay valid at their own completion point while never
+    # duplicating base-plan access or exceeding later stack caps.
+    canonical_reserved_rewards = tuple(
+        canonical_reward(reward)
+        for reward in reserved_rewards
+        if not is_max_rewards_achieved_reward(reward)
+    )
+    reserved_tech_ids = set(tech_ids_for_rewards(
+        canonical_reserved_rewards
+    ))
+    reserved_power_ids = {
+        str(reward.get('superweapon') or '').upper()
+        for reward in canonical_reserved_rewards
+        if reward.get('kind') == 'superweapon'
+        and str(reward.get('superweapon') or '').strip()
+    }
+    for reward in canonical_reserved_rewards:
+        if reward.get('kind') == 'buff':
+            count_key = buff_count_key(reward)
+            buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
+            record_buff_target(reward)
+            continue
+        name = reward.get('name')
+        if name:
+            used_access_names.add(name)
 
     # Cache each faction pool once. Canonicalization and metadata are static
     # during one draw.
@@ -420,10 +456,6 @@ def plan_seed_rewards(
             if (
                 reward.get('kind') != 'buff'
                 and name in used_access_names
-                and (
-                    reward.get('kind') == 'superweapon'
-                    or avoid_unlocked_access
-                )
             ):
                 continue
             if not reward_prerequisites_met(reward):
@@ -479,7 +511,7 @@ def plan_seed_rewards(
             count_key = buff_count_key(reward)
             buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
             record_buff_target(reward)
-        elif avoid_unlocked_access:
+        else:
             used_access_names.add(reward.get('name'))
         return reward
 

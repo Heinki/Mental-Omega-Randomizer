@@ -32,7 +32,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
   `generation.starting_unlock_rewards` stores portable canonical reward names
   manually selected in Advanced -> Starting Unlocks; only permanent content
   access/power rewards survive normalization, and legacy configs default empty.
-- `missions.json`: mission build classifications, optional-operation membership, helper/enemy house policy,
+- `missions.json`: mission build classifications, configurable mission reward
+  classes/multipliers and per-mission overrides, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
   access rules, original mission-only MCV access, native-variant buff
   forwarding, and campaign starter families.
