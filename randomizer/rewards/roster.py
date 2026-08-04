@@ -762,7 +762,7 @@ def validate_hidden_passenger_payloads():
 
 
 def validate_reviewed_vehicle_identity_contracts():
-    """Audit distinct Tengu/Tsurugi and passenger-free vehicle contracts."""
+    """Audit reviewed special identities and passenger-free vehicle contracts."""
     from randomizer.rewards.catalogue import (
         BUFF_TARGETS,
         REWARD_POOL,
@@ -790,6 +790,14 @@ def validate_reviewed_vehicle_identity_contracts():
             'ui_name': 'NAME:MECHA',
             'image': 'MECHA',
             'cameo': 'tengu.pcx',
+            'special': True,
+        },
+        'RAMW': {
+            'clone': 'MORPRAMW',
+            'name': 'Ramwagon',
+            'ui_name': 'NAME:RAMW',
+            'image': 'RAMW',
+            'cameo': None,
             'special': True,
         },
     }
@@ -820,6 +828,30 @@ def validate_reviewed_vehicle_identity_contracts():
             errors.append(f'{source_id} has {access_count} access rewards')
     if clone_ids.get('TENGU') == clone_ids.get('MECHA'):
         errors.append('TENGU and MECHA share one player clone ID')
+
+    ramwagon = templates.get('RAMW', {})
+    for key, wanted in {
+        'Primary': 'RamWeldCutter',
+        'ElitePrimary': 'RamWeldCutter',
+        'Secondary': 'RamHackArena',
+        'EliteSecondary': 'RamHackArena',
+        'Ammo': '4',
+        'SelfHealing': 'yes',
+    }.items():
+        actual = _case_insensitive_item(ramwagon, key)[1]
+        if str(actual or '').lower() != wanted.lower():
+            errors.append(f'RAMW.{key}={actual!r}')
+    ramwagon_weapons = BUFF_TARGETS.get('RAMW', {}).get('weapons', {})
+    if ramwagon_weapons != {
+        'RamWeldCutter': {'damage': 12, 'range': 7},
+    }:
+        errors.append(f'RAMW buff weapons={ramwagon_weapons!r}')
+    if any(
+        str(reward.get('unit', '')).upper() == 'RAMW'
+        and reward.get('buff_type') == 'self_healing'
+        for reward in UNIT_BUFF_REWARDS
+    ):
+        errors.append('RAMW offers redundant self-healing buff')
 
     chrp = templates.get('CHRP', {})
     chrp_required = {

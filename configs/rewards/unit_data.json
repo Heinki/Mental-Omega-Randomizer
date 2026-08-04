@@ -243,6 +243,7 @@
           "PHNT": "Phantasm MLRS",
           "SEITAAD": "Seitaad Ballista",
           "ARCH": "Archelon",
+          "RAMW": "Ramwagon",
           "ROACHP": "Bison Prototype",
           "NMIN": "Minermite",
           "TERA": "Teratorn",
@@ -315,6 +316,7 @@
       "PHNT",
       "SEITAAD",
       "ARCH",
+      "RAMW",
       "REJU",
       "STHOR",
       "STARDUSTB",
@@ -579,6 +581,14 @@
         6,
         6,
         null
+      ],
+      "RAMW": [
+        2000,
+        7,
+        1000,
+        5,
+        5,
+        4
       ],
       "REJU": [
         1500,
@@ -3876,6 +3886,14 @@
             "damage": 200,
             "rof": 150,
             "range": 4.5
+          }
+        }
+      },
+      "RAMW": {
+        "weapons": {
+          "RamWeldCutter": {
+            "damage": 12,
+            "range": 7
           }
         }
       },
