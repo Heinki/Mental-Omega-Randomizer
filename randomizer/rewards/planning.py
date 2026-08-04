@@ -95,25 +95,25 @@ def plan_seed_rewards(
         if str(name).strip()
     }
     reward_metadata = {}
-    accessible_unit_ids = set(seed_unlocked_tech_ids)
-    access_equivalents_by_unit = {}
+    buff_eligible_unit_ids = set(seed_unlocked_tech_ids)
+    buff_equivalents_by_unit = {}
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
         for code in mission_codes
     }
     global_index = 0
 
-    def track_access_unit(unit):
-        if not unit or unit in access_equivalents_by_unit:
+    def track_buff_target_access(unit):
+        if not unit or unit in buff_equivalents_by_unit:
             return
         equivalents = (
             unit_role_equivalents(unit)
             if share_role_buffs
             else frozenset((unit,))
         )
-        access_equivalents_by_unit[unit] = equivalents
+        buff_equivalents_by_unit[unit] = equivalents
         if not equivalents.isdisjoint(seed_unlocked_tech_ids):
-            accessible_unit_ids.add(unit)
+            buff_eligible_unit_ids.add(unit)
 
     def reward_prerequisites_met(reward):
         metadata = reward_metadata.get(id(reward), {})
@@ -125,7 +125,7 @@ def plan_seed_rewards(
                 if str(unit_id).strip()
             )
         return not required_any or any(
-            unit_id in accessible_unit_ids for unit_id in required_any
+            unit_id in buff_eligible_unit_ids for unit_id in required_any
         )
 
     def access_already_unlocked(reward):
@@ -301,9 +301,9 @@ def plan_seed_rewards(
                         else None
                     ),
                 }
-                track_access_unit(unit)
+                track_buff_target_access(unit)
                 for required_unit_id in metadata['required_any']:
-                    track_access_unit(required_unit_id)
+                    track_buff_target_access(required_unit_id)
                 reward_metadata[id(reward)] = metadata
                 if reward.get('kind') != 'buff':
                     continue
@@ -422,7 +422,7 @@ def plan_seed_rewards(
             else:
                 if (
                     require_access_for_unit_buffs
-                    and unit not in accessible_unit_ids
+                    and unit not in buff_eligible_unit_ids
                 ):
                     continue
                 target_count = unit_buff_counts.get(unit, 0)
@@ -543,7 +543,7 @@ def plan_seed_rewards(
                     reward.get('unit'),
                     str(reward.get('superweapon') or '').upper(),
                 ))
-                track_access_unit(reward.get('unit'))
+                track_buff_target_access(reward.get('unit'))
             configured_buff_metadata = tuple(configured_buff_metadata)
         return configured_buff_metadata
 
@@ -581,7 +581,7 @@ def plan_seed_rewards(
                     require_access_for_unit_buffs
                     and unit
                     and not reward.get('global_buff')
-                    and unit not in accessible_unit_ids
+                    and unit not in buff_eligible_unit_ids
                 ):
                     continue
             candidates.append(reward)
@@ -604,7 +604,7 @@ def plan_seed_rewards(
                     and unit
                     and not reward.get('global_buff')
                     and not reward.get('power_buff_type')
-                    and unit not in accessible_unit_ids
+                    and unit not in buff_eligible_unit_ids
                 ):
                     continue
                 candidates.append(reward)
@@ -669,7 +669,7 @@ def plan_seed_rewards(
                 require_access_for_unit_buffs
                 and unit
                 and not metadata['is_global']
-                and unit not in accessible_unit_ids
+                and unit not in buff_eligible_unit_ids
             ):
                 continue
             candidates.append(reward)
@@ -792,10 +792,10 @@ def plan_seed_rewards(
             if not unlocked_tech_ids.issubset(seed_unlocked_tech_ids):
                 new_tech_ids = unlocked_tech_ids - seed_unlocked_tech_ids
                 seed_unlocked_tech_ids.update(unlocked_tech_ids)
-                accessible_unit_ids.update(new_tech_ids)
-                for unit, equivalents in access_equivalents_by_unit.items():
+                buff_eligible_unit_ids.update(new_tech_ids)
+                for unit, equivalents in buff_equivalents_by_unit.items():
                     if not new_tech_ids.isdisjoint(equivalents):
-                        accessible_unit_ids.add(unit)
+                        buff_eligible_unit_ids.add(unit)
                 balanced_candidates_by_pool_id.clear()
             if (
                 reward.get('kind') == 'superweapon'

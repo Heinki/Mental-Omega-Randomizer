@@ -92,7 +92,12 @@ class RewardController:
         """
         if self.active_reward_mode() in {'Chaos', ARSENAL_MODE}:
             return None
-        selected = (self.state or {}).get('campaign_filter', '')
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        selected = generation_context.get('campaign_filter')
+        if selected is None:
+            selected = (self.state or {}).get('campaign_filter', '')
+        if not selected and hasattr(self, 'campaign_var'):
+            selected = self.campaign_var.get()
         if selected == 'Foehn':
             # Foehn Standard intentionally uses bundled Allied/Soviet access;
             # native Foehn powers may also be valid campaign rewards.
@@ -139,7 +144,7 @@ class RewardController:
         rewards = [
             reward
             for reward in rewards
-            if is_manual(reward) or not self.standard_foehn_unit_reward(reward)
+            if not self.standard_foehn_unit_reward(reward)
         ]
         allowed_factions = self.active_launch_reward_factions()
         if allowed_factions is None:
@@ -148,8 +153,7 @@ class RewardController:
             reward
             for reward in rewards
             if (
-                is_manual(reward)
-                or not reward.get('factions')
+                not reward.get('factions')
                 or allowed_factions.intersection(reward.get('factions', ()))
             )
         ]
@@ -366,6 +370,15 @@ class RewardController:
             if (
                 reward.get('kind') in {'buff', 'message', 'retired'}
                 or not self.reward_is_permanent_starting_unlock(reward)
+            ):
+                continue
+            allowed_factions = self.active_launch_reward_factions()
+            if self.standard_foehn_unit_reward(reward):
+                continue
+            if (
+                allowed_factions is not None
+                and reward.get('factions')
+                and allowed_factions.isdisjoint(reward.get('factions', ()))
             ):
                 continue
             tech_ids = tech_ids_for_rewards([reward])

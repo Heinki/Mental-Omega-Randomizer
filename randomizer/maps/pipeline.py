@@ -499,21 +499,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     earned_rewards = (
         self.launch_rewards_for_mission(code) if self.state else []
     )
-    standard_single_campaign = bool(
-        self.state
-        and self.state.get('campaign_filter')
-        in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-        and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
-    )
-    if standard_single_campaign:
-        # Translate a buff only to role peers the current mission can actually
-        # produce. This prevents every faction peer (and Foehn) leaking into
-        # Standard while still buffing a captured foreign factory's unit.
+    if share_basic_equivalent_buffs:
+        # Resolve shared buffs against access already proven for this launch.
+        # Standard includes current-house units plus foreign role mappings
+        # behind exact physical factory prerequisites. Chaos contains only
+        # independently earned identities; Arsenal contains only its selected
+        # roster. Serialized rewards retain the other peer buffs for later,
+        # but no locked peer can become a buildable/runtime clone merely from
+        # sharing.
         earned_rewards = expand_equivalent_role_buffs(
             earned_rewards,
             enabled=True,
             allowed_unit_ids=mission_effective_tech_ids,
         )
+        # Every downstream buff pass now receives explicit per-unit runtime
+        # rewards. It must not infer access again from role equivalence.
         share_basic_equivalent_buffs = False
     power_aux_buildings = {}
     power_launch_inputs = list(earned_rewards)

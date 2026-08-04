@@ -47,7 +47,7 @@ def buffs_with_unlocked_access(
             continue
         unit_id = (reward.get('unit') or '').upper()
         equivalents = unit_role_equivalents(unit_id)
-        equivalent_is_unlocked = (
+        equivalent_is_buff_eligible = (
             share_basic_equivalent_buffs
             and len(equivalents) > 1
             and bool(unlocked.intersection(equivalents))
@@ -57,14 +57,19 @@ def buffs_with_unlocked_access(
             or reward.get('global_buff')
             or not unit_id
             or unit_id in unlocked
-            or equivalent_is_unlocked
+            or equivalent_is_buff_eligible
         ):
             filtered.append(reward)
     return filtered
 
 
 def expand_equivalent_role_buffs(rewards, enabled=False, allowed_unit_ids=None):
-    """Apply each active unit buff to explicit cross-faction role peers."""
+    """Apply each active unit buff to allowed cross-faction role peers.
+
+    Expanded copies are launch-only canonical rewards. Keeping that marker is
+    important: later canonicalization by serialized reward name would otherwise
+    turn every peer back into the original unit and lose the access boundary.
+    """
     if not enabled:
         return list(rewards)
     allowed = (
@@ -84,5 +89,6 @@ def expand_equivalent_role_buffs(rewards, enabled=False, allowed_unit_ids=None):
                 continue
             equivalent = dict(reward)
             equivalent['unit'] = unit_id
+            equivalent['_runtime_canonical'] = True
             expanded.append(equivalent)
     return expanded

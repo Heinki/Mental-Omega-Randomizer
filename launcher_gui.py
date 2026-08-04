@@ -93,6 +93,7 @@ def run_self_check():
             POWER_BUFF_REWARDS,
             REWARD_POOL,
             buff_stack_limit,
+            canonical_reward,
             linked_buff_variant_ids,
         )
         from randomizer.config.player import DEFAULT_CONFIG
@@ -158,6 +159,42 @@ def run_self_check():
                 buff_stack_limit(reward) is not None
                 for reward in REWARD_POOL
                 if reward.get('kind') == 'buff'
+            )
+        )
+        from randomizer.rewards.rules import (
+            buffs_with_unlocked_access,
+            expand_equivalent_role_buffs,
+            unlocked_reward_tech_ids,
+        )
+        scud_access = canonical_reward({'name': 'Scud Launcher Access'})
+        scud_buff = canonical_reward({
+            'name': 'Scud Launcher Reinforced Frames I'
+        })
+        scoped_scud_rewards = expand_equivalent_role_buffs(
+            [scud_access, scud_buff],
+            enabled=True,
+            allowed_unit_ids={'V3', 'VCARR'},
+        )
+        active_scud_rewards = buffs_with_unlocked_access(
+            scoped_scud_rewards,
+            additional_unlocked_tech_ids={'V3', 'VCARR'},
+            share_basic_equivalent_buffs=False,
+        )
+        equivalent_buff_access_isolation_valid = bool(
+            unlocked_reward_tech_ids(scoped_scud_rewards) == {'V3'}
+            and {
+                reward.get('unit')
+                for reward in active_scud_rewards
+                if reward.get('kind') == 'buff'
+            } == {'V3', 'VCARR'}
+            and any(
+                reward.get('unit') == 'VCARR'
+                and reward.get('_runtime_canonical') is True
+                for reward in scoped_scud_rewards
+            )
+            and not any(
+                reward.get('unit') in {'TELE', 'TARCHIA'}
+                for reward in scoped_scud_rewards
             )
         )
         shin_access = [
@@ -450,6 +487,9 @@ def run_self_check():
             'zephyr_bombardment_enabled_valid': zephyr_enabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
+            'equivalent_buff_access_isolation_valid': (
+                equivalent_buff_access_isolation_valid
+            ),
             'shin_allied_tech_valid': shin_allied_tech_valid,
             'access_catalog_valid': access_catalog_valid,
             'access_catalog_entries': len(runtime_access_catalog),
@@ -530,6 +570,7 @@ def run_self_check():
                 'zephyr_bombardment_enabled_valid',
                 'portable_aid_powers_valid',
                 'all_buff_caps_valid',
+                'equivalent_buff_access_isolation_valid',
                 'shin_allied_tech_valid',
                 'access_catalog_valid',
                 'deploy_clone_links_valid',
