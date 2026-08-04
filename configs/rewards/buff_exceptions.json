@@ -5,7 +5,7 @@
     "excluded_buff_type_ids": {
       "all": ["CMIN", "HARV", "YMIN", "NMIN", "AMCV", "SMCV", "PCV", "FMCV", "GAGAP", "FABTRC"],
       "production": ["HIJACKER"],
-      "passenger_capacity": ["SALA", "STHOR"],
+    "passenger_capacity": ["CHRP", "SALA", "STHOR"],
       "speed": ["CLEG"],
       "damage": ["GASTAS", "GAPOST", "SPY", "SUPR", "SHAD", "CHRTNK", "CRYO", "HBIRD", "NASCOM", "NAMORT", "NAIRDM", "DUST", "MWF", "EDRN", "YAMPSI", "YARIFT", "YAPSYT", "HIJACKER", "INTRUDER", "REPU", "DRIL", "MIND", "COYO", "QUAD", "YHVR", "FACONF", "FACOAT", "FAINHI", "SYNC", "MSA", "RACC", "COON", "CONF", "ORCIN", "SEAT", "SHARK", "ITNK"],
       "reload": ["GASTAS", "GACRYO", "SPY", "SHAD", "STORM", "ORCA", "BEAG", "FORTRESS", "CRYO", "HBIRD", "NABNKR", "NASCOM", "NAMORT", "NADRON", "NATRAP", "NAIRDM", "SBTR", "DTRUCK", "BGGY", "FOX", "DUST", "MWF", "FDRON", "DBOAT", "NATBNK", "YAMPSI", "YARIFT", "YAVNMM", "HIJACKER", "KAOS", "DRIL", "BLIGHT", "COYO", "QUAD", "VENOM", "YHVR", "FAFILD", "FACONF", "FACOAT", "FAAVAL", "FAINHI", "FAMMIN", "SYNC", "CLAIR", "MSA", "RACC", "COON", "ROADR", "DIVER", "MAD", "ORCIN", "BOID", "SEAT", "ITNK", "DIVERP"],

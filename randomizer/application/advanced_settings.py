@@ -772,7 +772,7 @@ class AdvancedSettingsController:
     def refresh_setting_states(self):
         if not hasattr(self, 'randomize_unit_access_check'):
             return
-        chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
+        chaos_mode = self.reward_mode_var.get() == 'Chaos'
         buffs_enabled = bool(self.include_buff_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
         special_buildings_enabled = bool(self.include_special_buildings_var.get())

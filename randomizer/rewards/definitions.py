@@ -174,12 +174,14 @@ MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     # passengers that are weapon systems. Capacity stacks would expose empty
     # cargo slots and alter their fixed weapon payload contract.
     'passenger_capacity': (
-        TRANSPORT_GUNNER_IDS | frozenset({'SALA', 'STHOR'})
+        TRANSPORT_GUNNER_IDS | frozenset({'CHRP', 'SALA', 'STHOR'})
     ),
     # Stallion is weaponless and explicitly cannot passively acquire targets;
     # live verification found that its passengers therefore never fire.
     'open_topped': (
-        TRANSPORT_GUNNER_IDS | TRANSPORT_OPEN_TOPPED_BLOCKED_IDS
+        TRANSPORT_GUNNER_IDS
+        | TRANSPORT_OPEN_TOPPED_BLOCKED_IDS
+        | frozenset({'CHRP'})
     ),
 }
 
@@ -202,6 +204,13 @@ AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset(
     values[0] for values in _FACTION_CONFIG['amphibious_transports'].values()
 )
 ENGINEER_UNIT_IDS = frozenset(_FACTION_CONFIG['engineer_by_family'].values())
+# Engineer "weapons" are engine controls for repair/capture/vehicle entry.
+# Old saves and externally supplied stacks must never clone or tune them.
+for _buff_type in ('damage', 'reload', 'range'):
+    MANDATORY_EXCLUDED_BUFF_TYPE_IDS[_buff_type] = (
+        MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(_buff_type, frozenset())
+        | ENGINEER_UNIT_IDS
+    )
 ALWAYS_AVAILABLE_UNIT_IDS = set(
     _UNIT_POLICY_CONFIG['always_available_core_unit_ids']
 ) | set(ENGINEER_UNIT_IDS) | set(AMPHIBIOUS_TRANSPORT_UNIT_IDS)

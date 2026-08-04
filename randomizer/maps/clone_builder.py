@@ -110,6 +110,7 @@ class PlayerCloneBuildResult:
     section_rules: dict[str, dict[str, Any]]
     replacements: dict[str, str]
     direct_replacements: dict[str, str]
+    reference_clone_id_by_source: dict[str, str]
     cloned_source_ids: set[str]
     taskforce_replacements: dict[str, str]
     structure_plan_allowed_houses_by_unit: dict[str, list[str]]
@@ -1398,6 +1399,12 @@ def build_player_clone_sections(
             'clone_unit_buff_types': handled_unit_types,
             'weapon_ids': native_handled_weapon_ids,
             'clone_id': clone_id,
+            # Mission-authored placements/TaskForces can use a clean locked
+            # reference identity when the production clone carries cloak or
+            # another unsafe sidebar-only behavior. Exact objective/loss
+            # Events must follow that same runtime identity, not the separate
+            # production clone.
+            'reference_clone_id': reference_clone_id,
         }
         label = target.get('label', target_unit_id)
         cloned_labels.append(
@@ -1629,6 +1636,7 @@ def build_player_clone_sections(
         section_rules=section_rules,
         replacements=replacements,
         direct_replacements=direct_replacements,
+        reference_clone_id_by_source=reference_clone_id_by_source,
         cloned_source_ids=cloned_source_ids,
         taskforce_replacements=taskforce_replacements,
         structure_plan_allowed_houses_by_unit=structure_plan_allowed_houses_by_unit,

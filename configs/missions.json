@@ -1020,6 +1020,8 @@
         "YURI"
       ],
       "ESCRAP": [
+        "BOREK",
+        "SWLF",
         "YURI"
       ],
       "ESHIP": [
@@ -1027,6 +1029,10 @@
       ],
       "SDEATH": [
         "YURI"
+      ],
+      "SHAND": [
+        "ADOG",
+        "CHITZ"
       ],
       "SPEACE": [
         "YURI"
@@ -1153,6 +1159,8 @@
         "YURIPR"
       ],
       "ESCRAP": [
+        "BOREK",
+        "SWLF",
         "YURI"
       ],
       "ESHIP": [
@@ -1243,6 +1251,9 @@
       ]
     },
     "scripted_player_buff_taskforces": {
+      "ESCRAP": [
+        "01000073"
+      ],
       "FKILL": [
         "01000006",
         "01000007",
@@ -1273,7 +1284,35 @@
         "SDRN"
       ]
     },
+    "special_infantry_factory_exclusions": {
+      "ELORD": [
+        "CAMINE"
+      ]
+    },
+    "victory_hook_action_ids": {
+      "SEXIST": [
+        "01000240"
+      ]
+    },
     "native_runtime_identity_preserve_ids": {
+      "ARELE": [
+        "VCARR"
+      ],
+      "ESCRAP": [
+        "BOREK",
+        "SWLF"
+      ],
+      "SEXIST": [
+        "MORALES"
+      ],
+      "SHAND": [
+        "ADOG",
+        "CHITZ"
+      ],
+      "ELORD": [
+        "DOG",
+        "SENGINEER"
+      ],
       "SECLIPSE": [
         "EINS"
       ],
@@ -1292,6 +1331,17 @@
       ]
     },
     "objective_clone_event_refs": {
+      "ESCRAP": {
+        "MWF": [
+          "01000032"
+        ],
+        "NAFIST": [
+          "01000032"
+        ],
+        "STING": [
+          "01000028"
+        ]
+      },
       "EHEAD": {
         "FOX": [
           "01000926",
@@ -1794,6 +1844,9 @@
       }
     },
     "native_tech_unlock_ids": {
+      "ARELE": [
+        "VCARR"
+      ],
       "SJUGGER": [
         "NAHAMM",
         "NAIRDM"

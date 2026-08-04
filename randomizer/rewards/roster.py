@@ -49,6 +49,20 @@ MANDATORY_TEMPLATE_OVERRIDES = {
     'NAIRDM': {
         'Cloakable.Allowed': 'no',
     },
+    'CHRP': {
+        'PipScale': 'none',
+        'PassengerTurret': 'no',
+        'Passengers.BySize': None,
+        'Passengers': '0',
+        'NoManualEnter': 'yes',
+        'NoManualUnload': 'yes',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'SizeLimit': None,
+        'EnterTransportSound': None,
+        'LeaveTransportSound': None,
+    },
     # Preserved editable packaged rosters may predate hidden-payload fixes.
     # Enforce interaction/UI safety in memory even when those files remain
     # authoritative for every unrelated value.
@@ -745,6 +759,149 @@ def validate_hidden_passenger_payloads():
             + '; '.join(errors)
         )
     return report
+
+
+def validate_reviewed_vehicle_identity_contracts():
+    """Audit distinct Tengu/Tsurugi and passenger-free vehicle contracts."""
+    from randomizer.rewards.catalogue import (
+        BUFF_TARGETS,
+        REWARD_POOL,
+        UNIT_SIDEBAR_IMAGES,
+    )
+    from randomizer.rewards.definitions import UNIT_BUFF_REWARDS
+    from randomizer.rewards.display import canonical_reward
+    from randomizer.rewards.rules import tech_ids_for_rewards
+    from randomizer.maps.buff_values import _active_direct_buff_counts
+
+    _paths, clone_ids, templates = randomizer_unit_roster()
+    errors = []
+    expected_identity = {
+        'TENGU': {
+            'clone': 'MORPTENGU',
+            'name': 'Tsurugi Powersuit',
+            'ui_name': 'NAME:TENGU',
+            'image': 'TENGU',
+            'cameo': 'tsuricon.pcx',
+            'special': False,
+        },
+        'MECHA': {
+            'clone': 'MORPMECHA',
+            'name': 'Robo Tengu',
+            'ui_name': 'NAME:MECHA',
+            'image': 'MECHA',
+            'cameo': 'tengu.pcx',
+            'special': True,
+        },
+    }
+    identity_report = {}
+    for source_id, expected in expected_identity.items():
+        template = templates.get(source_id, {})
+        actual = {
+            'clone': clone_ids.get(source_id),
+            'name': _case_insensitive_item(template, 'Name')[1],
+            'ui_name': _case_insensitive_item(template, 'UIName')[1],
+            'image': _case_insensitive_item(template, 'Image')[1],
+            'cameo': UNIT_SIDEBAR_IMAGES.get(source_id, {}).get('source_pcx'),
+            'special': bool(
+                BUFF_TARGETS.get(source_id, {}).get('special_reward')
+            ),
+        }
+        identity_report[source_id] = actual
+        for key, wanted in expected.items():
+            if str(actual.get(key)).lower() != str(wanted).lower():
+                errors.append(f'{source_id}.{key}={actual.get(key)!r}')
+        access_count = sum(
+            1
+            for reward in REWARD_POOL
+            if reward.get('kind') != 'buff'
+            and source_id in tech_ids_for_rewards([reward])
+        )
+        if access_count != 1:
+            errors.append(f'{source_id} has {access_count} access rewards')
+    if clone_ids.get('TENGU') == clone_ids.get('MECHA'):
+        errors.append('TENGU and MECHA share one player clone ID')
+
+    chrp = templates.get('CHRP', {})
+    chrp_required = {
+        'PipScale': 'none',
+        'PassengerTurret': 'no',
+        'Passengers': '0',
+        'NoManualEnter': 'yes',
+        'NoManualUnload': 'yes',
+        'Primary': 'ChronoImprison',
+        'Weapon1': 'ChronoImprison',
+    }
+    for key, wanted in chrp_required.items():
+        actual = _case_insensitive_item(chrp, key)[1]
+        if str(actual or '').lower() != wanted.lower():
+            errors.append(f'CHRP.{key}={actual!r}')
+    for key in (
+        'Passengers.BySize',
+        'SizeLimit',
+        'EnterTransportSound',
+        'LeaveTransportSound',
+    ):
+        actual_key, actual = _case_insensitive_item(chrp, key)
+        if actual_key is not None and actual not in {None, ''}:
+            errors.append(f'CHRP.{key}={actual!r}')
+
+    abrm = templates.get('ABRM', {})
+    for key in (
+        'Passengers',
+        'Passengers.BySize',
+        'SizeLimit',
+        'OpenTopped',
+        'Gunner',
+        'EnterTransportSound',
+        'LeaveTransportSound',
+    ):
+        actual_key, actual = _case_insensitive_item(abrm, key)
+        if actual_key is not None and str(actual or '').lower() not in {
+            '', '0', 'no',
+        }:
+            errors.append(f'ABRM.{key}={actual!r}')
+    if str(_case_insensitive_item(abrm, 'PipScale')[1]).lower() != 'none':
+        errors.append('ABRM.PipScale is not none')
+
+    forbidden_transport_rewards = {
+        (str(reward.get('unit', '')).upper(), reward.get('buff_type'))
+        for reward in UNIT_BUFF_REWARDS
+        if str(reward.get('unit', '')).upper() == 'CHRP'
+        and reward.get('buff_type') in {'passenger_capacity', 'open_topped'}
+    }
+    if forbidden_transport_rewards:
+        errors.append(
+            f'CHRP still offers transport buffs {forbidden_transport_rewards}'
+        )
+    forced_transport_rewards = []
+    for buff_type in ('passenger_capacity', 'open_topped'):
+        legacy = {
+            'name': f'Legacy CHRP {buff_type}',
+            'kind': 'buff',
+            'unit': 'CHRP',
+            'buff_type': buff_type,
+        }
+        if canonical_reward(legacy).get('kind') != 'retired':
+            errors.append(f'CHRP legacy {buff_type} remains active')
+        forced_transport_rewards.append({
+            **legacy,
+            '_runtime_canonical': True,
+        })
+    forced_counts = _active_direct_buff_counts(
+        forced_transport_rewards,
+        require_unlocked_access=False,
+    )
+    if forced_counts:
+        errors.append(f'CHRP forced transport buffs reached maps: {forced_counts}')
+    if errors:
+        raise ValueError(
+            'Reviewed vehicle identity validation failed: ' + '; '.join(errors)
+        )
+    return {
+        'identities': identity_report,
+        'chrono_prison_passenger_free': True,
+        'abrams_matches_passenger_free_original': True,
+    }
 
 
 def validate_randomizer_unit_health():

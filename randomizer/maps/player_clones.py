@@ -450,6 +450,9 @@ def player_unit_clone_rules(
     section_rules = clone_result.section_rules
     replacements = clone_result.replacements
     direct_replacements = clone_result.direct_replacements
+    reference_clone_id_by_source = (
+        clone_result.reference_clone_id_by_source
+    )
     cloned_source_ids = clone_result.cloned_source_ids
     taskforce_replacements = clone_result.taskforce_replacements
     structure_plan_allowed_houses_by_unit = clone_result.structure_plan_allowed_houses_by_unit
@@ -596,19 +599,50 @@ def player_unit_clone_rules(
     # exact reviewed Event IDs to the concrete clone allocated for this launch
     # (which may be a compact two-character veteran identity).
     event_values = section_value_map_preserve(lines, 'Events')
+    runtime_placement_clone_ids = {}
+    for placement_section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
+        original_values = section_value_map_preserve(lines, placement_section)
+        patched_values = section_rules.get(placement_section, {})
+        for placement_id, original in original_values.items():
+            patched = patched_values.get(placement_id)
+            if patched is None:
+                continue
+            original_tokens = [
+                token.strip() for token in str(original).split(',')
+            ]
+            patched_tokens = [
+                token.strip() for token in str(patched).split(',')
+            ]
+            if (
+                len(original_tokens) >= 2
+                and len(patched_tokens) >= 2
+                and original_tokens[1].upper() != patched_tokens[1].upper()
+            ):
+                runtime_placement_clone_ids[
+                    original_tokens[1].upper()
+                ] = patched_tokens[1]
     for source_id, event_ids in (objective_clone_event_refs or {}).items():
         source_id = str(source_id).upper()
+        details = handled_by_unit.get(source_id, {})
         clone_id = str(
-            handled_by_unit.get(source_id, {}).get('clone_id') or ''
+            runtime_placement_clone_ids.get(source_id)
+            or reference_clone_id_by_source.get(source_id)
+            or direct_replacements.get(source_id)
+            or details.get('reference_clone_id')
+            or details.get('clone_id')
+            or ''
         ).strip()
         if not clone_id:
-            mixed_taskforces.append(
-                f'Events for {source_id} have no player clone'
-            )
+            # This launch has no isolated copy of the reviewed source. Keep
+            # the authored event on its native identity; the override becomes
+            # active automatically on launches where a clone is allocated.
             continue
         for event_id in event_ids:
             event_id = str(event_id)
-            original = event_values.get(event_id)
+            original = section_rules.get('Events', {}).get(
+                event_id,
+                event_values.get(event_id),
+            )
             if original is None:
                 mixed_taskforces.append(
                     f'Event {event_id} for {source_id} is missing'

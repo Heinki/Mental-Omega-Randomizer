@@ -43,6 +43,7 @@
           "AMC": "Archon AMC",
           "MTNK": "Cavalier Medium Tank",
           "TENGU": "Tsurugi Powersuit",
+          "MECHA": "Robo Tengu",
           "KTNK": "Kappa Hover Tank",
           "ROBO": "Robot Tank",
           "AHMV": "Airborne Humvee",
@@ -302,6 +303,7 @@
       "QUICK",
       "LIONH",
       "CHRP",
+      "MECHA",
       "AHVYBOT2",
       "GRUMBLE",
       "SYCKLE",
@@ -351,6 +353,9 @@
         "source_pcx": "cbrisicon.pcx"
       },
       "TENGU": {
+        "source_pcx": "tsuricon.pcx"
+      },
+      "MECHA": {
         "source_pcx": "tengu.pcx"
       },
       "YAHCR": {
@@ -1599,6 +1604,14 @@
         7,
         null
       ],
+      "MECHA": [
+        600,
+        14,
+        280,
+        7,
+        7,
+        null
+      ],
       "BRUTE": [
         500,
         7,
@@ -2329,7 +2342,6 @@
       "ARMA": {"passengers": 8, "open_topped": false},
       "BFRT": {"passengers": 4, "open_topped": true},
       "BOREK": {"passengers": 6, "open_topped": false},
-      "CHRP": {"passengers": 3, "open_topped": false},
       "CNTR": {"passengers": 3, "open_topped": true},
       "DRIL": {"passengers": 3, "open_topped": false},
       "FV": {"passengers": 1, "open_topped": false},
@@ -3505,6 +3517,20 @@
           "ChronoImprison": {
             "rof": 250,
             "range": 10
+          }
+        }
+      },
+      "MECHA": {
+        "weapons": {
+          "CRM60": {
+            "damage": 30,
+            "rof": 18,
+            "range": 7
+          },
+          "CRM60E": {
+            "damage": 30,
+            "rof": 18,
+            "range": 7
           }
         }
       },

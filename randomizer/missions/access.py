@@ -413,13 +413,19 @@ def _allowed_safety_families(player_family):
     return set()
 
 
-def _special_infantry_factories(sections):
+def _special_infantry_factories(sections, excluded_factory_ids=()):
     """Return map-local infantry factories outside known faction barracks."""
+    excluded = {
+        str(factory_id).strip().upper()
+        for factory_id in excluded_factory_ids
+        if str(factory_id).strip()
+    }
     return tuple(
         section.upper()
         for section, values in sections.items()
         if values.get('factory', '').lower() == 'infantrytype'
         and section.upper() not in PRODUCTION_LOOKUP
+        and section.upper() not in excluded
     )
 
 
@@ -443,13 +449,21 @@ def _map_provides_stalins_fist(lines, sections):
     return False
 
 
-def _special_factory_alternatives(lines, category, sections=None):
+def _special_factory_alternatives(
+    lines,
+    category,
+    sections=None,
+    excluded_infantry_factory_ids=(),
+):
     sections = sections if sections is not None else all_section_value_maps(lines)
     alternatives = []
     if category == 'vehicles' and _map_provides_stalins_fist(lines, sections):
         alternatives.append(STALINS_FIST_FACTORY)
     if category == 'infantry':
-        alternatives.extend(_special_infantry_factories(sections))
+        alternatives.extend(_special_infantry_factories(
+            sections,
+            excluded_infantry_factory_ids,
+        ))
     return tuple(alternatives)
 
 
@@ -457,11 +471,15 @@ def single_engineer_rules(
     lines,
     chaos_mode=False,
     additional_build_houses=(),
+    excluded_special_infantry_factories=(),
 ):
     """Prepare every faction Engineer behind its matching barracks."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
-    special_barracks = list(_special_infantry_factories(sections))
+    special_barracks = list(_special_infantry_factories(
+        sections,
+        excluded_special_infantry_factories,
+    ))
     player_family = _player_family(lines, records)
     # Chaos installs all four Engineers and shares compatible Barracks.
     # Standard prepares only physically present production families, retaining
@@ -581,6 +599,7 @@ def mission_basic_unit_rules(
     translate_equivalents=False,
     additional_build_houses=(),
     additional_production_houses=(),
+    excluded_special_infantry_factories=(),
 ):
     """Resolve earned roles to each physically available production family.
 
@@ -648,7 +667,10 @@ def mission_basic_unit_rules(
     # A map-local generic Barracks follows the current Standard player family.
     # It may resolve an unlocked role to that family's infantry, but must not
     # expose unrelated exact-faction rewards before foreign production capture.
-    special_barracks = _special_infantry_factories(sections)
+    special_barracks = _special_infantry_factories(
+        sections,
+        excluded_special_infantry_factories,
+    )
     if special_barracks:
         for tech_id, tech_level, family, category, prerequisite, native_owners in access_catalog():
             has_access = (
@@ -738,6 +760,9 @@ def mission_basic_unit_rules(
         lines,
         chaos_mode=False,
         additional_build_houses=additional_build_houses,
+        excluded_special_infantry_factories=(
+            excluded_special_infantry_factories
+        ),
     ).items():
         rules[section] = values
     return rules

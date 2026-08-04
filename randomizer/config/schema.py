@@ -28,6 +28,8 @@ REQUIRED_SECTIONS = {
         'scripted_player_buff_taskforces': dict,
         'team_house_overrides': dict,
         'native_runtime_identity_preserve_ids': dict,
+        'special_infantry_factory_exclusions': dict,
+        'victory_hook_action_ids': dict,
         'objective_clone_event_refs': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
@@ -188,6 +190,8 @@ def _validate_missions(sections, path):
     for section in (
         'original_mcv_access',
         'native_production_gate_exclusions',
+        'special_infantry_factory_exclusions',
+        'victory_hook_action_ids',
         'native_runtime_identity_preserve_ids',
         'time_freeze_immune_techno_ids',
     ):

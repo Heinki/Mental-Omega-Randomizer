@@ -49,7 +49,7 @@ STABLE_APPEND_ORDER = (
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'REJU',
     'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH', 'BRUTE2',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
-    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB',
+    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 UNFINISHED_ASSET_IDS = frozenset({
@@ -90,6 +90,18 @@ TEMPLATE_VALUE_OVERRIDES = {
         # Campaign source is intentionally impractical to produce. Portable
         # reward must use normal construction timing.
         'BuildTimeMultiplier': '1',
+    },
+    'CHRP': {
+        # Portable Chrono Prison keeps its capture weapon but exposes no
+        # cargo interaction, passenger pips, entry prompt, or unload command.
+        'PipScale': 'none',
+        'PassengerTurret': 'no',
+        'Passengers': '0',
+        'NoManualEnter': 'yes',
+        'NoManualUnload': 'yes',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
     },
     'RHAD': {
         'BuildLimit': '1',
@@ -175,6 +187,10 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Name': 'Boomer Brute',
         'UIName': 'Name:Boomer',
     },
+    'CZEP': {
+        'Name': 'Kirov Command Airship',
+        'UIName': 'NAME:CZEP',
+    },
     'STARDUSTB': {
         # Installed STARDUSTB is the player Paradox identity. STARDUST is its
         # non-selectable AI alias and must never become a second reward.
@@ -204,6 +220,7 @@ TEMPLATE_VALUE_OVERRIDES = {
         },
     },
     'SHINBOT': {
+        'BuildLimit': '1',
         'BuildTimeMultiplier': '1',
     },
     'HEPH': {
@@ -397,6 +414,12 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
 }
 TEMPLATE_VALUE_REMOVALS = {
+    'CHRP': frozenset({
+        'passengers.bysize',
+        'sizelimit',
+        'entertransportsound',
+        'leavetransportsound',
+    }),
     # Portable Space Commando production is valid in every theater. Installed
     # CBRIS is intentionally lunar-only for its campaign role.
     'CBRIS': frozenset({

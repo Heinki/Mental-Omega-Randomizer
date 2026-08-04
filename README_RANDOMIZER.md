@@ -42,7 +42,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Dark mode | `dark_mode` | `false`/`true`; default `false` | Switches launcher colors immediately and persists independently from the active seed. | Immediate |
 | Hide reward names in Mission Details | `hide_reward_details` | `false`/`true`; default `false` | Replaces pending reward names with `?????` in Mission Details and mission-row hover text. Completed or released rewards reveal their names; earned rewards also remain visible in Unlocks. | Immediate |
 | Hide locked Grid Mode mission names | `hide_locked_grid_missions` | `false`/`true`; default `false` | Shows every grid node but replaces locked mission identities, faction colors, status, and goal styling with a neutral `?` tile. Completing a visible mission reveals its newly unlocked orthogonal neighbors. The Unlocks catalogue also suppresses green playable-reward hints and their mission names. | Immediate |
-| Reward mode | `generation.reward_mode` | `Standard`, `Chaos (Experimental)`; default `Standard` | Selects campaign-aware rewards or the all-faction Chaos production/access model described below. Chaos always enables access randomization. | Seed generation |
+| Reward mode | `generation.reward_mode` | `Standard`, `Chaos`; default `Standard` | Selects campaign-aware rewards or the all-faction Chaos production/access model described below. Chaos always enables access randomization. | Seed generation |
 
 ### Reward Pool settings
 
@@ -189,7 +189,7 @@ With **Start with basic Tier 1 defensive structures**, Standard resolves the bas
 
 Foehn Standard can still draw the campaign's bundled Allied/Soviet rewards, but earned roles now resolve to Foehn equivalents whenever Foehn production exists. Standard **All Campaigns** uses Allied, Soviet, and Epsilon reward markers; those markers likewise resolve to Foehn equivalents behind exact Foehn factories. The complete Foehn reward catalogue remains reserved for Chaos.
 
-### Chaos (Experimental)
+### Chaos
 
 Chaos draws access and buffs independently from all four factions. Each exact unlocked unit or building is available through every compatible Allied, Soviet, Epsilon, and Foehn production category. Any unlocked Barracks shows all unlocked infantry, any compatible War Factory shows all unlocked vehicles, and the same rule applies to airfields, shipyards, and Construction Yards. Foehn unlocks therefore work in non-Foehn campaigns. Mission-specific production may add another valid factory, but cannot narrow Chaos back to one faction. Standard remains separate: own-faction production starts active, while foreign role equivalents retain exact captured-factory prerequisites.
 

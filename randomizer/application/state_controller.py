@@ -68,6 +68,9 @@ class StateController:
         if not self.state:
             return
         changed = False
+        if self.state.get('reward_mode') == 'Chaos (Experimental)':
+            self.state['reward_mode'] = 'Chaos'
+            changed = True
         if 'mission_goal' not in self.state:
             self.state['mission_goal'] = len(self.state.get('mission_order', [])) or DEFAULT_MISSION_GOAL
             changed = True
@@ -210,7 +213,9 @@ class StateController:
         reward_weights = normalize_reward_weights(
             generation_config.get('reward_weights')
         )
-        if generation_config.get('reward_mode') == 'Chaos (Experimental)':
+        if generation_config.get('reward_mode') in {
+            'Chaos', 'Chaos (Experimental)'
+        }:
             randomize_access = True
         return {
             'randomize_unit_access': randomize_access,
@@ -281,7 +286,7 @@ class StateController:
     def current_reward_settings(self):
         if 'randomize_unit_access_var' not in self.__dict__:
             return self.config_reward_settings()
-        chaos_mode = self.reward_mode_var.get() == 'Chaos (Experimental)'
+        chaos_mode = self.reward_mode_var.get() == 'Chaos'
         randomize_access = chaos_mode or bool(self.randomize_unit_access_var.get())
         start_with_tier_one_units = bool(self.start_with_tier_one_units_var.get())
         start_with_tier_one_defenses = bool(
@@ -410,7 +415,7 @@ class StateController:
         # Legacy seeds may contain experimental_player_unit_clones. Clone
         # isolation is mandatory now, so the stored flag is deliberately ignored.
         settings.pop('experimental_player_unit_clones', None)
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             settings['randomize_unit_access'] = True
         settings.setdefault('include_buff_rewards', True)
         settings.setdefault('include_superweapon_rewards', False)
@@ -445,7 +450,7 @@ class StateController:
             str(unit_id).upper()
             for unit_id in settings.get('excluded_unit_access_ids', [])
         }
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             rng = random.Random(f'{seed}:starting-tier-one')
             return [
                 unit_id
@@ -526,7 +531,7 @@ class StateController:
             str(unit_id).upper()
             for unit_id in settings.get('excluded_unit_access_ids', [])
         }
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             if seed is None:
                 seed = self.seed_var.get() if hasattr(self, 'seed_var') else ''
             rng = random.Random(f'{seed}:starting-tier-one-defenses')
@@ -540,7 +545,7 @@ class StateController:
         eligible_ids = expanded_tier_one_defense_ids(
             marker,
             include_foehn=(
-                self.active_reward_mode() == 'Chaos (Experimental)'
+                self.active_reward_mode() == 'Chaos'
             ),
             families=families,
         )
@@ -568,7 +573,7 @@ class StateController:
         return expanded_tier_one_defense_ids(
             self.active_starting_tier_one_defense_ids(),
             include_foehn=(
-                self.active_reward_mode() == 'Chaos (Experimental)'
+                self.active_reward_mode() == 'Chaos'
             ),
             families=self.active_standard_starter_families(),
         ) - excluded_ids
@@ -588,7 +593,7 @@ class StateController:
             selected_campaign = self.campaign_var.get()
         return bool(
             (
-                self.active_reward_mode() == 'Chaos (Experimental)'
+                self.active_reward_mode() == 'Chaos'
                 or selected_campaign == 'All Campaigns'
             )
             and self.active_reward_settings().get('share_chaos_role_buffs', False)
@@ -657,14 +662,19 @@ class StateController:
     def active_reward_mode(self):
         generation_context = self.__dict__.get('_seed_generation_context') or {}
         if generation_context.get('reward_mode'):
-            return generation_context['reward_mode']
-        if self.__dict__.get('_reward_settings_override') is not None and hasattr(self, 'reward_mode_var'):
-            return self.reward_mode_var.get()
-        if self.state:
-            return self.state.get('reward_mode', REWARD_MODES[0])
-        if hasattr(self, 'reward_mode_var'):
-            return self.reward_mode_var.get()
-        return REWARD_MODES[0]
+            mode = generation_context['reward_mode']
+        elif (
+            self.__dict__.get('_reward_settings_override') is not None
+            and hasattr(self, 'reward_mode_var')
+        ):
+            mode = self.reward_mode_var.get()
+        elif self.state:
+            mode = self.state.get('reward_mode', REWARD_MODES[0])
+        elif hasattr(self, 'reward_mode_var'):
+            mode = self.reward_mode_var.get()
+        else:
+            mode = REWARD_MODES[0]
+        return 'Chaos' if mode == 'Chaos (Experimental)' else mode
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
@@ -832,6 +842,8 @@ class StateController:
         """Apply one validated portable config to every live setting control."""
         self.config = config
         generation = self.config.get('generation', {})
+        if generation.get('reward_mode') == 'Chaos (Experimental)':
+            generation['reward_mode'] = 'Chaos'
         reward_settings = self.config_reward_settings()
         generation['starting_unlock_rewards'] = reward_settings['starting_unlock_rewards']
         self.dark_mode_var.set(bool(self.config.get('dark_mode', False)))

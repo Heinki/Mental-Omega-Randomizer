@@ -501,6 +501,7 @@ def chaos_earned_access_rules(
     lines,
     earned_rewards,
     additional_build_houses=(),
+    excluded_special_infantry_factories=(),
 ):
     """Adapt every earned access item to player-controlled production."""
     player_houses = set(player_controlled_houses(lines))
@@ -538,7 +539,14 @@ def chaos_earned_access_rules(
         if tech_id in earned_access_ids:
             entries_by_tech.setdefault(tech_id, []).append(entry)
     special_alternatives = {
-        category: _special_factory_alternatives(lines, category, sections)
+        category: _special_factory_alternatives(
+            lines,
+            category,
+            sections,
+            excluded_infantry_factory_ids=(
+                excluded_special_infantry_factories
+            ),
+        )
         for category in ('base', 'infantry', 'vehicles', 'air', 'naval')
     }
     for tech_id, entries in entries_by_tech.items():

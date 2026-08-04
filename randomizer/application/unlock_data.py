@@ -47,7 +47,7 @@ class UnlockDataController:
         return house_wide_buff_scope(
             reward,
             unit_specific_mode=(
-                self.active_reward_mode() == 'Chaos (Experimental)'
+                self.active_reward_mode() == 'Chaos'
             ),
         )
 
@@ -372,7 +372,7 @@ class UnlockDataController:
     def display_starting_tier_one_unit_ids(self):
         """Return concrete starter variants represented by saved role markers."""
         unit_ids = self.active_starting_tier_one_expanded_ids()
-        if self.active_reward_mode() != 'Chaos (Experimental)':
+        if self.active_reward_mode() != 'Chaos':
             unit_ids = {
                 unit_id
                 for unit_id in unit_ids
@@ -469,7 +469,63 @@ class UnlockDataController:
                                 entry['available_unlocks'].append(item)
                                 if code not in entry['available_codes']:
                                     entry['available_codes'].append(code)
+        # Preselected starting rewards are active launch/progression rewards,
+        # not mission-check assignments. Index them as earned so support-power
+        # cards and their stored buffs use the same display path as later
+        # progression. Buffs remain absent from earned_unlocks and therefore
+        # can never grant access by themselves.
+        for reward in self.preselected_unlock_rewards():
+            reward = canonical_reward(reward)
+            if reward.get('retired_reward'):
+                continue
+            for key in self.unlock_dashboard_reward_keys(reward):
+                entry = indexed.setdefault(
+                    key,
+                    {
+                        'assigned': [],
+                        'earned': [],
+                        'earned_unlocks': [],
+                        'available': [],
+                        'available_unlocks': [],
+                        'available_codes': [],
+                    },
+                )
+                item = ('Preselected unlock', reward)
+                entry['assigned'].append(item)
+                entry['earned'].append(item)
+                if reward.get('kind') != 'buff':
+                    entry['earned_unlocks'].append(item)
         return indexed
+
+    def preselected_unlock_rewards(self):
+        """Return selected unlocks, including tier-one-deduplicated choices."""
+        if not self.state:
+            return []
+        configured_names = self.state.get('reward_settings', {}).get(
+            'starting_unlock_rewards', []
+        )
+        # ``starting_rewards`` is the authoritative saved list for both
+        # randomly chosen and explicitly selected seed-start unlocks. The
+        # manual/config fields are retained as fallbacks for setup previews
+        # before a seed has serialized that list.
+        candidates = list(self.state.get('starting_rewards', []))
+        candidates.extend(self.state.get('manual_starting_rewards', []))
+        candidates.extend({'name': name} for name in configured_names)
+        rewards = []
+        seen = set()
+        for candidate in candidates:
+            reward = canonical_reward(candidate)
+            name = reward.get('name')
+            if (
+                not name
+                or name in seen
+                or reward.get('kind') in {'buff', 'retired'}
+                or reward.get('retired_reward')
+            ):
+                continue
+            seen.add(name)
+            rewards.append(reward)
+        return rewards
 
     def unlock_dashboard_entries(self):
         """Build privacy-aware icon states without changing seed data."""
@@ -485,13 +541,7 @@ class UnlockDataController:
         ]
         manual_unlock_keys = {
             key
-            for reward in (
-                canonical_reward(reward)
-                for reward in (
-                    self.state.get('manual_starting_rewards', [])
-                    if self.state else []
-                )
-            )
+            for reward in self.preselected_unlock_rewards()
             if reward.get('kind') != 'buff'
             for key in self.unlock_dashboard_reward_keys(reward)
         }
@@ -500,7 +550,7 @@ class UnlockDataController:
         earned_access = unlocked_reward_tech_ids(earned_rewards)
         starting_access = self.active_starting_tier_one_access_ids()
         randomize_access = self.randomize_unit_access_enabled()
-        foehn_units_available = self.active_reward_mode() == 'Chaos (Experimental)'
+        foehn_units_available = self.active_reward_mode() == 'Chaos'
 
         entries = []
         category_labels = {
@@ -659,7 +709,7 @@ class UnlockDataController:
             )
             status = (
                 'unlocked'
-                if building_id in earned_access
+                if building_id in earned_access or source_data['earned_unlocks']
                 else 'available'
                 if source_data['available_unlocks'] and not privacy
                 else 'locked'
@@ -736,6 +786,11 @@ class UnlockDataController:
                 'privacy': privacy,
                 'reward': reward,
             })
+        # One final shared pass covers units, defenses/buildings, support
+        # powers, and superweapons without category-specific drift.
+        for entry in entries:
+            if entry['key'] in manual_unlock_keys:
+                entry['condition'] = 'Preselected unlock'
         return entries
 
     def unlock_dashboard_tooltip(self, entry):
@@ -830,7 +885,7 @@ class UnlockDataController:
         ):
             effect_lines.extend(reward_rule_summary(entry['reward']))
         if effect_lines:
-            lines.extend(['', 'Current effects:'])
+            lines.append('Current effects:')
             lines.extend(f'• {line}' for line in effect_lines)
 
         deferred_power_buffs = [
@@ -847,7 +902,7 @@ class UnlockDataController:
                 deferred.setdefault(
                     key, {'reward': reward, 'count': 0}
                 )['count'] += 1
-            lines.extend(['', 'Stored buffs (apply after unlock):'])
+            lines.append('Stored buffs (apply after unlock):')
             for buff in deferred.values():
                 for summary in buff_effect_lines(
                     buff['reward'],
@@ -874,7 +929,7 @@ class UnlockDataController:
                 else:
                     potential.append(reward_display_name(reward))
             if potential:
-                lines.extend(['', 'Potential reward:'])
+                lines.append('Potential reward:')
                 lines.extend(f'• {line}' for line in dict.fromkeys(potential))
         return '\n'.join(lines)
 

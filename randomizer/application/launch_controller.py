@@ -19,6 +19,7 @@ from ._dependencies import (
     MISSION_NATIVE_TECH_UNLOCK_IDS,
     MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
+    MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS,
     NEXT_OBJECTIVE_CHECK_ID,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
@@ -126,6 +127,11 @@ class LaunchController:
             {},
         )
         mission_code = str(mission.get('code') or '').upper()
+        excluded_special_infantry_factories = (
+            MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS.get(
+                mission_code, ()
+            )
+        )
 
         def merge_required_rules(rules):
             miner_rules = always_available_miner_rules(
@@ -157,7 +163,7 @@ class LaunchController:
                 )
             } - already_available_ids
             if delayed_native_ids:
-                if self.active_reward_mode() == 'Chaos (Experimental)':
+                if self.active_reward_mode() == 'Chaos':
                     delayed_rewards = [
                         reward
                         for reward in REWARD_POOL
@@ -169,6 +175,9 @@ class LaunchController:
                         lines,
                         delayed_rewards,
                         additional_build_houses=(),
+                        excluded_special_infantry_factories=(
+                            excluded_special_infantry_factories
+                        ),
                     )
                 else:
                     delayed_rules = mission_basic_unit_rules(
@@ -177,6 +186,9 @@ class LaunchController:
                         translate_equivalents=False,
                         additional_build_houses=(),
                         additional_production_houses=production_houses,
+                        excluded_special_infantry_factories=(
+                            excluded_special_infantry_factories
+                        ),
                     )
                 for unit_id in sorted(delayed_native_ids):
                     values = delayed_rules.get(unit_id)
@@ -200,11 +212,14 @@ class LaunchController:
                         for tech_id in reward.get('rules', {})
                     )
                 ]
-                if self.active_reward_mode() == 'Chaos (Experimental)':
+                if self.active_reward_mode() == 'Chaos':
                     defense_rules = chaos_earned_access_rules(
                         lines,
                         earned_defense_rewards,
                         additional_build_houses=(),
+                        excluded_special_infantry_factories=(
+                            excluded_special_infantry_factories
+                        ),
                     )
                 else:
                     defense_rules = mission_basic_unit_rules(
@@ -215,6 +230,9 @@ class LaunchController:
                         translate_equivalents=True,
                         additional_build_houses=(),
                         additional_production_houses=production_houses,
+                        excluded_special_infantry_factories=(
+                            excluded_special_infantry_factories
+                        ),
                     )
                 for section, values in defense_rules.items():
                     rules.setdefault(section, {}).update(values)
@@ -222,11 +240,14 @@ class LaunchController:
                 rules.setdefault(section, {}).update(values)
             return rules
 
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             chaos_access_rules = chaos_earned_access_rules(
                 lines,
                 self.active_launch_rewards(),
                 additional_build_houses=(),
+                excluded_special_infantry_factories=(
+                    excluded_special_infantry_factories
+                ),
             )
             rules = {
                 section: dict(values)
@@ -243,6 +264,9 @@ class LaunchController:
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
+                excluded_special_infantry_factories=(
+                    excluded_special_infantry_factories
+                ),
             )
             for section, values in engineer_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -301,6 +325,9 @@ class LaunchController:
             translate_equivalents=translate_equivalents,
             additional_build_houses=(),
             additional_production_houses=production_houses,
+            excluded_special_infantry_factories=(
+                excluded_special_infantry_factories
+            ),
         )
         transport_rules = always_available_transport_rules(
             lines,

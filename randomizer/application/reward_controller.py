@@ -83,7 +83,7 @@ class RewardController:
         Canonicalizing and filtering again at launch prevents an old catalog
         mistake from leaking foreign technology into a single-faction seed.
         """
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             return None
         selected = (self.state or {}).get('campaign_filter', '')
         if selected == 'Foehn':
@@ -100,7 +100,7 @@ class RewardController:
         """Keep native Foehn unit access exclusive to Chaos reward mode."""
         reward = canonical_reward(reward)
         return bool(
-            self.active_reward_mode() != 'Chaos (Experimental)'
+            self.active_reward_mode() != 'Chaos'
             and reward.get('kind') != 'superweapon'
             and reward.get('access_category') != 'special_building'
             and not self.reward_is_special_building(reward)
@@ -163,7 +163,7 @@ class RewardController:
             if unit_id
         }
         unlocked = set(self.active_unlocked_reward_tech_ids())
-        if self.active_reward_mode() == 'Chaos (Experimental)':
+        if self.active_reward_mode() == 'Chaos':
             return unlocked | additional
 
         family_names = {
@@ -271,7 +271,7 @@ class RewardController:
 
     def reward_pool_for_code(self, code):
         reward_mode = self.active_reward_mode()
-        if reward_mode == 'Chaos (Experimental)':
+        if reward_mode == 'Chaos':
             return self.configured_reward_pool()
         factions = self.reward_factions_for_code(code)
         generation_context = self.__dict__.get('_seed_generation_context') or {}
@@ -444,7 +444,7 @@ class RewardController:
             ).items()
             if isinstance(buff_types, (list, tuple, set))
         }
-        chaos_mode = self.active_reward_mode() == 'Chaos (Experimental)'
+        chaos_mode = self.active_reward_mode() == 'Chaos'
         reward_weights = normalize_reward_weights(
             reward_settings.get('reward_weights')
         )

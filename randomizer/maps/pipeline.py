@@ -95,6 +95,7 @@ from randomizer.missions.overrides import (
     MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS,
     MISSION_TEAM_HOUSE_OVERRIDES,
     MISSION_TECHNO_BASE_RULES,
+    MISSION_VICTORY_HOOK_ACTION_IDS,
 )
 from randomizer.missions.safety import safe_build_countries
 from randomizer.missions.access import PRODUCTION_BUILDINGS
@@ -125,11 +126,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         (
             self.state
             and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-            and self.active_reward_mode() != 'Chaos (Experimental)'
+            and self.active_reward_mode() != 'Chaos'
         )
         or self.share_chaos_role_buffs_enabled()
     )
-    chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos (Experimental)'
+    chaos_unit_specific_buffs = self.active_reward_mode() == 'Chaos'
     buff_allied_helpers = bool(self.active_reward_settings().get('buff_allied_helpers', False))
 
     scenario = mission.get('scenario')
@@ -493,7 +494,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.state
         and self.state.get('campaign_filter')
         in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
-        and self.active_reward_mode() != 'Chaos (Experimental)'
+        and self.active_reward_mode() != 'Chaos'
     )
     if standard_single_campaign:
         # Translate a buff only to role peers the current mission can actually
@@ -507,7 +508,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         share_basic_equivalent_buffs = False
     power_aux_buildings = {}
     power_launch_inputs = list(earned_rewards)
-    if self.active_reward_mode() != 'Chaos (Experimental)':
+    if self.active_reward_mode() != 'Chaos':
         player_house = player_house_from_map(lines, records=records)
         player_family = country_family(records.get(player_house, {}))
         family_labels = {
@@ -1742,11 +1743,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                             runtime_aliases.add(
                                 str(house_values[field]).lower()
                             )
-            if not runtime_aliases.intersection({
-                str(owner).strip().lower()
-                for owner in player_native_exclusions
-                if str(owner).strip()
-            }):
+            if (
+                source_id not in runtime_identity_preserve_ids
+                and not runtime_aliases.intersection({
+                    str(owner).strip().lower()
+                    for owner in player_native_exclusions
+                    if str(owner).strip()
+                })
+            ):
                 current_forbidden = next(
                     (
                         value
@@ -1846,6 +1850,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     patch_plan, missing_victory, completed_objectives = pending_check_hook_plan(
         lines,
         checks,
+        MISSION_VICTORY_HOOK_ACTION_IDS.get(code, ()),
     )
     if missing_victory:
         self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)

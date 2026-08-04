@@ -24,6 +24,7 @@ from randomizer.config.tuning import (
 from randomizer.rewards.power_buff_definitions import (
     power_buff_effect_text,
     power_buff_stack_limit,
+    power_buff_type_ids,
 )
 
 def canonical_reward(reward):
@@ -42,6 +43,20 @@ def canonical_reward(reward):
     current_reward = REWARD_BY_NAME.get(reward_name)
     if current_reward:
         return current_reward
+    if reward.get('kind') == 'buff' and reward.get('power_buff_type'):
+        if reward.get('power_buff_type') not in power_buff_type_ids(
+            reward.get('superweapon')
+        ):
+            return {
+                'name': f'{reward_name} (retired: inapplicable)',
+                'description': (
+                    'Disabled because this power does not support that buff.'
+                ),
+                'rules': {},
+                'factions': list(reward.get('factions') or []),
+                'kind': 'retired',
+                'retired_reward': True,
+            }
     if reward.get('kind') == 'buff' and reward.get('buff_type'):
         if (
             reward.get('buff_type') == 'veteran'

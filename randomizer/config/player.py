@@ -42,12 +42,15 @@ def migrate_loaded_config(loaded):
     generation = loaded.get('generation')
     if not isinstance(generation, dict):
         return False
+    changed = False
+    if generation.get('reward_mode') == 'Chaos (Experimental)':
+        generation['reward_mode'] = 'Chaos'
+        changed = True
     try:
         version = max(0, int(generation.get('unit_buff_catalogue_version', 0)))
     except (TypeError, ValueError):
         version = 0
     enabled = generation.get('enabled_buff_types')
-    changed = False
     if isinstance(enabled, list):
         for introduced_version in range(
             version + 1,

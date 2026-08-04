@@ -26,7 +26,7 @@ def _action_has_real_objective_completion(groups):
     )
 
 
-def pending_check_hook_plan(lines, checks):
+def pending_check_hook_plan(lines, checks, configured_victory_action_ids=()):
     """Hook real completion events and the mission victory action."""
     objective_action_ids = action_line_ids(
         lines,
@@ -47,8 +47,15 @@ def pending_check_hook_plan(lines, checks):
                 and not action_has_code(groups, 67)
             ),
         )
+    available_action_ids = set(action_line_ids(lines, lambda _groups: True))
+    configured_victory_action_ids = [
+        action_id
+        for action_id in configured_victory_action_ids
+        if action_id in available_action_ids
+    ]
     victory_action_ids = unique_in_order(
-        action_line_ids(lines, lambda groups: action_has_code(groups, 1))
+        configured_victory_action_ids
+        + action_line_ids(lines, lambda groups: action_has_code(groups, 1))
         + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
         + trigger_action_ids_by_name(
             lines,

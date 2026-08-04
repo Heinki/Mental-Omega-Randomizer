@@ -60,6 +60,24 @@ MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS = {
     ).items()
 }
 
+# Map-local factories that intentionally serve only authored mission units.
+# They must not become generic randomizer Barracks alternatives.
+MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS = {
+    code: frozenset(values)
+    for code, values in _MISSION_CONFIG.get(
+        'special_infantry_factory_exclusions', {}
+    ).items()
+}
+
+# Reviewed authored Action groups which prove mission victory before the final
+# End Scenario action can stop asynchronous debug-marker creation.
+MISSION_VICTORY_HOOK_ACTION_IDS = {
+    code: tuple(action_ids)
+    for code, action_ids in _MISSION_CONFIG.get(
+        'victory_hook_action_ids', {}
+    ).items()
+}
+
 # Mission-authored runtime identities whose complete map section must survive
 # player-clone production isolation unchanged. These remain native only for
 # scripted placements/TaskForces; player production uses its separate clone.

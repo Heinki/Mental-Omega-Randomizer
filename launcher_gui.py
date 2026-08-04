@@ -26,6 +26,7 @@ from randomizer.rewards.roster import (
     validate_limited_hero_build_limits,
     validate_randomizer_unit_health,
     validate_randomizer_unit_roster,
+    validate_reviewed_vehicle_identity_contracts,
     validate_special_roster_contracts,
     validate_special_reward_build_times,
     validate_transport_buff_eligibility,
@@ -70,6 +71,7 @@ def run_self_check():
         limited_hero_limits = validate_limited_hero_build_limits()
         special_roster = validate_special_roster_contracts()
         hidden_passenger_payloads = validate_hidden_passenger_payloads()
+        reviewed_vehicle_identities = validate_reviewed_vehicle_identity_contracts()
         unit_health = validate_randomizer_unit_health()
         special_build_times = validate_special_reward_build_times()
         transport_buffs = validate_transport_buff_eligibility()
@@ -86,6 +88,7 @@ def run_self_check():
             AID_POWER_MAP_CONFIGS,
             AID_POWER_UNLOCK_REWARDS,
             BUFF_TARGETS,
+            POWER_BUFF_REWARDS,
             REWARD_POOL,
             buff_stack_limit,
             linked_buff_variant_ids,
@@ -166,9 +169,18 @@ def run_self_check():
             for config in AID_POWER_MAP_CONFIGS
             if config.get('superweapon') == 'ZephyrBeaconSpecial'
         ]
-        zephyr_disabled_valid = bool(
+        zephyr_enabled_valid = bool(
             len(zephyr_configs) == 1
-            and zephyr_configs[0].get('disabled') is True
+            and not zephyr_configs[0].get('disabled')
+            and any(
+                reward.get('superweapon') == 'ZephyrBeaconSpecial'
+                for reward in AID_POWER_UNLOCK_REWARDS
+            )
+            and {
+                reward.get('power_buff_type')
+                for reward in POWER_BUFF_REWARDS
+                if reward.get('superweapon') == 'ZephyrBeaconSpecial'
+            } == {'recharge', 'cost'}
         )
         portable_power_ids = {
             'BackwarpSpecial',
@@ -355,6 +367,8 @@ def run_self_check():
                 )
             ),
             'hidden_passenger_payloads': hidden_passenger_payloads,
+            'reviewed_vehicle_identities_valid': True,
+            'reviewed_vehicle_identities': reviewed_vehicle_identities,
             'randomizer_unit_health_valid': bool(
                 unit_health['types'] == unit_roster['types']
                 and unit_health['minimum_strength'] >= 2
@@ -369,7 +383,7 @@ def run_self_check():
             'moon_reinforcements_initial_cooldown_valid': (
                 moon_initial_cooldown_valid
             ),
-            'zephyr_bombardment_disabled_valid': zephyr_disabled_valid,
+            'zephyr_bombardment_enabled_valid': zephyr_enabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
             'shin_allied_tech_valid': shin_allied_tech_valid,
@@ -440,10 +454,11 @@ def run_self_check():
                 'limited_hero_build_limits_valid',
                 'special_roster_contracts_valid',
                 'hidden_passenger_payloads_valid',
+                'reviewed_vehicle_identities_valid',
                 'randomizer_unit_health_valid',
                 'special_reward_build_times_valid',
                 'moon_reinforcements_initial_cooldown_valid',
-                'zephyr_bombardment_disabled_valid',
+                'zephyr_bombardment_enabled_valid',
                 'portable_aid_powers_valid',
                 'all_buff_caps_valid',
                 'shin_allied_tech_valid',

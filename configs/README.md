@@ -157,6 +157,11 @@ Entered-by-PsiCorps tag to the authored Driller, so Malver boarding completes
 the evacuation condition even though transported passengers remain live game
 objects.
 
+`special_infantry_factory_exclusions` lists map-local `Factory=InfantryType`
+buildings that serve only authored mission production. Excluded factories are
+never appended to randomizer Engineer, Standard infantry, or Chaos infantry
+prerequisite alternatives.
+
 `map_section_rules` can patch any INI section in any configured mission. A
 literal replaces a value, `null` removes its key, and `add`/`remove` edits a
 comma-separated ID list without copying the map's complete original value:
