@@ -321,6 +321,7 @@ class UnlockViewController:
             self.progress_label.config(text='No randomizer seed generated. Vanilla mission launching is still available.')
             self.set_rewards_text('')
             self._unlocks_view_dirty = True
+            self._enemy_buffs_view_dirty = True
             if self.unlocks_view_visible():
                 self.refresh_unlocks_view()
             return
@@ -451,13 +452,30 @@ class UnlockViewController:
 
         self.set_rewards_text('\n'.join(lines))
         self._unlocks_view_dirty = True
+        self._enemy_buffs_view_dirty = True
         if self.unlocks_view_visible():
             self.refresh_unlocks_view()
+        if self.enemy_buffs_view_visible():
+            self.refresh_enemy_buffs_view()
 
     def set_rewards_text(self, text):
         self.rewards_text.configure(state='normal')
         self.rewards_text.delete('1.0', 'end')
         self.rewards_text.insert('end', text)
+        self.rewards_text.tag_configure(
+            'enemy_reward',
+            foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
+        )
+        start = '1.0'
+        while True:
+            match = self.rewards_text.search(
+                'AI Reward:', start, stopindex='end', nocase=False
+            )
+            if not match:
+                break
+            line_end = f'{match} lineend'
+            self.rewards_text.tag_add('enemy_reward', match, line_end)
+            start = f'{line_end}+1c'
         self.rewards_text.configure(state='disabled')
 
     def set_unlocks_text(self, text, unit_ids=None):

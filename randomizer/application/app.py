@@ -13,6 +13,8 @@ from ._dependencies import (
     DEFAULT_REWARDS_PER_CHECK,
     DIFFICULTIES,
     EVA_VOICE_CHOICES,
+    ENEMY_BUFF_DEFINITIONS,
+    ENEMY_BUFF_GROUP_DEFINITIONS,
     GAME_SPEEDS,
     MAIN_REWARD_WEIGHT_TYPES,
     MAX_REWARDS_PER_CHECK,
@@ -29,6 +31,7 @@ from ._dependencies import (
     log_event,
     normalize_reward_weights,
     normalize_arsenal_settings,
+    normalize_enemy_scaling_settings,
     queue,
     tk,
     valid_choice,
@@ -45,6 +48,7 @@ from .seed_controller import SeedController
 from .launch_controller import LaunchController
 from .unlock_data import UnlockDataController
 from .unlock_view import UnlockViewController
+from .enemy_scaling import EnemyScalingController
 
 
 class LauncherApp(
@@ -59,6 +63,7 @@ class LauncherApp(
     LaunchController,
     UnlockDataController,
     UnlockViewController,
+    EnemyScalingController,
     tk.Tk,
 ):
     def __init__(self):
@@ -72,6 +77,7 @@ class LauncherApp(
         self.geometry('1240x760')
         self.minsize(940, 560)
         self.resizable(True, True)
+        self.protocol('WM_DELETE_WINDOW', self.close_launcher)
 
         self.missions = []
         self._mission_by_code = {}
@@ -240,6 +246,9 @@ class LauncherApp(
             value=bool(generation_config.get('prioritize_no_build_missions', False))
         )
         reward_settings = self.config_reward_settings()
+        enemy_settings = normalize_enemy_scaling_settings(
+            reward_settings.get('enemy_scaling')
+        )
         self.manual_starting_reward_names = set(
             reward_settings['starting_unlock_rewards']
         )
@@ -250,6 +259,35 @@ class LauncherApp(
         self.failure_assistance_var = tk.BooleanVar(
             value=bool(generation_config.get('failure_assistance', False))
         )
+        self.enemy_reward_pool_var = tk.BooleanVar(
+            value=enemy_settings['reward_enabled']
+        )
+        self.enemy_objective_rewards_var = tk.IntVar(
+            value=enemy_settings['rewards_per_completed_objective']
+        )
+        self.enemy_mission_rewards_var = tk.IntVar(
+            value=enemy_settings['rewards_per_completed_mission']
+        )
+        allowed_enemy_buffs = set(enemy_settings['allowed_buff_ids'])
+        self.enemy_buff_enabled_vars = {
+            definition['id']: tk.BooleanVar(
+                value=definition['id'] in allowed_enemy_buffs
+            )
+            for definition in ENEMY_BUFF_DEFINITIONS
+        }
+        self.enemy_buff_cap_vars = {
+            definition['id']: tk.IntVar(
+                value=enemy_settings['caps'][definition['id']]
+            )
+            for definition in ENEMY_BUFF_DEFINITIONS
+        }
+        self.enemy_buff_group_vars = {
+            group['id']: tk.BooleanVar(value=any(
+                effect_id in allowed_enemy_buffs
+                for effect_id in group['effect_ids']
+            ))
+            for group in ENEMY_BUFF_GROUP_DEFINITIONS
+        }
         self.randomize_unit_access_var = tk.BooleanVar(
             value=reward_settings['randomize_unit_access']
         )
@@ -347,6 +385,7 @@ class LauncherApp(
         self.cameo_retry_count = 0
         self.cameo_retry_after_id = None
         self._unlocks_view_dirty = True
+        self._enemy_buffs_view_dirty = True
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
         self.cleanup_generated_root_maps()

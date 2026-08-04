@@ -350,6 +350,8 @@ def arsenal_power_ids(arsenal):
 def reward_matches_arsenal(reward, arsenal):
     """Accept only buffs that affect content present in one mission arsenal."""
     reward = canonical_reward(reward)
+    if reward.get('enemy_reward'):
+        return True
     if reward.get('kind') != 'buff':
         return False
     unit_id = str(reward.get('unit') or '').upper()

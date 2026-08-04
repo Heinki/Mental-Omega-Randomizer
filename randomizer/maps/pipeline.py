@@ -27,6 +27,10 @@ from randomizer.maps.rules import (
     backup_file_once,
     clone_player_country_for_house_buffs,
     cloned_superweapon_plan,
+    active_hostile_enemy_houses,
+    discover_hostile_ai_houses,
+    enemy_country_buff_rules,
+    enemy_power_launch_rewards,
     helper_ai_autobuild_plan,
     helper_ai_autobuild_rules,
     is_generated_hooked_map,
@@ -55,6 +59,7 @@ from randomizer.maps.buff_validation import (
     validate_generated_unit_buff_changes,
 )
 from randomizer.rewards.rules import expand_equivalent_role_buffs
+from randomizer.rewards.enemy_scaling import enemy_effect_text
 from randomizer.maps.progress_hooks import (
     inject_check_markers,
     pending_check_hook_plan,
@@ -439,7 +444,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         house_config['enemies'],
         (),
     )
+    discovered_enemies, discovered_enemy_skips = discover_hostile_ai_houses(
+        lines
+    )
+    configured_enemies = unique_in_order(
+        list(configured_enemies) + list(discovered_enemies)
+    )
     enemy_names = {house.lower() for house in configured_enemies}
+    scaled_enemy_houses, phase_enemy_houses = active_hostile_enemy_houses(
+        lines, configured_enemies
+    )
     native_helpers = [
         house for house in native_helpers if house.lower() not in enemy_names
     ]
@@ -499,6 +513,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     earned_rewards = (
         self.launch_rewards_for_mission(code) if self.state else []
     )
+    enemy_scaling_entries = (
+        self.active_enemy_scaling_entries() if self.state else []
+    )
+    enemy_scaling_rewards = [
+        entry['reward'] for entry in enemy_scaling_entries
+    ]
+    ai_reward_applications = []
     if share_basic_equivalent_buffs:
         # Resolve shared buffs against access already proven for this launch.
         # Standard includes current-house units plus foreign role mappings
@@ -737,7 +758,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             type_id.strip().upper()
             for values in cloned_power_rules.values()
             for key, value in values.items()
-            if str(key).lower() in {'deliver.types', 'droppod.types'}
+            if str(key).lower() in {
+                'deliver.types', 'droppod.types', 'paradrop.types',
+            }
             for type_id in str(value or '').split(',')
             if type_id.strip().upper() in BUFF_TARGETS
         ]
@@ -887,7 +910,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 and tokens[1].lower() not in {'none', '<none>'}
             ):
                 non_player_taskforce_unit_ids.add(tokens[1].upper())
-    # Droppod TeamTypes are stricter than ordinary AI production. The engine
+    # Droppod TeamTypes are stricter than ordinary production. The engine
     # can refuse Action 7 before creating the transport when a payload's
     # native type receives any player-isolation overlay, even one aimed at a
     # different country. Preserve only these authored non-player payload
@@ -910,8 +933,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     for team_id in native_map_sections.get('TeamTypes', {}).values():
         team_values = native_map_sections.get(str(team_id), {})
         if str(native_value(team_values, 'Droppod')).lower() != 'yes':
-            continue
-        if str(native_value(team_values, 'House')).lower() in player_usage_names:
             continue
         taskforce_id = str(native_value(team_values, 'TaskForce')).strip()
         for key, value in native_map_sections.get(taskforce_id, {}).items():
@@ -998,6 +1019,186 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         merge_ini_section_values(lines, rule_sections)
         self.append_log(f'Injected {len(rule_sections)} map rule section(s) into {scenario}.')
 
+    enemy_country_rules, scaled_enemy_countries, skipped_enemy_countries = (
+        enemy_country_buff_rules(
+            lines,
+            scaled_enemy_houses,
+            enemy_scaling_rewards,
+        )
+    )
+    if enemy_country_rules:
+        merge_ini_section_values(lines, enemy_country_rules)
+        self.append_log(
+            'Applied AI stat bonuses to hostile AI countries: '
+            + ', '.join(scaled_enemy_countries)
+            + '.'
+        )
+        applied_country_names = {
+            str(country).lower() for country in scaled_enemy_countries
+        }
+        stat_houses = [
+            house for house in scaled_enemy_houses
+            if str(
+                records.get(house, {}).get('country')
+                or house.replace(' House', '')
+            ).lower() in applied_country_names
+        ]
+        entries_by_effect = {}
+        for entry in enemy_scaling_entries:
+            reward = entry['reward']
+            if reward.get('enemy_effect') not in {
+                'armor', 'cost', 'production',
+            }:
+                continue
+            effect_id = str(reward.get('enemy_effect_id') or '')
+            if effect_id:
+                entries_by_effect.setdefault(effect_id, []).append(entry)
+        for effect_id, effect_entries in entries_by_effect.items():
+            reward = effect_entries[0]['reward']
+            maximum = max(1, int(reward.get('enemy_maximum', 1)))
+            for stack_index, entry in enumerate(
+                effect_entries[:maximum], start=1
+            ):
+                for house in stat_houses:
+                    country = str(
+                        records.get(house, {}).get('country')
+                        or house.replace(' House', '')
+                    )
+                    ai_reward_applications.append({
+                        'mission': code,
+                        'reward_name': reward.get('name', effect_id),
+                        'effect_id': effect_id,
+                        'source': entry['source'],
+                        'earned_from': entry['earned_from'],
+                        'house': house,
+                        'country': country,
+                        'target': (
+                            f'{country} / '
+                            f'{reward.get("enemy_category", "forces")}'
+                        ),
+                        'effect': enemy_effect_text(reward, stack_index),
+                        'stack': stack_index,
+                        'cap': maximum,
+                    })
+    if skipped_enemy_countries:
+        self.append_log(
+            'Skipped unsafe enemy countries: '
+            + '; '.join(
+                (
+                    f'{country} has duplicate CountryType sections'
+                    if houses == ['duplicate CountryType sections']
+                    else f'{country} shared with {", ".join(houses)}'
+                )
+                for country, houses in skipped_enemy_countries
+            )
+            + '.'
+        )
+        skip_reasons = {
+            country: (
+                'duplicate CountryType sections'
+                if houses == ['duplicate CountryType sections']
+                else 'CountryType is shared with unsafe House(s): '
+                + ', '.join(houses)
+            )
+            for country, houses in skipped_enemy_countries
+        }
+        for reward in enemy_scaling_rewards:
+            if reward.get('enemy_effect') not in {
+                'armor', 'cost', 'production',
+            }:
+                continue
+            for country, reason in skip_reasons.items():
+                self.append_log(
+                    f'Skipped {reward_display_name(reward)} for {code} '
+                    f'country {country}: {reason}.',
+                    error=True,
+                )
+    if phase_enemy_houses and enemy_scaling_rewards:
+        self.append_log(
+            'Skipped AI rewards for currently human/allied phase houses: '
+            + ', '.join(phase_enemy_houses)
+            + '.'
+        )
+    if enemy_scaling_rewards and not scaled_enemy_houses:
+        skip_summary = '; '.join(
+            f'{house}: {reason}'
+            for house, reason in discovered_enemy_skips.items()
+        )
+        for reward in enemy_scaling_rewards:
+            self.append_log(
+                f'Skipped {reward_display_name(reward)} for {code}: '
+                'no safe active hostile AI House was found.'
+                + (f' House audit: {skip_summary}.' if skip_summary else ''),
+                error=True,
+            )
+
+    enemy_power_rewards = enemy_power_launch_rewards(enemy_scaling_rewards)
+    enemy_superweapon_actions = []
+    enemy_startup_power_buildings = []
+    enemy_static_power_buildings = []
+    enemy_power_names = []
+    prepared_enemy_power_effect_ids = []
+    if enemy_power_rewards and scaled_enemy_houses:
+        enemy_power_countries = unique_in_order(
+            records.get(house, {}).get('country')
+            or house.replace(' House', '')
+            for house in scaled_enemy_houses
+        )
+        (
+            enemy_power_rules,
+            enemy_superweapon_actions,
+            enemy_power_names,
+            enemy_startup_power_buildings,
+            enemy_static_power_buildings,
+            missing_enemy_power_sources,
+        ) = cloned_superweapon_plan(
+            lines,
+            enemy_power_rewards,
+            installed_superweapon_types,
+            installed_rule_sections,
+            superweapon_required_houses=enemy_power_countries,
+            allow_player=False,
+            allow_ai=True,
+            force_required_houses=True,
+        )
+        if missing_enemy_power_sources:
+            self.append_log(
+                'Skipped enemy AI power source(s): '
+                + ', '.join(sorted(set(missing_enemy_power_sources)))
+                + '.',
+                error=True,
+            )
+        missing_enemy_power_ids = {
+            str(power_id).upper()
+            for power_id in missing_enemy_power_sources
+        }
+        prepared_enemy_power_effect_ids = [
+            str(reward.get('enemy_effect_id') or '')
+            for reward in enemy_power_rewards
+            if str(reward.get('superweapon') or '').upper()
+            not in missing_enemy_power_ids
+            and str(reward.get('enemy_effect_id') or '')
+        ]
+        for clone_name in enemy_power_names:
+            values = enemy_power_rules.get(clone_name, {})
+            lowered = {
+                str(key).lower(): str(value).lower()
+                for key, value in values.items()
+            }
+            if (
+                lowered.get('sw.allowai') != 'yes'
+                or lowered.get('sw.allowplayer') != 'no'
+                or lowered.get('sw.aitargeting', 'none') in {'', 'none'}
+            ):
+                raise ValueError(
+                    f'Enemy power {clone_name} is not AI-usable: '
+                    'requires SW.AllowAI=yes, SW.AllowPlayer=no, and '
+                    'non-None SW.AITargeting.'
+                )
+        remember_generated_techno_types(enemy_power_rules)
+        if enemy_power_rules:
+            merge_ini_section_values(lines, enemy_power_rules)
+
     generation_config = self.config.get('generation', {})
     registered_techno_categories = {}
     for category, list_section in TECHNO_TYPE_LISTS.items():
@@ -1070,6 +1271,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
 
     assistance_stacks = self.mission_failure_stack(code)
     assistance_direct_rewards = []
+    production_gate_rules = {}
     if self.failure_assistance_enabled() and assistance_stacks:
         assistance_rules, assisted_houses, skipped_assistance_countries = mission_assistance_buff_rules(
             lines,
@@ -1234,7 +1436,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             }
         ) - (
             set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
-            | runtime_identity_preserve_ids
             | refinery_building_ids
         )
         production_gate_rules = original_player_production_gate_rules(
@@ -1243,7 +1444,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             production_gate_source_ids,
             existing_rule_sections=clone_rule_sections,
             native_sections=native_map_sections,
-            negative_gate_exclusions=non_player_runtime_unit_ids,
+            negative_gate_exclusions=(
+                non_player_droppod_payload_ids
+                | runtime_identity_preserve_ids
+            ),
             player_forbidden_houses=player_native_exclusions,
         )
         # Every registered player clone gets one final native-source exclusion
@@ -1773,6 +1977,36 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                         if str(key).lower() == 'forbiddenhouses':
                             restored_values.pop(key, None)
                     restored_values['ForbiddenHouses'] = current_forbidden
+            # Keep the production-only player-factory exclusion prepared for
+            # DropPod payloads. Unlike TechLevel, BuildLimit, house filters,
+            # or negative prerequisites, this does not alter the payload's
+            # scripted identity and still allows captured enemy factories.
+            current_factory_forbidden = next(
+                (
+                    value
+                    for key, value in current_values.items()
+                    if str(key).lower() == 'factoryowners.forbidden'
+                ),
+                None,
+            )
+            if current_factory_forbidden is None:
+                current_factory_forbidden = next(
+                    (
+                        value
+                        for key, value in production_gate_rules.get(
+                            source_id, {}
+                        ).items()
+                        if str(key).lower() == 'factoryowners.forbidden'
+                    ),
+                    None,
+                )
+            if current_factory_forbidden is not None:
+                for key in list(restored_values):
+                    if str(key).lower() == 'factoryowners.forbidden':
+                        restored_values.pop(key, None)
+                restored_values[
+                    'FactoryOwners.Forbidden'
+                ] = current_factory_forbidden
             final_runtime_identity_rules[source_id] = restored_values
         if final_runtime_identity_rules:
             merge_ini_section_values(lines, final_runtime_identity_rules)
@@ -1828,6 +2062,36 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             + ', '.join(power_names)
             + f'. Grant houses: {", ".join(power_houses)}.'
         )
+    enemy_static_providers = append_static_startup_buildings(
+        lines,
+        scaled_enemy_houses,
+        enemy_static_power_buildings,
+    )
+    enemy_superweapon_trigger = append_superweapon_grant_trigger(
+        lines,
+        scaled_enemy_houses,
+        enemy_superweapon_actions,
+        startup_buildings=enemy_startup_power_buildings,
+    )
+    if enemy_superweapon_trigger:
+        self.append_log(
+            'Prepared AI-only enemy powers with SW.AllowAI=yes: '
+            + ', '.join(enemy_power_names)
+            + '. Grant houses: '
+            + ', '.join(scaled_enemy_houses)
+            + '.'
+        )
+    if enemy_static_power_buildings and not enemy_static_providers:
+        self.append_log(
+            'Could not place enemy AI power providers.',
+            error=True,
+        )
+    if discovered_enemies:
+        self.append_log(
+            f'{code} discovered active hostile AI Houses: '
+            + ', '.join(discovered_enemies)
+            + '.'
+        )
 
     rewritten_native_unlocks = rewrite_techlevel_actions(
         lines,
@@ -1864,7 +2128,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if missing_victory:
         self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
 
-    if not patch_plan and not rule_sections and not superweapon_trigger:
+    if (
+        not patch_plan
+        and not rule_sections
+        and not enemy_country_rules
+        and not superweapon_trigger
+        and not enemy_superweapon_trigger
+    ):
         self.append_log(f'No hookable objective/victory triggers found for {scenario}. Progress may not be recorded.')
         return None
 
@@ -1987,6 +2257,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if root_map.exists() and not is_generated_hooked_map(root_map):
         backup_file_once(root_map, 'before-randomizer-hook')
     root_map.write_bytes(generated_text.encode('utf-8'))
+    if self.state and hasattr(self, 'record_enemy_reward_applications'):
+        self.record_enemy_reward_applications(
+            code,
+            ai_reward_applications,
+        )
     self.append_log(f'Prepared generated map {scenario}: {len(markers)} marker trigger(s).')
 
     return {

@@ -50,6 +50,19 @@ from randomizer.rewards.weights import (
     normalize_reward_weights,
     reward_selection_weight,
 )
+from randomizer.rewards.enemy_scaling import (
+    ENEMY_BUFF_BY_ID,
+    ENEMY_BUFF_DEFINITIONS,
+    ENEMY_BUFF_GROUP_DEFINITIONS,
+    UNSUPPORTED_AI_REWARD_REASONS,
+    configured_enemy_reward,
+    enemy_effect_text,
+    enemy_progress_events,
+    enemy_reward_display_name,
+    normalize_enemy_scaling_settings,
+    plan_enemy_progress_rewards,
+    progress_plan_rewards,
+)
 from randomizer.rewards.starting import (
     DEFAULT_STARTING_REWARD_TYPES,
     MAX_STARTING_REWARD_COUNT,

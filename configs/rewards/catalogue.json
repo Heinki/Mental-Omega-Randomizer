@@ -1598,6 +1598,13 @@
         "superweapon": "KnightfallSpawn",
         "index": 45,
         "special_reward": true
+      },
+      {
+        "name": "Engineering Team Power",
+        "description": "Drops 4 Conscripts, 4 Flak Troopers, and 2 Soviet Engineers at the selected area.",
+        "faction": "Soviets",
+        "superweapon": "MOREngineeringTeamSpecial",
+        "index": -1
       }
     ],
     "aid_power_map_configs": [
@@ -1605,6 +1612,45 @@
         "superweapon": "AmericanParaDropSpecial",
         "values": {
           "IsPowered": "false"
+        }
+      },
+      {
+        "superweapon": "MOREngineeringTeamSpecial",
+        "custom": true,
+        "clone": "MOREngineeringTeamSpecial",
+        "source_superweapon": "AmericanParaDropSpecial",
+        "preserve_prerequisites": true,
+        "delivery_player_clone_ids": [
+          "SENGINEER"
+        ],
+        "values": {
+          "UIName": "NAME:ENGITEAM",
+          "Name": "Engineering Team",
+          "EVA.Ready": "EVA_ParatroopersReady",
+          "IsPowered": "false",
+          "SidebarPCX": "sengicon.pcx",
+          "Money.Amount": "-1200",
+          "ParaDrop.Num": "4,4,2",
+          "RechargeTime": "4.5",
+          "ParaDrop.Types": "E2,FLAKT,SENGINEER",
+          "SW.NegBuildings": "NAHAND",
+          "ParaDrop.Aircraft": "PDPLANEUS",
+          "Type": "AmerParaDrop",
+          "Action": "Custom",
+          "ShowTimer": "no",
+          "DisableableFromShell": "no",
+          "Range": "1.5",
+          "LineMultiplier": "0",
+          "Cursor": "Paradrop",
+          "NoCursor": "NoCanDo",
+          "SW.FireIntoShroud": "no",
+          "SW.RequiresTarget": "land",
+          "SW.CreateRadarEvent": "no",
+          "SW.Animation": "FLAREBLUE",
+          "SW.AnimationHeight": "30",
+          "SW.AITargeting.Constraints": "enemy",
+          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
+          "FlashSidebarTabFrames": "0"
         }
       },
       {

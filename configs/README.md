@@ -66,6 +66,11 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
   damage, duration, and delivered-payload buff capabilities and stack tuning.
   Supported effects have no Randomizer-imposed stack ceiling.
+  - `rewards/enemy_scaling.json`: reviewed hostile-AI CountryType stat and
+    production-speed rewards; default objective/mission reward rates;
+    allowed effect IDs; and hard per-effect caps. Player settings can narrow but
+    never exceed these static maxima. Unsupported unit unlocks and powers have
+    no UI/config option.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions
   and mappings, access aliases, and retired reward compatibility entries.

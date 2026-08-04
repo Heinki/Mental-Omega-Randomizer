@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "description": "Reviewed AI-only stat and production-speed rewards.",
+  "sections": {
+    "defaults": {
+      "reward_enabled": false,
+      "rewards_per_completed_objective": 0,
+      "rewards_per_completed_mission": 0,
+      "allowed_buff_ids": [
+        "infantry_armor",
+        "vehicle_armor",
+        "aircraft_armor",
+        "defense_armor",
+        "infantry_production",
+        "vehicle_production",
+        "aircraft_production",
+        "defense_production"
+      ],
+      "caps": {
+        "infantry_armor": 3,
+        "vehicle_armor": 3,
+        "aircraft_armor": 3,
+        "defense_armor": 3,
+        "infantry_production": 3,
+        "vehicle_production": 3,
+        "aircraft_production": 3,
+        "defense_production": 3
+      }
+    },
+    "buffs": [
+      {
+        "id": "infantry_armor",
+        "name": "AI Infantry Armor",
+        "type": "Armor",
+        "category": "Infantry",
+        "effect": "armor",
+        "country_suffix": "Infantry",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "vehicle_armor",
+        "name": "AI Vehicle Armor",
+        "type": "Armor",
+        "category": "Vehicles / Naval",
+        "effect": "armor",
+        "country_suffix": "Units",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "aircraft_armor",
+        "name": "AI Aircraft Armor",
+        "type": "Armor",
+        "category": "Aircraft",
+        "effect": "armor",
+        "country_suffix": "Aircraft",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "defense_armor",
+        "name": "AI Defense Armor",
+        "type": "Armor",
+        "category": "Defenses",
+        "effect": "armor",
+        "country_suffix": "Defenses",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "infantry_production",
+        "name": "AI Infantry Production",
+        "type": "Production",
+        "category": "Infantry",
+        "effect": "production",
+        "country_suffix": "Infantry",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "vehicle_production",
+        "name": "AI Vehicle Production",
+        "type": "Production",
+        "category": "Vehicles / Naval",
+        "effect": "production",
+        "country_suffix": "Units",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "aircraft_production",
+        "name": "AI Aircraft Production",
+        "type": "Production",
+        "category": "Aircraft",
+        "effect": "production",
+        "country_suffix": "Aircraft",
+        "maximum_stacks": 3
+      },
+      {
+        "id": "defense_production",
+        "name": "AI Defense Production",
+        "type": "Production",
+        "category": "Defenses",
+        "effect": "production",
+        "country_suffix": "Defenses",
+        "maximum_stacks": 3
+      }
+    ]
+  }
+}

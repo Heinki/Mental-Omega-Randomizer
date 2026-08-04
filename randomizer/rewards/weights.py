@@ -37,6 +37,11 @@ MAIN_REWARD_WEIGHT_TYPES = (
         'label': 'Superweapon buffs',
         'description': 'Upgrades for already-unlocked superweapons and aid powers.',
     },
+    {
+        'id': 'enemy_buffs',
+        'label': 'AI rewards',
+        'description': 'Rewards applied only to configured hostile AI houses.',
+    },
 )
 
 UNIT_BUFF_WEIGHT_TYPES = (
@@ -133,6 +138,8 @@ def power_buff_weight_type(buff_type):
 
 def main_reward_weight_type(reward):
     """Classify one canonical reward into a user-facing main weight."""
+    if reward.get('enemy_reward'):
+        return 'enemy_buffs'
     if reward.get('kind') == 'buff':
         if reward.get('power_buff_type'):
             return 'power_buffs'

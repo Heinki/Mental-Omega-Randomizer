@@ -13,6 +13,7 @@ from randomizer.config.tuning import (
 from randomizer.rewards.power_buff_definitions import (
     build_power_buff_rewards,
 )
+from randomizer.rewards.enemy_scaling import build_enemy_reward_pool
 from randomizer.rewards.roster import randomizer_unit_ids_with_behavior
 
 
@@ -999,11 +1000,14 @@ def build_aid_power_rewards():
         building_bound = bool(
             modified_config and modified_config.get('grant_buildings')
         )
+        preserves_prerequisites = bool(
+            modified_config and modified_config.get('preserve_prerequisites')
+        )
         reward = {
             'name': name,
             'description': (
                 description
-                if building_bound
+                if building_bound or preserves_prerequisites
                 else description + ' Restored at the start of future missions without its normal source building.'
             ),
             'rules': {},
@@ -1052,6 +1056,10 @@ def build_aid_power_rewards():
             reward['superweapon_custom'] = True
         if modified_config and modified_config.get('clone'):
             reward['superweapon_clone'] = modified_config['clone']
+        if modified_config and modified_config.get('source_superweapon'):
+            reward['superweapon_source'] = (
+                modified_config['source_superweapon']
+            )
         if modified_config and modified_config.get('cameo_superweapon'):
             reward['cameo_superweapon'] = modified_config['cameo_superweapon']
         if modified_config and modified_config.get('sidebar_image'):
@@ -1085,6 +1093,11 @@ POWER_BUFF_REWARDS = build_power_buff_rewards(
     + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
     + AID_POWER_UNLOCK_REWARDS
 )
+ENEMY_REWARD_POOL = build_enemy_reward_pool(
+    SUPERWEAPON_UNLOCK_REWARDS
+    + SECONDARY_SUPERWEAPON_UNLOCK_REWARDS
+    + AID_POWER_UNLOCK_REWARDS
+)
 
 REWARD_POOL = (
     UNIT_UNLOCK_REWARDS
@@ -1097,6 +1110,7 @@ REWARD_POOL = (
     + AID_POWER_UNLOCK_REWARDS
     + UNIT_BUFF_REWARDS
     + POWER_BUFF_REWARDS
+    + ENEMY_REWARD_POOL
 )
 REWARD_BY_NAME = {reward.get('name'): reward for reward in REWARD_POOL if reward.get('name')}
 REWARD_BY_BUFF_KEY = {

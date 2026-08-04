@@ -820,6 +820,8 @@ throw "Map $name was not found in expandmo*.mix"
         self.active_mission_attempt = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
+        if getattr(self, '_close_after_game', False):
+            self.destroy()
 
     def launch_mission_async(self, mission, extra_rules=None, launch_note=''):
         missing = [path for path in (GAME_LAUNCHER_EXE, GAME_EXE) if not path.exists()]

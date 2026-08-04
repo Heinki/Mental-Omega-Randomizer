@@ -96,6 +96,13 @@ def run_self_check():
             canonical_reward,
             linked_buff_variant_ids,
         )
+        from randomizer.rewards.enemy_scaling import (
+            ENEMY_BUFF_DEFINITIONS,
+            ENEMY_BUFF_GROUP_DEFINITIONS,
+            normalize_enemy_scaling_settings,
+            plan_enemy_progress_rewards,
+        )
+        from randomizer.maps.enemy_scaling import enemy_power_launch_rewards
         from randomizer.config.player import DEFAULT_CONFIG
         from randomizer.rewards.arsenal import (
             ARSENAL_MODE,
@@ -117,6 +124,45 @@ def run_self_check():
             and mission_reward_multiplier('ASIREN') == 2
             and mission_reward_multiplier('APANIC') == 3
             and mission_reward_multiplier('FREMNANT') == 3
+        )
+        enemy_settings = normalize_enemy_scaling_settings({
+            'reward_enabled': True,
+            'rewards_per_completed_objective': 2,
+            'rewards_per_completed_mission': 1,
+        })
+        enemy_events = (
+            {'basis': 'objectives', 'event_index': 1},
+            {'basis': 'objectives', 'event_index': 2},
+            {'basis': 'objectives', 'event_index': 3},
+            {'basis': 'missions', 'event_index': 1},
+        )
+        enemy_plan = plan_enemy_progress_rewards(
+            'MO-SELF-CHECK', enemy_settings, REWARD_POOL, enemy_events
+        )
+        enemy_plan_repeat = plan_enemy_progress_rewards(
+            'MO-SELF-CHECK', enemy_settings, REWARD_POOL, enemy_events
+        )
+        enemy_power_rewards = enemy_power_launch_rewards(
+            reward for reward in REWARD_POOL
+            if reward.get('enemy_reward')
+            and reward.get('enemy_effect') == 'power'
+        )
+        enemy_scaling_contract_valid = bool(
+            len(ENEMY_BUFF_DEFINITIONS) == 8
+            and tuple(
+                group['label'] for group in ENEMY_BUFF_GROUP_DEFINITIONS
+            ) == (
+                'AI stat bonuses',
+                'AI production-speed bonuses',
+            )
+            and len(enemy_plan) == 7
+            and enemy_plan == enemy_plan_repeat
+            and all(
+                reward.get('enemy_reward')
+                for entry in enemy_plan
+                for reward in (entry.get('reward', {}),)
+            )
+            and not enemy_power_rewards
         )
         arsenal_settings = DEFAULT_CONFIG['generation']
         arsenal_codes = ('AREDDAWN', 'AEAGLESFLY')
@@ -237,6 +283,35 @@ def run_self_check():
             }
             for section, values in installed_sections.items()
         }
+        engineering_configs = [
+            config
+            for config in AID_POWER_MAP_CONFIGS
+            if config.get('superweapon') == 'MOREngineeringTeamSpecial'
+        ]
+        engineering_rewards = [
+            reward
+            for reward in AID_POWER_UNLOCK_REWARDS
+            if reward.get('name') == 'Engineering Team Power'
+        ]
+        engineering_buffs = {
+            reward.get('power_buff_type')
+            for reward in POWER_BUFF_REWARDS
+            if reward.get('power_name') == 'Engineering Team Power'
+        }
+        engineering_team_valid = bool(
+            len(engineering_configs) == 1
+            and len(engineering_rewards) == 1
+            and engineering_configs[0].get('source_superweapon')
+            == 'AmericanParaDropSpecial'
+            and 'AMERICANPARADROPSPECIAL' in installed_by_upper
+            and engineering_configs[0].get('values', {}).get(
+                'ParaDrop.Types'
+            ) == 'E2,FLAKT,SENGINEER'
+            and engineering_configs[0].get('values', {}).get(
+                'ParaDrop.Num'
+            ) == '4,4,2'
+            and engineering_buffs == {'recharge', 'cost', 'payload'}
+        )
         deploy_clone_link_gaps = []
         for unit_id, values in installed_by_upper.items():
             if unit_id not in BUFF_TARGETS:
@@ -486,6 +561,7 @@ def run_self_check():
             ),
             'zephyr_bombardment_enabled_valid': zephyr_enabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
+            'engineering_team_power_valid': engineering_team_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
             'equivalent_buff_access_isolation_valid': (
                 equivalent_buff_access_isolation_valid
@@ -543,6 +619,7 @@ def run_self_check():
             'mission_reward_multipliers_valid': (
                 mission_reward_multipliers_valid
             ),
+            'enemy_scaling_contract_valid': enemy_scaling_contract_valid,
             'missing_runtime_symbols': missing_runtime_symbols,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
@@ -569,6 +646,7 @@ def run_self_check():
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_enabled_valid',
                 'portable_aid_powers_valid',
+                'engineering_team_power_valid',
                 'all_buff_caps_valid',
                 'equivalent_buff_access_isolation_valid',
                 'shin_allied_tech_valid',
@@ -584,6 +662,7 @@ def run_self_check():
                 'reward_weight_connections_valid',
                 'randomizer_arsenal_contract_valid',
                 'mission_reward_multipliers_valid',
+                'enemy_scaling_contract_valid',
                 'deterministic_seed_rng_works',
             )
         )

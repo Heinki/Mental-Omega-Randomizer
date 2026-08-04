@@ -112,7 +112,8 @@
             "special_unlocks": 100,
             "production": 100,
             "unit_buffs": 100,
-            "power_buffs": 100
+            "power_buffs": 100,
+            "enemy_buffs": 100
           },
           "unit_buffs": {
             "speed": 100,
@@ -147,6 +148,31 @@
         },
         "safe_player_country_buffs": true,
         "buff_allied_helpers": false,
+        "enemy_scaling": {
+          "reward_enabled": false,
+          "rewards_per_completed_objective": 0,
+          "rewards_per_completed_mission": 0,
+          "allowed_buff_ids": [
+            "infantry_armor",
+            "vehicle_armor",
+            "aircraft_armor",
+            "defense_armor",
+            "infantry_production",
+            "vehicle_production",
+            "aircraft_production",
+            "defense_production"
+          ],
+          "caps": {
+            "infantry_armor": 3,
+            "vehicle_armor": 3,
+            "aircraft_armor": 3,
+            "defense_armor": 3,
+            "infantry_production": 3,
+            "vehicle_production": 3,
+            "aircraft_production": 3,
+            "defense_production": 3
+          }
+        },
         "failure_assistance": false,
         "experimental_house_buffs": false
       }

@@ -19,12 +19,12 @@ https://github.com/TheCondor07/Starcraft2ArchipelagoData
 BUGS AND IMPROVEMENTS
 -------------------------
 
-- increased buff difficultie for enemys after x objectives have been done - maybe change this into only house buffs and super weapons/aid powerups to help the AI, copying the AI will break the game misisons once again, also check if we can give the AI extra unlocks so that they can build tech units earlier which they normally get at the end of the missions.
-- Babel, E24
--also I think the PE in phase 3 might be slightly bugged, atleast, it refused to retreat despite being on red health and just casually sniped the MOD
-- Generating seed is very slow and laggy
-- Space commando not buildable
-- Special Brute other name as it has the same icon
+- Spy plane remove more entitiy for this as it does not improve the power, see if vision can be increased for the plane
+-1.23
+Standard
+Standard Arsenal Available without unlocks in Dawnbreaker
+
+
 
 New Game mode idea
 ------------------------------

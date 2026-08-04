@@ -16,6 +16,8 @@ from ._dependencies import (
     DEFAULT_REWARDS_PER_CHECK,
     DIFFICULTIES,
     EVA_VOICE_CHOICES,
+    ENEMY_BUFF_DEFINITIONS,
+    ENEMY_BUFF_BY_ID,
     GAME_SPEEDS,
     MAIN_REWARD_WEIGHT_TYPES,
     MAX_REWARDS_PER_CHECK,
@@ -24,6 +26,7 @@ from ._dependencies import (
     POWER_BUFF_WEIGHT_TYPES,
     PROGRESSION_MODES,
     REWARD_MODES,
+    REWARD_POOL,
     STANDARD_STARTER_FAMILIES_BY_CAMPAIGN,
     STARTING_UNLOCKED_MISSIONS,
     STARTING_REWARD_TYPE_DEFINITIONS,
@@ -41,6 +44,9 @@ from ._dependencies import (
     messagebox,
     normalize_assistance_units,
     normalize_arsenal_settings,
+    normalize_enemy_scaling_settings,
+    enemy_progress_events,
+    plan_enemy_progress_rewards,
     normalize_completed_checks,
     normalize_failure_stacks,
     normalize_reward_weights,
@@ -74,6 +80,14 @@ class StateController:
         if not self.state:
             return
         changed = False
+        reward_settings = self.state.get('reward_settings')
+        if isinstance(reward_settings, dict):
+            normalized_enemy = normalize_enemy_scaling_settings(
+                reward_settings.get('enemy_scaling')
+            )
+            if reward_settings.get('enemy_scaling') != normalized_enemy:
+                reward_settings['enemy_scaling'] = normalized_enemy
+                changed = True
         if self.state.get('reward_mode') == 'Chaos (Experimental)':
             self.state['reward_mode'] = 'Chaos'
             changed = True
@@ -114,6 +128,7 @@ class StateController:
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
                 starting_rewards=self.state.get('starting_rewards', []),
+                enemy_progress_plan=self.state.get('enemy_progress_plan', []),
             )
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
             self.state['reward_queue'] = [
@@ -124,9 +139,56 @@ class StateController:
             ]
             self.state['check_schema_version'] = CHECK_SCHEMA_VERSION
             changed = True
+        mission_codes = self.state.get('mission_order', [])
+        mission_checks = self.state.get('mission_checks', {})
+        enemy_plan = self.state.get('enemy_progress_plan')
+        enemy_plan_valid = isinstance(enemy_plan, list) and all(
+            isinstance(entry, dict)
+            and entry.get('basis') in {'objectives', 'missions'}
+            and isinstance(entry.get('event_index'), int)
+            and isinstance(entry.get('reward'), dict)
+            and str(
+                entry.get('reward', {}).get('enemy_effect_id') or ''
+            ) in ENEMY_BUFF_BY_ID
+            for entry in enemy_plan
+        )
+        if not enemy_plan_valid:
+            normalized_enemy = normalize_enemy_scaling_settings(
+                self.state.get('reward_settings', {}).get('enemy_scaling')
+            )
+            self.state['enemy_progress_plan'] = plan_enemy_progress_rewards(
+                self.state.get('seed', ''),
+                normalized_enemy,
+                REWARD_POOL,
+                enemy_progress_events(mission_codes, mission_checks),
+                [
+                    reward
+                    for code in mission_codes
+                    for check in mission_checks.get(code, [])
+                    for reward in check_rewards(check)
+                ],
+            )
+            self.state['enemy_progress_earned'] = []
+            changed = True
+        application_records = self.state.get('enemy_reward_applications')
+        if isinstance(application_records, dict):
+            filtered_records = {
+                code: [
+                    item for item in applications
+                    if isinstance(item, dict)
+                    and str(item.get('effect_id') or '') in ENEMY_BUFF_BY_ID
+                ]
+                for code, applications in application_records.items()
+                if isinstance(applications, list)
+            }
+            if filtered_records != application_records:
+                self.state['enemy_reward_applications'] = filtered_records
+                changed = True
         changed = normalize_completed_checks(self.state) or changed
         changed = normalize_failure_stacks(self.state) or changed
         changed = normalize_assistance_units(self.state, BUFF_TARGETS) or changed
+        if hasattr(self, 'sync_enemy_progress_milestones'):
+            changed = self.sync_enemy_progress_milestones() or changed
         completed = self.state['completed_missions']
         if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
             existing_grid = self.state['grid']
@@ -172,6 +234,7 @@ class StateController:
         self.__dict__.pop('_canonical_earned_rewards_cache', None)
         self.__dict__.pop('_unlock_dashboard_sources_cache', None)
         self.__dict__.pop('_configured_reward_pool_cache', None)
+        self._enemy_buffs_view_dirty = True
         atomic_write_json(STATE_PATH, self.state, indent=None)
 
     def config_reward_settings(self):
@@ -225,6 +288,9 @@ class StateController:
         failure_assistance = bool(generation_config.get('failure_assistance', False))
         reward_weights = normalize_reward_weights(
             generation_config.get('reward_weights')
+        )
+        enemy_scaling = normalize_enemy_scaling_settings(
+            generation_config.get('enemy_scaling')
         )
         if generation_config.get('reward_mode') in {
             'Chaos', 'Chaos (Experimental)', ARSENAL_MODE,
@@ -295,6 +361,7 @@ class StateController:
                 generation_config.get('excluded_power_buff_types', {}), dict
             ) else {},
             'reward_weights': reward_weights,
+            'enemy_scaling': enemy_scaling,
         }
 
     def current_reward_settings(self):
@@ -365,6 +432,28 @@ class StateController:
                 for weight_id, _label in POWER_BUFF_WEIGHT_TYPES
             },
         })
+        try:
+            enemy_objective_rewards = self.enemy_objective_rewards_var.get()
+        except Exception:
+            enemy_objective_rewards = 0
+        try:
+            enemy_mission_rewards = self.enemy_mission_rewards_var.get()
+        except Exception:
+            enemy_mission_rewards = 0
+        enemy_scaling = normalize_enemy_scaling_settings({
+            'reward_enabled': self.enemy_reward_pool_var.get(),
+            'rewards_per_completed_objective': enemy_objective_rewards,
+            'rewards_per_completed_mission': enemy_mission_rewards,
+            'allowed_buff_ids': [
+                definition['id'] for definition in ENEMY_BUFF_DEFINITIONS
+                if self.enemy_buff_enabled_vars[definition['id']].get()
+            ],
+            'caps': {
+                definition['id']:
+                    self.enemy_buff_cap_vars[definition['id']].get()
+                for definition in ENEMY_BUFF_DEFINITIONS
+            },
+        })
         return {
             'arsenal': arsenal_settings,
             'randomize_unit_access': randomize_access,
@@ -418,6 +507,7 @@ class StateController:
                 if buff_types
             },
             'reward_weights': reward_weights,
+            'enemy_scaling': enemy_scaling,
         }
 
     def active_reward_settings(self):
@@ -485,6 +575,9 @@ class StateController:
             ]
         settings['reward_weights'] = normalize_reward_weights(
             settings.get('reward_weights')
+        )
+        settings['enemy_scaling'] = normalize_enemy_scaling_settings(
+            settings.get('enemy_scaling')
         )
         if source is not None:
             self._active_reward_settings_cache = (
@@ -808,6 +901,7 @@ class StateController:
         self.config['generation']['enabled_buff_types'] = reward_settings['enabled_buff_types']
         self.config['generation']['enabled_power_buff_types'] = reward_settings['enabled_power_buff_types']
         self.config['generation']['reward_weights'] = reward_settings['reward_weights']
+        self.config['generation']['enemy_scaling'] = reward_settings['enemy_scaling']
         self.config['generation']['arsenal'] = reward_settings['arsenal']
         self.config['generation']['reward_mode'] = self.reward_mode_var.get()
         self.config['generation'].pop('close_game_on_victory', None)
@@ -821,6 +915,7 @@ class StateController:
             self.selected_mission_goal(),
             self.selected_rewards_per_check(),
         )
+        return True
 
     def save_settings_file(self):
         """Export every launcher option without active seed progress."""
@@ -1045,6 +1140,25 @@ class StateController:
                 definition['id'] in allowed_starting_types
             )
         self.manual_starting_reward_names = set(reward_settings['starting_unlock_rewards'])
+
+        enemy_settings = reward_settings['enemy_scaling']
+        self.enemy_reward_pool_var.set(enemy_settings['reward_enabled'])
+        self.enemy_objective_rewards_var.set(
+            enemy_settings['rewards_per_completed_objective']
+        )
+        self.enemy_mission_rewards_var.set(
+            enemy_settings['rewards_per_completed_mission']
+        )
+        allowed_enemy = set(enemy_settings['allowed_buff_ids'])
+        for definition in ENEMY_BUFF_DEFINITIONS:
+            effect_id = definition['id']
+            self.enemy_buff_enabled_vars[effect_id].set(
+                effect_id in allowed_enemy
+            )
+            self.enemy_buff_cap_vars[effect_id].set(
+                enemy_settings['caps'][effect_id]
+            )
+        self.sync_enemy_buff_group_vars()
 
         enabled_unit_buffs = set(reward_settings['enabled_buff_types'])
         for buff_type in BUFF_TYPES:

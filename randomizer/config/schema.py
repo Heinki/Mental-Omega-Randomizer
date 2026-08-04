@@ -153,6 +153,10 @@ REQUIRED_SECTIONS = {
         'duration': dict,
         'payload': dict,
     },
+    'rewards/enemy_scaling.json': {
+        'defaults': dict,
+        'buffs': list,
+    },
 }
 
 
@@ -847,6 +851,78 @@ def _validate_power_buffs(sections, path):
                 )
 
 
+def _validate_enemy_scaling(sections, path):
+    defaults = sections['defaults']
+    required_defaults = {
+        'reward_enabled',
+        'rewards_per_completed_objective',
+        'rewards_per_completed_mission',
+        'allowed_buff_ids', 'caps',
+    }
+    if not required_defaults.issubset(defaults):
+        _invalid('Invalid AI reward defaults', path)
+    for key in (
+        'rewards_per_completed_objective',
+        'rewards_per_completed_mission',
+    ):
+        value = defaults[key]
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+            or value > 10
+        ):
+            _invalid(f'Invalid enemy completion reward count {key}', path)
+    seen = set()
+    for index, definition in enumerate(sections['buffs']):
+        required = {
+            'id', 'name', 'type', 'category', 'effect', 'maximum_stacks',
+        }
+        if not isinstance(definition, dict) or not required.issubset(definition):
+            _invalid(f'Invalid AI reward {index}', path)
+        effect_id = definition['id']
+        maximum = definition['maximum_stacks']
+        if (
+            not _is_nonempty_string(effect_id)
+            or effect_id in seen
+            or not all(_is_nonempty_string(definition[key]) for key in (
+                'name', 'type', 'category', 'effect',
+            ))
+            or not isinstance(maximum, int)
+            or isinstance(maximum, bool)
+            or maximum < 1
+        ):
+            _invalid(f'Invalid AI reward {effect_id!r}', path)
+        seen.add(effect_id)
+        if definition['effect'] == 'power':
+            if (
+                not _is_nonempty_string(definition.get('superweapon'))
+                or not _is_nonempty_string(definition.get('ai_targeting'))
+                or str(definition.get('ai_targeting')).lower() == 'none'
+                or maximum != 1
+            ):
+                _invalid(f'Invalid enemy AI power {effect_id!r}', path)
+        elif (
+            definition['effect'] not in {'armor', 'production'}
+            or not _is_nonempty_string(definition.get('country_suffix'))
+        ):
+            _invalid(f'Invalid AI-only house reward {effect_id!r}', path)
+    if set(defaults['allowed_buff_ids']) - seen:
+        _invalid('Unknown default AI reward IDs', path)
+    if set(defaults['caps']) != seen:
+        _invalid('AI reward caps must cover every reward', path)
+    for effect_id, cap in defaults['caps'].items():
+        maximum = next(
+            item['maximum_stacks'] for item in sections['buffs']
+            if item['id'] == effect_id
+        )
+        if (
+            not isinstance(cap, int) or isinstance(cap, bool)
+            or cap < 0 or cap > maximum
+        ):
+            _invalid(f'Invalid AI reward cap {effect_id!r}', path)
+
+
 def _validate_catalogue(sections, path):
     aid_reward_names = []
     aid_reward_powers = []
@@ -987,6 +1063,7 @@ CONFIG_VALIDATORS = {
     'rewards/buff_exceptions.json': _validate_buff_exceptions,
     'rewards/power_buffs.json': _validate_power_buffs,
     'rewards/catalogue.json': _validate_catalogue,
+    'rewards/enemy_scaling.json': _validate_enemy_scaling,
 }
 
 

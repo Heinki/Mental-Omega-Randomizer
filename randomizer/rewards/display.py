@@ -30,17 +30,43 @@ from randomizer.rewards.power_buff_definitions import (
     power_buff_stack_limit,
     power_buff_type_ids,
 )
+from randomizer.rewards.enemy_scaling import (
+    enemy_effect_text,
+    enemy_reward_display_name,
+)
 
 def canonical_reward(reward):
     if not isinstance(reward, dict):
         return {}
-    if reward.get('_runtime_canonical'):
+    if reward.get('_runtime_canonical') and not reward.get('enemy_reward'):
         return reward
 
     reward_name = reward.get('name')
     if not reward_name:
         return reward
     reward_name = REWARD_ALIASES.get(reward_name, reward_name)
+
+    if reward.get('enemy_reward'):
+        current_enemy = REWARD_BY_NAME.get(reward_name)
+        if current_enemy and current_enemy.get('enemy_reward'):
+            merged = dict(current_enemy)
+            for key in (
+                'enemy_maximum', 'enemy_source', 'enemy_earned_from',
+                'enemy_progress_tier', 'enemy_progress_threshold',
+            ):
+                if key in reward:
+                    merged[key] = reward[key]
+            merged['_runtime_canonical'] = True
+            return merged
+        return {
+            'name': f'{reward_name} (retired: unverified AI reward)',
+            'description': (
+                'Disabled because no end-to-end hostile-AI application or '
+                'launch is currently verified.'
+            ),
+            'kind': 'message',
+            'retired_reward': True,
+        }
 
     if reward_name in RETIRED_REWARD_BY_NAME:
         return RETIRED_REWARD_BY_NAME[reward_name]
@@ -147,6 +173,8 @@ CLONE_REQUIRED_BUFF_TYPES = (
 )
 def reward_display_name(reward):
     reward = canonical_reward(reward)
+    if reward.get('enemy_reward'):
+        return enemy_reward_display_name(reward)
     name = reward.get('name', 'Unknown reward')
     if reward.get('kind') == 'buff' and (
         reward.get('buff_type') or reward.get('power_buff_type')
@@ -231,6 +259,11 @@ def _uncached_buff_stack_limit(reward):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return None
+    if reward.get('enemy_reward'):
+        try:
+            return max(1, int(reward.get('enemy_maximum', 1)))
+        except (TypeError, ValueError):
+            return 1
     if reward.get('power_buff_type'):
         return power_buff_stack_limit(reward)
     buff_type = reward.get('buff_type')
@@ -348,6 +381,15 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
         return []
+
+    if reward.get('enemy_reward'):
+        count = effective_buff_count(reward, count)
+        text = enemy_effect_text(reward, count)
+        if include_label:
+            text = f'AI Reward: {text}'
+        if include_stack:
+            text = f'{text} ({stack_label(count, buff_stack_limit(reward))})'
+        return [text]
 
     limit = buff_stack_limit(reward)
     if reward.get('power_buff_type'):

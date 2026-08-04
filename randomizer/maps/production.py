@@ -136,6 +136,29 @@ def original_player_production_gate_rules(
             if source_id in negative_gate_exclusions
             else ','.join(negatives + [PLAYER_ORIGINAL_PRODUCTION_GATE_ID])
         ) or None
+        # DropPod payload identities cannot carry the hidden negative gate:
+        # Ares can reject their TeamType before creating the transport. Use
+        # Ares' production-specific initial-factory-owner filter instead.
+        # This blocks factories originally built by the player countries,
+        # keeps enemy/script DropPods valid, and still permits captured enemy
+        # technology whose factory was initially built by another country.
+        if source_id in negative_gate_exclusions:
+            factory_forbidden = []
+            for values in (
+                installed_by_lower.get(source_id.lower(), {}),
+                section_value_map_preserve(lines, source_id),
+                existing_rule_sections.get(source_id, {}),
+            ):
+                factory_forbidden.extend(comma_items(
+                    _value_case_insensitive(
+                        values, 'FactoryOwners.Forbidden', ''
+                    )
+                ))
+            source_rules['FactoryOwners.Forbidden'] = ','.join(
+                unique_in_order(
+                    factory_forbidden + list(player_forbidden_houses)
+                )
+            ) or None
         installed_values = installed_by_lower.get(source_id.lower(), {})
         native_values = native_by_lower.get(source_id.lower(), {})
         # Clone discovery finishes after the earlier native-overlay pass.  Add

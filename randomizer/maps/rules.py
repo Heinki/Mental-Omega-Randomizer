@@ -17,6 +17,7 @@ from .base import *
 from .buff_values import *
 from .clone_references import *
 from .country_buffs import *
+from .enemy_scaling import *
 from .helper_ai import *
 from .player_clones import *
 from .powers import *

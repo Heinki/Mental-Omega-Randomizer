@@ -925,6 +925,11 @@ class AdvancedSettingsController:
                     else 'disabled'
                 )
             )
+        for group, check in getattr(
+            self, 'enemy_buff_group_controls', []
+        ):
+            check.configure(state='normal')
+        self.refresh_enemy_reward_setting_help()
         self.prioritize_no_build_missions_check.configure(
             state=(
                 'normal'

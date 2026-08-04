@@ -21,6 +21,17 @@ from ._dependencies import (
 
 class WindowController:
 
+    def close_launcher(self):
+        """Keep cleanup polling alive until an active game safely exits."""
+        process = getattr(self, 'active_game_process', None)
+        if process is not None and process.poll() is None:
+            self._close_after_game = True
+            self.withdraw()
+            return
+        self.cleanup_generated_root_maps()
+        self.disable_generated_rules_for_client()
+        self.destroy()
+
     def report_callback_exception(self, exc_type, exc_value, exc_traceback):
         detail = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         log_event('ui_callback_failed', level=logging.ERROR, traceback=detail)
@@ -80,6 +91,14 @@ class WindowController:
             self.after_idle(self.resize_grid_canvas_window)
 
     def on_info_tab_changed(self, _event=None):
+        if (
+            getattr(self, '_enemy_buffs_view_dirty', False)
+            and hasattr(self, 'info_tabs')
+            and hasattr(self, 'enemy_buffs_tab')
+            and self.info_tabs.select() == str(self.enemy_buffs_tab)
+        ):
+            self.after_idle(self.refresh_enemy_buffs_view)
+            return
         if (
             not getattr(self, '_unlocks_view_dirty', False)
             or not hasattr(self, 'info_tabs')
@@ -364,7 +383,7 @@ class WindowController:
         )
         if not all(hasattr(self, name) for name in required):
             return
-        wide = int(width or 0) >= 720
+        wide = int(width or 0) >= 840
         buff_columns = 1 if int(width or 0) < 600 else 2
         layout_signature = (wide, buff_columns)
         if self.__dict__.get('_settings_layout_signature') == layout_signature:
@@ -375,10 +394,10 @@ class WindowController:
             widget.grid_forget()
 
         self.settings_frame.columnconfigure(
-            0, weight=1, uniform='settings-column' if wide else ''
+            0, weight=7 if wide else 1, uniform=''
         )
         self.settings_frame.columnconfigure(
-            1, weight=1 if wide else 0, uniform='settings-column' if wide else ''
+            1, weight=5 if wide else 0, uniform=''
         )
         self.settings_intro_label.grid(
             row=0,
@@ -404,7 +423,7 @@ class WindowController:
                 row=3, column=0, sticky='nsew', padx=(0, 4), pady=(8, 0)
             )
             self.appearance_frame.grid(
-                row=3, column=1, sticky='nsew', padx=(4, 0), pady=(8, 0)
+                row=3, column=1, sticky='new', padx=(4, 0), pady=(8, 0)
             )
             self.buff_frame.grid(
                 row=4,
@@ -766,6 +785,12 @@ class WindowController:
             self.log_text.tag_add('error', 'end-2l', 'end-1c')
             self.log_text.tag_config(
                 'error',
+                foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
+            )
+        elif 'AI Reward:' in str(message):
+            self.log_text.tag_add('ai_reward', 'end-2l', 'end-1c')
+            self.log_text.tag_config(
+                'ai_reward',
                 foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
             )
         self.log_text.configure(state='disabled')

@@ -230,7 +230,7 @@ def append_superweapon_grant_trigger(
     action_groups,
     startup_buildings=(),
 ):
-    """Grant earned powers to every human-controlled mission house safely.
+    """Grant earned powers to every requested mission house safely.
 
     Mental Omega's installed campaign maps top out at 24 actions in one list.
     Large Chaos inventories previously wrote every power into a single list

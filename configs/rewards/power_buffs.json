@@ -55,6 +55,7 @@
       "minimum_absolute": 0,
       "power_ids": [
         "AmericanParaDropSpecial",
+        "MOREngineeringTeamSpecial",
         "BloodhoundsSpecial",
         "ZephyrBeaconSpecial",
         "LightningRodSpecial",
@@ -215,6 +216,7 @@
       ],
       "paradrop_power_ids": [
         "AmericanParaDropSpecial",
+        "MOREngineeringTeamSpecial",
         "BloodhoundsSpecial",
         "RepairDroneSpecial",
         "TankDropSpecial",

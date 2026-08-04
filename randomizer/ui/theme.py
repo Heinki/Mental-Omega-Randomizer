@@ -23,6 +23,11 @@ def apply_color_mode(self):
     style.configure('TFrame', background=background)
     style.configure('TLabel', background=background, foreground=foreground)
     style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
+    style.configure(
+        'Error.TLabel',
+        background=background,
+        foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
+    )
     # ttk's canonical style name uses a lowercase "f". The old spelling
     # configured an unused style and left Settings group interiors light.
     style.configure('TLabelframe', background=background, bordercolor=border)
@@ -122,6 +127,10 @@ def apply_color_mode(self):
             foreground='#65f58c' if self.dark_mode_var.get() else '#087a2f',
             font=('Segoe UI', 9, 'bold underline'),
         )
+    if hasattr(self, 'enemy_buff_catalogue_frame'):
+        self._enemy_buffs_view_dirty = True
+        if self.enemy_buffs_view_visible():
+            self.after_idle(self.refresh_enemy_buffs_view)
     for canvas_name in ('settings_canvas', 'grid_canvas'):
         canvas = getattr(self, canvas_name, None)
         if canvas is not None:

@@ -150,7 +150,9 @@ def resolved_delivery_clone_rules(
         if not isinstance(values, dict):
             continue
         for key, value in values.items():
-            if str(key).lower() not in {'deliver.types', 'droppod.types'}:
+            if str(key).lower() not in {
+                'deliver.types', 'droppod.types', 'paradrop.types',
+            }:
                 continue
             resolved_value = ','.join(
                 replacements.get(type_id.upper(), type_id)
@@ -394,6 +396,9 @@ def cloned_superweapon_plan(
     superweapon_techno_clone_overrides=None,
     superweapon_required_houses=(),
     superweapon_aux_buildings=None,
+    allow_player=True,
+    allow_ai=False,
+    force_required_houses=False,
 ):
     """Create isolated map-local copies and safe grants.
 
@@ -491,10 +496,13 @@ def cloned_superweapon_plan(
             preferred_clone_type, f'superweapon:{source_type}'
         )
         custom = bool(reward.get('superweapon_custom'))
-        source_values = installed_sections.get(source_type)
+        template_type = str(
+            reward.get('superweapon_source') or source_type
+        ).strip()
+        source_values = installed_sections.get(template_type)
         if not isinstance(source_values, dict):
             if not custom:
-                missing.append(source_type)
+                missing.append(template_type)
                 continue
             source_values = {}
 
@@ -515,8 +523,23 @@ def cloned_superweapon_plan(
             clone_values['SW.AuxBuildings'] = ','.join(
                 unique_in_order(faction_aux_buildings)
             )
-        clone_values['SW.AllowPlayer'] = 'yes'
-        clone_values['SW.AllowAI'] = 'no'
+        _remove_case_insensitive(
+            clone_values,
+            'SW.AllowPlayer',
+            'SW.AllowAI',
+        )
+        clone_values['SW.AllowPlayer'] = 'yes' if allow_player else 'no'
+        clone_values['SW.AllowAI'] = 'yes' if allow_ai else 'no'
+        if force_required_houses and superweapon_required_houses:
+            _remove_case_insensitive(
+                clone_values,
+                'SW.RequiredHouses',
+                'SW.ForbiddenHouses',
+            )
+            clone_values['SW.RequiredHouses'] = ','.join(
+                unique_in_order(superweapon_required_houses)
+            )
+            clone_values['SW.ForbiddenHouses'] = 'none'
 
         techno_clones = dict(reward.get('superweapon_techno_clones') or {})
         mission_techno_clones = superweapon_techno_clone_overrides.get(
@@ -735,8 +758,17 @@ def cloned_superweapon_plan(
                 dependent_clone_values = dict(dependent_values)
                 if isinstance(dependent_overrides, dict):
                     dependent_clone_values.update(dependent_overrides)
-                dependent_clone_values['SW.AllowPlayer'] = 'yes'
-                dependent_clone_values['SW.AllowAI'] = 'no'
+                _remove_case_insensitive(
+                    dependent_clone_values,
+                    'SW.AllowPlayer',
+                    'SW.AllowAI',
+                )
+                dependent_clone_values['SW.AllowPlayer'] = (
+                    'yes' if allow_player else 'no'
+                )
+                dependent_clone_values['SW.AllowAI'] = (
+                    'yes' if allow_ai else 'no'
+                )
                 register_superweapon(dependent_clone, dependent_clone_values)
                 for key, value in list(clone_values.items()):
                     if str(value).lower() == str(dependent_source).lower():

@@ -32,6 +32,11 @@ from randomizer.rewards.arsenal import (
     ARSENAL_TIERS,
     ARSENAL_UNIT_TYPES,
 )
+from randomizer.rewards.enemy_scaling import (
+    ENEMY_BUFF_DEFINITIONS,
+    ENEMY_BUFF_GROUP_DEFINITIONS,
+    MAX_AI_REWARDS_PER_COMPLETION,
+)
 from randomizer.ui.tooltips import TreeTooltip, WidgetTooltip
 from randomizer.ui.integer_slider import IntegerSlider
 from randomizer.ui.config import (

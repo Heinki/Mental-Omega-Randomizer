@@ -13,6 +13,7 @@ from ._dependencies import (
     NO_BUILD_MISSION_CODES,
     REWARDS_PER_CHECK_MAXIMUM_MESSAGE,
     REWARDS_PER_CHECK_MESSAGE_THRESHOLDS,
+    REWARD_POOL,
     STARTING_UNLOCKED_MISSIONS,
     campaign_mission_counts,
     check_rewards,
@@ -26,12 +27,17 @@ from ._dependencies import (
     normalize_faction,
     now_stamp,
     random,
+    reward_display_name,
     reward_names,
     seed_campaign_limits,
     seed_mission_order,
     tk,
     tier_one_role_label,
     unit_display_label,
+    UNSUPPORTED_AI_REWARD_REASONS,
+    enemy_progress_events,
+    normalize_enemy_scaling_settings,
+    plan_enemy_progress_rewards,
 )
 
 class SeedController:
@@ -114,6 +120,7 @@ class SeedController:
                 reward_settings['include_power_buff_rewards']
                 and power_sources_enabled
             ),
+            reward_settings['enemy_scaling']['reward_enabled'],
         )):
             self.append_log('Cannot generate seed: enable at least one reward-pool option.', error=True)
             return
@@ -300,6 +307,64 @@ class SeedController:
             )
         )
         starting_rewards = manual_starting_rewards + random_starting_rewards
+        enemy_settings = normalize_enemy_scaling_settings(
+            reward_settings.get('enemy_scaling')
+        )
+        enemy_event_checks = {
+            code: [
+                {'id': check_id}
+                for check_id, _name, _hint
+                in self.objective_templates_for_code(code)
+            ]
+            for code in mission_codes
+        }
+        completion_events = enemy_progress_events(
+            mission_codes, enemy_event_checks
+        )
+        enemy_progress_requested = sum(
+            enemy_settings['rewards_per_completed_objective']
+            if event['basis'] == 'objectives'
+            else enemy_settings['rewards_per_completed_mission']
+            for event in completion_events
+        )
+        progress_planning_settings = enemy_settings
+        if (
+            enemy_settings['reward_enabled']
+            and enemy_progress_requested > 0
+        ):
+            # Both sources share one global cap. Reserve one stack per
+            # multi-stack effect for normal reward rolls. For cap-one
+            # effects, split effect IDs between the two sources so neither
+            # option silently starves the other when several are enabled.
+            progress_planning_settings = dict(enemy_settings)
+            allowed_ids = sorted(enemy_settings['allowed_buff_ids'])
+            progress_planning_settings['caps'] = {
+                effect_id: (
+                    max(0, cap - 1)
+                    if cap > 1
+                    else (
+                        cap
+                        if effect_id in allowed_ids
+                        and allowed_ids.index(effect_id) % 2 == 0
+                        else 0
+                    )
+                )
+                for effect_id, cap in enemy_settings['caps'].items()
+            }
+        enemy_progress_plan = plan_enemy_progress_rewards(
+            seed,
+            progress_planning_settings,
+            REWARD_POOL,
+            completion_events,
+            starting_rewards,
+        )
+        for entry in enemy_progress_plan:
+            reward = dict(entry.get('reward', {}))
+            effect_id = str(reward.get('enemy_effect_id') or '')
+            reward['enemy_maximum'] = enemy_settings['caps'].get(
+                effect_id, reward.get('enemy_maximum', 1)
+            )
+            entry['reward'] = reward
         progress('Planning base mission rewards.', 3, 5)
         mission_checks = self.build_mission_checks(
             mission_codes,
@@ -308,8 +373,19 @@ class SeedController:
             progression_mode=progression_mode,
             grid=grid,
             starting_rewards=starting_rewards,
+            enemy_progress_plan=enemy_progress_plan,
             progress=progress,
         )
+        ai_rewards_enabled = bool(
+            enemy_settings['reward_enabled']
+            or enemy_settings['rewards_per_completed_objective'] > 0
+            or enemy_settings['rewards_per_completed_mission'] > 0
+        )
+        unsupported_ai_rewards = (
+            list(UNSUPPORTED_AI_REWARD_REASONS) if ai_rewards_enabled else []
+        )
+        for reason in unsupported_ai_rewards:
+            log_event('ai_reward_type_skipped', reason=reason)
         progress('Finalizing generated run.', 5, 5)
         rewards = [
             reward
@@ -346,12 +422,17 @@ class SeedController:
             ],
             'starting_rewards': starting_rewards,
             'manual_starting_rewards': manual_starting_rewards,
+            'random_starting_rewards': random_starting_rewards,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'reward_queue': rewards,
             'mission_checks': mission_checks,
             'mission_objectives': mission_objectives,
             'reward_settings': reward_settings,
+            'enemy_progress_plan': enemy_progress_plan,
+            'enemy_progress_earned': [],
+            'enemy_progress_requested': enemy_progress_requested,
+            'enemy_reward_applications': {},
             'mission_arsenals': mission_arsenals,
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
@@ -375,6 +456,8 @@ class SeedController:
             'reward_mode': options['reward_mode'],
             'reward_settings': reward_settings,
             'mission_codes': mission_codes,
+            'unsupported_ai_rewards': unsupported_ai_rewards,
+            'enemy_progress_requested': enemy_progress_requested,
         }
 
     def finish_seed_generation(self, result):
@@ -442,6 +525,21 @@ class SeedController:
             self.append_log(
                 'Random starting rewards: ' + reward_names(random_starting_rewards)
             )
+        for reason in result.get('unsupported_ai_rewards', []):
+            self.append_log(f'Skipped unsupported reward type: {reason}')
+        planned_ai_completions = len(
+            self.state.get('enemy_progress_plan', [])
+        )
+        requested_ai_completions = int(
+            result.get('enemy_progress_requested', 0)
+        )
+        if planned_ai_completions < requested_ai_completions:
+            self.append_log(
+                'AI completion rewards reached configured global caps: '
+                f'{planned_ai_completions}/{requested_ai_completions} '
+                'requested rewards planned. Later completion draws reroll '
+                'until every supported effect is capped, then stop.'
+            )
         if campaign_counts.get('Foehn') and len(campaign_counts) > 1:
             if progression_mode == 'Classic':
                 self.append_log(
@@ -466,6 +564,12 @@ class SeedController:
             campaign_mission_counts=campaign_counts,
             campaign_mission_limits=campaign_limits,
             reward_settings=result['reward_settings'],
+            ai_completion_rewards=len(
+                result['state'].get('enemy_progress_plan', [])
+            ),
+            ai_completion_rewards_requested=result.get(
+                'enemy_progress_requested', 0
+            ),
             starting_defense_ids=starting_defense_ids,
             starting_unit_ids=starting_unit_ids,
             starting_rewards=[reward.get('name') for reward in starting_rewards],
@@ -537,6 +641,17 @@ class SeedController:
         if grid_goal_victory:
             released_rewards, released_checks = self.release_remaining_grid_rewards()
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
+        prior_ai_milestones = {
+            (
+                str(item.get('basis') or ''),
+                int(item.get('event_index', 0)),
+            )
+            for item in self.state.get('enemy_progress_earned', [])
+            if isinstance(item, dict)
+        }
+        enemy_progress_changed = self.sync_enemy_progress_milestones(
+            code, target
+        )
         self.save_state()
         reward_note = (
             f'Reward(s) earned: {reward_names(earned_now)}'
@@ -549,6 +664,54 @@ class SeedController:
             f'{source}: {code} {target.get("name", check_id)} complete. '
             + reward_note
         )
+        if enemy_progress_changed:
+            milestones = {
+                (
+                    str(item.get('basis') or ''),
+                    int(item.get('event_index', 0)),
+                ): item
+                for item in self.state.get('enemy_progress_earned', [])
+                if isinstance(item, dict)
+            }
+            new_keys = set(milestones) - prior_ai_milestones
+            newly_earned_ai = [
+                planned
+                for planned in self.state.get('enemy_progress_plan', [])
+                if (
+                    str(planned.get('basis') or ''),
+                    int(planned.get('event_index', 0)),
+                ) in new_keys
+            ]
+            counts_by_basis = {}
+            for planned in newly_earned_ai:
+                basis = str(planned.get('basis') or '')
+                counts_by_basis[basis] = counts_by_basis.get(basis, 0) + 1
+            for basis in ('objectives', 'missions'):
+                count = counts_by_basis.get(basis, 0)
+                if count:
+                    label = 'objective' if basis == 'objectives' else 'mission'
+                    self.append_log(
+                        f'AI {label} bonus stacks earned: {count}. '
+                        'These are separate from the normal player reward count.'
+                    )
+            for planned in newly_earned_ai:
+                key = (
+                    str(planned.get('basis') or ''),
+                    int(planned.get('event_index', 0)),
+                )
+                label = (
+                    'AI Objective Bonus'
+                    if key[0] == 'objectives'
+                    else 'AI Mission Bonus'
+                )
+                reward_text = reward_display_name(
+                    planned.get('reward', {})
+                ).removeprefix('AI Reward: ')
+                self.append_log(
+                    f'{label}: {reward_text} - '
+                    f'{milestones[key].get("earned_from", "completed progress")}. '
+                    'Exact hostile Houses apply on next prepared mission map.'
+                )
         reward_summary = self.mission_reward_summary(code)
         if check_id == 'victory':
             final_note = (

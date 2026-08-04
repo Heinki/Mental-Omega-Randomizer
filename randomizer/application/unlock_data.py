@@ -207,6 +207,7 @@ class UnlockDataController:
         for canonical in self.canonical_earned_rewards():
             if (
                 not canonical.get('retired_reward')
+                and not canonical.get('enemy_reward')
                 and (
                     canonical.get('name') in manual_names
                     or not self.standard_foehn_unit_reward(canonical)
@@ -420,7 +421,10 @@ class UnlockDataController:
         lines.extend(('', 'Active mission buffs'))
         counts = {}
         for reward in self.canonical_earned_rewards():
-            if reward_matches_arsenal(reward, arsenal):
+            if (
+                not reward.get('enemy_reward')
+                and reward_matches_arsenal(reward, arsenal)
+            ):
                 name = reward_display_name(reward)
                 counts[name] = counts.get(name, 0) + 1
         if counts:
@@ -593,12 +597,11 @@ class UnlockDataController:
                                 entry['available_unlocks'].append(item)
                                 if code not in entry['available_codes']:
                                     entry['available_codes'].append(code)
-        # Preselected starting rewards are active launch/progression rewards,
-        # not mission-check assignments. Index them as earned so support-power
-        # cards and their stored buffs use the same display path as later
-        # progression. Buffs remain absent from earned_unlocks and therefore
-        # can never grant access by themselves.
-        for reward in self.preselected_unlock_rewards():
+        # Starting rewards are active launch/progression rewards, not mission
+        # assignments. Index buffs too, so a starting power buff cannot be
+        # mislabeled with a later mission source. Buffs still never grant
+        # access because they remain absent from earned_unlocks.
+        for starting_source, reward in self.starting_reward_source_items():
             reward = canonical_reward(reward)
             if reward.get('retired_reward'):
                 continue
@@ -618,7 +621,7 @@ class UnlockDataController:
                         'available_codes': [],
                     },
                 )
-                item = ('Preselected unlock', reward)
+                item = (starting_source, reward)
                 entry['assigned'].append(item)
                 entry['earned'].append(item)
                 if reward.get('kind') != 'buff':
@@ -626,35 +629,55 @@ class UnlockDataController:
         self._unlock_dashboard_sources_cache = indexed
         return indexed
 
-    def preselected_unlock_rewards(self):
-        """Return selected unlocks, including tier-one-deduplicated choices."""
+    def starting_reward_source_items(self):
+        """Return every starting reward with its exact seed source."""
         if not self.state:
             return []
-        configured_names = self.state.get('reward_settings', {}).get(
-            'starting_unlock_rewards', []
+        manual_candidates = list(self.state.get('manual_starting_rewards', []))
+        manual_candidates.extend(
+            {'name': name}
+            for name in self.state.get('reward_settings', {}).get(
+                'starting_unlock_rewards', []
+            )
         )
-        # ``starting_rewards`` is the authoritative saved list for both
-        # randomly chosen and explicitly selected seed-start unlocks. The
-        # manual/config fields are retained as fallbacks for setup previews
-        # before a seed has serialized that list.
-        candidates = list(self.state.get('starting_rewards', []))
-        candidates.extend(self.state.get('manual_starting_rewards', []))
-        candidates.extend({'name': name} for name in configured_names)
-        rewards = []
+        manual_names = {
+            reward.get('name')
+            for candidate in manual_candidates
+            for reward in (canonical_reward(candidate),)
+            if reward.get('name') and not reward.get('retired_reward')
+        }
+        random_candidates = self.state.get('random_starting_rewards')
+        if not isinstance(random_candidates, list):
+            random_candidates = [
+                candidate
+                for candidate in self.state.get('starting_rewards', [])
+                if canonical_reward(candidate).get('name') not in manual_names
+            ]
+        candidates = (
+            [('Preselected reward', item) for item in manual_candidates]
+            + [('Starting Bonus', item) for item in random_candidates]
+        )
+        items = []
         seen = set()
-        for candidate in candidates:
+        for source, candidate in candidates:
             reward = canonical_reward(candidate)
             name = reward.get('name')
+            key = (source, name)
             if (
-                not name
-                or name in seen
-                or reward.get('kind') in {'buff', 'retired'}
-                or reward.get('retired_reward')
+                not name or key in seen or reward.get('retired_reward')
+                or reward.get('kind') == 'retired'
             ):
                 continue
-            seen.add(name)
-            rewards.append(reward)
-        return rewards
+            seen.add(key)
+            items.append((source, reward))
+        return items
+
+    def preselected_unlock_rewards(self):
+        """Return active starting unlocks; starting buffs grant no access."""
+        return [
+            reward for _source, reward in self.starting_reward_source_items()
+            if reward.get('kind') != 'buff'
+        ]
 
     def unlock_dashboard_entries(self):
         """Build privacy-aware icon states without changing seed data."""
@@ -667,9 +690,9 @@ class UnlockDataController:
         earned_rewards = list(
             self.canonical_earned_rewards() if self.state else ()
         )
-        manual_unlock_keys = {
-            key
-            for reward in self.preselected_unlock_rewards()
+        starting_unlock_source_by_key = {
+            key: source
+            for source, reward in self.starting_reward_source_items()
             if reward.get('kind') != 'buff'
             for key in self.unlock_dashboard_reward_keys(reward)
         }
@@ -828,8 +851,8 @@ class UnlockDataController:
             )
             if arsenal_selected:
                 condition = 'Seed-fixed temporary mission arsenal'
-            elif key in manual_unlock_keys:
-                condition = 'Preselected unlock'
+            elif key in starting_unlock_source_by_key:
+                condition = starting_unlock_source_by_key[key]
             elif unit_id in starting_access:
                 condition = 'Pre-generation settings'
             elif unit_id in ALWAYS_AVAILABLE_TECH_IDS or not randomize_access:
@@ -894,8 +917,7 @@ class UnlockDataController:
                 ),
                 'status': status,
                 'condition': (
-                    'Preselected unlock'
-                    if key in manual_unlock_keys else ''
+                    starting_unlock_source_by_key.get(key, '')
                 ),
                 'sources': source_data,
                 'privacy': privacy,
@@ -953,9 +975,7 @@ class UnlockDataController:
                 'condition': (
                     'Seed-fixed temporary mission arsenal'
                     if arsenal_selected
-                    else 'Preselected unlock'
-                    if key in manual_unlock_keys
-                    else ''
+                    else starting_unlock_source_by_key.get(key, '')
                 ),
                 'sources': source_data,
                 'privacy': privacy,
@@ -967,8 +987,8 @@ class UnlockDataController:
         # One final shared pass covers units, defenses/buildings, support
         # powers, and superweapons without category-specific drift.
         for entry in entries:
-            if entry['key'] in manual_unlock_keys:
-                entry['condition'] = 'Preselected unlock'
+            if entry['key'] in starting_unlock_source_by_key:
+                entry['condition'] = starting_unlock_source_by_key[entry['key']]
         return entries
 
     def unlock_dashboard_tooltip(self, entry):
@@ -1011,26 +1031,42 @@ class UnlockDataController:
                 text += f'; +{len(names) - len(visible)} more'
             return text
 
-        if entry.get('condition'):
+        starting_source_labels = {'Starting Bonus', 'Preselected reward'}
+        if (
+            entry.get('condition')
+            and entry.get('condition') not in starting_source_labels
+        ):
             lines.append(f'Condition: {entry["condition"]}')
         if arsenal_entry and entry.get('arsenal_mission_label'):
             lines.append(f'Mission: {entry["arsenal_mission_label"]}')
+        starting_source_names = [
+            source for source in earned_source_names
+            if source in starting_source_labels
+        ]
+        mission_source_names = [
+            source for source in earned_source_names
+            if source not in starting_source_labels
+        ]
+        if starting_source_names:
+            lines.append(
+                'Reward source: ' + compact_sources(starting_source_names)
+            )
         if (
-            earned_source_names
-            and entry.get('condition') != 'Preselected unlock'
+            mission_source_names
             and (not arsenal_entry or entry.get('arsenal_selected'))
         ):
-            lines.append('Earned from: ' + compact_sources(earned_source_names))
+            lines.append('Earned from: ' + compact_sources(mission_source_names))
+        availability_lines = []
         if entry['status'] == 'available' and available_source_names:
             lines.append('Available from: ' + compact_sources(available_source_names))
         elif entry['status'] == 'locked':
-            lines.append(
+            availability_lines.append(
                 'Assigned later in this seed.'
                 if not entry['privacy']
                 else 'Access not currently available.'
             )
         elif entry['status'] == 'unavailable':
-            lines.append(
+            availability_lines.append(
                 'Not part of this mission\'s seed-fixed temporary arsenal.'
                 if arsenal_entry
                 else 'Not assigned by this seed and current reward settings.'
@@ -1156,6 +1192,7 @@ class UnlockDataController:
             if potential:
                 lines.append('Potential reward:')
                 lines.extend(f'• {line}' for line in dict.fromkeys(potential))
+        lines.extend(availability_lines)
         return '\n'.join(lines)
 
     def schedule_cameo_refresh_retry(self):

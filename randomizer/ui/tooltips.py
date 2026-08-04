@@ -157,16 +157,54 @@ class TreeTooltip:
             _activate_tooltip(self)
             self.tip = tk.Toplevel(self.tree)
             self.tip.wm_overrideredirect(True)
-            label = ttk.Label(
-                self.tip,
-                text=text,
+            if 'AI Reward:' in text:
+                self._build_reward_tooltip(text)
+            else:
+                label = ttk.Label(
+                    self.tip,
+                    text=text,
+                    justify='left',
+                    padding=(8, 6, 8, 6),
+                    relief='solid',
+                    wraplength=620,
+                )
+                label.grid(row=0, column=0)
+        self.tip.wm_geometry(f'+{x}+{y}')
+
+    def _build_reward_tooltip(self, text):
+        """Render enemy-reward lines red while preserving normal reward text."""
+        style = ttk.Style(self.tree)
+        background = style.lookup('TFrame', 'background') or 'SystemButtonFace'
+        foreground = style.lookup('TLabel', 'foreground') or 'SystemButtonText'
+        red = '#b00020'
+        try:
+            red = (
+                '#ff7b72'
+                if sum(self.tree.winfo_rgb(background)) < 3 * 32768
+                else '#b00020'
+            )
+        except tk.TclError:
+            pass
+        frame = tk.Frame(
+            self.tip,
+            background=background,
+            borderwidth=1,
+            relief='solid',
+            padx=8,
+            pady=6,
+        )
+        frame.grid(row=0, column=0)
+        for row, line in enumerate(text.splitlines()):
+            label = tk.Label(
+                frame,
+                text=line or ' ',
+                background=background,
+                foreground=red if 'AI Reward:' in line else foreground,
                 justify='left',
-                padding=(8, 6, 8, 6),
-                relief='solid',
+                anchor='w',
                 wraplength=620,
             )
-            label.grid(row=0, column=0)
-        self.tip.wm_geometry(f'+{x}+{y}')
+            label.grid(row=row, column=0, sticky='w')
 
     def hide(self, _event=None):
         self.current_row = None

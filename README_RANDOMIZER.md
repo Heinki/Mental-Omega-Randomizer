@@ -57,6 +57,10 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Starting Rewards | `generation.starting_reward_count` | `0` | Rolls this many normal rewards during seed creation and grants them before the first mission. Starting rewards immediately appear as earned in Unlocks and seed every later reward draw, preventing the same unlock or TechnoType access from being granted again. Invalid or capped choices are rerolled; exhaustion produces one **Max rewards achieved.** marker. Range `0`-`9999`. |
 | Starting Rewards allowed types | `generation.starting_reward_types` | All four unlock families | Chooses among unit/building unlocks, offensive superweapons, secondary powers, and support/aid powers. Buffs remain normal progression rewards. Existing Reward Pool toggles, Advanced exclusions, reward weights, access prerequisites, and power prerequisites remain authoritative. |
 | Advanced → Starting Unlocks | `generation.starting_unlock_rewards` | Empty list | Selects exact permanent unit, building, superweapon, support-power, or other content unlocks already owned before the first mission. Buffs and every repeatable/stat upgrade remain progression-only and never appear in this tab. Cached cameos appear beside every entry, with a generic placeholder when art is unavailable. Portable canonical unlock names are frozen into the generated seed, appear as earned immediately, bypass ordinary pool/faction filtering for launch, and are excluded from both random Starting Rewards and all later rewards. Duplicate TechnoType access is omitted. Use **Configure Starting Unlocks...** beside Starting Rewards to open this page directly. |
+| AI bonus stacks per completed objective | `generation.enemy_scaling.rewards_per_completed_objective` | `0` | Attempts to activate this many deterministic AI bonus stacks after every completed non-victory objective. Range `0`-`10`. All AI sources share per-effect caps, so later objectives grant fewer or zero after every enabled bonus is capped. |
+| AI bonus stacks per completed mission | `generation.enemy_scaling.rewards_per_completed_mission` | `0` | Attempts to activate this many additional deterministic AI bonus stacks after mission victory. Range `0`-`10`; objective and mission values stack until shared caps are exhausted. |
+| Include AI rewards in normal reward pool | `generation.enemy_scaling.reward_enabled` | `false` | Adds real AI-only entries to normal reward rolls. They occupy reward slots, appear as red `AI Reward:` descriptions, and target only confirmed hostile AI houses discovered from mission ownership and military use. |
+| AI reward weight | `generation.reward_weights.main.enemy_buffs` | `100` | Controls normal AI-reward selection frequency. It does not change effect strength or completion-based draws. |
 | Include defensive building rewards | `generation.include_defensive_buildings` | `true` | Includes faction defenses in both access rewards and defense-targeted buffs. It does not randomize power plants, refineries, production structures, walls, or gates. |
 | Include special economy building rewards | `generation.include_special_buildings` | `true` | Includes Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor access. When the limit buff is enabled, each can also receive repeatable +1 structure-capacity rewards. |
 | Include campaign/map-only Special rewards | `generation.include_special_rewards` | `true` | Includes every unit, marked building, and power shown as **Special**, plus its matching unit/building or power buffs. Turning it off leaves normal roster units, ordinary special economy buildings, and ordinary aid powers untouched. The usual access, buff, power-category, and special-building switches still apply; existing runs keep their saved choice. |
@@ -88,6 +92,43 @@ other reward-pool, buff-type, and Advanced exclusions remain
 unchanged. The all-default weight set uses the original reward planner exactly,
 including existing seed output. Missing weight settings in older player configs
 and generated runs therefore retain prior behavior.
+
+### AI Enemy Rewards
+
+Eleven reviewed AI-only effects are available: infantry, vehicle/naval,
+aircraft, and defense armor; infantry, vehicle/naval, and aircraft cost; plus
+infantry, vehicle/naval, aircraft, and defense production time. They use guarded
+CountryType multipliers. Human-controlled houses, player allies, countries
+shared with any non-target house, and ambiguous duplicate CountryType sections
+are skipped.
+
+Objective and mission completion counts use one independent deterministic RNG
+stream. Both rates may be above zero and stack. When normal and completion AI
+rewards are both enabled, completion planning leaves part of each shared cap
+available to normal rolls. The two sources combine without exceeding global
+per-effect caps. The same seed and frozen settings reproduce the same plan.
+
+The **Enemy Rewards** tab shows all 8 supported bonuses as text cards when no
+cameo exists. Card outlines distinguish enabled, assigned, earned/pending, and
+confirmed-applied bonuses; hover text shows only the exact per-stack effect.
+The old
+large applied-reward table is removed. These entries never enter player launch
+rewards, Unlocks, or production.
+
+Hostile targeting combines reviewed per-mission enemy allowlists with guarded
+discovery of placed or scripted military AI Houses. Player, allied, neutral,
+civilian, future player-transfer, shared-country, and ambiguous duplicate
+CountryType targets are skipped with exact log reasons. Multiple safe hostile
+Houses receive the effect independently.
+
+Settings exposes only working groups: **AI stat bonuses** and **AI
+production-speed bonuses**. AI unit/building cost reductions are deliberately
+absent because cheaper production does not strengthen effectively unlimited-
+cash campaign AI. Generic AI unit unlocks remain excluded because they can
+replace story-critical identities. AI support powers and superweapons remain
+excluded because no end-to-end AI launch has yet been observed in an engine
+log; configured ownership, charging, and targeting alone do not count as proof.
+Unsupported types are logged when AI rewards are enabled.
 
 ### Buff type options
 
@@ -227,22 +268,22 @@ limit. Effect radius and extra delivered units remain unbounded.
 |---|---|---|---|---|
 | Offensive superweapon | Lightning Storm | Tactical Nuke | Psychic Dominator | Great Tempest |
 | Secondary superweapon | Chronoshift | Invulnerability (Iron Curtain) | Rage | None |
-| Aid/reinforcement | Airborne; Bloodhounds; Lightning Rod; Ultra Miner; Kingsnakes; Paladin Aid | Repair Drone; Tank Drop; Instant Shelter; Motor Ambush; Naval Mine; Terror Drop; Flame Tower; Drakuv Prison Vehicle; Repair Drones; Elite Reserves; Disruptor | Risen Monolith; Scout Raven; Vision; Magnetic Beam; Libra Clones; Bloatick Trap; Quick Fort; Ruiner; Hijackers | Spinblade; Megaarena; Knightfall; Harbinger; Sweeper Drop; Signal Jammer; Decoy Team; Decoy Squadron; M.A.D. Mine |
+| Aid/reinforcement | Airborne; Bloodhounds; Lightning Rod; Ultra Miner; Kingsnakes; Paladin Aid | Engineering Team; Repair Drone; Tank Drop; Instant Shelter; Motor Ambush; Naval Mine; Terror Drop; Flame Tower; Drakuv Prison Vehicle; Repair Drones; Elite Reserves; Disruptor | Risen Monolith; Scout Raven; Vision; Magnetic Beam; Libra Clones; Bloatick Trap; Quick Fort; Ruiner; Hijackers | Spinblade; Megaarena; Knightfall; Harbinger; Sweeper Drop; Signal Jammer; Decoy Team; Decoy Squadron; M.A.D. Mine |
 
 The copied aid powers keep installed costs, recharge times, delivered units, and effects unless their profile explicitly corrects a broken dependency. Knightfall keeps its installed `6.5` recharge. The five mine/grid spawners are the timing exception: installed `0.01` is an internal one-shot construction helper, not a usable repeating-power cooldown. Minefields use the reviewed `2.5`-minute player-power timing and Confusion/Stasis grids use `1` minute. Paladin Aid and Knightfall receive their tested targeting and delivery corrections. Paladin Tank Hunter is also a separate Allied **Special** unit access/buff target; Paladin Aid remains available and delivers the current buffed player clone whenever one exists, with its native pair as the no-clone fallback. Drakuv, Ruiner, and Harbinger are available only through their aid powers; their `Trainable=no` payload types never appear as production rewards, unit-buff options, Unlocks cards, or random tech locks. M.A.D. Mine, Naval Mine, Drakuv, Ruiner, and Kingsnakes remove building/designator, inhibitor, source-range, and shroud gates from their copies while preserving land/water restrictions. Kingsnakes also uses a copied portal object with its separate `PoweredBy` dependency removed. Mercury Strike matches the supplied mapper-tested building-free `MultiMissile` form while isolating its original chain from campaign overrides: `Nuke.Payload=MercuryOverdriveAlt` and `SW.Warhead=MercuryStrikeAlt` reference registered map-local copies. It has no hidden uplink or inherited EMPulse range gate and retains recharge `6`, cost `-800`, weapon speed `100`, and damage `150`. Wallbuster uses a private mapper-tested `MultiMissile` carrier, upward projectile, downward projectile, and 320-damage payload chain instead of a hidden cannon. It retains installed recharge `8.5`, cost, `wbsticon.pcx` sidebar art, `RROCKET` projectile art, and red flare animation. Every private WeaponType, Projectile, and Warhead is registered in its engine type list. Zephyrobot is retired: its installed beacon requires campaign-specific Zephyr support, while portable hidden-support attempts remained non-firing and the instrumented form caused a runtime fatal error. Old saved Zephyrobot rewards canonicalize to a harmless retired entry. Tactical Nuke stays completely installed/global in every mission except Fatal Impact; there its randomizer copy alone points to a registered private copy of the installed 600-damage `NukePayload`, bypassing the map's 5000-damage objective payload.
 
 Offensive and secondary rewards are also made independent from base power. Lightning Storm carries explicit normal storm values so campaign-specific weather scripts cannot silently reduce its damage or strike rate. Tactical Nuke remains the installed `MultiMissile` power with `NukeCarrier` in every normal mission. Fatal Impact alone redirects the reward copy to a registered private copy of the installed `NukePayload`: Damage `600`, `NUKE`, normal CellSpread. The mission's native Damage `5000`/`MIDASDeathWH` payload remains untouched and cannot affect the player reward. Chronoshift explicitly invokes its ChronoWarp follow-up; like the installed power, it moves team vehicles/units, not enemy units or infantry. Unthinkable keeps native `LIBRA` because its map-local Driller accepts only that exact passenger/operator ID; her earned buffs are applied directly. Bleed Red keeps its map-local `MORALES` Boris identity and every Boris House transport/Rhino escort native, preserving Boris art and controllable scripted reinforcements.
 
-`V3 Test Drop` is preserved as a disabled custom-power and artwork template. When enabled, it delivers twenty player-owned V3 Launchers and uses `sidebar_image` from editable `assets/yuri_shocked.png`. The same source PNG drives both the launcher Unlocks cameo and the generated 60×48 indexed `SidebarPCX=moryv3.pcx`; Mental Omega itself consumes only the converted loose PCX.
+`V3 Test Drop` is preserved as a disabled custom-power and artwork template. When enabled, it delivers twenty player-owned V3 Launchers and uses `sidebar_image` from editable `assets/yuri_shocked.png`. The same source PNG drives both the launcher Unlocks cameo and the generated 60×48 indexed `SidebarPCX=moryv3.pcx`. Conversion stays in `runtime_assets`; the game-root copy exists only during a spawned game and is hash-verified before cleanup.
 
 Blasticade is excluded: it only activates existing owned Blast Trenches, so a building-free reward does nothing by itself. Golden Wind is also excluded because it only overpowers existing Spinblades. Harbinger and EM Pulse no longer require or grant separate Harbinger Tower/EMP Control Station construction access. M.A.D. Mine deploys exactly one mine, matching installed `Deliver.Types=FAMMIN`; EMP, Cryomine, and Genomine field powers deploy four mines, while Confusion and Stasis Grid powers deploy nine grid cells.
 
-The support/aid pool contains 81 active powers:
+The support/aid pool contains 82 active powers:
 
 | Faction | Included support/aid powers |
 |---|---|
 | Allies | Airborne, Bloodhounds, Lightning Rod, Ultra Miner, Kingsnakes, Paladin Aid, Force Shield, Target Painter, Sonar Pulse, Mercury Strike, Satellite Scan, Black Widow Alpha, Black Widow, Chronoboost, Cryoshot, Cryospear, Glacial Screen, Cryomine Field, Chronolift, Backwarp, Hunter-Seeker |
-| Soviets | Repair Drone, Tank Drop, Instant Shelter, Motor Ambush, Naval Mine, Terror Drop, Flame Tower, Drakuv, Repair Drones, Elite Reserves, Disruptor, Spy Plane, Smoke Bombs, EM Pulse, Irradiation Gamma, Overcharge, Wallbuster, Irradiation Beta, Rad Attack, Pack Attack, EMP Minefield, Nuclear Path, Gear Change |
+| Soviets | Engineering Team, Repair Drone, Tank Drop, Instant Shelter, Motor Ambush, Naval Mine, Terror Drop, Flame Tower, Drakuv, Repair Drones, Elite Reserves, Disruptor, Spy Plane, Smoke Bombs, EM Pulse, Irradiation Gamma, Overcharge, Wallbuster, Irradiation Beta, Rad Attack, Pack Attack, EMP Minefield, Nuclear Path, Gear Change |
 | Epsilon | Risen Monolith, Scout Raven, Vision, Magnetic Beam, Libra Clones, Bloatick Trap, Quick Fort, Ruiner, Hijackers, Shadow Ring, Kinetic Barrier, Geneburst, Toxic Strike, Regen Drugs, Wonder Drugs, Genomine Field, Psychic Flash |
 | Foehn | Spinblade, Megaarena, Knightfall, Harbinger, Sweeper Drop, Signal Jammer, Decoy Team, Decoy Squadron, M.A.D. Mine, Nanofiber Sync, Boid Blitz, Recon Sortie, Devourer, Chaos Touch, Confusion Grid, Stasis Grid, Blackout Missile, Nanocharge |
 | Neutral | Missile Strike, Maintenance |
