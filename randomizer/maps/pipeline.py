@@ -50,6 +50,9 @@ from randomizer.maps.rules import (
     unit_weapon_buff_rules,
     veteran_armor_safety_rules,
 )
+from randomizer.maps.buff_validation import (
+    validate_generated_unit_buff_changes,
+)
 from randomizer.rewards.rules import expand_equivalent_role_buffs
 from randomizer.maps.progress_hooks import (
     inject_check_markers,
@@ -1909,6 +1912,42 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             'Repaired generated TechnoType registry entries lost during rule '
             'batch merging: ' + ', '.join(repaired_registrations) + '.'
         )
+
+    if self.state:
+        buff_validation = validate_generated_unit_buff_changes(
+            lines,
+            guarded_rewards,
+            clone_handled,
+            require_unlocked_access=require_unlocked_access_for_buffs,
+            additional_unlocked_tech_ids=buff_access_tech_ids,
+            share_basic_equivalent_buffs=share_basic_equivalent_buffs,
+            unit_specific_mode=chaos_unit_specific_buffs,
+            global_production_unit_ids=buildable_clone_ids,
+            excluded_unit_ids=MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS.get(
+                code, ()
+            ),
+        )
+        if buff_validation['requested_effects']:
+            self.append_log(
+                'Validated generated unit buffs: '
+                f'{buff_validation["applied_effects"]}/'
+                f'{buff_validation["requested_effects"]} effects and '
+                f'{buff_validation["applied_stacks"]}/'
+                f'{buff_validation["requested_stacks"]} effective stacks '
+                'changed final player clone/weapon rules.'
+            )
+        if buff_validation['skipped']:
+            skipped_summary = '; '.join(
+                f'{entry["unit"]}/{entry["buff_type"]} x'
+                f'{entry["stacks"]}: {entry["reason"]}'
+                for entry in buff_validation['skipped']
+            )
+            self.append_log(
+                'Skipped requested unit buffs after generated INI validation: '
+                + skipped_summary
+                + '.',
+                error=True,
+            )
 
     packed_sections = {
         'PreviewPack', 'IsoMapPack5', 'OverlayPack', 'OverlayDataPack',

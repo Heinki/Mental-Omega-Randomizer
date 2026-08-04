@@ -244,7 +244,10 @@ the same cameo is merged into that complete installed art section.
 `rewards/buff_exceptions.json` section `excluded_buff_type_ids` maps each buff type
 to TechnoType IDs that must not receive it. Use `all` for complete exclusions.
 These entries affect newly planned rewards; retired items in old saves stay in
-state for compatibility but are omitted from the Unlocks list.
+state for compatibility but are omitted from the Unlocks list. Weapon buffs
+must change a direct weapon on the isolated player clone. Keep damage rewards
+for shared spawned aircraft, missiles, or payload weapons excluded unless the
+complete payload chain gains a private, validated clone path.
 
 ## Load locations
 

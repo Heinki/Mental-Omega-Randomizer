@@ -640,7 +640,11 @@ def capped_movement_speed(target, count):
     factor = float(BUFF_EFFECTS['speed']['factor_per_stack'])
     return min(
         ceiling,
-        max(1, int(round(base_speed * (factor ** max(0, int(count)))))),
+        max(
+            base_speed,
+            base_speed + max(0, int(count)),
+            int(round(base_speed * (factor ** max(0, int(count))))),
+        ),
     )
 
 
@@ -1107,6 +1111,25 @@ REWARD_ALIASES = {
     # magazine therefore delays the stronger weapon instead of providing a
     # positive reserve benefit. Preserve old earned stacks as real ROF buffs.
     'Rhino Heavy Tank Ammo Reserves I': 'Rhino Heavy Tank Weapon Tuning I',
+    # These former Firepower rewards described indirect spawned
+    # missile/aircraft payload damage. The player clone only owns its direct
+    # launcher weapons, so changing the shared payload would either do nothing
+    # or buff enemy copies. Preserve old stacks as a real same-unit effect.
+    'Akula Missile Sub Firepower I': 'Akula Missile Sub Weapon Tuning I',
+    'Kuznetsov Dreadnought Firepower I': 'Kuznetsov Dreadnought Weapon Tuning I',
+    'Mosquito Demoboat Firepower I': 'Mosquito Demoboat Reinforced Frames I',
+    'Quetzal Firepower I': 'Quetzal Weapon Tuning I',
+    'Hailstorm Firepower I': 'Hailstorm Weapon Tuning I',
+    'Enterprise Aircraft Carrier Firepower I': 'Enterprise Aircraft Carrier Weapon Tuning I',
+    'Scud Launcher Firepower I': 'Scud Launcher Weapon Tuning I',
+    'Foxtrot Firepower I': 'Foxtrot Optics I',
+    'Gehenna Platform Firepower I': 'Gehenna Platform Weapon Tuning I',
+    'M.A.D.M.A.N. Firepower I': 'M.A.D.M.A.N. Reinforced Frames I',
+    'Leviathan Helicarrier Firepower I': 'Leviathan Helicarrier Weapon Tuning I',
+    'Seitaad Ballista Firepower I': 'Seitaad Ballista Weapon Tuning I',
+    'Space Commando Repair Systems I': 'Space Commando Reinforced Frames I',
+    'Robo Tengu Sensor Suite I': 'Robo Tengu Reinforced Frames I',
+    'Paradox Engine Repair Systems I': 'Paradox Engine Reinforced Frames I',
 }
 for unit_id, legacy_labels in {
     'TRACTOR': ('Tyrant',),

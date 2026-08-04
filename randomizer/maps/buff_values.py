@@ -28,6 +28,12 @@ from .base import (
     format_multiplier,
     parse_float,
 )
+from randomizer.config.tuning import (
+    stacked_cost,
+    stacked_self_heal_amount,
+    stacked_weapon_damage,
+    stacked_weapon_rof,
+)
 
 
 MIN_SAFE_TECHNO_STRENGTH = 2
@@ -169,15 +175,8 @@ def apply_unit_buff_value(values, target, buff_type, count):
         # Ares defaults to one hitpoint per RepairRate tick. Give every stack
         # another configured fraction of effective maximum strength.
         current_strength = resolved_safe_strength(target, values)
-        heal_fraction = min(
-            float(BUFF_EFFECTS['maximum_self_heal_fraction']),
-            float(BUFF_EFFECTS['defense_self_heal_fraction']) * count,
-        )
         values['SelfHealing.Amount'] = str(
-            max(1, int(round(
-                current_strength
-                * heal_fraction
-            )))
+            stacked_self_heal_amount(current_strength, count)
         )
     elif buff_type == 'cloak':
         values['Cloakable'] = 'yes'
@@ -190,8 +189,7 @@ def apply_unit_buff_value(values, target, buff_type, count):
             target.get('sight', 5) + float(BUFF_EFFECTS['sensor_sight_bonus'])
         )))
     elif buff_type == 'cost':
-        multiplier = stacking_multiplier('cost', count)
-        values['Cost'] = str(max(0, int(round(target['cost'] * multiplier))))
+        values['Cost'] = str(stacked_cost(target['cost'], count))
     elif buff_type == 'production':
         multiplier = stacking_multiplier('production', count)
         existing_key = next(
@@ -216,16 +214,14 @@ def apply_unit_buff_value(values, target, buff_type, count):
 
 def apply_weapon_buff_value(values, base_stats, buff_type, count):
     if buff_type == 'damage' and base_stats.get('damage', 0) > 0:
-        multiplier = stacking_multiplier('damage', count)
         base_damage = int(round(base_stats['damage']))
-        values['Damage'] = str(max(base_damage + 1, int(round(base_damage * multiplier))))
+        values['Damage'] = str(stacked_weapon_damage(base_damage, count))
     elif buff_type == 'range' and base_stats.get('range', 0) > 0:
         values['Range'] = format_multiplier(
             base_stats['range'] + stacking_amount('range', count)
         )
     elif buff_type == 'reload' and base_stats.get('rof', 0) > 1:
-        multiplier = stacking_multiplier('reload', count)
-        values['ROF'] = str(max(1, int(round(base_stats['rof'] * multiplier))))
+        values['ROF'] = str(stacked_weapon_rof(base_stats['rof'], count))
     else:
         return False
     return True

@@ -577,7 +577,11 @@ def build_player_clone_sections(
             return
         handled_by_unit[unit_id] = {
             'unit_buff_types': handled_types,
+            'clone_unit_buff_types': handled_types,
+            'clone_weapon_buff_types': set(),
             'weapon_ids': set(),
+            'weapon_clone_ids': {},
+            'clone_base_values': {},
             'clone_id': '',
         }
 
@@ -1045,6 +1049,9 @@ def build_player_clone_sections(
             clone_values['Image'] = source_unit
         handled_unit_types = set()
         handled_weapon_ids = set()
+        handled_weapon_types = set()
+        weapon_clone_ids = {}
+        clone_base_values = dict(clone_values)
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
             'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
@@ -1089,12 +1096,15 @@ def build_player_clone_sections(
             applied_weapon = False
             for buff_type in ('damage', 'range', 'reload'):
                 if buff_type in weapon_buff_types:
-                    applied_weapon = (
-                        apply_weapon_buff_value(
-                            weapon_values, base_stats, buff_type, counts[buff_type]
-                        )
-                        or applied_weapon
+                    applied_type = apply_weapon_buff_value(
+                        weapon_values,
+                        base_stats,
+                        buff_type,
+                        counts[buff_type],
                     )
+                    if applied_type:
+                        handled_weapon_types.add(buff_type)
+                        applied_weapon = True
             if not applied_weapon:
                 continue
             weapon_clone = _collision_safe_type_id(
@@ -1109,6 +1119,7 @@ def build_player_clone_sections(
             for key in reference_keys:
                 clone_values[key] = weapon_clone
             handled_weapon_ids.add(weapon.upper())
+            weapon_clone_ids[weapon.upper()] = weapon_clone
 
         if target.get('special_damage_fields') and 'damage' in weapon_buff_types:
             unsupported.append(
@@ -1397,7 +1408,10 @@ def build_player_clone_sections(
         handled_by_unit[unit_id] = {
             'unit_buff_types': native_handled_unit_types,
             'clone_unit_buff_types': handled_unit_types,
+            'clone_weapon_buff_types': handled_weapon_types,
             'weapon_ids': native_handled_weapon_ids,
+            'weapon_clone_ids': weapon_clone_ids,
+            'clone_base_values': clone_base_values,
             'clone_id': clone_id,
             # Mission-authored placements/TaskForces can use a clean locked
             # reference identity when the production clone carries cloak or

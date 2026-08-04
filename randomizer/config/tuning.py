@@ -67,6 +67,57 @@ def stacking_amount(effect, count):
     return amount
 
 
+def stacked_cost(base_cost, count):
+    """Return the configured rounded cost for a cumulative stack count."""
+    base_cost = max(0, int(round(float(base_cost))))
+    count = max(0, int(count))
+    return max(0, int(round(
+        base_cost * stacking_multiplier('cost', count)
+    )))
+
+
+def stacked_weapon_damage(base_damage, count):
+    """Return capped damage with at least one point gained per useful stack."""
+    base_damage = max(1, int(round(float(base_damage))))
+    count = max(0, int(count))
+    if count == 0:
+        return base_damage
+    maximum = int(round(
+        base_damage
+        * float(BUFF_EFFECTS['damage'].get('maximum_multiplier', 1.0))
+    ))
+    multiplied = int(round(
+        base_damage * stacking_multiplier('damage', count)
+    ))
+    return min(maximum, max(base_damage + 1, multiplied))
+
+
+def stacked_weapon_rof(base_rof, count):
+    """Return ROF delay with at least one tick removed per useful stack."""
+    base_rof = max(1, int(round(float(base_rof))))
+    count = max(0, int(count))
+    rounded = max(1, int(round(
+        base_rof * stacking_multiplier('reload', count)
+    )))
+    if count > 0 and base_rof > 1:
+        return min(rounded, base_rof - 1)
+    return rounded
+
+
+def stacked_self_heal_amount(base_strength, count):
+    """Return healing where every accepted stack adds at least one hitpoint."""
+    base_strength = max(1, int(round(float(base_strength))))
+    count = max(0, int(count))
+    maximum = max(1, int(round(
+        base_strength * float(BUFF_EFFECTS['maximum_self_heal_fraction'])
+    )))
+    fraction = min(
+        float(BUFF_EFFECTS['maximum_self_heal_fraction']),
+        float(BUFF_EFFECTS['defense_self_heal_fraction']) * count,
+    )
+    return min(maximum, max(1, int(round(base_strength * fraction))))
+
+
 @lru_cache(maxsize=None)
 def stacking_stack_limit(effect):
     """Return first stack reaching an effect cap, or ``None`` if unbounded."""

@@ -394,6 +394,156 @@ def validate_randomizer_unit_roster():
     }
 
 
+def validate_unit_buff_application_contracts():
+    """Prove every rollable unit buff changes a clone or direct weapon."""
+    from randomizer.maps.buff_values import (
+        apply_unit_buff_value,
+        apply_weapon_buff_value,
+    )
+    from randomizer.rewards.catalogue import (
+        BUFF_TARGETS,
+        UNIT_BUFF_REWARDS,
+        buff_effect_lines,
+        buff_stack_limit,
+        linked_buff_variant_ids,
+    )
+
+    _paths, _clone_ids, templates = randomizer_unit_roster()
+    errors = []
+    counts_by_type = {}
+
+    def direct_weapon_ids(values):
+        result = set()
+        for key, value in (values or {}).items():
+            lowered = str(key).lower()
+            direct = lowered in {
+                'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+            }
+            direct = direct or (
+                lowered.startswith('weapon')
+                and lowered.removeprefix('weapon').isdigit()
+            ) or (
+                lowered.startswith('eliteweapon')
+                and lowered.removeprefix('eliteweapon').isdigit()
+            )
+            weapon_id = str(value or '').strip()
+            if direct and weapon_id.lower() not in {'', 'none', '<none>'}:
+                result.add(weapon_id.upper())
+        return result
+
+    def normalized(values):
+        return {
+            str(key).lower(): str(value)
+            for key, value in (values or {}).items()
+        }
+
+    for reward in UNIT_BUFF_REWARDS:
+        unit_id = str(reward.get('unit') or '').upper()
+        buff_type = str(reward.get('buff_type') or '')
+        target = BUFF_TARGETS.get(unit_id, {})
+        counts_by_type[buff_type] = counts_by_type.get(buff_type, 0) + 1
+        limit = buff_stack_limit(reward)
+        count = max(1, int(limit or 1))
+        if not buff_effect_lines(reward, count=count):
+            errors.append(f'{unit_id}/{buff_type} has no UI effect text')
+            continue
+
+        if buff_type in {'damage', 'range', 'reload'}:
+            previous = None
+            for stack in range(1, count + 1):
+                current = []
+                for peer_id in sorted(
+                    linked_buff_variant_ids(unit_id) or {unit_id}
+                ):
+                    peer_target = BUFF_TARGETS.get(peer_id, target)
+                    direct_ids = direct_weapon_ids(templates.get(peer_id, {}))
+                    for weapon_id, stats in sorted(
+                        peer_target.get('weapons', {}).items()
+                    ):
+                        if str(weapon_id).upper() not in direct_ids:
+                            continue
+                        changed = {}
+                        if apply_weapon_buff_value(
+                            changed,
+                            stats,
+                            buff_type,
+                            stack,
+                        ):
+                            changed_values = normalized(changed)
+                            stat_field = (
+                                'rof' if buff_type == 'reload' else buff_type
+                            )
+                            if changed_values.get(stat_field) == str(
+                                stats.get(stat_field)
+                            ):
+                                continue
+                            current.append((
+                                peer_id,
+                                str(weapon_id).upper(),
+                                tuple(sorted(changed_values.items())),
+                            ))
+                current = tuple(current)
+                if not current or current == previous:
+                    errors.append(
+                        f'{unit_id}/{buff_type} stack {stack} changes no '
+                        'direct weapon field'
+                    )
+                    break
+                previous = current
+            continue
+
+        if buff_type == 'veteran':
+            template = templates.get(unit_id, {})
+            trainable = _case_insensitive_item(template, 'Trainable')[1]
+            if (
+                target.get('category')
+                not in {'infantry', 'units', 'aircraft', 'defenses'}
+                or str(trainable or 'yes').lower() in {'no', 'false', '0'}
+            ):
+                errors.append(f'{unit_id}/veteran is not trainable')
+            continue
+
+        if buff_type in {'build_limit', 'building_limit'}:
+            if int(target.get('build_limit', 0)) < 1:
+                errors.append(f'{unit_id}/{buff_type} has no positive limit')
+            continue
+
+        if target.get('global_production') and buff_type == 'production':
+            continue
+        before = dict(templates.get(unit_id, {}))
+        previous = normalized(before)
+        for stack in range(1, count + 1):
+            after = dict(before)
+            try:
+                applied = apply_unit_buff_value(
+                    after,
+                    target,
+                    buff_type,
+                    stack,
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                errors.append(f'{unit_id}/{buff_type} failed: {exc}')
+                break
+            current = normalized(after)
+            if not applied or current == previous:
+                errors.append(
+                    f'{unit_id}/{buff_type} stack {stack} changes no clone field'
+                )
+                break
+            previous = current
+
+    if errors:
+        raise ValueError(
+            'Unit buff application contract validation failed: '
+            + '; '.join(errors)
+        )
+    return {
+        'rewards': len(UNIT_BUFF_REWARDS),
+        'buff_types': counts_by_type,
+        'all_change_generated_rules': True,
+    }
+
+
 def validate_limited_hero_build_limits():
     """Audit capped hero clones and their command-capacity rewards."""
     from randomizer.rewards.definitions import (

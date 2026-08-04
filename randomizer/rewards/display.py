@@ -17,6 +17,10 @@ from .definitions import (
 )
 from randomizer.config.tuning import (
     REWARD_PLANNING,
+    stacked_cost,
+    stacked_self_heal_amount,
+    stacked_weapon_damage,
+    stacked_weapon_rof,
     stacking_amount,
     stacking_multiplier,
     stacking_stack_limit,
@@ -231,10 +235,44 @@ def buff_stack_limit(reward):
         return power_buff_stack_limit(reward)
     buff_type = reward.get('buff_type')
     if buff_type in {
-        'production', 'cost', 'armor', 'health', 'damage', 'reload', 'range',
-        'sight', 'ammo',
+        'production', 'armor', 'health', 'range', 'sight', 'ammo',
     }:
         return stacking_stack_limit(buff_type)
+    if buff_type == 'cost':
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        configured = stacking_stack_limit('cost')
+        base_cost = max(1, int(round(float(target.get('cost', 1)))))
+        previous = base_cost
+        for count in range(1, configured + 1):
+            current = stacked_cost(base_cost, count)
+            if current == previous:
+                return max(1, count - 1)
+            previous = current
+        return configured
+    if buff_type in {'damage', 'reload'}:
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        field = 'damage' if buff_type == 'damage' else 'rof'
+        minimum = 0 if buff_type == 'damage' else 1
+        values = [
+            int(round(float(stats[field])))
+            for stats in target.get('weapons', {}).values()
+            if float(stats.get(field, 0)) > minimum
+        ]
+        configured = stacking_stack_limit(buff_type)
+        if not values:
+            return configured
+        previous = tuple(values)
+        calculator = (
+            stacked_weapon_damage
+            if buff_type == 'damage'
+            else stacked_weapon_rof
+        )
+        for count in range(1, configured + 1):
+            current = tuple(calculator(value, count) for value in values)
+            if current == previous:
+                return max(1, count - 1)
+            previous = current
+        return configured
     if buff_type == 'self_healing':
         fraction_per_stack = float(
             BUFF_EFFECTS['defense_self_heal_fraction']
@@ -242,7 +280,18 @@ def buff_stack_limit(reward):
         maximum_fraction = float(
             BUFF_EFFECTS['maximum_self_heal_fraction']
         )
-        return max(1, int(ceil(maximum_fraction / fraction_per_stack)))
+        configured = max(1, int(ceil(
+            maximum_fraction / fraction_per_stack
+        )))
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        base_strength = float(target.get('strength', 1))
+        previous = stacked_self_heal_amount(base_strength, 1)
+        for count in range(2, configured + 1):
+            current = stacked_self_heal_amount(base_strength, count)
+            if current == previous:
+                return count - 1
+            previous = current
+        return configured
     if buff_type == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))
@@ -317,8 +366,11 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         return [stacked(f'{prefix}{effect} {shorter}% shorter')]
     if buff_type == 'cost':
-        multiplier = stacking_multiplier('cost', count)
-        cheaper = int(round((1.0 - multiplier) * 100))
+        base_cost = int(round(float(target.get('cost', 0))))
+        final_cost = stacked_cost(base_cost, count)
+        cheaper = int(round(
+            (1.0 - (final_cost / base_cost)) * 100
+        )) if base_cost else 0
         return [stacked(f'{prefix}Cost {cheaper}% cheaper')]
     if buff_type == 'speed':
         safe_ceiling = movement_speed_ceiling(target)
@@ -356,15 +408,25 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
         )
         return [stacked(f'{prefix}{subject} {base_limit} -> {base_limit + count}')]
     if buff_type == 'damage':
-        multiplier = stacking_multiplier('damage', count)
-        stronger = int(round((multiplier - 1.0) * 100))
+        percentages = []
+        for stats in target.get('weapons', {}).values():
+            base = int(round(float(stats.get('damage', 0))))
+            if base > 0:
+                final = stacked_weapon_damage(base, count)
+                percentages.append(int(round((final / base - 1.0) * 100)))
+        stronger = max(percentages, default=0)
         return [stacked(f'{prefix}Damage {stronger}% higher')]
     if buff_type == 'reload':
-        multiplier = stacking_multiplier('reload', count)
-        # ROF is a delay between attacks. A x0.81 delay produces x1/0.81
-        # attacks per time, not merely 19% more fire rate.
-        faster = int(round(((1.0 / multiplier) - 1.0) * 100))
-        return [stacked(f'{prefix}Fire rate {faster}% faster')]
+        percentages = []
+        for stats in target.get('weapons', {}).values():
+            base = int(round(float(stats.get('rof', 0))))
+            if base > 1:
+                final = stacked_weapon_rof(base, count)
+                percentages.append(int(round((base / final - 1.0) * 100)))
+        low = min(percentages, default=0)
+        high = max(percentages, default=0)
+        amount = str(high) if low == high else f'{low}-{high}'
+        return [stacked(f'{prefix}Fire rate {amount}% faster')]
     if buff_type == 'range':
         increase = stacking_amount('range', count)
         if increase.is_integer():
@@ -389,13 +451,12 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     if buff_type == 'open_topped':
         return [stacked(f'{prefix}Passengers can fire from transport')]
     if buff_type == 'self_healing':
-        fraction = min(
-            float(BUFF_EFFECTS['maximum_self_heal_fraction']),
-            float(BUFF_EFFECTS['defense_self_heal_fraction'])
-            * count
-        )
+        base_strength = max(1, int(round(float(target.get('strength', 1)))))
+        heal_amount = stacked_self_heal_amount(base_strength, count)
+        fraction = heal_amount / base_strength
         return [stacked(
-            f'{prefix}Self-healing {fraction * 100:g}% maximum health per tick'
+            f'{prefix}Self-healing {fraction * 100:g}% maximum health per tick '
+            f'({heal_amount} HP)'
         )]
     if buff_type == 'cloak':
         return [stacked(f'{prefix}Cloaking enabled')]

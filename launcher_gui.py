@@ -30,6 +30,7 @@ from randomizer.rewards.roster import (
     validate_special_roster_contracts,
     validate_special_reward_build_times,
     validate_transport_buff_eligibility,
+    validate_unit_buff_application_contracts,
 )
 
 
@@ -68,6 +69,7 @@ def run_self_check():
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         unit_roster = validate_randomizer_unit_roster()
+        unit_buff_applications = validate_unit_buff_application_contracts()
         limited_hero_limits = validate_limited_hero_build_limits()
         special_roster = validate_special_roster_contracts()
         hidden_passenger_payloads = validate_hidden_passenger_payloads()
@@ -400,6 +402,10 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'unit_buff_applications_valid': bool(
+                unit_buff_applications['all_change_generated_rules']
+            ),
+            'unit_buff_applications': unit_buff_applications,
             'limited_hero_build_limits_valid': bool(
                 limited_hero_limits['types']
                 == limited_hero_limits['command_capacity_rewards']
@@ -513,6 +519,7 @@ def run_self_check():
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
                 'randomizer_unit_roster_valid',
+                'unit_buff_applications_valid',
                 'limited_hero_build_limits_valid',
                 'special_roster_contracts_valid',
                 'hidden_passenger_payloads_valid',
