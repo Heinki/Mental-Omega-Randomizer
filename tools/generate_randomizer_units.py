@@ -127,6 +127,11 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'DHANDL': {
         'Name': 'Hand of Ereshkigal Left',
+        # Native campaign Hands hide their selection/health bracket off-screen
+        # and rely on mission triggers for their scripted lifecycle.  The
+        # buildable player copy is a normal damageable unit, so keep its
+        # bracket at the normal sprite position.
+        'PixelSelectionBracketDelta': '0',
         'GuardRange': '15',
         'WeaponCount': '10',
         'WeaponStages': '5',
@@ -154,6 +159,7 @@ TEMPLATE_VALUE_OVERRIDES = {
         'BuildTimeMultiplier': '1',
     },
     'DHANDR': {
+        'PixelSelectionBracketDelta': '0',
         'GuardRange': '15',
         'WeaponCount': '10',
         'WeaponStages': '5',

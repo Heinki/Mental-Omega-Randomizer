@@ -63,6 +63,20 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'EnterTransportSound': None,
         'LeaveTransportSound': None,
     },
+    # Native mission Hands deliberately move their health bracket off-screen.
+    # Player-buildable copies need normal unit health feedback and death.
+    # Keep this runtime override for preserved editable packaged rosters which
+    # predate the corrected static templates.
+    'DHANDL': {
+        'Strength': '3000',
+        'Armor': 'f_heroic',
+        'PixelSelectionBracketDelta': '0',
+    },
+    'DHANDR': {
+        'Strength': '3000',
+        'Armor': 'f_heroic',
+        'PixelSelectionBracketDelta': '0',
+    },
     # Preserved editable packaged rosters may predate hidden-payload fixes.
     # Enforce interaction/UI safety in memory even when those files remain
     # authoritative for every unrelated value.
@@ -1106,6 +1120,73 @@ def validate_randomizer_unit_health():
             errors.append(f'{source_id} has unsafe Strength={raw_value!r}')
             continue
         strengths[source_id] = int(value)
+    hand_contracts = {}
+    for source_id in ('DHANDL', 'DHANDR'):
+        template = templates.get(source_id, {})
+        _strength_key, raw_strength = _case_insensitive_item(
+            template,
+            'Strength',
+        )
+        _armor_key, raw_armor = _case_insensitive_item(template, 'Armor')
+        _bracket_key, raw_bracket = _case_insensitive_item(
+            template,
+            'PixelSelectionBracketDelta',
+        )
+        strength = _safe_multiplier(raw_strength)
+        bracket = _safe_multiplier(raw_bracket)
+        values = {
+            str(key).lower(): str(value)
+            for key, value in template.items()
+            if value is not None
+        }
+        expected_speed = '9' if source_id == 'DHANDL' else '8'
+        weapons_preserved = all(
+            values.get(f'{prefix}weapon{number}')
+            == ('DeathBoltAA' if number % 2 == 0 else 'DeathBolt')
+            for prefix in ('', 'elite')
+            for number in range(1, 11)
+        )
+        visible_health_bar = bool(
+            bracket is not None and abs(bracket) < 100
+        )
+        normal_damage_and_death = bool(
+            strength is not None
+            and strength >= 2
+            and values.get('armor', '').lower() == 'f_heroic'
+            and values.get('isselectablecombatant', '').lower() == 'yes'
+            and values.get('crashable', '').lower() == 'yes'
+            and values.get('deathweapon') == 'BlimpBombEffect'
+            and bool(values.get('explosion'))
+        )
+        behavior_preserved = bool(
+            weapons_preserved
+            and values.get('image') == source_id
+            and values.get('speed') == expected_speed
+            and values.get('jumpjetspeed') == expected_speed
+            and values.get('movementzone', '').lower() == 'fly'
+            and values.get('attacheffect.animation') == 'DRING'
+        )
+        contract = {
+            'strength': int(strength) if strength is not None else None,
+            'armor': str(raw_armor or ''),
+            'pixel_selection_bracket_delta': (
+                int(bracket) if bracket is not None else None
+            ),
+            'visible_health_bar': visible_health_bar,
+            'normal_damage_and_death': normal_damage_and_death,
+            'weapons_movement_art_preserved': behavior_preserved,
+        }
+        hand_contracts[source_id] = contract
+        if not all((
+            visible_health_bar,
+            normal_damage_and_death,
+            behavior_preserved,
+        )):
+            errors.append(
+                f'{source_id} player health contract invalid: '
+                f'Strength={raw_strength!r}, Armor={raw_armor!r}, '
+                f'PixelSelectionBracketDelta={raw_bracket!r}'
+            )
     if errors:
         raise ValueError(
             'Randomizer player-template health validation failed: '
@@ -1115,6 +1196,7 @@ def validate_randomizer_unit_health():
         'types': len(strengths),
         'minimum_strength': min(strengths.values(), default=0),
         'maximum_strength': max(strengths.values(), default=0),
+        'hands_of_ereshkigal': hand_contracts,
     }
 
 
