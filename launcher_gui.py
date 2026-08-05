@@ -124,7 +124,12 @@ def run_self_check():
             and mission_reward_multiplier('AREDDAWN') == 1
             and mission_reward_multiplier('ASIREN') == 2
             and mission_reward_multiplier('APANIC') == 3
+            and mission_reward_multiplier('FNOBODY') == 2
+            and mission_reward_multiplier('FBEYOND') == 2
+            and mission_reward_multiplier('FPOINT') == 3
             and mission_reward_multiplier('FREMNANT') == 3
+            and mission_reward_multiplier('ADEMON') == 2
+            and mission_reward_multiplier('FCAPSULE') == 2
         )
         enemy_settings = normalize_enemy_scaling_settings({
             'reward_enabled': True,
