@@ -29,6 +29,9 @@ POWER_BUFF_POWER_IDS = {
         set(POWER_BUFF_CONFIG['duration']['direct_fields'])
         | set(POWER_BUFF_CONFIG['duration']['warhead_fields'])
     ),
+    'vision': _normalized_ids(
+        POWER_BUFF_CONFIG['vision']['power_fields']
+    ),
     'payload': _normalized_ids(
         set(POWER_BUFF_CONFIG['payload']['unit_delivery_power_ids'])
         | set(POWER_BUFF_CONFIG['payload']['paradrop_power_ids'])
@@ -120,6 +123,9 @@ def power_buff_effect_text(reward, count=1):
     if buff_id == 'duration':
         factor = float(POWER_BUFF_CONFIG['duration']['factor_per_stack'])
         return f'Effect duration {round((factor ** count - 1.0) * 100)}% longer'
+    if buff_id == 'vision':
+        amount = int(POWER_BUFF_CONFIG['vision']['amount_per_stack']) * count
+        return f'Plane vision +{amount}'
     if buff_id == 'payload':
         return f'Delivered payload +{count}'
     return definition['name']

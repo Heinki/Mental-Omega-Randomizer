@@ -7,6 +7,7 @@ from ._dependencies import (
     WidgetTooltip,
     canonical_reward,
     check_rewards,
+    configured_enemy_reward,
     enemy_effect_text,
     normalize_enemy_scaling_settings,
     tk,
@@ -234,6 +235,14 @@ class EnemyScalingController:
         """Return active completion and normal AI rewards with sources."""
         if not self.state:
             return []
+        enemy_settings = normalize_enemy_scaling_settings(
+            self.state.get('reward_settings', {}).get('enemy_scaling')
+        )
+
+        def active_reward(value):
+            reward = canonical_reward(value)
+            return configured_enemy_reward(reward, enemy_settings) or {}
+
         entries = []
         milestones = {
             (
@@ -251,7 +260,7 @@ class EnemyScalingController:
                 int(planned.get('event_index', 0)),
             )
             milestone = milestones.get(key)
-            reward = canonical_reward(planned.get('reward', {}))
+            reward = active_reward(planned.get('reward', {}))
             if not milestone or not reward.get('enemy_reward'):
                 continue
             entries.append({
@@ -273,7 +282,7 @@ class EnemyScalingController:
                     continue
                 source = f'{title} - {check.get("name", "Check")}'
                 for reward in check_rewards(check):
-                    reward = canonical_reward(reward)
+                    reward = active_reward(reward)
                     if reward.get('enemy_reward'):
                         entries.append({
                             'reward': reward,
@@ -303,9 +312,21 @@ class EnemyScalingController:
             ):
                 continue
             try:
-                stack = max(1, int(item.get('stack', 1)))
-                cap = max(stack, int(item.get('cap', stack)))
-            except (TypeError, ValueError):
+                current_stacks = max(1, int(item['current_stacks']))
+                maximum_stacks = max(
+                    current_stacks, int(item['maximum_stacks'])
+                )
+                per_stack_value = max(0.0, float(item['per_stack_value']))
+                base_engine_value = max(
+                    0.001, float(item['base_engine_value'])
+                )
+                final_engine_value = max(
+                    0.001, float(item['final_engine_value'])
+                )
+                displayed_percentage = max(
+                    0, int(item['displayed_percentage'])
+                )
+            except (KeyError, TypeError, ValueError):
                 continue
             normalized.append({
                 'mission': str(item.get('mission') or code),
@@ -319,14 +340,22 @@ class EnemyScalingController:
                 ).strip(),
                 'house': house,
                 'country': str(item.get('country') or '').strip(),
+                'category': str(item.get('category') or '').strip(),
                 'target': target,
                 'effect': effect,
-                'stack': stack,
-                'cap': cap,
+                'per_stack_value': per_stack_value,
+                'current_stacks': current_stacks,
+                'maximum_stacks': maximum_stacks,
+                'engine_field': str(
+                    item.get('engine_field') or ''
+                ).strip(),
+                'base_engine_value': base_engine_value,
+                'final_engine_value': final_engine_value,
+                'displayed_percentage': displayed_percentage,
             })
         normalized.sort(key=lambda item: (
             item['effect_id'], item['house'].casefold(), item['target'].casefold(),
-            item['stack'], item['source'], item['earned_from'],
+            item['current_stacks'], item['source'], item['earned_from'],
         ))
         records = self.state.setdefault('enemy_reward_applications', {})
         if records.get(code) == normalized:
@@ -336,7 +365,7 @@ class EnemyScalingController:
         self.save_state()
 
     def enemy_scaling_dashboard_rows(self):
-        grouped = {}
+        rows = []
         for mission, applications in self.state.get(
             'enemy_reward_applications', {}
         ).items():
@@ -352,120 +381,32 @@ class EnemyScalingController:
                     or not (house and target and effect)
                 ):
                     continue
-                key = (str(mission), effect_id, house, target)
-                group = grouped.setdefault(key, {
-                    'mission': str(mission),
-                    'effect_id': effect_id,
+                try:
+                    current = max(1, int(item['current_stacks']))
+                    maximum = max(current, int(item['maximum_stacks']))
+                except (KeyError, TypeError, ValueError):
+                    continue
+                rows.append({
+                    'id': '|'.join((str(mission), effect_id, house, target)),
                     'name': str(item.get('reward_name') or effect_id),
                     'house': house,
                     'target': target,
-                    'country': str(item.get('country') or ''),
                     'effect': effect,
-                    'stack': 0,
-                    'cap': 1,
+                    'stacks': f'{current}/{maximum}',
+                    'source': str(item.get('source') or 'AI reward'),
+                    'earned_from': (
+                        f'{mission}: '
+                        + str(item.get('earned_from') or 'Saved AI progress')
+                    ),
                     'reward': dict(ENEMY_BUFF_BY_ID.get(effect_id, {})),
-                    'sources': set(),
-                    'earned_from': [],
                 })
-                try:
-                    item_stack = max(1, int(item.get('stack', 1)))
-                    item_cap = max(item_stack, int(item.get('cap', item_stack)))
-                except (TypeError, ValueError):
-                    continue
-                if item_stack >= group['stack']:
-                    group['effect'] = effect
-                group['stack'] = max(group['stack'], item_stack)
-                group['cap'] = max(group['cap'], item_cap)
-                source = str(item.get('source') or 'AI reward')
-                earned_from = str(
-                    item.get('earned_from') or 'Saved AI reward progress'
-                )
-                group['sources'].add(source)
-                if earned_from not in group['earned_from']:
-                    group['earned_from'].append(earned_from)
-        rows = []
-        for key, group in grouped.items():
-            rows.append({
-                'id': '|'.join(key),
-                'name': group['name'],
-                'house': group['house'],
-                'target': group['target'],
-                'effect': group['effect'],
-                'stacks': f'{group["stack"]}/{group["cap"]}',
-                'source': ' + '.join(sorted(group['sources'])),
-                'earned_from': (
-                    f'{group["mission"]}: '
-                    + '; '.join(group['earned_from'])
-                ),
-                'reward': group['reward'],
-            })
         return sorted(rows, key=lambda row: (
             row['earned_from'].casefold(), row['name'].casefold(),
             row['house'].casefold(),
         ))
 
     def enemy_buff_catalogue_entries(self):
-        """Show all supported bonuses; application receipts remain separate."""
-        if self.state and isinstance(
-            self.state.get('reward_settings'), dict
-        ):
-            settings = normalize_enemy_scaling_settings(
-                self.state['reward_settings'].get('enemy_scaling')
-            )
-        else:
-            settings = normalize_enemy_scaling_settings({
-                'reward_enabled': bool(self.enemy_reward_pool_var.get()),
-                'rewards_per_completed_objective': int(
-                    self.enemy_objective_rewards_var.get()
-                ),
-                'rewards_per_completed_mission': int(
-                    self.enemy_mission_rewards_var.get()
-                ),
-                'allowed_buff_ids': [
-                    effect_id
-                    for effect_id, variable
-                    in self.enemy_buff_enabled_vars.items()
-                    if variable.get()
-                ],
-                'caps': {
-                    effect_id: variable.get()
-                    for effect_id, variable
-                    in self.enemy_buff_cap_vars.items()
-                },
-            })
-        allowed = set(settings['allowed_buff_ids'])
-        active_counts = {}
-        active_sources = {}
-        for entry in self.active_enemy_scaling_entries():
-            effect_id = str(
-                entry['reward'].get('enemy_effect_id') or ''
-            )
-            if not effect_id:
-                continue
-            active_counts[effect_id] = active_counts.get(effect_id, 0) + 1
-            active_sources.setdefault(effect_id, set()).add(entry['source'])
-
-        planned_counts = {}
-        if self.state:
-            planned_rewards = [
-                item.get('reward', {})
-                for item in self.state.get('enemy_progress_plan', ())
-                if isinstance(item, dict)
-            ]
-            planned_rewards.extend(
-                reward
-                for checks in self.state.get('mission_checks', {}).values()
-                for check in checks
-                for reward in check_rewards(check)
-                if reward.get('enemy_reward')
-            )
-            for reward in planned_rewards:
-                effect_id = str(reward.get('enemy_effect_id') or '')
-                if effect_id:
-                    planned_counts[effect_id] = (
-                        planned_counts.get(effect_id, 0) + 1
-                    )
-
+        """Show a bonus card only after a generated map applied it."""
         applications = {}
         for mission, records in (
             (self.state or {}).get('enemy_reward_applications', {}).items()
@@ -474,65 +415,84 @@ class EnemyScalingController:
                 if not isinstance(record, dict):
                     continue
                 effect_id = str(record.get('effect_id') or '')
-                if not effect_id or not record.get('house'):
+                if (
+                    not effect_id
+                    or not record.get('house')
+                    or not record.get('target')
+                    or not record.get('effect')
+                ):
                     continue
-                data = applications.setdefault(effect_id, {
-                    'missions': set(), 'houses': set(), 'stack': 0,
-                })
-                data['missions'].add(str(mission))
-                data['houses'].add(str(record['house']))
                 try:
-                    data['stack'] = max(
-                        data['stack'], int(record.get('stack', 0))
+                    current = max(1, int(record['current_stacks']))
+                    maximum = max(current, int(record['maximum_stacks']))
+                    per_stack = max(0.0, float(record['per_stack_value']))
+                    final_engine = max(
+                        0.001, float(record['final_engine_value'])
                     )
-                except (TypeError, ValueError):
-                    pass
-
-        source_labels = []
-        if settings['rewards_per_completed_objective'] > 0:
-            source_labels.append(
-                f'{settings["rewards_per_completed_objective"]}/objective'
-            )
-        if settings['rewards_per_completed_mission'] > 0:
-            source_labels.append(
-                f'{settings["rewards_per_completed_mission"]}/mission'
-            )
-        if settings['reward_enabled']:
-            source_labels.append('normal reward pool')
+                    displayed = max(0, int(record['displayed_percentage']))
+                except (KeyError, TypeError, ValueError):
+                    continue
+                applications.setdefault(effect_id, []).append({
+                    **record,
+                    'mission': str(mission),
+                    'current_stacks': current,
+                    'maximum_stacks': maximum,
+                    'per_stack_value': per_stack,
+                    'final_engine_value': final_engine,
+                    'displayed_percentage': displayed,
+                })
 
         entries = []
         for definition in ENEMY_BUFF_DEFINITIONS:
             effect_id = definition['id']
-            cap = int(settings['caps'].get(effect_id, 0))
-            enabled = effect_id in allowed and cap > 0
-            applied = applications.get(effect_id)
-            active = min(active_counts.get(effect_id, 0), cap)
-            planned = min(planned_counts.get(effect_id, 0), cap)
-            status = (
-                'applied' if applied
-                else 'earned' if active
-                else 'planned' if planned
-                else 'enabled' if enabled and source_labels
-                else 'disabled'
+            receipts = applications.get(effect_id, ())
+            if not receipts:
+                continue
+            _index, applied = max(
+                enumerate(receipts),
+                key=lambda pair: (
+                    pair[1]['current_stacks'], pair[0]
+                ),
             )
-            effect_text = enemy_effect_text(definition, 1)
-            if definition.get('effect') == 'armor' and '+' in effect_text:
-                tooltip = f'{effect_text.rsplit("+", 1)[1]} more armor'
-            elif (
-                definition.get('effect') == 'production'
-                and '-' in effect_text
-            ):
-                tooltip = (
-                    f'{effect_text.rsplit("-", 1)[1]} faster production'
-                )
-            else:
-                tooltip = effect_text
+            adjective = (
+                'stronger'
+                if definition.get('effect') == 'armor'
+                else 'faster'
+            )
+            headline = (
+                f'Enemy {definition["category"]} {definition["type"]} '
+                '— Applied'
+            )
+            per_stack = f'{applied["per_stack_value"]:g}%'
+            engine_value = f'{applied["final_engine_value"]:.3f}'.rstrip(
+                '0'
+            ).rstrip('.')
+            tooltip = '\n'.join((
+                headline,
+                '—',
+                'Current effects:',
+                (
+                    f'• {definition["type"]} '
+                    f'{applied["displayed_percentage"]}% {adjective} '
+                    f'(Stacked {applied["current_stacks"]} times; maximum '
+                    f'{applied["maximum_stacks"]})'
+                ),
+                f'• Configured per stack: {per_stack}',
+                (
+                    '• Confirmed engine value: '
+                    f'{applied.get("engine_field", "multiplier")}='
+                    f'{engine_value}'
+                ),
+            ))
             entries.append({
                 'id': effect_id,
                 'label': (
-                    f'{definition["category"]}\n{definition["type"]}'
+                    f'{definition["category"]}\n{definition["type"]}\n'
+                    f'{applied["displayed_percentage"]}% {adjective}\n'
+                    f'Stack {applied["current_stacks"]}/'
+                    f'{applied["maximum_stacks"]}'
                 ),
-                'status': status,
+                'status': 'applied',
                 'tooltip': tooltip,
             })
         return entries

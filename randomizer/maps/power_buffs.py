@@ -133,6 +133,28 @@ def _apply_duration(reward, installed_sections, count):
         )
 
 
+def _apply_vision(reward, installed_sections, count):
+    power_id = reward['superweapon']
+    vision = POWER_BUFF_CONFIG['vision']
+    field_spec = vision['power_fields'].get(power_id)
+    if not field_spec:
+        return
+    source = field_spec['source']
+    source_values = installed_sections.get(source, {})
+    baseline = _value(source_values, field_spec['field'])
+    if baseline is None:
+        return
+    spec = _ensure_techno_clone(reward, source)
+    spec.update({
+        'source': source,
+        'clone': field_spec['clone'],
+        'list': field_spec['list'],
+        'reference_keys': ('SpyPlane.Type',),
+    })
+    amount = int(vision['amount_per_stack']) * count
+    spec['values'][field_spec['field']] = str(int(baseline) + amount)
+
+
 def _apply_payload(reward, source_values, count):
     power_id = reward['superweapon']
     payload = POWER_BUFF_CONFIG['payload']
@@ -267,6 +289,10 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
         duration_count = counts.get((power_id.upper(), 'duration'), 0)
         if duration_count:
             _apply_duration(reward, installed_sections, duration_count)
+
+        vision_count = counts.get((power_id.upper(), 'vision'), 0)
+        if vision_count:
+            _apply_vision(reward, installed_sections, vision_count)
 
         payload_count = counts.get((power_id.upper(), 'payload'), 0)
         if payload_count:

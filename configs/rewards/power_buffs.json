@@ -39,6 +39,13 @@
         "maximum_stacks": 5
       },
       {
+        "id": "vision",
+        "name": "Expanded Recon",
+        "setting_label": "Longer scouting vision",
+        "description": "The private scouting aircraft gains +1 sight per stack.",
+        "maximum_stacks": 20
+      },
+      {
         "id": "payload",
         "name": "Reinforced Payload",
         "setting_label": "One extra delivered unit",
@@ -199,6 +206,17 @@
         }
       }
     },
+    "vision": {
+      "amount_per_stack": 1,
+      "power_fields": {
+        "SpyPlaneSpecial": {
+          "source": "SPYP",
+          "clone": "MORSpyScout",
+          "list": "AircraftTypes",
+          "field": "Sight"
+        }
+      }
+    },
     "payload": {
       "unit_delivery_power_ids": [
         "WarpMinersSpecial",
@@ -229,7 +247,6 @@
       "spy_plane_power_ids": [
         "BlackWidowAlphaSpecial",
         "BlackWidowSpecial",
-        "SpyPlaneSpecial",
         "SmokebombsSpecial",
         "RadAttackSpecial",
         "PackAttackSpecial",

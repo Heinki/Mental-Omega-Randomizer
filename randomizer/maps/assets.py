@@ -6,6 +6,8 @@ import zlib
 import binascii
 import hashlib
 import json
+import os
+import ctypes
 from pathlib import Path
 
 from randomizer.core.paths import APP_DIR, CAMEO_CACHE_DIR, GAME_ROOT, SOURCE_DIR
@@ -24,10 +26,92 @@ GENERATED_UNIT_CAMEO_ASSETS = UNIT_SIDEBAR_IMAGES
 RUNTIME_ASSET_DIR = APP_DIR / 'runtime_assets'
 RUNTIME_ASSET_MANIFEST = RUNTIME_ASSET_DIR / 'active_game_root_assets.json'
 RUNTIME_ASSET_REQUESTS = RUNTIME_ASSET_DIR / 'requested_assets.json'
+RUNTIME_ASSET_LEASE = RUNTIME_ASSET_DIR / 'active_launch_lease.json'
 
 
 class CustomAssetError(ValueError):
     """Raised when a configured custom image cannot be converted safely."""
+
+
+def _pid_is_running(pid):
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    if os.name != 'nt':
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+    process = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)
+    if not process:
+        return False
+    try:
+        exit_code = ctypes.c_ulong()
+        return bool(
+            ctypes.windll.kernel32.GetExitCodeProcess(
+                process, ctypes.byref(exit_code)
+            )
+            and exit_code.value == 259
+        )
+    finally:
+        ctypes.windll.kernel32.CloseHandle(process)
+
+
+def _runtime_asset_lease():
+    if not RUNTIME_ASSET_LEASE.is_file():
+        return {}
+    try:
+        value = json.loads(RUNTIME_ASSET_LEASE.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _other_live_runtime_asset_owner():
+    try:
+        owner_pid = int(_runtime_asset_lease().get('owner_pid', 0))
+    except (TypeError, ValueError):
+        return 0
+    return (
+        owner_pid
+        if owner_pid != os.getpid() and _pid_is_running(owner_pid)
+        else 0
+    )
+
+
+def claim_runtime_asset_lease():
+    """Reserve temporary root assets against another launcher's cleanup."""
+    lease = _runtime_asset_lease()
+    try:
+        owner_pid = int(lease.get('owner_pid', 0))
+    except (TypeError, ValueError):
+        owner_pid = 0
+    if owner_pid == os.getpid():
+        return
+    if owner_pid and _pid_is_running(owner_pid):
+        raise CustomAssetError(
+            'Another launcher process is preparing or running a mission.'
+        )
+    if RUNTIME_ASSET_LEASE.exists():
+        RUNTIME_ASSET_LEASE.unlink()
+    RUNTIME_ASSET_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(
+            RUNTIME_ASSET_LEASE,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+        )
+    except FileExistsError as exc:
+        raise CustomAssetError(
+            'Another launcher process is preparing or running a mission.'
+        ) from exc
+    with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+        json.dump({'owner_pid': os.getpid()}, stream, indent=2)
 
 
 def _file_digest(path):
@@ -88,6 +172,7 @@ def _requested_runtime_asset_paths():
 
 def _activate_runtime_assets(paths):
     """Copy staged assets to game root without overwriting installed files."""
+    claim_runtime_asset_lease()
     manifest = _runtime_manifest()
     deployed = []
     for source in paths:
@@ -116,6 +201,8 @@ def _activate_runtime_assets(paths):
 
 def remove_generated_runtime_assets():
     """Remove only byte-identical launcher assets temporarily activated at root."""
+    if _other_live_runtime_asset_owner():
+        return []
     RUNTIME_ASSET_DIR.mkdir(parents=True, exist_ok=True)
     # Recreate old launcher-owned custom PCX outputs in staging so legacy
     # root copies can be proven byte-identical before removal.
@@ -154,6 +241,7 @@ def remove_generated_runtime_assets():
             if source.is_file() and source.name not in {
                 RUNTIME_ASSET_MANIFEST.name,
                 RUNTIME_ASSET_REQUESTS.name,
+                RUNTIME_ASSET_LEASE.name,
             }:
                 candidates.setdefault(source.name, _file_digest(source))
     # Older launcher versions extracted installed MIX cameos directly beside
@@ -440,21 +528,23 @@ def deploy_superweapon_sidebar_assets(rewards):
 
 
 def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
-    """Stage only custom PCX files; installed MIX cameos stay in their MIX."""
+    """Stage custom and campaign-MIX PCX files used by art aliases."""
     requested = {
         str(values.get('CameoPCX') or '').lower()
         for values in aliases.values()
         if isinstance(values, dict)
     }
     deployed = []
+    mix_requests = []
     for definition in GENERATED_UNIT_CAMEO_ASSETS.values():
         pcx_value = definition.get('source_pcx') or definition.get('pcx')
         pcx_name = _asset_name(pcx_value, '.pcx')
         if pcx_name.lower() not in requested:
             continue
         if definition.get('source_pcx'):
-            # The game already resolves this filename from installed MIX data.
-            # Extracting it loose polluted and could shadow the installation.
+            target = Path(target_dir) / pcx_name
+            mix_requests.append((pcx_name, target))
+            deployed.append(target)
             continue
         source = custom_image_path(
             _asset_name(definition['image'], '.png')
@@ -462,6 +552,22 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
         target = Path(target_dir) / pcx_name
         png_to_pcx(source, target)
         deployed.append(target)
+    if mix_requests:
+        from randomizer.ui.cameos import _extract_mix_files
+        extracted = _extract_mix_files(mix_requests)
+        missing = [
+            source_name
+            for source_name, target in mix_requests
+            if not Path(target).is_file()
+        ]
+        if not extracted or missing:
+            raise CustomAssetError(
+                'Could not extract campaign cameo PCX: '
+                + (
+                    ', '.join(sorted(missing))
+                    if missing else 'MIX extraction process failed'
+                )
+            )
     return deployed
 
 
@@ -683,6 +789,10 @@ def deploy_generated_unit_art(
 def remove_generated_unit_art(target_path=None):
     """Remove only the temporary art override created by this launcher."""
     if target_path is None:
+        # The generic cleanup path also handles the legacy root art override.
+        # Respect another launcher's lease before touching either asset set.
+        if _other_live_runtime_asset_owner():
+            return False
         removed = remove_generated_runtime_assets()
         legacy_target = GAME_ROOT / 'artmo.ini'
         if legacy_target.is_file():

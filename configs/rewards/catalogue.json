@@ -1601,7 +1601,7 @@
       },
       {
         "name": "Engineering Team Power",
-        "description": "Drops 4 Conscripts, 4 Flak Troopers, and 2 Soviet Engineers at the selected area.",
+        "description": "Drops 3 Soviet Engineers at the selected area using the standard Airborne paradrop.",
         "faction": "Soviets",
         "superweapon": "MOREngineeringTeamSpecial",
         "index": -1
@@ -1619,38 +1619,19 @@
         "custom": true,
         "clone": "MOREngineeringTeamSpecial",
         "source_superweapon": "AmericanParaDropSpecial",
-        "preserve_prerequisites": true,
+        "ignore_foreign_tech_gate": true,
         "delivery_player_clone_ids": [
           "SENGINEER"
         ],
         "values": {
           "UIName": "NAME:ENGITEAM",
           "Name": "Engineering Team",
-          "EVA.Ready": "EVA_ParatroopersReady",
           "IsPowered": "false",
           "SidebarPCX": "sengicon.pcx",
           "Money.Amount": "-1200",
-          "ParaDrop.Num": "4,4,2",
+          "ParaDrop.Num": "3",
           "RechargeTime": "4.5",
-          "ParaDrop.Types": "E2,FLAKT,SENGINEER",
-          "SW.NegBuildings": "NAHAND",
-          "ParaDrop.Aircraft": "PDPLANEUS",
-          "Type": "AmerParaDrop",
-          "Action": "Custom",
-          "ShowTimer": "no",
-          "DisableableFromShell": "no",
-          "Range": "1.5",
-          "LineMultiplier": "0",
-          "Cursor": "Paradrop",
-          "NoCursor": "NoCanDo",
-          "SW.FireIntoShroud": "no",
-          "SW.RequiresTarget": "land",
-          "SW.CreateRadarEvent": "no",
-          "SW.Animation": "FLAREBLUE",
-          "SW.AnimationHeight": "30",
-          "SW.AITargeting.Constraints": "enemy",
-          "SW.Inhibitors": "CACEAS,FAINHI,FAINHIB,RACC,COON,FAJAMM",
-          "FlashSidebarTabFrames": "0"
+          "ParaDrop.Types": "SENGINEER"
         }
       },
       {
@@ -3579,7 +3560,10 @@
             ],
             "values": {
               "Primary": "MORGearTrigger",
-              "TechLevel": "-1"
+              "TechLevel": "-1",
+              "Owner": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+              "RequiredHouses": "UnitedStates,Europeans,Pacific,Europeans2,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3,MORPLAYER",
+              "ForbiddenHouses": "none"
             }
           },
           "GearTrigger": {

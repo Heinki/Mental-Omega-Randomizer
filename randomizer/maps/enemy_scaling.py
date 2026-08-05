@@ -1,6 +1,6 @@
 """Mission-safe enemy-house scaling and AI power reward preparation."""
 
-from randomizer.config.tuning import stacking_multiplier
+from randomizer.rewards.enemy_scaling import enemy_effect_values
 
 from ._shared import (
     all_section_value_maps,
@@ -115,7 +115,8 @@ def active_hostile_enemy_houses(lines, configured_enemy_houses):
 
 
 def _effect_counts(rewards):
-    counts = {}
+    raw_counts = {}
+    maximums = {}
     definitions = {}
     for reward in rewards or ():
         if not reward.get('enemy_reward'):
@@ -124,8 +125,14 @@ def _effect_counts(rewards):
         if not effect_id:
             continue
         maximum = max(1, int(reward.get('enemy_maximum', 1)))
-        counts[effect_id] = min(counts.get(effect_id, 0) + 1, maximum)
-        definitions[effect_id] = reward
+        raw_counts[effect_id] = raw_counts.get(effect_id, 0) + 1
+        if maximum >= maximums.get(effect_id, 0):
+            maximums[effect_id] = maximum
+            definitions[effect_id] = reward
+    counts = {
+        effect_id: min(count, maximums[effect_id])
+        for effect_id, count in raw_counts.items()
+    }
     return counts, definitions
 
 
@@ -139,7 +146,7 @@ def enemy_country_buff_rules(lines, enemy_houses, rewards):
         in {'armor', 'production'}
     ]
     if not enemy_houses or not stat_effects:
-        return {}, [], []
+        return {}, [], [], []
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     usage_index = build_unit_usage_index(lines)
@@ -152,6 +159,7 @@ def enemy_country_buff_rules(lines, enemy_houses, rewards):
     rules = {}
     applied = []
     skipped = []
+    applications = []
     section_counts = {}
     for line in lines:
         stripped = str(line).strip()
@@ -189,14 +197,22 @@ def enemy_country_buff_rules(lines, enemy_houses, rewards):
                 key,
             )
             base = parse_float(base_values.get(existing_key), 1.0)
-            multiplier = stacking_multiplier(effect, count)
-            if effect == 'armor':
-                multiplier = 1.0 / multiplier
-            values[key] = format_multiplier(base * multiplier)
+            effect_values = enemy_effect_values(reward, count, base)
+            values[key] = format_multiplier(
+                effect_values['final_engine_value']
+            )
+            applications.append({
+                'effect_id': reward['enemy_effect_id'],
+                'effect': effect,
+                'category': reward.get('enemy_category', 'forces'),
+                'country': country,
+                'engine_field': existing_key,
+                **effect_values,
+            })
         if values:
             rules[country] = values
             applied.append(country)
-    return rules, applied, skipped
+    return rules, applied, skipped, applications
 
 
 def enemy_power_launch_rewards(rewards):

@@ -15,6 +15,11 @@ UNIT_BUFF_CATALOGUE_VERSION = 1
 UNIT_BUFF_TYPES_INTRODUCED = {
     1: ('passenger_capacity', 'open_topped'),
 }
+POWER_BUFF_CATALOGUE_VERSION = 1
+POWER_BUFF_TYPES_INTRODUCED = {
+    1: ('vision',),
+}
+ENEMY_STACK_MODEL_VERSION = 2
 
 
 def deep_copy(value):
@@ -67,6 +72,48 @@ def migrate_loaded_config(loaded):
             UNIT_BUFF_CATALOGUE_VERSION
         )
         changed = True
+    try:
+        power_version = max(
+            0, int(generation.get('power_buff_catalogue_version', 0))
+        )
+    except (TypeError, ValueError):
+        power_version = 0
+    enabled_power = generation.get('enabled_power_buff_types')
+    if isinstance(enabled_power, list):
+        for introduced_version in range(
+            power_version + 1,
+            POWER_BUFF_CATALOGUE_VERSION + 1,
+        ):
+            for buff_type in POWER_BUFF_TYPES_INTRODUCED.get(
+                introduced_version, ()
+            ):
+                if buff_type not in enabled_power:
+                    enabled_power.append(buff_type)
+                    changed = True
+    if power_version < POWER_BUFF_CATALOGUE_VERSION:
+        generation['power_buff_catalogue_version'] = (
+            POWER_BUFF_CATALOGUE_VERSION
+        )
+        changed = True
+    enemy_scaling = generation.get('enemy_scaling')
+    if isinstance(enemy_scaling, dict):
+        try:
+            enemy_version = max(
+                0, int(enemy_scaling.get('stack_model_version', 1))
+            )
+        except (TypeError, ValueError):
+            enemy_version = 1
+        if enemy_version < ENEMY_STACK_MODEL_VERSION:
+            caps = enemy_scaling.get('caps')
+            if isinstance(caps, dict):
+                for effect_id, cap in tuple(caps.items()):
+                    if cap == 3:
+                        caps[effect_id] = 5
+                        changed = True
+            enemy_scaling['stack_model_version'] = (
+                ENEMY_STACK_MODEL_VERSION
+            )
+            changed = True
     return changed
 
 

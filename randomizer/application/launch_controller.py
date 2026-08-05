@@ -34,6 +34,7 @@ from ._dependencies import (
     YR_OPTIONS_INI,
     always_available_miner_rules,
     always_available_transport_rules,
+    claim_runtime_asset_lease,
     chaos_earned_access_rules,
     choice_label_from_ini,
     controlled_tech_ids,
@@ -875,6 +876,7 @@ throw "Map $name was not found in expandmo*.mix"
             # until we have a safe map-specific injection path.
             self.disable_generated_rules_for_client()
             self.cleanup_generated_root_maps()
+            claim_runtime_asset_lease()
             launch_rules = {}
             for section, values in (extra_rules or {}).items():
                 launch_rules.setdefault(section, {}).update(values)

@@ -3,6 +3,7 @@
   "description": "Reviewed AI-only stat and production-speed rewards.",
   "sections": {
     "defaults": {
+      "stack_model_version": 2,
       "reward_enabled": false,
       "rewards_per_completed_objective": 0,
       "rewards_per_completed_mission": 0,
@@ -17,14 +18,14 @@
         "defense_production"
       ],
       "caps": {
-        "infantry_armor": 3,
-        "vehicle_armor": 3,
-        "aircraft_armor": 3,
-        "defense_armor": 3,
-        "infantry_production": 3,
-        "vehicle_production": 3,
-        "aircraft_production": 3,
-        "defense_production": 3
+        "infantry_armor": 5,
+        "vehicle_armor": 5,
+        "aircraft_armor": 5,
+        "defense_armor": 5,
+        "infantry_production": 5,
+        "vehicle_production": 5,
+        "aircraft_production": 5,
+        "defense_production": 5
       }
     },
     "buffs": [
@@ -35,7 +36,8 @@
         "category": "Infantry",
         "effect": "armor",
         "country_suffix": "Infantry",
-        "maximum_stacks": 3
+        "per_stack_percent": 11,
+        "maximum_stacks": 5
       },
       {
         "id": "vehicle_armor",
@@ -44,7 +46,8 @@
         "category": "Vehicles / Naval",
         "effect": "armor",
         "country_suffix": "Units",
-        "maximum_stacks": 3
+        "per_stack_percent": 11,
+        "maximum_stacks": 5
       },
       {
         "id": "aircraft_armor",
@@ -53,7 +56,8 @@
         "category": "Aircraft",
         "effect": "armor",
         "country_suffix": "Aircraft",
-        "maximum_stacks": 3
+        "per_stack_percent": 11,
+        "maximum_stacks": 5
       },
       {
         "id": "defense_armor",
@@ -62,7 +66,8 @@
         "category": "Defenses",
         "effect": "armor",
         "country_suffix": "Defenses",
-        "maximum_stacks": 3
+        "per_stack_percent": 11,
+        "maximum_stacks": 5
       },
       {
         "id": "infantry_production",
@@ -71,7 +76,9 @@
         "category": "Infantry",
         "effect": "production",
         "country_suffix": "Infantry",
-        "maximum_stacks": 3
+        "per_stack_percent": 10,
+        "minimum_engine_multiplier": 0.1,
+        "maximum_stacks": 5
       },
       {
         "id": "vehicle_production",
@@ -80,7 +87,9 @@
         "category": "Vehicles / Naval",
         "effect": "production",
         "country_suffix": "Units",
-        "maximum_stacks": 3
+        "per_stack_percent": 10,
+        "minimum_engine_multiplier": 0.1,
+        "maximum_stacks": 5
       },
       {
         "id": "aircraft_production",
@@ -89,7 +98,9 @@
         "category": "Aircraft",
         "effect": "production",
         "country_suffix": "Aircraft",
-        "maximum_stacks": 3
+        "per_stack_percent": 10,
+        "minimum_engine_multiplier": 0.1,
+        "maximum_stacks": 5
       },
       {
         "id": "defense_production",
@@ -98,7 +109,9 @@
         "category": "Defenses",
         "effect": "production",
         "country_suffix": "Defenses",
-        "maximum_stacks": 3
+        "per_stack_percent": 10,
+        "minimum_engine_multiplier": 0.1,
+        "maximum_stacks": 5
       }
     ]
   }

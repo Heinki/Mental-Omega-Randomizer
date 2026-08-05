@@ -99,6 +99,7 @@ def run_self_check():
         from randomizer.rewards.enemy_scaling import (
             ENEMY_BUFF_DEFINITIONS,
             ENEMY_BUFF_GROUP_DEFINITIONS,
+            enemy_effect_values,
             normalize_enemy_scaling_settings,
             plan_enemy_progress_rewards,
         )
@@ -142,6 +143,60 @@ def run_self_check():
         enemy_plan_repeat = plan_enemy_progress_rewards(
             'MO-SELF-CHECK', enemy_settings, REWARD_POOL, enemy_events
         )
+        armor_values = [
+            enemy_effect_values(
+                next(
+                    definition for definition in ENEMY_BUFF_DEFINITIONS
+                    if definition['id'] == 'infantry_armor'
+                ),
+                stacks,
+            )
+            for stacks in range(1, 6)
+        ]
+        production_values = [
+            enemy_effect_values(
+                next(
+                    definition for definition in ENEMY_BUFF_DEFINITIONS
+                    if definition['id'] == 'vehicle_production'
+                ),
+                stacks,
+            )
+            for stacks in range(1, 6)
+        ]
+        armor_only_settings = normalize_enemy_scaling_settings({
+            'stack_model_version': 2,
+            'rewards_per_completed_objective': 6,
+            'allowed_buff_ids': ['infantry_armor'],
+            'caps': {'infantry_armor': 5},
+        })
+        armor_only_plan = plan_enemy_progress_rewards(
+            'MO-AI-CAP-CHECK',
+            armor_only_settings,
+            REWARD_POOL,
+            ({'basis': 'objectives', 'event_index': 1},),
+        )
+        armor_reward = next(
+            reward for reward in REWARD_POOL
+            if reward.get('enemy_effect_id') == 'infantry_armor'
+        )
+        capped_reroll_settings = normalize_enemy_scaling_settings({
+            'stack_model_version': 2,
+            'rewards_per_completed_objective': 1,
+            'allowed_buff_ids': [
+                'infantry_armor', 'infantry_production',
+            ],
+            'caps': {
+                'infantry_armor': 5,
+                'infantry_production': 5,
+            },
+        })
+        capped_reroll_plan = plan_enemy_progress_rewards(
+            'MO-AI-REROLL-CHECK',
+            capped_reroll_settings,
+            REWARD_POOL,
+            ({'basis': 'objectives', 'event_index': 1},),
+            [armor_reward] * 5,
+        )
         enemy_power_rewards = enemy_power_launch_rewards(
             reward for reward in REWARD_POOL
             if reward.get('enemy_reward')
@@ -157,6 +212,20 @@ def run_self_check():
             )
             and len(enemy_plan) == 7
             and enemy_plan == enemy_plan_repeat
+            and all(
+                definition['maximum_stacks'] == 5
+                for definition in ENEMY_BUFF_DEFINITIONS
+            )
+            and [value['displayed_percentage'] for value in armor_values]
+            == [11, 22, 33, 44, 55]
+            and [
+                value['displayed_percentage']
+                for value in production_values
+            ] == [10, 20, 30, 40, 50]
+            and len(armor_only_plan) == 5
+            and len(capped_reroll_plan) == 1
+            and capped_reroll_plan[0]['reward'].get('enemy_effect_id')
+            == 'infantry_production'
             and all(
                 reward.get('enemy_reward')
                 for entry in enemy_plan
@@ -306,10 +375,16 @@ def run_self_check():
             and 'AMERICANPARADROPSPECIAL' in installed_by_upper
             and engineering_configs[0].get('values', {}).get(
                 'ParaDrop.Types'
-            ) == 'E2,FLAKT,SENGINEER'
+            ) == 'SENGINEER'
             and engineering_configs[0].get('values', {}).get(
                 'ParaDrop.Num'
-            ) == '4,4,2'
+            ) == '3'
+            and engineering_rewards[0].get(
+                'superweapon_ignore_foreign_tech_gate'
+            ) is True
+            and 'ParaDrop.Aircraft'
+            not in engineering_configs[0].get('values', {})
+            and not engineering_configs[0].get('preserve_prerequisites')
             and engineering_buffs == {'recharge', 'cost', 'payload'}
         )
         deploy_clone_link_gaps = []

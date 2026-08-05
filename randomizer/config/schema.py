@@ -151,6 +151,7 @@ REQUIRED_SECTIONS = {
         'area': dict,
         'damage': dict,
         'duration': dict,
+        'vision': dict,
         'payload': dict,
     },
     'rewards/enemy_scaling.json': {
@@ -838,7 +839,7 @@ def _validate_power_buffs(sections, path):
     ):
         _invalid('Invalid DropPod payload type additions', path)
 
-    for section_name in ('area', 'damage', 'duration'):
+    for section_name in ('area', 'damage', 'duration', 'vision'):
         for key, entries in sections[section_name].items():
             if not key.endswith('_fields'):
                 continue
@@ -854,6 +855,7 @@ def _validate_power_buffs(sections, path):
 def _validate_enemy_scaling(sections, path):
     defaults = sections['defaults']
     required_defaults = {
+        'stack_model_version',
         'reward_enabled',
         'rewards_per_completed_objective',
         'rewards_per_completed_mission',
@@ -861,6 +863,8 @@ def _validate_enemy_scaling(sections, path):
     }
     if not required_defaults.issubset(defaults):
         _invalid('Invalid AI reward defaults', path)
+    if defaults['stack_model_version'] != 2:
+        _invalid('Invalid AI reward stack model version', path)
     for key in (
         'rewards_per_completed_objective',
         'rewards_per_completed_mission',
@@ -877,11 +881,13 @@ def _validate_enemy_scaling(sections, path):
     for index, definition in enumerate(sections['buffs']):
         required = {
             'id', 'name', 'type', 'category', 'effect', 'maximum_stacks',
+            'per_stack_percent',
         }
         if not isinstance(definition, dict) or not required.issubset(definition):
             _invalid(f'Invalid AI reward {index}', path)
         effect_id = definition['id']
         maximum = definition['maximum_stacks']
+        per_stack = definition['per_stack_percent']
         if (
             not _is_nonempty_string(effect_id)
             or effect_id in seen
@@ -891,6 +897,9 @@ def _validate_enemy_scaling(sections, path):
             or not isinstance(maximum, int)
             or isinstance(maximum, bool)
             or maximum < 1
+            or not isinstance(per_stack, (int, float))
+            or isinstance(per_stack, bool)
+            or per_stack <= 0
         ):
             _invalid(f'Invalid AI reward {effect_id!r}', path)
         seen.add(effect_id)
@@ -907,6 +916,17 @@ def _validate_enemy_scaling(sections, path):
             or not _is_nonempty_string(definition.get('country_suffix'))
         ):
             _invalid(f'Invalid AI-only house reward {effect_id!r}', path)
+        if definition['effect'] == 'production':
+            minimum = definition.get('minimum_engine_multiplier')
+            if (
+                not isinstance(minimum, (int, float))
+                or isinstance(minimum, bool)
+                or minimum <= 0
+                or minimum >= 1
+            ):
+                _invalid(
+                    f'Invalid enemy production clamp {effect_id!r}', path
+                )
     if set(defaults['allowed_buff_ids']) - seen:
         _invalid('Unknown default AI reward IDs', path)
     if set(defaults['caps']) != seen:
@@ -962,6 +982,15 @@ def _validate_catalogue(sections, path):
         ):
             _invalid(
                 'Invalid provider-only flag for '
+                f'{config.get("superweapon")!r}',
+                path,
+            )
+        if (
+            'ignore_foreign_tech_gate' in config
+            and not isinstance(config['ignore_foreign_tech_gate'], bool)
+        ):
+            _invalid(
+                'Invalid foreign-tech gate override for '
                 f'{config.get("superweapon")!r}',
                 path,
             )

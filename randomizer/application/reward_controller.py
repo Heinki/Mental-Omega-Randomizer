@@ -884,6 +884,7 @@ class RewardController:
             code: list(base_rewards_by_code.get(code, ()))
             for code in mission_codes
         }
+        available_base_rewards = []
         prior_bonus_rewards = []
         bonus_codes = [
             code for code in mission_codes
@@ -891,8 +892,9 @@ class RewardController:
         ]
         bonus_total = len(bonus_codes)
         bonus_index = 0
-        for code in mission_codes:
+        for code_index, code in enumerate(mission_codes):
             slot_count = max(0, int(slots_by_code.get(code, 0)))
+            available_base_rewards.extend(all_base_rewards[code])
             if slot_count <= 0:
                 continue
             bonus_index += 1
@@ -904,10 +906,9 @@ class RewardController:
                 )
             reserved = [
                 reward
-                for other_code in mission_codes
-                if other_code != code
+                for other_code in mission_codes[code_index + 1:]
                 for reward in all_base_rewards[other_code]
-            ] + prior_bonus_rewards + list(reserved_rewards)
+            ] + list(reserved_rewards)
             plan = self.generate_seed_reward_plan(
                 [code],
                 seed,
@@ -915,7 +916,9 @@ class RewardController:
                 progression_mode=progression_mode,
                 grid=None,
                 initial_rewards=(
-                    list(initial_rewards) + all_base_rewards[code]
+                    list(initial_rewards)
+                    + available_base_rewards
+                    + prior_bonus_rewards
                 ),
                 avoid_unlocked_access=True,
                 rng_namespace=f'mission-reward-multiplier:{code}',

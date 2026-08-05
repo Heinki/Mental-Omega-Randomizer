@@ -561,6 +561,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         for reward in canonical_rewards(earned_rewards):
             if reward.get('kind') != 'superweapon':
                 continue
+            if reward.get('superweapon_ignore_foreign_tech_gate'):
+                continue
             reward_factions = set(reward.get('factions') or ())
             if (
                 not reward_factions
@@ -1019,7 +1021,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         merge_ini_section_values(lines, rule_sections)
         self.append_log(f'Injected {len(rule_sections)} map rule section(s) into {scenario}.')
 
-    enemy_country_rules, scaled_enemy_countries, skipped_enemy_countries = (
+    (
+        enemy_country_rules,
+        scaled_enemy_countries,
+        skipped_enemy_countries,
+        enemy_country_applications,
+    ) = (
         enemy_country_buff_rules(
             lines,
             scaled_enemy_houses,
@@ -1053,33 +1060,54 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             effect_id = str(reward.get('enemy_effect_id') or '')
             if effect_id:
                 entries_by_effect.setdefault(effect_id, []).append(entry)
-        for effect_id, effect_entries in entries_by_effect.items():
+        for application in enemy_country_applications:
+            effect_id = application['effect_id']
+            effect_entries = entries_by_effect.get(effect_id, ())
+            if not effect_entries:
+                continue
             reward = effect_entries[0]['reward']
-            maximum = max(1, int(reward.get('enemy_maximum', 1)))
-            for stack_index, entry in enumerate(
-                effect_entries[:maximum], start=1
-            ):
-                for house in stat_houses:
-                    country = str(
-                        records.get(house, {}).get('country')
-                        or house.replace(' House', '')
-                    )
-                    ai_reward_applications.append({
-                        'mission': code,
-                        'reward_name': reward.get('name', effect_id),
-                        'effect_id': effect_id,
-                        'source': entry['source'],
-                        'earned_from': entry['earned_from'],
-                        'house': house,
-                        'country': country,
-                        'target': (
-                            f'{country} / '
-                            f'{reward.get("enemy_category", "forces")}'
-                        ),
-                        'effect': enemy_effect_text(reward, stack_index),
-                        'stack': stack_index,
-                        'cap': maximum,
-                    })
+            country = str(application['country'])
+            sources = unique_in_order(
+                entry['source'] for entry in effect_entries
+            )
+            earned_from = unique_in_order(
+                entry['earned_from'] for entry in effect_entries
+            )
+            for house in stat_houses:
+                house_country = str(
+                    records.get(house, {}).get('country')
+                    or house.replace(' House', '')
+                )
+                if house_country.lower() != country.lower():
+                    continue
+                current_stacks = application['current_stacks']
+                ai_reward_applications.append({
+                    'mission': code,
+                    'reward_name': reward.get('name', effect_id),
+                    'effect_id': effect_id,
+                    'source': ' + '.join(sources),
+                    'earned_from': '; '.join(earned_from),
+                    'house': house,
+                    'country': country,
+                    'category': application['category'],
+                    'target': (
+                        f'{country} / {application["category"]}'
+                    ),
+                    'effect': enemy_effect_text(
+                        reward,
+                        current_stacks,
+                        application['base_engine_value'],
+                    ),
+                    'per_stack_value': application['per_stack_value'],
+                    'current_stacks': current_stacks,
+                    'maximum_stacks': application['maximum_stacks'],
+                    'engine_field': application['engine_field'],
+                    'base_engine_value': application['base_engine_value'],
+                    'final_engine_value': application['final_engine_value'],
+                    'displayed_percentage': (
+                        application['displayed_percentage']
+                    ),
+                })
     if skipped_enemy_countries:
         self.append_log(
             'Skipped unsafe enemy countries: '

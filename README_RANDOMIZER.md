@@ -73,7 +73,7 @@ The launcher is currently standalone and offline. The option keys below are inte
 | Include superweapon / aid power buff rewards | `generation.include_power_buff_rewards` | `true` | Adds repeatable buffs only after their matching power has been planned as unlocked. Settings → **Superweapons** enables broad buff families; Advanced → **Superpower Buffs** configures valid effects per included power. Invalid effects are unavailable rather than producing no-op rewards. |
 | Main reward weights | `generation.reward_weights.main` | Every value `100` | Controls relative selection of normal unit unlocks, power/aid unlocks, Special unit unlocks, faction-wide production increases, unit/building buffs, and power buffs. A `0` category is never selected. A category with no currently valid reward is removed before the roll, so its chance is reallocated. |
 | Unit buff weights | `generation.reward_weights.unit_buffs` | Every value `100` | Controls relative selection of movement, health, damage, range, fire rate, armor, cost, production time, healing, vision, ammo, cloaking, sensors, veterancy, and other existing unit/building buffs. Weights change item frequency only, never effect strength or stack caps. |
-| Superweapon buff weights | `generation.reward_weights.power_buffs` | Every value `100` | Controls relative selection of recharge, cost, area, damage, duration, extra delivered units, and future/other reviewed power buffs. A power buff remains unavailable until its matching power is unlocked. |
+| Superweapon buff weights | `generation.reward_weights.power_buffs` | Every value `100` | Controls relative selection of recharge, cost, area, damage, duration, delivered units, reconnaissance-plane vision, and future/other reviewed power buffs. A power buff remains unavailable until its matching power is unlocked. |
 | Enabled Buff Types | `generation.enabled_buff_types` | All listed types | Limits which buff families seed generation may assign. This option is ignored when **Include buff rewards** is off. |
 | Settings → Superweapons / Advanced → Superpower Buffs | `generation.enabled_power_buff_types`, `generation.excluded_power_buff_types` | All broad families enabled; no per-power exclusions | Settings globally enables recharge, cost, area, damage, duration, or payload reward families. Advanced selects one included power at a time for finer valid-effect exclusions. Existing generated runs keep their saved reward plan. |
 
@@ -95,9 +95,9 @@ and generated runs therefore retain prior behavior.
 
 ### AI Enemy Rewards
 
-Eleven reviewed AI-only effects are available: infantry, vehicle/naval,
-aircraft, and defense armor; infantry, vehicle/naval, and aircraft cost; plus
-infantry, vehicle/naval, aircraft, and defense production time. They use guarded
+Eight reviewed AI-only effects are available: infantry, vehicle/naval,
+aircraft, and defense armor, plus infantry, vehicle/naval, aircraft, and defense
+production time. They use guarded
 CountryType multipliers. Human-controlled houses, player allies, countries
 shared with any non-target house, and ambiguous duplicate CountryType sections
 are skipped.
@@ -107,11 +107,19 @@ stream. Both rates may be above zero and stack. When normal and completion AI
 rewards are both enabled, completion planning leaves part of each shared cap
 available to normal rolls. The two sources combine without exceeding global
 per-effect caps. The same seed and frozen settings reproduce the same plan.
+Each effect has five stacks. Armor adds the configured 11% strength per stack
+through the reciprocal received-damage multiplier; production reduces its
+engine multiplier by the configured 10% per stack. Thus stacks 1–5 produce
+armor values `1.11`–`1.55` and production values `0.9`–`0.5` from a `1.0`
+baseline. A capped effect leaves the candidate pool, so later draws reroll among
+other valid AI effects.
 
-The **Enemy Rewards** tab shows all 8 supported bonuses as text cards when no
-cameo exists. Card outlines distinguish enabled, assigned, earned/pending, and
-confirmed-applied bonuses; hover text shows only the exact per-stack effect.
-The old
+The **Enemy Rewards** tab shows a text card only after a generated map records
+that exact bonus as applied to a real hostile AI target. Merely enabled,
+seed-assigned, or earned/pending bonuses remain hidden. Cards and hover text
+show the confirmed cumulative percentage, stack `1/5` through `5/5`, configured
+per-stack value, hostile target, exact generated INI field, and final engine
+value. The old
 large applied-reward table is removed. These entries never enter player launch
 rewards, Unlocks, or production.
 
@@ -256,8 +264,10 @@ policy from unit/building buffs. Every unlockable power can receive faster recha
 Paid powers can receive lower activation cost. Reviewed area powers grow
 their `SW.Range` or private warhead `CellSpread`; reviewed timed effects grow
 their direct or private-warhead duration. Direct-damage powers receive higher
-`SW.Damage`. Safe UnitDelivery, paradrop, and SpyPlane rewards gain exactly one
-additional payload object per stack. Unique source structures, beacons, and
+`SW.Damage`. Safe UnitDelivery and paradrop rewards gain exactly one
+additional payload object per stack. Spy Plane never gains redundant extra
+aircraft; its reviewed reconnaissance buff increases only its private plane's
+`Sight`. Unique source structures, beacons, and
 fixed-layout grid spawners intentionally omit payload buffs. Buffs are folded
 into the same isolated power/helper clones, never native campaign definitions.
 Recharge, activation-cost, damage, and duration buffs stop at five stacks per
@@ -270,7 +280,7 @@ limit. Effect radius and extra delivered units remain unbounded.
 | Secondary superweapon | Chronoshift | Invulnerability (Iron Curtain) | Rage | None |
 | Aid/reinforcement | Airborne; Bloodhounds; Lightning Rod; Ultra Miner; Kingsnakes; Paladin Aid | Engineering Team; Repair Drone; Tank Drop; Instant Shelter; Motor Ambush; Naval Mine; Terror Drop; Flame Tower; Drakuv Prison Vehicle; Repair Drones; Elite Reserves; Disruptor | Risen Monolith; Scout Raven; Vision; Magnetic Beam; Libra Clones; Bloatick Trap; Quick Fort; Ruiner; Hijackers | Spinblade; Megaarena; Knightfall; Harbinger; Sweeper Drop; Signal Jammer; Decoy Team; Decoy Squadron; M.A.D. Mine |
 
-The copied aid powers keep installed costs, recharge times, delivered units, and effects unless their profile explicitly corrects a broken dependency. Knightfall keeps its installed `6.5` recharge. The five mine/grid spawners are the timing exception: installed `0.01` is an internal one-shot construction helper, not a usable repeating-power cooldown. Minefields use the reviewed `2.5`-minute player-power timing and Confusion/Stasis grids use `1` minute. Paladin Aid and Knightfall receive their tested targeting and delivery corrections. Paladin Tank Hunter is also a separate Allied **Special** unit access/buff target; Paladin Aid remains available and delivers the current buffed player clone whenever one exists, with its native pair as the no-clone fallback. Drakuv, Ruiner, and Harbinger are available only through their aid powers; their `Trainable=no` payload types never appear as production rewards, unit-buff options, Unlocks cards, or random tech locks. M.A.D. Mine, Naval Mine, Drakuv, Ruiner, and Kingsnakes remove building/designator, inhibitor, source-range, and shroud gates from their copies while preserving land/water restrictions. Kingsnakes also uses a copied portal object with its separate `PoweredBy` dependency removed. Mercury Strike matches the supplied mapper-tested building-free `MultiMissile` form while isolating its original chain from campaign overrides: `Nuke.Payload=MercuryOverdriveAlt` and `SW.Warhead=MercuryStrikeAlt` reference registered map-local copies. It has no hidden uplink or inherited EMPulse range gate and retains recharge `6`, cost `-800`, weapon speed `100`, and damage `150`. Wallbuster uses a private mapper-tested `MultiMissile` carrier, upward projectile, downward projectile, and 320-damage payload chain instead of a hidden cannon. It retains installed recharge `8.5`, cost, `wbsticon.pcx` sidebar art, `RROCKET` projectile art, and red flare animation. Every private WeaponType, Projectile, and Warhead is registered in its engine type list. Zephyrobot is retired: its installed beacon requires campaign-specific Zephyr support, while portable hidden-support attempts remained non-firing and the instrumented form caused a runtime fatal error. Old saved Zephyrobot rewards canonicalize to a harmless retired entry. Tactical Nuke stays completely installed/global in every mission except Fatal Impact; there its randomizer copy alone points to a registered private copy of the installed 600-damage `NukePayload`, bypassing the map's 5000-damage objective payload.
+The copied aid powers keep installed costs, recharge times, delivered units, and effects unless their profile explicitly corrects a broken dependency. Engineering Team has no Barracks gate and uses the invoking country's normal paradrop transport, so it works for every campaign faction without training a Barracks unit first. Knightfall keeps its installed `6.5` recharge. The five mine/grid spawners are the timing exception: installed `0.01` is an internal one-shot construction helper, not a usable repeating-power cooldown. Minefields use the reviewed `2.5`-minute player-power timing and Confusion/Stasis grids use `1` minute. Paladin Aid and Knightfall receive their tested targeting and delivery corrections. Paladin Tank Hunter is also a separate Allied **Special** unit access/buff target; Paladin Aid remains available and delivers the current buffed player clone whenever one exists, with its native pair as the no-clone fallback. Drakuv, Ruiner, and Harbinger are available only through their aid powers; their `Trainable=no` payload types never appear as production rewards, unit-buff options, Unlocks cards, or random tech locks. M.A.D. Mine, Naval Mine, Drakuv, Ruiner, and Kingsnakes remove building/designator, inhibitor, source-range, and shroud gates from their copies while preserving land/water restrictions. Kingsnakes also uses a copied portal object with its separate `PoweredBy` dependency removed. Mercury Strike matches the supplied mapper-tested building-free `MultiMissile` form while isolating its original chain from campaign overrides: `Nuke.Payload=MercuryOverdriveAlt` and `SW.Warhead=MercuryStrikeAlt` reference registered map-local copies. It has no hidden uplink or inherited EMPulse range gate and retains recharge `6`, cost `-800`, weapon speed `100`, and damage `150`. Wallbuster uses a private mapper-tested `MultiMissile` carrier, upward projectile, downward projectile, and 320-damage payload chain instead of a hidden cannon. It retains installed recharge `8.5`, cost, `wbsticon.pcx` sidebar art, `RROCKET` projectile art, and red flare animation. Every private WeaponType, Projectile, and Warhead is registered in its engine type list. Zephyrobot is retired: its installed beacon requires campaign-specific Zephyr support, while portable hidden-support attempts remained non-firing and the instrumented form caused a runtime fatal error. Old saved Zephyrobot rewards canonicalize to a harmless retired entry. Tactical Nuke stays completely installed/global in every mission except Fatal Impact; there its randomizer copy alone points to a registered private copy of the installed 600-damage `NukePayload`, bypassing the map's 5000-damage objective payload.
 
 Offensive and secondary rewards are also made independent from base power. Lightning Storm carries explicit normal storm values so campaign-specific weather scripts cannot silently reduce its damage or strike rate. Tactical Nuke remains the installed `MultiMissile` power with `NukeCarrier` in every normal mission. Fatal Impact alone redirects the reward copy to a registered private copy of the installed `NukePayload`: Damage `600`, `NUKE`, normal CellSpread. The mission's native Damage `5000`/`MIDASDeathWH` payload remains untouched and cannot affect the player reward. Chronoshift explicitly invokes its ChronoWarp follow-up; like the installed power, it moves team vehicles/units, not enemy units or infantry. Unthinkable keeps native `LIBRA` because its map-local Driller accepts only that exact passenger/operator ID; her earned buffs are applied directly. Bleed Red keeps its map-local `MORALES` Boris identity and every Boris House transport/Rhino escort native, preserving Boris art and controllable scripted reinforcements.
 
@@ -297,7 +307,7 @@ reuses the installed `MAINT` animation and `MaintAnimWH` repair loop. Both
 remove their visible Tech Structure dependency and remain available in every
 campaign filter.
 
-Backwarp, Nuclear Path, Blackout Missile, Gear Change, and Nanocharge use private map-local effect chains plus invisible exact-House startup providers, so their reward copies do not require the native Warpshop, Nuclear Reactor/Converter, Palace, Cyberkernel, Industrial Plant, or Nanofiber Loom. Psychic Flash directly targets Inferno Tower and Antares defense identities plus their current player clones; planning withholds it until either defense is unlocked. Nanocharge is targetable only while an owned Leviathan or Mastodon (including its current player clone) is on the field. Hunter-Seeker uses the same reviewed hidden-provider pattern. Blasticade and Golden Wind remain excluded because they still need preplaced Blast Trenches or Spinblades.
+Backwarp, Nuclear Path, Blackout Missile, Gear Change, and Nanocharge use private map-local effect chains plus invisible exact-House startup providers, so their reward copies do not require the native Warpshop, Nuclear Reactor/Converter, Palace, Cyberkernel, Industrial Plant, or Nanofiber Loom. Gear Change retains its installed duration/effect and shuts down every factory carrying the shared `fact` armor, including Allied, Soviet, Epsilon, and Foehn War Factories. Psychic Flash directly targets Inferno Tower and Antares defense identities plus their current player clones; planning withholds it until either defense is unlocked. Nanocharge is targetable only while an owned Leviathan or Mastodon (including its current player clone) is on the field. Hunter-Seeker uses the same reviewed hidden-provider pattern. Blasticade and Golden Wind remain excluded because they still need preplaced Blast Trenches or Spinblades.
 
 Elite Reserves is the building-bound exception. Its clone is attached to Allied, Soviet, Epsilon, and Foehn Barracks variants and restricted to the player countries. It is never granted through action `34`, avoiding the proven crash while creating its internal `F_ERESB` academy marker. Selling or losing the granting Barracks removes that instance; rebuilding a Barracks restores access.
 

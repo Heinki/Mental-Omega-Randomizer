@@ -64,10 +64,12 @@ that overlap only with full reward-plan and 97-map parity coverage.
   Construction Yard.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
-  damage, duration, and delivered-payload buff capabilities and stack tuning.
+  damage, duration, delivered-payload, and reconnaissance-plane vision buff
+  capabilities and stack tuning.
   Supported effects have no Randomizer-imposed stack ceiling.
-  - `rewards/enemy_scaling.json`: reviewed hostile-AI CountryType stat and
-    production-speed rewards; default objective/mission reward rates;
+  - `rewards/enemy_scaling.json`: reviewed hostile-AI CountryType armor and
+    production-speed rewards; per-stack percentages, five-stack caps, positive
+    engine clamps, and default objective/mission reward rates;
     allowed effect IDs; and hard per-effect caps. Player settings can narrow but
     never exceed these static maxima. Unsupported unit unlocks and powers have
     no UI/config option.
@@ -206,6 +208,9 @@ SuperWeaponTypes and effect helpers remain unchanged.
 `payload.drop_pod_type_weight_additions` adds configured type weights for each
 DropPod payload stack. Moon Reinforcements adds both `SHOCK` and `CYBO` per
 stack while increasing its minimum and maximum pod count.
+`vision.power_fields` privately clones the configured SpyPlane aircraft and
+increments only its `Sight`; Spy Plane is deliberately excluded from payload
+count because additional planes do not improve that power.
 
 `techno_clones` may provide private weapons, projectiles, warheads, delivered
 academy markers, or hidden EMPulse cannon buildings. A BuildingType with
@@ -242,7 +247,9 @@ manual image conversion or `cameo_superweapon` fallback is needed.
 Map-only unit cameos use `rewards/unit_data.json:unit_sidebar_images`. Keep the
 existing `image` + namespaced `pcx` pair for bundled PNG artwork. Use a single
 `source_pcx` filename for game/Bonus MIX artwork. Installed game-root MIX files
-always win; `assets/expandmo21 Bonus.mix` is fallback only.
+always win; `assets/expandmo21 Bonus.mix` is fallback only. Required PCXs are
+extracted into launcher staging, activated beside the game only for the spawned
+mission, and removed afterward by hash-verified cleanup.
 When a TechnoType uses a different `Image=`, add `art_id` to the PNG mapping so
 the same cameo is merged into that complete installed art section.
 

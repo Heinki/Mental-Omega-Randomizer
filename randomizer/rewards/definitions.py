@@ -1060,6 +1060,10 @@ def build_aid_power_rewards():
             reward['superweapon_source'] = (
                 modified_config['source_superweapon']
             )
+        if modified_config and modified_config.get(
+            'ignore_foreign_tech_gate'
+        ):
+            reward['superweapon_ignore_foreign_tech_gate'] = True
         if modified_config and modified_config.get('cameo_superweapon'):
             reward['cameo_superweapon'] = modified_config['cameo_superweapon']
         if modified_config and modified_config.get('sidebar_image'):
@@ -1153,6 +1157,7 @@ REWARD_ALIASES = {
     'Space Commando Repair Systems I': 'Space Commando Reinforced Frames I',
     'Robo Tengu Sensor Suite I': 'Robo Tengu Reinforced Frames I',
     'Paradox Engine Repair Systems I': 'Paradox Engine Reinforced Frames I',
+    'Spy Plane Power Reinforced Payload I': 'Spy Plane Power Expanded Recon I',
 }
 for unit_id, legacy_labels in {
     'TRACTOR': ('Tyrant',),

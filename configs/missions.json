@@ -1206,6 +1206,9 @@
       "SDEATH": [
         "YURI"
       ],
+      "SGGATE": [
+        "SUB"
+      ],
       "SPEACE": [
         "YURI"
       ],
@@ -1341,6 +1344,9 @@
       ],
       "SEXIST": [
         "MORALES"
+      ],
+      "SGGATE": [
+        "SUB"
       ],
       "SHAND": [
         "ADOG",
@@ -1599,6 +1605,15 @@
         },
         "SENGINEER": {
           "RequiredHouses": "Kremlin,SovietEP,SovietNE,SovietSW,Chinese,Latin"
+        },
+        "SweeperDropSpecial": {
+          "ParaDrop.Types": "CHITZ"
+        },
+        "Events": {
+          "01002430": "1,81,2,1,CHITZ"
+        },
+        "Actions": {
+          "01002473": "1,115,9,CHITZ,0,0,0,0,100"
         }
       },
       "SRED": {

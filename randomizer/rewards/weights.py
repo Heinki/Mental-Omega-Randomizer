@@ -72,6 +72,7 @@ POWER_BUFF_WEIGHT_TYPES = (
     ('area', 'Area'),
     ('damage', 'Damage'),
     ('duration', 'Duration'),
+    ('vision', 'Vision'),
     ('payload', 'Extra unit'),
     ('other', 'Other existing buffs'),
 )

@@ -81,9 +81,17 @@ class StateController:
             return
         changed = False
         reward_settings = self.state.get('reward_settings')
+        enemy_stack_model_changed = False
         if isinstance(reward_settings, dict):
+            enemy_source = reward_settings.get('enemy_scaling')
+            try:
+                enemy_stack_model_changed = int(
+                    (enemy_source or {}).get('stack_model_version', 1)
+                ) < 2
+            except (AttributeError, TypeError, ValueError):
+                enemy_stack_model_changed = True
             normalized_enemy = normalize_enemy_scaling_settings(
-                reward_settings.get('enemy_scaling')
+                enemy_source
             )
             if reward_settings.get('enemy_scaling') != normalized_enemy:
                 reward_settings['enemy_scaling'] = normalized_enemy
@@ -142,15 +150,19 @@ class StateController:
         mission_codes = self.state.get('mission_order', [])
         mission_checks = self.state.get('mission_checks', {})
         enemy_plan = self.state.get('enemy_progress_plan')
-        enemy_plan_valid = isinstance(enemy_plan, list) and all(
-            isinstance(entry, dict)
-            and entry.get('basis') in {'objectives', 'missions'}
-            and isinstance(entry.get('event_index'), int)
-            and isinstance(entry.get('reward'), dict)
-            and str(
-                entry.get('reward', {}).get('enemy_effect_id') or ''
-            ) in ENEMY_BUFF_BY_ID
-            for entry in enemy_plan
+        enemy_plan_valid = (
+            not enemy_stack_model_changed
+            and isinstance(enemy_plan, list)
+            and all(
+                isinstance(entry, dict)
+                and entry.get('basis') in {'objectives', 'missions'}
+                and isinstance(entry.get('event_index'), int)
+                and isinstance(entry.get('reward'), dict)
+                and str(
+                    entry.get('reward', {}).get('enemy_effect_id') or ''
+                ) in ENEMY_BUFF_BY_ID
+                for entry in enemy_plan
+            )
         )
         if not enemy_plan_valid:
             normalized_enemy = normalize_enemy_scaling_settings(
@@ -169,6 +181,9 @@ class StateController:
                 ],
             )
             self.state['enemy_progress_earned'] = []
+            changed = True
+        if enemy_stack_model_changed:
+            self.state['enemy_reward_applications'] = {}
             changed = True
         application_records = self.state.get('enemy_reward_applications')
         if isinstance(application_records, dict):

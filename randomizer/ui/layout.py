@@ -565,13 +565,13 @@ def _build_info_tabs(self, info_tabs):
     info_tabs.add(enemy_buffs_page, text='Enemy Rewards')
     ttk.Label(
         enemy_buffs_page,
-        text='Supported AI bonuses',
+        text='Applied AI bonuses',
         font=('Segoe UI', 10, 'bold'),
         justify='left',
     ).grid(row=0, column=0, sticky='ew')
     ttk.Label(
         enemy_buffs_page,
-        text='Hover a card for effect, cap, source, and status.',
+        text='A bonus appears here only after a generated map applies it.',
         style='Muted.TLabel',
         wraplength=820,
         justify='left',

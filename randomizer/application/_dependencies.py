@@ -87,6 +87,7 @@ from randomizer.ui.cameos import (
 )
 from randomizer.core.diagnostics import event as log_event
 from randomizer.maps.assets import (
+    claim_runtime_asset_lease,
     custom_sidebar_preview,
     deploy_generated_unit_art,
     remove_generated_unit_art,

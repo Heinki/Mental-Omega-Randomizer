@@ -53,6 +53,8 @@ def canonical_reward(reward):
             for key in (
                 'enemy_maximum', 'enemy_source', 'enemy_earned_from',
                 'enemy_progress_tier', 'enemy_progress_threshold',
+                'enemy_per_stack_percent',
+                'enemy_minimum_engine_multiplier',
             ):
                 if key in reward:
                     merged[key] = reward[key]
