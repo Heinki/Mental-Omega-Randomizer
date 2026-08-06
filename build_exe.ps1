@@ -4,7 +4,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$outputPath = [IO.Path]::GetFullPath((Join-Path $scriptDir $Output))
+$outputPath = if ([IO.Path]::IsPathRooted($Output)) {
+    [IO.Path]::GetFullPath($Output)
+} else {
+    [IO.Path]::GetFullPath((Join-Path $scriptDir $Output))
+}
 $outputDir = Split-Path -Parent $outputPath
 $runtimePath = [IO.Path]::GetFullPath((Join-Path $outputDir "RandomizerLauncherRuntime"))
 $distDir = Join-Path $scriptDir "dist"
@@ -20,6 +24,10 @@ New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
 if (-not (python -m PyInstaller --version 2>$null)) {
     throw "PyInstaller is required. Install build dependencies with: python -m pip install -r requirements-build.txt"
+}
+$websocketsVersion = (& python -c "import websockets; print(websockets.__version__)" 2>$null).Trim()
+if ($LASTEXITCODE -ne 0 -or $websocketsVersion -ne '17.0') {
+    throw "websockets 17.0 is required. Install build dependencies with: python -m pip install -r requirements-build.txt"
 }
 if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
     throw "Launcher icon is missing: $iconPath"
@@ -112,8 +120,8 @@ New-Item -ItemType Directory -Path $configManifestDir -Force | Out-Null
     [Text.UTF8Encoding]::new($false)
 )
 
-# The standalone launcher has no network client. Remove the network-related
-# exclusions below when Archipelago connectivity is implemented.
+# Archipelago uses compressed ws/wss connections. Keep SSL, HTTP, and email
+# available for the bundled websockets handshake implementation.
 try {
     python -m PyInstaller `
         --noconfirm `
@@ -132,14 +140,8 @@ try {
         --add-data "$configManifestPath;configs" `
         --add-data "$assetPath;assets" `
         --exclude-module logging.handlers `
-        --exclude-module ssl `
-        --exclude-module _ssl `
-        --exclude-module http `
-        --exclude-module urllib.request `
-        --exclude-module urllib.error `
         --exclude-module ftplib `
         --exclude-module smtplib `
-        --exclude-module email `
         --name MentalOmegaRandomizer `
         --distpath $distDir `
         --workpath $workDir `

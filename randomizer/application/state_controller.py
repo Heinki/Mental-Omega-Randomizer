@@ -1,6 +1,7 @@
 """Persistent state, player configuration, starters, and assistance."""
 
 from randomizer.config.tuning import mission_assistance_stack_count
+from .archipelago_state import normalize_archipelago_activation
 
 from ._dependencies import (
     ARSENAL_FACTIONS,
@@ -79,7 +80,15 @@ class StateController:
     def migrate_state(self):
         if not self.state:
             return
-        changed = False
+        changed = normalize_archipelago_activation(self.state)
+        ap_config = self.config.setdefault('archipelago', {})
+        ap_enabled = bool(
+            isinstance(self.state.get('archipelago'), dict)
+            and self.state['archipelago'].get('enabled')
+        )
+        if bool(ap_config.get('enabled')) != ap_enabled:
+            ap_config['enabled'] = ap_enabled
+            save_config(self.config)
         reward_settings = self.state.get('reward_settings')
         enemy_stack_model_changed = False
         if isinstance(reward_settings, dict):
@@ -231,7 +240,7 @@ class StateController:
             if after != before:
                 changed = True
             goal_code = self.state['grid'].get('goal')
-            if goal_code in completed:
+            if goal_code in completed and not self.archipelago_run_active():
                 released_rewards, released_checks = self.release_remaining_grid_rewards()
                 if released_checks:
                     changed = True
@@ -940,6 +949,8 @@ class StateController:
 
     def save_settings_file(self):
         """Export every launcher option without active seed progress."""
+        if self.gameplay_settings_locked():
+            return
         path = filedialog.asksaveasfilename(
             parent=self,
             title='Save Randomizer Settings',
@@ -978,6 +989,8 @@ class StateController:
 
     def load_settings_file(self):
         """Import every launcher option while preserving run progress."""
+        if self.gameplay_settings_locked():
+            return
         path = filedialog.askopenfilename(
             parent=self,
             title='Load Randomizer Settings',

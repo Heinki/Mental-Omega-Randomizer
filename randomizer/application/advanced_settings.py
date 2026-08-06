@@ -346,6 +346,8 @@ class AdvancedSettingsController:
         self.refresh_advanced_buff_view()
 
     def on_advanced_unit_buff_changed(self, buff_id):
+        if self.gameplay_settings_locked():
+            return
         unit_id = self.advanced_buff_unit_id
         if not unit_id:
             return
@@ -360,6 +362,8 @@ class AdvancedSettingsController:
         self.refresh_advanced_buff_view()
 
     def set_advanced_unit_buffs(self, include):
+        if self.gameplay_settings_locked():
+            return
         unit_id = self.advanced_buff_unit_id
         if not unit_id:
             return
@@ -662,6 +666,8 @@ class AdvancedSettingsController:
         )
 
     def toggle_advanced_pool_entry(self, pool_key, item_id):
+        if self.gameplay_settings_locked():
+            return
         target = {
             'missions': self.excluded_mission_codes,
             'units': self.excluded_unit_access_ids,
@@ -677,6 +683,8 @@ class AdvancedSettingsController:
         self.refresh_advanced_pool_views()
 
     def set_advanced_pool_all(self, pool_key, include):
+        if self.gameplay_settings_locked():
+            return
         selected_campaign = self.campaign_var.get()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         arsenal_factions = {
@@ -772,6 +780,8 @@ class AdvancedSettingsController:
             variable.set(weight)
 
     def reset_reward_weights(self):
+        if self.gameplay_settings_locked():
+            return
         for definition in MAIN_REWARD_WEIGHT_TYPES:
             weight_id = definition['id']
             self.main_reward_weight_vars[weight_id].set(DEFAULT_REWARD_WEIGHT)
@@ -947,6 +957,7 @@ class AdvancedSettingsController:
             and self.workspace_tabs.select() == str(self.advanced_tab)
         ):
             self.refresh_advanced_pool_views()
+        self._enforce_archipelago_control_lock()
 
     def update_mission_goal_limit(self):
         if not self.missions:

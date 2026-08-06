@@ -20,6 +20,11 @@ from ._dependencies import (
 class ProgressionController:
 
     def active_progression_mode(self):
+        archipelago_mode = getattr(
+            self, 'archipelago_progression_mode', lambda: None
+        )()
+        if archipelago_mode:
+            return archipelago_mode
         if self.state:
             return self.state.get('progression_mode', DEFAULT_PROGRESSION_MODE)
         return self.progression_mode_var.get()

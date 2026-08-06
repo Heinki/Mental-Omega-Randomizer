@@ -1,0 +1,2 @@
+"""Isolated Archipelago integration sources."""
+

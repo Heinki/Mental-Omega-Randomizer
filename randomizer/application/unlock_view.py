@@ -335,6 +335,7 @@ class UnlockViewController:
         earned = self.state.get('earned_rewards', [])
         goal = self.state.get('mission_goal', len(order))
         progression_mode = self.active_progression_mode()
+        archipelago_active = self.archipelago_run_active()
         run_complete = self.is_run_complete()
         status = (
             'Victory achieved'
@@ -356,6 +357,9 @@ class UnlockViewController:
         if selected:
             code = selected['code']
             done_checks, total_checks = self.mission_check_counts(code)
+            archipelago_counts = self.archipelago_mission_location_counts(code)
+            if archipelago_counts is not None:
+                done_checks, total_checks = archipelago_counts
             lines.append(selected['title'])
             lines.append(f'Code: {code}  •  Faction: {selected.get("side", "Unknown")}')
             if progression_mode == 'Grid Mode':
@@ -369,10 +373,17 @@ class UnlockViewController:
                 )
                 unlocks = self.mission_unlocks(code)
                 if code == self.state.get('grid', {}).get('goal') and node.get('state') != GRID_COMPLETED:
-                    lines.append(
-                        'Completing this endgoal records Randomizer victory, releases every '
-                        'pending reward, and unlocks every unfinished grid mission.'
-                    )
+                    if archipelago_active:
+                        lines.append(
+                            'Completing this endgoal records Randomizer victory '
+                            'and unlocks every unfinished grid mission. Unchecked '
+                            'Archipelago locations remain pending.'
+                        )
+                    else:
+                        lines.append(
+                            'Completing this endgoal records Randomizer victory, releases every '
+                            'pending reward, and unlocks every unfinished grid mission.'
+                        )
                 elif unlocks:
                     if self.hide_locked_grid_missions_var.get():
                         lines.append(
@@ -425,6 +436,15 @@ class UnlockViewController:
                     else 'Pending'
                 )
                 rewards = check_rewards(check)
+                if archipelago_active:
+                    reward_count = self.archipelago_check_location_count(
+                        code, check.get('id', '')
+                    )
+                    lines.append(
+                        f'{status_label}: {check.get("name", "Check")} - '
+                        f'{reward_count} Archipelago reward slot(s)'
+                    )
+                    continue
                 lines.append(
                     f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
                 )

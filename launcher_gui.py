@@ -1,6 +1,7 @@
 """Entry point for source runs and the packaged launcher."""
 
 import json
+from hashlib import sha256
 import random
 import sys
 import traceback
@@ -68,6 +69,133 @@ def run_self_check():
         cameos = ensure_unit_cameos(['ABRM'])
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
+        import websockets
+        from websockets.sync.client import connect as websocket_connect
+        from Archipelago.client.handshake import (
+            normalize_server_uri,
+            validate_slot_data,
+        )
+        from Archipelago.client import (
+            ArchipelagoSession,
+            ReceivedItemLedger,
+            SessionConfig,
+        )
+        from Archipelago.catalogue_contract import runtime_catalogue_checksum
+        from Archipelago.yaml_config import (
+            parse_player_yaml,
+            serialize_player_yaml,
+        )
+        archipelago_catalogue_checksum = runtime_catalogue_checksum()
+        archipelago_manifest = {
+            'schema_version': 1,
+            'randomizer_version': APP_VERSION,
+            'randomizer_seed': 'APWORLD-SELF-CHECK',
+            'catalogue_checksum': archipelago_catalogue_checksum,
+            'campaign_filter': 'Allies',
+            'progression_mode': 'Classic',
+            'mission_goal': 1,
+            'mission_order': ['AREDDAWN'],
+            'goal': {'type': 'mission', 'mission_code': 'AREDDAWN'},
+            'locations': {
+                'AREDDAWN': {'objective_1': 1, 'victory': 1},
+            },
+            'item_pool': {'GI Access': 1, 'Soviet Conscript Access': 1},
+            'starting_items': {},
+            'local_placements': [],
+            'grid': None,
+            'frozen_settings': {
+                'launcher': {
+                    'seed': 'APWORLD-SELF-CHECK',
+                    'campaign_filter': 'Allies',
+                    'mission_goal': 1,
+                    'progression_mode': 'Classic',
+                    'rewards_per_objective': 1,
+                    'rewards_on_victory_only': False,
+                    'generation': {'reward_mode': 'Standard'},
+                },
+            },
+        }
+        archipelago_manifest['manifest_checksum'] = sha256(json.dumps(
+            archipelago_manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(',', ':'),
+        ).encode('utf-8')).hexdigest()
+        archipelago_player_yaml = serialize_player_yaml(
+            archipelago_manifest, "Self Checker's Slot"
+        )
+        archipelago_player_document = parse_player_yaml(
+            archipelago_player_yaml
+        )
+        archipelago_slot_data = validate_slot_data({
+            'slot_data_version': 3,
+            'randomizer_version': APP_VERSION,
+            'randomizer_seed': 'APWORLD-SELF-CHECK',
+            'catalogue_checksum': archipelago_catalogue_checksum,
+            'manifest_checksum': archipelago_manifest['manifest_checksum'],
+            'campaign_filter': 'Allies',
+            'progression_mode': 'Classic',
+            'mission_goal': 1,
+            'mission_order': ['AREDDAWN'],
+            'goal': {'type': 'mission', 'mission_code': 'AREDDAWN'},
+            'run_manifest': archipelago_manifest,
+            'items': {
+                str(0x4D4F000): 'GI Access',
+                str(0x4D4F001): 'Soviet Conscript Access',
+            },
+            'locations': {
+                'AREDDAWN': {
+                    'objective_1': [0x4D5F000],
+                    'victory': [0x4D5F001],
+                }
+            },
+        })
+        archipelago_ledger = ReceivedItemLedger()
+        archipelago_pending, archipelago_desynchronized = (
+            archipelago_ledger.ingest(0, [{
+                'item': 0x4D4F000,
+                'location': 0x4D5F000,
+                'player': 1,
+                'flags': 1,
+            }])
+        )
+        archipelago_ledger.acknowledge([0])
+        archipelago_session = ArchipelagoSession(
+            SessionConfig('localhost', 'MOSmoke')
+        )
+        archipelago_first_locations = archipelago_session.report_locations(
+            [0x4D5F000, 0x4D5F001, 0x4D5F001]
+        )
+        archipelago_repeat_locations = archipelago_session.report_locations(
+            [0x4D5F000, 0x4D5F001]
+        )
+        archipelago_first_goal = archipelago_session.mark_goal_complete()
+        archipelago_repeat_goal = archipelago_session.mark_goal_complete()
+        archipelago_client_contract_valid = bool(
+            websockets.__version__ == '17.0'
+            and callable(websocket_connect)
+            and normalize_server_uri('localhost') == 'ws://localhost:38281/'
+            and archipelago_slot_data['mission_order'] == ['AREDDAWN']
+            and archipelago_slot_data['items'][0x4D4F000] == 'GI Access'
+            and archipelago_slot_data['items'][0x4D4F001]
+            == 'Soviet Conscript Access'
+            and archipelago_slot_data['catalogue_checksum']
+            == archipelago_catalogue_checksum
+            and archipelago_player_document['name']
+            == "Self Checker's Slot"
+            and archipelago_player_document['run_manifest']
+            == archipelago_manifest
+            and SessionConfig('localhost', 'MOSmoke').normalized().server
+            == 'ws://localhost:38281/'
+            and not archipelago_desynchronized
+            and len(archipelago_pending) == 1
+            and not archipelago_ledger.pending
+            and archipelago_first_locations == (0x4D5F000, 0x4D5F001)
+            and archipelago_repeat_locations == ()
+            and archipelago_first_goal
+            and not archipelago_repeat_goal
+            and archipelago_session.checkpoint()['goal_complete']
+        )
         unit_roster = validate_randomizer_unit_roster()
         unit_buff_applications = validate_unit_buff_application_contracts()
         limited_hero_limits = validate_limited_hero_build_limits()
@@ -589,6 +717,10 @@ def run_self_check():
             'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
             'lightning_storm_cameo_path': str(power_cameos.get('LIGHTNINGSTORMSPECIAL', '')),
             'static_configs_valid': len(static_config_paths) == len(REQUIRED_STATIC_CONFIGS),
+            'archipelago_client_contract_valid': (
+                archipelago_client_contract_valid
+            ),
+            'archipelago_websockets_version': websockets.__version__,
             'randomizer_unit_roster_valid': (
                 unit_roster['files'] == len(ROSTER_FILENAMES)
                 and unit_roster['types'] > 0
@@ -715,6 +847,7 @@ def run_self_check():
                 'abrams_cameo_extracted',
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
+                'archipelago_client_contract_valid',
                 'randomizer_unit_roster_valid',
                 'unit_buff_applications_valid',
                 'limited_hero_build_limits_valid',

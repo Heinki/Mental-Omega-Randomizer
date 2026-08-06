@@ -24,6 +24,21 @@ def apply_color_mode(self):
     style.configure('TLabel', background=background, foreground=foreground)
     style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
     style.configure(
+        'Archipelago.Disconnected.TLabel',
+        background=background,
+        foreground='#ff6b6b' if self.dark_mode_var.get() else '#b00020',
+    )
+    style.configure(
+        'Archipelago.Connected.TLabel',
+        background=background,
+        foreground='#55d67a' if self.dark_mode_var.get() else '#087a2f',
+    )
+    style.configure(
+        'Archipelago.Waiting.TLabel',
+        background=background,
+        foreground='#f0c75e' if self.dark_mode_var.get() else '#8a5a00',
+    )
+    style.configure(
         'Error.TLabel',
         background=background,
         foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
@@ -139,7 +154,9 @@ def apply_color_mode(self):
         canvas.configure(background=palette['canvas'])
     for slider in getattr(self, 'reward_weight_slider_controls', ()):
         slider.refresh_theme(palette)
-    for text_name in ('rewards_text', 'unlocks_text'):
+    for text_name in (
+        'rewards_text', 'unlocks_text', 'archipelago_history_text'
+    ):
         text_widget = getattr(self, text_name, None)
         if text_widget is not None:
             text_widget.configure(

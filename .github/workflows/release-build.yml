@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and attest EXE
+    name: Build and attest Archipelago release
     runs-on: windows-latest
     permissions:
       contents: write
@@ -36,15 +36,9 @@ jobs:
       - name: Compile source
         run: python -m compileall -q .
 
-      - name: Build icon-bearing executable
+      - name: Build complete Archipelago release
         shell: powershell
-        run: .\build_exe.ps1 -Output 'release\MentalOmegaRandomizer.exe'
-
-      - name: Create SHA-256 checksum
-        shell: powershell
-        run: |
-          $hash = (Get-FileHash -Algorithm SHA256 'release\MentalOmegaRandomizer.exe').Hash.ToLowerInvariant()
-          "$hash *MentalOmegaRandomizer.exe" | Set-Content -Encoding ascii 'release\SHA256SUMS.txt'
+        run: .\build_archipelago_release.ps1 -OutputDirectory 'release'
 
       - name: Attest build provenance
         uses: actions/attest@v4
@@ -57,6 +51,9 @@ jobs:
           name: MentalOmegaRandomizer-${{ github.sha }}
           path: |
             release/MentalOmegaRandomizer.exe
+            release/mental_omega.apworld
+            release/MentalOmegaRandomizer-Archipelago-Setup.md
+            release/release_manifest.json
             release/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 90
@@ -67,16 +64,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $assets = Get-ChildItem -LiteralPath 'release' -File |
+            Sort-Object Name |
+            ForEach-Object { $_.FullName }
           gh release view $env:GITHUB_REF_NAME 2>$null | Out-Null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:GITHUB_REF_NAME `
-              'release\MentalOmegaRandomizer.exe' `
-              'release\SHA256SUMS.txt' `
-              --clobber
+            gh release upload $env:GITHUB_REF_NAME $assets --clobber
           } else {
-            gh release create $env:GITHUB_REF_NAME `
-              'release\MentalOmegaRandomizer.exe' `
-              'release\SHA256SUMS.txt' `
+            gh release create $env:GITHUB_REF_NAME $assets `
               --verify-tag `
               --generate-notes `
               --title $env:GITHUB_REF_NAME

@@ -22,7 +22,7 @@
       "eva_voice": "Mission default",
       "archipelago": {
         "enabled": false,
-        "server": "",
+        "server": "archipelago.gg",
         "slot_name": "Commander",
         "password": "",
         "future_world_name": "Mental Omega"

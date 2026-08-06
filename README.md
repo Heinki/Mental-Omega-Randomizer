@@ -6,9 +6,11 @@
 
 [![Security checks](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml/badge.svg)](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml)
 
-A standalone Windows campaign randomizer for Mental Omega. It generates deterministic mission and reward plans, launches campaign maps directly, tracks objective and victory checks, locks unearned technology, and applies earned access and buffs through generated mission copies.
-
-Archipelago is planned but is not connected yet. The standalone configuration deliberately uses stable option-style keys so those settings can later map to an Archipelago world.
+A Windows campaign randomizer for Mental Omega with standalone and Archipelago
+0.6.7 play. It generates deterministic mission and reward plans, launches
+campaign maps directly, tracks objective and victory checks, locks unearned
+technology, and applies earned access and buffs through generated mission
+copies.
 
 ## Disclaimer
 
@@ -24,14 +26,20 @@ I am *not* part of the Development of Mental Omega nor did I contribute in any w
 6. Select an open mission and press **Launch Selected Mission**.
 7. Complete objectives and win. The launcher records detected checks and applies earned rewards to future mission launches.
 
+For multiworld play, also download the matching `mental_omega.apworld` and
+follow [Mental Omega Archipelago Setup](Archipelago/SETUP.md). Never combine a
+launcher and APWorld from different releases.
+
 ## Release Safety and Verification
 
 No badge or antivirus scan can prove that any program is harmless. Releases use checks that make the build public and verifiable:
 
 - GitHub Actions builds tagged Windows releases from repository source on a clean hosted runner.
 - CodeQL scans Python source, and dependency review rejects newly introduced vulnerable build dependencies.
-- Every release includes `SHA256SUMS.txt` and GitHub-signed build provenance.
-- The Windows package build must succeed before a release is published.
+- Every release includes the launcher, APWorld, setup guide, release manifest,
+  `SHA256SUMS.txt`, and GitHub-signed launcher build provenance.
+- The complete Windows/Archipelago package build must succeed before a release
+  is published.
 
 Download only from this repository's [GitHub Releases](https://github.com/Heinki/Mental-Omega-Randomizer/releases). Verify its checksum in PowerShell:
 
@@ -83,6 +91,7 @@ Each document has one purpose so the same behavior is not maintained in several 
 | [README_RANDOMIZER.md](README_RANDOMIZER.md) | Players and future Archipelago option authors | Complete settings tables, reward display, game modes, seed lifecycle, and user-facing limitations |
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
 | [configs/README.md](configs/README.md) | Maintainers and advanced users | Editable static mission, faction, reward, unit, and UI JSON configuration |
+| [Archipelago/SETUP.md](Archipelago/SETUP.md) | Multiworld players and hosts | APWorld installation, YAML generation, connection, and artifact verification |
 | `configs/player/mental_omega_randomizer.yaml` | Launcher/runtime | Saved standalone option values; it is data, not a second source of documentation |
 
 ## Developer Workflow
@@ -106,6 +115,15 @@ Build the packaged launcher from the Mental Omega folder with:
 ```powershell
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
+
+Build the complete Archipelago release artifact set with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_archipelago_release.ps1
+```
+
+This creates the launcher, `.apworld`, setup guide, release manifest, and
+checksums under `RandomizerLauncher\release`.
 
 GitHub Actions installs pinned build dependencies from `requirements-build.txt` automatically. Only install them yourself when choosing an optional local build:
 

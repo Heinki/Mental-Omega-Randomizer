@@ -274,6 +274,16 @@ class EnemyScalingController:
                     'earned_from', 'Saved AI reward progress'
                 ),
             })
+        if self.archipelago_run_active():
+            for source, reward in self.archipelago_reward_source_items() or ():
+                reward = active_reward(reward)
+                if reward.get('enemy_reward'):
+                    entries.append({
+                        'reward': reward,
+                        'source': 'Archipelago item',
+                        'earned_from': source,
+                    })
+            return entries
         mission_lookup = self.mission_lookup()
         for code in self.state.get('mission_order', []):
             title = mission_lookup.get(code, {}).get('title', code)

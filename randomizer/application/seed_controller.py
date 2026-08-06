@@ -43,6 +43,8 @@ from ._dependencies import (
 class SeedController:
 
     def on_new_seed(self):
+        if self.gameplay_settings_locked():
+            return
         if self.state and self.state.get('completed_missions'):
             confirmed = messagebox.askyesno(
                 'Start New Seed',
@@ -55,6 +57,8 @@ class SeedController:
         self.generate_seed_from_settings()
 
     def generate_seed_from_settings(self):
+        if self.gameplay_settings_locked():
+            return
         if not self.missions:
             self.append_log('Cannot generate seed: no missions loaded.', error=True)
             return
@@ -489,10 +493,12 @@ class SeedController:
         progression_mode = result['progression_mode']
         grid = result['grid']
         self.seed_var.set(seed)
+        self.reset_archipelago_after_new_seed()
         self.save_state()
         self.save_launcher_config(seed, mission_goal, rewards_per_check)
         self.disable_generated_rules_for_client()
         self.redraw_mission_tree()
+        self.update_header_summary()
         self.refresh_progress_view()
         opening = (
             'Start from the top-left neighbors.'
@@ -625,6 +631,7 @@ class SeedController:
         released_rewards = []
         released_checks = []
         previously_released_rewards = []
+        archipelago_active = self.archipelago_run_active()
         if check_id == 'victory':
             completed = self.state.setdefault('completed_missions', [])
             if code not in completed:
@@ -635,21 +642,21 @@ class SeedController:
                 if not check.get('unlocked'):
                     was_released = bool(check.pop('released', False))
                     check['unlocked'] = True
-                    if was_released:
+                    if was_released and not archipelago_active:
                         previously_released_rewards.extend(check_rewards(check))
-                    else:
+                    elif not archipelago_active:
                         earned_now.extend(check_rewards(check))
         else:
             cleared_assistance = 0
             was_released = bool(target.pop('released', False))
             target['unlocked'] = True
-            if was_released:
+            if was_released and not archipelago_active:
                 previously_released_rewards.extend(check_rewards(target))
-            else:
+            elif not archipelago_active:
                 earned_now.extend(check_rewards(target))
 
         self.sync_grid_progression()
-        if grid_goal_victory:
+        if grid_goal_victory and not archipelago_active:
             released_rewards, released_checks = self.release_remaining_grid_rewards()
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         prior_ai_milestones = {
@@ -664,8 +671,14 @@ class SeedController:
             code, target
         )
         self.save_state()
+        if check_id == 'victory':
+            self.report_archipelago_mission_completion(code)
+        else:
+            self.report_archipelago_objective_check(code, check_id)
         reward_note = (
-            f'Reward(s) earned: {reward_names(earned_now)}'
+            'Archipelago check reported; rewards arrive from server.'
+            if archipelago_active
+            else f'Reward(s) earned: {reward_names(earned_now)}'
             if earned_now
             else f'{len(previously_released_rewards)} assigned reward(s) were already released at Grid victory.'
             if previously_released_rewards
@@ -759,11 +772,18 @@ class SeedController:
                 if names
                 else ' No locked grid missions remained.'
             )
-            self.append_log(
-                f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
-                f'All remaining grid missions are unlocked and all {len(released_rewards)} '
-                f'pending rewards are released.{unlock_note}'
-            )
+            if archipelago_active:
+                self.append_log(
+                    f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
+                    'All remaining grid missions are unlocked. Unchecked '
+                    f'Archipelago locations remain pending.{unlock_note}'
+                )
+            else:
+                self.append_log(
+                    f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
+                    f'All remaining grid missions are unlocked and all {len(released_rewards)} '
+                    f'pending rewards are released.{unlock_note}'
+                )
             log_event(
                 'randomizer_victory_achieved',
                 seed=self.state.get('seed', ''),

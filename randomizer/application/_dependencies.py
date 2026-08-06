@@ -138,6 +138,7 @@ from randomizer.rewards.catalogue import (
     house_wide_buff_scope,
     MAX_REWARDS_PER_CHECK,
     POWER_BUFF_TYPES,
+    REWARD_BY_NAME,
     REWARD_POOL,
     SPECIAL_BUILDING_DEFINITIONS,
     buff_stack_limit,

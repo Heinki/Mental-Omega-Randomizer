@@ -4,26 +4,14 @@ TODOS
 Archipelago
 -----------------------
 
-Archipelago integration docs:
-https://github.com/ArchipelagoMW/Archipelago/tree/main/docs
-https://github.com/ArchipelagoMW/Archipelago/tree/main
-https://github.com/TheCondor07/Starcraft2ArchipelagoData
+- Generate YAML needs to take the settings FROM the setting page and not just some random stuff!
+- UI looks horrible when connected to archipelago, it should be disabled but not look wrong!
+- Gridmode IS NOT loaded from the archipelago page! We still see the wrong seed and not the information from the Archipelago server!
 
-- Archipelago yaml generation and gitgnore removal when archipelago gets implemented
-- Archipelago client inside the Randomizer launcher
-- Archipelago connection and port with name
-- Archipelago text client info when others unlock something for the player and 
-- Enable settings to enable/disable single items when settings available. 
 
 
 BUGS AND IMPROVEMENTS
 -------------------------
-
-- Spy plane remove more entitiy for this as it does not improve the power, see if vision can be increased for the plane
--1.23
-Standard
-Standard Arsenal Available without unlocks in Dawnbreaker
-
 
 
 New Game mode idea

@@ -1065,6 +1065,9 @@ class RewardController:
         }
 
     def earned_rewards_from_checks(self, include_starting=True):
+        archipelago_rewards = self.archipelago_reward_history()
+        if archipelago_rewards is not None:
+            return list(archipelago_rewards)
         earned = [
             reward
             for reward in self.state.get('starting_rewards', [])

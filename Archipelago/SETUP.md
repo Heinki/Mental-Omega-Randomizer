@@ -1,0 +1,62 @@
+# Mental Omega Archipelago Setup
+
+## Required versions
+
+- Mental Omega Randomizer Launcher 1.24
+- Mental Omega 3.3.6 in a separate, unmodified installation
+- Archipelago 0.6.7
+- `mental_omega.apworld` from the same Randomizer release as the launcher
+
+## Install
+
+1. Close Archipelago tools.
+2. Copy `mental_omega.apworld` into Archipelago's `custom_worlds` folder.
+3. Put `MentalOmegaRandomizer.exe` in the Mental Omega game root beside
+   `MentalOmegaClient.exe`, `Syringe.exe`, and `gamemd.exe`.
+4. Start the launcher and generate the desired Randomizer seed.
+5. Open the **Archipelago** tab, enter the intended slot name, choose
+   **Generate YAML**, then **Save YAML**.
+6. Put that YAML in Archipelago's `Players` folder. Generate and host the room
+   normally with Archipelago 0.6.7.
+7. In the Randomizer's Archipelago tab, keep **Server** as
+   `archipelago.gg`, copy the room page's game-server port, enter the matching
+   slot name and optional password, then choose **Connect**. The browser room
+   URL is not the game-server address. The launcher automatically uses secure
+   WebSocket (`wss://`) for hosted `archipelago.gg` rooms.
+
+After connection validation, use the chat field below the synchronization log
+for normal chat or server commands such as `!hint` and `!release`. Messages use
+the authenticated slot name; Archipelago does not permit a separate chat alias.
+
+The player YAML contains a readable `launcher_settings` mapping with the same
+nested structure as `mental_omega_randomizer.yaml`. To customize it, edit only
+that mapping, choose **Load YAML** in the launcher, choose **Generate New
+Seed**, then generate/save the YAML again. Never edit `run_manifest`; it is
+generated checksum-protected run data. Archipelago generation rejects readable
+settings that no longer match that manifest, preventing silent configuration
+drift.
+
+The launcher refuses a server slot from another seed, configuration, or
+reward/mission catalogue. Generating or loading YAML only stages AP setup, so
+the existing standalone reward plan and Unlocks UI remain active until the
+server connection validates. A validated connection switches the run and UI
+to AP rewards. While connected, all gameplay-affecting settings are read-only.
+Disconnecting restores editing but keeps that validated AP run active for safe
+offline play and reconnection. **Generate New Seed** returns to standalone.
+
+Every participant generating or hosting the room needs the APWorld installed.
+Only the Mental Omega player needs the game and Randomizer launcher.
+
+## Verify release files
+
+Keep `SHA256SUMS.txt` beside the downloaded artifacts. From PowerShell:
+
+```powershell
+Get-Content .\SHA256SUMS.txt | ForEach-Object {
+    $expected, $name = $_ -split ' \*', 2
+    $actual = (Get-FileHash -LiteralPath $name -Algorithm SHA256).Hash
+    [pscustomobject]@{ File = $name; Valid = $actual -eq $expected }
+}
+```
+
+Every `Valid` value must be `True`.

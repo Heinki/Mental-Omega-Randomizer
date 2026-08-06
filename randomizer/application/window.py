@@ -28,6 +28,7 @@ class WindowController:
             self._close_after_game = True
             self.withdraw()
             return
+        self.shutdown_archipelago()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
         self.destroy()
@@ -47,13 +48,18 @@ class WindowController:
 
     def update_header_summary(self, *_args):
         """Show the core selected run settings beneath the launcher title."""
-        self.header_summary_var.set(' • '.join((
+        parts = [
             self.campaign_var.get(),
             self.reward_mode_var.get(),
             self.progression_mode_var.get(),
             self.difficulty_var.get(),
             self.game_speed_var.get(),
-        )))
+        ]
+        if self.archipelago_run_active():
+            parts.append('Archipelago')
+        elif self.archipelago_run_staged():
+            parts.append('Standalone — AP YAML ready')
+        self.header_summary_var.set(' • '.join(parts))
 
     def toggle_settings_panel(self):
         self.unlock_hover_card_key = None
@@ -357,6 +363,8 @@ class WindowController:
                         payload()
                     elif kind == 'progress':
                         self.update_busy_progress(*payload)
+                    elif kind == 'archipelago':
+                        self.handle_archipelago_event(payload)
             except queue.Empty:
                 pass
         finally:

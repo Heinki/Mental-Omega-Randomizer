@@ -1,5 +1,7 @@
 """Compose launcher controllers into the Tk application."""
 
+import uuid
+
 from ._dependencies import (
     ARSENAL_FACTIONS,
     ARSENAL_POWER_TYPES,
@@ -49,6 +51,7 @@ from .launch_controller import LaunchController
 from .unlock_data import UnlockDataController
 from .unlock_view import UnlockViewController
 from .enemy_scaling import EnemyScalingController
+from .archipelago_controller import ArchipelagoController
 
 
 class LauncherApp(
@@ -64,6 +67,7 @@ class LauncherApp(
     UnlockDataController,
     UnlockViewController,
     EnemyScalingController,
+    ArchipelagoController,
     tk.Tk,
 ):
     def __init__(self):
@@ -74,14 +78,67 @@ class LauncherApp(
                 self.iconbitmap(str(WINDOW_ICON_PATH))
             except (OSError, tk.TclError):
                 pass
-        self.geometry('1240x760')
-        self.minsize(940, 560)
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width = min(1600, max(1100, screen_width - 160))
+        window_height = min(1000, max(700, screen_height - 160))
+        window_x = max(0, (screen_width - window_width) // 2)
+        window_y = max(0, (screen_height - window_height) // 2)
+        self.geometry(
+            f'{window_width}x{window_height}+{window_x}+{window_y}'
+        )
+        self.minsize(1100, 700)
         self.resizable(True, True)
         self.protocol('WM_DELETE_WINDOW', self.close_launcher)
 
         self.missions = []
         self._mission_by_code = {}
         self.config = load_config()
+        archipelago_config = self.config.setdefault('archipelago', {})
+        self.archipelago_client_uuid = str(
+            archipelago_config.get('client_uuid') or uuid.uuid4()
+        )
+        saved_archipelago_server = str(
+            archipelago_config.get('server') or 'archipelago.gg'
+        ).strip()
+        if saved_archipelago_server.casefold() in {
+            'archipelaog.gg',
+            'ws://archipelaog.gg',
+            'wss://archipelaog.gg',
+            'ws://archipelago.gg',
+            'wss://archipelago.gg',
+        }:
+            saved_archipelago_server = 'archipelago.gg'
+        self.archipelago_server_var = tk.StringVar(
+            value=saved_archipelago_server
+        )
+        self.archipelago_port_var = tk.StringVar(
+            value=str(archipelago_config.get('port', 38281))
+        )
+        self.archipelago_slot_var = tk.StringVar(
+            value=str(
+                archipelago_config.get(
+                    'slot_name', self.config.get('player_name', 'Commander')
+                )
+            )
+        )
+        self.archipelago_password_var = tk.StringVar(value='')
+        self.archipelago_chat_var = tk.StringVar(value='')
+        self.archipelago_status_var = tk.StringVar(value='Disconnected')
+        self.archipelago_yaml_status_var = tk.StringVar(
+            value='Generate or load a player YAML for the active run.'
+        )
+        self._archipelago_yaml_text = ''
+        self._archipelago_gameplay_locked = False
+        self._archipelago_locked_widget_states = {}
+        self._archipelago_gameplay_widgets = ()
+        self._archipelago_connection_widgets = ()
+        self._archipelago_session = None
+        self._archipelago_slot_data = {}
+        self._archipelago_item_names = {}
+        self._archipelago_displayed_receipts = set()
+        self._archipelago_last_status = None
+        self._archipelago_session_validated = False
         self.dark_mode_var = tk.BooleanVar(value=bool(self.config.get('dark_mode', False)))
         self.hide_reward_details_var = tk.BooleanVar(
             value=bool(self.config.get('hide_reward_details', False))

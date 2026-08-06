@@ -1,0 +1,326 @@
+"""Bounded Archipelago 0.6.7 handshake used by client smoke and UI layers."""
+
+from dataclasses import dataclass
+from hashlib import sha256
+import json
+import time
+from typing import Any, Mapping
+from urllib.parse import urlsplit, urlunsplit
+
+
+GAME_NAME = 'Mental Omega'
+SUPPORTED_SLOT_DATA_VERSION = 3
+SUPPORTED_RANDOMIZER_VERSION = '1.24'
+CLIENT_VERSION = (0, 6, 7)
+ITEMS_HANDLING_ALL = 0b111
+DEFAULT_PORT = 38281
+
+
+class ArchipelagoHandshakeError(RuntimeError):
+    """Base failure establishing a Mental Omega Archipelago session."""
+
+
+class ArchipelagoProtocolError(ArchipelagoHandshakeError):
+    """Server packets or slot data violate the supported contract."""
+
+
+class ArchipelagoConnectionRefused(ArchipelagoHandshakeError):
+    """Server rejected slot, game, version, password, or item handling."""
+
+    def __init__(self, errors):
+        self.errors = tuple(str(error) for error in (errors or ('Unknown',)))
+        super().__init__('Archipelago connection refused: ' + ', '.join(self.errors))
+
+
+@dataclass(frozen=True)
+class HandshakeResult:
+    endpoint: str
+    seed_name: str
+    team: int
+    slot: int
+    checked_locations: tuple[int, ...]
+    missing_locations: tuple[int, ...]
+    slot_data: dict[str, Any]
+
+
+def normalize_server_uri(value):
+    """Return a validated ws/wss endpoint with hosted rooms using TLS."""
+    endpoint = str(value or '').strip()
+    if not endpoint:
+        raise ValueError('Archipelago server address is required.')
+    if '://' not in endpoint:
+        bare = urlsplit(f'//{endpoint}')
+        scheme = (
+            'wss'
+            if str(bare.hostname or '').rstrip('.').casefold()
+            == 'archipelago.gg'
+            else 'ws'
+        )
+        endpoint = f'{scheme}://{endpoint}'
+    parsed = urlsplit(endpoint)
+    if parsed.scheme not in {'ws', 'wss'}:
+        raise ValueError('Archipelago server must use ws:// or wss://.')
+    if not parsed.hostname:
+        raise ValueError('Archipelago server hostname is required.')
+    try:
+        parsed.port
+    except ValueError as exc:
+        raise ValueError('Archipelago server port is invalid.') from exc
+    if parsed.username or parsed.password:
+        raise ValueError('Put slot and password in their dedicated fields.')
+    scheme = parsed.scheme
+    if parsed.hostname.rstrip('.').casefold() == 'archipelago.gg':
+        scheme = 'wss'
+    netloc = parsed.netloc
+    if parsed.port is None:
+        host = f'[{parsed.hostname}]' if ':' in parsed.hostname else parsed.hostname
+        netloc = f'{host}:{DEFAULT_PORT}'
+    return urlunsplit((scheme, netloc, parsed.path or '/', '', ''))
+
+
+def _decode_commands(message):
+    if isinstance(message, bytes):
+        message = message.decode('utf-8')
+    try:
+        commands = json.loads(message)
+    except (TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ArchipelagoProtocolError('Server sent invalid JSON.') from exc
+    if not isinstance(commands, list):
+        raise ArchipelagoProtocolError('Server packet root must be a list.')
+    if not all(
+        isinstance(command, dict) and isinstance(command.get('cmd'), str)
+        for command in commands
+    ):
+        raise ArchipelagoProtocolError('Server packet contains an invalid command.')
+    return commands
+
+
+def _send_commands(socket, *commands):
+    socket.send(json.dumps(commands, separators=(',', ':')))
+
+
+def _connect_command(slot_name, password, client_uuid):
+    slot = str(slot_name or '').strip()
+    if not slot:
+        raise ValueError('Archipelago slot name is required.')
+    uuid = str(client_uuid or '').strip()
+    if not uuid:
+        raise ValueError('Archipelago client UUID is required.')
+    major, minor, build = CLIENT_VERSION
+    return {
+        'cmd': 'Connect',
+        'password': str(password or ''),
+        'game': GAME_NAME,
+        'name': slot,
+        'uuid': uuid,
+        'version': {
+            'major': major,
+            'minor': minor,
+            'build': build,
+            'class': 'Version',
+        },
+        'items_handling': ITEMS_HANDLING_ALL,
+        'tags': ['AP'],
+        'slot_data': True,
+    }
+
+
+def validate_slot_data(value):
+    """Validate data needed before launcher settings may be locked."""
+    if not isinstance(value, Mapping):
+        raise ArchipelagoProtocolError('Connected packet has no slot data.')
+    slot_data = dict(value)
+    if slot_data.get('slot_data_version') != SUPPORTED_SLOT_DATA_VERSION:
+        raise ArchipelagoProtocolError(
+            'Unsupported Mental Omega slot-data version: '
+            f"{slot_data.get('slot_data_version')!r}."
+        )
+    if slot_data.get('randomizer_version') != SUPPORTED_RANDOMIZER_VERSION:
+        raise ArchipelagoProtocolError(
+            'Slot requires Mental Omega Randomizer '
+            f"{slot_data.get('randomizer_version')!r}; "
+            f'client is {SUPPORTED_RANDOMIZER_VERSION}.'
+        )
+    for checksum_name in ('catalogue_checksum', 'manifest_checksum'):
+        checksum = slot_data.get(checksum_name)
+        if (
+            not isinstance(checksum, str)
+            or len(checksum) != 64
+            or any(character not in '0123456789abcdef' for character in checksum)
+        ):
+            raise ArchipelagoProtocolError(
+                f'Slot data {checksum_name} is invalid.'
+            )
+    run_manifest = slot_data.get('run_manifest')
+    if not isinstance(run_manifest, Mapping):
+        raise ArchipelagoProtocolError('Slot data has no run manifest.')
+    unsigned_manifest = dict(run_manifest)
+    unsigned_manifest.pop('manifest_checksum', None)
+    calculated_manifest_checksum = sha256(json.dumps(
+        unsigned_manifest,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(',', ':'),
+    ).encode('utf-8')).hexdigest()
+    if calculated_manifest_checksum != slot_data['manifest_checksum']:
+        raise ArchipelagoProtocolError('Slot data run-manifest checksum is invalid.')
+    if run_manifest.get('manifest_checksum') != slot_data['manifest_checksum']:
+        raise ArchipelagoProtocolError('Slot data manifest checksums disagree.')
+    if run_manifest.get('catalogue_checksum') != slot_data['catalogue_checksum']:
+        raise ArchipelagoProtocolError('Slot data catalogue checksums disagree.')
+    mission_order = slot_data.get('mission_order')
+    if not isinstance(mission_order, list) or not mission_order:
+        raise ArchipelagoProtocolError('Slot data has no mission order.')
+    if not all(isinstance(code, str) and code for code in mission_order):
+        raise ArchipelagoProtocolError('Slot data mission order is invalid.')
+    locations = slot_data.get('locations')
+    if not isinstance(locations, Mapping) or not locations:
+        raise ArchipelagoProtocolError('Slot data has no location mapping.')
+    if set(locations) != set(mission_order):
+        raise ArchipelagoProtocolError(
+            'Slot data location missions do not match mission order.'
+        )
+    normalized_locations = {}
+    all_location_ids = set()
+    for code in mission_order:
+        checks = locations[code]
+        if not isinstance(checks, Mapping):
+            raise ArchipelagoProtocolError(
+                f'Slot data locations for {code} are invalid.'
+            )
+        normalized_checks = {}
+        for check_id, location_ids in checks.items():
+            if not isinstance(check_id, str) or not check_id:
+                raise ArchipelagoProtocolError(
+                    f'Slot data check ID for {code} is invalid.'
+                )
+            if (
+                not isinstance(location_ids, list)
+                or not location_ids
+                or any(
+                    not isinstance(location_id, int)
+                    or isinstance(location_id, bool)
+                    or location_id <= 0
+                    for location_id in location_ids
+                )
+                or len(set(location_ids)) != len(location_ids)
+                or not all_location_ids.isdisjoint(location_ids)
+            ):
+                raise ArchipelagoProtocolError(
+                    f'Slot data location IDs for {code}/{check_id} are invalid.'
+                )
+            normalized_checks[check_id] = list(location_ids)
+            all_location_ids.update(location_ids)
+        normalized_locations[code] = normalized_checks
+    if not all_location_ids:
+        raise ArchipelagoProtocolError('Slot data has no active locations.')
+    items = slot_data.get('items')
+    if not isinstance(items, Mapping) or not items:
+        raise ArchipelagoProtocolError('Slot data has no item mapping.')
+    normalized_items = {}
+    try:
+        for item_id, reward_name in items.items():
+            numeric_id = int(item_id)
+            if numeric_id <= 0 or not isinstance(reward_name, str):
+                raise ValueError
+            reward_name = reward_name.strip()
+            if not reward_name or numeric_id in normalized_items:
+                raise ValueError
+            normalized_items[numeric_id] = reward_name
+    except (TypeError, ValueError) as exc:
+        raise ArchipelagoProtocolError(
+            'Slot data item mapping is invalid.'
+        ) from exc
+    slot_data['items'] = normalized_items
+    slot_data['locations'] = normalized_locations
+    for key in (
+        'randomizer_version',
+        'randomizer_seed',
+        'campaign_filter',
+        'progression_mode',
+        'mission_goal',
+        'mission_order',
+        'goal',
+    ):
+        if run_manifest.get(key) != slot_data.get(key):
+            raise ArchipelagoProtocolError(
+                f'Slot data {key} disagrees with run manifest.'
+            )
+    slot_data['run_manifest'] = dict(run_manifest)
+    return slot_data
+
+
+def _location_ids(command, key):
+    values = command.get(key, [])
+    if not isinstance(values, list) or not all(isinstance(value, int) for value in values):
+        raise ArchipelagoProtocolError(f'Connected {key} list is invalid.')
+    return tuple(values)
+
+
+def connect_slot(server, slot_name, password='', client_uuid='mental-omega', timeout=10.0):
+    """Connect, authenticate, validate slot data, then close and return identity."""
+    try:
+        from websockets.sync.client import connect
+    except ImportError as exc:
+        raise ArchipelagoHandshakeError(
+            'The websockets runtime dependency is not installed.'
+        ) from exc
+
+    endpoint = normalize_server_uri(server)
+    deadline = time.monotonic() + max(0.1, float(timeout))
+    connect_command = _connect_command(slot_name, password, client_uuid)
+    seed_name = ''
+    connect_sent = False
+
+    try:
+        with connect(
+            endpoint,
+            compression='deflate',
+            open_timeout=max(0.1, float(timeout)),
+            close_timeout=2,
+            max_size=16 * 1024 * 1024,
+        ) as socket:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('Timed out waiting for Archipelago handshake.')
+                for command in _decode_commands(socket.recv(timeout=remaining)):
+                    command_name = command['cmd']
+                    if command_name == 'RoomInfo':
+                        seed_name = str(command.get('seed_name', ''))
+                        games = command.get('games', [])
+                        if not isinstance(games, list) or GAME_NAME not in games:
+                            raise ArchipelagoProtocolError(
+                                'Server room does not contain a Mental Omega slot.'
+                            )
+                        if not connect_sent:
+                            _send_commands(socket, connect_command)
+                            connect_sent = True
+                    elif command_name == 'ConnectionRefused':
+                        raise ArchipelagoConnectionRefused(command.get('errors'))
+                    elif command_name == 'Connected':
+                        if not connect_sent:
+                            raise ArchipelagoProtocolError(
+                                'Server sent Connected before RoomInfo.'
+                            )
+                        return HandshakeResult(
+                            endpoint=endpoint,
+                            seed_name=seed_name,
+                            team=int(command['team']),
+                            slot=int(command['slot']),
+                            checked_locations=_location_ids(
+                                command, 'checked_locations'
+                            ),
+                            missing_locations=_location_ids(
+                                command, 'missing_locations'
+                            ),
+                            slot_data=validate_slot_data(
+                                command.get('slot_data')
+                            ),
+                        )
+    except ArchipelagoHandshakeError:
+        raise
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ArchipelagoProtocolError(
+            'Archipelago handshake packet is missing required data.'
+        ) from exc

@@ -44,10 +44,23 @@ def migrate_loaded_config(loaded):
     """Enable newly introduced buff types once without restoring old toggles."""
     if not isinstance(loaded, dict):
         return False
+    changed = False
+    archipelago = loaded.get('archipelago')
+    if isinstance(archipelago, dict):
+        server = str(archipelago.get('server') or '').strip()
+        if server.casefold() in {
+            '',
+            'archipelaog.gg',
+            'ws://archipelaog.gg',
+            'wss://archipelaog.gg',
+            'ws://archipelago.gg',
+            'wss://archipelago.gg',
+        }:
+            archipelago['server'] = 'archipelago.gg'
+            changed = True
     generation = loaded.get('generation')
     if not isinstance(generation, dict):
-        return False
-    changed = False
+        return changed
     if generation.get('reward_mode') == 'Chaos (Experimental)':
         generation['reward_mode'] = 'Chaos'
         changed = True
@@ -132,6 +145,8 @@ def parse_scalar(value):
         if not inner:
             return []
         return [parse_scalar(part.strip()) for part in inner.split(',')]
+    if value == '{}':
+        return {}
     lowered = value.lower()
     if lowered == 'true':
         return True
@@ -170,13 +185,11 @@ def scalar_to_yaml(value):
     return quote_yaml_string(str(value))
 
 
-def read_simple_yaml(path):
-    if not path.exists():
-        return {}
-
+def parse_simple_yaml_text(text):
+    """Parse the launcher's deliberately small mapping/scalar YAML subset."""
     root = {}
     stack = [(-1, root)]
-    for raw_line in path.read_text(encoding='utf-8', errors='ignore').splitlines():
+    for raw_line in str(text).splitlines():
         if not raw_line.strip() or raw_line.lstrip().startswith('#'):
             continue
         indent = len(raw_line) - len(raw_line.lstrip(' '))
@@ -198,24 +211,43 @@ def read_simple_yaml(path):
     return root
 
 
-def write_simple_yaml(path, data):
-    lines = [
-        '# Mental Omega Randomizer standalone player config.',
-        '# This is intentionally Archipelago-shaped for a future AP world,',
-        '# but the current launcher still runs fully offline.',
-        '',
-    ]
+def read_simple_yaml(path):
+    if not path.exists():
+        return {}
+    return parse_simple_yaml_text(
+        path.read_text(encoding='utf-8', errors='ignore')
+    )
 
-    def append_mapping(mapping, indent=0):
-        prefix = ' ' * indent
+
+def simple_yaml_mapping_lines(data, indent=0):
+    """Serialize a nested mapping using the same readable config format."""
+    lines = []
+
+    def append_mapping(mapping, current_indent):
+        prefix = ' ' * current_indent
         for key, value in mapping.items():
             if isinstance(value, dict):
-                lines.append(f'{prefix}{key}:')
-                append_mapping(value, indent + 2)
+                if value:
+                    lines.append(f'{prefix}{key}:')
+                    append_mapping(value, current_indent + 2)
+                else:
+                    lines.append(f'{prefix}{key}: {{}}')
             else:
                 lines.append(f'{prefix}{key}: {scalar_to_yaml(value)}')
 
-    append_mapping(data)
+    append_mapping(data, indent)
+    return lines
+
+
+def write_simple_yaml(path, data):
+    lines = [
+        '# Mental Omega Randomizer player config.',
+        '# Shared by standalone and Archipelago launcher workflows.',
+        '# Archipelago player YAML is exported from the launcher AP tab.',
+        '',
+    ]
+
+    lines.extend(simple_yaml_mapping_lines(data))
     atomic_write_text(path, '\n'.join(lines) + '\n')
 
 

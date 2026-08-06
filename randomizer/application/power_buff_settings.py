@@ -287,10 +287,14 @@ class PowerBuffSettingsController:
         self.refresh_advanced_power_buff_view()
 
     def on_power_buff_global_type_changed(self):
+        if self.gameplay_settings_locked():
+            return
         self.save_current_launcher_config()
         self.refresh_advanced_power_buff_view()
 
     def on_power_buff_power_type_changed(self, buff_id):
+        if self.gameplay_settings_locked():
+            return
         power_id = self.advanced_power_buff_id
         if not power_id:
             return
@@ -305,6 +309,8 @@ class PowerBuffSettingsController:
         self.refresh_advanced_power_buff_view()
 
     def set_selected_power_buffs(self, include):
+        if self.gameplay_settings_locked():
+            return
         entry = next(
             (
                 item

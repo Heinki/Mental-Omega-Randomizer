@@ -2,7 +2,10 @@
 
 This is the authoritative player-facing guide for seed settings and reward behavior. Installation, building, and source layout are maintained in [README.md](README.md); implementation details are maintained in [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md).
 
-The launcher is currently standalone and offline. The option keys below are intentionally stable so they can later become Archipelago world options without redefining their meaning.
+The launcher supports standalone play and Archipelago 0.6.7 multiworld play.
+The same settings generate both modes. Archipelago player YAML exposes a
+readable copy of the normal nested launcher settings and freezes the generated
+run in a separate protected manifest.
 
 > **Installation requirement:** use the executable in a new, separate, unmodified Mental Omega installation. Only the original Mental Omega campaign maps have been tested. Custom maps, funmaps, map packs, modified rules, and other gameplay modifiers are unsupported; see [Quick Start and supported game content](README.md#quick-start).
 
@@ -194,7 +197,7 @@ These keys are runtime/developer controls and should not become normal Archipela
 | `generation.enabled_reward_types` | `[access, buff, superweapon, secondary_superweapon, aid_power, power_buff]` | Derived compatibility list written from the six reward-pool toggles. |
 | `generation.safe_player_country_buffs` | `true` | Enables the stable map-local country safety path. |
 | `generation.experimental_house_buffs` | `false` | Legacy house-buff route; it is still constrained by the same no-reassignment trigger safety rule. |
-| `archipelago.*` | Disabled/blank | Reserved connection and slot fields. They currently do not connect to an Archipelago server. |
+| `archipelago.*` | Disabled; server `archipelago.gg` | Server, port, slot identity, client UUID, active manifest identity, and crash-safe synchronization checkpoint. Hosted rooms use `archipelago.gg` plus the game-server port shown on the room page. Passwords are never persisted. |
 
 ## Progression Modes
 
@@ -375,4 +378,10 @@ Review `RandomizerLauncherData\self_check.json` and `RandomizerLauncherData\logs
 - Unsupported direct unit/weapon paths are skipped when safe clone or ownership isolation is unavailable. Buildable defense TechnoType/WeaponType buffs use player/helper clones instead of modifying enemy-shared originals.
 - Randomizer power grants contain only map-local `MOR...` clones. Native mission-owned or building-provided originals remain available to their normal houses because removing them can break campaign scripts; a matching player building may share or separately expose its native power.
 - Game-speed behavior still needs validation across more campaign maps.
-- Archipelago connection fields are placeholders only.
+- Archipelago requires the matching launcher/APWorld release and an exported
+  player YAML for the active run. A different seed, configuration, catalogue,
+  or edited manifest is rejected before tracking begins.
+- Generating or loading AP YAML stages connection data only. Standalone rewards
+  and Unlocks remain active until the server slot validates. Once validated,
+  AP rewards stay active while disconnected so offline checks and reconnects
+  remain safe. **Generate New Seed** clears AP mode and returns to standalone.

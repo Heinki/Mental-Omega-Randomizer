@@ -325,6 +325,8 @@ class StartingUnlocksController:
         )
 
     def toggle_starting_unlock_tree_selection(self, event=None):
+        if self.gameplay_settings_locked():
+            return 'break'
         tree = getattr(self, 'starting_unlocks_tree', None)
         if tree is None:
             return 'break'
@@ -351,6 +353,8 @@ class StartingUnlocksController:
         return 'break'
 
     def set_visible_starting_unlocks(self, include):
+        if self.gameplay_settings_locked():
+            return
         names = {entry['name'] for entry in self.visible_starting_unlock_entries()}
         selected = set(self.canonical_starting_unlock_names())
         if include:
@@ -362,6 +366,8 @@ class StartingUnlocksController:
         self.refresh_starting_unlocks_view()
 
     def show_starting_unlocks_settings(self):
+        if self.gameplay_settings_locked():
+            return
         self.workspace_tabs.select(self.advanced_tab)
         self.advanced_notebook.select(self.starting_unlocks_tab)
         self.refresh_starting_unlocks_view()

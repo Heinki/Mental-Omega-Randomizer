@@ -554,6 +554,36 @@ class UnlockDataController:
             return indexed
         share_role_buffs = self.share_chaos_role_buffs_enabled()
         share_foehn_roles = self.foehn_standard_bundles_enabled()
+        source_getter = getattr(self, 'archipelago_reward_source_items', None)
+        archipelago_sources = source_getter() if source_getter else None
+        if archipelago_sources is not None:
+            for source, reward in archipelago_sources:
+                reward = canonical_reward(reward)
+                if reward.get('retired_reward'):
+                    continue
+                for key in self.unlock_dashboard_reward_keys(
+                    reward,
+                    share_role_buffs=share_role_buffs,
+                    share_foehn_roles=share_foehn_roles,
+                ):
+                    entry = indexed.setdefault(
+                        key,
+                        {
+                            'assigned': [],
+                            'earned': [],
+                            'earned_unlocks': [],
+                            'available': [],
+                            'available_unlocks': [],
+                            'available_codes': [],
+                        },
+                    )
+                    item = (source, reward)
+                    entry['assigned'].append(item)
+                    entry['earned'].append(item)
+                    if reward.get('kind') != 'buff':
+                        entry['earned_unlocks'].append(item)
+            self._unlock_dashboard_sources_cache = indexed
+            return indexed
         playable = {
             code
             for code in self.unlocked_mission_codes()
