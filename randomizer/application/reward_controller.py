@@ -668,6 +668,9 @@ class RewardController:
                 if preserve_history else {}
             ),
             rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
+            rewards_on_victory_only=bool(
+                self.state.get('rewards_on_victory_only', False)
+            ),
             progression_mode=self.state.get('progression_mode'),
             grid=self.state.get('grid'),
             starting_rewards=self.state.get('starting_rewards', []),
@@ -706,6 +709,7 @@ class RewardController:
         completed_missions=None,
         preserved_checks=None,
         rewards_per_check=DEFAULT_REWARDS_PER_CHECK,
+        rewards_on_victory_only=False,
         progression_mode=None,
         grid=None,
         starting_rewards=None,
@@ -713,6 +717,14 @@ class RewardController:
         progress=None,
     ):
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
+        reward_check_ids_by_code = {
+            code: (
+                {'victory'}
+                if rewards_on_victory_only
+                else {check_id for check_id, _name, _hint in templates}
+            )
+            for code, templates in templates_by_code.items()
+        }
         earned_rewards = list(earned_rewards or [])
         starting_rewards = list(starting_rewards or [])
         reserved_enemy_progress = progress_plan_rewards(enemy_progress_plan)
@@ -735,6 +747,7 @@ class RewardController:
             preserved_reward_check_ids[code] = {
                 check_id
                 for check_id, _name, _hint in templates_by_code[code]
+                if check_id in reward_check_ids_by_code[code]
                 if (
                     check_id in old_checks
                     and (
@@ -743,7 +756,10 @@ class RewardController:
                     )
                     and check_rewards(old_checks[check_id])
                 ) or (
-                    check_id == 'objective_1' and code in completed_rewards
+                    check_id == (
+                        'victory' if rewards_on_victory_only else 'objective_1'
+                    )
+                    and code in completed_rewards
                 )
             }
         multipliers_by_code = {}
@@ -762,8 +778,10 @@ class RewardController:
             )
         base_slots_by_code = {
             code: (
-                len(templates_by_code[code])
-                - len(preserved_reward_check_ids[code])
+                len(
+                    reward_check_ids_by_code[code]
+                    - preserved_reward_check_ids[code]
+                )
             ) * rewards_per_check
             for code in mission_codes
         }
@@ -781,7 +799,7 @@ class RewardController:
             progress('Planning mission multiplier rewards.', 0, 1)
         bonus_slots_by_code = {
             code: (
-                len(templates_by_code[code])
+                len(reward_check_ids_by_code[code])
                 * rewards_per_check
                 * (multipliers_by_code[code] - 1)
                 if 'victory' not in preserved_reward_check_ids[code]
@@ -815,6 +833,8 @@ class RewardController:
             for check_id, name, hint in templates:
                 old_check = old_checks.get(check_id)
                 if (
+                    check_id in reward_check_ids_by_code[code]
+                    and
                     old_check
                     and (old_check.get('unlocked') or old_check.get('released'))
                     and check_rewards(old_check)
@@ -822,9 +842,18 @@ class RewardController:
                     rewards_for_check = check_rewards(old_check)
                     unlocked = bool(old_check.get('unlocked'))
                     released = bool(old_check.get('released')) and not unlocked
-                elif check_id == 'objective_1' and code in completed_rewards:
+                elif (
+                    check_id == (
+                        'victory' if rewards_on_victory_only else 'objective_1'
+                    )
+                    and code in completed_rewards
+                ):
                     rewards_for_check = canonical_rewards(completed_rewards[code])
                     unlocked = code in completed
+                    released = False
+                elif check_id not in reward_check_ids_by_code[code]:
+                    rewards_for_check = []
+                    unlocked = False
                     released = False
                 else:
                     rewards_for_check = base_rewards[
@@ -842,16 +871,25 @@ class RewardController:
                         ]
                     unlocked = False
                     released = False
-                if check_id not in preserved_reward_check_ids[code]:
+                if (
+                    check_id in reward_check_ids_by_code[code]
+                    and check_id not in preserved_reward_check_ids[code]
+                ):
                     base_reward_index += rewards_per_check
-                primary_reward = rewards_for_check[0] if rewards_for_check else {}
+                primary_reward = (
+                    rewards_for_check[0] if rewards_for_check else None
+                )
                 mission_checks.append({
                     'id': check_id,
                     'name': name,
                     'hint': hint,
                     'reward': primary_reward,
                     'rewards': rewards_for_check,
-                    'base_reward_count': rewards_per_check,
+                    'base_reward_count': (
+                        rewards_per_check
+                        if check_id in reward_check_ids_by_code[code]
+                        else 0
+                    ),
                     'multiplier_bonus_count': (
                         bonus_slots_by_code[code]
                         if check_id == 'victory' else 0

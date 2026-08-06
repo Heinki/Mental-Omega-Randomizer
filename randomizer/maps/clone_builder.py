@@ -1413,6 +1413,7 @@ def build_player_clone_sections(
             'weapon_clone_ids': weapon_clone_ids,
             'clone_base_values': clone_base_values,
             'clone_id': clone_id,
+            'build_only': build_only_clone,
             # Mission-authored placements/TaskForces can use a clean locked
             # reference identity when the production clone carries cloak or
             # another unsafe sidebar-only behavior. Exact objective/loss

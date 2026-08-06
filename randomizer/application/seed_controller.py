@@ -68,6 +68,9 @@ class SeedController:
         seed = self.seed_var.get().strip() or f'MO-{random.randrange(0x10000000):08X}'
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
+        rewards_on_victory_only = bool(
+            self.rewards_on_victory_only_var.get()
+        )
         reward_settings = self.current_reward_settings()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         if arsenal_mode:
@@ -174,6 +177,7 @@ class SeedController:
             'seed_missions': list(seed_missions),
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
+            'rewards_on_victory_only': rewards_on_victory_only,
             'reward_settings': reward_settings,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
@@ -208,6 +212,7 @@ class SeedController:
         seed_missions = options['seed_missions']
         mission_goal = options['mission_goal']
         rewards_per_check = options['rewards_per_check']
+        rewards_on_victory_only = options['rewards_on_victory_only']
         reward_settings = options['reward_settings']
         starting_defense_ids = options['starting_defense_ids']
         starting_unit_ids = options['starting_unit_ids']
@@ -370,6 +375,7 @@ class SeedController:
             mission_codes,
             seed,
             rewards_per_check=rewards_per_check,
+            rewards_on_victory_only=rewards_on_victory_only,
             progression_mode=progression_mode,
             grid=grid,
             starting_rewards=starting_rewards,
@@ -404,6 +410,7 @@ class SeedController:
             'progression_mode': progression_mode,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
+            'rewards_on_victory_only': rewards_on_victory_only,
             'starting_unlocked_missions': min(
                 1 if progression_mode == 'Classic' else STARTING_UNLOCKED_MISSIONS,
                 len(mission_codes),
@@ -443,6 +450,7 @@ class SeedController:
             'seed': seed,
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
+            'rewards_on_victory_only': rewards_on_victory_only,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'starting_rewards': starting_rewards,
@@ -470,6 +478,7 @@ class SeedController:
         seed = result['seed']
         mission_goal = result['mission_goal']
         rewards_per_check = result['rewards_per_check']
+        rewards_on_victory_only = result['rewards_on_victory_only']
         starting_defense_ids = result['starting_defense_ids']
         starting_unit_ids = result['starting_unit_ids']
         starting_rewards = result['starting_rewards']
@@ -496,7 +505,9 @@ class SeedController:
         )
         self.append_log(
             f'Generated seed {seed}. Finish {mission_goal} missions. '
-            f'{rewards_per_check} reward(s) per objective. {opening} '
+            f'{rewards_per_check} reward(s) per '
+            f'{"mission, multiplied by mission weight" if rewards_on_victory_only else "objective"}. '
+            f'{opening} '
             f'Setup saved to {CONFIG_PATH}.'
         )
         if starting_unit_ids:
@@ -922,6 +933,13 @@ class SeedController:
         except (TypeError, ValueError, tk.TclError):
             value = 0
 
+        victory_only = bool(self.rewards_on_victory_only_var.get())
+        self.rewards_per_check_label.configure(
+            text=(
+                'Rewards per mission'
+                if victory_only else 'Rewards per objective'
+            )
+        )
         message = self.rewards_per_check_message(value)
 
         self.rewards_per_check_message_label.configure(text=message)

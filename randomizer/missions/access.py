@@ -601,12 +601,12 @@ def mission_basic_unit_rules(
     additional_production_houses=(),
     excluded_special_infantry_factories=(),
 ):
-    """Resolve earned roles to each physically available production family.
+    """Resolve earned identities against physically available production.
 
-    Each faction gets one equivalent mapping behind its own exact factory.
-    This includes the starting family; foreign mappings stay dormant until
-    their Barracks, War Factory, airfield, or naval factory is owned. Exactly
-    one faction-appropriate Engineer remains a base-operation essential.
+    Exact access stays exact unless a caller explicitly requests legacy role
+    translation. Foreign identities remain dormant until their Barracks, War
+    Factory, airfield, or naval factory is owned. Exactly one
+    faction-appropriate Engineer remains a base-operation essential.
     """
     sections = all_section_value_maps(lines)
     house_records = map_house_records(lines, sections=sections)
@@ -665,8 +665,8 @@ def mission_basic_unit_rules(
     )
 
     # A map-local generic Barracks follows the current Standard player family.
-    # It may resolve an unlocked role to that family's infantry, but must not
-    # expose unrelated exact-faction rewards before foreign production capture.
+    # It may expose an exact unlocked infantry identity, but must not expose
+    # unrelated faction rewards before foreign production capture.
     special_barracks = _special_infantry_factories(
         sections,
         excluded_special_infantry_factories,

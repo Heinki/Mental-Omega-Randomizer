@@ -231,7 +231,7 @@ class LaunchController:
                         earned_access_ids=tech_ids_for_rewards(
                             earned_defense_rewards
                         ),
-                        translate_equivalents=True,
+                        translate_equivalents=False,
                         additional_build_houses=(),
                         additional_production_houses=production_houses,
                         excluded_special_infantry_factories=(
@@ -313,10 +313,12 @@ class LaunchController:
                 for section, values in chaos_rules.items():
                     rules.setdefault(section, {}).update(values)
             return rules
-        # Every mode resolves an earned role to one clone for each faction.
-        # Exact faction prerequisites keep foreign mappings dormant until the
-        # matching production building is captured or constructed.
-        translate_equivalents = True
+        # Earned access is identity-exact. An unlocked peer must never expose
+        # another member of its role group merely because that faction's
+        # factory is present (for example Sniper -> Desolator in SHBD or
+        # Abrams -> Scavenger in EDIVER). Standard tier-one starters remain
+        # abstract role selections and are resolved separately below.
+        translate_equivalents = False
         earned_access_ids = (
             self.active_unlocked_reward_tech_ids()
             if self.randomize_unit_access_enabled()

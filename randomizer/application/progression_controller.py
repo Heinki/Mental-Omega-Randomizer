@@ -251,6 +251,14 @@ class ProgressionController:
         checks = self.mission_checks(code)
         if not checks:
             return (0, 0)
+        if self.state.get('rewards_on_victory_only', False):
+            done = sum(
+                len(check_rewards(check))
+                for check in checks
+                if check.get('unlocked') or check.get('released')
+            )
+            total = sum(len(check_rewards(check)) for check in checks)
+            return (done, total)
         done = sum(
             len(check_rewards(check))
             for check in checks

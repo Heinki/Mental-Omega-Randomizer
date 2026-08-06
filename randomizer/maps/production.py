@@ -30,6 +30,7 @@ def original_player_production_gate_rules(
     existing_rule_sections=None,
     native_sections=None,
     negative_gate_exclusions=(),
+    factory_owner_only_ids=(),
     player_forbidden_houses=(),
 ):
     """Block native production for houses owning the hidden player gate.
@@ -41,7 +42,9 @@ def original_player_production_gate_rules(
     campaign Autocreate teams obey both fields, so leaving randomizer locks on
     the shared original silently disables AI paradrops and air attacks. The
     exact-House hidden negative prerequisite keeps the human on isolated
-    clones without changing AI production eligibility.
+    clones without changing AI production eligibility. Build-only story
+    sources instead use ``FactoryOwners.Forbidden`` because their native
+    identity must remain creatable by authored player TeamTypes.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -55,6 +58,12 @@ def original_player_production_gate_rules(
         for source_id in (negative_gate_exclusions or ())
         if str(source_id).strip()
     }
+    factory_owner_only_ids = {
+        str(source_id).upper()
+        for source_id in (factory_owner_only_ids or ())
+        if str(source_id).strip()
+    }
+    negative_gate_exclusions.update(factory_owner_only_ids)
     player_forbidden_houses = unique_in_order(
         str(house).strip()
         for house in (player_forbidden_houses or ())
@@ -170,9 +179,20 @@ def original_player_production_gate_rules(
             'ForbiddenHouses',
             _value_case_insensitive(installed_values, 'ForbiddenHouses', ''),
         )
-        source_rules['ForbiddenHouses'] = ','.join(unique_in_order(
-            comma_items(effective_forbidden) + list(player_forbidden_houses)
-        )) or 'none'
+        if source_id in factory_owner_only_ids:
+            # Build-only clones deliberately leave authored placements,
+            # TaskForces, Events, and Actions on the native identity. A player
+            # ForbiddenHouses value can therefore reject the story team before
+            # it forms (Bleed Red Boris and Fatal Impact's heroes). Hide only
+            # the native factory cameo through FactoryOwners.Forbidden; keep
+            # the authored runtime house filters byte-for-byte effective.
+            source_rules['ForbiddenHouses'] = (
+                str(effective_forbidden).strip() or None
+            )
+        else:
+            source_rules['ForbiddenHouses'] = ','.join(unique_in_order(
+                comma_items(effective_forbidden) + list(player_forbidden_houses)
+            )) or 'none'
         source_rules['TechLevel'] = _value_case_insensitive(
             native_values,
             'TechLevel',

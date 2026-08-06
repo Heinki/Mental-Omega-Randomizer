@@ -133,6 +133,9 @@ class StateController:
                     else {}
                 ),
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
+                rewards_on_victory_only=bool(
+                    self.state.get('rewards_on_victory_only', False)
+                ),
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
                 starting_rewards=self.state.get('starting_rewards', []),
@@ -855,6 +858,9 @@ class StateController:
         self.config.pop('grid_height', None)
         self.config['grid_two_start_positions'] = bool(self.grid_two_starts_var.get())
         self.config['rewards_per_objective'] = rewards_per_check
+        self.config['rewards_on_victory_only'] = bool(
+            self.rewards_on_victory_only_var.get()
+        )
         self.config['difficulty'] = self.difficulty_var.get()
         self.config['game_speed'] = self.game_speed_var.get()
         self.config['player_color'] = self.player_color_var.get()
@@ -1044,6 +1050,9 @@ class StateController:
                 'rewards_per_objective', DEFAULT_REWARDS_PER_CHECK
             )),
         )))
+        self.rewards_on_victory_only_var.set(bool(
+            self.config.get('rewards_on_victory_only', False)
+        ))
         self.difficulty_var.set(valid_choice(
             self.config.get('difficulty'),
             [name for name, _ in DIFFICULTIES],
@@ -1206,6 +1215,7 @@ class StateController:
         save_config(self.config)
         self.apply_color_mode()
         self.refresh_setting_states()
+        self.refresh_rewards_per_check_message()
         self.update_mission_goal_limit()
         self.refresh_advanced_pool_views()
         self.grid_render_signature = None

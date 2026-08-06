@@ -49,9 +49,10 @@ MISSION_ORIGINAL_MCV_ACCESS_IDS = {
     ).items()
 }
 
-# Some scripted TeamTypes are refused when their native transport carries the
-# exact-House negative production gate. These reviewed identities retain the
-# human-only TechLevel lock but never receive the hidden gate prerequisite.
+# Some scripted TeamTypes are refused when their native unit carries the
+# exact-House negative production gate. These reviewed identities retain their
+# authored/global production restrictions but never receive the hidden gate
+# prerequisite.
 MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS = {
     code: frozenset(values)
     for code, values in _MISSION_CONFIG.get(

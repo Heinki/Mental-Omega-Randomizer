@@ -323,7 +323,11 @@ def _build_right_panel(self, main_frame):
     )
     self.difficulty_combo.grid(row=3, column=1, sticky='ew', pady=(6, 0))
 
-    ttk.Label(options_row, text='Rewards per objective').grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    self.rewards_per_check_label = ttk.Label(
+        options_row,
+        text='Rewards per objective',
+    )
+    self.rewards_per_check_label.grid(row=4, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.rewards_per_check_spinbox = ttk.Spinbox(
         options_row,
         from_=1,
@@ -334,12 +338,31 @@ def _build_right_panel(self, main_frame):
         validatecommand=(self.register(self.validate_rewards_per_check), '%P'),
     )
     self.rewards_per_check_spinbox.grid(row=4, column=1, sticky='w', pady=(6, 0))
+    self.rewards_on_victory_only_check = ttk.Checkbutton(
+        options_row,
+        text='Rewards only when mission is finished',
+        variable=self.rewards_on_victory_only_var,
+        command=self.refresh_rewards_per_check_message,
+    )
+    self.rewards_on_victory_only_check.grid(
+        row=5,
+        column=0,
+        columnspan=2,
+        sticky='w',
+        pady=(6, 0),
+    )
+    WidgetTooltip(
+        self.rewards_on_victory_only_check,
+        'Objectives remain tracked but grant no rewards. Victory grants '
+        'Rewards per mission multiplied once by the mission weight, so '
+        'missions with more objectives do not produce more rewards.',
+    )
     self.buff_allied_helpers_check = ttk.Checkbutton(
         options_row,
         text='Buff allied helpers',
         variable=self.buff_allied_helpers_var,
     )
-    self.buff_allied_helpers_check.grid(row=5, column=0, columnspan=2, sticky='w', pady=(6, 0))
+    self.buff_allied_helpers_check.grid(row=6, column=0, columnspan=2, sticky='w', pady=(6, 0))
     WidgetTooltip(
         self.buff_allied_helpers_check,
         'Gives reviewed allied AI helpers safe country buffs and compatible '
@@ -353,7 +376,7 @@ def _build_right_panel(self, main_frame):
         wraplength=300,
     )
     self.rewards_per_check_message_label.grid(
-        row=6,
+        row=7,
         column=0,
         columnspan=2,
         sticky='ew',
@@ -362,7 +385,7 @@ def _build_right_panel(self, main_frame):
     self.rewards_per_check_var.trace_add('write', self.refresh_rewards_per_check_message)
     self.refresh_rewards_per_check_message()
 
-    ttk.Label(options_row, text='Reward mode').grid(row=7, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Reward mode').grid(row=8, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.reward_mode_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -370,11 +393,11 @@ def _build_right_panel(self, main_frame):
         values=REWARD_MODES,
         width=20,
     )
-    self.reward_mode_combo.grid(row=7, column=1, sticky='ew', pady=(6, 0))
+    self.reward_mode_combo.grid(row=8, column=1, sticky='ew', pady=(6, 0))
     self.reward_mode_combo.bind('<<ComboboxSelected>>', self.on_reward_mode_changed, add='+')
     WidgetTooltip(
         self.reward_mode_combo,
-        'Standard uses campaign-appropriate factions and translates equivalent roles on mixed maps. '
+        'Standard keeps exact unit access behind its matching faction production. '
         'Chaos draws exact unit unlocks from all four factions, forces randomized access/tech locking, '
         'and lets every compatible Barracks, factory, airfield, shipyard, or Construction Yard build '
         'the unlocked roster. It does not grant production structures. Randomizer Arsenal creates a '
@@ -382,7 +405,7 @@ def _build_right_panel(self, main_frame):
         'buffs only, target content present in that mission, and never permanently unlock units or powers.',
     )
 
-    ttk.Label(options_row, text='Progression').grid(row=8, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Progression').grid(row=9, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.progression_mode_combo = ttk.Combobox(
         options_row,
         state='readonly',
@@ -390,7 +413,7 @@ def _build_right_panel(self, main_frame):
         values=PROGRESSION_MODES,
         width=12,
     )
-    self.progression_mode_combo.grid(row=8, column=1, sticky='ew', pady=(6, 0))
+    self.progression_mode_combo.grid(row=9, column=1, sticky='ew', pady=(6, 0))
     self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
     WidgetTooltip(
         self.progression_mode_combo,
@@ -411,7 +434,7 @@ def _build_right_panel(self, main_frame):
         combo.bind('<MouseWheel>', self.on_settings_control_mousewheel, add='+')
 
     self.grid_options_frame = ttk.Frame(options_row)
-    self.grid_options_frame.grid(row=9, column=0, columnspan=2, sticky='ew', pady=(6, 0))
+    self.grid_options_frame.grid(row=10, column=0, columnspan=2, sticky='ew', pady=(6, 0))
     self.grid_two_starts_check = ttk.Checkbutton(
         self.grid_options_frame,
         text='Start with two available missions',

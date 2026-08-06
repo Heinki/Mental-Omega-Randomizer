@@ -1317,6 +1317,9 @@
       ]
     },
     "native_production_gate_exclusions": {
+      "SBLEED": [
+        "MORALES"
+      ],
       "SRED": [
         "SAPC"
       ],

@@ -114,13 +114,19 @@ mission's private Time Freeze warhead. Other units sharing the original armor
 remain affected. Use only for mission-critical objects whose EMP/AttachEffect
 state can trigger AI selling, invalidate an objective chain, or permit
 script-breaking stunlock abuse. Power Hunger protects `MORALES` and `NAHAMM`;
-Bleed Red protects its scripted `MORALES` identity.
+Bleed Red protects its scripted map-local `MORALES` Boris identity.
 
 `native_production_gate_exclusions` is narrower engine-safety policy for
 script-created native units. Power Hunger excludes `SAPC` because its player
 MCV delivery team needs the authored Zubr identity. Its map-authored
 `TechLevel=-1` still blocks native player production, while the isolated
 buildable transport clone remains available.
+
+Bleed Red excludes its map-local `MORALES` identity because Ares also evaluates
+the randomizer's hidden production gate while assembling the authored Boris
+TeamType. The extracted type, TaskForce, and exact-type Events must stay native;
+historical attempts to move or replace that identity caused instant defeat and
+runtime fatal errors.
 
 Power Hunger also patches four authored `Actions` values. Objective 2
 completion now creates both Latin AI and player MCV delivery teams. The Latin

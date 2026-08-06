@@ -145,6 +145,12 @@ class LauncherApp(
             DEFAULT_REWARDS_PER_CHECK,
         )
         self.rewards_per_check_var = tk.IntVar(value=default_rewards_per_check)
+        self.rewards_on_victory_only_var = tk.BooleanVar(
+            value=bool(self.state.get(
+                'rewards_on_victory_only',
+                self.config.get('rewards_on_victory_only', False),
+            ))
+        )
         generation_config = self.config.get('generation', {})
         arsenal_settings = normalize_arsenal_settings(
             generation_config.get('arsenal')

@@ -261,6 +261,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Preserve map-authored AI production fields before launcher access
     # locks and ownership rewrites are merged into this launch copy.
     native_map_sections = all_section_value_maps(lines)
+    native_map_sections_preserve = {
+        str(section).upper(): section_value_map_preserve(lines, section)
+        for section in native_map_sections
+    }
     scripted_story_unit_ids = script_referenced_taskforce_unit_ids(
         lines,
         native_map_sections,
@@ -1454,6 +1458,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for source_id, details in clone_handled.items()
             if str((details or {}).get('clone_id') or '').strip()
         }
+        build_only_clone_source_ids = {
+            str(source_id).upper()
+            for source_id, details in clone_handled.items()
+            if bool((details or {}).get('build_only'))
+        }
         production_gate_source_ids = (
             (set(isolated_native_ids) - set(preserved_native_access_ids))
             | actual_clone_source_ids
@@ -1476,6 +1485,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 non_player_droppod_payload_ids
                 | runtime_identity_preserve_ids
             ),
+            factory_owner_only_ids=build_only_clone_source_ids,
             player_forbidden_houses=player_native_exclusions,
         )
         # Every registered player clone gets one final native-source exclusion
@@ -1943,14 +1953,20 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if final_runtime_restore_ids:
         final_runtime_identity_rules = {}
         for source_id in sorted(final_runtime_restore_ids):
-            original_values = native_map_sections.get(source_id, {})
+            original_values = native_map_sections_preserve.get(
+                str(source_id).upper(), {}
+            )
             current_values = section_value_map_preserve(lines, source_id)
             if not original_values and not current_values:
                 continue
+            original_keys = {
+                str(key).lower()
+                for key in original_values
+            }
             restored_values = {
                 key: None
                 for key in current_values
-                if key not in original_values
+                if str(key).lower() not in original_keys
             }
             restored_values.update(original_values)
             # Droppod payloads need their authored production prerequisites,
