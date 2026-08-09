@@ -59,6 +59,21 @@ class SeedController:
     def generate_seed_from_settings(self):
         if self.gameplay_settings_locked():
             return
+        options = self.seed_generation_options_from_settings()
+        if options is None:
+            return
+        self.run_in_background(
+            'Generating new randomizer run...',
+            'Building mission order and reward plan. Large reward pools can take a while.',
+            lambda: self.build_seed_generation(options),
+            self.finish_seed_generation,
+            self.handle_seed_generation_error,
+        )
+
+    def seed_generation_options_from_settings(self):
+        """Validate live controls and freeze one exact generation request."""
+        if self.gameplay_settings_locked():
+            return None
         if not self.missions:
             self.append_log('Cannot generate seed: no missions loaded.', error=True)
             return
@@ -70,6 +85,7 @@ class SeedController:
 
         self.clear_log()
         seed = self.seed_var.get().strip() or f'MO-{random.randrange(0x10000000):08X}'
+        self.seed_var.set(seed)
         mission_goal = self.selected_mission_goal()
         rewards_per_check = self.selected_rewards_per_check()
         rewards_on_victory_only = bool(
@@ -176,7 +192,7 @@ class SeedController:
         )
         self._starting_unit_ids_override = starting_unit_ids
         self._starting_defense_ids_override = starting_defense_ids
-        options = {
+        return {
             **generation_context,
             'seed': seed,
             'seed_missions': list(seed_missions),
@@ -203,14 +219,6 @@ class SeedController:
             },
             '_progress': self.queue_busy_progress,
         }
-        self.run_in_background(
-            'Generating new randomizer run…',
-            'Building mission order and reward plan. Large reward pools can take a while.',
-            lambda: self.build_seed_generation(options),
-            self.finish_seed_generation,
-            self.handle_seed_generation_error,
-        )
-
     def build_seed_generation(self, options):
         progress = options.get('_progress') or (lambda *_args: None)
         progress('Building deterministic mission order.', 1, 5)
@@ -477,13 +485,16 @@ class SeedController:
             'enemy_progress_requested': enemy_progress_requested,
         }
 
-    def finish_seed_generation(self, result):
-        self.state = result['state']
+    def clear_seed_generation_overrides(self):
         self._reward_settings_override = None
         self._starting_defense_ids_override = None
         self._starting_unit_ids_override = None
         self._arsenal_override = None
         self._seed_generation_context = None
+
+    def finish_seed_generation(self, result):
+        self.state = result['state']
+        self.clear_seed_generation_overrides()
         seed = result['seed']
         mission_goal = result['mission_goal']
         rewards_per_check = result['rewards_per_check']
@@ -601,11 +612,7 @@ class SeedController:
         )
 
     def handle_seed_generation_error(self, exc, detail):
-        self._reward_settings_override = None
-        self._starting_defense_ids_override = None
-        self._starting_unit_ids_override = None
-        self._arsenal_override = None
-        self._seed_generation_context = None
+        self.clear_seed_generation_overrides()
         message = str(exc) or 'Seed generation failed.'
         self.append_log(message, error=True)
         if isinstance(exc, ValueError):

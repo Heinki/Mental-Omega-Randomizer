@@ -126,7 +126,7 @@ class LauncherApp(
         self.archipelago_chat_var = tk.StringVar(value='')
         self.archipelago_status_var = tk.StringVar(value='Disconnected')
         self.archipelago_yaml_status_var = tk.StringVar(
-            value='Generate or load a player YAML for the active run.'
+            value='Save a Player YAML from the current Settings-page values.'
         )
         self._archipelago_yaml_text = ''
         self._archipelago_gameplay_locked = False
@@ -136,10 +136,16 @@ class LauncherApp(
         self._archipelago_session = None
         self._archipelago_slot_data = {}
         self._archipelago_item_names = {}
+        self._archipelago_players = {}
+        self._archipelago_location_info = {}
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self._archipelago_last_status = None
+        self._archipelago_connection_error = ''
         self._archipelago_session_validated = False
+        self._archipelago_standalone_state = None
+        self._archipelago_standalone_config = None
+        self._archipelago_cached_state = None
         self.dark_mode_var = tk.BooleanVar(value=bool(self.config.get('dark_mode', False)))
         self.hide_reward_details_var = tk.BooleanVar(
             value=bool(self.config.get('hide_reward_details', False))

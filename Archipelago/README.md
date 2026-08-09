@@ -54,12 +54,12 @@ source. The client never applies INI rules itself.
 
 ## Authoritative run manifest
 
-Full generation exports a readable `launcher_settings` mapping followed by a
-versioned `run_manifest` JSON block. Readable settings contain exactly the
-current player-facing launcher controls; derived catalogue/version fields and
-unselected generic Archipelago defaults are omitted. Edited settings import
-through **Load YAML** and require a new seed plus regenerated player YAML. The
-manifest contains the already-generated mission order, Grid coordinates, goal,
+**Save Player YAML** is one atomic workflow: it reads the visible controls,
+saves those launcher settings, generates a fresh AP run, and exports a readable
+`launcher_settings` mapping followed by a versioned `run_manifest` JSON block.
+Derived catalogue/version fields and unselected generic Archipelago defaults
+are omitted. The manifest contains the generated mission order, Grid
+coordinates, goal,
 campaign selection, reward-slot counts, clean initial server-state snapshot,
 frozen reward settings, Randomizer version, and deterministic catalogue
 checksum. APWorld validates readable settings against that manifest, creates
@@ -82,6 +82,10 @@ implemented in the APWorld.
 
 - Support compressed `ws` and `wss` WebSockets.
 - Request `slot_data` and all item handling flags.
+- Read `Connected.slot_info`, request server `DataPackage` names for every
+  participating game, and scout only already-completed Mental Omega locations.
+  Received items and completed checks therefore retain real player, game,
+  item, and source-location provenance without exposing pending placements.
 - Persist server seed name, team, slot, received-item index, item receipts, and
   completed location IDs in `randomizer_state.json` under an Archipelago block.
 - Treat `ReceivedItems.index == 0` as authoritative full inventory. Any other
@@ -116,13 +120,19 @@ implemented in the APWorld.
   pipelines. Standalone reward sourcing remains unchanged.
 - Status is red while disconnected, green while connected, and amber during
   connection transitions.
-- The Archipelago tab generates, atomically saves, and loads player YAML for
-  the active generated run. Unchanged YAML stages that exact run without
-  replacing standalone reward/UI sourcing. Only a fully validated `Connected`
-  event promotes it to AP reward sourcing. Edited readable settings import for
-  the next seed without replacing current progress; stale manifest generation
-  is rejected. Legacy compact Phase 9 YAML remains loadable. Validated AP mode
-  persists through disconnect/reconnect; generating a new seed clears it.
+- The activity area remains one normal Archipelago chat feed. Structured
+  `PrintJSON` parts resolve through server metadata and render player, item
+  classification, location, game, and ordinary text with dark/light-safe
+  semantic colors. Item-send packets become one readable
+  `finder (game) found item for recipient (game) at location` line;
+  synchronization diagnostics remain in the launcher log. Mission details
+  list completed placements as item-to-recipient entries plus the sending
+  player and exact objective location.
+- The Archipelago tab has one **Save Player YAML** action. It never reuses a
+  cached manifest or old local run and has no launcher-side YAML load step.
+  Export stages only the manifest identity; only a fully validated `Connected`
+  event loads server state and promotes it to AP reward sourcing. Validated AP
+  mode persists through disconnect/reconnect; generating a new seed clears it.
 - Hosted-room server input defaults and migrates to bare `archipelago.gg`.
   Users copy only the room page's game-server port; browser room URLs are not
   WebSocket endpoints. Custom and localhost hosts remain supported.

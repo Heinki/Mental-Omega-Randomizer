@@ -14,6 +14,7 @@ from .handshake import (
     _decode_commands,
     _location_ids,
     _send_commands,
+    _slot_info,
     normalize_server_uri,
     validate_slot_data,
 )
@@ -91,6 +92,13 @@ class ArchipelagoSession:
         self._missing_locations = set()
         self._goal_complete = bool(checkpoint.get('goal_complete', False))
         self._ledger = ReceivedItemLedger.from_checkpoint(checkpoint)
+        self._slot_info = {}
+        self._game_data = {}
+        self._requested_games = set()
+        self._metadata_ready = False
+        self._deferred_received_items = {}
+        self._deferred_location_info = {}
+        self._deferred_messages = []
 
     @staticmethod
     def _optional_int(value):
@@ -161,6 +169,11 @@ class ArchipelagoSession:
             self._outbound.put({
                 'cmd': 'LocationChecks',
                 'locations': sorted(added),
+            })
+            self._outbound.put({
+                'cmd': 'LocationScouts',
+                'locations': sorted(added),
+                'create_as_hint': 0,
             })
         return tuple(sorted(added))
 
@@ -269,7 +282,9 @@ class ArchipelagoSession:
             compression='deflate',
             open_timeout=self.config.connect_timeout,
             close_timeout=2,
-            max_size=16 * 1024 * 1024,
+            # Multiworld game metadata can exceed normal packet sizes. Names
+            # are required to render WHO/WHAT/WHERE without numeric IDs.
+            max_size=64 * 1024 * 1024,
         ) as socket:
             with self._socket_lock:
                 self._socket = socket
@@ -315,9 +330,11 @@ class ArchipelagoSession:
                                 packet, 'missing_locations'
                             ),
                             slot_data=validate_slot_data(packet.get('slot_data')),
+                            slot_info=_slot_info(packet.get('slot_info')),
                         )
                         self._accept_connected(result)
                         authenticated = True
+                        self._request_server_metadata(socket, result)
                         self._resynchronize(socket)
                     elif packet_name == 'ReceivedItems':
                         if authenticated:
@@ -325,8 +342,17 @@ class ArchipelagoSession:
                     elif packet_name == 'RoomUpdate':
                         if authenticated:
                             self._accept_room_update(packet)
+                    elif packet_name == 'DataPackage':
+                        if authenticated:
+                            self._accept_data_package(packet)
+                    elif packet_name == 'LocationInfo':
+                        if authenticated:
+                            self._accept_location_info(packet)
                     elif packet_name == 'PrintJSON':
-                        self._emit('message', self._message_text(packet))
+                        if self._metadata_ready:
+                            self._emit('message', self._message_segments(packet))
+                        else:
+                            self._deferred_messages.append(dict(packet))
                     elif packet_name == 'InvalidPacket':
                         self._emit('error', {
                             'message': str(packet.get('text', 'Invalid packet.')),
@@ -345,6 +371,7 @@ class ArchipelagoSession:
             self._seed_name, self._team, self._slot = actual
             self._completed_locations.update(result.checked_locations)
             self._missing_locations = set(result.missing_locations)
+            self._slot_info = dict(result.slot_info)
         self._emit_checkpoint()
         self._set_status(
             'connected',
@@ -353,6 +380,34 @@ class ArchipelagoSession:
             slot=result.slot,
         )
         self._emit('connected', result)
+
+    def _request_server_metadata(self, socket, result):
+        games = {
+            str(info.get('game') or '').strip()
+            for info in result.slot_info.values()
+            if str(info.get('game') or '').strip()
+            and str(info.get('game') or '').strip() != 'Archipelago'
+        }
+        self._requested_games = games
+        self._metadata_ready = not games
+        commands = []
+        if games:
+            commands.append({
+                'cmd': 'GetDataPackage',
+                'games': sorted(games),
+            })
+        with self._lock:
+            checked = sorted(self._completed_locations)
+        if checked:
+            commands.append({
+                'cmd': 'LocationScouts',
+                'locations': checked,
+                'create_as_hint': 0,
+            })
+        if commands:
+            _send_commands(socket, *commands)
+        if self._metadata_ready:
+            self._flush_metadata_events()
 
     def _resynchronize(self, socket):
         with self._lock:
@@ -387,7 +442,15 @@ class ArchipelagoSession:
             completed = sorted(self._completed_locations)
         self._emit_checkpoint()
         if pending:
-            self._emit('received_items', pending)
+            if self._metadata_ready:
+                self._emit(
+                    'received_items',
+                    tuple(self._resolved_received_item(item) for item in pending),
+                )
+            else:
+                self._deferred_received_items.update({
+                    item.index: item for item in pending
+                })
         if desynchronized:
             commands = [{'cmd': 'Sync'}]
             if completed:
@@ -400,6 +463,158 @@ class ArchipelagoSession:
                 'received_index': int(packet.get('index')),
                 'expected_index': self._ledger.next_index,
             })
+
+    @staticmethod
+    def _network_name_table(value):
+        if not isinstance(value, Mapping):
+            return {}
+        result = {}
+        for name, raw_id in value.items():
+            try:
+                identifier = int(raw_id)
+            except (TypeError, ValueError):
+                continue
+            if isinstance(raw_id, bool) or not str(name):
+                continue
+            result[identifier] = str(name)
+        return result
+
+    def _accept_data_package(self, packet):
+        data = packet.get('data')
+        games = data.get('games') if isinstance(data, Mapping) else None
+        if not isinstance(games, Mapping):
+            raise ArchipelagoProtocolError('DataPackage has no game metadata.')
+        for game, raw_data in games.items():
+            if not isinstance(raw_data, Mapping):
+                continue
+            game_name = str(game)
+            self._game_data[game_name] = {
+                'items': self._network_name_table(
+                    raw_data.get('item_name_to_id')
+                ),
+                'locations': self._network_name_table(
+                    raw_data.get('location_name_to_id')
+                ),
+            }
+        self._metadata_ready = self._requested_games.issubset(
+            self._game_data
+        )
+        if self._metadata_ready:
+            self._flush_metadata_events()
+
+    @staticmethod
+    def _network_item(value):
+        if not isinstance(value, Mapping):
+            raise ArchipelagoProtocolError('LocationInfo entry is invalid.')
+        try:
+            return {
+                key: int(value[key])
+                for key in ('item', 'location', 'player', 'flags')
+            }
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ArchipelagoProtocolError(
+                'LocationInfo entry is missing numeric fields.'
+            ) from exc
+
+    def _accept_location_info(self, packet):
+        values = packet.get('locations')
+        if not isinstance(values, list):
+            raise ArchipelagoProtocolError('LocationInfo locations are invalid.')
+        records = [self._network_item(value) for value in values]
+        if self._metadata_ready:
+            self._emit(
+                'location_info',
+                tuple(self._resolved_location_info(value) for value in records),
+            )
+            return
+        self._deferred_location_info.update({
+            value['location']: value for value in records
+        })
+
+    def _player_metadata(self, slot):
+        info = self._slot_info.get(int(slot), {})
+        return {
+            'slot': int(slot),
+            'name': str(info.get('name') or ''),
+            'game': str(info.get('game') or ''),
+        }
+
+    def _resolved_name(self, game, category, identifier):
+        values = self._game_data.get(str(game), {}).get(category, {})
+        return str(values.get(int(identifier), ''))
+
+    def _resolved_received_item(self, record):
+        source = self._player_metadata(record.player)
+        recipient = self._player_metadata(self._slot or 0)
+        if int(record.location) == 0:
+            source = {
+                'slot': int(record.player),
+                'name': 'Starting inventory',
+                'game': recipient['game'],
+            }
+        location_name = (
+            'Precollected / starting inventory'
+            if int(record.location) == 0
+            else self._resolved_name(
+                source['game'], 'locations', record.location
+            )
+        )
+        return {
+            **record.to_dict(),
+            'item_name': self._resolved_name(
+                recipient['game'], 'items', record.item
+            ),
+            'from_player': source['name'],
+            'from_game': source['game'],
+            'recipient_player': recipient['name'],
+            'recipient_game': recipient['game'],
+            'location_name': location_name,
+        }
+
+    def _resolved_location_info(self, record):
+        source = self._player_metadata(self._slot or 0)
+        recipient = self._player_metadata(record['player'])
+        return {
+            **record,
+            'item_name': self._resolved_name(
+                recipient['game'], 'items', record['item']
+            ),
+            'from_player': source['name'],
+            'from_game': source['game'],
+            'recipient_player': recipient['name'],
+            'recipient_game': recipient['game'],
+            'location_name': self._resolved_name(
+                source['game'], 'locations', record['location']
+            ),
+        }
+
+    def _flush_metadata_events(self):
+        self._emit(
+            'received_metadata',
+            tuple(
+                self._resolved_received_item(record)
+                for record in self._ledger.records
+            ),
+        )
+        if self._deferred_location_info:
+            values = tuple(
+                self._resolved_location_info(record)
+                for _, record in sorted(self._deferred_location_info.items())
+            )
+            self._deferred_location_info.clear()
+            self._emit('location_info', values)
+        if self._deferred_received_items:
+            values = tuple(
+                self._resolved_received_item(record)
+                for _, record in sorted(self._deferred_received_items.items())
+            )
+            self._deferred_received_items.clear()
+            self._emit('received_items', values)
+        if self._deferred_messages:
+            values = tuple(self._deferred_messages)
+            self._deferred_messages.clear()
+            for packet in values:
+                self._emit('message', self._message_segments(packet))
 
     def _accept_room_update(self, packet):
         if 'checked_locations' not in packet:
@@ -415,14 +630,95 @@ class ArchipelagoSession:
         if changed:
             self._emit_checkpoint()
             self._emit('locations_checked', checked)
+            self._outbound.put({
+                'cmd': 'LocationScouts',
+                'locations': list(checked),
+                'create_as_hint': 0,
+            })
 
-    @staticmethod
-    def _message_text(packet):
+    def _item_send_segments(self, packet):
+        value = packet.get('item')
+        try:
+            item = self._network_item(value)
+            recipient_slot = int(packet['receiving'])
+        except (ArchipelagoProtocolError, KeyError, TypeError, ValueError):
+            return None
+        source = self._player_metadata(item['player'])
+        recipient = self._player_metadata(recipient_slot)
+        item_name = self._resolved_name(
+            recipient['game'], 'items', item['item']
+        )
+        location_name = self._resolved_name(
+            source['game'], 'locations', item['location']
+        )
+        if not all((source['name'], recipient['name'], item_name, location_name)):
+            return None
+        return (
+            {'text': source['name'], 'role': 'player', 'slot': source['slot']},
+            {'text': f' ({source["game"]})', 'role': 'game'},
+            {'text': ' found ', 'role': 'text'},
+            {'text': item_name, 'role': 'item', 'flags': item['flags']},
+            {'text': ' for ', 'role': 'text'},
+            {
+                'text': recipient['name'],
+                'role': 'player',
+                'slot': recipient['slot'],
+            },
+            {'text': f' ({recipient["game"]})', 'role': 'game'},
+            {'text': ' at ', 'role': 'text'},
+            {'text': location_name, 'role': 'location'},
+        )
+
+    def _message_segments(self, packet):
+        if str(packet.get('type') or '') == 'ItemSend':
+            item_send = self._item_send_segments(packet)
+            if item_send is not None:
+                return item_send
         data = packet.get('data', [])
         if not isinstance(data, list):
-            return ''
+            return ()
+        rendered = []
+        for part in data:
+            if not isinstance(part, Mapping):
+                continue
+            text = str(part.get('text', ''))
+            part_type = str(part.get('type') or '')
+            role = 'text'
+            result = {
+                'text': text,
+                'role': role,
+                'color': str(part.get('color') or ''),
+            }
+            try:
+                identifier = int(text)
+            except (TypeError, ValueError):
+                rendered.append(result)
+                continue
+            if part_type == 'player_id':
+                text = self._player_metadata(identifier)['name'] or text
+                result.update({
+                    'text': text,
+                    'role': 'player',
+                    'slot': identifier,
+                })
+            elif part_type in {'item_id', 'location_id'}:
+                try:
+                    player = int(part.get('player', self._slot or 0))
+                except (TypeError, ValueError):
+                    player = self._slot or 0
+                game = self._player_metadata(player)['game']
+                category = 'items' if part_type == 'item_id' else 'locations'
+                text = self._resolved_name(game, category, identifier) or text
+                result.update({
+                    'text': text,
+                    'role': 'item' if part_type == 'item_id' else 'location',
+                    'flags': int(part.get('flags') or 0),
+                })
+            rendered.append(result)
+        return tuple(rendered)
+
+    def _message_text(self, packet):
         return ''.join(
             str(part.get('text', ''))
-            for part in data
-            if isinstance(part, Mapping)
-        )
+            for part in self._message_segments(packet)
+        ).strip()

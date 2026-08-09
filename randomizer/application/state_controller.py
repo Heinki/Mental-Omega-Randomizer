@@ -73,7 +73,15 @@ class StateController:
         if not STATE_PATH.exists():
             return {}
         try:
-            return read_json_object(STATE_PATH)
+            loaded = read_json_object(STATE_PATH)
+            restore = getattr(
+                self, 'restore_archipelago_context_on_startup', None
+            )
+            if callable(restore):
+                loaded, changed = restore(loaded)
+                if changed:
+                    atomic_write_json(STATE_PATH, loaded, indent=None)
+            return loaded
         except Exception:
             log_event('state_load_failed', level=logging.ERROR, traceback=traceback.format_exc())
         return {}

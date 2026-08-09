@@ -42,8 +42,8 @@ def serialize_player_yaml(manifest, slot_name):
     )
     output += (
         "\n"
-        "  # Human-readable Randomizer options. Customize them here, then\n"
-        "  # Load YAML in the launcher and generate a new seed/YAML.\n"
+        "  # Exact Settings-page values used to generate this AP run.\n"
+        "  # Change settings in the launcher, then save a new Player YAML.\n"
         "  launcher_settings:\n"
     )
     output += "\n".join(

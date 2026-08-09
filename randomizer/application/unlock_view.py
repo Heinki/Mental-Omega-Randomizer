@@ -447,13 +447,56 @@ class UnlockViewController:
                 )
                 rewards = check_rewards(check)
                 if archipelago_active:
-                    reward_count = self.archipelago_check_location_count(
-                        code, check.get('id', '')
-                    )
                     lines.append(
-                        f'{status_label}: {check.get("name", "Check")} - '
-                        f'{reward_count} Archipelago reward slot(s)'
+                        f'{status_label}: {check.get("name", "Check")}'
                     )
+                    if not check.get('unlocked'):
+                        lines.append(
+                            '   • Item contents appear after this check is completed.'
+                        )
+                        continue
+                    details = self.archipelago_check_item_details(
+                        code, check.get('id', '')
+                    ) or ()
+                    expected = self.archipelago_check_location_count(
+                        code, check.get('id', '')
+                    ) or 0
+                    for record in details:
+                        item_name = str(record.get('item_name') or '').strip()
+                        if not item_name:
+                            item_name = f'Item #{int(record.get("item", 0))}'
+                        recipient = str(
+                            record.get('recipient_player') or ''
+                        ).strip()
+                        if not recipient:
+                            recipient = f'Player {int(record.get("player", 0))}'
+                        recipient_game = str(
+                            record.get('recipient_game') or ''
+                        ).strip() or 'game unavailable'
+                        sender = str(
+                            record.get('from_player') or ''
+                        ).strip() or 'Sending player unavailable'
+                        sender_game = str(
+                            record.get('from_game') or ''
+                        ).strip() or 'game unavailable'
+                        location = str(
+                            record.get('location_name') or ''
+                        ).strip()
+                        if not location:
+                            location = (
+                                f'Location #{int(record.get("location", 0))}'
+                            )
+                        lines.append(
+                            f'   • {item_name} -> {recipient} ({recipient_game})'
+                        )
+                        lines.append(
+                            f'     Found by {sender} ({sender_game}) at {location}'
+                        )
+                    missing = max(0, expected - len(details))
+                    if missing:
+                        lines.append(
+                            f'   • Waiting for server details for {missing} item(s).'
+                        )
                     continue
                 lines.append(
                     f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'

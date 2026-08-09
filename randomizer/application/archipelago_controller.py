@@ -1,6 +1,7 @@
 """Launcher adapter for the isolated Archipelago session worker."""
 
 from copy import deepcopy
+from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
 
 from .archipelago_yaml_controller import ArchipelagoYamlController
@@ -37,8 +38,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         candidates = [
             *self._widget_descendants(self.settings_frame),
             *self._widget_descendants(self.advanced_tab),
-            self.archipelago_generate_yaml_button,
-            self.archipelago_load_yaml_button,
+            self.archipelago_save_yaml_button,
         ]
         stateful = []
         interactive_classes = {
@@ -128,6 +128,110 @@ class ArchipelagoController(ArchipelagoYamlController):
     def archipelago_run_active(self):
         return self._active_archipelago_state() is not None
 
+    @staticmethod
+    def _standalone_archipelago_config(current, saved):
+        """Restore gameplay settings while retaining connection identity."""
+        restored = deepcopy(saved)
+        restored_ap = restored.setdefault('archipelago', {})
+        current_ap = current.get('archipelago', {})
+        for key in ('server', 'port', 'slot_name', 'client_uuid'):
+            if key in current_ap:
+                restored_ap[key] = deepcopy(current_ap[key])
+        restored_ap['enabled'] = False
+        return restored
+
+    def _capture_archipelago_standalone_context(self):
+        """Freeze the local run and launcher settings before AP takes over."""
+        if self.archipelago_run_active():
+            return
+        self.save_current_launcher_config()
+        self._archipelago_standalone_state = (
+            self._current_standalone_state_snapshot()
+        )
+        self._archipelago_standalone_config = deepcopy(self.config)
+
+    def restore_archipelago_context_on_startup(self, loaded_state):
+        """Recover standalone context after a launcher exit during AP play."""
+        if not isinstance(loaded_state, dict):
+            return loaded_state, False
+        ap_state = loaded_state.get('archipelago')
+        if not isinstance(ap_state, dict) or not ap_state.get('enabled'):
+            return loaded_state, False
+        standalone_state = ap_state.get('standalone_state')
+        standalone_config = ap_state.get('standalone_config')
+        if not isinstance(standalone_state, dict) or not standalone_config:
+            return loaded_state, False
+
+        self._archipelago_cached_state = deepcopy(loaded_state)
+        self._archipelago_standalone_state = deepcopy(standalone_state)
+        self._archipelago_standalone_config = self._standalone_archipelago_config(
+            self.config, standalone_config
+        )
+        self.config = deepcopy(self._archipelago_standalone_config)
+        save_config(self.config)
+        self.dark_mode_var.set(bool(self.config.get('dark_mode', False)))
+        self.hide_reward_details_var.set(bool(
+            self.config.get('hide_reward_details', False)
+        ))
+        self.hide_locked_grid_missions_var.set(bool(
+            self.config.get('hide_locked_grid_missions', False)
+        ))
+        log_event(
+            'archipelago_standalone_context_restored_on_startup',
+            seed=standalone_state.get('seed', ''),
+        )
+        return deepcopy(standalone_state), True
+
+    def _restore_archipelago_standalone_context(self, refresh=True):
+        """Switch from server-owned AP state back to the saved local run."""
+        active_state = self._active_archipelago_state()
+        if active_state is None:
+            self._archipelago_session_validated = False
+            return False
+
+        standalone_state = self._archipelago_standalone_state
+        standalone_config = self._archipelago_standalone_config
+        if not isinstance(standalone_state, dict):
+            standalone_state = active_state.get('standalone_state')
+        if not isinstance(standalone_config, dict):
+            standalone_config = active_state.get('standalone_config')
+        if not isinstance(standalone_state, dict) or not standalone_config:
+            log_event(
+                'archipelago_standalone_context_missing',
+                level=logging.ERROR,
+            )
+            return False
+
+        self._archipelago_cached_state = deepcopy(self.state)
+        restored_config = self._standalone_archipelago_config(
+            self.config, standalone_config
+        )
+        self.state = deepcopy(standalone_state)
+        self._archipelago_standalone_state = deepcopy(self.state)
+        self._archipelago_standalone_config = deepcopy(restored_config)
+        self._archipelago_session_validated = False
+        self._archipelago_slot_data = {}
+        self._archipelago_item_names = {}
+        self._archipelago_players = {}
+        self._archipelago_location_info = {}
+        self._archipelago_server_checked_locations = set()
+        self._archipelago_displayed_receipts = set()
+        self.apply_portable_settings(restored_config)
+        self.save_state()
+        if refresh:
+            self._refresh_archipelago_server_views()
+            if self._configured_archipelago_state() is not None:
+                self.refresh_archipelago_yaml_status()
+            else:
+                self.archipelago_yaml_status_var.set(
+                    'Save a Player YAML from the current Settings-page values.'
+                )
+        log_event(
+            'archipelago_standalone_context_restored',
+            seed=self.state.get('seed', ''),
+        )
+        return True
+
     def reset_archipelago_after_new_seed(self):
         """Return UI/config identity to standalone after state replacement."""
         self.config.setdefault('archipelago', {})['enabled'] = False
@@ -135,12 +239,17 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_session_validated = False
         self._archipelago_slot_data = {}
         self._archipelago_item_names = {}
+        self._archipelago_players = {}
+        self._archipelago_location_info = {}
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
+        self._archipelago_standalone_state = None
+        self._archipelago_standalone_config = None
+        self._archipelago_cached_state = None
         self._set_archipelago_chat_enabled(False)
         self.archipelago_status_var.set('Disconnected')
         self.archipelago_yaml_status_var.set(
-            'Generate or load a player YAML for the active run.'
+            'Save a Player YAML from the current Settings-page values.'
         )
         self.archipelago_status_label.configure(
             style='Archipelago.Disconnected.TLabel'
@@ -210,19 +319,23 @@ class ArchipelagoController(ArchipelagoYamlController):
             or not self._archipelago_session_validated
             or not session.send_chat(text)
         ):
-            self.append_archipelago_history(
-                'Chat unavailable until Archipelago connection is validated.'
+            self.archipelago_status_var.set(
+                'Chat unavailable — connect to Archipelago first'
             )
             self._set_archipelago_chat_enabled(False)
             return 'break'
         self.archipelago_chat_var.set('')
-        self.append_archipelago_history(
-            f'Queued as {session.config.slot_name}: {text}'
-        )
         return 'break'
 
     def _archipelago_saved_checkpoint(self, endpoint, slot_name):
         ap_state = self.state.get('archipelago', {}) if self.state else {}
+        cached_state = getattr(self, '_archipelago_cached_state', None)
+        cached_ap = (
+            cached_state.get('archipelago', {})
+            if isinstance(cached_state, dict) else {}
+        )
+        if not isinstance(ap_state, dict) or not ap_state.get('enabled'):
+            ap_state = cached_ap
         if not isinstance(ap_state, dict) or not ap_state.get('enabled'):
             return None
         if ap_state.get('server') != endpoint or ap_state.get('slot_name') != slot_name:
@@ -237,9 +350,6 @@ class ArchipelagoController(ArchipelagoYamlController):
         try:
             if getattr(self, 'busy_depth', 0):
                 raise ValueError('Wait for the current launcher task to finish.')
-            # Connection identity comes from selected YAML plus server slot.
-            # Local seed/progress is deliberately not authoritative here.
-            self._validated_active_archipelago_manifest(require_state=False)
             from Archipelago.client import ArchipelagoSession, SessionConfig
 
             endpoint = self._archipelago_endpoint()
@@ -262,7 +372,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 checkpoint=checkpoint,
             )
         except Exception as exc:
-            self.archipelago_status_var.set('Disconnected')
+            self._archipelago_connection_error = str(exc)
+            self.archipelago_status_var.set(f'Connection failed — {exc}')
             self.append_archipelago_history(f'Connection setup failed: {exc}')
             log_event(
                 'archipelago_connection_setup_failed',
@@ -270,6 +381,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 error=str(exc),
             )
             return
+
+        self._capture_archipelago_standalone_context()
 
         ap_config = self.config.setdefault('archipelago', {})
         ap_config['server'] = self.archipelago_server_var.get().strip()
@@ -279,6 +392,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         save_config(self.config)
 
         self._archipelago_session = session
+        self._archipelago_connection_error = ''
         self._archipelago_session_validated = False
         self._archipelago_displayed_receipts = set()
         self._set_archipelago_chat_enabled(False)
@@ -312,10 +426,14 @@ class ArchipelagoController(ArchipelagoYamlController):
         session = getattr(self, '_archipelago_session', None)
         if session is not None:
             session.stop(timeout=2.5)
+        self._restore_archipelago_standalone_context(refresh=False)
 
     def handle_archipelago_event(self, event):
         if event.kind == 'status':
             state = str(event.payload.get('state', 'disconnected'))
+            if state == 'disconnected':
+                self._restore_archipelago_standalone_context()
+                self._archipelago_session = None
             if state == 'connected' and not self._archipelago_session_validated:
                 label = 'Authenticating Archipelago slot'
             elif state == 'connected':
@@ -329,13 +447,19 @@ class ArchipelagoController(ArchipelagoYamlController):
                     else 'Connecting — standalone rewards active'
                 )
             elif state == 'disconnected':
-                label = (
-                    'Disconnected — AP run active'
-                    if self.archipelago_run_active()
-                    else 'Disconnected — standalone rewards active'
-                    if self.archipelago_run_staged()
-                    else 'Disconnected'
+                connection_error = getattr(
+                    self, '_archipelago_connection_error', ''
                 )
+                if connection_error:
+                    label = f'Connection failed — {connection_error}'
+                else:
+                    label = (
+                        'Disconnected — AP run active'
+                        if self.archipelago_run_active()
+                        else 'Disconnected — standalone rewards active'
+                        if self.archipelago_run_staged()
+                        else 'Disconnected'
+                    )
             else:
                 label = state.title()
             self.archipelago_status_var.set(label)
@@ -365,6 +489,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             return
         if event.kind == 'connected':
             result = event.payload
+            self._archipelago_connection_error = ''
             try:
                 item_names = self._validate_archipelago_item_mapping(
                     result.slot_data
@@ -379,14 +504,6 @@ class ArchipelagoController(ArchipelagoYamlController):
                         'this launcher installation'
                     )
                 slot_manifest = result.slot_data.get('run_manifest')
-                configured_ap = self._configured_archipelago_state()
-                if configured_ap is None or (
-                    slot_manifest.get('manifest_checksum')
-                    != configured_ap.get('manifest_checksum')
-                ):
-                    raise ValueError(
-                        'server run manifest does not match the selected YAML'
-                    )
                 self._validate_archipelago_server_state(result.slot_data)
             except ValueError as exc:
                 self.append_archipelago_history(
@@ -398,29 +515,27 @@ class ArchipelagoController(ArchipelagoYamlController):
                 f'Authenticated: seed {result.seed_name}, '
                 f'team {result.team + 1}, slot {result.slot}.'
             )
-            ap_state = self._configured_archipelago_state()
-            if ap_state is not None:
-                active_session = getattr(self, '_archipelago_session', None)
-                if active_session is None:
-                    self.append_archipelago_history(
-                        'Connected session disappeared before validation completed.'
-                    )
-                    return
-                self._archipelago_session_validated = True
-                ap_state = self._load_archipelago_server_state(
-                    result,
-                    item_names,
-                    active_session,
+            active_session = getattr(self, '_archipelago_session', None)
+            if active_session is None:
+                self.append_archipelago_history(
+                    'Connected session disappeared before validation completed.'
                 )
-                self._apply_manifest_launcher_settings(slot_manifest)
-                self._synchronize_archipelago_progression_ui(slot_manifest)
-                self._promote_archipelago_run()
-                self._set_archipelago_chat_enabled(True)
-                self.archipelago_status_var.set(
-                    'Connected — AP rewards active'
-                )
-                self.reconcile_archipelago_checks()
-                self._refresh_archipelago_server_views()
+                return
+            self._archipelago_session_validated = True
+            self._load_archipelago_server_state(
+                result,
+                item_names,
+                active_session,
+            )
+            self._apply_manifest_launcher_settings(slot_manifest)
+            self._synchronize_archipelago_progression_ui(slot_manifest)
+            self._promote_archipelago_run()
+            self._set_archipelago_chat_enabled(True)
+            self.archipelago_status_var.set(
+                'Connected — AP rewards active'
+            )
+            self.reconcile_archipelago_checks()
+            self._refresh_archipelago_server_views()
             return
         if event.kind == 'checkpoint':
             self._persist_archipelago_checkpoint(event.payload)
@@ -431,6 +546,16 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
             if applied_indexes:
                 self._refresh_archipelago_server_views()
+            return
+        if event.kind == 'received_metadata':
+            if self._merge_archipelago_received_metadata(event.payload):
+                self.save_state()
+                self._refresh_archipelago_server_views()
+            return
+        if event.kind == 'location_info':
+            if self._store_archipelago_location_info(event.payload):
+                self.save_state()
+                self.refresh_progress_view()
             return
         if event.kind == 'locations_checked':
             changed = self._apply_archipelago_server_locations(event.payload)
@@ -448,10 +573,12 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
             return
         if event.kind == 'message' and event.payload:
-            self.append_archipelago_history(str(event.payload))
+            self.append_archipelago_server_message(event.payload)
             return
         if event.kind == 'error':
             message = str(event.payload.get('message', 'Unknown network error.'))
+            self._archipelago_connection_error = message
+            self.archipelago_status_var.set(f'Connection failed — {message}')
             self.append_archipelago_history(f'Network error: {message}')
             log_event(
                 'archipelago_client_error',
@@ -540,8 +667,24 @@ class ArchipelagoController(ArchipelagoYamlController):
     ):
         """Replace local run fields with signed server state after validation."""
         snapshot = self._validate_archipelago_server_state(result.slot_data)
-        previous_ap = deepcopy(self._configured_archipelago_state() or {})
         slot_manifest = result.slot_data['run_manifest']
+        cached_state = getattr(self, '_archipelago_cached_state', None)
+        cached_ap = (
+            cached_state.get('archipelago', {})
+            if isinstance(cached_state, dict) else {}
+        )
+        previous_ap = deepcopy(
+            cached_ap
+            if isinstance(cached_ap, dict)
+            and cached_ap.get('manifest_checksum')
+            == slot_manifest.get('manifest_checksum')
+            else self._configured_archipelago_state() or {}
+        )
+        if (
+            previous_ap.get('manifest_checksum')
+            != slot_manifest.get('manifest_checksum')
+        ):
+            previous_ap = {}
         previous_ap.update({
             'activation': 'active',
             'enabled': True,
@@ -551,11 +694,31 @@ class ArchipelagoController(ArchipelagoYamlController):
             'server': result.endpoint,
             'slot_name': active_session.config.slot_name,
             'checkpoint': active_session.checkpoint(),
+            'players': deepcopy(result.slot_info),
         })
+        if isinstance(self._archipelago_standalone_state, dict) and isinstance(
+            self._archipelago_standalone_config, dict
+        ) and self._archipelago_standalone_config:
+            previous_ap['standalone_state'] = deepcopy(
+                self._archipelago_standalone_state
+            )
+            previous_ap['standalone_config'] = deepcopy(
+                self._archipelago_standalone_config
+            )
+        previous_ap.setdefault('location_info', {})
         self.state = deepcopy(snapshot)
         self.state['archipelago'] = previous_ap
         self._archipelago_slot_data = deepcopy(result.slot_data)
         self._archipelago_item_names = dict(item_names)
+        self._archipelago_players = {
+            int(slot): deepcopy(info)
+            for slot, info in result.slot_info.items()
+        }
+        self._archipelago_location_info = {
+            int(location): deepcopy(info)
+            for location, info in previous_ap.get('location_info', {}).items()
+            if isinstance(info, dict)
+        }
         self._archipelago_server_checked_locations = set()
         self._apply_archipelago_server_locations(
             result.checked_locations,
@@ -632,6 +795,98 @@ class ArchipelagoController(ArchipelagoYamlController):
         self.redraw_mission_tree()
         self.refresh_progress_view()
 
+    @staticmethod
+    def _archipelago_receipt_value(receipt, key, default=None):
+        if isinstance(receipt, dict):
+            return receipt.get(key, default)
+        return getattr(receipt, key, default)
+
+    @staticmethod
+    def _archipelago_metadata_fields(value):
+        fields = {}
+        for key in (
+            'item_name', 'from_player', 'from_game', 'recipient_player',
+            'recipient_game', 'location_name',
+        ):
+            text = str(value.get(key) or '').strip()
+            if text:
+                fields[key] = text
+        return fields
+
+    def _merge_archipelago_received_metadata(self, values):
+        ap_state = self._active_archipelago_state()
+        if ap_state is None or not isinstance(values, (list, tuple)):
+            return False
+        incoming = {}
+        for value in values:
+            if not isinstance(value, dict):
+                continue
+            try:
+                incoming[int(value['index'])] = self._archipelago_metadata_fields(
+                    value
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+        changed = False
+        for record in ap_state.get('received_rewards', []):
+            if not isinstance(record, dict):
+                continue
+            metadata = incoming.get(int(record.get('index', -1)))
+            if not metadata:
+                continue
+            for key, value in metadata.items():
+                if record.get(key) != value:
+                    record[key] = value
+                    changed = True
+        return changed
+
+    def _store_archipelago_location_info(self, values):
+        ap_state = self._active_archipelago_state()
+        if ap_state is None or not isinstance(values, (list, tuple)):
+            return False
+        saved = ap_state.setdefault('location_info', {})
+        changed = False
+        for value in values:
+            if not isinstance(value, dict):
+                continue
+            try:
+                record = {
+                    key: int(value[key])
+                    for key in ('item', 'location', 'player', 'flags')
+                }
+            except (KeyError, TypeError, ValueError):
+                continue
+            record.update(self._archipelago_metadata_fields(value))
+            location = record['location']
+            if location <= 0:
+                continue
+            if self._archipelago_location_info.get(location) != record:
+                self._archipelago_location_info[location] = record
+                saved[str(location)] = deepcopy(record)
+                changed = True
+        return changed
+
+    def archipelago_check_item_details(self, code, check_id):
+        """Return server-scouted placements for one completed AP check."""
+        ap_state = self._active_archipelago_state()
+        if ap_state is None:
+            return None
+        if not self._archipelago_location_info:
+            for location, value in ap_state.get('location_info', {}).items():
+                if not isinstance(value, dict):
+                    continue
+                try:
+                    self._archipelago_location_info[int(location)] = deepcopy(
+                        value
+                    )
+                except (TypeError, ValueError):
+                    continue
+        return tuple(
+            deepcopy(self._archipelago_location_info.get(location))
+            for location in self._archipelago_location_ids(code, check_id)
+            if isinstance(self._archipelago_location_info.get(location), dict)
+        )
+
     def _archipelago_reward_name(self, item_id):
         item_names = getattr(self, '_archipelago_item_names', {})
         if not item_names:
@@ -687,13 +942,27 @@ class ArchipelagoController(ArchipelagoYamlController):
             return None
         return tuple(
             (
-                'Archipelago item '
-                f'#{int(record["index"])} from slot '
-                f'{int(record.get("player", 0))}',
+                self._archipelago_received_source_label(record),
                 canonical_reward({'name': record['reward_name']}),
             )
             for record in records
         )
+
+    @staticmethod
+    def _archipelago_received_source_label(record):
+        player = str(record.get('from_player') or '').strip()
+        if not player:
+            player = f'Player {int(record.get("player", 0))}'
+        game = str(record.get('from_game') or '').strip() or 'game unavailable'
+        location = str(record.get('location_name') or '').strip()
+        if not location:
+            raw_location = int(record.get('location', 0))
+            location = (
+                'Precollected / starting inventory'
+                if raw_location == 0
+                else f'location #{raw_location}'
+            )
+        return f'Found by {player} ({game}) at {location}'
 
     def apply_archipelago_received_items(self, receipts):
         """Persist and acknowledge one network item batch with two saves."""
@@ -728,36 +997,57 @@ class ArchipelagoController(ArchipelagoYamlController):
         }
         incoming_by_index = {}
         new_records = []
+        metadata_updated = False
         for receipt in receipts:
-            reward_name = self._archipelago_reward_name(receipt.item)
+            item_id = int(self._archipelago_receipt_value(receipt, 'item', 0))
+            index = int(self._archipelago_receipt_value(receipt, 'index', -1))
+            reward_name = self._archipelago_reward_name(item_id)
             if not reward_name or reward_name not in REWARD_BY_NAME:
                 self.append_archipelago_history(
-                    f'Item #{receipt.index} cannot be applied: unknown '
-                    f'Mental Omega item ID {receipt.item}.'
+                    f'Item #{index} cannot be applied: unknown '
+                    f'Mental Omega item ID {item_id}.'
                 )
                 log_event(
                     'archipelago_reward_apply_failed',
                     level=logging.ERROR,
-                    index=int(receipt.index),
-                    item_id=int(receipt.item),
+                    index=index,
+                    item_id=item_id,
                     error='unknown item ID',
                 )
                 return ()
             record = {
-                'index': int(receipt.index),
-                'item_id': int(receipt.item),
+                'index': index,
+                'item_id': item_id,
                 'reward_name': reward_name,
-                'location': int(receipt.location),
-                'player': int(receipt.player),
-                'flags': int(receipt.flags),
+                'location': int(self._archipelago_receipt_value(
+                    receipt, 'location', 0
+                )),
+                'player': int(self._archipelago_receipt_value(
+                    receipt, 'player', 0
+                )),
+                'flags': int(self._archipelago_receipt_value(
+                    receipt, 'flags', 0
+                )),
             }
-            index = record['index']
+            if isinstance(receipt, dict):
+                record.update(self._archipelago_metadata_fields(receipt))
+            record['received_at'] = datetime.now().astimezone().isoformat(
+                timespec='seconds'
+            )
             previous_incoming = incoming_by_index.get(index)
             existing = records_by_index.get(index)
+            identity_keys = (
+                'index', 'item_id', 'reward_name', 'location', 'player', 'flags'
+            )
+            identity = tuple(record[key] for key in identity_keys)
             if (
                 previous_incoming is not None
-                and previous_incoming != record
-            ) or (existing is not None and existing != record):
+                and tuple(previous_incoming[key] for key in identity_keys)
+                != identity
+            ) or (
+                existing is not None
+                and tuple(existing.get(key) for key in identity_keys) != identity
+            ):
                 self.append_archipelago_history(
                     f'Item #{index} conflicts with saved reward history.'
                 )
@@ -770,14 +1060,20 @@ class ArchipelagoController(ArchipelagoYamlController):
             incoming_by_index[index] = record
             if existing is None and previous_incoming is None:
                 new_records.append(record)
+            elif existing is not None:
+                for key, value in self._archipelago_metadata_fields(record).items():
+                    if not existing.get(key):
+                        existing[key] = value
+                        metadata_updated = True
 
         acknowledge_indexes = sorted(incoming_by_index)
         if not new_records:
             try:
                 changed = session.acknowledge_received(acknowledge_indexes)
-                if changed:
+                if changed or metadata_updated:
                     ap_state['checkpoint'] = session.checkpoint()
                     self.save_state()
+                if changed:
                     self.append_archipelago_history(
                         'Recovered acknowledgment for '
                         f'{len(acknowledge_indexes)} Archipelago item(s).'
@@ -844,8 +1140,8 @@ class ArchipelagoController(ArchipelagoYamlController):
             record = new_records[0]
             reward = canonical_reward({'name': record['reward_name']})
             message = (
-                f'Applied item #{record["index"]}: '
-                f'{reward_display_name(reward)} from slot {record["player"]}.'
+                f'Applied {reward_display_name(reward)}. '
+                f'{self._archipelago_received_source_label(record)}.'
             )
         else:
             message = (
@@ -1096,10 +1392,109 @@ class ArchipelagoController(ArchipelagoYamlController):
         return self.reconcile_archipelago_checks()
 
     def append_archipelago_history(self, message):
+        """Record internal synchronization detail without polluting AP chat."""
+        log_event('archipelago_internal', detail=str(message).rstrip())
+
+    def configure_archipelago_message_tags(self):
         widget = getattr(self, 'archipelago_history_text', None)
         if widget is None:
             return
+        dark = bool(self.dark_mode_var.get())
+        normal = self.ui_palette()['foreground']
+        colors = {
+            'ap_text': normal,
+            'ap_game': '#70c7ff' if dark else '#176a9c',
+            'ap_location': '#6ee7a8' if dark else '#087a48',
+            'ap_item_progression': '#c3afff' if dark else '#6548b8',
+            'ap_item_useful': '#9fb6ff' if dark else '#315fa8',
+            'ap_item_filler': '#68dce8' if dark else '#087a86',
+            'ap_item_trap': '#ff8a80' if dark else '#b3261e',
+        }
+        for tag, foreground in colors.items():
+            widget.tag_configure(tag, foreground=foreground)
+
+    def _archipelago_player_tag(self, slot):
+        dark_colors = (
+            '#ee66ee', '#ffd166', '#66ccff', '#ff8a80',
+            '#7fe39c', '#c9a7ff', '#ffad66', '#78e6d0',
+        )
+        light_colors = (
+            '#9c168f', '#8a5a00', '#176a9c', '#b3261e',
+            '#087a48', '#6548b8', '#a64b00', '#08766c',
+        )
+        try:
+            slot = int(slot)
+        except (TypeError, ValueError):
+            slot = 0
+        colors = dark_colors if self.dark_mode_var.get() else light_colors
+        tag = f'ap_player_{slot % len(colors)}'
+        self.archipelago_history_text.tag_configure(
+            tag, foreground=colors[slot % len(colors)]
+        )
+        return tag
+
+    def _archipelago_message_tag(self, segment):
+        role = str(segment.get('role') or 'text')
+        if role == 'player':
+            return self._archipelago_player_tag(segment.get('slot', 0))
+        if role == 'game':
+            return 'ap_game'
+        if role == 'location':
+            return 'ap_location'
+        if role == 'item':
+            flags = int(segment.get('flags') or 0)
+            return (
+                'ap_item_progression' if flags & 1
+                else 'ap_item_useful' if flags & 2
+                else 'ap_item_trap' if flags & 4
+                else 'ap_item_filler'
+            )
+        server_color = str(segment.get('color') or '').casefold()
+        server_colors = {
+            'red': '#ff7b72' if self.dark_mode_var.get() else '#b3261e',
+            'green': '#6ee7a8' if self.dark_mode_var.get() else '#087a48',
+            'blue': '#70c7ff' if self.dark_mode_var.get() else '#176a9c',
+            'cyan': '#68dce8' if self.dark_mode_var.get() else '#087a86',
+            'magenta': '#ee66ee' if self.dark_mode_var.get() else '#9c168f',
+            'yellow': '#ffd166' if self.dark_mode_var.get() else '#8a5a00',
+            'plum': '#c3afff' if self.dark_mode_var.get() else '#6548b8',
+            'salmon': '#ff8a80' if self.dark_mode_var.get() else '#b3261e',
+            'slateblue': '#9fb6ff' if self.dark_mode_var.get() else '#315fa8',
+        }
+        if server_color in server_colors:
+            tag = f'ap_server_{server_color}'
+            self.archipelago_history_text.tag_configure(
+                tag, foreground=server_colors[server_color]
+            )
+            return tag
+        return 'ap_text'
+
+    def append_archipelago_server_message(self, message):
+        """Render one clean AP chat/activity line with semantic colors."""
+        widget = getattr(self, 'archipelago_history_text', None)
+        if widget is None:
+            return
+        segments = (
+            message
+            if isinstance(message, (list, tuple))
+            else ({'text': str(message), 'role': 'text'},)
+        )
+        cleaned = []
+        for segment in segments:
+            if not isinstance(segment, dict):
+                continue
+            text = ''.join(
+                ' ' if character in '\r\n\t' else character
+                for character in str(segment.get('text', ''))
+                if ord(character) >= 32 or character in '\r\n\t'
+            )
+            if text:
+                cleaned.append((text, self._archipelago_message_tag(segment)))
+        if not cleaned:
+            return
         widget.configure(state='normal')
-        widget.insert('end', str(message).rstrip() + '\n')
+        for text, tag in cleaned:
+            widget.insert('end', text, tag)
+        widget.insert('end', '\n', 'ap_text')
         widget.see('end')
         widget.configure(state='disabled')

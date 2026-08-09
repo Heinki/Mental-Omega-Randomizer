@@ -104,36 +104,18 @@ def build_archipelago_tab(self, workspace_tabs):
 
     yaml_frame = ttk.LabelFrame(
         tab,
-        text='Player YAML & Active Run',
+        text='Player YAML Export',
         padding=(10, 8, 10, 8),
     )
     yaml_frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
     yaml_frame.columnconfigure(0, weight=1)
-    yaml_frame.columnconfigure(1, weight=1)
-    yaml_frame.columnconfigure(2, weight=1)
-    self.archipelago_generate_yaml_button = ttk.Button(
-        yaml_frame,
-        text='Generate YAML',
-        command=self.generate_archipelago_yaml,
-    )
-    self.archipelago_generate_yaml_button.grid(
-        row=0, column=0, sticky='ew', padx=(0, 4)
-    )
     self.archipelago_save_yaml_button = ttk.Button(
         yaml_frame,
-        text='Save YAML',
+        text='Save Player YAML',
         command=self.save_archipelago_yaml,
     )
     self.archipelago_save_yaml_button.grid(
-        row=0, column=1, sticky='ew', padx=4
-    )
-    self.archipelago_load_yaml_button = ttk.Button(
-        yaml_frame,
-        text='Load YAML',
-        command=self.load_archipelago_yaml,
-    )
-    self.archipelago_load_yaml_button.grid(
-        row=0, column=2, sticky='ew', padx=(4, 0)
+        row=0, column=0, sticky='ew'
     )
     ttk.Label(
         yaml_frame,
@@ -141,11 +123,11 @@ def build_archipelago_tab(self, workspace_tabs):
         style='Muted.TLabel',
         wraplength=820,
         justify='left',
-    ).grid(row=1, column=0, columnspan=3, sticky='ew', pady=(7, 0))
+    ).grid(row=1, column=0, sticky='ew', pady=(7, 0))
 
     history_frame = ttk.LabelFrame(
         tab,
-        text='Connection & Synchronization Log',
+        text='Archipelago Activity',
         padding=(8, 8, 8, 8),
     )
     history_frame.grid(row=3, column=0, sticky='nsew')
@@ -159,6 +141,7 @@ def build_archipelago_tab(self, workspace_tabs):
         font=('Segoe UI', 9),
     )
     self.archipelago_history_text.grid(row=0, column=0, sticky='nsew')
+    self.configure_archipelago_message_tags()
 
     chat_row = ttk.Frame(history_frame)
     chat_row.grid(row=1, column=0, sticky='ew', pady=(8, 0))

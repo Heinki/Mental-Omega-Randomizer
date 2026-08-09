@@ -1,6 +1,6 @@
 """Bounded Archipelago 0.6.7 handshake used by client smoke and UI layers."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
 import time
@@ -41,6 +41,7 @@ class HandshakeResult:
     checked_locations: tuple[int, ...]
     missing_locations: tuple[int, ...]
     slot_data: dict[str, Any]
+    slot_info: dict[int, dict[str, Any]] = field(default_factory=dict)
 
 
 def normalize_server_uri(value):
@@ -293,6 +294,29 @@ def _location_ids(command, key):
     return tuple(values)
 
 
+def _slot_info(value):
+    if not isinstance(value, Mapping):
+        return {}
+    result = {}
+    for raw_slot, raw_info in value.items():
+        if not isinstance(raw_info, Mapping):
+            continue
+        try:
+            slot = int(raw_slot)
+        except (TypeError, ValueError):
+            continue
+        name = str(raw_info.get('name') or '').strip()
+        game = str(raw_info.get('game') or '').strip()
+        if slot < 0 or not name:
+            continue
+        result[slot] = {
+            'name': name,
+            'game': game,
+            'type': int(raw_info.get('type') or 0),
+        }
+    return result
+
+
 def connect_slot(server, slot_name, password='', client_uuid='mental-omega', timeout=10.0):
     """Connect, authenticate, validate slot data, then close and return identity."""
     try:
@@ -353,6 +377,7 @@ def connect_slot(server, slot_name, password='', client_uuid='mental-omega', tim
                             slot_data=validate_slot_data(
                                 command.get('slot_data')
                             ),
+                            slot_info=_slot_info(command.get('slot_info')),
                         )
     except ArchipelagoHandshakeError:
         raise

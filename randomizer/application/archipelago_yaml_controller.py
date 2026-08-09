@@ -1,9 +1,9 @@
-"""Archipelago player-YAML lifecycle for the launcher UI."""
+"""Archipelago player-YAML export and active-run identity."""
 
 from copy import deepcopy
 from pathlib import Path
 
-from ._dependencies import filedialog, messagebox, save_config
+from ._dependencies import filedialog, save_config
 
 
 class ArchipelagoYamlController:
@@ -37,37 +37,17 @@ class ArchipelagoYamlController:
         self.grid_render_signature = None
         self.redraw_mission_tree()
 
-    def _validated_active_archipelago_manifest(self, require_state=True):
-        ap_state = self._configured_archipelago_state()
-        if ap_state is None:
-            raise ValueError(
-                'Generate or load an Archipelago YAML for the active run first.'
-            )
-        manifest = ap_state.get('run_manifest')
-        from Archipelago.run_manifest import (
-            validate_run_manifest_checksum,
-            validate_run_manifest_for_state,
-        )
-        if require_state:
-            validate_run_manifest_for_state(self.state, manifest)
-        else:
-            validate_run_manifest_checksum(manifest)
-        if ap_state.get('manifest_checksum') != manifest.get('manifest_checksum'):
-            raise ValueError('Saved Archipelago manifest identity is inconsistent.')
-        return manifest
-
     def refresh_archipelago_yaml_status(self):
         ap_state = self._configured_archipelago_state()
         if ap_state is None or not ap_state.get('manifest_checksum'):
             return
+        manifest = ap_state.get('run_manifest') or {}
         checksum = str(ap_state['manifest_checksum'])
-        seed = self.state.get('seed', '')
+        seed = str(manifest.get('randomizer_seed') or '')
         slot = ap_state.get('slot_name', 'Commander')
         mode = str(
             (ap_state.get('slot_data') or {}).get('progression_mode')
-            or (ap_state.get('run_manifest') or {}).get(
-                'progression_mode', ''
-            )
+            or manifest.get('progression_mode', '')
         )
         if ap_state.get('enabled'):
             status = (
@@ -80,13 +60,13 @@ class ArchipelagoYamlController:
                 )
         else:
             status = (
-                f'AP YAML ready: {seed} | {mode} | '
+                f'Player YAML saved: {seed} | {mode} | '
                 f'{checksum[:12]}… | slot {slot}. '
-                'Standalone rewards stay active until connection validates.'
+                'Connect to load the generated run from the server.'
             )
             if self.archipelago_status_var.get().startswith('Disconnected'):
                 self.archipelago_status_var.set(
-                    'Disconnected — standalone rewards active'
+                    'Disconnected — Player YAML ready'
                 )
         self.archipelago_yaml_status_var.set(status)
 
@@ -105,168 +85,102 @@ class ArchipelagoYamlController:
         merged['archipelago'] = saved_archipelago
         self.apply_portable_settings(merged)
 
-    def _activate_archipelago_manifest(self, manifest, slot_name, yaml_text):
-        from Archipelago.run_manifest import validate_run_manifest_for_state
-        validate_run_manifest_for_state(self.state, manifest)
-        checksum = manifest['manifest_checksum']
-        previous = self.state.get('archipelago')
-        same_run = (
-            isinstance(previous, dict)
-            and previous.get('manifest_checksum') == checksum
-        )
-        keep_active = bool(same_run and previous.get('enabled'))
-        ap_state = {
-            'activation': 'active' if keep_active else 'staged',
-            'enabled': keep_active,
-            'manifest_checksum': checksum,
+    def _current_standalone_state_snapshot(self):
+        """Return local progress without embedding AP runtime state."""
+        existing_ap = self._configured_archipelago_state() or {}
+        saved_state = existing_ap.get('standalone_state')
+        if isinstance(saved_state, dict) and not saved_state:
+            # Saving AP YAML with no existing local seed temporarily presents
+            # the generated run. Disconnect must return to the original empty
+            # standalone state, not that generated AP preview.
+            return {}
+        standalone_state = deepcopy(self.state)
+        standalone_state.pop('archipelago', None)
+        return standalone_state
+
+    def _stage_archipelago_manifest(
+        self, manifest, slot_name, yaml_text, generated_state
+    ):
+        """Remember exported identity; server state remains authoritative."""
+        standalone_state = self._current_standalone_state_snapshot()
+        standalone_config = deepcopy(self.config)
+        if not self.state:
+            self.state = deepcopy(generated_state)
+        self.state['archipelago'] = {
+            'activation': 'staged',
+            'enabled': False,
+            'manifest_checksum': manifest['manifest_checksum'],
             'run_manifest': deepcopy(manifest),
             'slot_name': slot_name,
+            'standalone_state': standalone_state,
+            'standalone_config': standalone_config,
         }
-        if same_run:
-            for key in (
-                'server', 'checkpoint', 'received_rewards', 'slot_data'
-            ):
-                if key in previous:
-                    ap_state[key] = deepcopy(previous[key])
-        self.state['archipelago'] = ap_state
+        self._archipelago_standalone_state = deepcopy(standalone_state)
+        self._archipelago_standalone_config = deepcopy(standalone_config)
         self.archipelago_slot_var.set(slot_name)
         ap_config = self.config.setdefault('archipelago', {})
-        ap_config['enabled'] = keep_active
+        ap_config['enabled'] = False
         ap_config['slot_name'] = slot_name
         self._archipelago_yaml_text = yaml_text
-        self._apply_manifest_launcher_settings(manifest)
-        self.state['earned_rewards'] = self.earned_rewards_from_checks()
         self.save_state()
         save_config(self.config)
         self.refresh_archipelago_yaml_status()
-        self.update_header_summary()
-        self.redraw_mission_tree()
-        self.refresh_progress_view()
-
-    def generate_archipelago_yaml(self):
-        if self.gameplay_settings_locked():
-            return None
-        if not self.state:
-            self.append_archipelago_history(
-                'Generate a Randomizer seed before generating player YAML.'
-            )
-            return None
-        try:
-            from Archipelago.run_manifest import build_run_manifest
-            from Archipelago.yaml_config import serialize_player_yaml
-            self.save_current_launcher_config()
-            manifest = build_run_manifest(self.state, self.config)
-            slot_name = self.archipelago_slot_var.get().strip() or 'Commander'
-            yaml_text = serialize_player_yaml(manifest, slot_name)
-            self._activate_archipelago_manifest(
-                manifest, slot_name, yaml_text
-            )
-        except Exception as exc:
-            self.append_archipelago_history(f'YAML generation failed: {exc}')
-            return None
-        self.append_archipelago_history(
-            'Generated Archipelago YAML. Standalone rewards remain active '
-            'until the server connection validates.'
-            if not self.archipelago_run_active()
-            else 'Regenerated YAML for the active Archipelago run.'
-        )
-        return yaml_text
 
     def save_archipelago_yaml(self):
-        yaml_text = self._archipelago_yaml_text
-        if not yaml_text:
-            try:
-                from Archipelago.yaml_config import serialize_player_yaml
-                manifest = self._validated_active_archipelago_manifest()
-                slot_name = self.archipelago_slot_var.get().strip() or 'Commander'
-                yaml_text = serialize_player_yaml(manifest, slot_name)
-                self._archipelago_yaml_text = yaml_text
-            except Exception:
-                yaml_text = ''
-        if not yaml_text:
-            yaml_text = self.generate_archipelago_yaml()
-        if not yaml_text:
+        """Export one AP player file from the exact visible launcher controls."""
+        if self.gameplay_settings_locked():
             return
+        slot_name = self.archipelago_slot_var.get().strip() or 'Commander'
+        options = self.seed_generation_options_from_settings()
+        if options is None:
+            return
+
+        self.config.setdefault('archipelago', {})['slot_name'] = slot_name
+        self.save_current_launcher_config()
+        launcher_config = deepcopy(self.config)
         path = filedialog.asksaveasfilename(
             parent=self,
             title='Save Archipelago Player YAML',
             defaultextension='.yaml',
-            initialfile=(
-                f'{self.archipelago_slot_var.get().strip() or "Commander"}.yaml'
-            ),
+            initialfile=f'{slot_name}.yaml',
             filetypes=(
                 ('Archipelago player YAML', '*.yaml'),
                 ('All files', '*.*'),
             ),
         )
         if not path:
+            self.clear_seed_generation_overrides()
             return
-        try:
-            from randomizer.core.storage import atomic_write_text
-            atomic_write_text(Path(path), yaml_text)
-        except Exception as exc:
-            self.append_archipelago_history(f'YAML save failed: {exc}')
-            return
-        self.append_archipelago_history(f'Saved Archipelago YAML: {path}')
 
-    def load_archipelago_yaml(self):
-        if self.gameplay_settings_locked():
-            return
-        path = filedialog.askopenfilename(
-            parent=self,
-            title='Load Archipelago Player YAML',
-            filetypes=(
-                ('Archipelago player YAML', '*.yaml *.yml'),
-                ('All files', '*.*'),
+        self.run_in_background(
+            'Saving Archipelago Player YAML...',
+            'Building the AP run from the current launcher settings.',
+            lambda: self.build_seed_generation(options),
+            lambda result: self._finish_archipelago_yaml_save(
+                result, Path(path), slot_name, launcher_config
             ),
+            self._handle_archipelago_yaml_save_error,
         )
-        if not path:
-            return
-        try:
-            from Archipelago.yaml_config import parse_player_yaml
-            yaml_text = Path(path).read_text(encoding='utf-8-sig')
-            document = parse_player_yaml(yaml_text)
-            manifest = document['run_manifest']
-            frozen = manifest.get('frozen_settings', {})
-            expected_settings = (
-                frozen.get('launcher') if isinstance(frozen, dict) else None
-            )
-            edited_settings = document['launcher_settings']
-            if not isinstance(expected_settings, dict) or not expected_settings:
-                raise ValueError('Run manifest has no launcher settings.')
-            if edited_settings != expected_settings:
-                self._import_edited_archipelago_settings(
-                    edited_settings, document['name']
-                )
-                return
-            self._activate_archipelago_manifest(
-                manifest, document['name'], yaml_text
-            )
-        except Exception as exc:
-            self.append_archipelago_history(f'YAML load failed: {exc}')
-            return
-        self.append_archipelago_history(f'Loaded Archipelago YAML: {path}')
 
-    def _import_edited_archipelago_settings(self, settings, slot_name):
-        self._apply_archipelago_launcher_settings(settings)
-        self.archipelago_slot_var.set(slot_name)
-        self.config.setdefault('archipelago', {})['slot_name'] = slot_name
-        save_config(self.config)
-        self._archipelago_yaml_text = ''
-        self.archipelago_yaml_status_var.set(
-            'Edited YAML settings loaded. Generate New Seed, then '
-            'Generate YAML again.'
-        )
-        self.append_archipelago_history(
-            'Imported edited YAML settings for the next seed. '
-            'Generate New Seed, then regenerate/save the player YAML '
-            'before Archipelago generation.'
-        )
-        self.workspace_tabs.select(self.settings_tab)
-        messagebox.showinfo(
-            'Archipelago Settings Imported',
-            'The readable YAML settings were changed and are now '
-            'loaded into the launcher.\n\nGenerate New Seed, then '
-            'return to Archipelago and Generate/Save YAML again.',
-            parent=self,
-        )
+    def _finish_archipelago_yaml_save(
+        self, result, path, slot_name, launcher_config
+    ):
+        try:
+            from Archipelago.run_manifest import build_run_manifest
+            from Archipelago.yaml_config import serialize_player_yaml
+            from randomizer.core.storage import atomic_write_text
+
+            manifest = build_run_manifest(result['state'], launcher_config)
+            yaml_text = serialize_player_yaml(manifest, slot_name)
+            atomic_write_text(path, yaml_text)
+            self._stage_archipelago_manifest(
+                manifest, slot_name, yaml_text, result['state']
+            )
+        finally:
+            self.clear_seed_generation_overrides()
+        self.append_archipelago_history(f'Saved Player YAML: {path}')
+
+    def _handle_archipelago_yaml_save_error(self, exc, detail):
+        self.clear_seed_generation_overrides()
+        self.append_archipelago_history(f'Player YAML save failed: {exc}')
+        self.handle_seed_generation_error(exc, detail)

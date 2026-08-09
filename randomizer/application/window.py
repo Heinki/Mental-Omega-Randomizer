@@ -194,6 +194,8 @@ class WindowController:
             self.redraw_grid()
         self.unlock_dashboard_signature = None
         self.refresh_progress_view()
+        if hasattr(self, 'archipelago_history_text'):
+            self.configure_archipelago_message_tags()
 
     def on_hide_reward_details_changed(self):
         self.save_ui_preferences()
