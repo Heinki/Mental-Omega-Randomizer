@@ -2,7 +2,7 @@
 
 1. Close Archipelago tools and copy this `.apworld` into Archipelago 0.6.7's
    `custom_worlds` folder.
-2. Put Mental Omega Randomizer 1.24 in a separate, unmodified Mental Omega
+2. Put Mental Omega Randomizer 1.25 in a separate, unmodified Mental Omega
    3.3.6 game root.
 3. Choose the desired launcher settings. In its **Archipelago** tab, set the
    slot name, then choose **Save Player YAML**. No separate local seed or YAML
@@ -20,7 +20,7 @@ mission availability, checked objectives, completion, progression, and unlocks
 come from server state. Objective and victory checks synchronize automatically;
 received items use the existing reward pipeline.
 
-Saving YAML only prepares AP setup; standalone Unlocks remain
-visible until a server connection validates. After validation, AP rewards stay
-active through disconnects for offline safety and reconnection. Generate a new
-seed to return to standalone mode.
+Saving YAML only prepares AP setup; standalone Unlocks remain visible until a
+server connection validates. After validation, AP state/settings and every
+affected launcher view come from the server. Disconnect restores the exact
+standalone state/settings and refreshes those views; reconnect loads AP again.

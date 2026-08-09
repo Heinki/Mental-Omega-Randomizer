@@ -122,6 +122,20 @@ python launcher_gui.py --self-check
 git diff --check
 ```
 
+Packaging:
+
+```powershell
+# Build the game-root EXE and tracked Archipelago/mental_omega.apworld.
+.\build_all.ps1
+
+# Focused builds remain available.
+.\build_exe.ps1
+.\Archipelago\build_apworld.ps1
+
+# Full publishable bundle with manifest, setup guide, and checksums.
+.\build_archipelago_release.ps1
+```
+
 Ownership, clone, AI, power, Action, or mission-map changes require all 97
 extracted maps. Determinism refactors require exact old/new plan parity, not
 distribution-only checks.

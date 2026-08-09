@@ -131,8 +131,9 @@ implemented in the APWorld.
 - The Archipelago tab has one **Save Player YAML** action. It never reuses a
   cached manifest or old local run and has no launcher-side YAML load step.
   Export stages only the manifest identity; only a fully validated `Connected`
-  event loads server state and promotes it to AP reward sourcing. Validated AP
-  mode persists through disconnect/reconnect; generating a new seed clears it.
+  event loads server state and promotes it to AP reward sourcing. Disconnect
+  restores the latest standalone state/settings; reconnect loads the current
+  AP server state again.
 - Hosted-room server input defaults and migrates to bare `archipelago.gg`.
   Users copy only the room page's game-server port; browser room URLs are not
   WebSocket endpoints. Custom and localhost hosts remain supported.
@@ -142,9 +143,9 @@ implemented in the APWorld.
   states. Disabled controls keep the normal active palette in light and dark
   modes; labels are never disabled. Display/privacy and synchronization-log
   controls remain editable.
-- Connection authentication compares the server's full manifest checksum to
-  the selected YAML before tracking begins. Mutable mission state is projected
-  from server checked-location packets and refreshed after every server update.
+- Connection authentication validates the server's full manifest and catalogue
+  checksums before tracking begins. Mutable mission state is projected from
+  server checked-location packets and refreshed after every server update.
 
 ## APWorld packaging
 
@@ -166,6 +167,12 @@ setup guide, writes a machine-readable version/hash manifest, and writes
 `SHA256SUMS.txt`. The tagged-release workflow publishes all five artifacts;
 the player YAML is necessarily generated per run and is not a static release
 file.
+
+For normal local packaging, run repository-root `build_all.ps1`. It delegates
+to the unchanged focused EXE/APWorld scripts, writes the launcher to the game
+root, rebuilds this tracked `.apworld`, and verifies their version contract.
+Use `build_archipelago_release.ps1` when the setup guide, release manifest, and
+checksums are also required.
 
 ## Full APWorld catalogue and manifest
 

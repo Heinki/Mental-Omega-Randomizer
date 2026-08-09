@@ -2,7 +2,7 @@
 
 ## Required versions
 
-- Mental Omega Randomizer Launcher 1.24
+- Mental Omega Randomizer Launcher 1.25
 - Mental Omega 3.3.6 in a separate, unmodified installation
 - Archipelago 0.6.7
 - `mental_omega.apworld` from the same Randomizer release as the launcher
@@ -36,13 +36,13 @@ choose **Save Player YAML** again. Never edit `run_manifest`; it is generated
 checksum-protected run data. Archipelago generation rejects readable settings
 that no longer match that manifest, preventing silent configuration drift.
 
-The launcher refuses a server slot from another seed, configuration, or
-reward/mission catalogue. Saving YAML only stages AP setup, so
-the existing standalone reward plan and Unlocks UI remain active until the
-server connection validates. A validated connection switches the run and UI
-to AP rewards. While connected, all gameplay-affecting settings are read-only.
-Disconnecting restores editing but keeps that validated AP run active for safe
-offline play and reconnection. **Generate New Seed** returns to standalone.
+The launcher refuses incompatible server state or reward/mission catalogues.
+Saving YAML only stages AP setup, so the existing standalone reward plan and
+Unlocks UI remain active until the server connection validates. A validated
+connection switches state, settings, missions, Grid progress, and Unlocks to
+the server-owned AP run. While connected, all gameplay-affecting settings are
+read-only. Disconnecting restores the exact standalone state/settings and
+refreshes every affected view; reconnecting loads the AP server state again.
 
 Every participant generating or hosting the room needs the APWorld installed.
 Only the Mental Omega player needs the game and Randomizer launcher.

@@ -14,15 +14,11 @@ $checksumsPath = Join-Path $outputPath "SHA256SUMS.txt"
 
 New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 
-& (Join-Path $PSScriptRoot "build_exe.ps1") -Output $launcherPath
+& (Join-Path $PSScriptRoot "build_all.ps1") `
+    -LauncherOutput $launcherPath `
+    -APWorldOutputDirectory $outputPath | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    throw "Launcher build failed with exit code $LASTEXITCODE."
-}
-
-& (Join-Path $PSScriptRoot "Archipelago\build_apworld.ps1") `
-    -OutputDirectory $outputPath | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "APWorld build failed with exit code $LASTEXITCODE."
+    throw "Combined launcher/APWorld build failed with exit code $LASTEXITCODE."
 }
 
 Copy-Item -LiteralPath (

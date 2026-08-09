@@ -116,6 +116,17 @@ Build the packaged launcher from the Mental Omega folder with:
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
 
+Build both current local artifacts in one command with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_all.ps1
+```
+
+This writes `MentalOmegaRandomizer.exe` to the Mental Omega game root and
+rebuilds the tracked `RandomizerLauncher\Archipelago\mental_omega.apworld`.
+The individual `build_exe.ps1` and `Archipelago\build_apworld.ps1` scripts
+remain available for focused packaging work.
+
 Build the complete Archipelago release artifact set with:
 
 ```powershell
@@ -158,6 +169,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `configs/` | Editable static policy/templates plus ignored `player/` runtime YAML |
 | `tools/` | Maintainer-only data generation |
 | `build_exe.ps1` | PyInstaller build workflow |
+| `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
 Every Python module stays below 1,000 lines. Public facades such as

@@ -8,6 +8,7 @@ from hashlib import sha256
 import json
 
 from Archipelago.catalogue_contract import runtime_catalogue_checksum
+from randomizer.core.version import APP_VERSION
 from randomizer.progression.grid import grid_opening_mission_codes
 from randomizer.rewards.catalogue import REWARD_BY_NAME
 from randomizer.rewards.display import canonical_reward
@@ -290,7 +291,7 @@ def build_run_manifest(state, launcher_config=None):
     progression_mode = str(state.get("progression_mode") or "Classic")
     manifest = {
         "schema_version": MANIFEST_SCHEMA_VERSION,
-        "randomizer_version": "1.24",
+        "randomizer_version": APP_VERSION,
         "randomizer_seed": str(state.get("seed") or ""),
         "catalogue_checksum": runtime_catalogue_checksum(),
         "campaign_filter": str(state.get("campaign_filter") or ""),

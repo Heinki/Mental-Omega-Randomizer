@@ -7,10 +7,12 @@ import time
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
+from randomizer.core.version import APP_VERSION
+
 
 GAME_NAME = 'Mental Omega'
 SUPPORTED_SLOT_DATA_VERSION = 4
-SUPPORTED_RANDOMIZER_VERSION = '1.24'
+SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
 CLIENT_VERSION = (0, 6, 7)
 ITEMS_HANDLING_ALL = 0b111
 DEFAULT_PORT = 38281
