@@ -380,9 +380,19 @@ class UnlockViewController:
                             'Archipelago locations remain pending.'
                         )
                     else:
+                        reward_note = (
+                            'releases every pending seed reward, unlocks the '
+                            'complete configured arsenal, and '
+                            if self.state.get(
+                                'unlock_all_rewards_after_final_grid_mission',
+                                False,
+                            )
+                            else 'keeps unfinished rewards pending, and '
+                        )
                         lines.append(
-                            'Completing this endgoal records Randomizer victory, releases every '
-                            'pending reward, and unlocks every unfinished grid mission.'
+                            'Completing this endgoal records Randomizer victory, '
+                            + reward_note
+                            + 'unlocks every unfinished grid mission.'
                         )
                 elif unlocks:
                     if self.hide_locked_grid_missions_var.get():

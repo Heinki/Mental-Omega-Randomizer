@@ -136,6 +136,7 @@ class LauncherApp(
         self._archipelago_session = None
         self._archipelago_slot_data = {}
         self._archipelago_item_names = {}
+        self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self._archipelago_last_status = None
         self._archipelago_session_validated = False
@@ -294,6 +295,12 @@ class LauncherApp(
             value=bool(grid_state.get(
                 'two_start_positions',
                 self.config.get('grid_two_start_positions', False),
+            ))
+        )
+        self.unlock_all_grid_rewards_var = tk.BooleanVar(
+            value=bool(self.state.get(
+                'unlock_all_rewards_after_final_grid_mission',
+                self.config.get('unlock_all_rewards_after_final_grid_mission', False),
             ))
         )
         self.include_no_build_missions_var = tk.BooleanVar(

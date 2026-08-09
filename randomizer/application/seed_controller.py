@@ -75,6 +75,7 @@ class SeedController:
         rewards_on_victory_only = bool(
             self.rewards_on_victory_only_var.get()
         )
+        unlock_all_grid_rewards = bool(self.unlock_all_grid_rewards_var.get())
         reward_settings = self.current_reward_settings()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         if arsenal_mode:
@@ -182,6 +183,7 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'unlock_all_grid_rewards': unlock_all_grid_rewards,
             'reward_settings': reward_settings,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
@@ -217,6 +219,7 @@ class SeedController:
         mission_goal = options['mission_goal']
         rewards_per_check = options['rewards_per_check']
         rewards_on_victory_only = options['rewards_on_victory_only']
+        unlock_all_grid_rewards = options['unlock_all_grid_rewards']
         reward_settings = options['reward_settings']
         starting_defense_ids = options['starting_defense_ids']
         starting_unit_ids = options['starting_unit_ids']
@@ -415,6 +418,7 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'unlock_all_rewards_after_final_grid_mission': unlock_all_grid_rewards,
             'starting_unlocked_missions': min(
                 1 if progression_mode == 'Classic' else STARTING_UNLOCKED_MISSIONS,
                 len(mission_codes),
@@ -455,6 +459,7 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'unlock_all_rewards_after_final_grid_mission': unlock_all_grid_rewards,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'starting_rewards': starting_rewards,
@@ -656,7 +661,11 @@ class SeedController:
                 earned_now.extend(check_rewards(target))
 
         self.sync_grid_progression()
-        if grid_goal_victory and not archipelago_active:
+        if (
+            grid_goal_victory
+            and not archipelago_active
+            and self.state.get('unlock_all_rewards_after_final_grid_mission', False)
+        ):
             released_rewards, released_checks = self.release_remaining_grid_rewards()
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         prior_ai_milestones = {
@@ -779,10 +788,17 @@ class SeedController:
                     f'Archipelago locations remain pending.{unlock_note}'
                 )
             else:
+                reward_note = (
+                    ' All pending seed rewards and the complete configured '
+                    f'arsenal are unlocked ({len(released_rewards)} newly released rewards).'
+                    if self.state.get(
+                        'unlock_all_rewards_after_final_grid_mission', False
+                    )
+                    else ' Rewards on unfinished missions remain pending.'
+                )
                 self.append_log(
                     f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
-                    f'All remaining grid missions are unlocked and all {len(released_rewards)} '
-                    f'pending rewards are released.{unlock_note}'
+                    f'All remaining grid missions are unlocked.{reward_note}{unlock_note}'
                 )
             log_event(
                 'randomizer_victory_achieved',

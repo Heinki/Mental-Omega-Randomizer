@@ -1053,6 +1053,9 @@
       "EHUMAN": [
         "YURI"
       ],
+      "ELAND": [
+        "YACNST"
+      ],
       "EMOON": [
         "YURI"
       ],
@@ -1066,6 +1069,9 @@
       ],
       "SDEATH": [
         "YURI"
+      ],
+      "SEARTH": [
+        "SENGINEER"
       ],
       "SHAND": [
         "ADOG",
@@ -1294,6 +1300,9 @@
       "ESCRAP": [
         "01000073"
       ],
+      "ESANDS": [
+        "01000524"
+      ],
       "FKILL": [
         "01000006",
         "01000007",
@@ -1333,6 +1342,10 @@
       ]
     },
     "victory_hook_action_ids": {
+      "EHEAD": [
+        "ENDING18",
+        "01001255"
+      ],
       "SEXIST": [
         "01000240"
       ]
@@ -1396,6 +1409,19 @@
       }
     },
     "required_access_rules": {
+      "SGGATE": {
+        "SAPC": {
+          "TechLevel": "1",
+          "BuildLimit": null,
+          "Owner": "USSR,Latin,Chinese,MORPLAYER",
+          "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+          "ForbiddenHouses": "none",
+          "Prerequisite": "NAWEAP",
+          "PrerequisiteOverride": null,
+          "Prerequisite.List0": null,
+          "Prerequisite.Lists": null
+        }
+      },
       "EHEAD": {
         "FOX": {
           "TechLevel": "1",

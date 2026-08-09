@@ -108,6 +108,26 @@ class StateController:
         if self.state.get('reward_mode') == 'Chaos (Experimental)':
             self.state['reward_mode'] = 'Chaos'
             changed = True
+        if 'unlock_all_rewards_after_final_grid_mission' not in self.state:
+            # Older Grid builds always released every pending check at the
+            # goal. That behavior was the source of apparent unauthorized
+            # unlocks. Undo only those release flags; completed checks remain
+            # unlocked and retain their legitimate rewards.
+            cleared_releases = 0
+            if self.state.get('progression_mode') == 'Grid Mode':
+                for checks in self.state.get('mission_checks', {}).values():
+                    for check in checks:
+                        if check.get('released') and not check.get('unlocked'):
+                            check.pop('released', None)
+                            cleared_releases += 1
+            self.state['unlock_all_rewards_after_final_grid_mission'] = False
+            changed = True
+            if cleared_releases:
+                log_event(
+                    'legacy_grid_automatic_rewards_revoked',
+                    seed=self.state.get('seed', ''),
+                    cleared_checks=cleared_releases,
+                )
         if 'mission_goal' not in self.state:
             self.state['mission_goal'] = len(self.state.get('mission_order', [])) or DEFAULT_MISSION_GOAL
             changed = True
@@ -236,11 +256,26 @@ class StateController:
                 code: node.get('state')
                 for code, node in self.state['grid'].get('nodes', {}).items()
             }
-            after = refresh_grid_states(self.state['grid'], completed)
+            after = refresh_grid_states(
+                self.state['grid'],
+                completed,
+                unlock_all_after_goal=bool(
+                    self.state.get(
+                        'unlock_all_rewards_after_final_grid_mission', False
+                    )
+                    and not self.archipelago_run_active()
+                ),
+            )
             if after != before:
                 changed = True
             goal_code = self.state['grid'].get('goal')
-            if goal_code in completed and not self.archipelago_run_active():
+            if (
+                goal_code in completed
+                and not self.archipelago_run_active()
+                and self.state.get(
+                    'unlock_all_rewards_after_final_grid_mission', False
+                )
+            ):
                 released_rewards, released_checks = self.release_remaining_grid_rewards()
                 if released_checks:
                     changed = True
@@ -866,6 +901,9 @@ class StateController:
         self.config.pop('grid_width', None)
         self.config.pop('grid_height', None)
         self.config['grid_two_start_positions'] = bool(self.grid_two_starts_var.get())
+        self.config['unlock_all_rewards_after_final_grid_mission'] = bool(
+            self.unlock_all_grid_rewards_var.get()
+        )
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['rewards_on_victory_only'] = bool(
             self.rewards_on_victory_only_var.get()
@@ -1056,6 +1094,9 @@ class StateController:
         ))
         self.grid_two_starts_var.set(bool(
             self.config.get('grid_two_start_positions', False)
+        ))
+        self.unlock_all_grid_rewards_var.set(bool(
+            self.config.get('unlock_all_rewards_after_final_grid_mission', False)
         ))
         self.rewards_per_check_var.set(max(1, min(
             MAX_REWARDS_PER_CHECK,

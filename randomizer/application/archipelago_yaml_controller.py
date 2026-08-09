@@ -37,15 +37,21 @@ class ArchipelagoYamlController:
         self.grid_render_signature = None
         self.redraw_mission_tree()
 
-    def _validated_active_archipelago_manifest(self):
+    def _validated_active_archipelago_manifest(self, require_state=True):
         ap_state = self._configured_archipelago_state()
         if ap_state is None:
             raise ValueError(
                 'Generate or load an Archipelago YAML for the active run first.'
             )
         manifest = ap_state.get('run_manifest')
-        from Archipelago.run_manifest import validate_run_manifest_for_state
-        validate_run_manifest_for_state(self.state, manifest)
+        from Archipelago.run_manifest import (
+            validate_run_manifest_checksum,
+            validate_run_manifest_for_state,
+        )
+        if require_state:
+            validate_run_manifest_for_state(self.state, manifest)
+        else:
+            validate_run_manifest_checksum(manifest)
         if ap_state.get('manifest_checksum') != manifest.get('manifest_checksum'):
             raise ValueError('Saved Archipelago manifest identity is inconsistent.')
         return manifest

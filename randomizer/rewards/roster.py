@@ -37,12 +37,6 @@ MANDATORY_TEMPLATE_OVERRIDES = {
     'CBRIS': {
         'Prerequisite.RequiredTheaters': None,
     },
-    # Use installed CSF key Name:Boomer so this never shares Brute's sidebar
-    # name even when an older editable roster remains authoritative.
-    'BRUTE2': {
-        'Name': 'Boomer Brute',
-        'UIName': 'Name:Boomer',
-    },
     # Old packaged editable roster files are preserved across upgrades. Keep
     # this EMPulse field generator uncloaked even when its visible file predates
     # the reviewed static-template correction.
@@ -50,16 +44,24 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Cloakable.Allowed': 'no',
     },
     'CHRP': {
+        'Image': 'CHRP',
+        'Strength': '950',
+        'Armor': 'prison',
+        'Locomotor': '{4A582741-9839-11d1-B709-00A024DDAFD1}',
+        'MovementZone': 'Normal',
+        'Speed': '4',
+        'Turret': 'yes',
+        'TurretCount': '2',
         'PipScale': 'none',
-        'PassengerTurret': 'no',
-        'Passengers.BySize': None,
-        'Passengers': '0',
+        'PassengerTurret': 'yes',
+        'Passengers.BySize': 'no',
+        'Passengers': '3',
         'NoManualEnter': 'yes',
         'NoManualUnload': 'yes',
         'Survivor.RookiePassengerChance': '0%',
         'Survivor.VeteranPassengerChance': '0%',
         'Survivor.ElitePassengerChance': '0%',
-        'SizeLimit': None,
+        'SizeLimit': '9',
         'EnterTransportSound': None,
         'LeaveTransportSound': None,
     },
@@ -109,6 +111,10 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'OpenTopped': 'yes',
         'NoManualUnload': 'yes',
         'NoManualEnter': 'yes',
+    },
+    'YURIX2': {
+        'AttachEffect.Animation': None,
+        'AttachEffect.Duration': None,
     },
     'STARDUSTB': {
         'Name': 'The Paradox Engine',
@@ -600,10 +606,11 @@ def validate_limited_hero_build_limits():
 
 
 def validate_special_roster_contracts():
-    """Audit Space Commando, Boomer Brute, and Paradox production identity."""
+    """Audit reviewed campaign-only player production identities."""
     from randomizer.rewards.catalogue import (
         BUFF_TARGETS,
         REWARD_POOL,
+        STANDALONE_WEAPON_TEMPLATES,
         UNIT_SIDEBAR_IMAGES,
     )
     from randomizer.rewards.rules import tech_ids_for_rewards
@@ -613,8 +620,8 @@ def validate_special_roster_contracts():
     registrations = {}
     expected_lists = {
         'CBRIS': 'InfantryTypes',
-        'BRUTE2': 'InfantryTypes',
         'STARDUSTB': 'VehicleTypes',
+        'YURIX2': 'InfantryTypes',
     }
     for source_id, list_name in expected_lists.items():
         clone_id = clone_ids.get(source_id)
@@ -664,20 +671,32 @@ def validate_special_roster_contracts():
                 f'{source_id} has {len(matches)} {list_name} registrations'
             )
 
+    boomer_reward_count = sum(
+        1
+        for reward in REWARD_POOL
+        if (
+            str(reward.get('unit', '')).upper() == 'BRUTE2'
+            or 'BRUTE2' in tech_ids_for_rewards([reward])
+        )
+    )
+    boomer_excluded = bool(
+        'BRUTE2' not in clone_ids
+        and 'BRUTE2' not in templates
+        and 'BRUTE2' not in BUFF_TARGETS
+        and boomer_reward_count == 0
+    )
+    if not boomer_excluded:
+        errors.append(
+            'BRUTE2 remains in player roster/rewards '
+            f'(reward_count={boomer_reward_count})'
+        )
+
     commando = templates.get('CBRIS', {})
     _key, theater_gate = _case_insensitive_item(
         commando, 'Prerequisite.RequiredTheaters'
     )
     if str(theater_gate or '').strip().lower() not in {'', 'none', '<none>'}:
         errors.append(f'CBRIS retains theater gate {theater_gate!r}')
-
-    brute = templates.get('BRUTE2', {})
-    _key, brute_name = _case_insensitive_item(brute, 'Name')
-    _key, brute_ui_name = _case_insensitive_item(brute, 'UIName')
-    if str(brute_name) != 'Boomer Brute':
-        errors.append(f'BRUTE2.Name={brute_name!r}')
-    if str(brute_ui_name).lower() != 'name:boomer':
-        errors.append(f'BRUTE2.UIName={brute_ui_name!r}')
 
     paradox = templates.get('STARDUSTB', {})
     paradox_required = {
@@ -728,6 +747,48 @@ def validate_special_roster_contracts():
     if 'STARDUST' in clone_ids:
         errors.append('AI-only STARDUST has a player clone')
 
+    yuri = templates.get('YURIX2', {})
+    yuri_required = {
+        'Name': 'Yuri',
+        'UIName': 'Name:YURIHIMSELF',
+        'Image': 'YURIX',
+        'Strength': '300',
+        'Armor': 'yurix',
+        'Speed': '3',
+        'Primary': 'MORYuriPrimeControl',
+        'Secondary': 'SuperPsiWave',
+        'BuildLimit': '1',
+    }
+    for key, expected in yuri_required.items():
+        _actual_key, actual = _case_insensitive_item(yuri, key)
+        if str(actual or '').lower() != expected.lower():
+            errors.append(f'YURIX2.{key}={actual!r}')
+    yuri_target = BUFF_TARGETS.get('YURIX2', {})
+    if (
+        yuri_target.get('category') != 'infantry'
+        or yuri_target.get('factions') != ['Epsilon']
+        or not yuri_target.get('special_reward')
+        or yuri_target.get('build_limit') != 1
+    ):
+        errors.append(f'YURIX2 target metadata={yuri_target!r}')
+    yuri_cameo = UNIT_SIDEBAR_IMAGES.get('YURIX2', {})
+    if yuri_cameo != {'source_pcx': 'yuriicon.pcx', 'art_id': 'YURIX'}:
+        errors.append(f'YURIX2 cameo mapping={yuri_cameo!r}')
+    for key in ('AttachEffect.Animation', 'AttachEffect.Duration'):
+        _actual_key, actual = _case_insensitive_item(yuri, key)
+        if str(actual or '').strip().lower() not in {'', 'none', '<none>'}:
+            errors.append(f'YURIX2.{key}={actual!r}')
+    yuri_weapon = STANDALONE_WEAPON_TEMPLATES.get(
+        'MORYURIPRIMECONTROL', {}
+    )
+    for key, expected in {
+        'Damage': '1', 'ROF': '10', 'Range': '10',
+        'Projectile': 'PsychicControl', 'Warhead': 'Controller',
+    }.items():
+        _actual_key, actual = _case_insensitive_item(yuri_weapon, key)
+        if str(actual or '').lower() != expected.lower():
+            errors.append(f'MORYuriPrimeControl.{key}={actual!r}')
+
     cameo = UNIT_SIDEBAR_IMAGES.get('STARDUSTB', {})
     if cameo != {
         'image': 'paradox_engine.png',
@@ -751,6 +812,16 @@ def validate_special_roster_contracts():
             errors.append(
                 f'{source_id} has {access_counts[source_id]} access rewards'
             )
+    yuri_access_rewards = [
+        reward
+        for reward in REWARD_POOL
+        if 'YURIX2' in tech_ids_for_rewards([reward])
+    ]
+    if any(
+        {'YURI', 'YURIPR'}.intersection(tech_ids_for_rewards([reward]))
+        for reward in yuri_access_rewards
+    ):
+        errors.append('YURIX2 access also unlocks a normal Yuri identity')
     if any(
         'STARDUST' in tech_ids_for_rewards([reward])
         for reward in REWARD_POOL
@@ -769,10 +840,12 @@ def validate_special_roster_contracts():
         'registrations': registrations,
         'access_counts': access_counts,
         'space_commando_theater_gate_removed': True,
-        'boomer_unique_name': str(brute_name),
+        'boomer_brute_excluded': boomer_excluded,
         'paradox_source_id': 'STARDUSTB',
         'paradox_ai_alias_excluded': True,
         'paradox_cameo': cameo,
+        'special_yuri_source_id': 'YURIX2',
+        'special_yuri_cameo': yuri_cameo,
     }
 
 
@@ -1019,9 +1092,19 @@ def validate_reviewed_vehicle_identity_contracts():
 
     chrp = templates.get('CHRP', {})
     chrp_required = {
+        'Image': 'CHRP',
+        'Strength': '950',
+        'Armor': 'prison',
+        'Locomotor': '{4A582741-9839-11d1-B709-00A024DDAFD1}',
+        'MovementZone': 'Normal',
+        'Speed': '4',
+        'Turret': 'yes',
+        'TurretCount': '2',
         'PipScale': 'none',
-        'PassengerTurret': 'no',
-        'Passengers': '0',
+        'PassengerTurret': 'yes',
+        'Passengers': '3',
+        'Passengers.BySize': 'no',
+        'SizeLimit': '9',
         'NoManualEnter': 'yes',
         'NoManualUnload': 'yes',
         'Primary': 'ChronoImprison',
@@ -1032,8 +1115,6 @@ def validate_reviewed_vehicle_identity_contracts():
         if str(actual or '').lower() != wanted.lower():
             errors.append(f'CHRP.{key}={actual!r}')
     for key in (
-        'Passengers.BySize',
-        'SizeLimit',
         'EnterTransportSound',
         'LeaveTransportSound',
     ):
@@ -1095,7 +1176,7 @@ def validate_reviewed_vehicle_identity_contracts():
         )
     return {
         'identities': identity_report,
-        'chrono_prison_passenger_free': True,
+        'chrono_prison_sealed_passenger_contract': True,
         'abrams_matches_passenger_free_original': True,
     }
 

@@ -111,7 +111,20 @@ def run_self_check():
                     'progression_mode': 'Classic',
                     'rewards_per_objective': 1,
                     'rewards_on_victory_only': False,
+                    'unlock_all_rewards_after_final_grid_mission': False,
                     'generation': {'reward_mode': 'Standard'},
+                },
+            },
+            'state_snapshot': {
+                'seed': 'APWORLD-SELF-CHECK',
+                'campaign_filter': 'Allies',
+                'progression_mode': 'Classic',
+                'mission_order': ['AREDDAWN'],
+                'mission_checks': {
+                    'AREDDAWN': [
+                        {'id': 'objective_1'},
+                        {'id': 'victory'},
+                    ],
                 },
             },
         }
@@ -128,7 +141,7 @@ def run_self_check():
             archipelago_player_yaml
         )
         archipelago_slot_data = validate_slot_data({
-            'slot_data_version': 3,
+            'slot_data_version': 4,
             'randomizer_version': APP_VERSION,
             'randomizer_seed': 'APWORLD-SELF-CHECK',
             'catalogue_checksum': archipelago_catalogue_checksum,
@@ -185,6 +198,11 @@ def run_self_check():
             == "Self Checker's Slot"
             and archipelago_player_document['run_manifest']
             == archipelago_manifest
+            and 'progression_balancing:' not in archipelago_player_yaml
+            and 'accessibility:' not in archipelago_player_yaml
+            and archipelago_slot_data['run_manifest']['state_snapshot'][
+                'seed'
+            ] == 'APWORLD-SELF-CHECK'
             and SessionConfig('localhost', 'MOSmoke').normalized().server
             == 'ws://localhost:38281/'
             and not archipelago_desynchronized
@@ -620,6 +638,37 @@ def run_self_check():
                 for reward in AID_POWER_UNLOCK_REWARDS
             )
         )
+        geneburst_config = next(
+            (
+                config for config in AID_POWER_MAP_CONFIGS
+                if config.get('superweapon') == 'MutationSpecial'
+            ),
+            {},
+        )
+        geneburst_clones = geneburst_config.get('techno_clones', {})
+        geneburst_power_valid = bool(
+            geneburst_config.get('ignore_foreign_tech_gate') is True
+            and geneburst_config.get('values', {}).get('EMPulse.Cannons')
+            == 'MORGeneburstProvider'
+            and geneburst_config.get('values', {}).get('SW.AuxBuildings') == ''
+            and geneburst_config.get('values', {}).get('SW.RangeMaximum') == '-1'
+            and set(geneburst_clones) == {
+                'GeneburstProvider', 'GeneburstWeapon',
+                'GeneburstProjectile', 'GeneburstWarhead',
+            }
+            and geneburst_clones.get('GeneburstProvider', {}).get(
+                'static_startup'
+            ) is True
+            and geneburst_clones.get('GeneburstProvider', {}).get(
+                'values', {}
+            ).get('EMPulseCannon') == 'yes'
+            and geneburst_clones.get('GeneburstWeapon', {}).get(
+                'values', {}
+            ).get('Warhead') == 'MORGeneburstWH'
+            and geneburst_clones.get('GeneburstWeapon', {}).get(
+                'values', {}
+            ).get('Range') == '384'
+        )
         from randomizer.application import (
             advanced_settings as advanced_settings_module,
             app as application_module,
@@ -738,7 +787,7 @@ def run_self_check():
             'limited_hero_build_limits': limited_hero_limits,
             'special_roster_contracts_valid': bool(
                 special_roster['space_commando_theater_gate_removed']
-                and special_roster['boomer_unique_name'] == 'Boomer Brute'
+                and special_roster['boomer_brute_excluded']
                 and special_roster['paradox_source_id'] == 'STARDUSTB'
                 and special_roster['paradox_ai_alias_excluded']
                 and all(
@@ -773,6 +822,7 @@ def run_self_check():
             ),
             'zephyr_bombardment_enabled_valid': zephyr_enabled_valid,
             'portable_aid_powers_valid': portable_powers_valid,
+            'geneburst_power_valid': geneburst_power_valid,
             'engineering_team_power_valid': engineering_team_valid,
             'all_buff_caps_valid': all_buff_caps_valid,
             'equivalent_buff_access_isolation_valid': (
@@ -859,6 +909,7 @@ def run_self_check():
                 'moon_reinforcements_initial_cooldown_valid',
                 'zephyr_bombardment_enabled_valid',
                 'portable_aid_powers_valid',
+                'geneburst_power_valid',
                 'engineering_team_power_valid',
                 'all_buff_caps_valid',
                 'equivalent_buff_access_isolation_valid',

@@ -10,6 +10,7 @@ from ._shared import (
     LIMITED_HERO_UNIT_IDS,
     LOCKED_TECH_LEVEL,
     NONTRAINABLE_UNIT_IDS,
+    STANDALONE_WEAPON_TEMPLATES,
     SHARED_WEAPON_USER_IDS,
     TECHNO_TYPE_LISTS,
     UNLOCKED_TECH_LEVEL,
@@ -854,18 +855,32 @@ def build_player_clone_sections(
                     ) and lowered not in explicit_production_keys:
                         clone_source_values.pop(key, None)
         if target_unit_id in ENGINEER_UNIT_IDS:
+            # Mission-only Engineer variants (Space Engineer, cached Chrono
+            # Engineer, one-hit objective actors) must remain on their native
+            # IDs. Production clones use the complete reviewed normal
+            # Engineer identity, including art, stats, and movement.
+            reviewed_by_lower = {
+                str(key).lower(): (key, value)
+                for key, value in (owned_template or {}).items()
+            }
+            for key in native_override_values:
+                _remove_case_insensitive(clone_source_values, key)
+                reviewed = reviewed_by_lower.get(str(key).lower())
+                if reviewed is not None:
+                    clone_source_values[reviewed[0]] = reviewed[1]
             clone_source_values = _sanitize_engineer_clone_values(
                 clone_source_values, target
             )
-            # Engineer sanitization removes unsafe cached Chrono mutations, but
-            # a campaign-authored player Engineer may deliberately have more
-            # health. Keep that safe mission value as the reward baseline.
-            mission_strength = _value_case_insensitive(
-                native_override_values, 'Strength'
+        if target_unit_id in {'STHOR', 'YURIX2'}:
+            # Co-op objective markers belong only to authored story actors.
+            # Never let a mission-local override put TARGETMARK back on the
+            # separately buildable player reward clone.
+            _remove_case_insensitive(
+                clone_source_values, 'AttachEffect.Animation'
             )
-            if mission_strength is not None:
-                _remove_case_insensitive(clone_source_values, 'Strength')
-                clone_source_values['Strength'] = mission_strength
+            _remove_case_insensitive(
+                clone_source_values, 'AttachEffect.Duration'
+            )
         # Every player/spawn clone must carry one complete, positive health
         # baseline even when a mission section overrides Strength with 0/1,
         # malformed text, or alternate key casing.  Prefer the reviewed owned
@@ -1065,9 +1080,13 @@ def build_player_clone_sections(
             reference_keys = direct_weapon_keys.get(weapon.upper(), [])
             if not reference_keys:
                 continue
+            standalone_weapon_values = STANDALONE_WEAPON_TEMPLATES.get(
+                weapon.upper()
+            )
             source_weapon = (
                 map_name_by_lower.get(weapon.lower())
                 or installed_name_by_lower.get(weapon.lower())
+                or (weapon if standalone_weapon_values else None)
             )
             installed_weapon = installed_name_by_lower.get(weapon.lower())
             map_weapon = map_name_by_lower.get(weapon.lower())
@@ -1077,6 +1096,8 @@ def build_player_clone_sections(
                 installed_weapon,
                 map_weapon,
             )
+            if standalone_weapon_values and not weapon_values:
+                weapon_values = dict(standalone_weapon_values)
             if not source_weapon:
                 missing.append(weapon)
                 continue
@@ -1105,6 +1126,14 @@ def build_player_clone_sections(
                     if applied_type:
                         handled_weapon_types.add(buff_type)
                         applied_weapon = True
+            if standalone_weapon_values:
+                _register_map_type(
+                    section_rules, lines, installed_sections, 'WeaponTypes', weapon
+                )
+                section_rules[weapon] = weapon_values
+                if applied_weapon:
+                    handled_weapon_ids.add(weapon.upper())
+                continue
             if not applied_weapon:
                 continue
             weapon_clone = _collision_safe_type_id(

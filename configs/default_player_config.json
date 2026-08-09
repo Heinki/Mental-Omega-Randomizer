@@ -13,6 +13,7 @@
       "mission_goal": 15,
       "progression_mode": "Mission List",
       "grid_two_start_positions": false,
+      "unlock_all_rewards_after_final_grid_mission": false,
       "rewards_per_objective": 1,
       "rewards_on_victory_only": false,
       "difficulty": "Normal",

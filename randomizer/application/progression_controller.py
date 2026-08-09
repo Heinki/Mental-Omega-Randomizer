@@ -35,14 +35,32 @@ class ProgressionController:
         grid = self.state.get('grid') if self.state else None
         if not isinstance(grid, dict):
             return {}
-        return refresh_grid_states(grid, self.state.get('completed_missions', []))
+        return refresh_grid_states(
+            grid,
+            self.state.get('completed_missions', []),
+            unlock_all_after_goal=bool(
+                self.state.get(
+                    'unlock_all_rewards_after_final_grid_mission', False
+                )
+                and not self.archipelago_run_active()
+            ),
+        )
 
     def mission_unlocks(self, code):
         """Return the mission codes that completing ``code`` would open now."""
         if self.active_progression_mode() != 'Grid Mode' or not self.state:
             return []
         self.sync_grid_progression()
-        return completing_unlocks(self.state.get('grid', {}), code)
+        return completing_unlocks(
+            self.state.get('grid', {}),
+            code,
+            unlock_all_after_goal=bool(
+                self.state.get(
+                    'unlock_all_rewards_after_final_grid_mission', False
+                )
+                and not self.archipelago_run_active()
+            ),
+        )
 
     def redraw_progression_views(self):
         grid_mode = self.active_progression_mode() == 'Grid Mode'

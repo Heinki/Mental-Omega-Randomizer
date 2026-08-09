@@ -53,14 +53,18 @@ def pending_check_hook_plan(lines, checks, configured_victory_action_ids=()):
         for action_id in configured_victory_action_ids
         if action_id in available_action_ids
     ]
-    victory_action_ids = unique_in_order(
-        configured_victory_action_ids
-        + action_line_ids(lines, lambda groups: action_has_code(groups, 1))
+    discovered_victory_action_ids = unique_in_order(
+        action_line_ids(lines, lambda groups: action_has_code(groups, 1))
         + action_line_ids(lines, lambda groups: action_has_code(groups, 67))
         + trigger_action_ids_by_name(
             lines,
             ['[win]', '/win', 'mission victory', 'mission successful'],
         )
+    )
+    victory_action_ids = (
+        configured_victory_action_ids
+        if configured_victory_action_ids
+        else discovered_victory_action_ids[:1]
     )
 
     plan = []
@@ -84,7 +88,13 @@ def pending_check_hook_plan(lines, checks, configured_victory_action_ids=()):
     missing_victory = False
     if victory_check and not victory_check.get('unlocked'):
         if victory_action_ids:
-            plan.append((victory_check, victory_action_ids[0]))
+            # Explicit mission policy may name multiple mutually-exclusive
+            # successful endings. Hook each branch with the same check marker;
+            # watcher/state deduplication still records victory exactly once.
+            plan.extend(
+                (victory_check, action_id)
+                for action_id in victory_action_ids
+            )
         else:
             missing_victory = True
     return plan, missing_victory, completed_objectives

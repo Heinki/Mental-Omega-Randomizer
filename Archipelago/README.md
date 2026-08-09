@@ -55,17 +55,21 @@ source. The client never applies INI rules itself.
 ## Authoritative run manifest
 
 Full generation exports a readable `launcher_settings` mapping followed by a
-versioned `run_manifest` JSON block. Readable settings mirror the normal nested
-player config. Edited settings import through **Load YAML** and require a new
-seed plus regenerated player YAML. The manifest contains the already-generated
-mission order, Grid coordinates, goal, campaign selection, reward-slot counts,
+versioned `run_manifest` JSON block. Readable settings contain exactly the
+current player-facing launcher controls; derived catalogue/version fields and
+unselected generic Archipelago defaults are omitted. Edited settings import
+through **Load YAML** and require a new seed plus regenerated player YAML. The
+manifest contains the already-generated mission order, Grid coordinates, goal,
+campaign selection, reward-slot counts, clean initial server-state snapshot,
 frozen reward settings, Randomizer version, and deterministic catalogue
 checksum. APWorld validates readable settings against that manifest, creates
 its locations, and returns the same required values in `slot_data`.
 
 This avoids copying mission-order/Grid algorithms into the APWorld. On connect,
 the launcher validates manifest schema, Randomizer version, catalogue checksum,
-and active-run identity before locking gameplay settings and tracking checks.
+and selected-YAML identity before loading the server-returned state snapshot.
+AP seed, mission order, Grid, received unlocks, checked locations, mission
+completion, and progression then come from server packets, not local run state.
 Server item/location placement is not copied into slot data; Archipelago
 already owns that data.
 
@@ -104,8 +108,9 @@ implemented in the APWorld.
   the local check save succeeds. Mission victory reports its reward-slot
   locations plus any objectives completed by existing victory reconciliation.
   Existing `is_run_complete()` alone triggers `StatusUpdate` goal status.
-- Slot-data v3 maps each used AP item ID to one exact current Randomizer reward
-  name and carries the checksum-verified run manifest.
+- Slot-data v4 maps each used AP item ID to one exact current Randomizer reward
+  name and carries the checksum-verified run manifest plus clean server-state
+  snapshot.
   Received rewards replace local check/starting assignments only for an
   AP-enabled run, then flow through existing canonical reward, Unlocks, and map
   pipelines. Standalone reward sourcing remains unchanged.
@@ -124,16 +129,17 @@ implemented in the APWorld.
 - A maintained gameplay-control registry covers Settings, Advanced, and YAML
   mutation controls. Connecting/connected/reconnecting disables the registry
   and connection identity fields; disconnect restores exact prior widget
-  states. Display/privacy and synchronization-log controls remain editable.
+  states. Disabled controls keep the normal active palette in light and dark
+  modes; labels are never disabled. Display/privacy and synchronization-log
+  controls remain editable.
 - Connection authentication compares the server's full manifest checksum to
-  both the loaded YAML and current active run before tracking begins. The
-  manifest Grid contains stable topology only, so mission completion cannot
-  invalidate its identity.
+  the selected YAML before tracking begins. Mutable mission state is projected
+  from server checked-location packets and refreshed after every server update.
 
 ## APWorld packaging
 
 `APWorld/mental_omega/` is the source world folder. Run `build_apworld.ps1` to
-create `build/apworlds/mental_omega.apworld`. The resulting archive is
+create the tracked distributable `Archipelago/mental_omega.apworld`. The resulting archive is
 lowercase, contains `mental_omega/` at its root, and excludes Python caches.
 Archive entries are path-sorted and use a fixed timestamp, making identical
 source trees produce identical `.apworld` bytes.
@@ -156,7 +162,7 @@ file.
 - `generate_catalogue.py` derives a checked-in snapshot from the authoritative
   runtime reward and installed mission catalogues. Published IDs are retained
   across regeneration; the Phase 3 IDs remain unchanged.
-- The snapshot contains 3,776 native rewards and 17,640 stable possible
+- The snapshot contains 3,777 native rewards and 17,640 stable possible
   reward-slot locations across all 97 missions. A SHA-256 checksum covers all
   AP-relevant reward/mission semantics.
 - `run_manifest.py` freezes an already-generated launcher run. It counts the

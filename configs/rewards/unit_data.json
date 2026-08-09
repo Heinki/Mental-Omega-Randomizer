@@ -167,10 +167,10 @@
           "YENGINEER": "Epsilon Engineer",
           "DUNE": "Dunerider",
           "BRUTE": "Brute",
-          "BRUTE2": "Boomer Brute",
           "KAOS": "Bloatick",
           "YURI": "Epsilon Adept",
           "YURIPR": "Epsilon Elite",
+          "YURIX2": "Yuri",
           "INTRUDER": "Infiltrator",
           "HIJACKER": "Hijacker",
           "REPU": "Repulsor",
@@ -323,7 +323,6 @@
       "DHANDL",
       "DHANDR",
       "CBRIS",
-      "BRUTE2",
       "CZEP",
       "SHINBOT",
       "HEPH",
@@ -336,7 +335,8 @@
       "ARTY",
       "RANGER",
       "LONGBO",
-      "GRAV"
+      "GRAV",
+      "YURIX2"
     ],
     "unit_sidebar_images": {
       "PERUN": {
@@ -409,9 +409,21 @@
       },
       "GRAV": {
         "source_pcx": "grav.pcx"
+      },
+      "YURIX2": {
+        "source_pcx": "yuriicon.pcx",
+        "art_id": "YURIX"
       }
     },
     "unit_base_stats": {
+      "YURIX2": [
+        1200,
+        3,
+        300,
+        8,
+        10,
+        null
+      ],
       "STARDUSTB": [
         5000,
         7,
@@ -1628,14 +1640,6 @@
         365,
         5,
         5,
-        null
-      ],
-      "BRUTE2": [
-        500,
-        7,
-        450,
-        5,
-        14,
         null
       ],
       "KAOS": [
@@ -3369,20 +3373,6 @@
           }
         }
       },
-      "BRUTE2": {
-        "weapons": {
-          "Punch": {
-            "damage": 85,
-            "rof": 50,
-            "range": 1.5
-          },
-          "Smash": {
-            "damage": 85,
-            "rof": 50,
-            "range": 1.5
-          }
-        }
-      },
       "KSNK": {
         "weapons": {
           "120mmHeavy": {"damage": 50, "rof": 65, "range": 6},
@@ -4676,6 +4666,31 @@
         "strength": 300,
         "sight": 8,
         "guard_range": 8
+      },
+      "YURIX2": {
+        "label": "Yuri",
+        "plural": "Yuris",
+        "category": "infantry",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 1200,
+        "speed": 3,
+        "strength": 300,
+        "sight": 8,
+        "guard_range": 10,
+        "weapons": {
+          "MORYuriPrimeControl": {
+            "damage": 1,
+            "rof": 10,
+            "range": 10
+          },
+          "SuperPsiWave": {
+            "damage": 250,
+            "rof": 75,
+            "range": 1
+          }
+        }
       }
     },
     "unit_labels": {
@@ -4746,7 +4761,22 @@
       "STARDUSTB": 1,
       "DHANDL": 1,
       "HEPH": 1,
-      "SHINBOT": 1
+      "SHINBOT": 1,
+      "YURIX2": 1
+    },
+    "standalone_weapon_templates": {
+      "MORYuriPrimeControl": {
+        "Damage": "1",
+        "ROF": "10",
+        "Range": "10",
+        "Projectile": "PsychicControl",
+        "Speed": "100",
+        "Warhead": "Controller",
+        "Anim": "YURICNTL",
+        "FireOnce": "yes",
+        "Report": "YuriMindControl",
+        "MinimumRange": "0.5"
+      }
     },
     "special_damage_fields": {
       "V3": {

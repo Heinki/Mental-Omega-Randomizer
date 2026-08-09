@@ -39,8 +39,6 @@ def serialize_player_yaml(manifest, slot_name):
         "requires:\n"
         "  version: 0.6.7\n\n"
         f"{GAME_NAME}:\n"
-        "  progression_balancing: 50\n"
-        "  accessibility: full\n"
     )
     output += (
         "\n"

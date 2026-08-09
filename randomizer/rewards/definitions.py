@@ -69,6 +69,12 @@ UNIT_SIDEBAR_IMAGES = {
     str(unit_id).upper(): dict(config)
     for unit_id, config in _UNIT_DATA_CONFIG['unit_sidebar_images'].items()
 }
+STANDALONE_WEAPON_TEMPLATES = {
+    str(weapon_id).upper(): dict(values)
+    for weapon_id, values in _UNIT_DATA_CONFIG.get(
+        'standalone_weapon_templates', {}
+    ).items()
+}
 
 # Snapshot of the installed 3.3.6 rules values used by map-local stat buffs.
 # Tuple order: Cost, Speed, Strength, Sight, GuardRange, Ammo.  GuardRange
@@ -198,8 +204,9 @@ NONCOMBAT_WEAPON_TARGET_IDS = frozenset(
 # while many combat/support types below are simply unable to train.
 NONTRAINABLE_UNIT_IDS = frozenset(_UNIT_POLICY_CONFIG['nontrainable_unit_ids'])
 
-# Economy, base-operation, and mission-transport essentials are deliberately
-# never access items. They remain available regardless of randomizer progress.
+# Engineers and amphibious transports are base-operation/mission essentials.
+# They never become progression access rewards and remain available regardless
+# of randomizer progress.
 AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset(
     values[0] for values in _FACTION_CONFIG['amphibious_transports'].values()
 )
@@ -1138,6 +1145,9 @@ REWARD_ALIASES = {
     # magazine therefore delays the stronger weapon instead of providing a
     # positive reserve benefit. Preserve old earned stacks as real ROF buffs.
     'Rhino Heavy Tank Ammo Reserves I': 'Rhino Heavy Tank Weapon Tuning I',
+    # Old M.A.D. Tank deploy-fire cadence is not a useful adjustable stat.
+    # Keep serialized stacks useful without retaining any fire-rate UI/effect.
+    'Old M.A.D. Tank Weapon Tuning I': 'Old M.A.D. Tank Reinforced Frames I',
     # These former Firepower rewards described indirect spawned
     # missile/aircraft payload damage. The player clone only owns its direct
     # launcher weapons, so changing the shared payload would either do nothing

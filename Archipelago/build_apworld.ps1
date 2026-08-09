@@ -1,5 +1,5 @@
 param(
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot "build\apworlds")
+    [string]$OutputDirectory = $PSScriptRoot
 )
 
 $ErrorActionPreference = "Stop"

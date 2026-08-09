@@ -15,8 +15,9 @@
 settings. To customize it, edit that mapping, use **Load YAML** in the
 launcher, generate a new seed, then generate/save the player YAML again. Do
 not edit generated `run_manifest` data. Its checksum must exactly match the
-active launcher run and server slot. Mission availability remains
-Randomizer-owned. Objective and victory checks synchronize automatically;
+selected launcher YAML and server slot. After connection, AP seed, Grid,
+mission availability, checked objectives, completion, progression, and unlocks
+come from server state. Objective and victory checks synchronize automatically;
 received items use the existing reward pipeline.
 
 Generating/loading YAML only prepares AP setup; standalone Unlocks remain

@@ -106,6 +106,7 @@ REQUIRED_SECTIONS = {
         'buff_targets': dict,
         'unit_labels': dict,
         'limited_hero_build_limits': dict,
+        'standalone_weapon_templates': dict,
         'special_damage_fields': dict,
     },
     'rewards/catalogue.json': {
@@ -345,15 +346,31 @@ def _validate_unit_data(sections, path):
             )
         )
         mix_source = (
-            set(config) == {'source_pcx'}
+            set(config) in ({'source_pcx'}, {'source_pcx', 'art_id'})
             and source_pcx.name == str(config.get('source_pcx', ''))
             and source_pcx.suffix.lower() == '.pcx'
+            and (
+                'art_id' not in config
+                or (art_id and Path(art_id).name == art_id)
+            )
         )
         if not custom_pair and not mix_source:
             _invalid(
                 f'Invalid custom unit sidebar image mapping for {unit_id!r}',
                 path,
             )
+
+    for weapon_id, values in sections['standalone_weapon_templates'].items():
+        if (
+            not _is_nonempty_string(weapon_id)
+            or not isinstance(values, dict)
+            or not values
+            or not all(
+                _is_nonempty_string(key) and isinstance(value, str)
+                for key, value in values.items()
+            )
+        ):
+            _invalid(f'Invalid standalone weapon template for {weapon_id!r}', path)
 
     transport_base_stats = sections.get('transport_base_stats', {})
     if not isinstance(transport_base_stats, dict):

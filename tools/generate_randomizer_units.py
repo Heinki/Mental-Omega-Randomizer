@@ -47,15 +47,19 @@ STABLE_APPEND_ORDER = (
     'GRUMBLE', 'NAGRUM', 'SYCKLE', 'IDRAG',
     'TRACTOR', 'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'RAMW', 'REJU',
-    'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH', 'BRUTE2',
+    'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
-    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA',
+    'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA', 'YURIX2',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 UNFINISHED_ASSET_IDS = frozenset({
     # Bonus MIX supplies only Heavy Trooper art/cameos. No installed or
     # campaign TechnoType rules exist; do not synthesize gameplay from KNIGHT.
     'CAPU',
+})
+EXCLUDED_REVIEWED_INFANTRY_IDS = frozenset({
+    # Cosmetic Brute variant; no distinct gameplay identity/reward value.
+    'BRUTE2',
 })
 IMAGE_OVERRIDES = {
     # Mapper source calls the Mortar Quad art MORTAR, but installed artmo.ini
@@ -71,12 +75,40 @@ SPECIAL_TEMPLATE_SOURCES = {
     'JACKALP': 'JACKAL',
     'DIVERP': 'DIVER',
     'TARCHIAP': 'TARCHIA',
+    'YURIX2': 'YURIX',
     'ROACHP': 'ROACH',
     'NAPSIS': 'YAPSIS',
     'NACLONS': 'NACLON',
     'LUNRE': 'LUNR',
 }
 TEMPLATE_VALUE_OVERRIDES = {
+    'YURIX2': {
+        'Name': 'Yuri',
+        'UIName': 'Name:YURIHIMSELF',
+        'Image': 'YURIX',
+        'Cost': '1200',
+        'Soylent': '600',
+        'Strength': '300',
+        'Armor': 'yurix',
+        'Sight': '8',
+        'Speed': '3',
+        'Size': '2',
+        'Primary': 'MORYuriPrimeControl',
+        'Secondary': 'SuperPsiWave',
+        'Deployer': 'yes',
+        'DeployFire': 'yes',
+        'ImmuneToEMP': 'yes',
+        'ImmuneToPsionicWeapons': 'yes',
+        'MovementZone': 'AmphibiousDestroyer',
+        'SpeedType': 'Amphibious',
+        'Locomotor': '{4A582744-9839-11d1-B709-00A024DDAFD1}',
+        'PixelSelectionBracketDelta': '-26',
+        'Experience.MindControlSelfModifier': '75%',
+        'DieSound': 'YuriPrimeDieFinal',
+        'OpenTransportWeapon': '1',
+        'BuildLimit': '1',
+        'BuildTimeMultiplier': '2',
+    },
     # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
     # prevent its self-targeted field weapon from firing reliably.
     'NAIRDM': {
@@ -92,11 +124,13 @@ TEMPLATE_VALUE_OVERRIDES = {
         'BuildTimeMultiplier': '1',
     },
     'CHRP': {
-        # Portable Chrono Prison keeps its capture weapon but exposes no
-        # cargo interaction, passenger pips, entry prompt, or unload command.
+        # PassengerTurret and its sealed capacity drive the Chrono Prison art
+        # and prisoner logic. Keep them while blocking manual cargo use.
         'PipScale': 'none',
-        'PassengerTurret': 'no',
-        'Passengers': '0',
+        'PassengerTurret': 'yes',
+        'Passengers': '3',
+        'Passengers.BySize': 'no',
+        'SizeLimit': '9',
         'NoManualEnter': 'yes',
         'NoManualUnload': 'yes',
         'Survivor.RookiePassengerChance': '0%',
@@ -188,10 +222,6 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'CBRIS': {
         'BuildTimeMultiplier': '2',
-    },
-    'BRUTE2': {
-        'Name': 'Boomer Brute',
-        'UIName': 'Name:Boomer',
     },
     'CZEP': {
         'Name': 'Kirov Command Airship',
@@ -421,8 +451,6 @@ TEMPLATE_VALUE_OVERRIDES = {
 }
 TEMPLATE_VALUE_REMOVALS = {
     'CHRP': frozenset({
-        'passengers.bysize',
-        'sizelimit',
         'entertransportsound',
         'leavetransportsound',
     }),
@@ -434,6 +462,11 @@ TEMPLATE_VALUE_REMOVALS = {
     # TARGETMARK belongs to the co-op objective presentation, not the portable
     # player reward. Its otherwise-unused duration is removed with it.
     'STHOR': frozenset({
+        'attacheffect.animation',
+        'attacheffect.duration',
+    }),
+    # TARGETMARK is co-op objective presentation, not player-unit identity.
+    'YURIX2': frozenset({
         'attacheffect.animation',
         'attacheffect.duration',
     }),
@@ -603,7 +636,10 @@ def main():
 
     # Preserve mapper-reviewed extra infantry for later catalogue expansion.
     for source_id in reviewed_infantry:
-        if source_id in UNFINISHED_ASSET_IDS:
+        if (
+            source_id in UNFINISHED_ASSET_IDS
+            or source_id in EXCLUDED_REVIEWED_INFANTRY_IDS
+        ):
             continue
         if source_id not in target_ids_by_list['InfantryTypes']:
             target_ids_by_list['InfantryTypes'].append(source_id)

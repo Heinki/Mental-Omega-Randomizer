@@ -446,6 +446,19 @@ def _build_right_panel(self, main_frame):
         'Opens the missions directly right of and below the top-left node at seed start. '
         'The board dimensions are calculated automatically from Missions to finish.',
     )
+    self.unlock_all_grid_rewards_check = ttk.Checkbutton(
+        self.grid_options_frame,
+        text='Unlock all rewards after final Grid mission',
+        variable=self.unlock_all_grid_rewards_var,
+    )
+    self.unlock_all_grid_rewards_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
+    WidgetTooltip(
+        self.unlock_all_grid_rewards_check,
+        'After the final Grid mission is completed, release every remaining '
+        'seed reward, unlock the complete configured arsenal, and open all '
+        'optional Grid missions. When disabled, ordinary neighbor progression '
+        'and hidden locked missions remain active.',
+    )
     button_row = ttk.Frame(right_frame)
     button_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     button_row.columnconfigure(0, weight=1)

@@ -22,6 +22,7 @@ GAMEPLAY_CONFIG_KEYS = (
     "mission_goal",
     "progression_mode",
     "grid_two_start_positions",
+    "unlock_all_rewards_after_final_grid_mission",
     "rewards_per_objective",
     "rewards_on_victory_only",
     "difficulty",
@@ -30,6 +31,42 @@ GAMEPLAY_CONFIG_KEYS = (
     "rainbowizer",
     "eva_voice",
 )
+
+PLAYER_GENERATION_KEYS = {
+    "reward_mode",
+    "arsenal",
+    "include_no_build_missions",
+    "include_no_build_production_missions",
+    "include_operation_missions",
+    "prioritize_no_build_missions",
+    "excluded_mission_codes",
+    "excluded_unit_access_ids",
+    "excluded_superweapon_ids",
+    "excluded_unit_buff_types",
+    "excluded_power_buff_types",
+    "randomize_unit_access",
+    "start_with_tier_one_units",
+    "start_with_tier_one_defenses",
+    "starting_reward_count",
+    "starting_reward_types",
+    "starting_unlock_rewards",
+    "include_defensive_buildings",
+    "include_special_buildings",
+    "include_special_rewards",
+    "unlimited_hero_units",
+    "share_chaos_role_buffs",
+    "buff_allied_helpers",
+    "failure_assistance",
+    "include_buff_rewards",
+    "include_superweapon_rewards",
+    "include_secondary_superweapon_rewards",
+    "include_aid_power_rewards",
+    "include_power_buff_rewards",
+    "enabled_buff_types",
+    "enabled_power_buff_types",
+    "reward_weights",
+    "enemy_scaling",
+}
 
 
 def _canonical_json(value):
@@ -92,7 +129,7 @@ def _stable_grid(value):
 
 
 def gameplay_config_snapshot(config):
-    """Return only gameplay-affecting launcher settings; omit UI/network data."""
+    """Return exact player-facing gameplay controls; omit UI/network/derived data."""
     if not isinstance(config, dict):
         return {}
     result = {
@@ -101,14 +138,20 @@ def gameplay_config_snapshot(config):
         if key in config
     }
     if isinstance(config.get("generation"), dict):
-        result["generation"] = deepcopy(config["generation"])
+        result["generation"] = {
+            key: deepcopy(value)
+            for key, value in config["generation"].items()
+            if key in PLAYER_GENERATION_KEYS
+        }
     return result
 
 
 def _launcher_snapshot_for_state(state, config):
-    """Overlay generated-run truth onto current launch-time UI settings."""
+    """Freeze values read from live launcher controls without state/default overlays."""
     result = gameplay_config_snapshot(config)
-    result.update({
+    if result:
+        return result
+    return {
         "seed": str(state.get("seed") or ""),
         "campaign_filter": str(state.get("campaign_filter") or ""),
         "mission_goal": int(state.get("mission_goal") or 1),
@@ -117,23 +160,45 @@ def _launcher_snapshot_for_state(state, config):
             (state.get("grid") or {}).get("two_start_positions", False)
             if isinstance(state.get("grid"), dict) else False
         ),
+        "unlock_all_rewards_after_final_grid_mission": bool(
+            state.get("unlock_all_rewards_after_final_grid_mission", False)
+        ),
         "rewards_per_objective": int(state.get("rewards_per_check") or 1),
         "rewards_on_victory_only": bool(
             state.get("rewards_on_victory_only", False)
         ),
-    })
-    generation = result.setdefault("generation", {})
-    mission_pool = state.get("mission_pool_settings")
-    if isinstance(mission_pool, dict):
-        generation.update(deepcopy(mission_pool))
-    reward_settings = state.get("reward_settings")
-    if isinstance(reward_settings, dict):
-        generation.update(deepcopy(reward_settings))
-    generation["reward_mode"] = state.get("reward_mode")
-    generation["starting_unlocked_missions"] = state.get(
-        "starting_unlocked_missions"
-    )
-    return result
+        "generation": {
+            "reward_mode": state.get("reward_mode"),
+            **deepcopy(state.get("mission_pool_settings") or {}),
+            **deepcopy(state.get("reward_settings") or {}),
+        },
+    }
+
+
+def _server_state_snapshot(state):
+    """Freeze generated run structure while removing mutable local progress."""
+    snapshot = deepcopy(state)
+    snapshot.pop("archipelago", None)
+    snapshot["completed_missions"] = []
+    snapshot["started_missions"] = []
+    snapshot["mission_failure_stacks"] = {}
+    snapshot["mission_assistance_units"] = {}
+    snapshot["earned_rewards"] = []
+    snapshot["enemy_progress_earned"] = []
+    snapshot["enemy_reward_applications"] = {}
+    for checks in snapshot.get("mission_checks", {}).values():
+        if not isinstance(checks, list):
+            continue
+        for check in checks:
+            if isinstance(check, dict):
+                check.pop("unlocked", None)
+                check.pop("released", None)
+    grid = snapshot.get("grid")
+    if isinstance(grid, dict):
+        for node in grid.get("nodes", {}).values():
+            if isinstance(node, dict):
+                node.pop("state", None)
+    return snapshot
 
 
 def _first_active_location(locations, code):
@@ -249,6 +314,9 @@ def build_run_manifest(state, launcher_config=None):
             "reward_mode": state.get("reward_mode"),
             "rewards_per_check": state.get("rewards_per_check"),
             "rewards_on_victory_only": state.get("rewards_on_victory_only"),
+            "unlock_all_rewards_after_final_grid_mission": state.get(
+                "unlock_all_rewards_after_final_grid_mission"
+            ),
             "starting_unlocked_missions": state.get(
                 "starting_unlocked_missions"
             ),
@@ -267,14 +335,15 @@ def build_run_manifest(state, launcher_config=None):
                 state, launcher_config
             ),
         },
+        "state_snapshot": _server_state_snapshot(state),
     }
     unsigned = _canonical_json(manifest).encode("utf-8")
     manifest["manifest_checksum"] = sha256(unsigned).hexdigest()
     return manifest
 
 
-def validate_run_manifest_for_state(state, manifest):
-    """Validate checksum and exact immutable identity against the active run."""
+def validate_run_manifest_checksum(manifest):
+    """Validate signed manifest identity without consulting launcher state."""
     if not isinstance(manifest, dict):
         raise ValueError("Archipelago run manifest must be an object.")
     supplied_checksum = str(manifest.get("manifest_checksum") or "")
@@ -285,6 +354,13 @@ def validate_run_manifest_for_state(state, manifest):
     ).hexdigest()
     if supplied_checksum != actual_checksum:
         raise ValueError("Archipelago run manifest checksum is invalid.")
+    return manifest
+
+
+def validate_run_manifest_for_state(state, manifest):
+    """Validate checksum and exact immutable identity against the active run."""
+    validate_run_manifest_checksum(manifest)
+    supplied_checksum = str(manifest.get("manifest_checksum") or "")
     frozen = manifest.get("frozen_settings")
     launcher = frozen.get("launcher") if isinstance(frozen, dict) else None
     expected = build_run_manifest(state, launcher_config=launcher)

@@ -253,14 +253,14 @@ def starting_nodes(grid):
     return [code for code in starts if code]
 
 
-def refresh_states(grid, completed_codes):
+def refresh_states(grid, completed_codes, unlock_all_after_goal=False):
     """Update and return every node's explicit locked/open/completed state."""
     nodes = grid.get('nodes', {})
     completed = set(completed_codes) & set(nodes)
     unlocked = set(starting_nodes(grid))
     for code in completed:
         unlocked.update(neighbors(grid, code))
-    if grid.get('goal') in completed:
+    if unlock_all_after_goal and grid.get('goal') in completed:
         unlocked.update(nodes)
 
     for code, node in nodes.items():
@@ -268,12 +268,12 @@ def refresh_states(grid, completed_codes):
     return {code: node['state'] for code, node in nodes.items()}
 
 
-def completing_unlocks(grid, code):
+def completing_unlocks(grid, code, unlock_all_after_goal=False):
     """Query which currently locked nodes would open after completing code."""
     nodes = grid.get('nodes', {})
     if code not in nodes:
         return []
-    if code == grid.get('goal'):
+    if unlock_all_after_goal and code == grid.get('goal'):
         return [
             node_code
             for node_code, node in nodes.items()

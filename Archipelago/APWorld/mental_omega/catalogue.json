@@ -3223,97 +3223,6 @@
       "id": 81064397
     },
     {
-      "name": "Boomer Brute Access",
-      "classification": "progression",
-      "category": "special_unlocks",
-      "repeatable": false,
-      "id": 81064398
-    },
-    {
-      "name": "Boomer Brute Armor Plating I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064399
-    },
-    {
-      "name": "Boomer Brute Drill I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064400
-    },
-    {
-      "name": "Boomer Brute Firepower I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064401
-    },
-    {
-      "name": "Boomer Brute Logistics I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064402
-    },
-    {
-      "name": "Boomer Brute Mobility I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064403
-    },
-    {
-      "name": "Boomer Brute Optics I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064404
-    },
-    {
-      "name": "Boomer Brute Recon Package I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064405
-    },
-    {
-      "name": "Boomer Brute Reinforced Frames I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064406
-    },
-    {
-      "name": "Boomer Brute Sensor Suite I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064407
-    },
-    {
-      "name": "Boomer Brute Stealth Systems I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064408
-    },
-    {
-      "name": "Boomer Brute Veteran Training I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064409
-    },
-    {
-      "name": "Boomer Brute Weapon Tuning I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064410
-    },
-    {
       "name": "Borillo Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -16152,13 +16061,6 @@
       "id": 81066243
     },
     {
-      "name": "Old M.A.D. Tank Weapon Tuning I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81066244
-    },
-    {
       "name": "Old Mammoth Tank Access",
       "classification": "progression",
       "category": "special_unlocks",
@@ -26113,6 +26015,111 @@
       "id": 81067665
     },
     {
+      "name": "Yuri Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067715
+    },
+    {
+      "name": "Yuri Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067716
+    },
+    {
+      "name": "Yuri Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067717
+    },
+    {
+      "name": "Yuri Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067718
+    },
+    {
+      "name": "Yuri Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067719
+    },
+    {
+      "name": "Yuri Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067720
+    },
+    {
+      "name": "Yuri Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067721
+    },
+    {
+      "name": "Yuri Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067722
+    },
+    {
+      "name": "Yuri Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067723
+    },
+    {
+      "name": "Yuri Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067724
+    },
+    {
+      "name": "Yuri Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067725
+    },
+    {
+      "name": "Yuri Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067726
+    },
+    {
+      "name": "Yuri Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067727
+    },
+    {
+      "name": "Yuri Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067728
+    },
+    {
+      "name": "Yuri Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067729
+    },
+    {
       "name": "Zephyr Artillery Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -29205,7 +29212,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "eb9cda89a619218bf755c1ee3f7bbd70846e110c63949d9b8f68e1f362754682",
+  "catalogue_checksum": "9f2b7b73057bb75ac54b6bddfa85fedf9e6721d2e0ec38d157db27e3f692c716",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

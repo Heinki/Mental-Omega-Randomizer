@@ -5,6 +5,7 @@ import argparse
 
 from Archipelago.run_manifest import build_run_manifest
 from Archipelago.yaml_config import serialize_player_yaml
+from randomizer.config.player import load_config
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
     args = parser.parse_args()
     import json
     state = json.loads(Path(args.state).read_text(encoding="utf-8"))
-    manifest = build_run_manifest(state)
+    manifest = build_run_manifest(state, load_config())
     output = Path(args.yaml)
     output.write_text(
         serialize_player_yaml(manifest, "MOFullSmoke"),

@@ -54,16 +54,39 @@ def apply_color_mode(self):
     style.configure('Launch.TButton', background=panel, foreground=foreground, bordercolor=border)
     style.map(
         'TButton',
-        background=[('active', selected), ('pressed', selected)],
-        foreground=[('active', selected_foreground), ('pressed', selected_foreground)],
+        background=[
+            ('disabled', panel), ('active', selected), ('pressed', selected),
+        ],
+        foreground=[
+            ('disabled', foreground),
+            ('active', selected_foreground),
+            ('pressed', selected_foreground),
+        ],
     )
     style.map(
         'TCheckbutton',
-        background=[('active', background)],
-        foreground=[('disabled', palette['muted']), ('active', foreground)],
+        background=[('disabled', background), ('active', background)],
+        foreground=[('disabled', foreground), ('active', foreground)],
+    )
+    style.map(
+        'TRadiobutton',
+        background=[('disabled', background), ('active', background)],
+        foreground=[('disabled', foreground), ('active', foreground)],
     )
     style.configure('TEntry', fieldbackground=field, foreground=foreground, insertcolor=foreground)
     style.configure('TSpinbox', fieldbackground=field, foreground=foreground, arrowcolor=foreground)
+    style.map(
+        'TEntry',
+        fieldbackground=[('disabled', field)],
+        foreground=[('disabled', foreground)],
+    )
+    style.map(
+        'TSpinbox',
+        fieldbackground=[('disabled', field)],
+        background=[('disabled', panel)],
+        foreground=[('disabled', foreground)],
+        arrowcolor=[('disabled', foreground)],
+    )
     style.configure(
         'TCombobox',
         fieldbackground=field,
@@ -73,8 +96,10 @@ def apply_color_mode(self):
     )
     style.map(
         'TCombobox',
-        fieldbackground=[('readonly', field)],
-        foreground=[('readonly', foreground)],
+        fieldbackground=[('disabled', field), ('readonly', field)],
+        background=[('disabled', panel)],
+        foreground=[('disabled', foreground), ('readonly', foreground)],
+        arrowcolor=[('disabled', foreground)],
         selectbackground=[('readonly', selected)],
         selectforeground=[('readonly', selected_foreground)],
     )

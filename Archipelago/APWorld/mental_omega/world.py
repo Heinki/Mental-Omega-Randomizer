@@ -161,7 +161,7 @@ class MentalOmegaWorld(World):
             self.run_manifest["starting_items"]
         )
         return {
-            "slot_data_version": 3,
+            "slot_data_version": 4,
             "randomizer_version": self.run_manifest["randomizer_version"],
             "randomizer_seed": self.run_manifest["randomizer_seed"],
             "catalogue_checksum": CATALOGUE_CHECKSUM,

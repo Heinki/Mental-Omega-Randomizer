@@ -68,6 +68,7 @@ from randomizer.rewards.catalogue import (
     MANDATORY_EXCLUDED_BUFF_TYPE_IDS,
     NONTRAINABLE_UNIT_IDS,
     REWARD_POOL,
+    STANDALONE_WEAPON_TEMPLATES,
     WEAPON_STAT_BUFF_TYPES,
     capped_movement_speed,
     buff_stack_limit,

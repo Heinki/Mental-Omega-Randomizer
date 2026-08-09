@@ -9,7 +9,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 GAME_NAME = 'Mental Omega'
-SUPPORTED_SLOT_DATA_VERSION = 3
+SUPPORTED_SLOT_DATA_VERSION = 4
 SUPPORTED_RANDOMIZER_VERSION = '1.24'
 CLIENT_VERSION = (0, 6, 7)
 ITEMS_HANDLING_ALL = 0b111
@@ -245,6 +245,42 @@ def validate_slot_data(value):
         if run_manifest.get(key) != slot_data.get(key):
             raise ArchipelagoProtocolError(
                 f'Slot data {key} disagrees with run manifest.'
+            )
+    state_snapshot = run_manifest.get('state_snapshot')
+    if not isinstance(state_snapshot, Mapping):
+        raise ArchipelagoProtocolError(
+            'Slot data run manifest has no server state snapshot.'
+        )
+    if (
+        state_snapshot.get('seed') != slot_data.get('randomizer_seed')
+        or state_snapshot.get('mission_order') != mission_order
+        or state_snapshot.get('progression_mode')
+        != slot_data.get('progression_mode')
+        or state_snapshot.get('campaign_filter')
+        != slot_data.get('campaign_filter')
+    ):
+        raise ArchipelagoProtocolError(
+            'Slot data server state identity is inconsistent.'
+        )
+    state_checks = state_snapshot.get('mission_checks')
+    if not isinstance(state_checks, Mapping):
+        raise ArchipelagoProtocolError(
+            'Slot data server state has no mission checks.'
+        )
+    for code, checks in normalized_locations.items():
+        snapshot_checks = state_checks.get(code)
+        if not isinstance(snapshot_checks, list):
+            raise ArchipelagoProtocolError(
+                f'Slot data server state checks for {code} are invalid.'
+            )
+        snapshot_ids = {
+            str(check.get('id'))
+            for check in snapshot_checks
+            if isinstance(check, Mapping) and check.get('id')
+        }
+        if not set(checks).issubset(snapshot_ids):
+            raise ArchipelagoProtocolError(
+                f'Slot data server state misses active checks for {code}.'
             )
     slot_data['run_manifest'] = dict(run_manifest)
     return slot_data

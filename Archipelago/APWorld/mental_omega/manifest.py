@@ -162,6 +162,35 @@ def parse_manifest(raw_value):
     if goal["type"] in {"mission", "grid"} and goal_code not in mission_order:
         raise ManifestError("Manifest goal mission is not in mission_order.")
 
+    state_snapshot = value.get("state_snapshot")
+    if not isinstance(state_snapshot, dict):
+        raise ManifestError("Manifest has no server state snapshot.")
+    if (
+        state_snapshot.get("seed") != seed
+        or state_snapshot.get("mission_order") != mission_order
+        or state_snapshot.get("progression_mode") != value.get("progression_mode")
+        or state_snapshot.get("campaign_filter") != value.get("campaign_filter")
+    ):
+        raise ManifestError("Manifest server state identity is inconsistent.")
+    state_checks = state_snapshot.get("mission_checks")
+    if not isinstance(state_checks, dict):
+        raise ManifestError("Manifest server state has no mission checks.")
+    for code, checks in locations.items():
+        snapshot_checks = state_checks.get(code)
+        if not isinstance(snapshot_checks, list):
+            raise ManifestError(
+                f"Manifest server state checks for {code} are invalid."
+            )
+        snapshot_ids = {
+            str(check.get("id"))
+            for check in snapshot_checks
+            if isinstance(check, dict) and check.get("id")
+        }
+        if not set(checks).issubset(snapshot_ids):
+            raise ManifestError(
+                f"Manifest server state misses active checks for {code}."
+            )
+
     result = dict(value)
     result["mission_order"] = list(mission_order)
     result["locations"] = locations

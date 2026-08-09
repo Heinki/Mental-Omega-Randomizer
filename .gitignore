@@ -15,6 +15,9 @@ dist/
 release/
 *.spec
 
+# Published Archipelago package. Intermediate build trees stay ignored.
+!Archipelago/*.apworld
+
 # Local Codex maintenance memory; never distribute with the launcher.
 AGENTS.md
 

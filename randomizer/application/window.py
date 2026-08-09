@@ -139,12 +139,8 @@ class WindowController:
             self.checkbox_indicator_images = {
                 'light_off': checkbox_image('#eef0f2', '#68717a'),
                 'light_on': checkbox_image('#68717a', '#4f565d', '#ffffff'),
-                'light_disabled_off': checkbox_image('#e2e4e6', '#b2b6bb'),
-                'light_disabled_on': checkbox_image('#b9bec4', '#a5aab0', '#f2f2f2'),
                 'dark_off': checkbox_image('#353b43', '#8d97a3'),
                 'dark_on': checkbox_image('#626b76', '#a5afb9', '#ffffff'),
-                'dark_disabled_off': checkbox_image('#252a30', '#4d555f'),
-                'dark_disabled_on': checkbox_image('#3b4149', '#505863', '#858c95'),
             }
 
         mode = 'dark' if self.dark_mode_var.get() else 'light'
@@ -155,8 +151,8 @@ class WindowController:
                 element,
                 'image',
                 images[f'{mode}_off'],
-                ('disabled', 'selected', images[f'{mode}_disabled_on']),
-                ('disabled', images[f'{mode}_disabled_off']),
+                ('disabled', 'selected', images[f'{mode}_on']),
+                ('disabled', images[f'{mode}_off']),
                 ('selected', images[f'{mode}_on']),
                 sticky='',
             )

@@ -41,8 +41,14 @@ class ArchipelagoController(ArchipelagoYamlController):
             self.archipelago_load_yaml_button,
         ]
         stateful = []
+        interactive_classes = {
+            'TButton', 'TCheckbutton', 'TRadiobutton', 'TEntry',
+            'TSpinbox', 'TCombobox', 'TScale', 'Treeview',
+        }
         for widget in candidates:
             if widget in excluded or widget in stateful:
+                continue
+            if str(widget.winfo_class()) not in interactive_classes:
                 continue
             try:
                 widget.cget('state')
@@ -129,6 +135,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_session_validated = False
         self._archipelago_slot_data = {}
         self._archipelago_item_names = {}
+        self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self._set_archipelago_chat_enabled(False)
         self.archipelago_status_var.set('Disconnected')
@@ -230,7 +237,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         try:
             if getattr(self, 'busy_depth', 0):
                 raise ValueError('Wait for the current launcher task to finish.')
-            self._validated_active_archipelago_manifest()
+            # Connection identity comes from selected YAML plus server slot.
+            # Local seed/progress is deliberately not authoritative here.
+            self._validated_active_archipelago_manifest(require_state=False)
             from Archipelago.client import ArchipelagoSession, SessionConfig
 
             endpoint = self._archipelago_endpoint()
@@ -369,58 +378,41 @@ class ArchipelagoController(ArchipelagoYamlController):
                         'reward/mission catalogue checksum does not match '
                         'this launcher installation'
                     )
-                local_manifest = self._validated_active_archipelago_manifest()
                 slot_manifest = result.slot_data.get('run_manifest')
-                from Archipelago.run_manifest import (
-                    validate_run_manifest_for_state,
-                )
-                validate_run_manifest_for_state(self.state, slot_manifest)
-                if (
+                configured_ap = self._configured_archipelago_state()
+                if configured_ap is None or (
                     slot_manifest.get('manifest_checksum')
-                    != local_manifest.get('manifest_checksum')
+                    != configured_ap.get('manifest_checksum')
                 ):
                     raise ValueError(
-                        'server run manifest does not match the active YAML'
+                        'server run manifest does not match the selected YAML'
                     )
+                self._validate_archipelago_server_state(result.slot_data)
             except ValueError as exc:
                 self.append_archipelago_history(
                     f'Connected slot item catalogue is incompatible: {exc}'
                 )
                 self.disconnect_archipelago()
                 return
-            self._archipelago_slot_data = dict(result.slot_data)
-            self._archipelago_item_names = item_names
             self.append_archipelago_history(
                 f'Authenticated: seed {result.seed_name}, '
                 f'team {result.team + 1}, slot {result.slot}.'
             )
             ap_state = self._configured_archipelago_state()
             if ap_state is not None:
-                state_seed = str(self.state.get('seed', ''))
-                slot_seed = str(result.slot_data.get('randomizer_seed', ''))
-                if state_seed and slot_seed != state_seed:
-                    self.append_archipelago_history(
-                        'Connected slot does not match the active Randomizer '
-                        f'seed ({slot_seed!r} != {state_seed!r}). Disconnecting.'
-                    )
-                    self.disconnect_archipelago()
-                    return
-                ap_state['slot_data'] = dict(result.slot_data)
-                ap_state['run_manifest'] = deepcopy(slot_manifest)
-                ap_state['manifest_checksum'] = slot_manifest[
-                    'manifest_checksum'
-                ]
-                self._apply_manifest_launcher_settings(slot_manifest)
-                ap_state['server'] = result.endpoint
                 active_session = getattr(self, '_archipelago_session', None)
                 if active_session is None:
                     self.append_archipelago_history(
                         'Connected session disappeared before validation completed.'
                     )
                     return
-                ap_state['slot_name'] = active_session.config.slot_name
-                ap_state['checkpoint'] = active_session.checkpoint()
                 self._archipelago_session_validated = True
+                ap_state = self._load_archipelago_server_state(
+                    result,
+                    item_names,
+                    active_session,
+                )
+                self._apply_manifest_launcher_settings(slot_manifest)
                 self._synchronize_archipelago_progression_ui(slot_manifest)
                 self._promote_archipelago_run()
                 self._set_archipelago_chat_enabled(True)
@@ -428,6 +420,7 @@ class ArchipelagoController(ArchipelagoYamlController):
                     'Connected — AP rewards active'
                 )
                 self.reconcile_archipelago_checks()
+                self._refresh_archipelago_server_views()
             return
         if event.kind == 'checkpoint':
             self._persist_archipelago_checkpoint(event.payload)
@@ -437,13 +430,17 @@ class ArchipelagoController(ArchipelagoYamlController):
                 event.payload
             )
             if applied_indexes:
-                self.refresh_progress_view()
+                self._refresh_archipelago_server_views()
             return
         if event.kind == 'locations_checked':
+            changed = self._apply_archipelago_server_locations(event.payload)
             locations = ', '.join(str(value) for value in event.payload)
             self.append_archipelago_history(
                 f'Server synchronized checked locations: {locations}.'
             )
+            if changed:
+                self.save_state()
+                self._refresh_archipelago_server_views()
             return
         if event.kind == 'desynchronized':
             self.append_archipelago_history(
@@ -506,6 +503,134 @@ class ArchipelagoController(ArchipelagoYamlController):
                 preview += f', +{len(unknown) - 3} more'
             raise ValueError(f'unknown Randomizer reward(s): {preview}')
         return item_names
+
+    @staticmethod
+    def _validate_archipelago_server_state(slot_data):
+        manifest = slot_data.get('run_manifest')
+        snapshot = (
+            manifest.get('state_snapshot')
+            if isinstance(manifest, dict) else None
+        )
+        if not isinstance(snapshot, dict):
+            raise ValueError('server manifest has no state snapshot')
+        mission_order = slot_data.get('mission_order')
+        if (
+            snapshot.get('seed') != slot_data.get('randomizer_seed')
+            or snapshot.get('mission_order') != mission_order
+            or snapshot.get('progression_mode')
+            != slot_data.get('progression_mode')
+            or not isinstance(snapshot.get('mission_checks'), dict)
+        ):
+            raise ValueError('server state snapshot identity is invalid')
+        for code, mapped_checks in slot_data.get('locations', {}).items():
+            checks = snapshot['mission_checks'].get(code)
+            if not isinstance(checks, list):
+                raise ValueError(f'server state has no checks for {code}')
+            check_ids = {
+                str(check.get('id'))
+                for check in checks
+                if isinstance(check, dict) and check.get('id')
+            }
+            if not set(mapped_checks).issubset(check_ids):
+                raise ValueError(f'server state misses active checks for {code}')
+        return snapshot
+
+    def _load_archipelago_server_state(
+        self, result, item_names, active_session
+    ):
+        """Replace local run fields with signed server state after validation."""
+        snapshot = self._validate_archipelago_server_state(result.slot_data)
+        previous_ap = deepcopy(self._configured_archipelago_state() or {})
+        slot_manifest = result.slot_data['run_manifest']
+        previous_ap.update({
+            'activation': 'active',
+            'enabled': True,
+            'slot_data': deepcopy(result.slot_data),
+            'run_manifest': deepcopy(slot_manifest),
+            'manifest_checksum': slot_manifest['manifest_checksum'],
+            'server': result.endpoint,
+            'slot_name': active_session.config.slot_name,
+            'checkpoint': active_session.checkpoint(),
+        })
+        self.state = deepcopy(snapshot)
+        self.state['archipelago'] = previous_ap
+        self._archipelago_slot_data = deepcopy(result.slot_data)
+        self._archipelago_item_names = dict(item_names)
+        self._archipelago_server_checked_locations = set()
+        self._apply_archipelago_server_locations(
+            result.checked_locations,
+            replace=True,
+        )
+        self.state['earned_rewards'] = self.earned_rewards_from_checks()
+        return previous_ap
+
+    def _apply_archipelago_server_locations(self, location_ids, replace=False):
+        """Project server-checked locations into mission/Grid completion state."""
+        incoming = {int(value) for value in (location_ids or ())}
+        previous = set(getattr(
+            self, '_archipelago_server_checked_locations', set()
+        ))
+        checked = incoming if replace else previous | incoming
+        self._archipelago_server_checked_locations = checked
+        slot_data = getattr(self, '_archipelago_slot_data', {})
+        mappings = slot_data.get('locations', {})
+        mission_checks = self.state.get('mission_checks', {})
+        changed = checked != previous
+        completed = []
+        started = []
+        for code in self.state.get('mission_order', []):
+            checks = mission_checks.get(code, [])
+            mapped_checks = mappings.get(code, {})
+            mission_started = False
+            mission_complete = False
+            for check in checks:
+                if not isinstance(check, dict):
+                    continue
+                check_id = str(check.get('id', ''))
+                mapped = {
+                    int(value)
+                    for value in mapped_checks.get(check_id, [])
+                }
+                unlocked = bool(mapped and mapped.issubset(checked))
+                before = bool(check.get('unlocked'))
+                check.pop('released', None)
+                if unlocked:
+                    check['unlocked'] = True
+                    mission_started = True
+                    if check_id == 'victory':
+                        mission_complete = True
+                else:
+                    check.pop('unlocked', None)
+                changed = changed or before != unlocked
+            if mission_started and not mission_complete:
+                started.append(code)
+            if mission_complete:
+                completed.append(code)
+        if self.state.get('completed_missions') != completed:
+            self.state['completed_missions'] = completed
+            changed = True
+        if self.state.get('started_missions') != started:
+            self.state['started_missions'] = started
+            changed = True
+        self.state['earned_rewards'] = self.earned_rewards_from_checks()
+        if self.state.get('progression_mode') == 'Grid Mode':
+            from randomizer.progression.grid import refresh_states
+            refresh_states(
+                self.state.get('grid', {}),
+                completed,
+                unlock_all_after_goal=False,
+            )
+        return changed
+
+    def _refresh_archipelago_server_views(self):
+        """Invalidate every view fed by AP seed, progress, or received items."""
+        self.__dict__.pop('_unlock_dashboard_sources_cache', None)
+        self.__dict__.pop('_canonical_earned_rewards_cache', None)
+        self.unlock_dashboard_signature = None
+        self.grid_render_signature = None
+        self.update_header_summary()
+        self.redraw_mission_tree()
+        self.refresh_progress_view()
 
     def _archipelago_reward_name(self, item_id):
         item_names = getattr(self, '_archipelago_item_names', {})

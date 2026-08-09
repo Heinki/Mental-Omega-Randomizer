@@ -2702,6 +2702,7 @@
       },
       {
         "superweapon": "MutationSpecial",
+        "ignore_foreign_tech_gate": true,
         "values": {
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
@@ -2718,7 +2719,66 @@
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
           "SW.RangeMaximum": "-1",
-          "SW.RangeMinimum": "-1"
+          "SW.RangeMinimum": "-1",
+          "EMPulse.Cannons": "MORGeneburstProvider"
+        },
+        "techno_clones": {
+          "GeneburstProvider": {
+            "source": "DUMMYDUMMY",
+            "clone": "MORGeneburstProvider",
+            "list": "BuildingTypes",
+            "reference_keys": ["EMPulse.Cannons"],
+            "startup_count": 1,
+            "static_startup": true,
+            "values": {
+              "Name": "Randomizer Geneburst Provider",
+              "UIName": "NAME:DUMMYDUMMY",
+              "Image": "DUMMYDUMMY",
+              "InvisibleInGame": "yes",
+              "Primary": "MORGeneburstWeapon",
+              "EMPulseCannon": "yes",
+              "TechLevel": "-1",
+              "BuildLimit": "0",
+              "AIBuildThis": "no",
+              "Power": "0",
+              "Powered": "false",
+              "Capturable": "false",
+              "Selectable": "no",
+              "Unsellable": "yes",
+              "LegalTarget": "no",
+              "Insignificant": "yes",
+              "ImmuneToEMP": "yes",
+              "DontScore": "yes",
+              "KeepAlive": "no",
+              "BaseNormal": "no",
+              "AIBaseNormal": "no",
+              "IsBaseDefense": "no",
+              "RadarInvisible": "yes",
+              "IsPassable": "yes",
+              "Firestorm.Wall": "no",
+              "Sight": "0"
+            }
+          },
+          "GeneburstWeapon": {
+            "source": "GeneburstWeapon",
+            "clone": "MORGeneburstWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Range": "384",
+              "Projectile": "MORGeneburstP",
+              "Warhead": "MORGeneburstWH"
+            }
+          },
+          "GeneburstProjectile": {
+            "source": "GeneburstP",
+            "clone": "MORGeneburstP",
+            "list": "Projectiles"
+          },
+          "GeneburstWarhead": {
+            "source": "GeneburstWH",
+            "clone": "MORGeneburstWH",
+            "list": "Warheads"
+          }
         }
       },
       {
