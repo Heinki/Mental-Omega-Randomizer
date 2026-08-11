@@ -6,7 +6,7 @@ create a player YAML, connect to a room, and continue an existing game.
 ## What you need
 
 - Mental Omega 3.3.6 in a separate, unmodified game installation
-- Mental Omega Randomizer Launcher 1.25
+- Mental Omega Randomizer Launcher 1.26
 - Archipelago 0.6.7
 - `mental_omega.apworld` from the same Randomizer release as the launcher
 
