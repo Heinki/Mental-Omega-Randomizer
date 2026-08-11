@@ -756,3 +756,17 @@ TeamType, TaskForce, ScriptType, house, Autocreate, prerequisite, and timing
 data. A split full audit covered all 97 launch paths; reviewed player/helper
 clone rewrites and explicit mission overrides remained allowed, while every
 original hostile team/script payload and AI registry entry stayed intact.
+
+Stormbringer's placed Siegfried is infantry record `71`, owned by Pacific House
+and bound to tag `01000745` (`[OTHER]/Siegfried Dies`). The original uses native
+`SIEG`; the reported bad map replaced it with `MORPSIEG`. That clone still had
+the correct infantry locomotor `{4A582744-9839-11d1-B709-00A024DDAFD1}`,
+`MovementZone=Infantry`, `Speed=6`, and `Teleporter=yes`, excluding a malformed
+movement definition. It also detached the object from native map overrides and
+the authored identity used by mission behavior. A later saved-state generation
+happened to use a separate uncloaked `MORRSIEG` reference and moved normally,
+but that did not make the original rewrite safe. ASTORM was missing from the
+same native scripted-hero policy already used by AINSOMNIA. It now preserves
+native SIEG through trigger-reference, clone-exclusion, and direct-buff policy,
+then applies earned buffs through `native_variant_buff_rules`. No mission
+Trigger, Tag, Event, Action, TeamType, TaskForce, or ScriptType changes.

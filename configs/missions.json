@@ -1033,6 +1033,9 @@
         "SIEG",
         "TANY"
       ],
+      "ASTORM": [
+        "SIEG"
+      ],
       "AOBST": [
         "SHAD",
         "TANY"
@@ -1174,6 +1177,9 @@
       "AINSOMNIA": [
         "SIEG",
         "TANY"
+      ],
+      "ASTORM": [
+        "SIEG"
       ],
       "AOBST": [
         "SHAD",
@@ -1719,6 +1725,9 @@
         "SIEG",
         "TANY"
       ],
+      "ASTORM": [
+        "SIEG"
+      ],
       "AOBST": [
         "SHAD",
         "TANY"
@@ -1823,6 +1832,12 @@
           ]
         }
       ],
+      "ASTORM": {
+        "source_unit": "SIEG",
+        "native_units": [
+          "SIEG"
+        ]
+      },
       "ASIREN": [
         {
           "source_unit": "TANY",
