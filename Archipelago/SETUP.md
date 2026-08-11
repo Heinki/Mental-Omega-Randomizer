@@ -46,17 +46,3 @@ refreshes every affected view; reconnecting loads the AP server state again.
 
 Every participant generating or hosting the room needs the APWorld installed.
 Only the Mental Omega player needs the game and Randomizer launcher.
-
-## Verify release files
-
-Keep `SHA256SUMS.txt` beside the downloaded artifacts. From PowerShell:
-
-```powershell
-Get-Content .\SHA256SUMS.txt | ForEach-Object {
-    $expected, $name = $_ -split ' \*', 2
-    $actual = (Get-FileHash -LiteralPath $name -Algorithm SHA256).Hash
-    [pscustomobject]@{ File = $name; Valid = $actual -eq $expected }
-}
-```
-
-Every `Valid` value must be `True`.
