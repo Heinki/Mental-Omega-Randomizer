@@ -489,7 +489,7 @@ def single_engineer_rules(
     additional_build_houses=(),
     excluded_special_infantry_factories=(),
 ):
-    """Prepare every faction Engineer behind its matching barracks."""
+    """Prepare exactly one faction-appropriate Engineer."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     special_barracks = list(_special_infantry_factories(
@@ -497,9 +497,12 @@ def single_engineer_rules(
         excluded_special_infantry_factories,
     ))
     player_family = _player_family(lines, records)
-    # Chaos installs all four Engineers and shares compatible Barracks.
-    # Standard prepares only physically present production families, retaining
-    # each exact barracks gate until that foreign building is captured.
+    # Engineers are a base-operation essential, not captured-tech rewards.
+    # Installing one clone per physically reachable faction made every Chaos
+    # barracks expose four Engineer cameos. It also let a mission-granted
+    # allied barracks look like captured technology when its authored initial
+    # owner differed from the player House. Prefer the player's own family;
+    # only fall back when that family has no usable Engineer definition.
     available_families = (
         set(ENGINEER_BY_FAMILY)
         if chaos_mode
@@ -509,11 +512,15 @@ def single_engineer_rules(
             include_capturable=True,
         )
     )
-    active_families = [
-        family
-        for family in ENGINEER_BY_FAMILY
-        if family in available_families
-    ]
+    ordered_families = unique_in_order((
+        player_family,
+        *ENGINEER_BY_FAMILY,
+    ))
+    active_families = next((
+        [family]
+        for family in ordered_families
+        if family in available_families and ENGINEER_BY_FAMILY.get(family)
+    ), [])
 
     player_countries = safe_build_countries(
         lines,

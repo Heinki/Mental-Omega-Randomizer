@@ -1500,8 +1500,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             negative_gate_exclusions=(
                 non_player_droppod_payload_ids
                 | runtime_identity_preserve_ids
+            ) - set(ENGINEER_UNIT_IDS),
+            # A mission can hand the player a friendly barracks whose initial
+            # map owner is an allied helper House. FactoryOwners.Forbidden
+            # then mistakes that barracks for captured enemy technology and
+            # exposes the native Engineer beside its player clone. Engineers
+            # always use the exact-player-House negative gate instead; this
+            # leaves authored placements and scripted creation intact.
+            factory_owner_only_ids=(
+                build_only_clone_source_ids - set(ENGINEER_UNIT_IDS)
             ),
-            factory_owner_only_ids=build_only_clone_source_ids,
             player_forbidden_houses=player_native_exclusions,
         )
         # Every registered player clone gets one final native-source exclusion
@@ -2070,6 +2078,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             final_runtime_identity_rules[source_id] = restored_values
         if final_runtime_identity_rules:
             merge_ini_section_values(lines, final_runtime_identity_rules)
+        # Engineer identities can be authored in player/helper TaskForces, so
+        # they participate in runtime restoration. Reapply only their native
+        # production isolation afterward: the hidden exact-House gate does not
+        # prevent scripted creation, but it does prevent a friendly barracks
+        # handed over later from masquerading as captured enemy technology.
+        final_engineer_gate_rules = {
+            source_id: values
+            for source_id, values in production_gate_rules.items()
+            if source_id in set(ENGINEER_UNIT_IDS)
+        }
+        if final_engineer_gate_rules:
+            merge_ini_section_values(lines, final_engineer_gate_rules)
     static_power_providers = append_static_startup_buildings(
         lines,
         power_house_names,
