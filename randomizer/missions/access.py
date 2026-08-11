@@ -354,6 +354,22 @@ def mission_production_families(
     }
 
 
+def mission_production_buildings(
+    lines,
+    house_records=None,
+    additional_production_houses=(),
+    include_capturable=True,
+):
+    """Return exact physical/scripted production types relevant to a mission."""
+    records = house_records or map_house_records(lines)
+    return tuple(unique_in_order(_mission_production_buildings(
+        lines,
+        records,
+        additional_production_houses,
+        include_capturable=include_capturable,
+    )))
+
+
 def _player_family(lines, house_records):
     player_house = player_house_from_map(lines)
     if not player_house:

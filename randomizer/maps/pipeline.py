@@ -58,6 +58,7 @@ from randomizer.maps.rules import (
 from randomizer.maps.buff_validation import (
     validate_generated_unit_buff_changes,
 )
+from randomizer.maps.access_diagnostics import build_unit_access_report
 from randomizer.rewards.rules import expand_equivalent_role_buffs
 from randomizer.rewards.enemy_scaling import enemy_effect_text
 from randomizer.maps.progress_hooks import (
@@ -111,6 +112,7 @@ from randomizer.missions.access import PRODUCTION_BUILDINGS
 from randomizer.missions.catalogue import normalize_faction
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT, GENERATED_MAP_DIR
 from randomizer.rewards.catalogue import (
+    ALWAYS_AVAILABLE_TECH_IDS,
     AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     ENGINEER_UNIT_IDS,
@@ -160,6 +162,19 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     }
     original_mcv_access_ids = set(
         MISSION_ORIGINAL_MCV_ACCESS_IDS.get(code, ())
+    )
+    similar_tech_enabled_for_report = share_basic_equivalent_buffs
+    similar_tech_reason_for_report = (
+        'Single Campaign automatic sharing; buffs only'
+        if (
+            self.state
+            and self.state.get('campaign_filter')
+            in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+            and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
+        )
+        else 'user option; buffs only'
+        if share_basic_equivalent_buffs
+        else ''
     )
     native_techno_exclusions = frozenset(
         set(MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(code, ()))
@@ -517,6 +532,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     earned_rewards = (
         self.launch_rewards_for_mission(code) if self.state else []
     )
+    access_report_active_rewards = list(earned_rewards)
     enemy_scaling_entries = (
         self.active_enemy_scaling_entries() if self.state else []
     )
@@ -2262,6 +2278,51 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + skipped_summary
                 + '.',
                 error=True,
+            )
+
+        starting_rewards_for_report = list(
+            self.state.get('starting_rewards', ())
+        )
+        progression_rewards_for_report = list(
+            self.earned_rewards_from_checks(include_starting=False)
+        )
+        mission_specific_ids_for_report = (
+            set(native_required_access_ids)
+            | set(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
+            | set(original_mcv_access_ids)
+        )
+        starting_faction_tech_ids_for_report = (
+            set(self.active_starting_tier_one_expanded_ids())
+            | set(self.active_starting_tier_one_defense_expanded_ids())
+            | set(ALWAYS_AVAILABLE_TECH_IDS).intersection(
+                buildable_clone_ids
+            )
+        )
+        access_report_lines = build_unit_access_report(
+            lines,
+            installed_rule_sections,
+            mission,
+            self.state,
+            reward_mode=self.active_reward_mode(),
+            progression_mode=self.active_progression_mode(),
+            campaign_filter=self.state.get('campaign_filter', ''),
+            starting_rewards=starting_rewards_for_report,
+            progression_rewards=progression_rewards_for_report,
+            active_rewards=access_report_active_rewards,
+            mission_specific_ids=mission_specific_ids_for_report,
+            delayed_mission_unlock_ids=delayed_native_unlock_ids,
+            starting_faction_tech_ids=starting_faction_tech_ids_for_report,
+            expected_buildable_source_ids=buildable_clone_ids,
+            controlled_source_ids=self.randomized_tech_ids(),
+            clone_handled=clone_handled,
+            similar_tech_enabled=similar_tech_enabled_for_report,
+            similar_tech_reason=similar_tech_reason_for_report,
+            randomize_unit_access=self.randomize_unit_access_enabled(),
+        )
+        for report_line in access_report_lines:
+            self.append_log(
+                report_line,
+                error=report_line.startswith('WARNING:'),
             )
 
     packed_sections = {
