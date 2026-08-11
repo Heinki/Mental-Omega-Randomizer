@@ -91,6 +91,9 @@ class SeedController:
         rewards_on_victory_only = bool(
             self.rewards_on_victory_only_var.get()
         )
+        use_act_based_reward_multipliers = bool(
+            self.use_act_reward_multipliers_var.get()
+        )
         unlock_all_grid_rewards = bool(self.unlock_all_grid_rewards_var.get())
         reward_settings = self.current_reward_settings()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
@@ -182,6 +185,9 @@ class SeedController:
         generation_context = {
             'campaign_filter': self.campaign_var.get(),
             'reward_mode': self.reward_mode_var.get(),
+            'use_act_based_reward_multipliers': (
+                use_act_based_reward_multipliers
+            ),
         }
         self._seed_generation_context = generation_context
         self._reward_settings_override = reward_settings
@@ -199,6 +205,9 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'use_act_based_reward_multipliers': (
+                use_act_based_reward_multipliers
+            ),
             'unlock_all_grid_rewards': unlock_all_grid_rewards,
             'reward_settings': reward_settings,
             'starting_defense_ids': starting_defense_ids,
@@ -227,6 +236,9 @@ class SeedController:
         mission_goal = options['mission_goal']
         rewards_per_check = options['rewards_per_check']
         rewards_on_victory_only = options['rewards_on_victory_only']
+        use_act_based_reward_multipliers = options[
+            'use_act_based_reward_multipliers'
+        ]
         unlock_all_grid_rewards = options['unlock_all_grid_rewards']
         reward_settings = options['reward_settings']
         starting_defense_ids = options['starting_defense_ids']
@@ -391,6 +403,9 @@ class SeedController:
             seed,
             rewards_per_check=rewards_per_check,
             rewards_on_victory_only=rewards_on_victory_only,
+            use_act_based_reward_multipliers=(
+                use_act_based_reward_multipliers
+            ),
             progression_mode=progression_mode,
             grid=grid,
             starting_rewards=starting_rewards,
@@ -426,6 +441,9 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'use_act_based_reward_multipliers': (
+                use_act_based_reward_multipliers
+            ),
             'unlock_all_rewards_after_final_grid_mission': unlock_all_grid_rewards,
             'starting_unlocked_missions': min(
                 1 if progression_mode == 'Classic' else STARTING_UNLOCKED_MISSIONS,
@@ -467,6 +485,9 @@ class SeedController:
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
+            'use_act_based_reward_multipliers': (
+                use_act_based_reward_multipliers
+            ),
             'unlock_all_rewards_after_final_grid_mission': unlock_all_grid_rewards,
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
@@ -499,6 +520,9 @@ class SeedController:
         mission_goal = result['mission_goal']
         rewards_per_check = result['rewards_per_check']
         rewards_on_victory_only = result['rewards_on_victory_only']
+        use_act_based_reward_multipliers = result[
+            'use_act_based_reward_multipliers'
+        ]
         starting_defense_ids = result['starting_defense_ids']
         starting_unit_ids = result['starting_unit_ids']
         starting_rewards = result['starting_rewards']
@@ -528,7 +552,8 @@ class SeedController:
         self.append_log(
             f'Generated seed {seed}. Finish {mission_goal} missions. '
             f'{rewards_per_check} reward(s) per '
-            f'{"mission, multiplied by mission weight" if rewards_on_victory_only else "objective"}. '
+            f'{"mission" if rewards_on_victory_only else "objective"}'
+            f'{", multiplied by mission weight" if use_act_based_reward_multipliers else ""}. '
             f'{opening} '
             f'Setup saved to {CONFIG_PATH}.'
         )
@@ -754,8 +779,15 @@ class SeedController:
                 )
         reward_summary = self.mission_reward_summary(code)
         if check_id == 'victory':
+            multiplier_note = (
+                'Mission Reward Multiplier: '
+                f'x{reward_summary["multiplier"]}. '
+                if self.act_reward_multipliers_enabled()
+                else ''
+            )
             final_note = (
-                f'Mission Reward Multiplier: x{reward_summary["multiplier"]}. '
+                multiplier_note
+                +
                 f'Base rewards: {reward_summary["base_rewards"]}. '
                 f'Final rewards: {reward_summary["final_rewards"]}.'
             )

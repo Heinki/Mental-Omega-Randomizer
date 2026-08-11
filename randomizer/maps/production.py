@@ -30,6 +30,7 @@ def original_player_production_gate_rules(
     existing_rule_sections=None,
     native_sections=None,
     negative_gate_exclusions=(),
+    native_taskforce_ids=(),
     factory_owner_only_ids=(),
     player_forbidden_houses=(),
 ):
@@ -44,7 +45,9 @@ def original_player_production_gate_rules(
     exact-House hidden negative prerequisite keeps the human on isolated
     clones without changing AI production eligibility. Build-only story
     sources instead use ``FactoryOwners.Forbidden`` because their native
-    identity must remain creatable by authored player TeamTypes.
+    identity must remain creatable by authored player TeamTypes. Native types
+    used by non-player TaskForces keep both fields authored: either generated
+    gate can prevent campaign AI teams from forming.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -58,12 +61,19 @@ def original_player_production_gate_rules(
         for source_id in (negative_gate_exclusions or ())
         if str(source_id).strip()
     }
+    native_taskforce_ids = {
+        str(source_id).upper()
+        for source_id in (native_taskforce_ids or ())
+        if str(source_id).strip()
+    }
     factory_owner_only_ids = {
         str(source_id).upper()
         for source_id in (factory_owner_only_ids or ())
         if str(source_id).strip()
     }
+    factory_owner_only_ids.difference_update(native_taskforce_ids)
     negative_gate_exclusions.update(factory_owner_only_ids)
+    negative_gate_exclusions.update(native_taskforce_ids)
     player_forbidden_houses = unique_in_order(
         str(house).strip()
         for house in (player_forbidden_houses or ())
@@ -152,22 +162,35 @@ def original_player_production_gate_rules(
         # keeps enemy/script DropPods valid, and still permits captured enemy
         # technology whose factory was initially built by another country.
         if source_id in negative_gate_exclusions:
-            factory_forbidden = []
-            for values in (
-                installed_by_lower.get(source_id.lower(), {}),
-                section_value_map_preserve(lines, source_id),
-                existing_rule_sections.get(source_id, {}),
-            ):
-                factory_forbidden.extend(comma_items(
+            if source_id in native_taskforce_ids:
+                factory_forbidden = comma_items(_value_case_insensitive(
+                    native_by_lower.get(source_id.lower(), {}),
+                    'FactoryOwners.Forbidden',
                     _value_case_insensitive(
-                        values, 'FactoryOwners.Forbidden', ''
-                    )
+                        installed_by_lower.get(source_id.lower(), {}),
+                        'FactoryOwners.Forbidden',
+                        '',
+                    ),
                 ))
-            source_rules['FactoryOwners.Forbidden'] = ','.join(
-                unique_in_order(
+            else:
+                factory_forbidden = []
+                for values in (
+                    installed_by_lower.get(source_id.lower(), {}),
+                    section_value_map_preserve(lines, source_id),
+                    existing_rule_sections.get(source_id, {}),
+                ):
+                    factory_forbidden.extend(comma_items(
+                        _value_case_insensitive(
+                            values, 'FactoryOwners.Forbidden', ''
+                        )
+                    ))
+            source_rules['FactoryOwners.Forbidden'] = (
+                ','.join(unique_in_order(factory_forbidden)) or None
+                if source_id in native_taskforce_ids
+                else ','.join(unique_in_order(
                     factory_forbidden + list(player_forbidden_houses)
-                )
-            ) or None
+                )) or None
+            )
         installed_values = installed_by_lower.get(source_id.lower(), {})
         native_values = native_by_lower.get(source_id.lower(), {})
         # Clone discovery finishes after the earlier native-overlay pass.  Add
@@ -204,3 +227,70 @@ def original_player_production_gate_rules(
             _value_case_insensitive(installed_values, 'BuildLimit'),
         )
     return rules
+
+
+def validate_native_taskforce_production_filters(
+    lines,
+    installed_sections,
+    native_sections,
+    native_taskforce_ids,
+):
+    """Reject player-isolation gates on authored non-player team payloads."""
+    installed_by_lower = {
+        str(section).lower(): values
+        for section, values in (installed_sections or {}).items()
+    }
+    native_by_lower = {
+        str(section).lower(): values
+        for section, values in (native_sections or {}).items()
+    }
+
+    def effective_value(source_id, values, key):
+        return _value_case_insensitive(
+            values,
+            key,
+            _value_case_insensitive(
+                installed_by_lower.get(source_id.lower(), {}), key, ''
+            ),
+        )
+
+    failures = []
+    for source_id in sorted({
+        str(value).upper()
+        for value in (native_taskforce_ids or ())
+        if str(value).strip()
+    }):
+        authored = native_by_lower.get(source_id.lower(), {})
+        generated = section_value_map_preserve(lines, source_id)
+        generated_negative = comma_items(effective_value(
+            source_id, generated, 'Prerequisite.Negative'
+        ))
+        if any(
+            value.upper() == PLAYER_ORIGINAL_PRODUCTION_GATE_ID.upper()
+            for value in generated_negative
+        ):
+            failures.append(f'{source_id}: hidden prerequisite gate')
+
+        authored_factory = {
+            value.casefold()
+            for value in comma_items(effective_value(
+                source_id, authored, 'FactoryOwners.Forbidden'
+            ))
+            if value.casefold() not in {'none', '<none>'}
+        }
+        generated_factory = {
+            value.casefold()
+            for value in comma_items(effective_value(
+                source_id, generated, 'FactoryOwners.Forbidden'
+            ))
+            if value.casefold() not in {'none', '<none>'}
+        }
+        if generated_factory != authored_factory:
+            failures.append(f'{source_id}: factory-owner filter changed')
+
+    if failures:
+        raise ValueError(
+            'Generated player-production isolation can disable authored '
+            'non-player TaskForces: ' + '; '.join(failures)
+        )
+    return len(set(native_taskforce_ids or ()))

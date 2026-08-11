@@ -740,3 +740,19 @@ with authored production still receive compatible starters.
   20,949 non-player runtime consumers and all 388 refinery/miner paths with zero
   spawn gates, launcher-added ownership collisions, or missing/duplicate player
   miner clones.
+
+The August 2026 normal-attack regression began when commit `9f81466` narrowed
+the original production-gate exclusions from all non-player runtime identities
+to DropPod/runtime-preserve identities. Ordinary campaign TaskForce payloads
+therefore gained `MORPOriginalGate`; later build-only isolation could also add
+player countries to `FactoryOwners.Forbidden`. Ares evaluates these production
+filters while forming native campaign teams, so the AI loop and support powers
+could remain active while ordinary attacks silently stopped. The global repair
+uses the already-computed non-player TaskForce payload set: non-Engineer native
+payloads retain authored effective negative-prerequisite and factory-owner
+filters, with a final validator enforcing both. It does not edit mission AI.
+Focused AREDDAWN and SDRAGON generation preserved their original AITrigger,
+TeamType, TaskForce, ScriptType, house, Autocreate, prerequisite, and timing
+data. A split full audit covered all 97 launch paths; reviewed player/helper
+clone rewrites and explicit mission overrides remained allowed, while every
+original hostile team/script payload and AI registry entry stayed intact.

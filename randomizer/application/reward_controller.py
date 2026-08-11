@@ -671,6 +671,9 @@ class RewardController:
             rewards_on_victory_only=bool(
                 self.state.get('rewards_on_victory_only', False)
             ),
+            use_act_based_reward_multipliers=bool(
+                self.state.get('use_act_based_reward_multipliers', True)
+            ),
             progression_mode=self.state.get('progression_mode'),
             grid=self.state.get('grid'),
             starting_rewards=self.state.get('starting_rewards', []),
@@ -712,6 +715,7 @@ class RewardController:
         preserved_checks=None,
         rewards_per_check=DEFAULT_REWARDS_PER_CHECK,
         rewards_on_victory_only=False,
+        use_act_based_reward_multipliers=True,
         progression_mode=None,
         grid=None,
         starting_rewards=None,
@@ -774,7 +778,9 @@ class RewardController:
                 and check.get('reward_multiplier') >= 1
             ), None)
             multipliers_by_code[code] = (
-                old_multiplier
+                1
+                if not use_act_based_reward_multipliers
+                else old_multiplier
                 if old_multiplier is not None
                 else mission_reward_multiplier(code)
             )
@@ -1034,7 +1040,11 @@ class RewardController:
         checks = self.mission_checks(code)
         if not checks:
             return {
-                'multiplier': mission_reward_multiplier(code),
+                'multiplier': (
+                    mission_reward_multiplier(code)
+                    if self.act_reward_multipliers_enabled()
+                    else 1
+                ),
                 'base_rewards': 0,
                 'final_rewards': 0,
                 'max_rewards_achieved': False,
@@ -1044,7 +1054,11 @@ class RewardController:
             for check in checks
             if isinstance(check.get('reward_multiplier'), int)
             and check.get('reward_multiplier') >= 1
-        ), mission_reward_multiplier(code))
+        ), (
+            mission_reward_multiplier(code)
+            if self.act_reward_multipliers_enabled()
+            else 1
+        ))
         base_rewards = sum(
             max(0, int(check.get('base_reward_count', 0)))
             for check in checks

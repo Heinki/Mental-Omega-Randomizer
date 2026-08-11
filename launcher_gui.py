@@ -111,6 +111,7 @@ def run_self_check():
                     'progression_mode': 'Classic',
                     'rewards_per_objective': 1,
                     'rewards_on_victory_only': False,
+                    'use_act_based_reward_multipliers': True,
                     'unlock_all_rewards_after_final_grid_mission': False,
                     'generation': {'reward_mode': 'Standard'},
                 },

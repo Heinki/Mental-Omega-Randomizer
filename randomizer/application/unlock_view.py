@@ -409,10 +409,11 @@ class UnlockViewController:
                     lines.append('Completing this node does not unlock a currently locked neighbor.')
             lines.append(f'Reward progress: {done_checks}/{total_checks}')
             reward_summary = self.mission_reward_summary(code)
-            lines.append(
-                'Mission Reward Multiplier: '
-                f'x{reward_summary["multiplier"]}'
-            )
+            if self.act_reward_multipliers_enabled():
+                lines.append(
+                    'Mission Reward Multiplier: '
+                    f'x{reward_summary["multiplier"]}'
+                )
             lines.append(
                 f'Base rewards: {reward_summary["base_rewards"]}'
             )

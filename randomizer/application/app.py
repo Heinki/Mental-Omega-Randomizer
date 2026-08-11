@@ -215,6 +215,12 @@ class LauncherApp(
                 self.config.get('rewards_on_victory_only', False),
             ))
         )
+        self.use_act_reward_multipliers_var = tk.BooleanVar(
+            value=bool(self.state.get(
+                'use_act_based_reward_multipliers',
+                self.config.get('use_act_based_reward_multipliers', True),
+            ))
+        )
         generation_config = self.config.get('generation', {})
         arsenal_settings = normalize_arsenal_settings(
             generation_config.get('arsenal')

@@ -40,6 +40,7 @@ from randomizer.maps.rules import (
     native_variant_unit_buff_rules,
     native_variant_veterancy_rules,
     original_player_production_gate_rules,
+    validate_native_taskforce_production_filters,
     player_country_buff_rules,
     player_unit_clone_rules,
     resolved_academy_clone_rules,
@@ -1501,6 +1502,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 non_player_droppod_payload_ids
                 | runtime_identity_preserve_ids
             ) - set(ENGINEER_UNIT_IDS),
+            native_taskforce_ids=(
+                non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS)
+            ),
             # A mission can hand the player a friendly barracks whose initial
             # map owner is an allied helper House. FactoryOwners.Forbidden
             # then mistakes that barracks for captured enemy technology and
@@ -1508,7 +1512,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             # always use the exact-player-House negative gate instead; this
             # leaves authored placements and scripted creation intact.
             factory_owner_only_ids=(
-                build_only_clone_source_ids - set(ENGINEER_UNIT_IDS)
+                build_only_clone_source_ids
+                - non_player_taskforce_unit_ids
+                - set(ENGINEER_UNIT_IDS)
             ),
             player_forbidden_houses=player_native_exclusions,
         )
@@ -2090,6 +2096,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         }
         if final_engineer_gate_rules:
             merge_ini_section_values(lines, final_engineer_gate_rules)
+    validated_native_team_units = validate_native_taskforce_production_filters(
+        lines,
+        installed_rule_sections,
+        native_map_sections,
+        non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS),
+    )
+    if validated_native_team_units:
+        self.append_log(
+            'Validated authored non-player TaskForce production filters: '
+            f'{validated_native_team_units} native type(s).'
+        )
     static_power_providers = append_static_startup_buildings(
         lines,
         power_house_names,

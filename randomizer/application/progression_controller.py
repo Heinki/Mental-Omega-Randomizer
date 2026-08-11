@@ -328,13 +328,17 @@ class ProgressionController:
         if not missing:
             return ''
         reward_summary = self.mission_reward_summary(code)
-        lines = [
-            f'Mission Reward Multiplier: x{reward_summary["multiplier"]}',
+        lines = []
+        if self.act_reward_multipliers_enabled():
+            lines.append(
+                f'Mission Reward Multiplier: x{reward_summary["multiplier"]}'
+            )
+        lines.extend([
             f'Base rewards: {reward_summary["base_rewards"]}',
             f'Final rewards: {reward_summary["final_rewards"]}',
             '',
             'Remaining mission checks:',
-        ]
+        ])
         for check in missing:
             rewards = check_rewards(check)
             lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
@@ -369,9 +373,15 @@ class ProgressionController:
         self.append_log(f'Launching selected mission: {mission["code"]} ({mission["scenario"]})')
         if self.state:
             reward_summary = self.mission_reward_summary(mission['code'])
-            self.append_log(
+            multiplier_note = (
                 'Mission Reward Multiplier: '
                 f'x{reward_summary["multiplier"]}. '
+                if self.act_reward_multipliers_enabled()
+                else ''
+            )
+            self.append_log(
+                multiplier_note
+                +
                 f'Base rewards: {reward_summary["base_rewards"]}. '
                 f'Final rewards: {reward_summary["final_rewards"]}.'
             )

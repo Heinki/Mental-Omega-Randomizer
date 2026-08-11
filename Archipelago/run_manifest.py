@@ -26,6 +26,7 @@ GAMEPLAY_CONFIG_KEYS = (
     "unlock_all_rewards_after_final_grid_mission",
     "rewards_per_objective",
     "rewards_on_victory_only",
+    "use_act_based_reward_multipliers",
     "difficulty",
     "game_speed",
     "player_color",
@@ -167,6 +168,9 @@ def _launcher_snapshot_for_state(state, config):
         "rewards_per_objective": int(state.get("rewards_per_check") or 1),
         "rewards_on_victory_only": bool(
             state.get("rewards_on_victory_only", False)
+        ),
+        "use_act_based_reward_multipliers": bool(
+            state.get("use_act_based_reward_multipliers", True)
         ),
         "generation": {
             "reward_mode": state.get("reward_mode"),
@@ -315,6 +319,9 @@ def build_run_manifest(state, launcher_config=None):
             "reward_mode": state.get("reward_mode"),
             "rewards_per_check": state.get("rewards_per_check"),
             "rewards_on_victory_only": state.get("rewards_on_victory_only"),
+            "use_act_based_reward_multipliers": bool(
+                state.get("use_act_based_reward_multipliers", True)
+            ),
             "unlock_all_rewards_after_final_grid_mission": state.get(
                 "unlock_all_rewards_after_final_grid_mission"
             ),

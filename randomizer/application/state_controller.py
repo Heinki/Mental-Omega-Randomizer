@@ -139,6 +139,11 @@ class StateController:
         if 'mission_goal' not in self.state:
             self.state['mission_goal'] = len(self.state.get('mission_order', [])) or DEFAULT_MISSION_GOAL
             changed = True
+        if 'use_act_based_reward_multipliers' not in self.state:
+            # Mission multipliers predate this switch. Legacy runs keep their
+            # existing Act-based reward plan.
+            self.state['use_act_based_reward_multipliers'] = True
+            changed = True
         old_earned = self.earned_rewards_from_checks(include_starting=False) if self.state.get('starting_rewards') and self.state.get('mission_checks') else self.state.get('earned_rewards', [])
         old_queue = self.state.get('reward_queue', [])
         discard_old_reward_history = False
@@ -172,6 +177,9 @@ class StateController:
                 rewards_per_check=self.state.get('rewards_per_check', DEFAULT_REWARDS_PER_CHECK),
                 rewards_on_victory_only=bool(
                     self.state.get('rewards_on_victory_only', False)
+                ),
+                use_act_based_reward_multipliers=bool(
+                    self.state.get('use_act_based_reward_multipliers', True)
                 ),
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
@@ -896,6 +904,18 @@ class StateController:
             mode = REWARD_MODES[0]
         return 'Chaos' if mode == 'Chaos (Experimental)' else mode
 
+    def act_reward_multipliers_enabled(self):
+        generation_context = self.__dict__.get('_seed_generation_context') or {}
+        if 'use_act_based_reward_multipliers' in generation_context:
+            return bool(generation_context['use_act_based_reward_multipliers'])
+        if self.state:
+            return bool(
+                self.state.get('use_act_based_reward_multipliers', True)
+            )
+        if hasattr(self, 'use_act_reward_multipliers_var'):
+            return bool(self.use_act_reward_multipliers_var.get())
+        return bool(self.config.get('use_act_based_reward_multipliers', True))
+
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
         self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
@@ -915,6 +935,9 @@ class StateController:
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['rewards_on_victory_only'] = bool(
             self.rewards_on_victory_only_var.get()
+        )
+        self.config['use_act_based_reward_multipliers'] = bool(
+            self.use_act_reward_multipliers_var.get()
         )
         self.config['difficulty'] = self.difficulty_var.get()
         self.config['game_speed'] = self.game_speed_var.get()
@@ -1114,6 +1137,9 @@ class StateController:
         )))
         self.rewards_on_victory_only_var.set(bool(
             self.config.get('rewards_on_victory_only', False)
+        ))
+        self.use_act_reward_multipliers_var.set(bool(
+            self.config.get('use_act_based_reward_multipliers', True)
         ))
         self.difficulty_var.set(valid_choice(
             self.config.get('difficulty'),
