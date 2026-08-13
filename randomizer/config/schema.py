@@ -22,6 +22,7 @@ REQUIRED_SECTIONS = {
         'mission_reward_multipliers': dict,
         'build_classifications': dict,
         'house_config': dict,
+        'helper_buff_excluded_houses': dict,
         'player_production_houses': dict,
         'player_power_houses': dict,
         'native_trigger_reference_ids': dict,
@@ -29,8 +30,11 @@ REQUIRED_SECTIONS = {
         'reward_excluded_player_houses': dict,
         'clone_only_country_buff_types': dict,
         'scripted_player_buff_taskforces': dict,
+        'native_runtime_player_forbidden_ids': dict,
         'team_house_overrides': dict,
         'native_runtime_identity_preserve_ids': dict,
+        'native_production_aliases': dict,
+        'objective_hook_action_redirects': dict,
         'special_infantry_factory_exclusions': dict,
         'victory_hook_action_ids': dict,
         'objective_clone_event_refs': dict,
@@ -199,6 +203,7 @@ def _validate_missions(sections, path):
     validate_mission_reward_config(sections, path, _invalid)
 
     for section in (
+        'helper_buff_excluded_houses',
         'original_mcv_access',
         'native_production_gate_exclusions',
         'special_infantry_factory_exclusions',
@@ -239,6 +244,42 @@ def _validate_missions(sections, path):
                     f'{code!r}/{unit_id!r}',
                     path,
                 )
+
+    for code, aliases in sections.get('native_production_aliases', {}).items():
+        if (
+            not _is_nonempty_string(code)
+            or code not in sections['build_classifications']
+            or not isinstance(aliases, dict)
+            or not aliases
+            or any(
+                not _is_nonempty_string(alias_id)
+                or not _is_nonempty_string(source_id)
+                for alias_id, source_id in aliases.items()
+            )
+        ):
+            _invalid(
+                f'Invalid native_production_aliases entry for {code!r}',
+                path,
+            )
+
+    for code, redirects in sections.get(
+        'objective_hook_action_redirects', {}
+    ).items():
+        if (
+            not _is_nonempty_string(code)
+            or code not in sections['build_classifications']
+            or not isinstance(redirects, dict)
+            or not redirects
+            or any(
+                not _is_nonempty_string(source_action_id)
+                or not _is_nonempty_string(target_action_id)
+                for source_action_id, target_action_id in redirects.items()
+            )
+        ):
+            _invalid(
+                f'Invalid objective_hook_action_redirects entry for {code!r}',
+                path,
+            )
 
     country_buff_types = {'production', 'cost', 'speed', 'armor'}
     for code, buff_types in sections['clone_only_country_buff_types'].items():

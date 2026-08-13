@@ -88,13 +88,21 @@ from randomizer.missions.houses import mission_house_config, mission_player_powe
 from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
+    MISSION_HELPER_BUFF_EXCLUDED_HOUSES,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
     MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS,
+    MISSION_NATIVE_PRODUCTION_ALIASES,
+    MISSION_NATIVE_RUNTIME_ACTION_TEAM_FACTORY_FORBIDDEN_HOUSES,
+    MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS,
+    MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS,
     MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS,
+    MISSION_NATIVE_RUNTIME_WEAPON_PRESERVE_IDS,
+    MISSION_OBJECTIVE_HOOK_ACTION_REDIRECTS,
     MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_OBJECTIVE_CLONE_EVENT_REFS,
     MISSION_NATIVE_TECH_UNLOCK_IDS,
+    MISSION_NATIVE_TECH_UNLOCK_KEEP_SOURCE_DISABLED_IDS,
     MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES,
     MISSION_NATIVE_TRIGGER_REFERENCE_IDS,
     MISSION_NATIVE_VARIANT_BUFF_RULES,
@@ -106,6 +114,7 @@ from randomizer.missions.overrides import (
     MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS,
     MISSION_TEAM_HOUSE_OVERRIDES,
     MISSION_TECHNO_BASE_RULES,
+    MISSION_UNSAFE_STATIC_PROVIDER_SUPERWEAPON_IDS,
     MISSION_VICTORY_HOOK_ACTION_IDS,
 )
 from randomizer.missions.safety import safe_build_countries
@@ -291,6 +300,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             code, ()
         )
     }
+    if code in MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS:
+        runtime_identity_preserve_ids.update(scripted_story_unit_ids)
+        self.append_log(
+            f'{code} preserves {len(scripted_story_unit_ids)} authored '
+            'action-created TaskForce identities through every clone, gate, '
+            'and buff pass.'
+        )
     installed_superweapon_types, installed_rule_sections = installed_rules_registry()
     installed_building_ids = {
         str(building_id).strip()
@@ -504,7 +520,19 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Native helper timing, scripts, and triggers stay intact. Compatible
     # TaskForce slots use buffed clones, while native unit IDs remain
     # buildable for dynamic AI requests outside those TaskForces.
-    reward_helpers = tuple(native_helpers) if buff_allied_helpers else ()
+    excluded_helper_names = {
+        str(house).strip().lower()
+        for house in MISSION_HELPER_BUFF_EXCLUDED_HOUSES.get(code, ())
+    }
+    reward_helpers = (
+        tuple(
+            house
+            for house in native_helpers
+            if house.lower() not in excluded_helper_names
+        )
+        if buff_allied_helpers
+        else ()
+    )
     country_safety_helpers = tuple(unique_in_order(
         list(reward_helpers)
         + [
@@ -525,11 +553,23 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             error=True,
         )
     if buff_allied_helpers and house_config['allies']:
-        self.append_log(
-            f'{code} configured allied helper allowlist: '
-            + (', '.join(reward_helpers) if reward_helpers else 'none')
-            + '. Helper teams use buffed clones; native IDs remain buildable queue fallbacks.'
-        )
+        excluded_helpers = [
+            house for house in native_helpers
+            if house.lower() in excluded_helper_names
+        ]
+        if reward_helpers:
+            self.append_log(
+                f'{code} configured allied helper allowlist: '
+                + ', '.join(reward_helpers)
+                + '. Helper teams use buffed clones; native IDs remain '
+                'buildable queue fallbacks.'
+            )
+        if excluded_helpers:
+            self.append_log(
+                f'{code} preserved authored helper identities: '
+                + ', '.join(excluded_helpers)
+                + '.'
+            )
     earned_rewards = (
         self.launch_rewards_for_mission(code) if self.state else []
     )
@@ -616,6 +656,34 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         power_launch_inputs,
         installed_rule_sections,
     )
+    unsafe_static_provider_powers = {
+        str(power_id).upper()
+        for power_id in MISSION_UNSAFE_STATIC_PROVIDER_SUPERWEAPON_IDS.get(
+            code, ()
+        )
+    }
+    if unsafe_static_provider_powers:
+        deferred_power_rewards = [
+            reward
+            for reward in canonical_rewards(launch_power_rewards)
+            if str(reward.get('superweapon') or '').upper()
+            in unsafe_static_provider_powers
+        ]
+        launch_power_rewards = [
+            reward
+            for reward in canonical_rewards(launch_power_rewards)
+            if str(reward.get('superweapon') or '').upper()
+            not in unsafe_static_provider_powers
+        ]
+        if deferred_power_rewards:
+            self.append_log(
+                f'Deferred unsafe physical-provider powers for {code}: '
+                + ', '.join(
+                    reward_display_name(reward)
+                    for reward in deferred_power_rewards
+                )
+                + '. Earned access remains active in other missions.'
+            )
     power_player_clone_reference_fields = {}
     power_player_clone_value_overrides = {}
     for reward in canonical_rewards(launch_power_rewards):
@@ -852,24 +920,33 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # runtime house. Reviewed player TaskForces that are safely rewritten to
     # clones do not need that exemption either.
     usage_index = build_unit_usage_index(lines)
-    player_usage_names = {
+
+    controlled_player_usage_names = {
         str(name).lower()
-        for name in (
-            list(player_native_exclusions)
-            + player_controlled_houses(lines, records=records)
-        )
+        for name in player_controlled_houses(lines, records=records)
         if name
     }
+    player_usage_names = {
+        str(name).lower()
+        for name in player_native_exclusions
+        if name
+    } | set(controlled_player_usage_names)
     for house_name, house_values in records.items():
         if not house_values.get('player'):
             continue
-        player_usage_names.add(str(house_name).lower())
+        controlled_player_usage_names.add(str(house_name).lower())
+        controlled_player_usage_names.add(
+            str(house_name).removesuffix(' House').lower()
+        )
         if house_values.get('country'):
-            player_usage_names.add(str(house_values['country']).lower())
+            controlled_player_usage_names.add(
+                str(house_values['country']).lower()
+            )
         if house_values.get('parent_country'):
-            player_usage_names.add(
+            controlled_player_usage_names.add(
                 str(house_values['parent_country']).lower()
             )
+    player_usage_names.update(controlled_player_usage_names)
     safe_player_clone_unit_ids = set()
     native_sections_by_lower = {
         str(section).lower(): values
@@ -1480,9 +1557,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             for source_id, details in clone_handled.items()
             if bool((details or {}).get('build_only'))
         }
+        production_alias_ids = {
+            alias_id
+            for alias_id, source_id in MISSION_NATIVE_PRODUCTION_ALIASES.get(
+                code, {}
+            ).items()
+            if source_id in actual_clone_source_ids
+        }
         production_gate_source_ids = (
             (set(isolated_native_ids) - set(preserved_native_access_ids))
             | actual_clone_source_ids
+            | production_alias_ids
+            | set(MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS.get(code, ()))
             | {
                 str(unit_id).upper()
                 for unit_id in self.randomized_tech_ids()
@@ -1518,6 +1604,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             ),
             player_forbidden_houses=player_native_exclusions,
         )
+        if production_alias_ids:
+            aliases = MISSION_NATIVE_PRODUCTION_ALIASES.get(code, {})
+            self.append_log(
+                'Blocked mission production aliases duplicating player '
+                'clones: '
+                + ', '.join(
+                    f'{alias_id} -> {aliases[alias_id]}'
+                    for alias_id in sorted(production_alias_ids)
+                )
+                + '.'
+            )
         # Every registered player clone gets one final native-source exclusion
         # here, after clone discovery. Earlier passes cannot know the complete
         # map-local clone set and leaked captured-factory originals beside E1,
@@ -1979,15 +2076,54 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     final_runtime_restore_ids = (
         set(runtime_identity_preserve_ids)
         | set(non_player_droppod_payload_ids)
+        | set(MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS.get(code, ()))
     ) - set(refinery_free_unit_ids)
     if final_runtime_restore_ids:
+        # Reviewed player story TaskForces are rewritten to clone identities
+        # before native originals receive a player-country sidebar exclusion.
+        # Recompute from the final references and fail safely: if any player
+        # TeamType still contains the native ID, keep that ID unrestricted so
+        # the campaign team can form, even though the access report will flag
+        # its duplicate cameo.
+        final_sections = all_section_value_maps(lines)
+        final_sections_by_lower = {
+            str(section).lower(): values
+            for section, values in final_sections.items()
+        }
+        final_player_taskforce_unit_ids = set()
+        for taskforce_id, usage_houses in taskforce_usage_houses(
+            lines,
+            sections=final_sections,
+        ).items():
+            if not {
+                str(house or '').strip().lower()
+                for house in usage_houses
+            }.intersection(controlled_player_usage_names):
+                continue
+            for value in final_sections_by_lower.get(
+                str(taskforce_id).lower(), {}
+            ).values():
+                tokens = [token.strip() for token in str(value).split(',')]
+                if (
+                    len(tokens) >= 2
+                    and tokens[0].isdigit()
+                    and tokens[1]
+                    and tokens[1].lower() not in {'none', '<none>'}
+                ):
+                    final_player_taskforce_unit_ids.add(tokens[1].upper())
         final_runtime_identity_rules = {}
         for source_id in sorted(final_runtime_restore_ids):
             original_values = native_map_sections_preserve.get(
                 str(source_id).upper(), {}
             )
             current_values = section_value_map_preserve(lines, source_id)
-            if not original_values and not current_values:
+            if (
+                not original_values
+                and not current_values
+                and source_id not in (
+                    MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS.get(code, ())
+                )
+            ):
                 continue
             original_keys = {
                 str(key).lower()
@@ -2030,13 +2166,26 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                             runtime_aliases.add(
                                 str(house_values[field]).lower()
                             )
+            preserve_player_forbidden = (
+                source_id in MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS.get(
+                    code, ()
+                )
+                and source_id in production_gate_rules
+                and source_id not in final_player_taskforce_unit_ids
+            )
             if (
-                source_id not in runtime_identity_preserve_ids
-                and not runtime_aliases.intersection({
-                    str(owner).strip().lower()
-                    for owner in player_native_exclusions
-                    if str(owner).strip()
-                })
+                (
+                    source_id not in runtime_identity_preserve_ids
+                    or preserve_player_forbidden
+                )
+                and (
+                    preserve_player_forbidden
+                    or not runtime_aliases.intersection({
+                        str(owner).strip().lower()
+                        for owner in player_native_exclusions
+                        if str(owner).strip()
+                    })
+                )
             ):
                 current_forbidden = next(
                     (
@@ -2046,6 +2195,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     ),
                     None,
                 )
+                if current_forbidden is None and preserve_player_forbidden:
+                    current_forbidden = next(
+                        (
+                            value
+                            for key, value in production_gate_rules.get(
+                                source_id, {}
+                            ).items()
+                            if str(key).lower() == 'forbiddenhouses'
+                        ),
+                        None,
+                    )
                 if current_forbidden is not None:
                     for key in list(restored_values):
                         if str(key).lower() == 'forbiddenhouses':
@@ -2074,6 +2234,37 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     ),
                     None,
                 )
+            action_team_factory_forbidden = (
+                MISSION_NATIVE_RUNTIME_ACTION_TEAM_FACTORY_FORBIDDEN_HOUSES.get(
+                    code, ()
+                )
+            )
+            if (
+                source_id in scripted_story_unit_ids
+                and source_id in production_gate_rules
+                and action_team_factory_forbidden
+            ):
+                original_factory_forbidden = native_value(
+                    original_values,
+                    'FactoryOwners.Forbidden',
+                    native_value(
+                        installed_rule_sections.get(
+                            installed_names.get(source_id.lower()), {}
+                        ),
+                        'FactoryOwners.Forbidden',
+                        '',
+                    ),
+                )
+                current_factory_forbidden = ','.join(unique_in_order(
+                    [
+                        item.strip()
+                        for item in str(
+                            original_factory_forbidden or ''
+                        ).split(',')
+                        if item.strip()
+                    ]
+                    + list(action_team_factory_forbidden)
+                ))
             if current_factory_forbidden is not None:
                 for key in list(restored_values):
                     if str(key).lower() == 'factoryowners.forbidden':
@@ -2096,11 +2287,47 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         }
         if final_engineer_gate_rules:
             merge_ini_section_values(lines, final_engineer_gate_rules)
+
+    runtime_weapon_restore_ids = (
+        MISSION_NATIVE_RUNTIME_WEAPON_PRESERVE_IDS.get(code, ())
+    )
+    if runtime_weapon_restore_ids:
+        final_runtime_weapon_rules = {}
+        for weapon_id in sorted(runtime_weapon_restore_ids):
+            original_values = native_map_sections_preserve.get(
+                str(weapon_id).upper(), {}
+            )
+            current_values = section_value_map_preserve(lines, weapon_id)
+            if not original_values and not current_values:
+                continue
+            restored_values = {
+                key: None
+                for key in current_values
+                if str(key).lower() not in {
+                    str(original_key).lower()
+                    for original_key in original_values
+                }
+            }
+            restored_values.update(original_values)
+            final_runtime_weapon_rules[weapon_id] = restored_values
+        if final_runtime_weapon_rules:
+            merge_ini_section_values(lines, final_runtime_weapon_rules)
+            self.append_log(
+                'Restored authored runtime WeaponTypes after player buff '
+                'isolation: '
+                + ', '.join(sorted(final_runtime_weapon_rules))
+                + '.'
+            )
+    native_team_validation_ids = (
+        non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS)
+    )
+    if code in MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS:
+        native_team_validation_ids.difference_update(scripted_story_unit_ids)
     validated_native_team_units = validate_native_taskforce_production_filters(
         lines,
         installed_rule_sections,
         native_map_sections,
-        non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS),
+        native_team_validation_ids,
     )
     if validated_native_team_units:
         self.append_log(
@@ -2194,6 +2421,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         lines,
         mission_unlock_clone_replacements if self.state else {},
         preserved_action_ids=preserved_ai_action_ids,
+        keep_source_disabled_ids=(
+            MISSION_NATIVE_TECH_UNLOCK_KEEP_SOURCE_DISABLED_IDS.get(code, ())
+        ),
     )
     if rewritten_native_unlocks:
         self.append_log(
@@ -2221,7 +2451,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         lines,
         checks,
         MISSION_VICTORY_HOOK_ACTION_IDS.get(code, ()),
+        MISSION_OBJECTIVE_HOOK_ACTION_REDIRECTS.get(code, {}),
     )
+    objective_hook_redirects = MISSION_OBJECTIVE_HOOK_ACTION_REDIRECTS.get(
+        code, {}
+    )
+    if objective_hook_redirects:
+        self.append_log(
+            'Deferred fragile objective marker action(s): '
+            + ', '.join(
+                f'{source_action_id} -> {target_action_id}'
+                for source_action_id, target_action_id
+                in objective_hook_redirects.items()
+            )
+            + '.'
+        )
     if missing_victory:
         self.append_log(f'No automatic victory hook found for {scenario}. Victory may not be recorded.', error=True)
 

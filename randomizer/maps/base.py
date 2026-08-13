@@ -289,8 +289,20 @@ def remove_locked_techlevel_actions(
     return removed
 
 
-def rewrite_techlevel_actions(lines, replacements, preserved_action_ids=()):
-    """Retarget native Action 106 unlocks to registered player clones."""
+def rewrite_techlevel_actions(
+    lines,
+    replacements,
+    preserved_action_ids=(),
+    keep_source_disabled_ids=(),
+):
+    """Retarget native Action 106 unlocks to registered player clones.
+
+    A reviewed authored source can remain explicitly disabled for the trigger
+    House while its clone receives the original TechLevel value.  This is
+    required for alternating source/story aliases such as EMIGDAL's
+    HARP/SP_HARP pair: the stage action must switch SP_HARP against the player
+    clone, never against the native HARP production identity.
+    """
     replacements = {
         str(source).upper(): str(replacement)
         for source, replacement in (replacements or {}).items()
@@ -298,6 +310,11 @@ def rewrite_techlevel_actions(lines, replacements, preserved_action_ids=()):
     }
     if not replacements:
         return 0
+    keep_source_disabled = {
+        str(source).strip().upper()
+        for source in (keep_source_disabled_ids or ())
+        if str(source).strip()
+    }
     preserved = {
         str(action_id).strip().lower()
         for action_id in (preserved_action_ids or ())
@@ -319,20 +336,30 @@ def rewrite_techlevel_actions(lines, replacements, preserved_action_ids=()):
         if not count or not groups:
             continue
         changed = False
+        rewritten_groups = []
         for group in groups:
             if len(group) < 3 or group[0] != '106':
+                rewritten_groups.append(group)
                 continue
-            replacement = replacements.get(group[2].strip().upper())
+            source = group[2].strip().upper()
+            replacement = replacements.get(source)
             if not replacement:
+                rewritten_groups.append(group)
                 continue
+            if source in keep_source_disabled and len(group) >= 8:
+                source_group = list(group)
+                source_group[2] = source
+                source_group[7] = '-1'
+                rewritten_groups.append(source_group)
             group[2] = replacement
+            rewritten_groups.append(group)
             changed = True
             rewritten += 1
         if not changed:
             continue
-        tokens = action_group_tokens(groups)
+        tokens = action_group_tokens(rewritten_groups)
         replacement_line = (
-            f'{key.strip()}={count}'
+            f'{key.strip()}={len(rewritten_groups)}'
             + (',' + ','.join(tokens) if tokens else '')
         )
         if len(replacement_line.encode('utf-8')) > MAX_MAP_ACTION_LINE_LENGTH:
@@ -586,6 +613,12 @@ def cloned_superweapon_plan(
                 )
                 techno_values = dict(techno_source_values)
                 techno_values.update(clone_spec.get('values') or {})
+                if clone_spec.get('static_startup'):
+                    # Static providers are implementation objects, never map
+                    # scenery, path blockers, or AI targets. DUMMYDUMMY-derived
+                    # specs are solid unless IsPassable is set explicitly.
+                    techno_values['InvisibleInGame'] = 'yes'
+                    techno_values['IsPassable'] = 'yes'
                 if clone_spec.get('provides_superweapon'):
                     # Ares GenericWarhead passes its launch BuildingType as
                     # source to EMP and AttachEffect filtering. Action-34-only

@@ -557,6 +557,38 @@ class UnlockDataController:
         source_getter = getattr(self, 'archipelago_reward_source_items', None)
         archipelago_sources = source_getter() if source_getter else None
         if archipelago_sources is not None:
+            assignment_getter = getattr(
+                self, 'archipelago_reward_assignment_source_items', None
+            )
+            assignments = (
+                assignment_getter() if assignment_getter else ()
+            ) or ()
+            for source, reward, available in assignments:
+                reward = canonical_reward(reward)
+                if reward.get('retired_reward'):
+                    continue
+                for key in self.unlock_dashboard_reward_keys(
+                    reward,
+                    share_role_buffs=share_role_buffs,
+                    share_foehn_roles=share_foehn_roles,
+                ):
+                    entry = indexed.setdefault(
+                        key,
+                        {
+                            'assigned': [],
+                            'earned': [],
+                            'earned_unlocks': [],
+                            'available': [],
+                            'available_unlocks': [],
+                            'available_codes': [],
+                        },
+                    )
+                    item = (source, reward)
+                    entry['assigned'].append(item)
+                    if available:
+                        entry['available'].append(item)
+                        if reward.get('kind') != 'buff':
+                            entry['available_unlocks'].append(item)
             for source, reward in archipelago_sources:
                 reward = canonical_reward(reward)
                 if reward.get('retired_reward'):
@@ -1022,11 +1054,18 @@ class UnlockDataController:
         return entries
 
     def unlock_dashboard_tooltip(self, entry):
+        archipelago_active = bool(
+            getattr(self, 'archipelago_run_active', lambda: False)()
+        )
         status_labels = {
             'unlocked': 'Unlocked',
             'available': 'Available now',
             'locked': 'Locked',
-            'unavailable': 'Unavailable in this seed',
+            'unavailable': (
+                'Not yet received'
+                if archipelago_active
+                else 'Unavailable in this seed'
+            ),
         }
         arsenal_entry = bool(
             entry.get('arsenal_mode')
@@ -1099,6 +1138,8 @@ class UnlockDataController:
             availability_lines.append(
                 'Not part of this mission\'s seed-fixed temporary arsenal.'
                 if arsenal_entry
+                else 'May be received later from this Archipelago multiworld.'
+                if archipelago_active
                 else 'Not assigned by this seed and current reward settings.'
             )
 

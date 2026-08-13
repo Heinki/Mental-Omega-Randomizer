@@ -558,7 +558,14 @@ class ArchipelagoController(ArchipelagoYamlController):
                 self.refresh_progress_view()
             return
         if event.kind == 'locations_checked':
-            changed = self._apply_archipelago_server_locations(event.payload)
+            incoming = {
+                int(value) for value in (event.payload or ())
+            }
+            previous = set(getattr(
+                self, '_archipelago_server_checked_locations', set()
+            ))
+            self._archipelago_server_checked_locations = previous | incoming
+            changed = self._archipelago_server_checked_locations != previous
             locations = ', '.join(str(value) for value in event.payload)
             self.append_archipelago_history(
                 f'Server synchronized checked locations: {locations}.'
@@ -693,6 +700,8 @@ class ArchipelagoController(ArchipelagoYamlController):
             'manifest_checksum': slot_manifest['manifest_checksum'],
             'server': result.endpoint,
             'slot_name': active_session.config.slot_name,
+            'team': int(result.team),
+            'slot': int(result.slot),
             'checkpoint': active_session.checkpoint(),
             'players': deepcopy(result.slot_info),
         })
@@ -729,14 +738,26 @@ class ArchipelagoController(ArchipelagoYamlController):
 
     def _apply_archipelago_server_locations(self, location_ids, replace=False):
         """Project server-checked locations into mission/Grid completion state."""
-        incoming = {int(value) for value in (location_ids or ())}
+        slot_data = getattr(self, '_archipelago_slot_data', {})
+        mappings = slot_data.get('locations', {})
+        allowed = {
+            int(value)
+            for mission in mappings.values()
+            if isinstance(mission, dict)
+            for values in mission.values()
+            if isinstance(values, list)
+            for value in values
+        }
+        incoming = {
+            int(value)
+            for value in (location_ids or ())
+            if int(value) in allowed
+        }
         previous = set(getattr(
             self, '_archipelago_server_checked_locations', set()
         ))
         checked = incoming if replace else previous | incoming
         self._archipelago_server_checked_locations = checked
-        slot_data = getattr(self, '_archipelago_slot_data', {})
-        mappings = slot_data.get('locations', {})
         mission_checks = self.state.get('mission_checks', {})
         changed = checked != previous
         completed = []
@@ -867,7 +888,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         return changed
 
     def archipelago_check_item_details(self, code, check_id):
-        """Return server-scouted placements for one completed AP check."""
+        """Return server-scouted placements for one AP check."""
         ap_state = self._active_archipelago_state()
         if ap_state is None:
             return None
@@ -886,6 +907,52 @@ class ArchipelagoController(ArchipelagoYamlController):
             for location in self._archipelago_location_ids(code, check_id)
             if isinstance(self._archipelago_location_info.get(location), dict)
         )
+
+    def archipelago_reward_assignment_source_items(self):
+        """Return known future MO rewards placed at this slot's locations."""
+        ap_state = self._active_archipelago_state()
+        if ap_state is None:
+            return None
+        current_slot = int(ap_state.get('slot') or 0)
+        if current_slot <= 0:
+            return ()
+        mission_lookup = self.mission_lookup()
+        playable = {
+            code
+            for code in self.unlocked_mission_codes()
+            if not self.is_mission_complete(code)
+        }
+        checked = set(getattr(
+            self, '_archipelago_server_checked_locations', set()
+        ))
+        items = []
+        seen_locations = set()
+        for code in self.state.get('mission_order', []):
+            title = mission_lookup.get(code, {}).get('title', code)
+            for check in self.mission_checks(code):
+                check_id = str(check.get('id', ''))
+                check_name = str(check.get('name') or 'Check')
+                for location in self._archipelago_location_ids(code, check_id):
+                    if location in seen_locations:
+                        continue
+                    record = self._archipelago_location_info.get(location)
+                    if (
+                        not isinstance(record, dict)
+                        or int(record.get('player') or 0) != current_slot
+                    ):
+                        continue
+                    reward_name = self._archipelago_reward_name(
+                        int(record.get('item') or 0)
+                    )
+                    if reward_name not in REWARD_BY_NAME:
+                        continue
+                    seen_locations.add(location)
+                    items.append((
+                        f'{title} â€” {check_name}',
+                        canonical_reward({'name': reward_name}),
+                        bool(code in playable and location not in checked),
+                    ))
+        return tuple(items)
 
     def _archipelago_reward_name(self, item_id):
         item_names = getattr(self, '_archipelago_item_names', {})
@@ -1225,7 +1292,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 checkpoint = session.checkpoint()
             else:
                 checkpoint = dict(ap_state.get('checkpoint') or {})
-                checkpoint.setdefault('format', 1)
+                checkpoint['format'] = 2
+                checkpoint.setdefault('pending_locations', [])
                 completed = {
                     int(value)
                     for value in checkpoint.get('completed_locations', [])
@@ -1235,6 +1303,12 @@ class ArchipelagoController(ArchipelagoYamlController):
                 )
                 completed.update(added)
                 checkpoint['completed_locations'] = sorted(completed)
+                pending = {
+                    int(value)
+                    for value in checkpoint.get('pending_locations', [])
+                }
+                pending.update(added)
+                checkpoint['pending_locations'] = sorted(pending)
             if not added:
                 return ()
             ap_state['checkpoint'] = checkpoint
@@ -1292,7 +1366,7 @@ class ArchipelagoController(ArchipelagoYamlController):
                 checkpoint = session.checkpoint()
             else:
                 checkpoint = dict(ap_state.get('checkpoint') or {})
-                checkpoint.setdefault('format', 1)
+                checkpoint['format'] = 2
                 changed = not bool(checkpoint.get('goal_complete', False))
                 checkpoint['goal_complete'] = True
             checkpoint_changed = ap_state.get('checkpoint') != checkpoint

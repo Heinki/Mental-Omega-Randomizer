@@ -1366,10 +1366,19 @@ def build_player_clone_sections(
             )
         )
         reference_clone_id = clone_id
-        if safe_direct_rewrite and 'cloak' in direct_types:
+        needs_uncloaked_reference_clone = (
+            'cloak' in direct_types
+            and (
+                safe_direct_rewrite
+                or unit_id in scripted_player_clone_unit_ids
+            )
+        )
+        if needs_uncloaked_reference_clone:
             # A cloaked infantry unit cannot reveal itself through its own
-            # Sight. Keep the fully buffed/cloaked production clone, while
-            # map-authored player references use a clean locked identity.
+            # Sight, and Agent infiltration interaction can be suppressed
+            # while the mission-delivered clone is cloaked. Keep the fully
+            # buffed/cloaked production clone, while reviewed player
+            # placements and TaskForces use a clean locked identity.
             reference_clone_id = _collision_safe_type_id(
                 f'MORR{unit_id}',
                 f'player-reference:{unit_id}',
@@ -1400,7 +1409,7 @@ def build_player_clone_sections(
         if not build_only_clone and not preserve_native_engineer_references:
             replacements[unit_id] = (
                 reference_clone_id
-                if safe_direct_rewrite and all_usage_friendly
+                if needs_uncloaked_reference_clone and all_usage_friendly
                 else clone_id
             )
         # Scripted teams must follow every friendly clone, including locked

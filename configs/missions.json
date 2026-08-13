@@ -994,6 +994,18 @@
         ]
       }
     },
+    "helper_buff_excluded_houses": {
+      "EMIGDAL": [
+        "USSR House",
+        "Guild2 House",
+        "Guild3 House",
+        "MODBase House",
+        "ControlUS House",
+        "EpsReinf1 House",
+        "EpsReinf2 House",
+        "MODBase2 House"
+      ]
+    },
     "player_production_houses": {
       "AHYST": [
         "PsiCorps House"
@@ -1303,6 +1315,17 @@
       ]
     },
     "scripted_player_buff_taskforces": {
+      "EMIGDAL": [
+        "01000504",
+        "01000936",
+        "01002923",
+        "01003775",
+        "01003782",
+        "01004286",
+        "01004301",
+        "01004302",
+        "01004303"
+      ],
       "ESCRAP": [
         "01000073"
       ],
@@ -1342,6 +1365,12 @@
         "SDRN"
       ]
     },
+    "native_production_aliases": {},
+    "objective_hook_action_redirects": {
+      "EMIGDAL": {
+        "01001084": "01001876"
+      }
+    },
     "special_infantry_factory_exclusions": {
       "ELORD": [
         "CAMINE"
@@ -1354,6 +1383,63 @@
       ],
       "SEXIST": [
         "01000240"
+      ]
+    },
+    "native_runtime_preserve_action_teams": [
+      "EMIGDAL"
+    ],
+    "native_runtime_action_team_factory_forbidden_houses": {},
+    "native_runtime_player_forbidden_ids": {
+      "EMIGDAL": [
+        "ADOG",
+        "BASIL",
+        "BLIGHT",
+        "BRUTE",
+        "CHRP",
+        "COYO",
+        "DEVO",
+        "DISK",
+        "DUNE",
+        "HARP",
+        "INIT",
+        "KAOS",
+        "LIONH",
+        "MAMM",
+        "MARA",
+        "MIND",
+        "QUAD",
+        "REPU",
+        "SALA",
+        "SCRG",
+        "SHADOW",
+        "STALKER",
+        "STING",
+        "TELE",
+        "TRIKE",
+        "VENOM",
+        "VIRUS",
+        "YAHCR",
+        "YTNK",
+        "YURIPR"
+      ]
+    },
+    "unsafe_static_provider_superweapon_ids": {
+      "EMIGDAL": [
+        "EliteReservesSpecial",
+        "MutationSpecial",
+        "MaintenanceSpecial",
+        "BackwarpSpecial",
+        "NuclearPathSpecial",
+        "GearChangeSpecial",
+        "BlackoutMissileSpecial",
+        "NanochargeSpecial",
+        "HunterSeekerSpecial",
+        "TimeFreezeSpecial"
+      ]
+    },
+    "native_runtime_weapon_preserve_ids": {
+      "EMIGDAL": [
+        "PsychicDarts"
       ]
     },
     "native_runtime_identity_preserve_ids": {
@@ -1557,24 +1643,6 @@
       }
     },
     "map_section_rules": {
-      "EMIGDAL": {
-        "01003320": {
-          "House": "Paradox",
-          "TaskForce": "01003227",
-          "Script": "01003296",
-          "Tag": "01003428",
-          "VeteranLevel": "3",
-          "AreTeamMembersRecruitable": "yes"
-        },
-        "01003337": {
-          "House": "Paradox",
-          "TaskForce": "01003227",
-          "Script": "01003336",
-          "VeteranLevel": "3",
-          "Recruiter": "yes",
-          "Full": "yes"
-        }
-      },
       "SFATAL": {
         "YTUNNEL": {
           "Passengers.Allowed": {
@@ -1943,12 +2011,20 @@
       "ARELE": [
         "VCARR"
       ],
+      "EMIGDAL": [
+        "HARP"
+      ],
       "SJUGGER": [
         "NAHAMM",
         "NAIRDM"
       ],
       "SHAND": [
         "MAMM"
+      ]
+    },
+    "native_tech_unlock_keep_source_disabled_ids": {
+      "EMIGDAL": [
+        "HARP"
       ]
     },
     "native_unlock_owned_access_rules": {

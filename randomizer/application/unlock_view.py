@@ -451,9 +451,12 @@ class UnlockViewController:
                     lines.append(
                         f'{status_label}: {check.get("name", "Check")}'
                     )
-                    if not check.get('unlocked'):
+                    if (
+                        not check.get('unlocked')
+                        and self.hide_reward_details_var.get()
+                    ):
                         lines.append(
-                            '   • Item contents appear after this check is completed.'
+                            '   • Item contents hidden by reward privacy setting.'
                         )
                         continue
                     details = self.archipelago_check_item_details(

@@ -26,6 +26,30 @@ def _waypoint_label(index):
         label = chr(ord('A') + remainder) + label
     return label
 
+
+SCRIPTED_WAYPOINT_CLEARANCE = 3
+
+
+def _scripted_waypoint_cells(lines):
+    """Return authored waypoint cells in map-object coordinate order.
+
+    FinalAlert stores a waypoint at object cell ``x,y`` as ``y * 1000 + x``.
+    Static implementation buildings must not occupy the waypoint itself or its
+    immediate staging area: campaign teams can path to, create at, or reveal
+    those cells long after map startup.
+    """
+    cells = set()
+    for raw_value in section_value_map_preserve(lines, 'Waypoints').values():
+        try:
+            packed = int(str(raw_value).strip())
+        except (TypeError, ValueError):
+            continue
+        if packed < 0:
+            continue
+        cells.add((packed % 1000, packed // 1000))
+    return cells
+
+
 def _startup_building_placements(
     lines,
     house,
@@ -62,6 +86,19 @@ def _startup_building_placements(
     aliases.discard('')
 
     occupied = set(reserved_cells or ())
+    # Do this before scanning ordinary objects. A cell can be empty at map
+    # startup yet be mission-critical later. In the reported EMIGDAL launch,
+    # Waypoint 1 was (200,222), MORHunterProvider was at (200,221), and the live
+    # crash log repeatedly named (200,222) as its path destination immediately
+    # before the Stage-2 scene activated.
+    for waypoint_x, waypoint_y in _scripted_waypoint_cells(lines):
+        clearance = range(
+            -SCRIPTED_WAYPOINT_CLEARANCE,
+            SCRIPTED_WAYPOINT_CLEARANCE + 1,
+        )
+        for dx in clearance:
+            for dy in clearance:
+                occupied.add((waypoint_x + dx, waypoint_y + dy))
     map_objects = []
     friendly_anchors = []
     fallback_anchors = []

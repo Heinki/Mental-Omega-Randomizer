@@ -213,6 +213,9 @@ def run_self_check():
             and archipelago_repeat_locations == ()
             and archipelago_first_goal
             and not archipelago_repeat_goal
+            and archipelago_session.checkpoint()['format'] == 2
+            and archipelago_session.checkpoint()['pending_locations']
+            == [0x4D5F000, 0x4D5F001]
             and archipelago_session.checkpoint()['goal_complete']
         )
         unit_roster = validate_randomizer_unit_roster()

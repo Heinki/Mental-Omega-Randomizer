@@ -26,8 +26,14 @@ def _action_has_real_objective_completion(groups):
     )
 
 
-def pending_check_hook_plan(lines, checks, configured_victory_action_ids=()):
+def pending_check_hook_plan(
+    lines,
+    checks,
+    configured_victory_action_ids=(),
+    objective_action_redirects=None,
+):
     """Hook real completion events and the mission victory action."""
+    objective_action_redirects = objective_action_redirects or {}
     objective_action_ids = action_line_ids(
         lines,
         lambda groups: (
@@ -75,11 +81,16 @@ def pending_check_hook_plan(lines, checks, configured_victory_action_ids=()):
         1 for check in objective_checks if check.get('unlocked')
     )
     for index, action_id in enumerate(objective_action_ids, start=1):
+        redirected_action_id = objective_action_redirects.get(
+            action_id, action_id
+        )
+        if redirected_action_id not in available_action_ids:
+            redirected_action_id = action_id
         plan.append(({
             'id': NEXT_OBJECTIVE_CHECK_ID,
             'marker_id': f'E{index:04d}',
             'name': 'objective completion event',
-        }, action_id))
+        }, redirected_action_id))
 
     victory_check = next(
         (check for check in checks if check.get('id') == 'victory'),

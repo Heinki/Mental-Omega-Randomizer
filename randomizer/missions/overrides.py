@@ -29,6 +29,12 @@ MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS = _frozenset_mapping('native_techno_clone
 
 MISSION_REWARD_EXCLUDED_PLAYER_HOUSES = _frozenset_mapping('reward_excluded_player_houses')
 
+# Script-heavy helper Houses whose authored map objects must retain native
+# TechnoType identities even when the global allied-helper buff option is on.
+MISSION_HELPER_BUFF_EXCLUDED_HOUSES = _frozenset_mapping(
+    'helper_buff_excluded_houses'
+)
+
 MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES = _frozenset_mapping(
     'clone_only_country_buff_types'
 )
@@ -61,6 +67,32 @@ MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS = {
     ).items()
 }
 
+# Map-local sidebar aliases which duplicate an earned native source. When that
+# source has a player production clone, keep the alias usable by authored map
+# logic but block it from player factories through the same native gate.
+MISSION_NATIVE_PRODUCTION_ALIASES = {
+    code: {
+        str(alias_id).upper(): str(source_id).upper()
+        for alias_id, source_id in values.items()
+    }
+    for code, values in _MISSION_CONFIG.get(
+        'native_production_aliases', {}
+    ).items()
+}
+
+# Objective-completion actions whose immediate transition is unsafe to extend
+# with marker-team creation. The target action must be a later authored signal
+# in the same successful sequence, after the fragile transition has settled.
+MISSION_OBJECTIVE_HOOK_ACTION_REDIRECTS = {
+    code: {
+        str(source_action_id): str(target_action_id)
+        for source_action_id, target_action_id in redirects.items()
+    }
+    for code, redirects in _MISSION_CONFIG.get(
+        'objective_hook_action_redirects', {}
+    ).items()
+}
+
 # Map-local factories that intentionally serve only authored mission units.
 # They must not become generic randomizer Barracks alternatives.
 MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS = {
@@ -82,6 +114,35 @@ MISSION_VICTORY_HOOK_ACTION_IDS = {
 # Mission-authored runtime identities whose complete map section must survive
 # player-clone production isolation unchanged. These remain native only for
 # scripted placements/TaskForces; player production uses its separate clone.
+MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS = frozenset(
+    _MISSION_CONFIG.get('native_runtime_preserve_action_teams', ())
+)
+
+MISSION_NATIVE_RUNTIME_ACTION_TEAM_FACTORY_FORBIDDEN_HOUSES = (
+    _frozenset_mapping(
+        'native_runtime_action_team_factory_forbidden_houses'
+    )
+)
+
+# Native story identities whose player-owned TaskForces have been reviewed for
+# clone rewriting. Their native copy may retain only the exact player-country
+# ForbiddenHouses production exclusion after the full authored section restore.
+MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS = _frozenset_mapping(
+    'native_runtime_player_forbidden_ids'
+)
+
+# Physical launch-provider buildings owned by a transient campaign House can
+# be deleted during a stage handoff while an enemy scan still holds a pointer.
+# Defer only reviewed provider-backed powers for that map; earned power access
+# remains available in every other mission.
+MISSION_UNSAFE_STATIC_PROVIDER_SUPERWEAPON_IDS = _frozenset_mapping(
+    'unsafe_static_provider_superweapon_ids'
+)
+
+MISSION_NATIVE_RUNTIME_WEAPON_PRESERVE_IDS = _frozenset_mapping(
+    'native_runtime_weapon_preserve_ids'
+)
+
 MISSION_NATIVE_RUNTIME_IDENTITY_PRESERVE_IDS = {
     code: frozenset(values)
     for code, values in _MISSION_CONFIG.get(
@@ -125,6 +186,15 @@ MISSION_NATIVE_VARIANT_BUFF_RULES = {
 }
 
 MISSION_NATIVE_TECH_UNLOCK_IDS = _frozenset_mapping('native_tech_unlock_ids')
+
+# Some authored unlock pairs swap a story-only identity against the native
+# production identity.  When the production side is cloned, mirror its
+# TechLevel change to the clone while keeping the native source unavailable to
+# that trigger House.  This preserves the authored alternation without ever
+# showing source and clone together.
+MISSION_NATIVE_TECH_UNLOCK_KEEP_SOURCE_DISABLED_IDS = _frozenset_mapping(
+    'native_tech_unlock_keep_source_disabled_ids'
+)
 
 MISSION_NATIVE_UNLOCK_OWNED_ACCESS_RULES = dict(
     _MISSION_CONFIG['native_unlock_owned_access_rules']

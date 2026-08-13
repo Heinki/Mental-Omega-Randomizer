@@ -339,7 +339,43 @@ class ProgressionController:
             '',
             'Remaining mission checks:',
         ])
+        archipelago_active = bool(
+            getattr(self, 'archipelago_run_active', lambda: False)()
+        )
         for check in missing:
+            if archipelago_active:
+                check_id = str(check.get('id', ''))
+                expected = (
+                    self.archipelago_check_location_count(code, check_id) or 0
+                )
+                lines.append(
+                    f'- {check.get("name", "Check")} ({expected} AP item(s))'
+                )
+                if self.hide_reward_details_var.get():
+                    lines.extend('    - ?????' for _ in range(expected))
+                    continue
+                details = self.archipelago_check_item_details(
+                    code, check_id
+                ) or ()
+                for record in details:
+                    item_name = str(record.get('item_name') or '').strip()
+                    if not item_name:
+                        item_name = f'Item #{int(record.get("item", 0))}'
+                    recipient = str(
+                        record.get('recipient_player') or ''
+                    ).strip() or f'Player {int(record.get("player", 0))}'
+                    recipient_game = str(
+                        record.get('recipient_game') or ''
+                    ).strip() or 'game unavailable'
+                    lines.append(
+                        f'    - {item_name} -> {recipient} ({recipient_game})'
+                    )
+                missing_details = max(0, expected - len(details))
+                if missing_details:
+                    lines.append(
+                        f'    - Waiting for {missing_details} server item detail(s)'
+                    )
+                continue
             rewards = check_rewards(check)
             lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
             for reward in rewards:

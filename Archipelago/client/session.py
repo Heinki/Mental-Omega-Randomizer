@@ -80,7 +80,8 @@ class ArchipelagoSession:
         checkpoint = checkpoint or {}
         if not isinstance(checkpoint, Mapping):
             raise ValueError('Archipelago checkpoint must be an object.')
-        if checkpoint.get('format', 1) != 1:
+        checkpoint_format = int(checkpoint.get('format', 1))
+        if checkpoint_format not in {1, 2}:
             raise ValueError('Unsupported Archipelago checkpoint format.')
         self._seed_name = str(checkpoint.get('seed_name', ''))
         self._team = self._optional_int(checkpoint.get('team'))
@@ -89,6 +90,18 @@ class ArchipelagoSession:
             int(location)
             for location in checkpoint.get('completed_locations', [])
         }
+        # Format 1 mixed server-confirmed locations with every RoomUpdate
+        # broadcast seen in a multiworld. Never resend that ambiguous legacy
+        # set. Controller reconciliation reconstructs real local MO checks.
+        self._pending_locations = (
+            {
+                int(location)
+                for location in checkpoint.get('pending_locations', [])
+            }
+            if checkpoint_format >= 2
+            else set()
+        )
+        self._server_locations = set()
         self._missing_locations = set()
         self._goal_complete = bool(checkpoint.get('goal_complete', False))
         self._ledger = ReceivedItemLedger.from_checkpoint(checkpoint)
@@ -117,11 +130,12 @@ class ArchipelagoSession:
     def checkpoint(self):
         with self._lock:
             value = {
-                'format': 1,
+                'format': 2,
                 'seed_name': self._seed_name,
                 'team': self._team,
                 'slot': self._slot,
                 'completed_locations': sorted(self._completed_locations),
+                'pending_locations': sorted(self._pending_locations),
                 'goal_complete': self._goal_complete,
             }
             value.update(self._ledger.to_checkpoint())
@@ -161,9 +175,14 @@ class ArchipelagoSession:
                 location = int(location)
                 if location <= 0:
                     raise ValueError('Archipelago location IDs must be positive.')
-                if location not in self._completed_locations:
-                    self._completed_locations.add(location)
-                    added.append(location)
+                if (
+                    location in self._server_locations
+                    or location in self._pending_locations
+                ):
+                    continue
+                self._completed_locations.add(location)
+                self._pending_locations.add(location)
+                added.append(location)
         if added:
             self._emit_checkpoint()
             self._outbound.put({
@@ -369,7 +388,12 @@ class ArchipelagoSession:
                     f'session/slot: expected {expected!r}, got {actual!r}.'
                 )
             self._seed_name, self._team, self._slot = actual
-            self._completed_locations.update(result.checked_locations)
+            server_checked = set(result.checked_locations)
+            self._server_locations = server_checked
+            self._pending_locations.difference_update(server_checked)
+            self._completed_locations = (
+                server_checked | self._pending_locations
+            )
             self._missing_locations = set(result.missing_locations)
             self._slot_info = dict(result.slot_info)
         self._emit_checkpoint()
@@ -396,12 +420,19 @@ class ArchipelagoSession:
                 'cmd': 'GetDataPackage',
                 'games': sorted(games),
             })
-        with self._lock:
-            checked = sorted(self._completed_locations)
-        if checked:
+        scout_locations = sorted({
+            int(location)
+            for mission in result.slot_data.get('locations', {}).values()
+            if isinstance(mission, Mapping)
+            for values in mission.values()
+            if isinstance(values, list)
+            for location in values
+            if int(location) > 0
+        })
+        if scout_locations:
             commands.append({
                 'cmd': 'LocationScouts',
-                'locations': checked,
+                'locations': scout_locations,
                 'create_as_hint': 0,
             })
         if commands:
@@ -411,11 +442,11 @@ class ArchipelagoSession:
 
     def _resynchronize(self, socket):
         with self._lock:
-            completed = sorted(self._completed_locations)
+            pending = sorted(self._pending_locations)
             goal_complete = self._goal_complete
         commands = []
-        if completed:
-            commands.append({'cmd': 'LocationChecks', 'locations': completed})
+        if pending:
+            commands.append({'cmd': 'LocationChecks', 'locations': pending})
         if goal_complete:
             commands.append({'cmd': 'StatusUpdate', 'status': CLIENT_GOAL})
         if commands:
@@ -620,21 +651,22 @@ class ArchipelagoSession:
         if 'checked_locations' not in packet:
             return
         checked = _location_ids(packet, 'checked_locations')
-        changed = False
+        confirmed = []
         with self._lock:
             for location in checked:
-                if location not in self._completed_locations:
-                    self._completed_locations.add(location)
-                    changed = True
+                # RoomUpdate is broadcast for checks made by other slots too.
+                # It carries no owner. Accept only locations this MO client
+                # already reported and is awaiting confirmation for.
+                if location not in self._pending_locations:
+                    continue
+                self._pending_locations.discard(location)
+                self._completed_locations.add(location)
+                self._server_locations.add(location)
                 self._missing_locations.discard(location)
-        if changed:
+                confirmed.append(location)
+        if confirmed:
             self._emit_checkpoint()
-            self._emit('locations_checked', checked)
-            self._outbound.put({
-                'cmd': 'LocationScouts',
-                'locations': list(checked),
-                'create_as_hint': 0,
-            })
+            self._emit('locations_checked', tuple(confirmed))
 
     def _item_send_segments(self, packet):
         value = packet.get('item')
