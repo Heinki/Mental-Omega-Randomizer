@@ -30,6 +30,7 @@ REQUIRED_SECTIONS = {
         'reward_excluded_player_houses': dict,
         'clone_only_country_buff_types': dict,
         'scripted_player_buff_taskforces': dict,
+        'scripted_player_buff_taskforce_access_requirements': dict,
         'native_runtime_player_forbidden_ids': dict,
         'team_house_overrides': dict,
         'native_runtime_identity_preserve_ids': dict,

@@ -60,7 +60,10 @@ from randomizer.maps.buff_validation import (
     validate_generated_unit_buff_changes,
 )
 from randomizer.maps.access_diagnostics import build_unit_access_report
-from randomizer.rewards.rules import expand_equivalent_role_buffs
+from randomizer.rewards.rules import (
+    expand_equivalent_role_buffs,
+    unlocked_reward_tech_ids,
+)
 from randomizer.rewards.enemy_scaling import enemy_effect_text
 from randomizer.maps.progress_hooks import (
     inject_check_markers,
@@ -109,6 +112,7 @@ from randomizer.missions.overrides import (
     MISSION_REQUIRED_ACCESS_RULES,
     MISSION_REWARD_EXCLUDED_PLAYER_HOUSES,
     MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES,
+    MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCE_ACCESS_REQUIREMENTS,
     MISSION_MAP_SECTION_RULES,
     MISSION_SUPERWEAPON_TECHNO_CLONE_OVERRIDES,
     MISSION_TIME_FREEZE_IMMUNE_TECHNO_IDS,
@@ -574,6 +578,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.launch_rewards_for_mission(code) if self.state else []
     )
     access_report_active_rewards = list(earned_rewards)
+    earned_access_tech_ids = unlocked_reward_tech_ids(earned_rewards)
+    scripted_taskforce_requirements = (
+        MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCE_ACCESS_REQUIREMENTS.get(
+            code, {}
+        )
+    )
+    scripted_player_buff_taskforces = {
+        taskforce_id
+        for taskforce_id in MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(
+            code, ()
+        )
+        if not scripted_taskforce_requirements.get(taskforce_id)
+        or scripted_taskforce_requirements[taskforce_id].issubset(
+            earned_access_tech_ids
+        )
+    }
     enemy_scaling_entries = (
         self.active_enemy_scaling_entries() if self.state else []
     )
@@ -952,7 +972,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         str(section).lower(): values
         for section, values in native_map_sections.items()
     }
-    for taskforce_id in MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ()):
+    for taskforce_id in scripted_player_buff_taskforces:
         for value in native_sections_by_lower.get(
             str(taskforce_id).lower(), {}
         ).values():
@@ -1517,7 +1537,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 MISSION_OBJECTIVE_CLONE_EVENT_REFS.get(code, {})
             ),
             scripted_player_buff_taskforces=(
-                set(MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES.get(code, ()))
+                scripted_player_buff_taskforces
             ),
             excluded_unit_ids=(
                 set(native_techno_exclusions)

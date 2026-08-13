@@ -43,6 +43,18 @@ MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCES = _frozenset_mapping(
     'scripted_player_buff_taskforces'
 )
 
+MISSION_SCRIPTED_PLAYER_BUFF_TASKFORCE_ACCESS_REQUIREMENTS = {
+    code: {
+        str(taskforce_id): frozenset(
+            str(unit_id).upper() for unit_id in unit_ids
+        )
+        for taskforce_id, unit_ids in requirements.items()
+    }
+    for code, requirements in _MISSION_CONFIG.get(
+        'scripted_player_buff_taskforce_access_requirements', {}
+    ).items()
+}
+
 MISSION_TEAM_HOUSE_OVERRIDES = dict(_MISSION_CONFIG['team_house_overrides'])
 
 # Native MCV identities exposed only in configured missions. An empty list

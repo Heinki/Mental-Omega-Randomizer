@@ -1332,6 +1332,10 @@
       "ESANDS": [
         "01000524"
       ],
+      "SPEACE": [
+        "01000032",
+        "01000158"
+      ],
       "FKILL": [
         "01000006",
         "01000007",
@@ -1339,6 +1343,16 @@
         "01000020",
         "01000452"
       ]
+    },
+    "scripted_player_buff_taskforce_access_requirements": {
+      "SPEACE": {
+        "01000032": [
+          "SCAR"
+        ],
+        "01000158": [
+          "SCAR"
+        ]
+      }
     },
     "team_house_overrides": {
       "SBLEED": {
