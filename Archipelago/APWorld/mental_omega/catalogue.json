@@ -6205,6 +6205,62 @@
       "id": 81064836
     },
     {
+      "name": "Drakuv Prison Vehicle Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81067730
+    },
+    {
+      "name": "Drakuv Prison Vehicle Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067731
+    },
+    {
+      "name": "Drakuv Prison Vehicle Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067732
+    },
+    {
+      "name": "Drakuv Prison Vehicle Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067733
+    },
+    {
+      "name": "Drakuv Prison Vehicle Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067734
+    },
+    {
+      "name": "Drakuv Prison Vehicle Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067735
+    },
+    {
+      "name": "Drakuv Prison Vehicle Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067736
+    },
+    {
+      "name": "Drakuv Prison Vehicle Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067737
+    },
+    {
       "name": "Drakuv Prison Vehicle Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -6224,6 +6280,55 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064839
+    },
+    {
+      "name": "Drakuv Prison Vehicle Power Reinforced Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067738
+    },
+    {
+      "name": "Drakuv Prison Vehicle Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067739
+    },
+    {
+      "name": "Drakuv Prison Vehicle Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067740
+    },
+    {
+      "name": "Drakuv Prison Vehicle Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067741
+    },
+    {
+      "name": "Drakuv Prison Vehicle Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067742
+    },
+    {
+      "name": "Drakuv Prison Vehicle Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067743
+    },
+    {
+      "name": "Drakuv Prison Vehicle Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067744
     },
     {
       "name": "Driller APC Access",
@@ -29212,7 +29317,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "9f2b7b73057bb75ac54b6bddfa85fedf9e6721d2e0ec38d157db27e3f692c716",
+  "catalogue_checksum": "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

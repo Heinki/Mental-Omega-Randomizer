@@ -561,11 +561,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             incoming = {
                 int(value) for value in (event.payload or ())
             }
-            previous = set(getattr(
-                self, '_archipelago_server_checked_locations', set()
-            ))
-            self._archipelago_server_checked_locations = previous | incoming
-            changed = self._archipelago_server_checked_locations != previous
+            changed = self._apply_archipelago_server_locations(incoming)
             locations = ', '.join(str(value) for value in event.payload)
             self.append_archipelago_history(
                 f'Server synchronized checked locations: {locations}.'

@@ -36,8 +36,9 @@ MAX_REWARDS_PER_CHECK = int(REWARD_PLANNING['maximum_rewards_per_check'])
 
 # Delivery payloads owned exclusively through aid powers. Keep this mandatory
 # in code so preserved editable packaged rosters cannot restore production
-# access, unit buffs, Advanced options, or Unlocks cards.
-AID_ONLY_UNIT_IDS = frozenset({'RAVA', 'RUINER', 'HARB'})
+# access, unit buffs, Advanced options, or Unlocks cards. Drakuv/RAVA is also a
+# normal Soviet production reward; its aid power resolves to that same clone.
+AID_ONLY_UNIT_IDS = frozenset({'RUINER', 'HARB'})
 
 # Complete playable 3.3.6 faction rosters.  These use the real rulesmo.ini
 # section IDs, which frequently differ from the public-facing unit names.

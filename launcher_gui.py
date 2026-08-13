@@ -22,6 +22,7 @@ from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_co
 from randomizer.rewards.roster import (
     MAX_PLAYER_BUILD_TIME_MULTIPLIER,
     ROSTER_FILENAMES,
+    validate_drakuv_contracts,
     validate_hidden_passenger_payloads,
     validate_house_wide_buff_policy,
     validate_limited_hero_build_limits,
@@ -219,6 +220,7 @@ def run_self_check():
             and archipelago_session.checkpoint()['goal_complete']
         )
         unit_roster = validate_randomizer_unit_roster()
+        drakuv_contracts = validate_drakuv_contracts()
         unit_buff_applications = validate_unit_buff_application_contracts()
         limited_hero_limits = validate_limited_hero_build_limits()
         special_roster = validate_special_roster_contracts()
@@ -779,6 +781,17 @@ def run_self_check():
                 and unit_roster['types'] > 0
             ),
             'randomizer_unit_roster_paths': unit_roster['paths'],
+            'drakuv_contracts_valid': bool(
+                drakuv_contracts['clone_id'] == 'MORPRAVA'
+                and drakuv_contracts['build_time_multiplier'] == '1'
+                and drakuv_contracts['trainable'].lower() == 'yes'
+                and drakuv_contracts['image'].upper() == 'RAVA'
+                and drakuv_contracts['access_entries'] == 1
+                and drakuv_contracts['power_entries'] == 1
+                and drakuv_contracts['clone_registrations'] == 1
+                and not drakuv_contracts['duplicate_reward_names']
+            ),
+            'drakuv_contracts': drakuv_contracts,
             'unit_buff_applications_valid': bool(
                 unit_buff_applications['all_change_generated_rules']
             ),
@@ -903,6 +916,7 @@ def run_self_check():
                 'static_configs_valid',
                 'archipelago_client_contract_valid',
                 'randomizer_unit_roster_valid',
+                'drakuv_contracts_valid',
                 'unit_buff_applications_valid',
                 'limited_hero_build_limits_valid',
                 'special_roster_contracts_valid',

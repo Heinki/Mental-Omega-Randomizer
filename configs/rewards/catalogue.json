@@ -4206,16 +4206,6 @@
       }
     ],
     "retired_reward_by_name": {
-      "Drakuv Prison Vehicle Access": {
-        "name": "Drakuv Prison Vehicle Access (retired: aid power only)",
-        "description": "Use the Drakuv Prison Vehicle Power; the payload is not a trainable unit.",
-        "rules": {},
-        "factions": [
-          "Soviets"
-        ],
-        "kind": "retired",
-        "retired_reward": true
-      },
       "Harbinger Access": {
         "name": "Harbinger Access (retired: aid power only)",
         "description": "Use the Harbinger Power; the strike aircraft is not a trainable unit.",

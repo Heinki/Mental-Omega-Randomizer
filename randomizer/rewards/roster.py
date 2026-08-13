@@ -27,6 +27,12 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Installed Drakuv is a delayed nontrainable aid payload. Both production
+    # access and DrakuvSpecial use one player clone with normal build timing.
+    'RAVA': {
+        'BuildTimeMultiplier': '1',
+        'Trainable': 'yes',
+    },
     # Keep the distinct installed tooltip when an older editable packaged
     # roster still points the Command Airship at the normal Kirov CSF key.
     'CZEP': {
@@ -411,6 +417,113 @@ def validate_randomizer_unit_roster():
         'files': len(paths),
         'types': len(clone_ids),
         'templates': len(templates),
+    }
+
+
+def validate_drakuv_contracts():
+    """Keep Drakuv production and aid delivery on one safe identity."""
+    from randomizer.rewards.catalogue import (
+        AID_POWER_UNLOCK_REWARDS,
+        BUFF_TARGETS,
+        POWER_BUFF_REWARDS,
+        RETIRED_REWARD_BY_NAME,
+        REWARD_POOL,
+        UNIT_BUFF_REWARDS,
+    )
+    from randomizer.rewards.power_buff_definitions import power_buff_type_ids
+
+    paths, clone_ids, templates = randomizer_unit_roster()
+    clone_id = clone_ids.get('RAVA')
+    template = templates.get('RAVA', {})
+    _build_key, build_time = _case_insensitive_item(
+        template,
+        'BuildTimeMultiplier',
+    )
+    _trainable_key, trainable = _case_insensitive_item(template, 'Trainable')
+    _image_key, image = _case_insensitive_item(template, 'Image')
+    reward_names = [str(reward.get('name') or '') for reward in REWARD_POOL]
+    access_name = 'Drakuv Prison Vehicle Access'
+    power_name = 'Drakuv Prison Vehicle Power'
+    access_count = reward_names.count(access_name)
+    power_count = reward_names.count(power_name)
+    duplicate_names = sorted({
+        name for name in reward_names
+        if name and reward_names.count(name) > 1
+    })
+    aid_unlock_count = sum(
+        1 for reward in AID_POWER_UNLOCK_REWARDS
+        if reward.get('superweapon') == 'DrakuvSpecial'
+    )
+    power_buff_types = tuple(power_buff_type_ids('DrakuvSpecial'))
+    drakuv_unit_buff_types = sorted({
+        str(reward.get('buff_type') or '')
+        for reward in UNIT_BUFF_REWARDS
+        if str(reward.get('unit') or '').upper() == 'RAVA'
+    })
+    drakuv_power_buff_count = sum(
+        1 for reward in POWER_BUFF_REWARDS
+        if reward.get('superweapon') == 'DrakuvSpecial'
+    )
+    expected_unit_buffs = {
+        'ammo', 'armor', 'cloak', 'cost', 'damage', 'health', 'production',
+        'range', 'reload', 'sensors', 'sight', 'speed', 'veteran',
+    }
+    clone_registrations = sum(
+        1
+        for path in paths
+        for section, values in _read_sections(path).items()
+        if section.lower() == 'vehicletypes'
+        for value in values.values()
+        if str(value).upper() == 'MORPRAVA'
+    )
+    errors = []
+    if clone_id != 'MORPRAVA':
+        errors.append(f'RAVA clone is {clone_id!r}, expected MORPRAVA')
+    if str(build_time) != '1':
+        errors.append(f'MORPRAVA BuildTimeMultiplier is {build_time!r}')
+    if str(trainable).lower() != 'yes':
+        errors.append(f'MORPRAVA Trainable is {trainable!r}')
+    if str(image).upper() != 'RAVA':
+        errors.append(f'MORPRAVA Image is {image!r}')
+    target = BUFF_TARGETS.get('RAVA', {})
+    if target.get('category') != 'units' or not target.get('trainable'):
+        errors.append('RAVA is not a trainable vehicle buff target')
+    if set(drakuv_unit_buff_types) != expected_unit_buffs:
+        errors.append(
+            'RAVA unit buffs differ: ' + ','.join(drakuv_unit_buff_types)
+        )
+    if power_buff_types != ('recharge', 'cost', 'payload'):
+        errors.append(f'DrakuvSpecial buffs are {power_buff_types!r}')
+    if drakuv_power_buff_count != len(power_buff_types):
+        errors.append(
+            f'DrakuvSpecial has {drakuv_power_buff_count} buff rewards'
+        )
+    if access_count != 1 or power_count != 1 or aid_unlock_count != 1:
+        errors.append(
+            f'Drakuv entries access={access_count}, power={power_count}, '
+            f'aid={aid_unlock_count}'
+        )
+    if clone_registrations != 1:
+        errors.append(
+            f'MORPRAVA has {clone_registrations} VehicleTypes registrations'
+        )
+    if access_name in RETIRED_REWARD_BY_NAME:
+        errors.append('active Drakuv access also exists as retired reward')
+    if duplicate_names:
+        errors.append('duplicate reward names: ' + ', '.join(duplicate_names))
+    if errors:
+        raise ValueError('Drakuv contract validation failed: ' + '; '.join(errors))
+    return {
+        'clone_id': clone_id,
+        'build_time_multiplier': str(build_time),
+        'trainable': str(trainable),
+        'image': str(image),
+        'unit_buff_types': drakuv_unit_buff_types,
+        'power_buff_types': list(power_buff_types),
+        'access_entries': access_count,
+        'power_entries': power_count,
+        'clone_registrations': clone_registrations,
+        'duplicate_reward_names': duplicate_names,
     }
 
 

@@ -82,6 +82,12 @@ SPECIAL_TEMPLATE_SOURCES = {
     'LUNRE': 'LUNR',
 }
 TEMPLATE_VALUE_OVERRIDES = {
+    'RAVA': {
+        # Installed RAVA is delayed as a campaign/power payload. Player
+        # production uses normal vehicle timing and normal veterancy behavior.
+        'BuildTimeMultiplier': '1',
+        'Trainable': 'yes',
+    },
     'YURIX2': {
         'Name': 'Yuri',
         'UIName': 'Name:YURIHIMSELF',

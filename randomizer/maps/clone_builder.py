@@ -782,6 +782,17 @@ def build_player_clone_sections(
             native_override_values = native_map_sections.get(
                 native_map_name_by_lower.get(unit_id.lower()), {}
             )
+            # ``native_map_sections`` is optimized for case-insensitive
+            # lookup and stores lowercase keys. Rules keys are case-sensitive
+            # in-engine. Recover authored/current key spelling before copying
+            # mission overrides onto a standalone clone; ESCRAP otherwise
+            # emitted ``image=STING2`` and made its Stinger invisible.
+            preserved_key_by_lower = {
+                str(key).lower(): key
+                for key in section_value_map_preserve(
+                    lines, map_name_by_lower.get(unit_id.lower(), unit_id)
+                )
+            }
             for key, value in native_override_values.items():
                 lowered = str(key).lower()
                 if (
@@ -794,8 +805,9 @@ def build_player_clone_sections(
                     }
                 ):
                     continue
-                _remove_case_insensitive(clone_source_values, key)
-                clone_source_values[key] = value
+                preserved_key = preserved_key_by_lower.get(lowered, key)
+                _remove_case_insensitive(clone_source_values, preserved_key)
+                clone_source_values[preserved_key] = value
         if unit_id in buildable_ids and installed_unit:
             if owned_template is None and unit_id == target_unit_id:
                 clone_source_values = dict(installed_sections.get(installed_unit, {}))
