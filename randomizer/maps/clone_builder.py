@@ -90,6 +90,7 @@ class PlayerCloneContext:
     native_map_name_by_lower: dict[str, str]
     native_map_sections: dict[str, dict[str, Any]]
     native_trigger_reference_ids: set[str]
+    objective_clone_source_ids: set[str]
     owned_clone_ids: dict[str, str]
     owned_clone_rule_overlays: dict[str, dict[str, Any]]
     owned_clone_templates: dict[str, dict[str, Any]]
@@ -162,6 +163,7 @@ def build_player_clone_sections(
     native_map_name_by_lower = context.native_map_name_by_lower
     native_map_sections = context.native_map_sections
     native_trigger_reference_ids = context.native_trigger_reference_ids
+    objective_clone_source_ids = context.objective_clone_source_ids
     owned_clone_ids = context.owned_clone_ids
     owned_clone_rule_overlays = context.owned_clone_rule_overlays
     owned_clone_templates = context.owned_clone_templates
@@ -279,6 +281,9 @@ def build_player_clone_sections(
             ):
                 scripted_player_clone_unit_ids.add(tokens[1].upper())
     scripted_team_unit_ids.difference_update(scripted_player_clone_unit_ids)
+    reviewed_scripted_objective_clone_ids = (
+        scripted_player_clone_unit_ids & objective_clone_source_ids
+    )
 
     direct_friendly_ids = set()
     for section in ('Infantry', 'Units', 'Aircraft', 'Structures'):
@@ -638,7 +643,9 @@ def build_player_clone_sections(
         )
         initial_payload_clone = unit_id in initial_payload_source_ids
         hero_build_only_clone = (
-            mission_hero_cloak and unit_id in buildable_ids
+            mission_hero_cloak
+            and unit_id in buildable_ids
+            and unit_id not in scripted_player_clone_unit_ids
         )
         allowed_build_only_clone = (
             excluded_build_only_clone
@@ -690,13 +697,19 @@ def build_player_clone_sections(
             or (
                 unit_id in ambiguous_mission_event_ids
                 and unit_id in buildable_ids
+                and unit_id not in reviewed_scripted_objective_clone_ids
             )
         )
-        if mission_hero_cloak and not build_only_clone:
+        if (
+            mission_hero_cloak
+            and unit_id not in scripted_player_clone_unit_ids
+            and not build_only_clone
+        ):
             preserve_native_effects(unit_id, counts, {'cloak'})
             continue
         if (
             unit_id in ambiguous_mission_event_ids
+            and unit_id not in reviewed_scripted_objective_clone_ids
             and not build_only_clone
             and not linked_excluded_reference_clone
         ):

@@ -325,7 +325,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     native_map_names = {
         str(section).lower(): section for section in native_map_sections
     }
-    for building_id in installed_building_ids:
+    # `Refinery=yes` also appears on economic support structures such as the
+    # Ore Purifier. Only the reviewed four faction refineries own a native
+    # miner/FreeUnit contract; support structures remain ordinary reward
+    # clone candidates.
+    for building_id in DEFAULT_REFINERY_MINER_IDS:
         building_values = dict(installed_rule_sections.get(building_id, {}))
         building_values.update(native_map_sections.get(
             native_map_names.get(str(building_id).lower()), {}
@@ -1520,7 +1524,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 fallback_tech_ids.intersection(ENGINEER_UNIT_IDS)
             ),
             forced_isolated_clone_ids=unique_in_order(
-                delivery_clone_ids + power_reference_clone_ids
+                delivery_clone_ids
+                + power_reference_clone_ids
+                + sorted(safe_player_clone_unit_ids)
             ),
             forced_compact_clone_ids=delivery_clone_ids,
             unlimited_build_limit_unit_ids=(
@@ -1639,12 +1645,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         # here, after clone discovery. Earlier passes cannot know the complete
         # map-local clone set and leaked captured-factory originals beside E1,
         # GGI, miners, and other player copies.
-        # A campaign commonly has several runtime Houses sharing one
-        # CountryType. Launcher-added ForbiddenHouses is country-scoped, so it
-        # can also forbid an authored AI/helper House that uses the same
-        # country. For every non-player runtime consumer, remove only those
-        # player-added forbidden identities that collide with its authored
-        # House/country aliases. Player-owned placements and teams must not
+        # A campaign commonly has several concrete runtime HouseTypes. A
+        # HouseType's ParentCountry grants roster ancestry, but does not make
+        # the child House equal to its parent for ForbiddenHouses. For every
+        # non-player runtime consumer, remove only those player-added forbidden
+        # identities that match its concrete authored House/country aliases.
+        # Player-owned placements and teams must not
         # participate in this collision set: including them removed the exact
         # player country from the native gate and exposed original cameos
         # beside their MORP clones.
@@ -1682,11 +1688,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     runtime_aliases.add(
                         house_name.removesuffix(' House').lower()
                     )
-                    for field in ('country', 'parent_country'):
-                        if house_values.get(field):
-                            runtime_aliases.add(
-                                str(house_values[field]).lower()
-                            )
+                    if house_values.get('country'):
+                        runtime_aliases.add(
+                            str(house_values['country']).lower()
+                        )
             colliding_forbidden = (
                 runtime_aliases & player_forbidden_lower
             )
@@ -2181,11 +2186,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     runtime_aliases.add(
                         house_name.removesuffix(' House').lower()
                     )
-                    for field in ('country', 'parent_country'):
-                        if house_values.get(field):
-                            runtime_aliases.add(
-                                str(house_values[field]).lower()
-                            )
+                    if house_values.get('country'):
+                        runtime_aliases.add(
+                            str(house_values['country']).lower()
+                        )
             preserve_player_forbidden = (
                 source_id in MISSION_NATIVE_RUNTIME_PLAYER_FORBIDDEN_IDS.get(
                     code, ()

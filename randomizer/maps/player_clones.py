@@ -429,6 +429,11 @@ def player_unit_clone_rules(
             for unit_id in native_trigger_reference_ids
             if unit_id
         },
+        objective_clone_source_ids={
+            str(unit_id).upper()
+            for unit_id in (objective_clone_event_refs or {})
+            if unit_id
+        },
         owned_clone_ids=owned_clone_ids,
         owned_clone_rule_overlays=owned_clone_rule_overlays,
         owned_clone_templates=owned_clone_templates,
