@@ -110,6 +110,7 @@ class AdvancedSettingsController:
                     'id': unit_id,
                     'label': unit_display_label(unit_id),
                     'faction': factions[0],
+                    'category': target.get('category'),
                     'special_reward': False,
                 })
                 entry['special_reward'] = bool(
@@ -162,7 +163,7 @@ class AdvancedSettingsController:
             ),
         )
 
-    def advanced_buff_unit_is_visible(self, entry):
+    def advanced_buff_unit_is_visible(self, entry, included_only=True):
         unit_id = entry['id']
         if (
             not self.include_special_buildings_var.get()
@@ -174,9 +175,13 @@ class AdvancedSettingsController:
             and BUFF_TARGETS.get(unit_id, {}).get('special_reward')
         ):
             return False
-        if unit_id not in ALWAYS_AVAILABLE_TECH_IDS and linked_buff_variant_ids(
-            unit_id
-        ).intersection(self.excluded_unit_access_ids):
+        if (
+            included_only
+            and unit_id not in ALWAYS_AVAILABLE_TECH_IDS
+            and linked_buff_variant_ids(unit_id).intersection(
+                self.excluded_unit_access_ids
+            )
+        ):
             return False
         selected_campaign = self.campaign_var.get()
         if self.reward_mode_var.get() == ARSENAL_MODE:
@@ -340,6 +345,35 @@ class AdvancedSettingsController:
             self.advanced_unit_buff_checks[buff_id].configure(
                 state='normal' if buff_id in possible else 'disabled'
             )
+            bulk_state = self.advanced_unit_bulk_buff_state(buff_id)
+            self.advanced_unit_bulk_buff_vars[buff_id].set(bulk_state)
+            self.advanced_unit_bulk_buff_combos[buff_id].configure(
+                state=(
+                    'disabled'
+                    if bulk_state == 'Unavailable'
+                    or self.gameplay_settings_locked()
+                    else 'readonly'
+                )
+            )
+
+    def advanced_unit_bulk_buff_state(self, buff_id):
+        states = [
+            buff_id not in self.excluded_unit_buff_types.get(
+                entry['id'], set()
+            )
+            for entry in self.advanced_buff_unit_entries()
+            if buff_id in entry['buff_types']
+            and self.advanced_buff_unit_is_visible(
+                entry, included_only=False
+            )
+        ]
+        if not states:
+            return 'Unavailable'
+        if all(states):
+            return 'Enabled'
+        if any(states):
+            return 'Mixed'
+        return 'Disabled'
 
     def select_advanced_buff_unit(self, unit_id):
         self.advanced_buff_unit_id = str(unit_id).upper()
@@ -380,6 +414,35 @@ class AdvancedSettingsController:
         self.save_current_launcher_config()
         self.refresh_advanced_buff_view()
 
+    def set_all_advanced_unit_buff_type(self, buff_id, include):
+        """Set one per-unit buff switch for every applicable scoped target."""
+        if self.gameplay_settings_locked():
+            return
+        changed = False
+        for entry in self.advanced_buff_unit_entries():
+            if (
+                buff_id not in entry['buff_types']
+                or not self.advanced_buff_unit_is_visible(
+                    entry, included_only=False
+                )
+            ):
+                continue
+            excluded = self.excluded_unit_buff_types.setdefault(
+                entry['id'], set()
+            )
+            if include:
+                changed = changed or buff_id in excluded
+                excluded.discard(buff_id)
+                if not excluded:
+                    self.excluded_unit_buff_types.pop(entry['id'], None)
+            else:
+                changed = changed or buff_id not in excluded
+                excluded.add(buff_id)
+        if not changed:
+            return
+        self.save_current_launcher_config()
+        self.refresh_advanced_buff_view()
+
     def advanced_power_pool_entries(self):
         entries = {}
         for reward in REWARD_POOL:
@@ -393,6 +456,7 @@ class AdvancedSettingsController:
                 'id': power_id,
                 'label': reward_display_name(reward),
                 'faction': factions[0],
+                'category': reward.get('power_category', 'offensive'),
                 'reward': reward,
             })
         faction_rank = {'Allies': 0, 'Soviets': 1, 'Epsilon': 2, 'Foehn': 3, 'Other': 4}
@@ -685,29 +749,48 @@ class AdvancedSettingsController:
     def set_advanced_pool_all(self, pool_key, include):
         if self.gameplay_settings_locked():
             return
-        selected_campaign = self.campaign_var.get()
-        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
-        arsenal_factions = {
-            faction for faction, variable in self.arsenal_faction_vars.items()
-            if variable.get()
+        entries, target = self.advanced_pool_bulk_entries(pool_key)
+        all_ids = {
+            entry['id']
+            for entry in entries
+            if self.advanced_pool_entry_is_visible(entry)
         }
+        if include:
+            target.difference_update(all_ids)
+        else:
+            target.update(all_ids)
+        self.save_current_launcher_config()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+
+    def advanced_pool_bulk_entries(self, pool_key):
+        """Return currently eligible entries and their existing exclusion set."""
         if pool_key == 'missions':
-            mission_entries = [
-                {'id': mission['code'].upper(), 'faction': normalize_faction(mission.get('side', ''))}
+            entries = [
+                {
+                    'id': mission['code'].upper(),
+                    'faction': normalize_faction(mission.get('side', '')),
+                    'special': bool(mission.get('operation')),
+                }
                 for mission in filter_missions_by_build_settings(
                     self.missions,
                     include_true_no_build=self.include_no_build_missions_var.get(),
                     include_no_build_production=(
                         self.include_no_build_production_missions_var.get()
                     ),
-                    include_operation_missions=self.include_operation_missions_var.get(),
+                    include_operation_missions=(
+                        self.include_operation_missions_var.get()
+                    ),
                 )
             ]
-            entries = mission_entries
-            target = self.excluded_mission_codes
-        elif pool_key == 'units':
+            return entries, self.excluded_mission_codes
+        if pool_key == 'units':
             entries = [
-                entry for entry in self.advanced_unit_pool_entries()
+                {
+                    **entry,
+                    'special': bool(entry.get('special_reward')),
+                }
+                for entry in self.advanced_unit_pool_entries()
                 if (
                     self.include_special_buildings_var.get()
                     or BUFF_TARGETS.get(entry['id'], {}).get('category')
@@ -718,46 +801,167 @@ class AdvancedSettingsController:
                     or not entry.get('special_reward')
                 )
             ]
-            target = self.excluded_unit_access_ids
-        else:
-            enabled_categories = {
-                category
-                for category, enabled in (
-                    ('offensive', self.include_superweapon_rewards_var.get()),
-                    ('secondary', self.include_secondary_superweapon_rewards_var.get()),
-                    ('aid', self.include_aid_power_rewards_var.get()),
-                )
-                if enabled
+            return entries, self.excluded_unit_access_ids
+
+        enabled_categories = {
+            category
+            for category, enabled in (
+                ('offensive', self.include_superweapon_rewards_var.get()),
+                ('secondary', self.include_secondary_superweapon_rewards_var.get()),
+                ('aid', self.include_aid_power_rewards_var.get()),
+            )
+            if enabled
+        }
+        entries = [
+            {
+                **entry,
+                'special': bool(entry['reward'].get('special_reward')),
             }
-            entries = [
-                entry for entry in self.advanced_power_pool_entries()
-                if entry['reward'].get('power_category', 'offensive')
-                in enabled_categories
-                and (
-                    self.include_special_rewards_var.get()
-                    or not entry['reward'].get('special_reward')
-                )
-            ]
-            target = self.excluded_superweapon_ids
-        all_ids = {
-            entry['id'] for entry in entries
-            if (
-                (
-                    entry.get('faction') == 'Neutral'
-                    or entry.get('faction') in arsenal_factions
-                )
-                if arsenal_mode
-                else (
-                    selected_campaign == CAMPAIGN_FILTERS[0]
-                    or entry.get('faction') == 'Neutral'
-                    or entry.get('faction') == selected_campaign
-                )
+            for entry in self.advanced_power_pool_entries()
+            if entry['reward'].get('power_category', 'offensive')
+            in enabled_categories
+            and (
+                self.include_special_rewards_var.get()
+                or not entry['reward'].get('special_reward')
+            )
+        ]
+        return entries, self.excluded_superweapon_ids
+
+    def advanced_pool_group_choices(self, pool_key):
+        """Build faction/category bulk choices from current catalogue metadata."""
+        if pool_key == 'units':
+            entries = self.advanced_unit_pool_entries()
+            category_labels = {
+                'infantry': 'Infantry',
+                'units': 'Vehicles / Naval',
+                'aircraft': 'Aircraft',
+                'defenses': 'Defenses',
+                'special_buildings': 'Special Buildings',
+            }
+        else:
+            entries = self.advanced_power_pool_entries()
+            category_labels = {
+                'offensive': 'Offensive',
+                'secondary': 'Secondary',
+                'aid': 'Aid',
+            }
+        factions = {entry.get('faction') for entry in entries}
+        choices = []
+        for faction in (*CAMPAIGN_FILTERS[1:], 'Neutral', 'Other'):
+            if faction not in factions:
+                continue
+            label = 'Allied' if faction == 'Allies' else faction
+            choices.append(('faction', faction, label))
+        categories = {entry.get('category') for entry in entries}
+        choices.extend(
+            ('category', category, label)
+            for category, label in category_labels.items()
+            if category in categories
+        )
+        return choices
+
+    def advanced_pool_entry_is_visible(self, entry):
+        """Match the campaign/Arsenal scope already used by Advanced cards."""
+        selected_campaign = self.campaign_var.get()
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        arsenal_factions = {
+            faction for faction, variable in self.arsenal_faction_vars.items()
+            if variable.get()
+        }
+        if arsenal_mode:
+            return (
+                entry.get('faction') == 'Neutral'
+                or entry.get('faction') in arsenal_factions
+            )
+        return (
+            selected_campaign == CAMPAIGN_FILTERS[0]
+            or entry.get('faction') == 'Neutral'
+            or entry.get('faction') == selected_campaign
+        )
+
+    def set_advanced_pool_only(self, pool_key, selector):
+        """Include one faction/category; exclude other eligible pool entries."""
+        if self.gameplay_settings_locked():
+            return
+        entries, target = self.advanced_pool_bulk_entries(pool_key)
+        scope = [
+            entry for entry in entries
+            if self.advanced_pool_entry_is_visible(entry)
+        ]
+        if selector == 'special':
+            included_ids = {
+                entry['id'] for entry in scope if entry.get('special')
+            }
+        else:
+            included_ids = {
+                entry['id']
+                for entry in scope
+                if entry.get('faction') == selector
+            }
+        if not included_ids:
+            return
+        target.update(entry['id'] for entry in scope)
+        target.difference_update(included_ids)
+        self.save_current_launcher_config()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+
+    def set_advanced_pool_group(self, pool_key, group_type, value, include):
+        """Bulk-toggle one faction/category without changing other entries."""
+        if self.gameplay_settings_locked():
+            return
+        entries, target = self.advanced_pool_bulk_entries(pool_key)
+        scope = [
+            entry for entry in entries
+            if self.advanced_pool_entry_is_visible(entry)
+        ]
+        if group_type == 'special':
+            matching_ids = {
+                entry['id'] for entry in scope if entry.get('special')
+            }
+        else:
+            matching_ids = {
+                entry['id']
+                for entry in scope
+                if entry.get(group_type) == value
+            }
+        if not matching_ids:
+            return
+        if include:
+            target.difference_update(matching_ids)
+        else:
+            target.update(matching_ids)
+        self.save_current_launcher_config()
+        self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+
+    def set_advanced_pool_groups(
+        self,
+        pool_key,
+        faction,
+        category,
+        include,
+    ):
+        """Bulk-toggle a faction/category intersection or the whole faction."""
+        if self.gameplay_settings_locked():
+            return
+        entries, target = self.advanced_pool_bulk_entries(pool_key)
+        matching_ids = {
+            entry['id']
+            for entry in entries
+            if self.advanced_pool_entry_is_visible(entry)
+            and entry.get('faction') == faction
+            and (
+                category == 'all'
+                or entry.get('category') == category
             )
         }
+        if not matching_ids:
+            return
         if include:
-            target.difference_update(all_ids)
+            target.difference_update(matching_ids)
         else:
-            target.update(all_ids)
+            target.update(matching_ids)
         self.save_current_launcher_config()
         self.update_mission_goal_limit()
         self.refresh_advanced_pool_views()

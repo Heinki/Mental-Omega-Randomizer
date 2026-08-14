@@ -94,6 +94,35 @@ def apply_color_mode(self):
         foreground=foreground,
         arrowcolor=foreground,
     )
+    # ttk combobox popdowns are Tk Listboxes, not ttk widgets. Keep their
+    # palette aligned with the themed field instead of using native light
+    # colors in dark mode.
+    self.option_add('*TCombobox*Listbox.background', field)
+    self.option_add('*TCombobox*Listbox.foreground', foreground)
+    self.option_add('*TCombobox*Listbox.selectBackground', selected)
+    self.option_add(
+        '*TCombobox*Listbox.selectForeground', selected_foreground
+    )
+    for combo_map_name in (
+        'advanced_unit_bulk_buff_combos',
+        'advanced_power_bulk_buff_combos',
+    ):
+        for combo in getattr(self, combo_map_name, {}).values():
+            try:
+                popdown = self.tk.call(
+                    'ttk::combobox::PopdownWindow', str(combo)
+                )
+                listbox = f'{popdown}.f.l'
+                self.tk.call(
+                    listbox,
+                    'configure',
+                    '-background', field,
+                    '-foreground', foreground,
+                    '-selectbackground', selected,
+                    '-selectforeground', selected_foreground,
+                )
+            except Exception:
+                pass
     style.map(
         'TCombobox',
         fieldbackground=[('disabled', field), ('readonly', field)],

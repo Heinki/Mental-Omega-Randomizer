@@ -10,6 +10,7 @@ from ._builder_dependencies import (
     ARSENAL_TIERS,
     ARSENAL_UNIT_TYPES,
     BUFF_TYPES,
+    CAMPAIGN_FILTERS,
     EVA_VOICE_CHOICES,
     IntegerSlider,
     MAIN_REWARD_WEIGHT_TYPES,
@@ -113,6 +114,85 @@ def power_buff_setting_text(definition):
         f'({_limit_text(definition.get("maximum_stacks"))})'
     )
 
+
+def _append_advanced_common_actions(self, parent, pool_key):
+    ttk.Separator(parent, orient='vertical').pack(
+        side='left', fill='y', padx=(2, 6)
+    )
+    ttk.Label(parent, text='All:').pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Include',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_all(key, True),
+    ).pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Exclude',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_all(key, False),
+    ).pack(side='left')
+    ttk.Separator(parent, orient='vertical').pack(
+        side='left', fill='y', padx=(6, 6)
+    )
+    ttk.Label(parent, text='Special:').pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Include',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_group(
+            key, 'special', 'special', True
+        ),
+    ).pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Exclude',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_group(
+            key, 'special', 'special', False
+        ),
+    ).pack(side='left')
+
+
+def _append_advanced_selected_actions(
+    self,
+    parent,
+    pool_key,
+    faction_var,
+    category_var,
+):
+    ttk.Label(parent, text='Selected:').pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Include',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_groups(
+            key,
+            faction_var.get(),
+            category_var.get(),
+            True,
+        ),
+    ).pack(side='left', padx=(0, 4))
+    ttk.Button(
+        parent,
+        text='Exclude',
+        width=7,
+        padding=(6, 3),
+        command=lambda key=pool_key: self.set_advanced_pool_groups(
+            key,
+            faction_var.get(),
+            category_var.get(),
+            False,
+        ),
+    ).pack(side='left')
+    _append_advanced_common_actions(self, parent, pool_key)
+
+
 def _build_advanced_tab(self, workspace_tabs):
     advanced_tab = ttk.Frame(workspace_tabs, padding=(8, 8, 8, 8))
     self.advanced_tab = advanced_tab
@@ -143,6 +223,7 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_pool_canvases = {}
     self.advanced_pool_frames = {}
     self.advanced_pool_column_counts = {}
+    self.advanced_pool_group_vars = {}
     for pool_key, pool_label in (
         ('missions', 'Missions'),
         ('units', 'Units / Buildings'),
@@ -152,19 +233,122 @@ def _build_advanced_tab(self, workspace_tabs):
         page.columnconfigure(0, weight=1)
         page.rowconfigure(1, weight=1)
         advanced_notebook.add(page, text=pool_label)
-        controls = ttk.Frame(page)
+        controls = ttk.LabelFrame(page, text='Filters', padding=(8, 6, 8, 6))
         controls.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 6))
-        controls.columnconfigure(0, weight=1)
-        ttk.Button(
-            controls,
-            text='Include All',
-            command=lambda key=pool_key: self.set_advanced_pool_all(key, True),
-        ).grid(row=0, column=1, padx=(4, 0))
-        ttk.Button(
-            controls,
-            text='Exclude All',
-            command=lambda key=pool_key: self.set_advanced_pool_all(key, False),
-        ).grid(row=0, column=2, padx=(4, 0))
+        if pool_key == 'missions':
+            row = ttk.Frame(controls)
+            row.grid(row=0, column=0, sticky='w')
+            ttk.Label(row, text='Only:').pack(side='left', padx=(0, 4))
+            for faction in CAMPAIGN_FILTERS[1:]:
+                label = 'Allied' if faction == 'Allies' else faction
+                ttk.Button(
+                    row,
+                    text=f'Only {label}',
+                    command=lambda key=pool_key, value=faction: (
+                        self.set_advanced_pool_only(key, value)
+                    ),
+                ).pack(side='left', padx=(0, 4))
+            ttk.Button(
+                row,
+                text='Only Special',
+                command=lambda key=pool_key: self.set_advanced_pool_only(
+                    key, 'special'
+                ),
+            ).pack(side='left', padx=(0, 4))
+            ttk.Separator(row, orient='vertical').pack(
+                side='left', fill='y', padx=(2, 6)
+            )
+            ttk.Label(row, text='All:').pack(side='left', padx=(0, 4))
+            ttk.Button(
+                row,
+                text='Include All',
+                command=lambda key=pool_key: self.set_advanced_pool_all(
+                    key, True
+                ),
+            ).pack(side='left', padx=(0, 4))
+            ttk.Button(
+                row,
+                text='Exclude All',
+                command=lambda key=pool_key: self.set_advanced_pool_all(
+                    key, False
+                ),
+            ).pack(side='left')
+        else:
+            choices = self.advanced_pool_group_choices(pool_key)
+            grouped_choices = {
+                group_type: [
+                    (value, label)
+                    for choice_type, value, label in choices
+                    if choice_type == group_type
+                ]
+                for group_type in ('faction', 'category')
+            }
+            group_vars = {}
+            self.advanced_pool_group_vars[pool_key] = group_vars
+            selector_frame = ttk.Frame(controls)
+            selector_frame.grid(row=0, column=0, sticky='w')
+            ttk.Label(selector_frame, text='Faction:').grid(
+                row=0, column=0, sticky='w', padx=(0, 4)
+            )
+            faction_choices = grouped_choices['faction']
+            faction_var = tk.StringVar(
+                value=faction_choices[0][0] if faction_choices else ''
+            )
+            group_vars['faction'] = faction_var
+            for column, (value, label) in enumerate(
+                faction_choices, start=1
+            ):
+                ttk.Radiobutton(
+                    selector_frame,
+                    text=label,
+                    value=value,
+                    variable=faction_var,
+                    padding=(0, 0),
+                ).grid(
+                    row=0,
+                    column=column,
+                    sticky='w',
+                    padx=(0, 2),
+                )
+            ttk.Label(selector_frame, text='Category:').grid(
+                row=1, column=0, sticky='w', padx=(0, 4), pady=(6, 0)
+            )
+            category_choices = [
+                *grouped_choices['category'],
+                ('all', 'All'),
+            ]
+            category_var = tk.StringVar(
+                value=category_choices[0][0] if category_choices else ''
+            )
+            group_vars['category'] = category_var
+            for column, (value, label) in enumerate(
+                category_choices, start=1
+            ):
+                ttk.Radiobutton(
+                    selector_frame,
+                    text=label,
+                    value=value,
+                    variable=category_var,
+                    padding=(0, 0),
+                ).grid(
+                    row=1,
+                    column=column,
+                    sticky='w',
+                    padx=(0, 2),
+                    pady=(6, 0),
+                )
+            ttk.Separator(controls, orient='vertical').grid(
+                row=0, column=1, sticky='ns', padx=(6, 6)
+            )
+            action_row = ttk.Frame(controls)
+            action_row.grid(row=0, column=2, sticky='n')
+            _append_advanced_selected_actions(
+                self,
+                action_row,
+                pool_key,
+                faction_var,
+                category_var,
+            )
         canvas = tk.Canvas(
             page,
             borderwidth=0,
@@ -214,11 +398,11 @@ def _build_advanced_tab(self, workspace_tabs):
     )
     self.advanced_buff_unit_label.grid(row=0, column=0, sticky='w')
     ttk.Button(
-        buff_controls, text='All', width=6,
+        buff_controls, text='Enable All',
         command=lambda: self.set_advanced_unit_buffs(True),
     ).grid(row=0, column=1, padx=(4, 0))
     ttk.Button(
-        buff_controls, text='None', width=6,
+        buff_controls, text='Disable All',
         command=lambda: self.set_advanced_unit_buffs(False),
     ).grid(row=0, column=2, padx=(4, 0))
     buff_options = ttk.Frame(buff_page)
@@ -228,20 +412,53 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_unit_buff_vars = {}
     self.advanced_unit_buff_checks = {}
     self.advanced_unit_buff_base_text = {}
+    self.advanced_unit_bulk_buff_vars = {}
+    self.advanced_unit_bulk_buff_combos = {}
     for index, buff_type in enumerate(BUFF_TYPES):
         buff_id = buff_type['id']
         variable = tk.BooleanVar(value=True)
         option_text = buff_setting_amount_text(buff_type)
+        option = ttk.Frame(buff_options)
+        option.grid(
+            row=index // 2,
+            column=index % 2,
+            sticky='ew',
+            padx=(0, 8),
+        )
+        option.columnconfigure(0, weight=1)
         check = ttk.Checkbutton(
-            buff_options,
+            option,
             text=option_text,
             variable=variable,
             command=lambda item=buff_id: self.on_advanced_unit_buff_changed(item),
         )
-        check.grid(row=index // 2, column=index % 2, sticky='w', padx=(0, 4))
+        check.grid(row=0, column=0, sticky='w')
+        bulk_variable = tk.StringVar(value='Mixed')
+        bulk_combo = ttk.Combobox(
+            option,
+            state='readonly',
+            textvariable=bulk_variable,
+            values=('Enabled', 'Disabled'),
+            width=10,
+        )
+        bulk_combo.grid(row=0, column=1, padx=(6, 0))
+        bulk_combo.bind(
+            '<<ComboboxSelected>>',
+            lambda _event, item=buff_id, target=bulk_variable: (
+                self.set_all_advanced_unit_buff_type(
+                    item, target.get() == 'Enabled'
+                )
+            ),
+        )
+        WidgetTooltip(
+            bulk_combo,
+            f'Enable or disable {buff_type["setting_label"]} for every applicable entry. Mixed means entries differ.',
+        )
         self.advanced_unit_buff_vars[buff_id] = variable
         self.advanced_unit_buff_checks[buff_id] = check
         self.advanced_unit_buff_base_text[buff_id] = option_text
+        self.advanced_unit_bulk_buff_vars[buff_id] = bulk_variable
+        self.advanced_unit_bulk_buff_combos[buff_id] = bulk_combo
     buff_canvas = tk.Canvas(
         buff_page,
         borderwidth=0,
@@ -292,17 +509,14 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_power_buff_label.grid(row=0, column=0, sticky='w')
     ttk.Button(
         power_buff_controls,
-        text='All',
-        width=6,
+        text='Enable All',
         command=lambda: self.set_selected_power_buffs(True),
     ).grid(row=0, column=1, padx=(4, 0))
     ttk.Button(
         power_buff_controls,
-        text='None',
-        width=6,
+        text='Disable All',
         command=lambda: self.set_selected_power_buffs(False),
     ).grid(row=0, column=2, padx=(4, 0))
-
     selected_power_buff_options = ttk.Frame(power_buff_page)
     selected_power_buff_options.grid(
         row=1, column=0, columnspan=2, sticky='ew', pady=(0, 6)
@@ -311,26 +525,54 @@ def _build_advanced_tab(self, workspace_tabs):
         selected_power_buff_options.columnconfigure(column, weight=1)
     self.advanced_power_buff_vars = {}
     self.advanced_power_buff_checks = {}
+    self.advanced_power_bulk_buff_vars = {}
+    self.advanced_power_bulk_buff_combos = {}
     for index, definition in enumerate(POWER_BUFF_TYPES):
         buff_id = definition['id']
         variable = tk.BooleanVar(value=True)
+        option = ttk.Frame(selected_power_buff_options)
+        option.grid(
+            row=index // 2,
+            column=index % 2,
+            sticky='ew',
+            padx=(0, 8),
+        )
+        option.columnconfigure(0, weight=1)
         check = ttk.Checkbutton(
-            selected_power_buff_options,
+            option,
             text=power_buff_setting_text(definition),
             variable=variable,
             command=lambda item=buff_id: (
                 self.on_power_buff_power_type_changed(item)
             ),
         )
-        check.grid(
-            row=index // 2,
-            column=index % 2,
-            sticky='w',
-            padx=(0, 6),
+        check.grid(row=0, column=0, sticky='w')
+        bulk_variable = tk.StringVar(value='Mixed')
+        bulk_combo = ttk.Combobox(
+            option,
+            state='readonly',
+            textvariable=bulk_variable,
+            values=('Enabled', 'Disabled'),
+            width=10,
+        )
+        bulk_combo.grid(row=0, column=1, padx=(6, 0))
+        bulk_combo.bind(
+            '<<ComboboxSelected>>',
+            lambda _event, item=buff_id, target=bulk_variable: (
+                self.set_all_power_buff_type(
+                    item, target.get() == 'Enabled'
+                )
+            ),
         )
         self.advanced_power_buff_vars[buff_id] = variable
         self.advanced_power_buff_checks[buff_id] = check
+        self.advanced_power_bulk_buff_vars[buff_id] = bulk_variable
+        self.advanced_power_bulk_buff_combos[buff_id] = bulk_combo
         WidgetTooltip(check, definition['description'])
+        WidgetTooltip(
+            bulk_combo,
+            f'Enable or disable {definition["setting_label"]} for every applicable power. Mixed means powers differ.',
+        )
 
     power_buff_canvas = tk.Canvas(
         power_buff_page,

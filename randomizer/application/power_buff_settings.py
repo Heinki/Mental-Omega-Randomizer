@@ -20,7 +20,7 @@ from randomizer.rewards.power_buff_definitions import power_buff_type_ids
 
 class PowerBuffSettingsController:
 
-    def power_buff_entries(self):
+    def power_buff_entries(self, include_excluded=False):
         entries = []
         selected_campaign = self.campaign_var.get()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
@@ -53,7 +53,10 @@ class PowerBuffSettingsController:
             faction = factions[0] if len(factions) == 1 else 'Other'
             if (
                 not power_id
-                or power_id in self.excluded_superweapon_ids
+                or (
+                    not include_excluded
+                    and power_id in self.excluded_superweapon_ids
+                )
                 or (
                     arsenal_mode
                     and faction not in arsenal_factions | {'Neutral'}
@@ -281,6 +284,32 @@ class PowerBuffSettingsController:
                     else 'disabled'
                 )
             )
+            bulk_state = self.power_bulk_buff_state(buff_id)
+            self.advanced_power_bulk_buff_vars[buff_id].set(bulk_state)
+            self.advanced_power_bulk_buff_combos[buff_id].configure(
+                state=(
+                    'disabled'
+                    if bulk_state == 'Unavailable'
+                    or self.gameplay_settings_locked()
+                    else 'readonly'
+                )
+            )
+
+    def power_bulk_buff_state(self, buff_id):
+        states = [
+            buff_id not in self.excluded_power_buff_types.get(
+                entry['id'], set()
+            )
+            for entry in self.power_buff_entries(include_excluded=True)
+            if buff_id in entry['buff_types']
+        ]
+        if not states:
+            return 'Unavailable'
+        if all(states):
+            return 'Enabled'
+        if any(states):
+            return 'Mixed'
+        return 'Disabled'
 
     def select_advanced_power_buff(self, power_id):
         self.advanced_power_buff_id = str(power_id).upper()
@@ -327,5 +356,29 @@ class PowerBuffSettingsController:
             self.excluded_power_buff_types[entry['id']] = set(
                 entry['buff_types']
             )
+        self.save_current_launcher_config()
+        self.refresh_advanced_power_buff_view()
+
+    def set_all_power_buff_type(self, buff_id, include):
+        """Set one per-power effect switch for every applicable scoped power."""
+        if self.gameplay_settings_locked():
+            return
+        changed = False
+        for entry in self.power_buff_entries(include_excluded=True):
+            if buff_id not in entry['buff_types']:
+                continue
+            excluded = self.excluded_power_buff_types.setdefault(
+                entry['id'], set()
+            )
+            if include:
+                changed = changed or buff_id in excluded
+                excluded.discard(buff_id)
+                if not excluded:
+                    self.excluded_power_buff_types.pop(entry['id'], None)
+            else:
+                changed = changed or buff_id not in excluded
+                excluded.add(buff_id)
+        if not changed:
+            return
         self.save_current_launcher_config()
         self.refresh_advanced_power_buff_view()
