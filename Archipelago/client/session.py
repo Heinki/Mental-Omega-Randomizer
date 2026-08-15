@@ -9,12 +9,14 @@ from .handshake import (
     ArchipelagoConnectionRefused,
     ArchipelagoHandshakeError,
     ArchipelagoProtocolError,
+    ArchipelagoTlsError,
     HandshakeResult,
     _connect_command,
     _decode_commands,
     _location_ids,
     _send_commands,
     _slot_info,
+    _connect_websocket,
     normalize_server_uri,
     validate_slot_data,
 )
@@ -66,9 +68,18 @@ class SessionEvent:
 class ArchipelagoSession:
     """Own one worker thread and expose thread-safe synchronization commands."""
 
-    def __init__(self, config, event_callback=None, checkpoint=None):
+    def __init__(
+        self,
+        config,
+        event_callback=None,
+        checkpoint=None,
+        diagnostic_callback=None,
+    ):
         self.config = config.normalized()
         self._event_callback = event_callback or (lambda _event: None)
+        self._diagnostic_callback = diagnostic_callback or (
+            lambda _name, _details: None
+        )
         self._lock = threading.RLock()
         self._socket_lock = threading.Lock()
         self._socket = None
@@ -113,6 +124,12 @@ class ArchipelagoSession:
         self._deferred_location_info = {}
         self._deferred_messages = []
 
+    def _diagnose(self, name, **details):
+        try:
+            self._diagnostic_callback(str(name), details)
+        except Exception:
+            pass
+
     @staticmethod
     def _optional_int(value):
         return None if value is None else int(value)
@@ -152,9 +169,24 @@ class ArchipelagoSession:
                 daemon=True,
             )
             self._thread.start()
+            self._diagnose(
+                'archipelago_session_started',
+                endpoint=self.config.server,
+                slot_name=self.config.slot_name,
+                checkpoint_seed=self._seed_name,
+                pending_locations=len(self._pending_locations),
+                received_items=len(self._ledger.records),
+                acknowledged_items=len(self._ledger.acknowledged_indexes),
+            )
             return True
 
     def stop(self, timeout=5.0):
+        self._diagnose(
+            'archipelago_session_stop_requested',
+            status=self.status,
+            endpoint=self.config.server,
+            slot_name=self.config.slot_name,
+        )
         self._stop_event.set()
         with self._socket_lock:
             socket = self._socket
@@ -184,6 +216,14 @@ class ArchipelagoSession:
                 self._pending_locations.add(location)
                 added.append(location)
         if added:
+            self._diagnose(
+                'archipelago_locations_queued',
+                count=len(added),
+                first_location=min(added),
+                last_location=max(added),
+                pending_locations=len(self._pending_locations),
+                room_seed=self._seed_name,
+            )
             self._emit_checkpoint()
             self._outbound.put({
                 'cmd': 'LocationChecks',
@@ -197,9 +237,16 @@ class ArchipelagoSession:
         return tuple(sorted(added))
 
     def acknowledge_received(self, indexes):
+        indexes = tuple(indexes)
         with self._lock:
             changed = self._ledger.acknowledge(indexes)
         if changed:
+            self._diagnose(
+                'archipelago_items_acknowledged',
+                count=len(indexes),
+                acknowledged_items=len(self._ledger.acknowledged_indexes),
+                received_items=len(self._ledger.records),
+            )
             self._emit_checkpoint()
         return changed
 
@@ -208,6 +255,12 @@ class ArchipelagoSession:
             changed = not self._goal_complete
             self._goal_complete = True
         if changed:
+            self._diagnose(
+                'archipelago_goal_queued',
+                room_seed=self._seed_name,
+                team=self._team,
+                slot=self._slot,
+            )
             self._emit_checkpoint()
             self._outbound.put({'cmd': 'StatusUpdate', 'status': CLIENT_GOAL})
         return changed
@@ -239,6 +292,12 @@ class ArchipelagoSession:
             self._status = status
         payload = {'state': status}
         payload.update(details)
+        self._diagnose(
+            'archipelago_connection_status',
+            endpoint=self.config.server,
+            slot_name=self.config.slot_name,
+            **payload,
+        )
         self._emit('status', payload)
 
     def _run(self):
@@ -249,19 +308,45 @@ class ArchipelagoSession:
                 self._set_status(state, attempt=attempt + 1)
                 try:
                     self._connection_cycle()
+                except ArchipelagoTlsError as exc:
+                    self._diagnose(
+                        'archipelago_tls_verification_failed',
+                        **exc.diagnostics,
+                    )
+                    self._emit('error', {
+                        'message': str(exc),
+                        'fatal': True,
+                        'diagnostics': exc.diagnostics,
+                    })
+                    break
                 except (
                     ArchipelagoConnectionRefused,
                     ArchipelagoIdentityMismatch,
                     ArchipelagoProtocolError,
                 ) as exc:
+                    self._diagnose(
+                        'archipelago_connection_fatal_error',
+                        error_type=exc.__class__.__name__,
+                        error=str(exc),
+                    )
                     self._emit('error', {'message': str(exc), 'fatal': True})
                     break
                 except ArchipelagoHandshakeError as exc:
+                    self._diagnose(
+                        'archipelago_handshake_failed',
+                        error_type=exc.__class__.__name__,
+                        error=str(exc),
+                    )
                     self._emit('error', {'message': str(exc), 'fatal': True})
                     break
                 except Exception as exc:
                     if self._stop_event.is_set():
                         break
+                    self._diagnose(
+                        'archipelago_connection_error',
+                        error_type=exc.__class__.__name__,
+                        error=str(exc) or exc.__class__.__name__,
+                    )
                     self._emit('error', {
                         'message': str(exc) or exc.__class__.__name__,
                         'fatal': False,
@@ -296,7 +381,8 @@ class ArchipelagoSession:
             self.config.password,
             self.config.client_uuid,
         )
-        with connect(
+        with _connect_websocket(
+            connect,
             self.config.server,
             compression='deflate',
             open_timeout=self.config.connect_timeout,
@@ -305,6 +391,11 @@ class ArchipelagoSession:
             # are required to render WHO/WHAT/WHERE without numeric IDs.
             max_size=64 * 1024 * 1024,
         ) as socket:
+            self._diagnose(
+                'archipelago_socket_opened',
+                endpoint=self.config.server,
+                slot_name=self.config.slot_name,
+            )
             with self._socket_lock:
                 self._socket = socket
             connect_sent = False
@@ -323,6 +414,13 @@ class ArchipelagoSession:
                     if packet_name == 'RoomInfo':
                         room_seed_name = str(packet.get('seed_name', ''))
                         games = packet.get('games', [])
+                        self._diagnose(
+                            'archipelago_room_info_received',
+                            room_seed=room_seed_name,
+                            games=sorted(str(game) for game in games)
+                            if isinstance(games, list) else [],
+                            endpoint=self.config.server,
+                        )
                         if not isinstance(games, list) or 'Mental Omega' not in games:
                             raise ArchipelagoProtocolError(
                                 'Server room does not contain a Mental Omega slot.'
@@ -350,6 +448,34 @@ class ArchipelagoSession:
                             ),
                             slot_data=validate_slot_data(packet.get('slot_data')),
                             slot_info=_slot_info(packet.get('slot_info')),
+                        )
+                        location_count = sum(
+                            len(values)
+                            for mission in result.slot_data.get(
+                                'locations', {}
+                            ).values()
+                            for values in mission.values()
+                        )
+                        self._diagnose(
+                            'archipelago_slot_authenticated',
+                            room_seed=result.seed_name,
+                            randomizer_seed=result.slot_data.get(
+                                'randomizer_seed', ''
+                            ),
+                            manifest_checksum=result.slot_data.get(
+                                'manifest_checksum', ''
+                            ),
+                            progression_mode=result.slot_data.get(
+                                'progression_mode', ''
+                            ),
+                            team=result.team,
+                            slot=result.slot,
+                            missions=len(result.slot_data.get(
+                                'mission_order', ()
+                            )),
+                            locations=location_count,
+                            checked_locations=len(result.checked_locations),
+                            missing_locations=len(result.missing_locations),
                         )
                         self._accept_connected(result)
                         authenticated = True
@@ -437,6 +563,12 @@ class ArchipelagoSession:
             })
         if commands:
             _send_commands(socket, *commands)
+        self._diagnose(
+            'archipelago_metadata_requested',
+            games=len(games),
+            scouted_locations=len(scout_locations),
+            command_count=len(commands),
+        )
         if self._metadata_ready:
             self._flush_metadata_events()
 
@@ -451,6 +583,12 @@ class ArchipelagoSession:
             commands.append({'cmd': 'StatusUpdate', 'status': CLIENT_GOAL})
         if commands:
             _send_commands(socket, *commands)
+        self._diagnose(
+            'archipelago_resynchronization_sent',
+            pending_locations=len(pending),
+            goal_complete=goal_complete,
+            command_count=len(commands),
+        )
 
     def _flush_outbound(self, socket):
         commands = []
@@ -461,6 +599,16 @@ class ArchipelagoSession:
                 break
         if commands:
             _send_commands(socket, *commands)
+            self._diagnose(
+                'archipelago_outbound_batch_sent',
+                command_count=len(commands),
+                command_names=[command.get('cmd', '') for command in commands],
+                location_count=sum(
+                    len(command.get('locations', ()))
+                    for command in commands
+                    if isinstance(command.get('locations'), list)
+                ),
+            )
 
     def _accept_received_items(self, socket, packet):
         items = packet.get('items')
@@ -471,7 +619,17 @@ class ArchipelagoSession:
                 packet.get('index'), items
             )
             completed = sorted(self._completed_locations)
-        self._emit_checkpoint()
+        self._diagnose(
+            'archipelago_received_items_packet',
+            start_index=packet.get('index'),
+            received_count=len(items),
+            pending_count=len(pending),
+            ledger_count=len(self._ledger.records),
+            desynchronized=desynchronized,
+        )
+        # Do not serialize an unacknowledged network inventory on Tk before
+        # reward persistence. Archipelago replays it after reconnect; the
+        # controller saves rewards first, then acknowledges and checkpoints.
         if pending:
             if self._metadata_ready:
                 self._emit(
@@ -530,6 +688,11 @@ class ArchipelagoSession:
         self._metadata_ready = self._requested_games.issubset(
             self._game_data
         )
+        self._diagnose(
+            'archipelago_data_package_received',
+            received_games=sorted(str(game) for game in games),
+            metadata_ready=self._metadata_ready,
+        )
         if self._metadata_ready:
             self._flush_metadata_events()
 
@@ -552,6 +715,11 @@ class ArchipelagoSession:
         if not isinstance(values, list):
             raise ArchipelagoProtocolError('LocationInfo locations are invalid.')
         records = [self._network_item(value) for value in values]
+        self._diagnose(
+            'archipelago_location_info_received',
+            count=len(records),
+            metadata_ready=self._metadata_ready,
+        )
         if self._metadata_ready:
             self._emit(
                 'location_info',
@@ -620,27 +788,41 @@ class ArchipelagoSession:
         }
 
     def _flush_metadata_events(self):
-        self._emit(
-            'received_metadata',
-            tuple(
-                self._resolved_received_item(record)
-                for record in self._ledger.records
-            ),
-        )
-        if self._deferred_location_info:
-            values = tuple(
-                self._resolved_location_info(record)
-                for _, record in sorted(self._deferred_location_info.items())
-            )
-            self._deferred_location_info.clear()
-            self._emit('location_info', values)
+        new_item_count = 0
+        location_info_count = 0
         if self._deferred_received_items:
             values = tuple(
                 self._resolved_received_item(record)
                 for _, record in sorted(self._deferred_received_items.items())
             )
             self._deferred_received_items.clear()
+            new_item_count = len(values)
             self._emit('received_items', values)
+        pending_indexes = {
+            record.index for record in self._ledger.pending
+        }
+        existing_metadata = tuple(
+            self._resolved_received_item(record)
+            for record in self._ledger.records
+            if record.index not in pending_indexes
+        )
+        if existing_metadata:
+            self._emit('received_metadata', existing_metadata)
+        if self._deferred_location_info:
+            values = tuple(
+                self._resolved_location_info(record)
+                for _, record in sorted(self._deferred_location_info.items())
+            )
+            self._deferred_location_info.clear()
+            location_info_count = len(values)
+            self._emit('location_info', values)
+        self._diagnose(
+            'archipelago_metadata_events_flushed',
+            new_items=new_item_count,
+            existing_item_metadata=len(existing_metadata),
+            pending_items=len(pending_indexes),
+            location_info=location_info_count,
+        )
         if self._deferred_messages:
             values = tuple(self._deferred_messages)
             self._deferred_messages.clear()
@@ -665,6 +847,13 @@ class ArchipelagoSession:
                 self._missing_locations.discard(location)
                 confirmed.append(location)
         if confirmed:
+            self._diagnose(
+                'archipelago_locations_confirmed',
+                count=len(confirmed),
+                first_location=min(confirmed),
+                last_location=max(confirmed),
+                pending_locations=len(self._pending_locations),
+            )
             self._emit_checkpoint()
             self._emit('locations_checked', tuple(confirmed))
 

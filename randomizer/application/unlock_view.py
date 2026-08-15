@@ -3,6 +3,7 @@
 from ._dependencies import (
     GRID_COMPLETED,
     GRID_LOCKED,
+    REWARD_BY_NAME,
     REWARD_MODES,
     WidgetTooltip,
     cameo_extraction_pending,
@@ -353,6 +354,52 @@ class UnlockViewController:
         )
 
         lines = []
+        detail_spans = []
+        detail_tag_colors = {}
+
+        def append_styled_line(parts):
+            line_number = len(lines) + 1
+            text = ''
+            for value, tag in parts:
+                value = str(value)
+                start = len(text)
+                text += value
+                if tag and value:
+                    detail_spans.append((
+                        f'{line_number}.{start}',
+                        f'{line_number}.{len(text)}',
+                        tag,
+                    ))
+            lines.append(text)
+
+        def reward_detail_tag(reward_value):
+            reward = (
+                reward_value
+                if isinstance(reward_value, dict)
+                else REWARD_BY_NAME.get(str(reward_value))
+            )
+            if not isinstance(reward, dict):
+                return None
+            if reward.get('kind') == 'superweapon':
+                return 'detail_reward_superweapon'
+            if reward.get('kind') == 'buff':
+                return 'detail_reward_buff'
+            if reward.get('kind') is None:
+                return 'detail_reward_access'
+            return None
+
+        def player_detail_tag(slot):
+            try:
+                slot = int(slot)
+            except (TypeError, ValueError):
+                slot = 0
+            color_getter = getattr(self, '_archipelago_player_color', None)
+            if not callable(color_getter):
+                return None
+            tag = f'detail_player_{slot}'
+            detail_tag_colors[tag] = color_getter(slot)
+            return tag
+
         selected = self.selected_mission()
         if selected:
             code = selected['code']
@@ -490,12 +537,19 @@ class UnlockViewController:
                             location = (
                                 f'Location #{int(record.get("location", 0))}'
                             )
-                        lines.append(
-                            f'   • {item_name} -> {recipient} ({recipient_game})'
-                        )
-                        lines.append(
-                            f'     Found by {sender} ({sender_game}) at {location}'
-                        )
+                        append_styled_line((
+                            ('   • ', None),
+                            (item_name, reward_detail_tag(item_name)),
+                            (' -> ', None),
+                            (recipient, player_detail_tag(record.get('player'))),
+                            (f' ({recipient_game})', None),
+                        ))
+                        active_ap = self._active_archipelago_state() or {}
+                        append_styled_line((
+                            ('     Found by ', None),
+                            (sender, player_detail_tag(active_ap.get('slot'))),
+                            (f' ({sender_game}) at {location}', None),
+                        ))
                     missing = max(0, expected - len(details))
                     if missing:
                         lines.append(
@@ -519,7 +573,10 @@ class UnlockViewController:
                 if rewards:
                     for reward in rewards:
                         reward_name = self.mission_check_reward_name(check, reward)
-                        lines.append(f'   • {reward_name}')
+                        append_styled_line((
+                            ('   • ', None),
+                            (reward_name, reward_detail_tag(reward)),
+                        ))
                 else:
                     lines.append('   • No reward assigned')
             lines.append('')
@@ -527,7 +584,11 @@ class UnlockViewController:
         elif not lines:
             lines.append('No rewards earned yet.')
 
-        self.set_rewards_text('\n'.join(lines))
+        self.set_rewards_text(
+            '\n'.join(lines),
+            spans=detail_spans,
+            tag_colors=detail_tag_colors,
+        )
         self._unlocks_view_dirty = True
         self._enemy_buffs_view_dirty = True
         if self.unlocks_view_visible():
@@ -535,13 +596,31 @@ class UnlockViewController:
         if self.enemy_buffs_view_visible():
             self.refresh_enemy_buffs_view()
 
-    def set_rewards_text(self, text):
+    def set_rewards_text(self, text, spans=(), tag_colors=None):
         self.rewards_text.configure(state='normal')
         self.rewards_text.delete('1.0', 'end')
         self.rewards_text.insert('end', text)
+        dark = bool(self.dark_mode_var.get())
+        self.rewards_text.tag_configure(
+            'detail_reward_access',
+            foreground='#70c7ff' if dark else '#176a9c',
+        )
+        self.rewards_text.tag_configure(
+            'detail_reward_buff',
+            foreground='#6ee7a8' if dark else '#087a48',
+        )
+        self.rewards_text.tag_configure(
+            'detail_reward_superweapon',
+            foreground='#c3afff' if dark else '#6548b8',
+        )
+        for tag, color in (tag_colors or {}).items():
+            self.rewards_text.tag_configure(tag, foreground=color)
+        for start, end, tag in spans:
+            if tag:
+                self.rewards_text.tag_add(tag, start, end)
         self.rewards_text.tag_configure(
             'enemy_reward',
-            foreground='#ff7b72' if self.dark_mode_var.get() else '#b00020',
+            foreground='#ff7b72' if dark else '#b00020',
         )
         start = '1.0'
         while True:
@@ -553,6 +632,7 @@ class UnlockViewController:
             line_end = f'{match} lineend'
             self.rewards_text.tag_add('enemy_reward', match, line_end)
             start = f'{line_end}+1c'
+        self.rewards_text.tag_raise('enemy_reward')
         self.rewards_text.configure(state='disabled')
 
     def set_unlocks_text(self, text, unit_ids=None):

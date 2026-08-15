@@ -144,6 +144,8 @@ def main_reward_weight_type(reward):
     if reward.get('kind') == 'buff':
         if reward.get('power_buff_type'):
             return 'power_buffs'
+        if reward.get('buff_type') == 'starting_credits':
+            return 'production'
         if reward.get('global_buff') and reward.get('buff_type') == 'production':
             return 'production'
         return 'unit_buffs'

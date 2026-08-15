@@ -13,13 +13,21 @@ class LauncherSettings(OptionDict):
 
 
 class RunManifest(FreeText):
-    """Launcher-exported deterministic run manifest as JSON."""
+    """Legacy launcher-exported deterministic run manifest as JSON."""
 
     display_name = "Run Manifest"
     default = ""
 
 
+class GeneratedWorld(OptionDict):
+    """Launcher-generated world input required by this APWorld."""
+
+    display_name = "Generated World"
+    default = {}
+
+
 @dataclass
 class MentalOmegaOptions(PerGameCommonOptions):
     launcher_settings: LauncherSettings
+    generated_world: GeneratedWorld
     run_manifest: RunManifest

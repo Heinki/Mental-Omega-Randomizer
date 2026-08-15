@@ -200,6 +200,9 @@ def run_self_check():
             == "Self Checker's Slot"
             and archipelago_player_document['run_manifest']
             == archipelago_manifest
+            and 'generated_world:' in archipelago_player_yaml
+            and 'run_manifest:' not in archipelago_player_yaml
+            and 'Generated run data.' not in archipelago_player_yaml
             and 'progression_balancing:' not in archipelago_player_yaml
             and 'accessibility:' not in archipelago_player_yaml
             and archipelago_slot_data['run_manifest']['state_snapshot'][

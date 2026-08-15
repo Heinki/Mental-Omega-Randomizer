@@ -34,8 +34,8 @@ def serialize_player_yaml(manifest, slot_name):
         raise ValueError("Run manifest has no readable launcher settings.")
     output = (
         f"name: {_quote(str(slot_name).strip() or 'Commander')}\n"
-        "description: Mental Omega Randomizer generated player file\n"
         f"game: {GAME_NAME}\n"
+        "description: Mental Omega Randomizer generated player file\n"
         "requires:\n"
         "  version: 0.6.7\n\n"
         f"{GAME_NAME}:\n"
@@ -49,13 +49,13 @@ def serialize_player_yaml(manifest, slot_name):
     output += "\n".join(
         simple_yaml_mapping_lines(launcher_settings, indent=4)
     )
-    output += (
-        "\n\n"
-        "  # Generated run data. Do not edit this section by hand.\n"
-        "  run_manifest: |-\n"
-    )
+    # Archipelago options are mappings and scalars, not embedded document
+    # fragments.  Keep required generated world input as one normal mapping
+    # option.  JSON flow syntax is valid YAML and remains dependency-free.
+    manifest_lines = formatted_manifest.splitlines()
+    output += "\n\n  generated_world: " + manifest_lines[0] + "\n"
     output += "\n".join(
-        "    " + line for line in formatted_manifest.splitlines()
+        "    " + line for line in manifest_lines[1:]
     )
     return output + "\n"
 
@@ -97,7 +97,7 @@ def parse_player_yaml(text):
             if stripped.startswith("launcher_settings:"):
                 capture_launcher_settings = True
                 continue
-            if stripped.startswith("run_manifest:"):
+            if stripped.startswith(("generated_world:", "run_manifest:")):
                 capture_manifest = True
                 inline = stripped.split(":", 1)[1].strip()
                 if inline and inline not in {">", ">-", "|", "|-"}:
@@ -120,13 +120,13 @@ def parse_player_yaml(text):
     if not slot_name:
         raise ValueError("Player YAML has no slot name.")
     if not manifest_parts:
-        raise ValueError("Player YAML has no Mental Omega run_manifest.")
+        raise ValueError("Player YAML has no Mental Omega generated_world data.")
     try:
         manifest = json.loads(" ".join(manifest_parts))
     except json.JSONDecodeError as exc:
-        raise ValueError("Player YAML run_manifest is not valid JSON.") from exc
+        raise ValueError("Player YAML generated_world is not valid JSON.") from exc
     if not isinstance(manifest, dict):
-        raise ValueError("Player YAML run_manifest must be an object.")
+        raise ValueError("Player YAML generated_world must be an object.")
     launcher_settings = parse_simple_yaml_text(
         "\n".join(launcher_setting_lines)
     ) if launcher_setting_lines else {}

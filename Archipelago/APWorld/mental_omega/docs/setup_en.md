@@ -13,9 +13,9 @@
    optional password, then connect. Do not paste the browser room URL.
 
 `launcher_settings` records the exact visible launcher controls. To customize
-it, change those controls and choose **Save Player YAML** again. Do not edit
-generated `run_manifest` data. Its checksum must exactly match the selected
-launcher YAML and server slot. After connection, AP seed, Grid,
+it, change those controls and choose **Save Player YAML** again. Generated
+`generated_world` data must exactly match the selected launcher YAML and server
+slot. After connection, AP seed, Grid,
 mission availability, checked objectives, completion, progression, and unlocks
 come from server state. Objective and victory checks synchronize automatically;
 received items use the existing reward pipeline.

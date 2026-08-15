@@ -1,6 +1,7 @@
 """Archipelago workspace tab."""
 
 from ._builder_dependencies import scrolledtext, ttk
+from randomizer.core.paths import LAUNCHER_LOG
 
 
 def build_archipelago_tab(self, workspace_tabs):
@@ -184,6 +185,13 @@ def build_archipelago_tab(self, workspace_tabs):
         text='Send normal chat or server commands such as !hint and !release.',
         style='Muted.TLabel',
     ).grid(row=2, column=0, sticky='w', pady=(5, 0))
+    ttk.Label(
+        history_frame,
+        text=f'Full connection diagnostics: {LAUNCHER_LOG}',
+        style='Muted.TLabel',
+        wraplength=820,
+        justify='left',
+    ).grid(row=3, column=0, sticky='w', pady=(3, 0))
 
     ttk.Label(
         tab,

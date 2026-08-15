@@ -350,10 +350,14 @@ class WindowController:
         )
 
     def process_ui_queue(self):
+        pending = False
         try:
             try:
-                while True:
+                deadline = time.perf_counter() + 0.012
+                processed = 0
+                while processed < 100 and time.perf_counter() < deadline:
                     kind, payload = self.ui_queue.get_nowait()
+                    processed += 1
                     if kind == 'log':
                         message, error = payload
                         self.append_log_to_widgets(message, error=error)
@@ -363,10 +367,11 @@ class WindowController:
                         self.update_busy_progress(*payload)
                     elif kind == 'archipelago':
                         self.handle_archipelago_event(payload)
+                pending = not self.ui_queue.empty()
             except queue.Empty:
                 pass
         finally:
-            self.after(40, self.process_ui_queue)
+            self.after(1 if pending else 40, self.process_ui_queue)
 
     def on_settings_content_configure(self, _event=None):
         if hasattr(self, 'settings_canvas'):

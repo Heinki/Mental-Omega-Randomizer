@@ -15,6 +15,7 @@ from ._dependencies import (
     redraw_launcher_grid,
     refresh_grid_states,
     reward_display_name,
+    time,
 )
 
 class ProgressionController:
@@ -80,7 +81,23 @@ class ProgressionController:
             self.tree_scrollbar.grid()
 
     def redraw_grid(self):
+        started = time.perf_counter()
+        previous_signature = self.grid_render_signature
         redraw_launcher_grid(self)
+        if self.archipelago_run_active():
+            grid = self.state.get('grid', {}) if self.state else {}
+            log_event(
+                'archipelago_grid_redrawn',
+                topology_changed=previous_signature != self.grid_render_signature,
+                nodes=len(grid.get('nodes', {})),
+                width=grid.get('width'),
+                height=grid.get('height'),
+                goal=grid.get('goal'),
+                elapsed_ms=round(
+                    (time.perf_counter() - started) * 1000, 1
+                ),
+                **self._archipelago_log_context(),
+            )
 
     def refresh_grid_tiles(self, mission_codes=None):
         if not self.grid_tile_widgets or not self.state:
@@ -185,6 +202,15 @@ class ProgressionController:
         previous_code = self.selected_mission_code()
         self.selected_index.set(index)
         current_code = self.selected_mission_code()
+        if self.archipelago_run_active():
+            log_event(
+                'archipelago_grid_mission_selected',
+                previous_mission=previous_code,
+                selected_mission=current_code,
+                **self._archipelago_log_context(
+                    self.mission_lookup().get(current_code, {})
+                ),
+            )
         self.refresh_grid_tiles({previous_code, current_code})
         self.refresh_progress_view()
 
@@ -253,6 +279,12 @@ class ProgressionController:
         selection = self.missions_tree.selection()
         if selection:
             self.selected_index.set(int(selection[0]))
+            if self.archipelago_run_active():
+                mission = self.selected_mission()
+                log_event(
+                    'archipelago_list_mission_selected',
+                    **self._archipelago_log_context(mission),
+                )
             self.refresh_progress_view()
 
     def selected_mission(self):
@@ -433,5 +465,10 @@ class ProgressionController:
             reward_mode=self.active_reward_mode(),
             completed_missions=len(self.state.get('completed_missions', [])),
             earned_rewards=len(self.state.get('earned_rewards', [])),
+            archipelago=(
+                self._archipelago_log_context(mission)
+                if self.archipelago_run_active()
+                else None
+            ),
         )
         self.launch_mission_async(mission)

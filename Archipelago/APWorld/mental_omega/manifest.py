@@ -1,6 +1,7 @@
 """Strict launcher-generated run-manifest contract."""
 
 from collections import Counter
+from collections.abc import Mapping
 from hashlib import sha256
 import json
 
@@ -44,14 +45,21 @@ def _positive_counts(value, label, known_names):
 
 
 def parse_manifest(raw_value):
-    if not isinstance(raw_value, str) or not raw_value.strip():
-        raise ManifestError("run_manifest is required; export it from the launcher.")
-    try:
-        value = json.loads(raw_value)
-    except json.JSONDecodeError as exc:
-        raise ManifestError(f"run_manifest is not valid JSON: {exc}") from exc
+    if isinstance(raw_value, Mapping):
+        value = dict(raw_value)
+    else:
+        if not isinstance(raw_value, str) or not raw_value.strip():
+            raise ManifestError(
+                "generated_world is required; export Player YAML from the launcher."
+            )
+        try:
+            value = json.loads(raw_value)
+        except json.JSONDecodeError as exc:
+            raise ManifestError(
+                f"generated_world is not valid JSON: {exc}"
+            ) from exc
     if not isinstance(value, dict):
-        raise ManifestError("run_manifest must contain one JSON object.")
+        raise ManifestError("generated_world must contain one mapping.")
     if value.get("schema_version") != MANIFEST_SCHEMA_VERSION:
         raise ManifestError("Unsupported run-manifest schema version.")
     if value.get("randomizer_version") != RANDOMIZER_VERSION:

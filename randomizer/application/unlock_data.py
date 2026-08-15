@@ -509,6 +509,9 @@ class UnlockDataController:
         if share_foehn_roles is None:
             share_foehn_roles = self.foehn_standard_bundles_enabled()
         keys = set()
+        if reward.get('buff_type') == 'starting_credits':
+            keys.add('global:starting_credits')
+            return keys
         house_scope = self.reward_house_wide_buff_scope(reward)
         if house_scope:
             suffix, buff_type = house_scope
@@ -851,6 +854,45 @@ class UnlockDataController:
                 ),
             })
 
+        starting_credit_reward = next(
+            (
+                reward for reward in REWARD_POOL
+                if reward.get('buff_type') == 'starting_credits'
+            ),
+            None,
+        )
+        if starting_credit_reward:
+            key = 'global:starting_credits'
+            source_data = sources.get(
+                key, {
+                    'assigned': [], 'earned': [], 'earned_unlocks': [],
+                    'available': [], 'available_unlocks': [],
+                    'available_codes': [],
+                }
+            )
+            status = (
+                'unlocked'
+                if source_data['earned']
+                else 'available'
+                if source_data['available'] and not privacy
+                else 'locked'
+                if source_data['assigned']
+                else 'unavailable'
+            )
+            entries.append({
+                'key': key,
+                'kind': 'global',
+                'id': 'starting_credits',
+                'label': 'Starting Credits',
+                'faction': 'Neutral',
+                'category': 'Global Buffs',
+                'status': status,
+                'condition': '',
+                'sources': source_data,
+                'privacy': privacy,
+                'reward': starting_credit_reward,
+            })
+
         for unit_id, target in BUFF_TARGETS.items():
             if target.get('linked_buff_source'):
                 continue
@@ -1086,7 +1128,7 @@ class UnlockDataController:
         earned_source_names = list(dict.fromkeys(source for source, _ in sources['earned']))
         available_source_items = (
             sources['available']
-            if entry.get('kind') == 'house'
+            if entry.get('kind') in {'house', 'global'}
             else sources['available_unlocks']
         )
         available_source_names = list(dict.fromkeys(
@@ -1189,6 +1231,7 @@ class UnlockDataController:
         if (
             entry.get('reward')
             and entry['status'] == 'unlocked'
+            and entry.get('kind') != 'global'
             and entry['reward'].get('access_category') != 'special_building'
         ):
             effect_lines.extend(reward_rule_summary(entry['reward']))

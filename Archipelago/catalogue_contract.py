@@ -24,6 +24,14 @@ PROTOTYPE_ITEM_IDS = {
     "Soviet Conscript Access": ITEM_ID_BASE + 1,
 }
 
+# Published catalogue immediately before the additive Starting Credits item.
+# Existing IDs and reward semantics are unchanged, and server slot data carries
+# its exact used-item map, location map, and signed state snapshot. Keeping this
+# one checksum compatible lets already-hosted rooms reconnect safely.
+BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
+    "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
+})
+
 
 def _canonical_json(value):
     return json.dumps(
@@ -104,6 +112,14 @@ def projection_checksum(projection):
 
 def runtime_catalogue_checksum():
     return projection_checksum(build_catalogue_projection())
+
+
+def runtime_catalogue_is_compatible(checksum):
+    checksum = str(checksum or "")
+    return (
+        checksum == runtime_catalogue_checksum()
+        or checksum in BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS
+    )
 
 
 def _preserved_ids(existing, key):

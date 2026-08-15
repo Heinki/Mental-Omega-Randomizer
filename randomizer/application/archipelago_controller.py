@@ -14,10 +14,79 @@ from ._dependencies import (
     reward_display_name,
     save_config,
     threading,
+    time,
 )
 
 
 class ArchipelagoController(ArchipelagoYamlController):
+    _ARCHIPELAGO_STATE_MUTATION_EVENTS = {
+        'connected', 'checkpoint', 'received_items', 'received_metadata',
+        'location_info', 'locations_checked',
+    }
+
+    def _archipelago_log_context(self, mission=None):
+        ap_state = self._active_archipelago_state() or {}
+        checkpoint = ap_state.get('checkpoint')
+        checkpoint = checkpoint if isinstance(checkpoint, dict) else {}
+        context = {
+            'randomizer_seed': self.state.get('seed', '') if self.state else '',
+            'room_seed': checkpoint.get('seed_name', ''),
+            'manifest_checksum': ap_state.get('manifest_checksum', ''),
+            'progression_mode': (
+                self.active_progression_mode() if self.state else ''
+            ),
+            'received_rewards': len(ap_state.get('received_rewards', ())),
+            'checked_locations': len(getattr(
+                self, '_archipelago_server_checked_locations', ()
+            )),
+        }
+        if isinstance(mission, dict):
+            context.update({
+                'mission_code': mission.get('code', ''),
+                'mission_title': mission.get('title', ''),
+                'scenario': mission.get('scenario', ''),
+            })
+        return context
+
+    @staticmethod
+    def _archipelago_slot_identity(slot_data):
+        keys = (
+            'slot_data_version', 'randomizer_version', 'randomizer_seed',
+            'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
+            'progression_mode', 'mission_goal', 'mission_order', 'goal',
+        )
+        return {
+            key: deepcopy(slot_data[key])
+            for key in keys
+            if key in slot_data
+        }
+
+    def _begin_archipelago_mission_preparation(self, mission):
+        if not self.archipelago_run_active():
+            return False
+        self._archipelago_mission_prepare_active = True
+        self._archipelago_deferred_events = []
+        log_event(
+            'archipelago_mission_state_snapshot_started',
+            **self._archipelago_log_context(mission),
+        )
+        return True
+
+    def _finish_archipelago_mission_preparation(self, mission):
+        if not getattr(self, '_archipelago_mission_prepare_active', False):
+            return
+        self._archipelago_mission_prepare_active = False
+        deferred = tuple(getattr(self, '_archipelago_deferred_events', ()))
+        self._archipelago_deferred_events = []
+        for event in deferred:
+            self.ui_queue.put(('archipelago', event))
+        log_event(
+            'archipelago_mission_state_snapshot_finished',
+            deferred_events=len(deferred),
+            deferred_kinds=[event.kind for event in deferred],
+            **self._archipelago_log_context(mission),
+        )
+
     def gameplay_settings_locked(self):
         return bool(getattr(self, '_archipelago_gameplay_locked', False))
 
@@ -188,6 +257,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         if active_state is None:
             self._archipelago_session_validated = False
             return False
+        departed_context = self._archipelago_log_context()
 
         standalone_state = self._archipelago_standalone_state
         standalone_config = self._archipelago_standalone_config
@@ -214,6 +284,8 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_item_names = {}
         self._archipelago_players = {}
         self._archipelago_location_info = {}
+        self._archipelago_location_groups = {}
+        self._archipelago_allowed_locations = frozenset()
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self.apply_portable_settings(restored_config)
@@ -229,6 +301,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         log_event(
             'archipelago_standalone_context_restored',
             seed=self.state.get('seed', ''),
+            departed_archipelago=departed_context,
         )
         return True
 
@@ -241,6 +314,8 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_item_names = {}
         self._archipelago_players = {}
         self._archipelago_location_info = {}
+        self._archipelago_location_groups = {}
+        self._archipelago_allowed_locations = frozenset()
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self._archipelago_standalone_state = None
@@ -370,6 +445,9 @@ class ArchipelagoController(ArchipelagoYamlController):
                     ('archipelago', event)
                 ),
                 checkpoint=checkpoint,
+                diagnostic_callback=lambda name, details: log_event(
+                    name, **details
+                ),
             )
         except Exception as exc:
             self._archipelago_connection_error = str(exc)
@@ -399,6 +477,14 @@ class ArchipelagoController(ArchipelagoYamlController):
         self.archipelago_connect_button.configure(state='disabled')
         self.archipelago_disconnect_button.configure(state='normal')
         self.set_archipelago_controls_locked(True)
+        log_event(
+            'archipelago_connection_requested',
+            endpoint=session.config.server,
+            slot_name=session.config.slot_name,
+            checkpoint_restored=bool(checkpoint),
+            local_seed=self.state.get('seed', '') if self.state else '',
+            local_mode=self.active_progression_mode() if self.state else '',
+        )
         self.append_archipelago_history(f'Connecting to {session.config.server}…')
         session.start()
 
@@ -412,6 +498,10 @@ class ArchipelagoController(ArchipelagoYamlController):
         )
         self.archipelago_disconnect_button.configure(state='disabled')
         self._set_archipelago_chat_enabled(False)
+        log_event(
+            'archipelago_disconnect_requested',
+            **self._archipelago_log_context(),
+        )
 
         def stop_worker():
             session.stop(timeout=5.0)
@@ -429,6 +519,27 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._restore_archipelago_standalone_context(refresh=False)
 
     def handle_archipelago_event(self, event):
+        if (
+            getattr(self, '_archipelago_mission_prepare_active', False)
+            and (
+                event.kind in self._ARCHIPELAGO_STATE_MUTATION_EVENTS
+                or (
+                    event.kind == 'status'
+                    and str((event.payload or {}).get('state', ''))
+                    == 'disconnected'
+                )
+            )
+        ):
+            deferred = getattr(self, '_archipelago_deferred_events', [])
+            deferred.append(event)
+            self._archipelago_deferred_events = deferred
+            if len(deferred) == 1:
+                log_event(
+                    'archipelago_event_deferred_for_mission_preparation',
+                    first_kind=event.kind,
+                    **self._archipelago_log_context(),
+                )
+            return
         if event.kind == 'status':
             state = str(event.payload.get('state', 'disconnected'))
             if state == 'disconnected':
@@ -485,10 +596,21 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
             if state != getattr(self, '_archipelago_last_status', None):
                 self.append_archipelago_history(label)
+                log_event(
+                    'archipelago_ui_status_changed',
+                    state=state,
+                    label=label,
+                    attempt=event.payload.get('attempt'),
+                    delay=event.payload.get('delay'),
+                    **self._archipelago_log_context(),
+                )
                 self._archipelago_last_status = state
             return
         if event.kind == 'connected':
             result = event.payload
+            connected_started = time.perf_counter()
+            previous_seed = self.state.get('seed', '') if self.state else ''
+            previous_mode = self.active_progression_mode() if self.state else ''
             self._archipelago_connection_error = ''
             try:
                 item_names = self._validate_archipelago_item_mapping(
@@ -496,18 +618,46 @@ class ArchipelagoController(ArchipelagoYamlController):
                 )
                 from Archipelago.catalogue_contract import (
                     runtime_catalogue_checksum,
+                    runtime_catalogue_is_compatible,
                 )
                 expected_checksum = runtime_catalogue_checksum()
-                if result.slot_data.get('catalogue_checksum') != expected_checksum:
+                server_checksum = str(
+                    result.slot_data.get('catalogue_checksum') or ''
+                )
+                if not runtime_catalogue_is_compatible(server_checksum):
                     raise ValueError(
                         'reward/mission catalogue checksum does not match '
                         'this launcher installation'
                     )
+                if server_checksum != expected_checksum:
+                    log_event(
+                        'archipelago_older_catalogue_accepted',
+                        server_catalogue_checksum=server_checksum,
+                        launcher_catalogue_checksum=expected_checksum,
+                        room_seed=result.seed_name,
+                        slot=result.slot,
+                    )
                 slot_manifest = result.slot_data.get('run_manifest')
                 self._validate_archipelago_server_state(result.slot_data)
             except ValueError as exc:
+                self._archipelago_connection_error = str(exc)
                 self.append_archipelago_history(
                     f'Connected slot item catalogue is incompatible: {exc}'
+                )
+                log_event(
+                    'archipelago_slot_validation_failed',
+                    level=logging.ERROR,
+                    error=str(exc),
+                    server_catalogue_checksum=(
+                        result.slot_data.get('catalogue_checksum', '')
+                    ),
+                    launcher_catalogue_checksum=(
+                        expected_checksum
+                        if 'expected_checksum' in locals() else ''
+                    ),
+                    room_seed=result.seed_name,
+                    team=result.team,
+                    slot=result.slot,
                 )
                 self.disconnect_archipelago()
                 return
@@ -535,7 +685,16 @@ class ArchipelagoController(ArchipelagoYamlController):
                 'Connected — AP rewards active'
             )
             self.reconcile_archipelago_checks()
-            self._refresh_archipelago_server_views()
+            self._request_archipelago_server_view_refresh('connected')
+            log_event(
+                'archipelago_connected_ui_applied',
+                previous_seed=previous_seed,
+                previous_mode=previous_mode,
+                elapsed_ms=round(
+                    (time.perf_counter() - connected_started) * 1000, 1
+                ),
+                **self._archipelago_log_context(),
+            )
             return
         if event.kind == 'checkpoint':
             self._persist_archipelago_checkpoint(event.payload)
@@ -545,17 +704,22 @@ class ArchipelagoController(ArchipelagoYamlController):
                 event.payload
             )
             if applied_indexes:
-                self._refresh_archipelago_server_views()
+                self._request_archipelago_server_view_refresh(
+                    'received_items'
+                )
             return
         if event.kind == 'received_metadata':
             if self._merge_archipelago_received_metadata(event.payload):
                 self.save_state()
-                self._refresh_archipelago_server_views()
+                self._request_archipelago_server_view_refresh(
+                    'received_metadata'
+                )
             return
         if event.kind == 'location_info':
             if self._store_archipelago_location_info(event.payload):
-                self.save_state()
-                self.refresh_progress_view()
+                # Scouts are recoverable and remain memory-only. Received
+                # reward records persist their own provenance separately.
+                self._request_archipelago_server_view_refresh('location_info')
             return
         if event.kind == 'locations_checked':
             incoming = {
@@ -568,7 +732,9 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
             if changed:
                 self.save_state()
-                self._refresh_archipelago_server_views()
+                self._request_archipelago_server_view_refresh(
+                    'locations_checked'
+                )
             return
         if event.kind == 'desynchronized':
             self.append_archipelago_history(
@@ -583,6 +749,10 @@ class ArchipelagoController(ArchipelagoYamlController):
             self._archipelago_connection_error = message
             self.archipelago_status_var.set(f'Connection failed — {message}')
             self.append_archipelago_history(f'Network error: {message}')
+            if event.payload.get('diagnostics'):
+                self.append_archipelago_history(
+                    'TLS certificate diagnostics saved to launcher log.'
+                )
             log_event(
                 'archipelago_client_error',
                 level=(
@@ -591,6 +761,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 ),
                 error=message,
                 fatal=bool(event.payload.get('fatal')),
+                diagnostics=event.payload.get('diagnostics', {}),
+                **self._archipelago_log_context(),
             )
 
     def _persist_archipelago_checkpoint(self, checkpoint):
@@ -604,6 +776,8 @@ class ArchipelagoController(ArchipelagoYamlController):
             return
         ap_state['server'] = session.config.server
         ap_state['slot_name'] = session.config.slot_name
+        if ap_state.get('checkpoint') == checkpoint:
+            return
         ap_state['checkpoint'] = checkpoint
         self.save_state()
 
@@ -665,6 +839,21 @@ class ArchipelagoController(ArchipelagoYamlController):
                 raise ValueError(f'server state misses active checks for {code}')
         return snapshot
 
+    def _cache_archipelago_location_mappings(self, slot_data):
+        groups = {}
+        allowed = set()
+        for code, checks in slot_data.get('locations', {}).items():
+            if not isinstance(checks, dict):
+                continue
+            for check_id, values in checks.items():
+                locations = tuple(sorted({
+                    int(value) for value in values if int(value) > 0
+                }))
+                groups[(str(code).upper(), str(check_id))] = locations
+                allowed.update(locations)
+        self._archipelago_location_groups = groups
+        self._archipelago_allowed_locations = frozenset(allowed)
+
     def _load_archipelago_server_state(
         self, result, item_names, active_session
     ):
@@ -691,8 +880,8 @@ class ArchipelagoController(ArchipelagoYamlController):
         previous_ap.update({
             'activation': 'active',
             'enabled': True,
-            'slot_data': deepcopy(result.slot_data),
-            'run_manifest': deepcopy(slot_manifest),
+            'slot_data': self._archipelago_slot_identity(result.slot_data),
+            'run_manifest': self._archipelago_manifest_identity(slot_manifest),
             'manifest_checksum': slot_manifest['manifest_checksum'],
             'server': result.endpoint,
             'slot_name': active_session.config.slot_name,
@@ -710,10 +899,13 @@ class ArchipelagoController(ArchipelagoYamlController):
             previous_ap['standalone_config'] = deepcopy(
                 self._archipelago_standalone_config
             )
-        previous_ap.setdefault('location_info', {})
+        previous_location_info = previous_ap.pop('location_info', {})
         self.state = deepcopy(snapshot)
         self.state['archipelago'] = previous_ap
-        self._archipelago_slot_data = deepcopy(result.slot_data)
+        # Validated HandshakeResult is immutable by convention after delivery.
+        # Avoid another full manifest/state copy on Tk thread.
+        self._archipelago_slot_data = result.slot_data
+        self._cache_archipelago_location_mappings(result.slot_data)
         self._archipelago_item_names = dict(item_names)
         self._archipelago_players = {
             int(slot): deepcopy(info)
@@ -721,7 +913,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         }
         self._archipelago_location_info = {
             int(location): deepcopy(info)
-            for location, info in previous_ap.get('location_info', {}).items()
+            for location, info in previous_location_info.items()
             if isinstance(info, dict)
         }
         self._archipelago_server_checked_locations = set()
@@ -734,16 +926,12 @@ class ArchipelagoController(ArchipelagoYamlController):
 
     def _apply_archipelago_server_locations(self, location_ids, replace=False):
         """Project server-checked locations into mission/Grid completion state."""
+        apply_started = time.perf_counter()
         slot_data = getattr(self, '_archipelago_slot_data', {})
-        mappings = slot_data.get('locations', {})
-        allowed = {
-            int(value)
-            for mission in mappings.values()
-            if isinstance(mission, dict)
-            for values in mission.values()
-            if isinstance(values, list)
-            for value in values
-        }
+        allowed = getattr(self, '_archipelago_allowed_locations', frozenset())
+        if not allowed:
+            self._cache_archipelago_location_mappings(slot_data)
+            allowed = self._archipelago_allowed_locations
         incoming = {
             int(value)
             for value in (location_ids or ())
@@ -760,17 +948,15 @@ class ArchipelagoController(ArchipelagoYamlController):
         started = []
         for code in self.state.get('mission_order', []):
             checks = mission_checks.get(code, [])
-            mapped_checks = mappings.get(code, {})
             mission_started = False
             mission_complete = False
             for check in checks:
                 if not isinstance(check, dict):
                     continue
                 check_id = str(check.get('id', ''))
-                mapped = {
-                    int(value)
-                    for value in mapped_checks.get(check_id, [])
-                }
+                mapped = set(getattr(
+                    self, '_archipelago_location_groups', {}
+                ).get((str(code).upper(), check_id), ()))
                 unlocked = bool(mapped and mapped.issubset(checked))
                 before = bool(check.get('unlocked'))
                 check.pop('released', None)
@@ -792,7 +978,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         if self.state.get('started_missions') != started:
             self.state['started_missions'] = started
             changed = True
-        self.state['earned_rewards'] = self.earned_rewards_from_checks()
+        # AP checks don't award local items. ReceivedItems exclusively updates
+        # earned rewards, so location projection need not recanonicalize the
+        # full inventory on every mission check.
         if self.state.get('progression_mode') == 'Grid Mode':
             from randomizer.progression.grid import refresh_states
             refresh_states(
@@ -800,10 +988,46 @@ class ArchipelagoController(ArchipelagoYamlController):
                 completed,
                 unlock_all_after_goal=False,
             )
+        log_event(
+            'archipelago_server_locations_applied',
+            replace=bool(replace),
+            incoming_count=len(incoming),
+            previous_count=len(previous),
+            active_count=len(checked),
+            changed=bool(changed),
+            completed_missions=len(completed),
+            started_missions=len(started),
+            elapsed_ms=round(
+                (time.perf_counter() - apply_started) * 1000, 1
+            ),
+            **self._archipelago_log_context(),
+        )
         return changed
 
-    def _refresh_archipelago_server_views(self):
+    def _request_archipelago_server_view_refresh(self, reason):
+        """Coalesce bursty AP packets into one Tk view rebuild."""
+        reasons = getattr(
+            self, '_archipelago_pending_view_refresh_reasons', set()
+        )
+        reasons.add(str(reason))
+        self._archipelago_pending_view_refresh_reasons = reasons
+        if getattr(self, '_archipelago_view_refresh_after', None) is not None:
+            return
+        self._archipelago_view_refresh_after = self.after_idle(
+            self._flush_archipelago_server_view_refresh
+        )
+
+    def _flush_archipelago_server_view_refresh(self):
+        self._archipelago_view_refresh_after = None
+        reasons = sorted(getattr(
+            self, '_archipelago_pending_view_refresh_reasons', set()
+        ))
+        self._archipelago_pending_view_refresh_reasons = set()
+        self._refresh_archipelago_server_views(reasons=reasons)
+
+    def _refresh_archipelago_server_views(self, reasons=()):
         """Invalidate every view fed by AP seed, progress, or received items."""
+        started = time.perf_counter()
         self.__dict__.pop('_unlock_dashboard_sources_cache', None)
         self.__dict__.pop('_canonical_earned_rewards_cache', None)
         self.unlock_dashboard_signature = None
@@ -811,6 +1035,13 @@ class ArchipelagoController(ArchipelagoYamlController):
         self.update_header_summary()
         self.redraw_mission_tree()
         self.refresh_progress_view()
+        log_event(
+            'archipelago_views_refreshed',
+            reasons=list(reasons),
+            grid_nodes=len((self.state.get('grid') or {}).get('nodes', {})),
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+            **self._archipelago_log_context(),
+        )
 
     @staticmethod
     def _archipelago_receipt_value(receipt, key, default=None):
@@ -861,7 +1092,6 @@ class ArchipelagoController(ArchipelagoYamlController):
         ap_state = self._active_archipelago_state()
         if ap_state is None or not isinstance(values, (list, tuple)):
             return False
-        saved = ap_state.setdefault('location_info', {})
         changed = False
         for value in values:
             if not isinstance(value, dict):
@@ -879,7 +1109,6 @@ class ArchipelagoController(ArchipelagoYamlController):
                 continue
             if self._archipelago_location_info.get(location) != record:
                 self._archipelago_location_info[location] = record
-                saved[str(location)] = deepcopy(record)
                 changed = True
         return changed
 
@@ -1029,6 +1258,7 @@ class ArchipelagoController(ArchipelagoYamlController):
 
     def apply_archipelago_received_items(self, receipts):
         """Persist and acknowledge one network item batch with two saves."""
+        started = time.perf_counter()
         receipts = tuple(receipts or ())
         if not receipts:
             return ()
@@ -1058,6 +1288,15 @@ class ArchipelagoController(ArchipelagoYamlController):
         records_by_index = {
             int(record['index']): record for record in existing_records
         }
+        received_at = datetime.now().astimezone().isoformat(
+            timespec='seconds'
+        )
+        log_event(
+            'archipelago_reward_batch_processing_started',
+            incoming_count=len(receipts),
+            existing_count=len(existing_records),
+            **self._archipelago_log_context(),
+        )
         incoming_by_index = {}
         new_records = []
         metadata_updated = False
@@ -1094,9 +1333,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             }
             if isinstance(receipt, dict):
                 record.update(self._archipelago_metadata_fields(receipt))
-            record['received_at'] = datetime.now().astimezone().isoformat(
-                timespec='seconds'
-            )
+            record['received_at'] = received_at
             previous_incoming = incoming_by_index.get(index)
             existing = records_by_index.get(index)
             identity_keys = (
@@ -1145,6 +1382,15 @@ class ArchipelagoController(ArchipelagoYamlController):
                 self.append_archipelago_history(
                     f'Item acknowledgment failed: {exc}'
                 )
+            log_event(
+                'archipelago_reward_batch_recovered',
+                incoming_count=len(receipts),
+                acknowledged_count=len(acknowledge_indexes),
+                elapsed_ms=round(
+                    (time.perf_counter() - started) * 1000, 1
+                ),
+                **self._archipelago_log_context(),
+            )
             return ()
 
         previous_history = ap_state.get('received_rewards', [])
@@ -1217,6 +1463,8 @@ class ArchipelagoController(ArchipelagoYamlController):
             count=len(new_records),
             first_index=new_records[0]['index'],
             last_index=new_records[-1]['index'],
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+            **self._archipelago_log_context(),
         )
         return tuple(record['index'] for record in new_records)
 
@@ -1228,6 +1476,10 @@ class ArchipelagoController(ArchipelagoYamlController):
         ap_state = self._active_archipelago_state()
         if ap_state is None:
             return ()
+        cached = getattr(self, '_archipelago_location_groups', {})
+        key = (str(code).upper(), str(check_id))
+        if key in cached:
+            return cached[key]
         slot_data = getattr(self, '_archipelago_slot_data', {})
         if not slot_data:
             saved = ap_state.get('slot_data')
@@ -1265,37 +1517,37 @@ class ArchipelagoController(ArchipelagoYamlController):
                 done += count
         return done, total
 
-    def _report_archipelago_check_locations(
-        self,
-        code,
-        check_id,
-        label,
-        event_stem,
-    ):
-        location_ids = self._archipelago_location_ids(code, check_id)
-        if not location_ids:
-            return ()
+    def _report_archipelago_location_groups(self, groups):
+        """Persist and queue several completed checks as one AP batch."""
+        groups = tuple(groups)
         ap_state = self._active_archipelago_state()
-        if ap_state is None:
+        if ap_state is None or not groups:
             return ()
+        all_locations = sorted({
+            location
+            for group in groups
+            for location in group['locations']
+        })
+        if not all_locations:
+            return ()
+        started = time.perf_counter()
         try:
             session = getattr(self, '_archipelago_session', None)
             if (
                 session is not None
                 and getattr(self, '_archipelago_session_validated', False)
             ):
-                added = session.report_locations(location_ids)
+                added = session.report_locations(all_locations)
                 checkpoint = session.checkpoint()
             else:
                 checkpoint = dict(ap_state.get('checkpoint') or {})
                 checkpoint['format'] = 2
-                checkpoint.setdefault('pending_locations', [])
                 completed = {
                     int(value)
                     for value in checkpoint.get('completed_locations', [])
                 }
                 added = tuple(
-                    value for value in location_ids if value not in completed
+                    value for value in all_locations if value not in completed
                 )
                 completed.update(added)
                 checkpoint['completed_locations'] = sorted(completed)
@@ -1309,30 +1561,76 @@ class ArchipelagoController(ArchipelagoYamlController):
                 return ()
             ap_state['checkpoint'] = checkpoint
             self.save_state()
+            added_set = set(added)
+            report_details = []
+            for group in groups:
+                group_added = sorted(
+                    added_set.intersection(group['locations'])
+                )
+                if not group_added:
+                    continue
+                report_details.append({
+                    'code': group['code'],
+                    'check_id': group['check_id'],
+                    'locations': group_added,
+                })
+                log_event(
+                    f"archipelago_{group['event_stem']}_reported",
+                    code=group['code'],
+                    check_id=group['check_id'],
+                    locations=group_added,
+                    **self._archipelago_log_context(),
+                )
             self.append_archipelago_history(
-                f'Sent {label} {str(code).upper()} {check_id}: '
-                + ', '.join(str(value) for value in added)
+                f'Queued {len(added)} Archipelago location(s) from '
+                f'{len(report_details)} completed check(s).'
             )
             log_event(
-                f'archipelago_{event_stem}_reported',
-                code=str(code).upper(),
-                check_id=str(check_id),
-                locations=list(added),
+                'archipelago_location_batch_reported',
+                count=len(added),
+                checks=report_details,
+                elapsed_ms=round(
+                    (time.perf_counter() - started) * 1000, 1
+                ),
+                **self._archipelago_log_context(),
             )
             return tuple(added)
         except Exception as exc:
             self.append_archipelago_history(
-                f'{label.title()} synchronization failed for '
-                f'{code} {check_id}: {exc}'
+                f'Location synchronization failed: {exc}'
             )
             log_event(
-                f'archipelago_{event_stem}_report_failed',
+                'archipelago_location_batch_report_failed',
                 level=logging.ERROR,
-                code=str(code).upper(),
-                check_id=str(check_id),
+                checks=[{
+                    'code': group['code'],
+                    'check_id': group['check_id'],
+                } for group in groups],
                 error=str(exc),
+                **self._archipelago_log_context(),
             )
             return ()
+
+    def _report_archipelago_check_locations(
+        self,
+        code,
+        check_id,
+        label,
+        event_stem,
+    ):
+        location_ids = self._archipelago_location_ids(code, check_id)
+        if not location_ids:
+            return ()
+        ap_state = self._active_archipelago_state()
+        if ap_state is None:
+            return ()
+        return self._report_archipelago_location_groups(({
+            'code': str(code).upper(),
+            'check_id': str(check_id),
+            'label': str(label),
+            'event_stem': str(event_stem),
+            'locations': tuple(location_ids),
+        },))
 
     def report_archipelago_objective_check(self, code, check_id):
         """Persist and queue one successful non-victory Randomizer check."""
@@ -1394,7 +1692,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Report missed objectives, mission reward slots, then run goal."""
         if self._active_archipelago_state() is None:
             return ()
-        added = []
+        groups = []
         mission_checks = self.state.get('mission_checks', {})
         checks = (
             mission_checks.get(code, [])
@@ -1406,17 +1704,25 @@ class ArchipelagoController(ArchipelagoYamlController):
                 continue
             check_id = str(check.get('id', ''))
             if check_id and check_id != 'victory':
-                added.extend(
-                    self.report_archipelago_objective_check(code, check_id)
-                )
-        added.extend(
-            self._report_archipelago_check_locations(
-                code,
-                'victory',
-                'mission completion',
-                'mission_completion',
-            )
-        )
+                locations = self._archipelago_location_ids(code, check_id)
+                if locations:
+                    groups.append({
+                        'code': str(code).upper(),
+                        'check_id': check_id,
+                        'label': 'objective check',
+                        'event_stem': 'objective',
+                        'locations': locations,
+                    })
+        victory_locations = self._archipelago_location_ids(code, 'victory')
+        if victory_locations:
+            groups.append({
+                'code': str(code).upper(),
+                'check_id': 'victory',
+                'label': 'mission completion',
+                'event_stem': 'mission_completion',
+                'locations': victory_locations,
+            })
+        added = self._report_archipelago_location_groups(groups)
         self.report_archipelago_goal_if_complete()
         return tuple(added)
 
@@ -1424,7 +1730,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Resend every unlocked check and completed goal after recovery."""
         if self._active_archipelago_state() is None:
             return ()
-        added = []
+        groups = []
         mission_checks = self.state.get('mission_checks', {})
         if not isinstance(mission_checks, dict):
             return ()
@@ -1437,19 +1743,25 @@ class ArchipelagoController(ArchipelagoYamlController):
                 check_id = str(check.get('id', ''))
                 if not check_id:
                     continue
-                if check_id == 'victory':
-                    added.extend(
-                        self._report_archipelago_check_locations(
-                            code,
-                            check_id,
-                            'mission completion',
-                            'mission_completion',
-                        )
-                    )
-                else:
-                    added.extend(
-                        self.report_archipelago_objective_check(code, check_id)
-                    )
+                locations = self._archipelago_location_ids(code, check_id)
+                if not locations:
+                    continue
+                groups.append({
+                    'code': str(code).upper(),
+                    'check_id': check_id,
+                    'label': (
+                        'mission completion'
+                        if check_id == 'victory'
+                        else 'objective check'
+                    ),
+                    'event_stem': (
+                        'mission_completion'
+                        if check_id == 'victory'
+                        else 'objective'
+                    ),
+                    'locations': locations,
+                })
+        added = self._report_archipelago_location_groups(groups)
         self.report_archipelago_goal_if_complete()
         if added:
             self.append_archipelago_history(
@@ -1482,24 +1794,53 @@ class ArchipelagoController(ArchipelagoYamlController):
         }
         for tag, foreground in colors.items():
             widget.tag_configure(tag, foreground=foreground)
+        slots = set(getattr(self, '_archipelago_players', {}))
+        active_ap = self._active_archipelago_state() or {}
+        if active_ap.get('slot') is not None:
+            slots.add(active_ap.get('slot'))
+        for slot in slots:
+            self._archipelago_player_tag(slot)
 
-    def _archipelago_player_tag(self, slot):
+    def _archipelago_player_color(self, slot):
         dark_colors = (
-            '#ee66ee', '#ffd166', '#66ccff', '#ff8a80',
-            '#7fe39c', '#c9a7ff', '#ffad66', '#78e6d0',
+            '#ee66ee', '#ffd166', '#66ccff', '#7fe39c',
+            '#c9a7ff', '#ffad66', '#78e6d0',
         )
         light_colors = (
-            '#9c168f', '#8a5a00', '#176a9c', '#b3261e',
-            '#087a48', '#6548b8', '#a64b00', '#08766c',
+            '#9c168f', '#8a5a00', '#176a9c', '#087a48',
+            '#6548b8', '#a64b00', '#08766c',
         )
         try:
             slot = int(slot)
         except (TypeError, ValueError):
             slot = 0
+        active_ap = self._active_archipelago_state() or {}
+        try:
+            current_slot = int(active_ap.get('slot') or 0)
+        except (TypeError, ValueError):
+            current_slot = 0
+        if current_slot > 0 and slot == current_slot:
+            return '#ff7b72' if self.dark_mode_var.get() else '#b3261e'
         colors = dark_colors if self.dark_mode_var.get() else light_colors
-        tag = f'ap_player_{slot % len(colors)}'
+        return colors[slot % len(colors)]
+
+    def _archipelago_player_tag(self, slot):
+        try:
+            slot = int(slot)
+        except (TypeError, ValueError):
+            slot = 0
+        active_ap = self._active_archipelago_state() or {}
+        try:
+            current_slot = int(active_ap.get('slot') or 0)
+        except (TypeError, ValueError):
+            current_slot = 0
+        tag = (
+            'ap_player_current'
+            if current_slot > 0 and slot == current_slot
+            else f'ap_player_{slot}'
+        )
         self.archipelago_history_text.tag_configure(
-            tag, foreground=colors[slot % len(colors)]
+            tag, foreground=self._archipelago_player_color(slot)
         )
         return tag
 

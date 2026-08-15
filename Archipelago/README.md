@@ -52,10 +52,10 @@ fresh player file. There is no YAML import step in the launcher. To change the
 run, change the visible launcher settings and save a new YAML before generating
 the Archipelago room.
 
-Do not manually edit the generated `run_manifest`. It contains the mission
-order, Grid, reward slots, and compatibility checks required for this exact
-run. Archipelago rejects a YAML when its readable settings and protected run
-manifest no longer agree.
+`generated_world` is a normal Archipelago mapping option containing generated
+mission order, Grid, reward slots, and compatibility checks required for this
+exact run. Change launcher controls and save a new Player YAML instead of
+editing generated data. Archipelago rejects mismatched readable settings.
 
 ## Generate and host the room
 
@@ -80,6 +80,13 @@ Do not paste the browser room URL into the server field. Hosted rooms use the
 bare `archipelago.gg` host plus the separate game-server port. The launcher
 automatically uses a secure connection for hosted rooms. Custom and local
 servers may use their own hostname and port.
+
+TLS certificate verification and hostname checking remain enabled. If a
+system reports `CERTIFICATE_VERIFY_FAILED`, check its clock and Windows trusted
+roots, then check whether antivirus or a corporate proxy is intercepting TLS.
+The launcher log records the endpoint, OpenSSL/Python versions, certificate
+store counts and paths, proxy host (never credentials), and verification code
+for a support report.
 
 When validation succeeds, the connection status turns green. The launcher
 then loads the seed, mission list, Grid, unlocks, completed checks, and

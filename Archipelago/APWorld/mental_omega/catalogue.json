@@ -22767,6 +22767,13 @@
       "id": 81067186
     },
     {
+      "name": "Starting Credits +1,000",
+      "classification": "useful",
+      "category": "production",
+      "repeatable": true,
+      "id": 81067745
+    },
+    {
       "name": "Stasis Grid Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -29317,7 +29324,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
+  "catalogue_checksum": "f213725f91de177af64eec5a875a08a403c4bc5be0e4f3f7e510db89ba7510f8",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

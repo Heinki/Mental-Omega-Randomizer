@@ -769,6 +769,19 @@
         "requires_clone": true
       }
     ],
+    "global_buff_rewards": [
+      {
+        "name": "Starting Credits +1,000",
+        "description": "Adds 1,000 credits to the player at the start of every future launched mission, up to a 20,000-credit bonus.",
+        "rules": {},
+        "factions": [],
+        "kind": "buff",
+        "buff_type": "starting_credits",
+        "global_buff": true,
+        "credits_per_stack": 1000,
+        "maximum_credits": 20000
+      }
+    ],
     "superweapon_unlock_rewards": [
       {
         "name": "Lightning Storm Power",

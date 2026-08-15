@@ -65,7 +65,12 @@ class MentalOmegaWorld(World):
     }
 
     def generate_early(self) -> None:
-        self.run_manifest = parse_manifest(self.options.run_manifest.value)
+        generated_world = self.options.generated_world.value
+        self.run_manifest = parse_manifest(
+            generated_world
+            if generated_world
+            else self.options.run_manifest.value
+        )
         validate_launcher_settings(
             self.options.launcher_settings.value,
             self.run_manifest,

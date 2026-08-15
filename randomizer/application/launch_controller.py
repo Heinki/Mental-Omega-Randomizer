@@ -63,6 +63,7 @@ from ._dependencies import (
     subprocess,
     summarize_basic_unit_rules,
     tech_ids_for_rewards,
+    time,
     traceback,
 )
 
@@ -813,6 +814,15 @@ throw "Map $name was not found in expandmo*.mix"
                 markers_seen=seen_count,
                 markers_expected=marker_count,
                 completed=self.is_mission_complete(self.active_hook.get('mission_code')),
+                archipelago=(
+                    self._archipelago_log_context(
+                        self.mission_lookup().get(
+                            self.active_hook.get('mission_code'), {}
+                        )
+                    )
+                    if self.archipelago_run_active()
+                    else None
+                ),
             )
         attempt = self.active_mission_attempt or {}
         attempt_code = attempt.get('mission_code')
@@ -839,6 +849,40 @@ throw "Map $name was not found in expandmo*.mix"
 
         difficulty_value = self.get_selected_difficulty_value()
         game_speed_value = self.get_selected_game_speed_value()
+        log_event(
+            'mission_launch_preparation_queued',
+            code=mission.get('code'),
+            scenario=scenario,
+            archipelago=(
+                self._archipelago_log_context(mission)
+                if self.archipelago_run_active()
+                else None
+            ),
+        )
+        ap_snapshot_active = self._begin_archipelago_mission_preparation(
+            mission
+        )
+
+        def finish_launch(hook):
+            try:
+                self.start_mission_process(
+                    mission,
+                    hook,
+                    difficulty_value,
+                    game_speed_value,
+                    launch_note,
+                )
+            finally:
+                if ap_snapshot_active:
+                    self._finish_archipelago_mission_preparation(mission)
+
+        def fail_launch(exc, detail):
+            try:
+                self.handle_mission_prepare_error(exc, detail, mission)
+            finally:
+                if ap_snapshot_active:
+                    self._finish_archipelago_mission_preparation(mission)
+
         self.run_in_background(
             'Starting game, please wait…',
             'Preparing the mission and applying earned rewards.',
@@ -848,20 +892,26 @@ throw "Map $name was not found in expandmo*.mix"
                 difficulty_value,
                 game_speed_value,
             ),
-            lambda hook: self.start_mission_process(
-                mission,
-                hook,
-                difficulty_value,
-                game_speed_value,
-                launch_note,
-            ),
-            self.handle_mission_prepare_error,
+            finish_launch,
+            fail_launch,
         )
 
-    def handle_mission_prepare_error(self, _exc, detail):
+    def handle_mission_prepare_error(self, exc, detail, mission=None):
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
         self.append_log(detail, error=True)
+        log_event(
+            'mission_launch_preparation_failed',
+            level=logging.ERROR,
+            error_type=exc.__class__.__name__,
+            error=str(exc),
+            traceback=detail,
+            archipelago=(
+                self._archipelago_log_context(mission)
+                if self.archipelago_run_active()
+                else None
+            ),
+        )
         messagebox.showerror('Launch Failed', 'Failed to write launch files. See log for details.')
 
     def prepare_mission_launch_files(
@@ -871,7 +921,18 @@ throw "Map $name was not found in expandmo*.mix"
         difficulty_value,
         game_speed_value,
     ):
+        started = time.perf_counter()
         scenario = mission['scenario']
+        log_event(
+            'mission_launch_preparation_started',
+            code=mission.get('code'),
+            scenario=scenario,
+            archipelago=(
+                self._archipelago_log_context(mission)
+                if self.archipelago_run_active()
+                else None
+            ),
+        )
         try:
             # Loose generated rulesmo.ini files can crash spawned missions or make
             # the MO client reject the install. Keep rewards in launcher state
@@ -897,8 +958,21 @@ throw "Map $name was not found in expandmo*.mix"
             try:
                 hook = self.prepare_hooked_map(mission, extra_rules=launch_rules)
             except Exception:
+                failure = traceback.format_exc()
                 self.append_log('Objective hook preparation failed; launching without automatic objective detection.', error=True)
-                self.append_log(traceback.format_exc(), error=True)
+                self.append_log(failure, error=True)
+                log_event(
+                    'mission_map_generation_failed',
+                    level=logging.ERROR,
+                    code=mission.get('code'),
+                    scenario=scenario,
+                    traceback=failure,
+                    archipelago=(
+                        self._archipelago_log_context(mission)
+                        if self.archipelago_run_active()
+                        else None
+                    ),
+                )
                 self.cleanup_generated_root_maps()
             if hook and hook.get('root_map'):
                 try:
@@ -924,6 +998,19 @@ throw "Map $name was not found in expandmo*.mix"
             self.cleanup_generated_root_maps()
             self.disable_generated_rules_for_client()
             raise
+        log_event(
+            'mission_launch_preparation_finished',
+            code=mission.get('code'),
+            scenario=scenario,
+            generated_map=(hook or {}).get('generated_map'),
+            hook_markers=len((hook or {}).get('markers', {})),
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+            archipelago=(
+                self._archipelago_log_context(mission)
+                if self.archipelago_run_active()
+                else None
+            ),
+        )
         return hook
 
     def start_mission_process(
@@ -968,6 +1055,11 @@ throw "Map $name was not found in expandmo*.mix"
                 game_speed=game_speed_value,
                 hook_markers=(hook or {}).get('markers', {}),
                 generated_map=(hook or {}).get('generated_map'),
+                archipelago=(
+                    self._archipelago_log_context(mission)
+                    if self.archipelago_run_active()
+                    else None
+                ),
             )
             if launch_note:
                 self.append_log(launch_note)
@@ -980,11 +1072,23 @@ throw "Map $name was not found in expandmo*.mix"
                 'scenario': scenario,
             }
             self.after(HOOK_POLL_MS, self.poll_hook_log)
-        except Exception:
+        except Exception as exc:
             self.cleanup_generated_root_maps()
             self.disable_generated_rules_for_client()
             self.append_log('Failed to launch game process:', error=True)
             self.append_log(traceback.format_exc(), error=True)
+            log_event(
+                'mission_process_start_failed',
+                level=logging.ERROR,
+                error_type=exc.__class__.__name__,
+                error=str(exc),
+                traceback=traceback.format_exc(),
+                archipelago=(
+                    self._archipelago_log_context(mission)
+                    if self.archipelago_run_active()
+                    else None
+                ),
+            )
             messagebox.showerror('Launch Failed', 'Failed to launch the game. See log for details.')
         else:
             self.append_log(

@@ -32,9 +32,9 @@ the authenticated slot name; Archipelago does not permit a separate chat alias.
 
 The player YAML contains a readable `launcher_settings` mapping copied from
 the current launcher controls. To change it, change the launcher settings and
-choose **Save Player YAML** again. Never edit `run_manifest`; it is generated
-checksum-protected run data. Archipelago generation rejects readable settings
-that no longer match that manifest, preventing silent configuration drift.
+choose **Save Player YAML** again. `generated_world` is checksum-protected
+APWorld input. Archipelago generation rejects readable settings that no longer
+match it, preventing silent configuration drift.
 
 The launcher refuses incompatible server state or reward/mission catalogues.
 Saving YAML only stages AP setup, so the existing standalone reward plan and

@@ -132,6 +132,7 @@ from randomizer.rewards.catalogue import (
     ENGINEER_UNIT_IDS,
     canonical_rewards,
     reward_display_name,
+    starting_credit_bonus,
 )
 from randomizer.ui.config import (
     EVA_APPEARANCE_PROFILES,
@@ -581,6 +582,40 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     earned_rewards = (
         self.launch_rewards_for_mission(code) if self.state else []
     )
+    credit_bonus = starting_credit_bonus(earned_rewards)
+    if credit_bonus:
+        player_house = player_house_from_map(lines, records=records)
+        house_values = section_value_map_preserve(lines, player_house)
+        authored_credits = next(
+            (
+                value for key, value in house_values.items()
+                if str(key).lower() == 'credits'
+            ),
+            '0',
+        )
+        try:
+            authored_credit_units = int(str(authored_credits).strip())
+        except (TypeError, ValueError):
+            authored_credit_units = None
+        if player_house and authored_credit_units is not None:
+            # House Credits are stored in hundreds by the game/map format.
+            merge_ini_section_values(lines, {
+                player_house: {
+                    'Credits': str(authored_credit_units + credit_bonus // 100),
+                },
+            })
+            self.append_log(
+                f'Applied +{credit_bonus:,} starting credits to {player_house} '
+                f'for {code} (authored {authored_credit_units * 100:,}; '
+                f'launch total {authored_credit_units * 100 + credit_bonus:,}).'
+            )
+        else:
+            self.append_log(
+                f'Could not apply +{credit_bonus:,} starting credits for {code}: '
+                f'player house={player_house or "unresolved"}, '
+                f'authored Credits={authored_credits!r}.',
+                error=True,
+            )
     access_report_active_rewards = list(earned_rewards)
     earned_access_tech_ids = unlocked_reward_tech_ids(earned_rewards)
     scripted_taskforce_requirements = (

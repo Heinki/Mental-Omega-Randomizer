@@ -806,6 +806,13 @@ class SeedController:
             reward_multiplier=reward_summary['multiplier'],
             base_rewards=reward_summary['base_rewards'],
             final_rewards=reward_summary['final_rewards'],
+            archipelago=(
+                self._archipelago_log_context(
+                    self.mission_lookup().get(code, {})
+                )
+                if archipelago_active
+                else None
+            ),
         )
         if check_id == 'victory' and len(earned_now) > len(check_rewards(target)):
             self.append_log('Victory granted any missed objective rewards for this mission.')

@@ -189,6 +189,10 @@ def _server_state_snapshot(state):
     snapshot["mission_failure_stacks"] = {}
     snapshot["mission_assistance_units"] = {}
     snapshot["earned_rewards"] = []
+    # This is a generation-only duplicate of every planned reward. AP owns
+    # delivery after room creation, so shipping it back in Connected slot data
+    # wastes several megabytes and can make hosted rooms time out during auth.
+    snapshot["reward_queue"] = []
     snapshot["enemy_progress_earned"] = []
     snapshot["enemy_reward_applications"] = {}
     for checks in snapshot.get("mission_checks", {}).values():
@@ -198,6 +202,12 @@ def _server_state_snapshot(state):
             if isinstance(check, dict):
                 check.pop("unlocked", None)
                 check.pop("released", None)
+                # AP randomizes the item pool onto these locations, so local
+                # pre-generation assignments are both stale and unnecessary.
+                # Slot-data location groups retain exact reward counts; scouts
+                # and ReceivedItems are authoritative for item identities.
+                check.pop("rewards", None)
+                check.pop("reward", None)
     grid = snapshot.get("grid")
     if isinstance(grid, dict):
         for node in grid.get("nodes", {}).values():

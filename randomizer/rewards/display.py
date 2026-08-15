@@ -266,6 +266,13 @@ def _uncached_buff_stack_limit(reward):
             return max(1, int(reward.get('enemy_maximum', 1)))
         except (TypeError, ValueError):
             return 1
+    if reward.get('buff_type') == 'starting_credits':
+        try:
+            per_stack = max(1, int(reward['credits_per_stack']))
+            maximum = max(per_stack, int(reward['maximum_credits']))
+        except (KeyError, TypeError, ValueError):
+            return 1
+        return max(1, maximum // per_stack)
     if reward.get('power_buff_type'):
         return power_buff_stack_limit(reward)
     buff_type = reward.get('buff_type')
@@ -372,6 +379,21 @@ def effective_buff_count(reward, count):
     return min(count, limit)
 
 
+def starting_credit_bonus(rewards):
+    """Return the capped real-credit bonus earned for every mission start."""
+    total = 0
+    maximum = 0
+    for reward in canonical_rewards(rewards):
+        if reward.get('buff_type') != 'starting_credits':
+            continue
+        try:
+            total += max(0, int(reward['credits_per_stack']))
+            maximum = max(maximum, int(reward['maximum_credits']))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return min(total, max(0, maximum))
+
+
 def stack_label(count, limit=None):
     text = f'Stacked {count} time' + ('s' if count != 1 else '')
     if limit is not None:
@@ -401,6 +423,14 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
             if include_label else ''
         )
         text = f'{prefix}{power_buff_effect_text(reward, count)}'
+        if include_stack:
+            text = f'{text} ({stack_label(count, limit)})'
+        return [text]
+
+    if reward.get('buff_type') == 'starting_credits':
+        count = effective_buff_count(reward, count)
+        amount = count * max(0, int(reward.get('credits_per_stack', 0)))
+        text = f'Starting credits +{amount:,} per mission'
         if include_stack:
             text = f'{text} ({stack_label(count, limit)})'
         return [text]

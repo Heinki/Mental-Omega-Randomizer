@@ -119,6 +119,7 @@ REQUIRED_SECTIONS = {
         'extra_unit_unlock_rewards': list,
         'faction_access_rules': dict,
         'buff_types': list,
+        'global_buff_rewards': list,
         'superweapon_unlock_rewards': list,
         'secondary_superweapon_unlock_rewards': list,
         'aid_power_rewards': list,
@@ -1003,6 +1004,34 @@ def _validate_enemy_scaling(sections, path):
 
 
 def _validate_catalogue(sections, path):
+    global_reward_names = set()
+    for reward in sections['global_buff_rewards']:
+        if (
+            not isinstance(reward, dict)
+            or not _is_nonempty_string(reward.get('name'))
+            or reward.get('kind') != 'buff'
+            or reward.get('global_buff') is not True
+        ):
+            _invalid('Invalid global buff reward entry', path)
+        normalized_name = reward['name'].casefold()
+        if normalized_name in global_reward_names:
+            _invalid('Duplicate global buff reward name', path)
+        global_reward_names.add(normalized_name)
+        if reward.get('buff_type') == 'starting_credits':
+            per_stack = reward.get('credits_per_stack')
+            maximum = reward.get('maximum_credits')
+            if (
+                not isinstance(per_stack, int)
+                or isinstance(per_stack, bool)
+                or per_stack <= 0
+                or per_stack % 100
+                or not isinstance(maximum, int)
+                or isinstance(maximum, bool)
+                or maximum < per_stack
+                or maximum % per_stack
+            ):
+                _invalid('Invalid starting-credits reward limits', path)
+
     aid_reward_names = []
     aid_reward_powers = []
     for definition in sections['aid_power_rewards']:

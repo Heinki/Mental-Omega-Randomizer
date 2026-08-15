@@ -582,7 +582,10 @@ class RewardController:
                         and (include_special_rewards or not self.reward_is_special_reward(reward))
                         and (include_defensive_buildings or not self.reward_is_defensive_building(reward))
                         and (include_special_buildings or not self.reward_is_special_building(reward))
-                        and reward.get('buff_type') in enabled_buff_types
+                        and (
+                            reward.get('buff_type') == 'starting_credits'
+                            or reward.get('buff_type') in enabled_buff_types
+                        )
                         and reward.get('buff_type') not in excluded_unit_buff_types.get(
                             str(reward.get('unit') or '').upper(), set()
                         )
@@ -1063,20 +1066,29 @@ class RewardController:
             max(0, int(check.get('base_reward_count', 0)))
             for check in checks
         )
-        final_rewards = sum(
-            1
-            for check in checks
-            for reward in check_rewards(check)
-            if not is_max_rewards_achieved_reward(reward)
+        archipelago_counts = self.archipelago_mission_location_counts(code)
+        final_rewards = (
+            int(archipelago_counts[1])
+            if archipelago_counts is not None
+            else sum(
+                1
+                for check in checks
+                for reward in check_rewards(check)
+                if not is_max_rewards_achieved_reward(reward)
+            )
         )
         return {
             'multiplier': multiplier,
             'base_rewards': base_rewards,
             'final_rewards': final_rewards,
-            'max_rewards_achieved': any(
-                is_max_rewards_achieved_reward(reward)
-                for check in checks
-                for reward in check_rewards(check)
+            'max_rewards_achieved': (
+                False
+                if archipelago_counts is not None
+                else any(
+                    is_max_rewards_achieved_reward(reward)
+                    for check in checks
+                    for reward in check_rewards(check)
+                )
             ),
         }
 

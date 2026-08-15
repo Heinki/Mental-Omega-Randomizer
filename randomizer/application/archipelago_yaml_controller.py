@@ -3,13 +3,27 @@
 from copy import deepcopy
 from pathlib import Path
 
-from ._dependencies import filedialog, save_config
+from ._dependencies import filedialog, log_event, save_config, time
 
 
 class ArchipelagoYamlController:
     _ARCHIPELAGO_PROGRESSION_MODES = {
         'Classic', 'Mission List', 'Grid Mode'
     }
+
+    @staticmethod
+    def _archipelago_manifest_identity(manifest):
+        """Persist only identity; full generated data lives in YAML/server."""
+        keys = (
+            'schema_version', 'randomizer_version', 'randomizer_seed',
+            'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
+            'progression_mode', 'mission_goal', 'mission_order', 'goal',
+        )
+        return {
+            key: deepcopy(manifest[key])
+            for key in keys
+            if key in manifest
+        }
 
     def archipelago_progression_mode(self):
         """Return signed AP mode only after this run becomes active."""
@@ -29,6 +43,10 @@ class ArchipelagoYamlController:
 
     def _synchronize_archipelago_progression_ui(self, manifest):
         """Apply signed mode and rebuild mission presentation immediately."""
+        started = time.perf_counter()
+        previous_seed = str(self.state.get('seed') or '')
+        previous_mode = str(self.state.get('progression_mode') or '')
+        previous_nodes = len((self.state.get('grid') or {}).get('nodes', {}))
         mode = str(manifest.get('progression_mode') or '')
         if mode not in self._ARCHIPELAGO_PROGRESSION_MODES:
             raise ValueError(f'unsupported progression mode {mode!r}')
@@ -36,6 +54,19 @@ class ArchipelagoYamlController:
         self.progression_mode_var.set(mode)
         self.grid_render_signature = None
         self.redraw_mission_tree()
+        log_event(
+            'archipelago_progression_ui_synchronized',
+            previous_seed=previous_seed,
+            active_seed=self.state.get('seed', ''),
+            previous_mode=previous_mode,
+            active_mode=mode,
+            previous_grid_nodes=previous_nodes,
+            active_grid_nodes=len(
+                (self.state.get('grid') or {}).get('nodes', {})
+            ),
+            manifest_checksum=manifest.get('manifest_checksum', ''),
+            elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+        )
 
     def refresh_archipelago_yaml_status(self):
         ap_state = self._configured_archipelago_state()
@@ -110,7 +141,7 @@ class ArchipelagoYamlController:
             'activation': 'staged',
             'enabled': False,
             'manifest_checksum': manifest['manifest_checksum'],
-            'run_manifest': deepcopy(manifest),
+            'run_manifest': self._archipelago_manifest_identity(manifest),
             'slot_name': slot_name,
             'standalone_state': standalone_state,
             'standalone_config': standalone_config,
@@ -125,6 +156,14 @@ class ArchipelagoYamlController:
         self.save_state()
         save_config(self.config)
         self.refresh_archipelago_yaml_status()
+        log_event(
+            'archipelago_player_yaml_staged',
+            randomizer_seed=manifest.get('randomizer_seed', ''),
+            progression_mode=manifest.get('progression_mode', ''),
+            manifest_checksum=manifest.get('manifest_checksum', ''),
+            missions=len(manifest.get('mission_order', ())),
+            yaml_bytes=len(yaml_text.encode('utf-8')),
+        )
 
     def save_archipelago_yaml(self):
         """Export one AP player file from the exact visible launcher controls."""

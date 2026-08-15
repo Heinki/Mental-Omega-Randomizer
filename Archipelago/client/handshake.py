@@ -3,9 +3,13 @@
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
+import os
+import ssl
+import sys
 import time
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
+from urllib.request import getproxies
 
 from randomizer.core.version import APP_VERSION
 
@@ -32,6 +36,28 @@ class ArchipelagoConnectionRefused(ArchipelagoHandshakeError):
     def __init__(self, errors):
         self.errors = tuple(str(error) for error in (errors or ('Unknown',)))
         super().__init__('Archipelago connection refused: ' + ', '.join(self.errors))
+
+
+class ArchipelagoTlsError(ArchipelagoHandshakeError):
+    """TLS failed while certificate verification remained enabled."""
+
+    def __init__(self, endpoint, error, diagnostics):
+        self.endpoint = str(endpoint)
+        self.diagnostics = dict(diagnostics)
+        verify_message = str(
+            getattr(error, 'verify_message', '') or error
+        ).strip()
+        verify_code = getattr(error, 'verify_code', None)
+        detail = (
+            f'certificate verify code {verify_code}: {verify_message}'
+            if verify_code is not None
+            else verify_message
+        )
+        super().__init__(
+            f'TLS certificate verification failed for {self.endpoint}: '
+            f'{detail}. System clock, Windows trusted roots, antivirus/proxy '
+            'TLS inspection, or server certificate chain may be responsible.'
+        )
 
 
 @dataclass(frozen=True)
@@ -79,6 +105,86 @@ def normalize_server_uri(value):
         host = f'[{parsed.hostname}]' if ':' in parsed.hostname else parsed.hostname
         netloc = f'{host}:{DEFAULT_PORT}'
     return urlunsplit((scheme, netloc, parsed.path or '/', '', ''))
+
+
+def _sanitized_proxies():
+    result = {}
+    try:
+        values = getproxies()
+    except Exception:
+        return result
+    for scheme, value in values.items():
+        parsed = urlsplit(str(value or ''))
+        if not parsed.hostname:
+            continue
+        try:
+            port = parsed.port
+        except ValueError:
+            port = None
+        result[str(scheme)] = {
+            'scheme': parsed.scheme,
+            'host': parsed.hostname,
+            'port': port,
+        }
+    return result
+
+
+def tls_diagnostics(endpoint, context=None, error=None):
+    """Return support-safe TLS facts without weakening verification."""
+    parsed = urlsplit(str(endpoint))
+    paths = ssl.get_default_verify_paths()
+    if context is None and parsed.scheme == 'wss':
+        try:
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        except Exception:
+            context = None
+    stats = {}
+    if context is not None:
+        try:
+            stats = context.cert_store_stats()
+        except Exception:
+            pass
+    return {
+        'endpoint': str(endpoint),
+        'hostname': parsed.hostname or '',
+        'port': parsed.port,
+        'python': sys.version.split()[0],
+        'openssl': ssl.OPENSSL_VERSION,
+        'utc_timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'verify_mode': getattr(context, 'verify_mode', None),
+        'check_hostname': getattr(context, 'check_hostname', None),
+        'certificate_store': stats,
+        'default_cafile': paths.cafile,
+        'default_capath': paths.capath,
+        'openssl_cafile': paths.openssl_cafile,
+        'openssl_capath': paths.openssl_capath,
+        'ssl_cert_file_override': bool(os.environ.get('SSL_CERT_FILE')),
+        'ssl_cert_dir_override': bool(os.environ.get('SSL_CERT_DIR')),
+        'proxies': _sanitized_proxies(),
+        'error_type': error.__class__.__name__ if error is not None else '',
+        'verify_code': getattr(error, 'verify_code', None),
+        'verify_message': str(
+            getattr(error, 'verify_message', '') or ''
+        ),
+    }
+
+
+def _connect_websocket(connect, endpoint, **kwargs):
+    """Open one verified WebSocket and preserve actionable TLS failure data."""
+    context = None
+    if urlsplit(endpoint).scheme == 'wss':
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        kwargs['ssl'] = context
+    try:
+        return connect(endpoint, **kwargs)
+    except (ssl.SSLCertVerificationError, ssl.CertificateError) as exc:
+        diagnostics = tls_diagnostics(endpoint, context=context, error=exc)
+        raise ArchipelagoTlsError(endpoint, exc, diagnostics) from exc
+    except ssl.SSLError as exc:
+        diagnostics = tls_diagnostics(endpoint, context=context, error=exc)
+        raise ArchipelagoTlsError(endpoint, exc, diagnostics) from exc
 
 
 def _decode_commands(message):
@@ -335,7 +441,8 @@ def connect_slot(server, slot_name, password='', client_uuid='mental-omega', tim
     connect_sent = False
 
     try:
-        with connect(
+        with _connect_websocket(
+            connect,
             endpoint,
             compression='deflate',
             open_timeout=max(0.1, float(timeout)),
