@@ -39,6 +39,14 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Name': 'Kirov Command Airship',
         'UIName': 'NAME:CZEP',
     },
+    # Installed OTRK reuses DTRUCK's CSF key. When both exact access rewards
+    # are earned, that makes two distinct buildable units show the same
+    # sidebar name. Ares NOSTR keeps the old unit distinct without replacing
+    # or extending the installed string tables.
+    'OTRK': {
+        'Name': 'Old Demo Truck',
+        'UIName': 'NOSTR:Old Demo Truck',
+    },
     # Preserved packaged rosters may retain the campaign-only lunar gate.
     'CBRIS': {
         'Prerequisite.RequiredTheaters': None,
@@ -1150,6 +1158,14 @@ def validate_reviewed_vehicle_identity_contracts():
             'cameo': None,
             'special': True,
         },
+        'OTRK': {
+            'clone': 'MORPOTRK',
+            'name': 'Old Demo Truck',
+            'ui_name': 'NOSTR:Old Demo Truck',
+            'image': 'OTRK',
+            'cameo': 'otrk.pcx',
+            'special': True,
+        },
     }
     identity_report = {}
     for source_id, expected in expected_identity.items():
@@ -1178,6 +1194,14 @@ def validate_reviewed_vehicle_identity_contracts():
             errors.append(f'{source_id} has {access_count} access rewards')
     if clone_ids.get('TENGU') == clone_ids.get('MECHA'):
         errors.append('TENGU and MECHA share one player clone ID')
+    dtruck_ui_name = _case_insensitive_item(
+        templates.get('DTRUCK', {}), 'UIName'
+    )[1]
+    otrk_ui_name = _case_insensitive_item(
+        templates.get('OTRK', {}), 'UIName'
+    )[1]
+    if str(dtruck_ui_name or '').lower() == str(otrk_ui_name or '').lower():
+        errors.append('DTRUCK and OTRK share one sidebar UIName')
 
     ramwagon = templates.get('RAMW', {})
     for key, wanted in {
