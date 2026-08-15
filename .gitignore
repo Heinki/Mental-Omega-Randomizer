@@ -10,6 +10,7 @@ randomizer_state.json
 self_check.json
 RandomizerLauncherData/
 logs/
+bugreports/
 build/
 dist/
 release/
