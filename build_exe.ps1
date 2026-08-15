@@ -22,6 +22,14 @@ $configManifestPath = Join-Path $configManifestDir "bundle_manifest.json"
 
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
+$requiredPythonVersion = '3.14.6'
+$pythonVersion = (& python -c "import platform; print(platform.python_version())" 2>$null).Trim()
+if ($LASTEXITCODE -ne 0 -or $pythonVersion -ne $requiredPythonVersion) {
+    throw (
+        "Python $requiredPythonVersion is required for reproducible launcher builds; " +
+        "found $pythonVersion."
+    )
+}
 if (-not (python -m PyInstaller --version 2>$null)) {
     throw "PyInstaller is required. Install build dependencies with: python -m pip install -r requirements-build.txt"
 }
@@ -158,6 +166,29 @@ try {
 }
 
 $builtExe = Join-Path $distDir "MentalOmegaRandomizer.exe"
+$archiveListing = @(
+    & python -m PyInstaller.utils.cliutils.archive_viewer -l $builtExe 2>&1
+)
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to inspect built PyInstaller archive: $builtExe"
+}
+$archiveText = $archiveListing -join "`n"
+$requiredArchiveEntries = @(
+    "'_tkinter.pyd'",
+    "'tcl86t.dll'",
+    "'tk86t.dll'",
+    "'_tcl_data\\init.tcl'",
+    "'_tk_data\\tk.tcl'"
+)
+$missingArchiveEntries = @(
+    $requiredArchiveEntries | Where-Object { -not $archiveText.Contains($_) }
+)
+if ($missingArchiveEntries.Count -gt 0) {
+    throw (
+        "Built launcher is missing required Tcl/Tk archive entries: " +
+        ($missingArchiveEntries -join ', ')
+    )
+}
 Copy-Item -Force $builtExe $outputPath
 
 # Remove the support folder created by older on-directory builds. Guard the
@@ -172,4 +203,7 @@ if (Test-Path $runtimePath) {
     }
     Remove-Item -LiteralPath $runtimePath -Recurse -Force
 }
-Write-Host "Built single-file launcher v$appVersion $outputPath"
+Write-Host (
+    "Built single-file launcher v$appVersion with Python $pythonVersion " +
+    "and verified Tcl/Tk runtime: $outputPath"
+)
