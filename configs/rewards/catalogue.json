@@ -4062,7 +4062,7 @@
           "Action": "Custom",
           "RechargeTime": "12",
           "ShowTimer": "yes",
-          "Range": "1",
+          "Range": "1.4",
           "Cursor": "Glacial",
           "NoCursor": "NoCanDo",
           "SW.AutoFire": "no",
@@ -4083,7 +4083,7 @@
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
           "SW.FireIntoShroud": "yes",
-          "SW.RangeMaximum": "-1",
+          "SW.RangeMaximum": "384",
           "SW.RangeMinimum": "-1",
           "EMPulse.TargetSelf": null,
           "EMPulse.Cannons": null
@@ -4127,13 +4127,33 @@
           "TimeFreezeWH": {
             "clone": "MORTimeFreezeWH",
             "list": "Warheads",
+            "reference_keys": [
+              "SW.Warhead"
+            ],
             "values": {
               "AllowZeroDamage": "yes",
               "DamageAirThreshold": "-1",
+              "Verses": "3%,3%,3%,3%,3%,3%,3%,3%,3%,3%,3%",
+              "CellSpread": "225",
+              "EMP.Duration": "0",
+              "EMP.Cap": "0",
+              "PercentAtMax": "1",
               "Versus.misc": "0%",
               "AffectsOwner": "no",
               "AffectsAllies": "no",
-              "AffectsEnemies": "yes"
+              "AffectsEnemies": "yes",
+              "Conventional": "no",
+              "PreventScatter": "yes",
+              "Sonar.Duration": "615",
+              "DisableWeapons.Duration": "615",
+              "EffectsRequireVerses": "yes",
+              "EffectsRequireDamage": "no",
+              "Nonprovocative": "yes",
+              "AttachEffect.Duration": "615",
+              "AttachEffect.Animation": "SPHERE",
+              "AttachEffect.ForceDecloak": "yes",
+              "AttachEffect.SpeedMultiplier": "0",
+              "AttachEffect.FirepowerMultiplier": "0"
             }
           }
         }

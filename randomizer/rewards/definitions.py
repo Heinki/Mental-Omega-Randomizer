@@ -863,22 +863,70 @@ for aid_config in AID_POWER_MAP_CONFIGS:
     if aid_config.get('superweapon') != 'TimeFreezeSpecial':
         continue
     aid_config.setdefault('values', {}).update({
+        'IsPowered': 'false',
+        'Type': 'GenericWarhead',
+        'Action': 'Custom',
+        'Range': '1.4',
+        'Cursor': 'Glacial',
+        'NoCursor': 'NoCanDo',
+        'SW.AutoFire': 'no',
+        'SW.ManualFire': 'yes',
+        'SW.ShowCameo': 'yes',
+        'SW.UseAITargeting': 'no',
+        'SW.AITargeting': 'Offensive',
+        'SW.Warhead': 'MORTimeFreezeWH',
+        'SW.Damage': '0',
         'SW.AffectsHouse': 'enemies',
         'SW.AffectsTarget': 'infantry,units,buildings',
+        'SW.RequiresTarget': 'land',
+        'SW.RequiredHouses': '',
+        'SW.ForbiddenHouses': '',
+        'SW.AuxBuildings': '',
+        'SW.NegBuildings': '',
+        'SW.Designators': '',
+        'SW.Inhibitors': '',
+        'SW.AnyInhibitor': 'no',
+        'SW.FireIntoShroud': 'yes',
+        'SW.RangeMaximum': '384',
+        'SW.RangeMinimum': '-1',
+        'EMPulse.TargetSelf': None,
+        'EMPulse.Cannons': None,
     })
-    time_freeze_clone = (
-        aid_config.get('techno_clones', {}).get('TimeFreezeWH')
+    time_freeze_clones = aid_config.setdefault('techno_clones', {})
+    time_freeze_clone = time_freeze_clones.setdefault('TimeFreezeWH', {})
+    time_freeze_clone.update({
+        'clone': 'MORTimeFreezeWH',
+        'list': 'Warheads',
+        'reference_keys': ['SW.Warhead'],
+    })
+    time_freeze_clone.setdefault('values', {}).update({
+        'AllowZeroDamage': 'yes',
+        'DamageAirThreshold': '-1',
+        'Verses': '3%,3%,3%,3%,3%,3%,3%,3%,3%,3%,3%',
+        'CellSpread': '225',
+        'EMP.Duration': '0',
+        'EMP.Cap': '0',
+        'PercentAtMax': '1',
+        'Versus.misc': '0%',
+        'AffectsOwner': 'no',
+        'AffectsAllies': 'no',
+        'AffectsEnemies': 'yes',
+        'Conventional': 'no',
+        'PreventScatter': 'yes',
+        'Sonar.Duration': '615',
+        'DisableWeapons.Duration': '615',
+        'EffectsRequireVerses': 'yes',
+        'EffectsRequireDamage': 'no',
+        'Nonprovocative': 'yes',
+        'AttachEffect.Duration': '615',
+        'AttachEffect.Animation': 'SPHERE',
+        'AttachEffect.ForceDecloak': 'yes',
+        'AttachEffect.SpeedMultiplier': '0',
+        'AttachEffect.FirepowerMultiplier': '0',
+    })
+    time_freeze_provider = time_freeze_clones.setdefault(
+        'TimeFreezeProvider', {}
     )
-    if isinstance(time_freeze_clone, dict):
-        time_freeze_clone.setdefault('values', {}).update({
-            'Versus.misc': '0%',
-            'AffectsOwner': 'no',
-            'AffectsAllies': 'no',
-            'AffectsEnemies': 'yes',
-        })
-    time_freeze_provider = aid_config.setdefault(
-        'techno_clones', {}
-    ).setdefault('TimeFreezeProvider', {})
     time_freeze_provider.update({
         'source': 'DUMMYDUMMY',
         'clone': 'MORTimeFreezeProvider',

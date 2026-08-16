@@ -196,8 +196,6 @@
         "TimeFreezeSpecial": {
           "source": "TimeFreezeWH",
           "fields": [
-            "EMP.Duration",
-            "EMP.Cap",
             "Sonar.Duration",
             "DisableWeapons.Duration",
             "AttachEffect.Duration"

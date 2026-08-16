@@ -744,7 +744,15 @@ def cloned_superweapon_plan(
                     )
                     else startup_buildings
                 )
-                startup_targets.extend([techno_clone] * startup_count)
+                existing_startup_count = sum(
+                    1
+                    for building_id in startup_targets
+                    if str(building_id).lower() == techno_clone.lower()
+                )
+                startup_targets.extend(
+                    [techno_clone]
+                    * max(0, startup_count - existing_startup_count)
+                )
 
         # Weapon/warhead/projectile helpers are not TechnoTypes or
         # SuperWeaponTypes. Clone them as isolated sections and register them
