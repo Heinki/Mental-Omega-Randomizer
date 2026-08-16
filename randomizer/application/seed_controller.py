@@ -636,8 +636,11 @@ class SeedController:
             self._enemy_buffs_view_dirty = True
         self.state['earned_rewards'] = self.earned_rewards_from_checks()
         self.save_state()
+        archipelago_reported_locations = ()
         if check_id == 'victory':
-            self.report_archipelago_mission_completion(code)
+            archipelago_reported_locations = (
+                self.report_archipelago_mission_completion(code)
+            )
         else:
             self.report_archipelago_objective_check(code, check_id)
         reward_note = (
@@ -715,10 +718,19 @@ class SeedController:
                 else ' No locked grid missions remained.'
             )
             if archipelago_active:
+                release_note = (
+                    ' Remaining Archipelago GRID locations were queued for '
+                    'server confirmation '
+                    f'({len(archipelago_reported_locations)} newly queued).'
+                    if self.state.get(
+                        'unlock_all_rewards_after_final_grid_mission', False
+                    )
+                    else ' Unchecked Archipelago locations remain pending.'
+                )
                 self.append_log(
                     f'Grid endgoal achieved: {code}. Randomizer victory achieved. '
-                    'All remaining grid missions are unlocked. Unchecked '
-                    f'Archipelago locations remain pending.{unlock_note}'
+                    'All remaining grid missions are unlocked.'
+                    f'{release_note}{unlock_note}'
                 )
             else:
                 reward_note = (

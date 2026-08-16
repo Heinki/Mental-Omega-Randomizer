@@ -1877,6 +1877,49 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             }
             restored_values.update(original_values)
             clone_rule_sections[source_id] = restored_values
+        if code == 'FKILL':
+            repaired_defenses = []
+            for source_id, details in clone_handled.items():
+                if BUFF_TARGETS.get(source_id, {}).get('category') != 'defenses':
+                    continue
+                clone_id = str((details or {}).get('clone_id') or '').strip()
+                values = clone_rule_sections.get(clone_id)
+                if not clone_id or not isinstance(values, dict):
+                    continue
+                for key in tuple(values):
+                    if str(key).lower().startswith('prerequisite'):
+                        values.pop(key)
+                values['Prerequisite'] = 'NACNST'
+                values['BuildCat'] = 'Combat'
+                values['TechLevel'] = '1'
+                for field in ('Owner', 'RequiredHouses'):
+                    owners = [
+                        owner.strip()
+                        for owner in str(values.get(field, '')).split(',')
+                        if owner.strip().lower() not in {
+                            '', 'none', '<none>', 'guild1',
+                        }
+                    ]
+                    values[field] = ','.join(
+                        unique_in_order(owners + ['Guild1'])
+                    )
+                forbidden = [
+                    owner.strip()
+                    for owner in str(values.get('ForbiddenHouses', '')).split(',')
+                    if owner.strip().lower() not in {
+                        '', 'none', '<none>', 'guild1',
+                    }
+                ]
+                values['ForbiddenHouses'] = ','.join(
+                    unique_in_order(forbidden)
+                ) or 'none'
+                repaired_defenses.append(clone_id)
+            if repaired_defenses:
+                self.append_log(
+                    'Foehn 02 defense access: bound '
+                    f'{len(repaired_defenses)} granted defense clone(s) to '
+                    'Guild1 native NACNST construction.'
+                )
         for source_id, details in clone_handled.items():
             clone_id = str((details or {}).get('clone_id') or '').strip()
             list_section = TECHNO_TYPE_LISTS.get(

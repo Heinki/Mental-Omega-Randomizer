@@ -822,13 +822,20 @@ def cloned_superweapon_plan(
                 if not isinstance(dependent_values, dict):
                     missing.append(dependent_source)
                     continue
+                dependent_overrides = (
+                    dict(dependent_overrides)
+                    if isinstance(dependent_overrides, dict) else {}
+                )
+                preferred_dependent_clone = str(
+                    dependent_overrides.pop('clone', '')
+                    or randomizer_clone_type_id(dependent_source)
+                ).strip()
                 dependent_clone = allocate_type_id(
-                    randomizer_clone_type_id(dependent_source),
-                    f'superweapon:{dependent_source}',
+                    preferred_dependent_clone,
+                    f'superweapon:{source_type}:dependent:{dependent_source}',
                 )
                 dependent_clone_values = dict(dependent_values)
-                if isinstance(dependent_overrides, dict):
-                    dependent_clone_values.update(dependent_overrides)
+                dependent_clone_values.update(dependent_overrides)
                 _remove_case_insensitive(
                     dependent_clone_values,
                     'SW.AllowPlayer',
@@ -841,9 +848,10 @@ def cloned_superweapon_plan(
                     'yes' if allow_ai else 'no'
                 )
                 register_superweapon(dependent_clone, dependent_clone_values)
-                for key, value in list(clone_values.items()):
-                    if str(value).lower() == str(dependent_source).lower():
-                        clone_values[key] = dependent_clone
+                for values in [clone_values, *section_rules.values()]:
+                    for key, value in list(values.items()):
+                        if str(value).lower() == str(dependent_source).lower():
+                            values[key] = dependent_clone
 
         grant_buildings = tuple(reward.get('superweapon_grant_buildings') or ())
         if grant_buildings and superweapon_required_houses:

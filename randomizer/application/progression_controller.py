@@ -44,7 +44,6 @@ class ProgressionController:
                 self.state.get(
                     'unlock_all_rewards_after_final_grid_mission', False
                 )
-                and not self.archipelago_run_active()
             ),
         )
 
@@ -60,7 +59,6 @@ class ProgressionController:
                 self.state.get(
                     'unlock_all_rewards_after_final_grid_mission', False
                 )
-                and not self.archipelago_run_active()
             ),
         )
 

@@ -1045,6 +1045,10 @@
         "SIEG",
         "TANY"
       ],
+      "ESANDS": [
+        "MWF",
+        "NAFIST"
+      ],
       "ASTORM": [
         "SIEG"
       ],
@@ -1336,8 +1340,7 @@
         "01000457",
         "01000466",
         "01000470",
-        "01000506",
-        "01000524"
+        "01000506"
       ],
       "SPEACE": [
         "01000032",
@@ -1445,6 +1448,18 @@
       ]
     },
     "unsafe_static_provider_superweapon_ids": {
+      "ASTORM": [
+        "EliteReservesSpecial",
+        "MutationSpecial",
+        "MaintenanceSpecial",
+        "BackwarpSpecial",
+        "NuclearPathSpecial",
+        "GearChangeSpecial",
+        "BlackoutMissileSpecial",
+        "NanochargeSpecial",
+        "HunterSeekerSpecial",
+        "TimeFreezeSpecial"
+      ],
       "EMIGDAL": [
         "EliteReservesSpecial",
         "MutationSpecial",
@@ -1470,6 +1485,10 @@
       "ESCRAP": [
         "BOREK",
         "SWLF"
+      ],
+      "ESANDS": [
+        "MWF",
+        "NAFIST"
       ],
       "SEXIST": [
         "MORALES"

@@ -1971,6 +1971,31 @@
       },
       {
         "superweapon": "KnightfallSpecial",
+        "sections": {
+          "KnightfallSpawn": {
+            "clone": "MORFoehnKnightfallSpawn",
+            "DropPod.Types": "MORFKnight,MORFCove"
+          }
+        },
+        "techno_clones": {
+          "FADROP": {
+            "clone": "MORFoehnKnightfallBeacon",
+            "list": "BuildingTypes",
+            "values": {
+              "SuperWeapon": "KnightfallSpawn"
+            }
+          },
+          "FoehnKnightfallKnight": {
+            "source": "KNIGHT",
+            "clone": "MORFKnight",
+            "list": "InfantryTypes"
+          },
+          "FoehnKnightfallCove": {
+            "source": "COVE",
+            "clone": "MORFCove",
+            "list": "InfantryTypes"
+          }
+        },
         "values": {
           "EVA.Ready": "EVA_BattlePowerReady",
           "IsPowered": "false",

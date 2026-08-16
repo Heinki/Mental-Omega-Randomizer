@@ -986,7 +986,9 @@ class ArchipelagoController(ArchipelagoYamlController):
             refresh_states(
                 self.state.get('grid', {}),
                 completed,
-                unlock_all_after_goal=False,
+                unlock_all_after_goal=bool(self.state.get(
+                    'unlock_all_rewards_after_final_grid_mission', False
+                )),
             )
         log_event(
             'archipelago_server_locations_applied',
@@ -1134,7 +1136,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         )
 
     def archipelago_reward_assignment_source_items(self):
-        """Return known future MO rewards placed at this slot's locations."""
+        """Return every MO reward assigned to this AP slot."""
         ap_state = self._active_archipelago_state()
         if ap_state is None:
             return None
@@ -1152,6 +1154,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         ))
         items = []
         seen_locations = set()
+        scouted_counts = {}
         for code in self.state.get('mission_order', []):
             title = mission_lookup.get(code, {}).get('title', code)
             for check in self.mission_checks(code):
@@ -1172,11 +1175,63 @@ class ArchipelagoController(ArchipelagoYamlController):
                     if reward_name not in REWARD_BY_NAME:
                         continue
                     seen_locations.add(location)
+                    scouted_counts[reward_name] = (
+                        scouted_counts.get(reward_name, 0) + 1
+                    )
                     items.append((
                         f'{title} â€” {check_name}',
                         canonical_reward({'name': reward_name}),
                         bool(code in playable and location not in checked),
                     ))
+        slot_data = getattr(self, '_archipelago_slot_data', {})
+        manifest = (
+            slot_data.get('run_manifest', {})
+            if isinstance(slot_data, dict) else {}
+        )
+        item_pool = (
+            manifest.get('item_pool', {})
+            if isinstance(manifest, dict) else {}
+        )
+        fallback_types = 0
+        fallback_items = 0
+        for reward_name, raw_count in item_pool.items():
+            if reward_name not in REWARD_BY_NAME:
+                continue
+            try:
+                count = max(0, int(raw_count))
+            except (TypeError, ValueError):
+                continue
+            missing = max(0, count - scouted_counts.get(reward_name, 0))
+            if not missing:
+                continue
+            fallback_types += 1
+            fallback_items += missing
+            items.append((
+                'Archipelago seed pool (location not scouted)',
+                canonical_reward({'name': reward_name}),
+                False,
+            ))
+        signature = (
+            str(manifest.get('manifest_checksum', '')),
+            len(seen_locations),
+            fallback_types,
+            fallback_items,
+        )
+        if signature != getattr(
+            self, '_archipelago_assignment_source_log_signature', None
+        ):
+            self._archipelago_assignment_source_log_signature = signature
+            log_event(
+                'archipelago_unlock_assignment_sources_indexed',
+                scouted_locations=len(seen_locations),
+                scouted_reward_types=len(scouted_counts),
+                manifest_reward_types=sum(
+                    1 for name in item_pool if name in REWARD_BY_NAME
+                ),
+                manifest_fallback_reward_types=fallback_types,
+                manifest_fallback_items=fallback_items,
+                **self._archipelago_log_context(),
+            )
         return tuple(items)
 
     def _archipelago_reward_name(self, item_id):
@@ -1599,7 +1654,7 @@ class ArchipelagoController(ArchipelagoYamlController):
                 )
             self.append_archipelago_history(
                 f'Queued {len(added)} Archipelago location(s) from '
-                f'{len(report_details)} completed check(s).'
+                f'{len(report_details)} location group(s).'
             )
             log_event(
                 'archipelago_location_batch_reported',
@@ -1704,6 +1759,87 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
             return False
 
+    def _archipelago_grid_auto_release_groups(self, excluded_keys=()):
+        """Return unchecked AP groups released by completed GRID endgoal."""
+        ap_state = self._active_archipelago_state()
+        if (
+            ap_state is None
+            or self.active_progression_mode() != 'Grid Mode'
+            or not self.state.get(
+                'unlock_all_rewards_after_final_grid_mission', False
+            )
+        ):
+            return ()
+        grid = self.state.get('grid', {})
+        nodes = grid.get('nodes', {}) if isinstance(grid, dict) else {}
+        goal_code = str(grid.get('goal') or '').upper()
+        completed = {
+            str(code).upper()
+            for code in self.state.get('completed_missions', ())
+        }
+        if not goal_code or goal_code not in completed:
+            return ()
+        excluded = {
+            (str(group_code).upper(), str(check_id))
+            for group_code, check_id in excluded_keys
+        }
+        checkpoint = ap_state.get('checkpoint')
+        checkpoint = checkpoint if isinstance(checkpoint, dict) else {}
+        known = set(getattr(
+            self, '_archipelago_server_checked_locations', set()
+        ))
+        for key in ('completed_locations', 'pending_locations'):
+            for location in checkpoint.get(key, ()):
+                try:
+                    known.add(int(location))
+                except (TypeError, ValueError):
+                    continue
+        groups = []
+        for code in self.state.get('mission_order', ()):
+            code = str(code).upper()
+            if code not in nodes:
+                continue
+            for check in self.mission_checks(code):
+                check_id = str(check.get('id', ''))
+                if not check_id or (code, check_id) in excluded:
+                    continue
+                locations = tuple(
+                    location
+                    for location in self._archipelago_location_ids(
+                        code, check_id
+                    )
+                    if location not in known
+                )
+                if locations:
+                    groups.append({
+                        'code': code,
+                        'check_id': check_id,
+                        'label': 'GRID auto release',
+                        'event_stem': 'grid_auto_release',
+                        'locations': locations,
+                    })
+        location_count = sum(len(group['locations']) for group in groups)
+        signature = (
+            ap_state.get('manifest_checksum', ''),
+            goal_code,
+            len(groups),
+            location_count,
+            len(known),
+        )
+        if signature != getattr(
+            self, '_archipelago_grid_auto_release_log_signature', None
+        ):
+            self._archipelago_grid_auto_release_log_signature = signature
+            log_event(
+                'archipelago_grid_auto_release_planned',
+                goal_code=goal_code,
+                group_count=len(groups),
+                location_count=location_count,
+                known_location_count=len(known),
+                **self._archipelago_log_context(),
+            )
+        return tuple(groups)
+
     def report_archipelago_mission_completion(self, code):
         """Report missed objectives, mission reward slots, then run goal."""
         if self._active_archipelago_state() is None:
@@ -1738,6 +1874,10 @@ class ArchipelagoController(ArchipelagoYamlController):
                 'event_stem': 'mission_completion',
                 'locations': victory_locations,
             })
+        group_keys = {
+            (group['code'], group['check_id']) for group in groups
+        }
+        groups.extend(self._archipelago_grid_auto_release_groups(group_keys))
         added = self._report_archipelago_location_groups(groups)
         self.report_archipelago_goal_if_complete()
         return tuple(added)
@@ -1777,6 +1917,10 @@ class ArchipelagoController(ArchipelagoYamlController):
                     ),
                     'locations': locations,
                 })
+        group_keys = {
+            (group['code'], group['check_id']) for group in groups
+        }
+        groups.extend(self._archipelago_grid_auto_release_groups(group_keys))
         added = self._report_archipelago_location_groups(groups)
         self.report_archipelago_goal_if_complete()
         if added:
