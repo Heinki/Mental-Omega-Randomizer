@@ -19,6 +19,8 @@ from ._dependencies import (
     EVA_VOICE_CHOICES,
     ENEMY_BUFF_DEFINITIONS,
     ENEMY_BUFF_BY_ID,
+    ENEMY_REWARD_PLAN_VERSION,
+    NEW_ENEMY_POWER_IDS,
     GAME_SPEEDS,
     MAIN_REWARD_WEIGHT_TYPES,
     MAX_REWARDS_PER_CHECK,
@@ -46,8 +48,7 @@ from ._dependencies import (
     normalize_assistance_units,
     normalize_arsenal_settings,
     normalize_enemy_scaling_settings,
-    enemy_progress_events,
-    plan_enemy_progress_rewards,
+    plan_enemy_check_rewards,
     normalize_completed_checks,
     normalize_failure_stacks,
     normalize_reward_weights,
@@ -104,9 +105,15 @@ class StateController:
             try:
                 enemy_stack_model_changed = int(
                     (enemy_source or {}).get('stack_model_version', 1)
-                ) < 2
+                ) < 6
             except (AttributeError, TypeError, ValueError):
                 enemy_stack_model_changed = True
+            if enemy_stack_model_changed and isinstance(enemy_source, dict):
+                allowed = enemy_source.get('allowed_buff_ids')
+                if isinstance(allowed, list) and '*' not in allowed:
+                    for effect_id in NEW_ENEMY_POWER_IDS:
+                        if effect_id not in allowed:
+                            allowed.append(effect_id)
             normalized_enemy = normalize_enemy_scaling_settings(
                 enemy_source
             )
@@ -184,7 +191,6 @@ class StateController:
                 progression_mode=self.state.get('progression_mode'),
                 grid=self.state.get('grid'),
                 starting_rewards=self.state.get('starting_rewards', []),
-                enemy_progress_plan=self.state.get('enemy_progress_plan', []),
             )
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
             self.state['reward_queue'] = [
@@ -195,16 +201,29 @@ class StateController:
             ]
             self.state['check_schema_version'] = CHECK_SCHEMA_VERSION
             changed = True
-        mission_codes = self.state.get('mission_order', [])
-        mission_checks = self.state.get('mission_checks', {})
-        enemy_plan = self.state.get('enemy_progress_plan')
+        for legacy_key in (
+            'enemy_progress_plan',
+            'enemy_progress_earned',
+            'enemy_progress_requested',
+        ):
+            if legacy_key in self.state:
+                self.state.pop(legacy_key, None)
+                changed = True
+        enemy_plan = self.state.get('enemy_reward_plan')
+        valid_check_targets = {
+            (str(code), str(check.get('id')))
+            for code in self.state.get('mission_order', ())
+            for check in self.state.get('mission_checks', {}).get(code, ())
+            if isinstance(check, dict) and check.get('id')
+        }
         enemy_plan_valid = (
-            not enemy_stack_model_changed
+            self.state.get('enemy_reward_plan_version')
+            == ENEMY_REWARD_PLAN_VERSION
             and isinstance(enemy_plan, list)
             and all(
                 isinstance(entry, dict)
-                and entry.get('basis') in {'objectives', 'missions'}
-                and isinstance(entry.get('event_index'), int)
+                and (str(entry.get('mission')), str(entry.get('check_id')))
+                in valid_check_targets
                 and isinstance(entry.get('reward'), dict)
                 and str(
                     entry.get('reward', {}).get('enemy_effect_id') or ''
@@ -213,22 +232,16 @@ class StateController:
             )
         )
         if not enemy_plan_valid:
-            normalized_enemy = normalize_enemy_scaling_settings(
-                self.state.get('reward_settings', {}).get('enemy_scaling')
-            )
-            self.state['enemy_progress_plan'] = plan_enemy_progress_rewards(
+            self.state['enemy_reward_plan'] = plan_enemy_check_rewards(
                 self.state.get('seed', ''),
-                normalized_enemy,
+                self.state.get('reward_settings', {}).get('enemy_scaling'),
                 REWARD_POOL,
-                enemy_progress_events(mission_codes, mission_checks),
-                [
-                    reward
-                    for code in mission_codes
-                    for check in mission_checks.get(code, [])
-                    for reward in check_rewards(check)
-                ],
+                self.state.get('mission_order', ()),
+                self.state.get('mission_checks', {}),
             )
-            self.state['enemy_progress_earned'] = []
+            self.state['enemy_reward_plan_version'] = (
+                ENEMY_REWARD_PLAN_VERSION
+            )
             changed = True
         if enemy_stack_model_changed:
             self.state['enemy_reward_applications'] = {}
@@ -250,8 +263,6 @@ class StateController:
         changed = normalize_completed_checks(self.state) or changed
         changed = normalize_failure_stacks(self.state) or changed
         changed = normalize_assistance_units(self.state, BUFF_TARGETS) or changed
-        if hasattr(self, 'sync_enemy_progress_milestones'):
-            changed = self.sync_enemy_progress_milestones() or changed
         completed = self.state['completed_missions']
         if self.state.get('progression_mode') == 'Grid Mode' and isinstance(self.state.get('grid'), dict):
             existing_grid = self.state['grid']
@@ -511,17 +522,13 @@ class StateController:
             },
         })
         try:
-            enemy_objective_rewards = self.enemy_objective_rewards_var.get()
+            enemy_maximum_total_buffs = (
+                self.enemy_maximum_total_buffs_var.get()
+            )
         except Exception:
-            enemy_objective_rewards = 0
-        try:
-            enemy_mission_rewards = self.enemy_mission_rewards_var.get()
-        except Exception:
-            enemy_mission_rewards = 0
+            enemy_maximum_total_buffs = 0
         enemy_scaling = normalize_enemy_scaling_settings({
-            'reward_enabled': self.enemy_reward_pool_var.get(),
-            'rewards_per_completed_objective': enemy_objective_rewards,
-            'rewards_per_completed_mission': enemy_mission_rewards,
+            'maximum_total_buffs': enemy_maximum_total_buffs,
             'allowed_buff_ids': [
                 definition['id'] for definition in ENEMY_BUFF_DEFINITIONS
                 if self.enemy_buff_enabled_vars[definition['id']].get()
@@ -1254,12 +1261,8 @@ class StateController:
         self.manual_starting_reward_names = set(reward_settings['starting_unlock_rewards'])
 
         enemy_settings = reward_settings['enemy_scaling']
-        self.enemy_reward_pool_var.set(enemy_settings['reward_enabled'])
-        self.enemy_objective_rewards_var.set(
-            enemy_settings['rewards_per_completed_objective']
-        )
-        self.enemy_mission_rewards_var.set(
-            enemy_settings['rewards_per_completed_mission']
+        self.enemy_maximum_total_buffs_var.set(
+            enemy_settings['maximum_total_buffs']
         )
         allowed_enemy = set(enemy_settings['allowed_buff_ids'])
         for definition in ENEMY_BUFF_DEFINITIONS:

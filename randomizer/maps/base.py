@@ -34,6 +34,8 @@ from ._shared import (
     unique_in_order,
 )
 
+MAX_GENERATED_POWER_ID_LENGTH = 21
+
 def suppressed_superweapon_building_ids(reward_settings):
     """Native power structures hidden while equivalent rewards are randomized."""
     building_ids = set()
@@ -373,26 +375,45 @@ def randomizer_clone_type_id(source_type):
     source_type = str(source_type or '').strip()
     short_source = re.sub(r'Special$', '', source_type, flags=re.IGNORECASE)
     preferred = f'{RANDOMIZER_SUPERWEAPON_PREFIX}{short_source}'
-    if len(preferred) <= MAX_ARES_TYPE_ID_LENGTH:
+    if len(preferred) <= MAX_GENERATED_POWER_ID_LENGTH:
         return preferred
     digest = hashlib.sha1(source_type.lower().encode('utf-8')).hexdigest()[:10].upper()
-    return f'{RANDOMIZER_SUPERWEAPON_PREFIX}{short_source[:10]}{digest}'
+    stem_length = max(
+        0,
+        MAX_GENERATED_POWER_ID_LENGTH
+        - len(RANDOMIZER_SUPERWEAPON_PREFIX)
+        - len(digest),
+    )
+    return f'{RANDOMIZER_SUPERWEAPON_PREFIX}{short_source[:stem_length]}{digest}'
 
-def _collision_safe_type_id(preferred, identity, reserved_ids):
+def _collision_safe_type_id(
+    preferred,
+    identity,
+    reserved_ids,
+    max_length=MAX_ARES_TYPE_ID_LENGTH,
+):
     preferred = re.sub(r'[^A-Za-z0-9_]', '', str(preferred or ''))
     if (
         preferred
-        and len(preferred) <= MAX_ARES_TYPE_ID_LENGTH
+        and len(preferred) <= max_length
         and preferred.lower() not in reserved_ids
     ):
         reserved_ids.add(preferred.lower())
         return preferred
 
-    stem = re.sub(r'^MOR', '', preferred, flags=re.IGNORECASE)[:10] or 'TYPE'
+    digest_length = 10
+    stem_length = max(
+        0,
+        max_length - len(RANDOMIZER_SUPERWEAPON_PREFIX) - digest_length,
+    )
+    stem = (
+        re.sub(r'^MOR', '', preferred, flags=re.IGNORECASE)[:stem_length]
+        or 'TYPE'[:stem_length]
+    )
     for salt in range(10000):
         digest = hashlib.sha1(
             f'{identity.lower()}:{salt}'.encode('utf-8')
-        ).hexdigest()[:10].upper()
+        ).hexdigest()[:digest_length].upper()
         candidate = f'{RANDOMIZER_SUPERWEAPON_PREFIX}{stem}{digest}'
         if candidate.lower() not in reserved_ids:
             reserved_ids.add(candidate.lower())
@@ -470,7 +491,10 @@ def cloned_superweapon_plan(
         identity_key = identity.lower()
         if identity_key not in allocated_type_ids:
             allocated_type_ids[identity_key] = _collision_safe_type_id(
-                preferred, identity, reserved_type_ids
+                preferred,
+                identity,
+                reserved_type_ids,
+                max_length=MAX_GENERATED_POWER_ID_LENGTH,
             )
         return allocated_type_ids[identity_key]
 
@@ -540,6 +564,20 @@ def cloned_superweapon_plan(
         mission_overrides = superweapon_rule_overrides.get(source_type)
         if isinstance(mission_overrides, dict):
             clone_values.update(mission_overrides)
+        recharge_multiplier = reward.get('superweapon_recharge_multiplier')
+        if recharge_multiplier is not None:
+            recharge_value = _value_case_insensitive(
+                clone_values, 'RechargeTime'
+            )
+            try:
+                scaled_recharge = (
+                    float(recharge_value) * float(recharge_multiplier)
+                )
+            except (TypeError, ValueError):
+                missing.append(f'{template_type}.RechargeTime')
+                continue
+            _remove_case_insensitive(clone_values, 'RechargeTime')
+            clone_values['RechargeTime'] = format_multiplier(scaled_recharge)
         faction_aux_buildings = superweapon_aux_buildings.get(
             source_type.upper(), ()
         )

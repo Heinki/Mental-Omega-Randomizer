@@ -1,32 +1,12 @@
 {
   "schema_version": 1,
-  "description": "Reviewed AI-only stat and production-speed rewards.",
+  "description": "Reviewed AI-only Archipelago Trap bonuses for native units, country production, and support powers.",
   "sections": {
     "defaults": {
-      "stack_model_version": 2,
-      "reward_enabled": false,
-      "rewards_per_completed_objective": 0,
-      "rewards_per_completed_mission": 0,
-      "allowed_buff_ids": [
-        "infantry_armor",
-        "vehicle_armor",
-        "aircraft_armor",
-        "defense_armor",
-        "infantry_production",
-        "vehicle_production",
-        "aircraft_production",
-        "defense_production"
-      ],
-      "caps": {
-        "infantry_armor": 5,
-        "vehicle_armor": 5,
-        "aircraft_armor": 5,
-        "defense_armor": 5,
-        "infantry_production": 5,
-        "vehicle_production": 5,
-        "aircraft_production": 5,
-        "defense_production": 5
-      }
+      "stack_model_version": 6,
+      "maximum_total_buffs": 40,
+      "allowed_buff_ids": ["*"],
+      "caps": {}
     },
     "buffs": [
       {
@@ -112,6 +92,190 @@
         "per_stack_percent": 10,
         "minimum_engine_multiplier": 0.1,
         "maximum_stacks": 5
+      },
+      {
+        "id": "ai_paratroopers",
+        "name": "AI Paratroopers",
+        "type": "Support Power",
+        "category": "Support Powers",
+        "effect": "power",
+        "superweapon": "ParaDropSpecial",
+        "ai_targeting": "ParaDrop",
+        "ai_targeting_constraints": "none",
+        "faction_families": ["allies", "soviets", "epsilon", "foehn"],
+        "use_existing_power": false,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_bloodhounds",
+        "name": "AI Bloodhounds",
+        "type": "Bloodhounds",
+        "category": "Support Powers",
+        "effect": "power",
+        "superweapon": "BloodhoundsSpecial",
+        "ai_targeting": "ParaDrop",
+        "ai_targeting_constraints": "none",
+        "faction_families": ["allies", "soviets", "epsilon", "foehn"],
+        "use_existing_power": false,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_moon_reinforcements",
+        "name": "AI Moon Reinforcements",
+        "type": "Moon Reinforcements",
+        "category": "Support Powers",
+        "effect": "power",
+        "superweapon": "KnightfallSpawn",
+        "ai_targeting": "ParaDrop",
+        "ai_targeting_constraints": "none",
+        "faction_families": ["allies", "soviets", "epsilon", "foehn"],
+        "use_existing_power": false,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_lightning_storm",
+        "name": "AI Allied Lightning Storm",
+        "type": "Lightning Storm",
+        "category": "Superweapons",
+        "effect": "power",
+        "superweapon": "LightningStormSpecial",
+        "ai_targeting": "LightningStorm",
+        "faction_families": ["allies"],
+        "use_existing_power": true,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_nuclear_missile",
+        "name": "AI Soviet Nuclear Missile",
+        "type": "Nuclear Missile",
+        "category": "Superweapons",
+        "effect": "power",
+        "superweapon": "NukeSpecial",
+        "ai_targeting": "Nuke",
+        "faction_families": ["soviets"],
+        "use_existing_power": true,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_psychic_dominator",
+        "name": "AI Epsilon Psychic Dominator",
+        "type": "Psychic Dominator",
+        "category": "Superweapons",
+        "effect": "power",
+        "superweapon": "PsychicDominatorSpecial",
+        "ai_targeting": "Offensive",
+        "faction_families": ["epsilon"],
+        "use_existing_power": true,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      },
+      {
+        "id": "ai_great_tempest",
+        "name": "AI Foehn Great Tempest",
+        "type": "Great Tempest",
+        "category": "Superweapons",
+        "effect": "power",
+        "superweapon": "GreatTempestSpecial",
+        "ai_targeting": "Offensive",
+        "faction_families": ["foehn"],
+        "use_existing_power": true,
+        "per_stack_percent": 100,
+        "maximum_stacks": 1
+      }
+    ],
+    "tier_unit_buff_templates": [
+      {
+        "id": "health",
+        "name": "Health",
+        "unit_buff_type": "health",
+        "per_stack_value": 15,
+        "value_unit": "%",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "armor",
+        "name": "Armor",
+        "unit_buff_type": "armor",
+        "per_stack_value": 10,
+        "value_unit": "% damage reduction",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "speed",
+        "name": "Mobility",
+        "unit_buff_type": "speed",
+        "per_stack_value": 10,
+        "value_unit": "%",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "sight",
+        "name": "Vision",
+        "unit_buff_type": "sight",
+        "per_stack_value": 1,
+        "value_unit": "cell",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "damage",
+        "name": "Firepower",
+        "unit_buff_type": "damage",
+        "per_stack_value": 15,
+        "value_unit": "%",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "reload",
+        "name": "Fire Rate",
+        "unit_buff_type": "reload",
+        "per_stack_value": 10,
+        "value_unit": "% shorter delay",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "range",
+        "name": "Weapon Range",
+        "unit_buff_type": "range",
+        "per_stack_value": 0.5,
+        "value_unit": "cell",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "ammo",
+        "name": "Ammo",
+        "unit_buff_type": "ammo",
+        "per_stack_value": 1,
+        "value_unit": "round",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "self_healing",
+        "name": "Self-Healing",
+        "unit_buff_type": "self_healing",
+        "per_stack_value": 1,
+        "value_unit": "% max health per tick",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "cloak",
+        "name": "Cloaking",
+        "unit_buff_type": "cloak",
+        "per_stack_value": 1,
+        "value_unit": "enabled",
+        "maximum_stacks": 1
+      },
+      {
+        "id": "sensors",
+        "name": "Sensors",
+        "unit_buff_type": "sensors",
+        "per_stack_value": 1,
+        "value_unit": "enabled",
+        "maximum_stacks": 1
       }
     ]
   }

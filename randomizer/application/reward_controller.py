@@ -38,9 +38,6 @@ from ._dependencies import (
     unit_display_label,
     unit_role_equivalents,
     unlocked_reward_tech_ids,
-    configured_enemy_reward,
-    normalize_enemy_scaling_settings,
-    progress_plan_rewards,
 )
 
 class RewardController:
@@ -472,9 +469,6 @@ class RewardController:
 
     def filter_reward_pool(self, pool):
         reward_settings = self.active_reward_settings()
-        enemy_settings = normalize_enemy_scaling_settings(
-            reward_settings.get('enemy_scaling')
-        )
         excluded_access_ids = {
             str(unit_id).upper()
             for unit_id in reward_settings.get('excluded_unit_access_ids', [])
@@ -542,9 +536,9 @@ class RewardController:
         configured_pool = []
         for reward in pool:
             if reward.get('enemy_reward'):
-                configured = configured_enemy_reward(reward, enemy_settings)
-                if configured is not None:
-                    configured_pool.append(configured)
+                # Enemy bonuses use an independent additional-reward plan.
+                # They never consume or reserve a normal player-reward slot.
+                continue
             else:
                 configured_pool.append(reward)
 
@@ -555,11 +549,6 @@ class RewardController:
                 reward_selection_weight(reward, reward_weights) > 0
                 and
                 (
-                    (
-                        reward.get('enemy_reward')
-                        and enemy_settings['reward_enabled']
-                    )
-                    or
                     (
                         reward.get('kind') == 'buff'
                         and reward.get('power_buff_type')
@@ -680,7 +669,6 @@ class RewardController:
             progression_mode=self.state.get('progression_mode'),
             grid=self.state.get('grid'),
             starting_rewards=self.state.get('starting_rewards', []),
-            enemy_progress_plan=self.state.get('enemy_progress_plan', []),
         )
         self.state['mission_objectives'] = summary
         grid = self.state.get('grid', {})
@@ -722,7 +710,6 @@ class RewardController:
         progression_mode=None,
         grid=None,
         starting_rewards=None,
-        enemy_progress_plan=None,
         progress=None,
     ):
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
@@ -736,7 +723,6 @@ class RewardController:
         }
         earned_rewards = list(earned_rewards or [])
         starting_rewards = list(starting_rewards or [])
-        reserved_enemy_progress = progress_plan_rewards(enemy_progress_plan)
         completed_missions = list(completed_missions or [])
         rewards_per_check = clamp_int(rewards_per_check, 1, MAX_REWARDS_PER_CHECK, DEFAULT_REWARDS_PER_CHECK)
         completed = set(completed_missions)
@@ -804,7 +790,7 @@ class RewardController:
             grid=grid,
             initial_rewards=starting_rewards + earned_rewards,
             avoid_unlocked_access=bool(starting_rewards),
-            reserved_rewards=reserved_enemy_progress,
+            reserved_rewards=(),
         )
         if progress is not None:
             progress('Planning mission multiplier rewards.', 0, 1)
@@ -826,7 +812,7 @@ class RewardController:
             progression_mode=progression_mode,
             grid=grid,
             initial_rewards=starting_rewards + earned_rewards,
-            reserved_rewards=reserved_enemy_progress,
+            reserved_rewards=(),
             progress=progress,
         )
 

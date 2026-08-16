@@ -37,11 +37,6 @@ MAIN_REWARD_WEIGHT_TYPES = (
         'label': 'Superweapon buffs',
         'description': 'Upgrades for already-unlocked superweapons and aid powers.',
     },
-    {
-        'id': 'enemy_buffs',
-        'label': 'AI rewards',
-        'description': 'Rewards applied only to configured hostile AI houses.',
-    },
 )
 
 UNIT_BUFF_WEIGHT_TYPES = (
@@ -158,6 +153,8 @@ def main_reward_weight_type(reward):
 
 def reward_selection_weight(reward, weights):
     """Return combined main/sub-weight; zero means never selectable."""
+    if reward.get('enemy_reward'):
+        return 0
     main_type = main_reward_weight_type(reward)
     try:
         weight = weights['main'][main_type]

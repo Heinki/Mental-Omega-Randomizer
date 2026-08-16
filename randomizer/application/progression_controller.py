@@ -6,6 +6,7 @@ from ._dependencies import (
     GRID_COMPLETED,
     GRID_LOCKED,
     GRID_UNLOCKED,
+    canonical_reward,
     check_rewards,
     completing_unlocks,
     is_grid_complete,
@@ -357,7 +358,46 @@ class ProgressionController:
             for check in self.mission_checks(code)
             if not check.get('unlocked') and not check.get('released')
         ]
-        if not missing:
+        archipelago_active = bool(
+            getattr(self, 'archipelago_run_active', lambda: False)()
+        )
+        found_enemy_traps = []
+        found_enemy_bonuses = []
+        if archipelago_active:
+            for check in self.mission_checks(code):
+                if not check.get('unlocked'):
+                    continue
+                for record in self.archipelago_check_item_details(
+                    code, str(check.get('id', ''))
+                ) or ():
+                    item_name = str(record.get('item_name') or '').strip()
+                    reward = canonical_reward({'name': item_name})
+                    if not reward.get('enemy_reward'):
+                        continue
+                    recipient = str(
+                        record.get('recipient_player') or ''
+                    ).strip() or f'Player {int(record.get("player", 0))}'
+                    location = str(
+                        record.get('location_name') or ''
+                    ).strip() or f'Location #{int(record.get("location", 0))}'
+                    found_enemy_traps.append((
+                        str(check.get('name') or 'Check'),
+                        item_name,
+                        recipient,
+                        location,
+                    ))
+        else:
+            for check in self.mission_checks(code):
+                if not (check.get('unlocked') or check.get('released')):
+                    continue
+                for reward in self.enemy_rewards_for_check(
+                    code, str(check.get('id', ''))
+                ):
+                    found_enemy_bonuses.append((
+                        str(check.get('name') or 'Check'),
+                        self.enemy_reward_text(reward),
+                    ))
+        if not missing and not found_enemy_traps and not found_enemy_bonuses:
             return ''
         reward_summary = self.mission_reward_summary(code)
         lines = []
@@ -365,15 +405,12 @@ class ProgressionController:
             lines.append(
                 f'Mission Reward Multiplier: x{reward_summary["multiplier"]}'
             )
-        lines.extend([
+        lines.extend((
             f'Base rewards: {reward_summary["base_rewards"]}',
             f'Final rewards: {reward_summary["final_rewards"]}',
-            '',
-            'Remaining mission checks:',
-        ])
-        archipelago_active = bool(
-            getattr(self, 'archipelago_run_active', lambda: False)()
-        )
+        ))
+        if missing:
+            lines.extend(('', 'Remaining mission checks:'))
         for check in missing:
             if archipelago_active:
                 check_id = str(check.get('id', ''))
@@ -399,8 +436,14 @@ class ProgressionController:
                     recipient_game = str(
                         record.get('recipient_game') or ''
                     ).strip() or 'game unavailable'
+                    item_reward = canonical_reward({'name': item_name})
+                    prefix = (
+                        '[Enemy Trap] '
+                        if item_reward.get('enemy_reward') else ''
+                    )
                     lines.append(
-                        f'    - {item_name} -> {recipient} ({recipient_game})'
+                        f'    - {prefix}{item_name} -> '
+                        f'{recipient} ({recipient_game})'
                     )
                 missing_details = max(0, expected - len(details))
                 if missing_details:
@@ -409,10 +452,31 @@ class ProgressionController:
                     )
                 continue
             rewards = check_rewards(check)
-            lines.append(f'- {check.get("name", "Check")} ({len(rewards)} rewards)')
+            enemy_rewards = self.enemy_rewards_for_check(
+                code, str(check.get('id', ''))
+            )
+            lines.append(
+                f'- {check.get("name", "Check")} '
+                f'({len(rewards)} rewards, '
+                f'{len(enemy_rewards)} additional enemy bonuses)'
+            )
             for reward in rewards:
                 reward_name = self.mission_check_reward_name(check, reward)
                 lines.append(f'    • {reward_name}')
+            for reward in enemy_rewards:
+                reward_name = self.mission_check_enemy_reward_name(
+                    check, reward
+                )
+                lines.append(f'    • Enemy bonus: {reward_name}')
+        if found_enemy_traps:
+            lines.extend(('', 'Enemy Traps found on this mission:'))
+            for check_name, item_name, recipient, location in found_enemy_traps:
+                lines.append(f'- {check_name}: {item_name} -> {recipient}')
+                lines.append(f'    Found at {location}')
+        if found_enemy_bonuses:
+            lines.extend(('', 'Enemy bonuses acquired on this mission:'))
+            for check_name, reward_name in found_enemy_bonuses:
+                lines.append(f'- {check_name}: {reward_name}')
         return '\n'.join(lines)
 
     def mission_check_reward_name(self, check, reward):
@@ -423,6 +487,15 @@ class ProgressionController:
         ):
             return '?????'
         return reward_display_name(reward)
+
+    def mission_check_enemy_reward_name(self, check, reward):
+        if (
+            self.hide_reward_details_var.get()
+            and not check.get('unlocked')
+            and not check.get('released')
+        ):
+            return '?????'
+        return self.enemy_reward_text(reward)
 
     def on_launch_selected(self):
         mission = self.selected_mission()

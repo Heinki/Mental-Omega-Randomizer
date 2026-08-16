@@ -341,14 +341,8 @@ class LauncherApp(
         self.failure_assistance_var = tk.BooleanVar(
             value=bool(generation_config.get('failure_assistance', False))
         )
-        self.enemy_reward_pool_var = tk.BooleanVar(
-            value=enemy_settings['reward_enabled']
-        )
-        self.enemy_objective_rewards_var = tk.IntVar(
-            value=enemy_settings['rewards_per_completed_objective']
-        )
-        self.enemy_mission_rewards_var = tk.IntVar(
-            value=enemy_settings['rewards_per_completed_mission']
+        self.enemy_maximum_total_buffs_var = tk.IntVar(
+            value=enemy_settings['maximum_total_buffs']
         )
         allowed_enemy_buffs = set(enemy_settings['allowed_buff_ids'])
         self.enemy_buff_enabled_vars = {

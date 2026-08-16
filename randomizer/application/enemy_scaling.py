@@ -4,10 +4,10 @@ from ._dependencies import (
     ENEMY_BUFF_BY_ID,
     ENEMY_BUFF_DEFINITIONS,
     ENEMY_BUFF_GROUP_DEFINITIONS,
-    WidgetTooltip,
+    MAX_ENEMY_TOTAL_BUFFS,
     canonical_reward,
-    check_rewards,
     configured_enemy_reward,
+    enemy_buff_capacity,
     enemy_effect_text,
     normalize_enemy_scaling_settings,
     tk,
@@ -15,6 +15,10 @@ from ._dependencies import (
 
 
 class EnemyScalingController:
+
+    def enemy_reward_text(self, reward):
+        """Return one assignment's concise effect without reward/stack noise."""
+        return enemy_effect_text(canonical_reward(reward), 1)
 
     def enemy_buff_group_help_text(self, group):
         """List every concrete bonus behind one compact settings group."""
@@ -55,16 +59,42 @@ class EnemyScalingController:
             if self.enemy_buff_enabled_vars[definition['id']].get()
             and int(self.enemy_buff_cap_vars[definition['id']].get()) > 0
         ]
-        capacity = sum(
+        per_effect_capacity = sum(
             max(0, int(self.enemy_buff_cap_vars[effect_id].get()))
             for effect_id in enabled_ids
         )
+        try:
+            maximum_total = max(
+                0, int(self.enemy_maximum_total_buffs_var.get())
+            )
+        except (tk.TclError, TypeError, ValueError):
+            maximum_total = 0
+        capacity = min(maximum_total, per_effect_capacity)
+        possible = enemy_buff_capacity({
+            'maximum_total_buffs': per_effect_capacity,
+            'allowed_buff_ids': enabled_ids,
+            'caps': {
+                effect_id: self.enemy_buff_cap_vars[effect_id].get()
+                for effect_id in enabled_ids
+            },
+        })
+        if hasattr(self, 'enemy_maximum_total_buffs_spinbox'):
+            self.enemy_maximum_total_buffs_spinbox.configure(
+                to=min(MAX_ENEMY_TOTAL_BUFFS, possible)
+            )
+        if hasattr(self, 'enemy_maximum_total_buffs_label'):
+            self.enemy_maximum_total_buffs_label.configure(
+                text=f'Maximum total AI bonus stacks [0-{possible}]'
+            )
+        if maximum_total > possible:
+            maximum_total = possible
+            self.enemy_maximum_total_buffs_var.set(possible)
+            capacity = possible
         self.enemy_reward_capacity_label.configure(text=(
-            'Values are bonus stacks, not unique bonus types. Objective, '
-            'mission, and normal-pool AI rewards share '
-            f'{capacity} total configured stacks across '
-            f'{len(enabled_ids)} enabled bonuses. Once every cap is filled, '
-            'later completion rolls cannot grant another AI bonus.'
+            f'Base Randomizer can grant up to {capacity} additional AI bonus '
+            'stack(s) beside normal rewards. Archipelago exports them as Trap '
+            f'items. {len(enabled_ids)} enabled bonuses allow at most '
+            f'{possible} stacks under their per-bonus caps.'
         ))
         for group in ENEMY_BUFF_GROUP_DEFINITIONS:
             tooltip = getattr(
@@ -106,133 +136,8 @@ class EnemyScalingController:
             and self.info_tabs.select() == str(self.enemy_buffs_tab)
         )
 
-    def _completed_ai_reward_counts(self):
-        objectives = sum(
-            1
-            for code in self.state.get('mission_order', [])
-            for check in self.state.get('mission_checks', {}).get(code, [])
-            if check.get('id') != 'victory' and check.get('unlocked')
-        )
-        return {
-            'objectives': objectives,
-            'missions': len(self.state.get('completed_missions', [])),
-        }
-
-    def _ai_reward_fallback_source(self, event_index, basis):
-        mission_lookup = self.mission_lookup() if self.missions else {}
-        if basis == 'missions':
-            completed = self.state.get('completed_missions', [])
-            if completed:
-                code = completed[min(event_index, len(completed)) - 1]
-                title = mission_lookup.get(code, {}).get('title', code)
-                return f'{title} - Mission Victory'
-            return 'Saved mission progress'
-        completed_checks = []
-        for code in self.state.get('mission_order', []):
-            title = mission_lookup.get(code, {}).get('title', code)
-            for check in self.state.get('mission_checks', {}).get(code, []):
-                if check.get('id') == 'victory' or not check.get('unlocked'):
-                    continue
-                completed_checks.append(
-                    f'{title} - {check.get("name", "Objective")}'
-                )
-        if completed_checks:
-            return completed_checks[min(event_index, len(completed_checks)) - 1]
-        return 'Saved objective progress'
-
-    def sync_enemy_progress_milestones(self, code='', check=None):
-        """Activate every planned reward belonging to completed events."""
-        if not self.state:
-            return False
-        completed = self._completed_ai_reward_counts()
-        earned = self.state.setdefault('enemy_progress_earned', [])
-        existing = {
-            (str(item.get('basis') or ''), int(item.get('event_index', 0)))
-            for item in earned
-            if isinstance(item, dict)
-        }
-        planned_events = []
-        seen = set()
-        for entry in self.state.get('enemy_progress_plan', []):
-            if not isinstance(entry, dict):
-                continue
-            key = (
-                str(entry.get('basis') or ''),
-                int(entry.get('event_index', 0)),
-            )
-            if (
-                key in seen
-                or key[0] not in completed
-                or key[1] <= 0
-            ):
-                continue
-            seen.add(key)
-            planned_events.append(key)
-
-        mission = self.mission_lookup().get(code, {}) if code else {}
-        title = mission.get('title', code)
-        current_source = (
-            f'{title} - {check.get("name", "Check")}'
-            if code and isinstance(check, dict)
-            else ''
-        )
-        missing_objectives = [
-            key for key in planned_events
-            if key[0] == 'objectives'
-            and key not in existing
-            and key[1] <= completed['objectives']
-        ]
-        victory_objective_sources = []
-        if (
-            code
-            and isinstance(check, dict)
-            and check.get('id') == 'victory'
-            and missing_objectives
-        ):
-            all_sources = [
-                f'{title} - {item.get("name", "Objective")}'
-                for item in self.state.get('mission_checks', {}).get(code, [])
-                if item.get('id') != 'victory' and item.get('unlocked')
-            ]
-            victory_objective_sources = all_sources[-len(missing_objectives):]
-
-        changed = False
-        objective_source_index = 0
-        for basis, event_index in planned_events:
-            key = (basis, event_index)
-            if key in existing or event_index > completed[basis]:
-                continue
-            if basis == 'missions' and current_source:
-                source = current_source
-            elif (
-                basis == 'objectives'
-                and current_source
-                and check.get('id') != 'victory'
-            ):
-                source = current_source
-            elif basis == 'objectives' and victory_objective_sources:
-                source = victory_objective_sources[
-                    min(
-                        objective_source_index,
-                        len(victory_objective_sources) - 1,
-                    )
-                ]
-                objective_source_index += 1
-            else:
-                source = self._ai_reward_fallback_source(event_index, basis)
-            earned.append({
-                'basis': basis,
-                'event_index': event_index,
-                'earned_from': source,
-            })
-            existing.add(key)
-            changed = True
-        if changed:
-            self._enemy_buffs_view_dirty = True
-        return changed
-
     def active_enemy_scaling_entries(self):
-        """Return active completion and normal AI rewards with sources."""
+        """Return received AP traps or acquired standalone enemy bonuses."""
         if not self.state:
             return []
         enemy_settings = normalize_enemy_scaling_settings(
@@ -244,36 +149,6 @@ class EnemyScalingController:
             return configured_enemy_reward(reward, enemy_settings) or {}
 
         entries = []
-        milestones = {
-            (
-                str(item.get('basis') or ''),
-                int(item.get('event_index', 0)),
-            ): item
-            for item in self.state.get('enemy_progress_earned', [])
-            if isinstance(item, dict)
-        }
-        for planned in self.state.get('enemy_progress_plan', []):
-            if not isinstance(planned, dict):
-                continue
-            key = (
-                str(planned.get('basis') or ''),
-                int(planned.get('event_index', 0)),
-            )
-            milestone = milestones.get(key)
-            reward = active_reward(planned.get('reward', {}))
-            if not milestone or not reward.get('enemy_reward'):
-                continue
-            entries.append({
-                'reward': reward,
-                'source': (
-                    'Objective completion'
-                    if key[0] == 'objectives'
-                    else 'Mission completion'
-                ),
-                'earned_from': milestone.get(
-                    'earned_from', 'Saved AI reward progress'
-                ),
-            })
         if self.archipelago_run_active():
             for source, reward in self.archipelago_reward_source_items() or ():
                 reward = active_reward(reward)
@@ -283,23 +158,74 @@ class EnemyScalingController:
                         'source': 'Archipelago item',
                         'earned_from': source,
                     })
-            return entries
-        mission_lookup = self.mission_lookup()
-        for code in self.state.get('mission_order', []):
-            title = mission_lookup.get(code, {}).get('title', code)
-            for check in self.state.get('mission_checks', {}).get(code, []):
-                if not (check.get('unlocked') or check.get('released')):
+        else:
+            checks = {
+                (str(code), str(check.get('id'))): check
+                for code in self.state.get('mission_order', ())
+                for check in self.state.get('mission_checks', {}).get(code, ())
+                if isinstance(check, dict) and check.get('id')
+            }
+            mission_lookup = (
+                self.mission_lookup() if getattr(self, 'missions', None) else {}
+            )
+            for planned in self.state.get('enemy_reward_plan', ()):
+                if not isinstance(planned, dict):
                     continue
-                source = f'{title} - {check.get("name", "Check")}'
-                for reward in check_rewards(check):
-                    reward = active_reward(reward)
-                    if reward.get('enemy_reward'):
-                        entries.append({
-                            'reward': reward,
-                            'source': 'Normal reward',
-                            'earned_from': source,
-                        })
-        return entries
+                code = str(planned.get('mission') or '')
+                check_id = str(planned.get('check_id') or '')
+                check = checks.get((code, check_id))
+                if not check or not (
+                    check.get('unlocked') or check.get('released')
+                ):
+                    continue
+                reward = active_reward(planned.get('reward', {}))
+                if not reward.get('enemy_reward'):
+                    continue
+                title = mission_lookup.get(code, {}).get('title', code)
+                entries.append({
+                    'reward': reward,
+                    'source': 'Randomizer consequence',
+                    'earned_from': (
+                        f'{title} - {check.get("name", check_id)}'
+                    ),
+                })
+        maximum_total = enemy_settings['maximum_total_buffs']
+        capped = []
+        counts = {}
+        for entry in entries:
+            reward = entry['reward']
+            effect_id = str(reward.get('enemy_effect_id') or '')
+            if len(capped) >= maximum_total:
+                break
+            if counts.get(effect_id, 0) >= int(
+                reward.get('enemy_maximum', 1)
+            ):
+                continue
+            counts[effect_id] = counts.get(effect_id, 0) + 1
+            capped.append(entry)
+        return capped
+
+    def enemy_rewards_for_check(self, code, check_id):
+        """Return standalone enemy bonuses assigned beside one normal check."""
+        if not self.state or self.archipelago_run_active():
+            return []
+        enemy_settings = normalize_enemy_scaling_settings(
+            self.state.get('reward_settings', {}).get('enemy_scaling')
+        )
+        rewards = []
+        for planned in self.state.get('enemy_reward_plan', ()):
+            if not isinstance(planned, dict):
+                continue
+            if (
+                str(planned.get('mission') or '') != str(code)
+                or str(planned.get('check_id') or '') != str(check_id)
+            ):
+                continue
+            reward = canonical_reward(planned.get('reward', {}))
+            reward = configured_enemy_reward(reward, enemy_settings)
+            if reward and reward.get('enemy_reward'):
+                rewards.append(reward)
+        return rewards
 
     def active_enemy_scaling_rewards(self):
         return [entry['reward'] for entry in self.active_enemy_scaling_entries()]
@@ -416,7 +342,15 @@ class EnemyScalingController:
         ))
 
     def enemy_buff_catalogue_entries(self):
-        """Show a bonus card only after a generated map applied it."""
+        """Show only enemy bonuses actually received by this player."""
+        if not self.state:
+            return []
+        earned = {}
+        for entry in self.active_enemy_scaling_entries():
+            reward = entry.get('reward') if isinstance(entry, dict) else None
+            effect_id = str((reward or {}).get('enemy_effect_id') or '')
+            if effect_id in ENEMY_BUFF_BY_ID and isinstance(reward, dict):
+                earned.setdefault(effect_id, []).append(entry)
         applications = {}
         for mission, records in (
             (self.state or {}).get('enemy_reward_applications', {}).items()
@@ -456,54 +390,55 @@ class EnemyScalingController:
         for definition in ENEMY_BUFF_DEFINITIONS:
             effect_id = definition['id']
             receipts = applications.get(effect_id, ())
-            if not receipts:
+            earned_entries = earned.get(effect_id, ())
+            if not earned_entries:
                 continue
-            _index, applied = max(
-                enumerate(receipts),
-                key=lambda pair: (
-                    pair[1]['current_stacks'], pair[0]
-                ),
+            reward = earned_entries[0]['reward']
+            maximum = max(1, int(reward.get(
+                'enemy_maximum', definition.get('maximum_stacks', 1)
+            )))
+            earned_count = min(maximum, len(earned_entries))
+            applied = None
+            applied_count = 0
+            if receipts:
+                _index, applied = max(
+                    enumerate(receipts),
+                    key=lambda pair: (
+                        pair[1]['current_stacks'], pair[0]
+                    ),
+                )
+                applied_count = applied['current_stacks']
+
+            status = (
+                'applied'
+                if applied is not None and applied_count >= earned_count
+                else 'earned'
             )
-            adjective = (
-                'stronger'
-                if definition.get('effect') == 'armor'
-                else 'faster'
-            )
-            headline = (
-                f'Enemy {definition["category"]} {definition["type"]} '
-                '— Applied'
-            )
-            per_stack = f'{applied["per_stack_value"]:g}%'
-            engine_value = f'{applied["final_engine_value"]:.3f}'.rstrip(
-                '0'
-            ).rstrip('.')
-            tooltip = '\n'.join((
-                headline,
-                '—',
-                'Current effects:',
-                (
-                    f'• {definition["type"]} '
-                    f'{applied["displayed_percentage"]}% {adjective} '
-                    f'(Stacked {applied["current_stacks"]} times; maximum '
-                    f'{applied["maximum_stacks"]})'
-                ),
-                f'• Configured per stack: {per_stack}',
-                (
-                    '• Confirmed engine value: '
-                    f'{applied.get("engine_field", "multiplier")}='
-                    f'{engine_value}'
-                ),
-            ))
+            if definition.get('effect') == 'power':
+                power_name = definition['type']
+                if power_name in {'Support Power', 'Aid Power'}:
+                    power_name = str(definition['name']).removeprefix('AI ')
+                entries.append({
+                    'id': effect_id,
+                    'label': (
+                        f'{definition["category"]}\n{power_name}\n'
+                        'Acquired'
+                    ),
+                    'status': status,
+                })
+                continue
+
+            effect = enemy_effect_text(reward, earned_count)
+            category_prefix = f'{definition["category"]} '
+            if effect.startswith(category_prefix):
+                effect = effect[len(category_prefix):]
             entries.append({
                 'id': effect_id,
                 'label': (
-                    f'{definition["category"]}\n{definition["type"]}\n'
-                    f'{applied["displayed_percentage"]}% {adjective}\n'
-                    f'Stack {applied["current_stacks"]}/'
-                    f'{applied["maximum_stacks"]}'
+                    f'{definition["category"]}\n{effect} '
+                    f'({earned_count}/{maximum})'
                 ),
-                'status': 'applied',
-                'tooltip': tooltip,
+                'status': status,
             })
         return entries
 
@@ -515,24 +450,15 @@ class EnemyScalingController:
             child.destroy()
         field = '#20242b' if self.dark_mode_var.get() else '#ffffff'
         foreground = '#ff7b72' if self.dark_mode_var.get() else '#b00020'
-        outlines = {
-            'applied': '#4f86c6',
-            'earned': '#ff7b72',
-            'planned': '#858b95',
-            'enabled': '#40d36d',
-            'disabled': '#4a4a4a',
-        }
-        tooltips = []
         self.enemy_buff_cards = []
-        for index, entry in enumerate(self.enemy_buff_catalogue_entries()):
+        for entry in self.enemy_buff_catalogue_entries():
             card = tk.Frame(
                 frame,
                 borderwidth=0,
                 highlightthickness=2,
-                highlightbackground=outlines[entry['status']],
-                highlightcolor=outlines[entry['status']],
+                highlightbackground=foreground,
+                highlightcolor=foreground,
                 background=field,
-                cursor='hand2',
             )
             label = tk.Label(
                 card,
@@ -544,13 +470,19 @@ class EnemyScalingController:
                 anchor='center',
                 padx=8,
                 pady=10,
-                cursor='hand2',
             )
             label.pack(fill='both', expand=True)
-            tooltips.append(WidgetTooltip(card, entry['tooltip']))
-            tooltips.append(WidgetTooltip(label, entry['tooltip']))
+            canvas = getattr(self, 'enemy_buffs_canvas', None)
+            if canvas is not None:
+                for widget in (card, label):
+                    widget.bind(
+                        '<MouseWheel>',
+                        lambda event, target=canvas: (
+                            self.on_unlock_mousewheel(event, target)
+                        ),
+                        add='+',
+                    )
             self.enemy_buff_cards.append((card, label))
-        self.enemy_buff_card_tooltips = tooltips
         self.after_idle(self.layout_enemy_buff_cards)
 
     def layout_enemy_buff_cards(self, event=None):

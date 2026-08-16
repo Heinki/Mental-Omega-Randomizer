@@ -7,11 +7,15 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 
-from Archipelago.catalogue_contract import runtime_catalogue_checksum
+from Archipelago.catalogue_contract import (
+    build_catalogue_projection,
+    runtime_catalogue_checksum,
+)
 from randomizer.core.version import APP_VERSION
 from randomizer.progression.grid import grid_opening_mission_codes
-from randomizer.rewards.catalogue import REWARD_BY_NAME
+from randomizer.rewards.catalogue import REWARD_BY_NAME, REWARD_POOL
 from randomizer.rewards.display import canonical_reward
+from randomizer.rewards.enemy_scaling import plan_enemy_trap_rewards
 from randomizer.rewards.planning import is_max_rewards_achieved_reward
 
 
@@ -193,7 +197,9 @@ def _server_state_snapshot(state):
     # delivery after room creation, so shipping it back in Connected slot data
     # wastes several megabytes and can make hosted rooms time out during auth.
     snapshot["reward_queue"] = []
-    snapshot["enemy_progress_earned"] = []
+    snapshot.pop("enemy_progress_plan", None)
+    snapshot.pop("enemy_progress_earned", None)
+    snapshot.pop("enemy_progress_requested", None)
     snapshot["enemy_reward_applications"] = {}
     for checks in snapshot.get("mission_checks", {}).values():
         if not isinstance(checks, list):
@@ -268,6 +274,50 @@ def _local_opening_placements(state, mission_order, locations, rewards_by_code):
     return placements
 
 
+def _append_enemy_trap_inventory(state, mission_order, locations, item_pool):
+    """Add deterministic Trap items plus matching extra AP locations."""
+    settings = state.get("reward_settings", {}).get("enemy_scaling")
+    traps = plan_enemy_trap_rewards(
+        state.get("seed", ""), settings, REWARD_POOL
+    )
+    if not traps:
+        return []
+    maximums = {
+        (mission["code"], check["id"]): int(check["maximum_slots"])
+        for mission in build_catalogue_projection()["missions"]
+        if mission["code"] in mission_order
+        for check in mission["checks"]
+    }
+    available = [
+        [code, check_id, maximum]
+        for code in mission_order
+        for (mission_code, check_id), maximum in maximums.items()
+        if mission_code == code
+        if int(locations.get(code, {}).get(check_id, 0)) < maximum
+    ]
+    added = []
+    cursor = 0
+    for reward in traps:
+        while available:
+            slot = available[cursor % len(available)]
+            code, check_id, maximum = slot
+            current = int(locations.setdefault(code, {}).get(check_id, 0))
+            if current >= maximum:
+                available.pop(cursor % len(available))
+                if available:
+                    cursor %= len(available)
+                continue
+            locations[code][check_id] = current + 1
+            name = reward["name"]
+            item_pool[name] += 1
+            added.append(name)
+            cursor = (cursor + 1) % len(available)
+            break
+        if not available:
+            break
+    return added
+
+
 def build_run_manifest(state, launcher_config=None):
     """Freeze one generated run without reimplementing its generation logic."""
     if not isinstance(state, dict):
@@ -301,6 +351,10 @@ def build_run_manifest(state, launcher_config=None):
         locations[code] = location_counts
     if not item_pool:
         raise ValueError("Randomizer run has no real mission rewards.")
+
+    enemy_traps = _append_enemy_trap_inventory(
+        state, mission_order, locations, item_pool
+    )
 
     progression_mode = str(state.get("progression_mode") or "Classic")
     manifest = {
@@ -348,7 +402,7 @@ def build_run_manifest(state, launcher_config=None):
             "starting_unit_ids": deepcopy(state.get("starting_unit_ids")),
             "starting_defense_ids": deepcopy(state.get("starting_defense_ids")),
             "mission_arsenals": deepcopy(state.get("mission_arsenals")),
-            "enemy_progress_plan": deepcopy(state.get("enemy_progress_plan")),
+            "enemy_trap_count": len(enemy_traps),
             "launcher": _launcher_snapshot_for_state(
                 state, launcher_config
             ),

@@ -254,11 +254,17 @@ def run_self_check():
         from randomizer.rewards.enemy_scaling import (
             ENEMY_BUFF_DEFINITIONS,
             ENEMY_BUFF_GROUP_DEFINITIONS,
+            enemy_buff_capacity,
             enemy_effect_values,
             normalize_enemy_scaling_settings,
-            plan_enemy_progress_rewards,
+            plan_enemy_trap_rewards,
         )
-        from randomizer.maps.enemy_scaling import enemy_power_launch_rewards
+        from randomizer.maps.enemy_scaling import (
+            enemy_existing_power_grant_plan,
+            enemy_existing_power_rule_overrides,
+            enemy_power_launch_rewards,
+        )
+        from randomizer.maps.base import randomizer_clone_type_id
         from randomizer.config.player import DEFAULT_CONFIG
         from randomizer.rewards.arsenal import (
             ARSENAL_MODE,
@@ -287,21 +293,14 @@ def run_self_check():
             and mission_reward_multiplier('FCAPSULE') == 2
         )
         enemy_settings = normalize_enemy_scaling_settings({
-            'reward_enabled': True,
-            'rewards_per_completed_objective': 2,
-            'rewards_per_completed_mission': 1,
+            'stack_model_version': 4,
+            'maximum_total_buffs': 7,
         })
-        enemy_events = (
-            {'basis': 'objectives', 'event_index': 1},
-            {'basis': 'objectives', 'event_index': 2},
-            {'basis': 'objectives', 'event_index': 3},
-            {'basis': 'missions', 'event_index': 1},
+        enemy_traps = plan_enemy_trap_rewards(
+            'MO-SELF-CHECK', enemy_settings, REWARD_POOL
         )
-        enemy_plan = plan_enemy_progress_rewards(
-            'MO-SELF-CHECK', enemy_settings, REWARD_POOL, enemy_events
-        )
-        enemy_plan_repeat = plan_enemy_progress_rewards(
-            'MO-SELF-CHECK', enemy_settings, REWARD_POOL, enemy_events
+        enemy_traps_repeat = plan_enemy_trap_rewards(
+            'MO-SELF-CHECK', enemy_settings, REWARD_POOL
         )
         armor_values = [
             enemy_effect_values(
@@ -324,74 +323,156 @@ def run_self_check():
             for stacks in range(1, 6)
         ]
         armor_only_settings = normalize_enemy_scaling_settings({
-            'stack_model_version': 2,
-            'rewards_per_completed_objective': 6,
+            'stack_model_version': 4,
+            'maximum_total_buffs': 999,
             'allowed_buff_ids': ['infantry_armor'],
             'caps': {'infantry_armor': 5},
         })
-        armor_only_plan = plan_enemy_progress_rewards(
+        armor_only_traps = plan_enemy_trap_rewards(
             'MO-AI-CAP-CHECK',
             armor_only_settings,
             REWARD_POOL,
-            ({'basis': 'objectives', 'event_index': 1},),
-        )
-        armor_reward = next(
-            reward for reward in REWARD_POOL
-            if reward.get('enemy_effect_id') == 'infantry_armor'
-        )
-        capped_reroll_settings = normalize_enemy_scaling_settings({
-            'stack_model_version': 2,
-            'rewards_per_completed_objective': 1,
-            'allowed_buff_ids': [
-                'infantry_armor', 'infantry_production',
-            ],
-            'caps': {
-                'infantry_armor': 5,
-                'infantry_production': 5,
-            },
-        })
-        capped_reroll_plan = plan_enemy_progress_rewards(
-            'MO-AI-REROLL-CHECK',
-            capped_reroll_settings,
-            REWARD_POOL,
-            ({'basis': 'objectives', 'event_index': 1},),
-            [armor_reward] * 5,
         )
         enemy_power_rewards = enemy_power_launch_rewards(
             reward for reward in REWARD_POOL
             if reward.get('enemy_reward')
             and reward.get('enemy_effect') == 'power'
         )
+        enemy_unit_rewards = [
+            reward for reward in REWARD_POOL
+            if reward.get('enemy_reward')
+            and reward.get('enemy_effect') == 'unit'
+        ]
+        native_enemy_power_rewards = [
+            reward for reward in REWARD_POOL
+            if reward.get('enemy_reward')
+            and reward.get('enemy_effect') == 'power'
+        ]
+        native_enemy_power_ids = (
+            'LightningStormSpecial',
+            'NukeSpecial',
+            'PsychicDominatorSpecial',
+            'GreatTempestSpecial',
+        )
+        (
+            existing_enemy_power_actions,
+            existing_enemy_power_names,
+            missing_existing_enemy_powers,
+        ) = enemy_existing_power_grant_plan(
+            ['[SuperWeaponTypes]'],
+            native_enemy_power_rewards,
+            native_enemy_power_ids,
+        )
+        existing_enemy_power_rules = enemy_existing_power_rule_overrides(
+            native_enemy_power_rewards,
+            existing_enemy_power_names,
+        )
+        capped_total_settings = normalize_enemy_scaling_settings({
+            'stack_model_version': 4,
+            'maximum_total_buffs': 3,
+        })
+        capped_total_traps = plan_enemy_trap_rewards(
+            'MO-AI-TOTAL-CAP-CHECK',
+            capped_total_settings,
+            REWARD_POOL,
+        )
+        enemy_paratroopers = [
+            definition for definition in ENEMY_BUFF_DEFINITIONS
+            if definition.get('id') == 'ai_paratroopers'
+        ]
         enemy_scaling_contract_valid = bool(
-            len(ENEMY_BUFF_DEFINITIONS) == 8
+            len(ENEMY_BUFF_DEFINITIONS) == 48
             and tuple(
                 group['label'] for group in ENEMY_BUFF_GROUP_DEFINITIONS
             ) == (
-                'AI stat bonuses',
+                'AI unit stat bonuses',
+                'AI weapon bonuses',
                 'AI production-speed bonuses',
+                'AI support powers',
+                'AI superweapons',
             )
-            and len(enemy_plan) == 7
-            and enemy_plan == enemy_plan_repeat
-            and all(
-                definition['maximum_stacks'] == 5
-                for definition in ENEMY_BUFF_DEFINITIONS
-            )
+            and len(enemy_traps) == 7
+            and enemy_traps == enemy_traps_repeat
+            and all(definition['maximum_stacks'] in {1, 5}
+                    for definition in ENEMY_BUFF_DEFINITIONS)
             and [value['displayed_percentage'] for value in armor_values]
             == [11, 22, 33, 44, 55]
             and [
                 value['displayed_percentage']
                 for value in production_values
             ] == [10, 20, 30, 40, 50]
-            and len(armor_only_plan) == 5
-            and len(capped_reroll_plan) == 1
-            and capped_reroll_plan[0]['reward'].get('enemy_effect_id')
-            == 'infantry_production'
+            and enemy_buff_capacity(armor_only_settings) == 5
+            and armor_only_settings['maximum_total_buffs'] == 5
+            and len(armor_only_traps) == 5
+            and len(capped_total_traps) == 3
+            and len(enemy_paratroopers) == 1
+            and enemy_paratroopers[0].get('use_existing_power') is False
+            and enemy_paratroopers[0].get('superweapon') == 'ParaDropSpecial'
+            and len(enemy_unit_rewards) == 33
+            and all(
+                reward.get('tier') in {1, 2, 3}
+                and reward.get('unit_buff_type')
+                and not reward.get('superweapon')
+                for reward in enemy_unit_rewards
+            )
+            and existing_enemy_power_actions == [
+                ['34', '0', str(index), '0', '0', '0', '0', 'A']
+                for index in range(4)
+            ]
+            and existing_enemy_power_names == list(native_enemy_power_ids)
+            and not missing_existing_enemy_powers
+            and all(
+                existing_enemy_power_rules[power_id]['SW.AllowAI'] == 'yes'
+                and existing_enemy_power_rules[power_id]['SW.AITargeting']
+                not in {'', 'None'}
+                for power_id in native_enemy_power_ids
+            )
             and all(
                 reward.get('enemy_reward')
-                for entry in enemy_plan
-                for reward in (entry.get('reward', {}),)
+                for reward in enemy_traps
             )
-            and not enemy_power_rewards
+            and {
+                reward.get('enemy_effect_id')
+                for reward in enemy_power_rewards
+            } == {
+                'ai_paratroopers',
+                'ai_bloodhounds',
+                'ai_moon_reinforcements',
+            }
+            and all(
+                reward.get('kind') == 'superweapon'
+                and reward.get('enemy_reward') is False
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.AllowAI'
+                ) == 'yes'
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.AllowPlayer'
+                ) == 'no'
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.UseAITargeting'
+                ) == 'yes'
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.InitialReady'
+                ) == 'yes'
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.AITargeting'
+                ) == 'ParaDrop'
+                and reward.get('superweapon_rules', {}).get(
+                    'SW.AITargeting.Constraints'
+                ) == 'none'
+                and reward.get('enemy_faction_families') == (
+                    'allies', 'soviets', 'epsilon', 'foehn'
+                )
+                and reward.get('superweapon_recharge_multiplier') == 2
+                and len(reward.get('superweapon_clone', '')) <= 21
+                for reward in enemy_power_rewards
+            )
+            and len(randomizer_clone_type_id(
+                'AmericanParaDropSpecial'
+            )) <= 21
+            and len(randomizer_clone_type_id(
+                'AnExtremelyLongGeneratedSupportPowerSpecial'
+            )) <= 21
         )
         arsenal_settings = DEFAULT_CONFIG['generation']
         arsenal_codes = ('AREDDAWN', 'AEAGLESFLY')

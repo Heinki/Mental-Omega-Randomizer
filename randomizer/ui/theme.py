@@ -200,7 +200,7 @@ def apply_color_mode(self):
         self._enemy_buffs_view_dirty = True
         if self.enemy_buffs_view_visible():
             self.after_idle(self.refresh_enemy_buffs_view)
-    for canvas_name in ('settings_canvas', 'grid_canvas'):
+    for canvas_name in ('settings_canvas', 'grid_canvas', 'enemy_buffs_canvas'):
         canvas = getattr(self, canvas_name, None)
         if canvas is not None:
             canvas.configure(background=palette['canvas'])

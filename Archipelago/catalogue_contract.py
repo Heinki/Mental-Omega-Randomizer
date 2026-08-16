@@ -23,13 +23,22 @@ PROTOTYPE_ITEM_IDS = {
     "GI Access": ITEM_ID_BASE,
     "Soviet Conscript Access": ITEM_ID_BASE + 1,
 }
+MAXIMUM_ENEMY_TRAP_ITEMS = sum(
+    int(reward.get("enemy_maximum", 1))
+    for reward in REWARD_POOL
+    if reward.get("enemy_reward")
+)
 
-# Published catalogue immediately before the additive Starting Credits item.
+# Published catalogues before additive Starting Credits, enemy Trap items, and
+# native enemy superweapon Traps.
 # Existing IDs and reward semantics are unchanged, and server slot data carries
-# its exact used-item map, location map, and signed state snapshot. Keeping this
-# one checksum compatible lets already-hosted rooms reconnect safely.
+# its exact used-item map, location map, and signed state snapshot. Keeping both
+# checksums compatible lets already-hosted rooms reconnect safely.
 BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
     "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
+    "f213725f91de177af64eec5a875a08a403c4bc5be0e4f3f7e510db89ba7510f8",
+    "a7ffd4cde8ffe5f7f48eed95c1c7af37d61266807738a6f077f23eba41b58e44",
+    "2e89563a5b69cd9c7b075f9533a93488d03d35ea218ecc74e602a62a0c665232",
 })
 
 
@@ -89,7 +98,7 @@ def build_catalogue_projection():
         check_count = len(checks)
         checks[-1]["maximum_slots"] = MAX_REWARDS_PER_CHECK * (
             1 + check_count * (multiplier - 1)
-        )
+        ) + MAXIMUM_ENEMY_TRAP_ITEMS
         missions.append({
             "code": mission["code"],
             "title": mission["title"],
@@ -101,6 +110,7 @@ def build_catalogue_projection():
     return {
         "schema_version": SNAPSHOT_SCHEMA_VERSION,
         "maximum_rewards_per_check": MAX_REWARDS_PER_CHECK,
+        "maximum_enemy_trap_items": MAXIMUM_ENEMY_TRAP_ITEMS,
         "items": items,
         "missions": missions,
     }

@@ -19,7 +19,19 @@ POWER_BUFF_CATALOGUE_VERSION = 1
 POWER_BUFF_TYPES_INTRODUCED = {
     1: ('vision',),
 }
-ENEMY_STACK_MODEL_VERSION = 2
+ENEMY_STACK_MODEL_VERSION = 6
+ENEMY_POWER_IDS_INTRODUCED = {
+    5: (
+        'ai_lightning_storm',
+        'ai_nuclear_missile',
+        'ai_psychic_dominator',
+        'ai_great_tempest',
+    ),
+    6: (
+        'ai_bloodhounds',
+        'ai_moon_reinforcements',
+    ),
+}
 
 
 def deep_copy(value):
@@ -118,11 +130,23 @@ def migrate_loaded_config(loaded):
             enemy_version = 1
         if enemy_version < ENEMY_STACK_MODEL_VERSION:
             caps = enemy_scaling.get('caps')
-            if isinstance(caps, dict):
+            if enemy_version < 2 and isinstance(caps, dict):
                 for effect_id, cap in tuple(caps.items()):
                     if cap == 3:
                         caps[effect_id] = 5
                         changed = True
+            allowed = enemy_scaling.get('allowed_buff_ids')
+            if isinstance(allowed, list) and '*' not in allowed:
+                for introduced_version in range(
+                    enemy_version + 1,
+                    ENEMY_STACK_MODEL_VERSION + 1,
+                ):
+                    for effect_id in ENEMY_POWER_IDS_INTRODUCED.get(
+                        introduced_version, ()
+                    ):
+                        if effect_id not in allowed:
+                            allowed.append(effect_id)
+                            changed = True
             enemy_scaling['stack_model_version'] = (
                 ENEMY_STACK_MODEL_VERSION
             )

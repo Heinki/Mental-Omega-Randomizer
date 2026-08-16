@@ -380,6 +380,8 @@ class UnlockViewController:
             )
             if not isinstance(reward, dict):
                 return None
+            if reward.get('enemy_reward'):
+                return 'enemy_reward'
             if reward.get('kind') == 'superweapon':
                 return 'detail_reward_superweapon'
             if reward.get('kind') == 'buff':
@@ -485,6 +487,7 @@ class UnlockViewController:
                 else:
                     lines.append('Retry assistance: 0 stacks for this mission')
             lines.append('')
+
             for check in self.mission_checks(code):
                 status_label = (
                     'Complete'
@@ -494,6 +497,13 @@ class UnlockViewController:
                     else 'Pending'
                 )
                 rewards = check_rewards(check)
+                enemy_rewards = (
+                    []
+                    if archipelago_active
+                    else self.enemy_rewards_for_check(
+                        code, str(check.get('id', ''))
+                    )
+                )
                 if archipelago_active:
                     lines.append(
                         f'{status_label}: {check.get("name", "Check")}'
@@ -537,8 +547,14 @@ class UnlockViewController:
                             location = (
                                 f'Location #{int(record.get("location", 0))}'
                             )
+                        item_reward = REWARD_BY_NAME.get(item_name, {})
+                        item_prefix = (
+                            '   • Enemy Trap: '
+                            if item_reward.get('enemy_reward')
+                            else '   • '
+                        )
                         append_styled_line((
-                            ('   • ', None),
+                            (item_prefix, None),
                             (item_name, reward_detail_tag(item_name)),
                             (' -> ', None),
                             (recipient, player_detail_tag(record.get('player'))),
@@ -557,7 +573,9 @@ class UnlockViewController:
                         )
                     continue
                 lines.append(
-                    f'{status_label}: {check.get("name", "Check")} — {len(rewards)} reward(s)'
+                    f'{status_label}: {check.get("name", "Check")} — '
+                    f'{len(rewards)} reward(s), '
+                    f'{len(enemy_rewards)} additional enemy bonus(es)'
                 )
                 bonus_count = max(
                     0,
@@ -579,6 +597,27 @@ class UnlockViewController:
                         ))
                 else:
                     lines.append('   • No reward assigned')
+                for reward in enemy_rewards:
+                    reward_name = self.mission_check_enemy_reward_name(
+                        check, reward
+                    )
+                    append_styled_line((
+                        ('   • Enemy bonus: ', None),
+                        (reward_name, 'enemy_reward'),
+                    ))
+            enemy_provenance = (
+                self.archipelago_enemy_reward_provenance()
+                if archipelago_active else ()
+            )
+            if enemy_provenance:
+                lines.append('')
+                lines.append('Received Enemy Trap locations:')
+                for reward, source in enemy_provenance:
+                    append_styled_line((
+                        ('   • ', None),
+                        (reward.get('name', 'Enemy Trap'), 'enemy_reward'),
+                    ))
+                    lines.append(f'     {source}')
             lines.append('')
             lines.append('Earned reward details are grouped in the Unlocks tab.')
         elif not lines:

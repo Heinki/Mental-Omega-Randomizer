@@ -67,12 +67,14 @@ that overlap only with full reward-plan and 97-map parity coverage.
   damage, duration, delivered-payload, and reconnaissance-plane vision buff
   capabilities and stack tuning.
   Supported effects have no Randomizer-imposed stack ceiling.
-  - `rewards/enemy_scaling.json`: reviewed hostile-AI CountryType armor and
-    production-speed rewards; per-stack percentages, five-stack caps, positive
-    engine clamps, and default objective/mission reward rates;
-    allowed effect IDs; and hard per-effect caps. Player settings can narrow but
-    never exceed these static maxima. Unsupported unit unlocks and powers have
-    no UI/config option.
+  - `rewards/enemy_scaling.json`: reviewed hostile-AI CountryType armor,
+    T1/T2/T3 unit and weapon bonuses, production-speed rewards, and support
+    powers; per-stack tuning, positive engine clamps, allowed effect IDs, and
+    hard per-effect caps. The base Randomizer assigns them beside normal
+    reward slots without replacing player rewards. Archipelago exports the
+    selected inventory as extra Trap items with matching extra locations.
+    Player settings can narrow but never exceed the enabled bonuses' real
+    combined capacity.
 - `rewards/catalogue.json`: unit access items, faction access rules, buff type
   definitions, superweapon templates/rewards, support and aid-power definitions
   and mappings, access aliases, and retired reward compatibility entries.

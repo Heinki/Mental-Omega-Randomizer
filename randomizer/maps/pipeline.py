@@ -30,6 +30,9 @@ from randomizer.maps.rules import (
     active_hostile_enemy_houses,
     discover_hostile_ai_houses,
     enemy_country_buff_rules,
+    enemy_existing_power_grant_plan,
+    enemy_existing_power_rule_overrides,
+    enemy_native_unit_buff_rules,
     enemy_power_launch_rewards,
     helper_ai_autobuild_plan,
     helper_ai_autobuild_rules,
@@ -64,7 +67,7 @@ from randomizer.rewards.rules import (
     expand_equivalent_role_buffs,
     unlocked_reward_tech_ids,
 )
-from randomizer.rewards.enemy_scaling import enemy_effect_text
+from randomizer.rewards.enemy_scaling import enemy_effect_text, enemy_effect_values
 from randomizer.maps.progress_hooks import (
     inject_check_markers,
     pending_check_hook_plan,
@@ -490,7 +493,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         (),
     )
     discovered_enemies, discovered_enemy_skips = discover_hostile_ai_houses(
-        lines
+        lines, excluded_houses=native_helpers
     )
     configured_enemies = unique_in_order(
         list(configured_enemies) + list(discovered_enemies)
@@ -1318,11 +1321,57 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             )
 
     enemy_power_rewards = enemy_power_launch_rewards(enemy_scaling_rewards)
-    enemy_superweapon_actions = []
+    (
+        enemy_superweapon_actions,
+        enemy_power_names,
+        missing_existing_enemy_powers,
+    ) = enemy_existing_power_grant_plan(
+        lines,
+        enemy_scaling_rewards,
+        installed_superweapon_types,
+    )
+    enemy_rewards_by_power = {
+        str(reward.get('superweapon') or '').strip().lower(): reward
+        for reward in enemy_scaling_rewards
+        if reward.get('enemy_effect') == 'power'
+        and str(reward.get('superweapon') or '').strip()
+    }
+    enemy_power_grants = [
+        {
+            'action': action,
+            'name': name,
+            'reward': enemy_rewards_by_power.get(str(name).lower(), {}),
+        }
+        for action, name in zip(
+            enemy_superweapon_actions, enemy_power_names, strict=True
+        )
+    ]
+    existing_enemy_power_rules = enemy_existing_power_rule_overrides(
+        enemy_scaling_rewards,
+        enemy_power_names,
+    )
+    if existing_enemy_power_rules:
+        merge_ini_section_values(lines, existing_enemy_power_rules)
     enemy_startup_power_buildings = []
     enemy_static_power_buildings = []
-    enemy_power_names = []
-    prepared_enemy_power_effect_ids = []
+    existing_power_ids = {
+        str(power_id).upper() for power_id in enemy_power_names
+    }
+    prepared_enemy_power_effect_ids = [
+        str(reward.get('enemy_effect_id') or '')
+        for reward in enemy_scaling_rewards
+        if reward.get('enemy_use_existing_power')
+        and str(reward.get('superweapon') or '').upper()
+        in existing_power_ids
+        and str(reward.get('enemy_effect_id') or '')
+    ]
+    if missing_existing_enemy_powers:
+        self.append_log(
+            'Skipped default enemy AI power source(s): '
+            + ', '.join(sorted(set(missing_existing_enemy_powers)))
+            + '.',
+            error=True,
+        )
     if enemy_power_rewards and scaled_enemy_houses:
         enemy_power_countries = unique_in_order(
             records.get(house, {}).get('country')
@@ -1331,8 +1380,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
         (
             enemy_power_rules,
-            enemy_superweapon_actions,
-            enemy_power_names,
+            cloned_enemy_superweapon_actions,
+            cloned_enemy_power_names,
             enemy_startup_power_buildings,
             enemy_static_power_buildings,
             missing_enemy_power_sources,
@@ -1346,6 +1395,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             allow_ai=True,
             force_required_houses=True,
         )
+        enemy_superweapon_actions.extend(cloned_enemy_superweapon_actions)
+        enemy_power_names.extend(cloned_enemy_power_names)
         if missing_enemy_power_sources:
             self.append_log(
                 'Skipped enemy AI power source(s): '
@@ -1357,14 +1408,40 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             str(power_id).upper()
             for power_id in missing_enemy_power_sources
         }
-        prepared_enemy_power_effect_ids = [
+        available_enemy_power_rewards = [
+            reward for reward in enemy_power_rewards
+            if str(reward.get('superweapon') or '').upper()
+            not in missing_enemy_power_ids
+        ]
+        if not (
+            len(available_enemy_power_rewards)
+            == len(cloned_enemy_superweapon_actions)
+            == len(cloned_enemy_power_names)
+        ):
+            raise ValueError(
+                'Enemy AI power clone grants lost source-order alignment.'
+            )
+        enemy_power_grants.extend(
+            {
+                'action': action,
+                'name': name,
+                'reward': reward,
+            }
+            for reward, action, name in zip(
+                available_enemy_power_rewards,
+                cloned_enemy_superweapon_actions,
+                cloned_enemy_power_names,
+                strict=True,
+            )
+        )
+        prepared_enemy_power_effect_ids.extend([
             str(reward.get('enemy_effect_id') or '')
             for reward in enemy_power_rewards
             if str(reward.get('superweapon') or '').upper()
             not in missing_enemy_power_ids
             and str(reward.get('enemy_effect_id') or '')
-        ]
-        for clone_name in enemy_power_names:
+        ])
+        for clone_name in cloned_enemy_power_names:
             values = enemy_power_rules.get(clone_name, {})
             lowered = {
                 str(key).lower(): str(value).lower()
@@ -2377,6 +2454,58 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + ', '.join(sorted(final_runtime_weapon_rules))
                 + '.'
             )
+
+    (
+        enemy_unit_rules,
+        enemy_buffed_unit_ids,
+        skipped_enemy_unit_buffs,
+        enemy_unit_applications,
+    ) = enemy_native_unit_buff_rules(
+        lines,
+        scaled_enemy_houses,
+        enemy_scaling_rewards,
+        installed_rule_sections,
+        native_map_sections,
+    )
+    if enemy_unit_rules:
+        merge_ini_section_values(lines, enemy_unit_rules)
+        self.append_log(
+            'Applied native T1/T2/T3 AI unit buffs to: '
+            + ', '.join(enemy_buffed_unit_ids)
+            + '.'
+        )
+    if skipped_enemy_unit_buffs:
+        self.append_log(
+            'Skipped unsafe native AI unit buffs: '
+            + '; '.join(skipped_enemy_unit_buffs)
+            + '.',
+            error=True,
+        )
+    unit_entries_by_effect = {}
+    for entry in enemy_scaling_entries:
+        effect_id = str(entry['reward'].get('enemy_effect_id') or '')
+        if effect_id:
+            unit_entries_by_effect.setdefault(effect_id, []).append(entry)
+    for application in enemy_unit_applications:
+        effect_entries = unit_entries_by_effect.get(
+            application['effect_id'], ()
+        )
+        if not effect_entries:
+            continue
+        reward = effect_entries[0]['reward']
+        ai_reward_applications.append({
+            'mission': code,
+            'reward_name': reward.get(
+                'name', application['effect_id']
+            ),
+            'source': ' + '.join(unique_in_order(
+                entry['source'] for entry in effect_entries
+            )),
+            'earned_from': '; '.join(unique_in_order(
+                entry['earned_from'] for entry in effect_entries
+            )),
+            **application,
+        })
     native_team_validation_ids = (
         non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS)
     )
@@ -2450,20 +2579,98 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         scaled_enemy_houses,
         enemy_static_power_buildings,
     )
-    enemy_superweapon_trigger = append_superweapon_grant_trigger(
-        lines,
-        scaled_enemy_houses,
-        enemy_superweapon_actions,
-        startup_buildings=enemy_startup_power_buildings,
-    )
+    # TriggerType owners use the HouseType's Country token (for example
+    # ``USSR``), not the map section label (``USSR House``). Structures and
+    # application receipts still require the exact section label above/below.
+    # Feeding section labels to [Triggers] makes Ares report one fatal error
+    # per hostile House before the scenario can start.
+    enemy_power_grants_by_house = {}
+    enemy_power_recipients_by_effect = {}
+    for grant in enemy_power_grants:
+        reward = grant.get('reward') or {}
+        allowed_families = {
+            str(family).strip().lower()
+            for family in reward.get('enemy_faction_families', ())
+            if str(family).strip()
+        }
+        recipient = next((
+            house for house in scaled_enemy_houses
+            if country_family(records.get(house, {})) in allowed_families
+        ), '')
+        if not recipient:
+            continue
+        enemy_power_grants_by_house.setdefault(recipient, []).append(grant)
+        effect_id = str(reward.get('enemy_effect_id') or '')
+        if effect_id:
+            enemy_power_recipients_by_effect.setdefault(
+                effect_id, []
+            ).append(recipient)
+
+    enemy_superweapon_trigger = ''
+    for house, grants in enemy_power_grants_by_house.items():
+        trigger_owner = (
+            str(records.get(house, {}).get('country') or '').strip()
+            or str(house).removesuffix(' House')
+        )
+        trigger_id = append_superweapon_grant_trigger(
+            lines,
+            [trigger_owner],
+            [grant['action'] for grant in grants],
+            startup_buildings=enemy_startup_power_buildings,
+        )
+        enemy_superweapon_trigger = enemy_superweapon_trigger or trigger_id
     if enemy_superweapon_trigger:
+        grant_summary = [
+            f'{grant["name"]} -> {house}'
+            for house, grants in enemy_power_grants_by_house.items()
+            for grant in grants
+        ]
         self.append_log(
-            'Prepared AI-only enemy powers with SW.AllowAI=yes: '
-            + ', '.join(enemy_power_names)
-            + '. Grant houses: '
-            + ', '.join(scaled_enemy_houses)
+            'Prepared faction-matched hostile AI power grants: '
+            + ', '.join(grant_summary)
             + '.'
         )
+        power_entries_by_effect = {}
+        for entry in enemy_scaling_entries:
+            effect_id = str(entry['reward'].get('enemy_effect_id') or '')
+            if effect_id in prepared_enemy_power_effect_ids:
+                power_entries_by_effect.setdefault(effect_id, []).append(entry)
+        for effect_id in unique_in_order(prepared_enemy_power_effect_ids):
+            effect_entries = power_entries_by_effect.get(effect_id, ())
+            if not effect_entries:
+                continue
+            reward = effect_entries[0]['reward']
+            count = min(
+                len(effect_entries), int(reward.get('enemy_maximum', 1))
+            )
+            values = enemy_effect_values(reward, count)
+            for house in unique_in_order(
+                enemy_power_recipients_by_effect.get(effect_id, ())
+            ):
+                ai_reward_applications.append({
+                    'mission': code,
+                    'reward_name': reward.get('name', effect_id),
+                    'effect_id': effect_id,
+                    'source': ' + '.join(unique_in_order(
+                        entry['source'] for entry in effect_entries
+                    )),
+                    'earned_from': '; '.join(unique_in_order(
+                        entry['earned_from'] for entry in effect_entries
+                    )),
+                    'house': house,
+                    'country': str(
+                        records.get(house, {}).get('country') or ''
+                    ),
+                    'category': reward.get(
+                        'enemy_category', 'Support Powers'
+                    ),
+                    'target': str(reward.get('superweapon') or effect_id),
+                    'effect': enemy_effect_text(reward, count),
+                    **values,
+                    'engine_field': 'SuperWeaponTypes',
+                    'base_engine_value': 1.0,
+                    'final_engine_value': 1.0,
+                })
     if enemy_static_power_buildings and not enemy_static_providers:
         self.append_log(
             'Could not place enemy AI power providers.',
@@ -2532,6 +2739,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         not patch_plan
         and not rule_sections
         and not enemy_country_rules
+        and not enemy_unit_rules
         and not superweapon_trigger
         and not enemy_superweapon_trigger
     ):

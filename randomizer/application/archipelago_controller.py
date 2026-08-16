@@ -1240,6 +1240,22 @@ class ArchipelagoController(ArchipelagoYamlController):
             for record in records
         )
 
+    def archipelago_enemy_reward_provenance(self):
+        """Return every received enemy Trap with its exact AP source."""
+        records = self._archipelago_reward_records()
+        if records is None:
+            return ()
+        result = []
+        for record in records:
+            reward = canonical_reward({'name': record['reward_name']})
+            if not reward.get('enemy_reward'):
+                continue
+            result.append((
+                reward,
+                self._archipelago_received_source_label(record),
+            ))
+        return tuple(result)
+
     @staticmethod
     def _archipelago_received_source_label(record):
         player = str(record.get('from_player') or '').strip()

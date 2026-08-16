@@ -62,10 +62,7 @@ run in a separate protected manifest.
 | Starting Rewards | `generation.starting_reward_count` | `0` | Rolls this many normal rewards during seed creation and grants them before the first mission. Starting rewards immediately appear as earned in Unlocks and seed every later reward draw, preventing the same unlock or TechnoType access from being granted again. Invalid or capped choices are rerolled; exhaustion produces one **Max rewards achieved.** marker. Range `0`-`9999`. |
 | Starting Rewards allowed types | `generation.starting_reward_types` | All four unlock families | Chooses among unit/building unlocks, offensive superweapons, secondary powers, and support/aid powers. Buffs remain normal progression rewards. Existing Reward Pool toggles, Advanced exclusions, reward weights, access prerequisites, and power prerequisites remain authoritative. |
 | Advanced → Starting Unlocks | `generation.starting_unlock_rewards` | Empty list | Selects exact permanent unit, building, superweapon, support-power, or other content unlocks already owned before the first mission. Buffs and every repeatable/stat upgrade remain progression-only and never appear in this tab. Cached cameos appear beside every entry, with a generic placeholder when art is unavailable. Portable canonical unlock names are frozen into the generated seed, appear as earned immediately, bypass ordinary pool/faction filtering for launch, and are excluded from both random Starting Rewards and all later rewards. Duplicate TechnoType access is omitted. Use **Configure Starting Unlocks...** beside Starting Rewards to open this page directly. |
-| AI bonus stacks per completed objective | `generation.enemy_scaling.rewards_per_completed_objective` | `0` | Attempts to activate this many deterministic AI bonus stacks after every completed non-victory objective. Range `0`-`10`. All AI sources share per-effect caps, so later objectives grant fewer or zero after every enabled bonus is capped. |
-| AI bonus stacks per completed mission | `generation.enemy_scaling.rewards_per_completed_mission` | `0` | Attempts to activate this many additional deterministic AI bonus stacks after mission victory. Range `0`-`10`; objective and mission values stack until shared caps are exhausted. |
-| Include AI rewards in normal reward pool | `generation.enemy_scaling.reward_enabled` | `false` | Adds real AI-only entries to normal reward rolls. They occupy reward slots, appear as red `AI Reward:` descriptions, and target only confirmed hostile AI houses discovered from mission ownership and military use. |
-| AI reward weight | `generation.reward_weights.main.enemy_buffs` | `100` | Controls normal AI-reward selection frequency. It does not change effect strength or completion-based draws. |
+| Maximum total AI bonus stacks `[0-N]` | `generation.enemy_scaling.maximum_total_buffs` | `40` | Caps the deterministic enemy bonuses assigned beside normal Base Randomizer reward slots; they never replace or alter player rewards. Archipelago exports the same configured inventory as extra Trap items and matching locations. `N` follows enabled per-bonus caps. Enemy Rewards shows only acquired bonuses. |
 | Include defensive building rewards | `generation.include_defensive_buildings` | `true` | Includes faction defenses in both access rewards and defense-targeted buffs. It does not randomize power plants, refineries, production structures, walls, or gates. |
 | Include special economy building rewards | `generation.include_special_buildings` | `true` | Includes Ore Purifier, Industrial Plant, Cloning Vats, and Reprocessor access. When the limit buff is enabled, each can also receive repeatable +1 structure-capacity rewards. |
 | Include campaign/map-only Special rewards | `generation.include_special_rewards` | `true` | Includes every unit, marked building, and power shown as **Special**, plus its matching unit/building or power buffs. Turning it off leaves normal roster units, ordinary special economy buildings, and ordinary aid powers untouched. The usual access, buff, power-category, and special-building switches still apply; existing runs keep their saved choice. |
@@ -100,48 +97,60 @@ and generated runs therefore retain prior behavior.
 
 ### AI Enemy Rewards
 
-Eight reviewed AI-only effects are available: infantry, vehicle/naval,
-aircraft, and defense armor, plus infantry, vehicle/naval, aircraft, and defense
-production time. They use guarded
-CountryType multipliers. Human-controlled houses, player allies, countries
-shared with any non-target house, and ambiguous duplicate CountryType sections
-are skipped.
+The reviewed hostile-AI catalogue contains 48 effects: country armor and
+production bonuses, relevant native T1/T2/T3 unit and weapon stat families,
+Paratroopers, Bloodhounds, Moon Reinforcements, and all four
+faction offensive superweapons. Enemy rewards exist
+in both the Base Randomizer and Archipelago. The Base Randomizer deterministically
+assigns up to the configured maximum beside its normal reward slots. Completing
+that check acquires both independently: the normal player reward remains
+unchanged, while the additional consequence strengthens hostile AI. Archipelago
+exports the same configured inventory as Trap items with matching extra
+locations; receiving the Trap acquires its enemy bonus.
 
-Objective and mission completion counts use one independent deterministic RNG
-stream. Both rates may be above zero and stack. When normal and completion AI
-rewards are both enabled, completion planning leaves part of each shared cap
-available to normal rolls. The two sources combine without exceeding global
-per-effect caps. The same seed and frozen settings reproduce the same plan.
-Each effect has five stacks. Armor adds the configured 11% strength per stack
-through the reciprocal received-damage multiplier; production reduces its
-engine multiplier by the configured 10% per stack. Thus stacks 1–5 produce
-armor values `1.11`–`1.55` and production values `0.9`–`0.5` from a `1.0`
-baseline. A capped effect leaves the candidate pool, so later draws reroll among
-other valid AI effects.
+Each received item adds one stack, bounded by its per-effect cap and the shared
+seed maximum. Armor uses the reciprocal received-damage calculation, so the
+configured 11% stacks display their exact cumulative strength. Every other
+card likewise uses the same cumulative calculation as map application.
 
-The **Enemy Rewards** tab shows a text card only after a generated map records
-that exact bonus as applied to a real hostile AI target. Merely enabled,
-seed-assigned, or earned/pending bonuses remain hidden. Cards and hover text
-show the confirmed cumulative percentage, stack `1/5` through `5/5`, configured
-per-stack value, hostile target, exact generated INI field, and final engine
-value. The old
-large applied-reward table is removed. These entries never enter player launch
-rewards, Unlocks, or production.
+The vertically scrollable **Enemy Rewards** tab shows only bonuses this player
+has received. Stat cards contain the exact cumulative effect and stack count,
+such as `Armor 11% stronger (1/5)`; support powers and superweapons show
+`Acquired`. Every acquired card uses the same enemy-red outline; whether the
+last generated map could apply it does not change its color. Cards contain no
+Trap/cap status text and no hover tooltip. Mission
+Details shows every Base Randomizer check's additional enemy assignments and
+acquired bonuses; in Archipelago it records the exact finder, game, and
+location for every received enemy item. These entries never enter player
+launch rewards, Unlocks, or production.
 
 Hostile targeting combines reviewed per-mission enemy allowlists with guarded
 discovery of placed or scripted military AI Houses. Player, allied, neutral,
 civilian, future player-transfer, shared-country, and ambiguous duplicate
-CountryType targets are skipped with exact log reasons. Multiple safe hostile
-Houses receive the effect independently.
+CountryType targets are skipped with exact log reasons. Stat bonuses affect
+every safe hostile consumer. Each power goes to only the first active hostile
+House, preventing duplicate timers. Offensive superweapons still require their
+matching faction; the four reinforcement/drop powers are faction-neutral so
+they remain usable on maps without an Allied, Soviet, Epsilon, or Foehn enemy.
 
-Settings exposes only working groups: **AI stat bonuses** and **AI
-production-speed bonuses**. AI unit/building cost reductions are deliberately
+Settings exposes reviewed AI stat, weapon, production-speed, support-power,
+and superweapon groups. AI unit/building cost reductions are deliberately
 absent because cheaper production does not strengthen effectively unlimited-
 cash campaign AI. Generic AI unit unlocks remain excluded because they can
-replace story-critical identities. AI support powers and superweapons remain
-excluded because no end-to-end AI launch has yet been observed in an engine
-log; configured ownership, charging, and targeting alone do not count as proof.
-Unsupported types are logged when AI rewards are enabled.
+replace story-critical identities. The four offensive superweapons reuse their
+installed native definitions. Paratroopers, Bloodhounds, and Moon
+Reinforcements use compact isolated AI-only copies. These copies cost nothing,
+ignore building/power/house gates, hide their cameos, and set
+`SW.UseAITargeting=yes` for automatic AI targeting without modifying player or
+mission-native powers. Their effective source recharge is doubled to prevent
+rapid repeat drops: Paratroopers `8`, Bloodhounds `10`, and Moon Reinforcements
+`12`. `SW.InitialReady=yes` gives each acquired power one
+immediate first use; only later uses wait through that doubled interval.
+All three use unconstrained `ParaDrop` targeting: AI attacks near its favorite
+enemy base when available, then falls back near its own base when no favorite
+enemy is established. All three are
+faction-neutral and go only to the first active hostile House. Matching
+offensive powers Houses receive them through runtime Action 34.
 
 ### Buff type options
 

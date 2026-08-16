@@ -269,6 +269,9 @@ def append_superweapon_grant_trigger(
 ):
     """Grant earned powers to every requested mission house safely.
 
+    ``houses`` contains valid TriggerType owner/Country tokens such as
+    ``USSR``. Map section labels such as ``USSR House`` are not valid here.
+
     Mental Omega's installed campaign maps top out at 24 actions in one list.
     Large Chaos inventories previously wrote every power into a single list
     (35 in the reported crash), which corrupts the engine while processing the
