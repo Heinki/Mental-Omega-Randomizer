@@ -294,7 +294,10 @@ mission-text color to an EVA choice. Profile keys normally match the visible
 choice label from `eva_voice_tags`; an engine tag also works as a fallback.
 `Mission default` applies neither voice nor appearance overrides. Built-in
 Allied, Soviet, Epsilon, and Foehn voices retain their installed appearance
-defaults when an older external `ui.json` does not yet contain profiles.
+defaults when an older external `ui.json` does not yet contain profiles. All
+four Mental Omega sidebar sets use Yuri's Revenge filenames, so their
+`sidebar_yuri_file_names` value must be `true`; runtime enforces this for the
+built-in EVA tags to protect preserved older editable configurations.
 
 Every document requires `schema_version: 1` and a `sections` object. Startup
 validates required sections and important value types. Invalid JSON or missing

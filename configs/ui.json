@@ -95,7 +95,7 @@
       },
       "Epsilon": {
         "sidebar_mix_file_index": 3,
-        "sidebar_yuri_file_names": false,
+        "sidebar_yuri_file_names": true,
         "message_text_color": "ThirdText"
       },
       "Foehn": {

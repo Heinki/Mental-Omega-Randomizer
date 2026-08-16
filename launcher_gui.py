@@ -19,6 +19,7 @@ from randomizer.core.paths import (
 )
 from randomizer.core.version import APP_VERSION
 from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs
+from randomizer.maps.settings import validate_eva_voice_profiles
 from randomizer.rewards.roster import (
     MAX_PLAYER_BUILD_TIME_MULTIPLIER,
     ROSTER_FILENAMES,
@@ -34,6 +35,7 @@ from randomizer.rewards.roster import (
     validate_transport_buff_eligibility,
     validate_unit_buff_application_contracts,
 )
+from randomizer.ui.config import EVA_APPEARANCE_PROFILES, EVA_VOICE_TAGS
 
 
 def run_launcher():
@@ -849,6 +851,10 @@ def run_self_check():
             }
             and runtime_reward_settings.get('starting_unlock_rewards') == []
         )
+        eva_voice_profiles = validate_eva_voice_profiles(
+            EVA_VOICE_TAGS,
+            EVA_APPEARANCE_PROFILES,
+        )
         checks = {
             'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),
@@ -989,6 +995,8 @@ def run_self_check():
                 mission_reward_multipliers_valid
             ),
             'enemy_scaling_contract_valid': enemy_scaling_contract_valid,
+            'eva_voice_profiles_valid': eva_voice_profiles['valid'],
+            'eva_voice_profiles': eva_voice_profiles['profiles'],
             'missing_runtime_symbols': missing_runtime_symbols,
             'diagnostic_log': str(LAUNCHER_LOG),
             'deterministic_seed_rng_works': 0 <= random.Random('MO-SELF-CHECK').random() < 1,
@@ -1035,6 +1043,7 @@ def run_self_check():
                 'randomizer_arsenal_contract_valid',
                 'mission_reward_multipliers_valid',
                 'enemy_scaling_contract_valid',
+                'eva_voice_profiles_valid',
                 'deterministic_seed_rng_works',
             )
         )

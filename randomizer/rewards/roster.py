@@ -66,18 +66,18 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Speed': '4',
         'Turret': 'yes',
         'TurretCount': '2',
-        'PipScale': 'none',
+        'PipScale': 'Passengers',
         'PassengerTurret': 'yes',
         'Passengers.BySize': 'no',
         'Passengers': '3',
         'NoManualEnter': 'yes',
-        'NoManualUnload': 'yes',
-        'Survivor.RookiePassengerChance': '0%',
-        'Survivor.VeteranPassengerChance': '0%',
-        'Survivor.ElitePassengerChance': '0%',
+        'NoManualUnload': None,
+        'Survivor.RookiePassengerChance': '100%',
+        'Survivor.VeteranPassengerChance': '100%',
+        'Survivor.ElitePassengerChance': '100%',
         'SizeLimit': '9',
-        'EnterTransportSound': None,
-        'LeaveTransportSound': None,
+        'EnterTransportSound': 'EnterTransport',
+        'LeaveTransportSound': 'ExitTransport',
     },
     # Native mission Hands deliberately move their health bracket off-screen.
     # Player-buildable copies need normal unit health feedback and death.
@@ -1237,13 +1237,17 @@ def validate_reviewed_vehicle_identity_contracts():
         'Speed': '4',
         'Turret': 'yes',
         'TurretCount': '2',
-        'PipScale': 'none',
+        'PipScale': 'Passengers',
         'PassengerTurret': 'yes',
         'Passengers': '3',
         'Passengers.BySize': 'no',
         'SizeLimit': '9',
         'NoManualEnter': 'yes',
-        'NoManualUnload': 'yes',
+        'Survivor.RookiePassengerChance': '100%',
+        'Survivor.VeteranPassengerChance': '100%',
+        'Survivor.ElitePassengerChance': '100%',
+        'EnterTransportSound': 'EnterTransport',
+        'LeaveTransportSound': 'ExitTransport',
         'Primary': 'ChronoImprison',
         'Weapon1': 'ChronoImprison',
     }
@@ -1251,10 +1255,7 @@ def validate_reviewed_vehicle_identity_contracts():
         actual = _case_insensitive_item(chrp, key)[1]
         if str(actual or '').lower() != wanted.lower():
             errors.append(f'CHRP.{key}={actual!r}')
-    for key in (
-        'EnterTransportSound',
-        'LeaveTransportSound',
-    ):
+    for key in ('NoManualUnload',):
         actual_key, actual = _case_insensitive_item(chrp, key)
         if actual_key is not None and actual not in {None, ''}:
             errors.append(f'CHRP.{key}={actual!r}')
@@ -1313,7 +1314,7 @@ def validate_reviewed_vehicle_identity_contracts():
         )
     return {
         'identities': identity_report,
-        'chrono_prison_sealed_passenger_contract': True,
+        'chrono_prison_capture_release_contract': True,
         'abrams_matches_passenger_free_original': True,
     }
 

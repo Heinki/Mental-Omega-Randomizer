@@ -36,7 +36,7 @@ BUILTIN_EVA_APPEARANCE_PROFILES = {
     },
     'yuri': {
         'sidebar_mix_file_index': 3,
-        'sidebar_yuri_file_names': False,
+        'sidebar_yuri_file_names': True,
         'message_text_color': 'ThirdText',
     },
     'foehn': {
@@ -44,6 +44,13 @@ BUILTIN_EVA_APPEARANCE_PROFILES = {
         'sidebar_yuri_file_names': True,
         'message_text_color': 'FourthText',
     },
+}
+
+MENTAL_OMEGA_YURI_SIDEBAR_FILE_TAGS = {
+    'allied',
+    'russian',
+    'yuri',
+    'foehn',
 }
 
 
@@ -163,6 +170,13 @@ def mission_eva_voice_rules(
         or configured_profiles.get(tag)
         or BUILTIN_EVA_APPEARANCE_PROFILES.get(tag_lower)
     )
+    if profile:
+        profile = dict(profile)
+        if tag_lower in MENTAL_OMEGA_YURI_SIDEBAR_FILE_TAGS:
+            # Mental Omega packages every built-in sidebar using YR filenames.
+            # ``no`` is not equivalent to ThirdSide's inherited default: it
+            # makes cross-side Epsilon selection crash while loading SIDENC03.
+            profile['sidebar_yuri_file_names'] = True
     side_values = {'EVA.Tag': tag}
     if profile:
         side_values.update(
@@ -187,6 +201,53 @@ def mission_eva_voice_rules(
         action_index,
         bool(profile),
     )
+
+
+def validate_eva_voice_profiles(voice_tags, appearance_profiles=None):
+    """Return self-check details for installed Mental Omega EVA profiles."""
+    expected_profiles = {
+        'Allied': ('Allied', 0, '1', 'FirstText'),
+        'Soviet': ('Russian', 1, '2', 'SecondText'),
+        'Epsilon': ('Yuri', 2, '3', 'ThirdText'),
+        'Foehn': ('Foehn', 3, '4', 'FourthText'),
+    }
+    profiles = {}
+    for label, expected in expected_profiles.items():
+        rules, selected, action_index, appearance_applied = (
+            mission_eva_voice_rules(
+                label,
+                voice_tags,
+                appearance_profiles=appearance_profiles,
+                random_key='MO-EVA-SELF-CHECK',
+            )
+        )
+        values = rules.get('GDI', {})
+        profiles[label] = {
+            'tag': values.get('EVA.Tag'),
+            'action_index': action_index,
+            'sidebar_mix_file_index': values.get('Sidebar.MixFileIndex'),
+            'sidebar_yuri_file_names': values.get('Sidebar.YuriFileNames'),
+            'message_text_color': values.get('MessageTextColor'),
+            'all_sides_match': bool(
+                len(rules) == 4
+                and all(side_values == values for side_values in rules.values())
+            ),
+            'selected': selected,
+            'appearance_applied': appearance_applied,
+        }
+    valid = all(
+        details['tag'] == expected[0]
+        and details['action_index'] == expected[1]
+        and details['sidebar_mix_file_index'] == expected[2]
+        and details['sidebar_yuri_file_names'] == 'yes'
+        and details['message_text_color'] == expected[3]
+        and details['all_sides_match']
+        and details['selected'] == label
+        and details['appearance_applied']
+        for label, expected in expected_profiles.items()
+        for details in (profiles[label],)
+    )
+    return {'valid': valid, 'profiles': profiles}
 
 
 def apply_mission_eva_voice(lines, house, action_index):
