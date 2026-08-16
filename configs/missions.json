@@ -38,7 +38,13 @@
         "ESPLIT",
         "ENIGHT",
         "ESURV",
-        "FCAPSULE"
+        "FCAPSULE",
+        "ACO1",
+        "ACO2",
+        "ACO3",
+        "SCO1",
+        "SCO2",
+        "SCO3"
       ],
       "late_foehn_mission_codes": [
         "FBEYOND",
@@ -62,7 +68,10 @@
           "ABMIND", "AHAMMERFALL", "AWRONGSIDE", "AZEROSIGNAL", "AGARDENER",
           "SBLEED", "SGGATE", "SHBD", "SSIDE", "SPEACE", "SRECH", "SIDLE",
           "SDEATH", "SROAD", "SOPEN", "EPEACE", "EACCEL", "ESCRAP", "ESHIP",
-          "EHUMAN", "ELAND", "ETHINK", "ELORD", "EFIELDS", "EFOCUS"
+          "EHUMAN", "ELAND", "ETHINK", "ELORD", "EFIELDS", "EFOCUS",
+          "A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08",
+          "A09", "A10", "S01", "S02", "S03", "S04", "S05", "S06",
+          "S07", "S08", "S09", "S10"
         ],
         "act_2": [
           "ASIREN", "APUPPET", "ASTONE", "AGHOST", "ABOTTLE", "AHYST",
@@ -75,12 +84,13 @@
         "finale": [
           "APANIC", "ASUNLIGHT", "AWITHER", "AHAMARTIA", "SMACHINE", "SDRAGON",
           "SFATAL", "SHAND", "ESING", "EMOON", "EREALITY", "EMIGDAL", "FPOINT",
-          "FREMNANT"
+          "FREMNANT", "A11", "A12", "S11", "S12"
         ],
         "operation": [
           "ADEMON", "AOBST", "ACONV", "AFULL", "AGRID", "ASOMNIA", "SARCHE",
           "SECLIPSE", "STROPH", "SNOISE", "SDAWN", "SARMS", "ETACI", "EASHES",
-          "ERAGE", "ESPLIT", "ENIGHT", "ESURV", "FCAPSULE"
+          "ERAGE", "ESPLIT", "ENIGHT", "ESURV", "FCAPSULE", "ACO1",
+          "ACO2", "ACO3", "SCO1", "SCO2", "SCO3"
         ]
       },
       "mission_overrides": {}
@@ -182,7 +192,37 @@
       "ESPLIT": "base_build",
       "ENIGHT": "no_build_production",
       "ESURV": "no_build_production",
-      "FCAPSULE": "true_no_build"
+      "FCAPSULE": "true_no_build",
+      "A01": "base_build",
+      "A02": "base_build",
+      "A03": "base_build",
+      "A04": "base_build",
+      "A05": "no_build_production",
+      "A06": "base_build",
+      "A07": "base_build",
+      "A08": "base_build",
+      "A09": "no_build_production",
+      "A10": "base_build",
+      "A11": "base_build",
+      "A12": "base_build",
+      "ACO1": "no_build_production",
+      "ACO2": "base_build",
+      "ACO3": "true_no_build",
+      "S01": "base_build",
+      "S02": "base_build",
+      "S03": "base_build",
+      "S04": "base_build",
+      "S05": "true_no_build",
+      "S06": "base_build",
+      "S07": "base_build",
+      "S08": "base_build",
+      "S09": "no_build_production",
+      "S10": "base_build",
+      "S11": "base_build",
+      "S12": "base_build",
+      "SCO1": "no_build_production",
+      "SCO2": "base_build",
+      "SCO3": "base_build"
     },
     "house_config": {
       "ABOTTLE": {

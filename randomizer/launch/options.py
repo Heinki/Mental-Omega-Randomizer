@@ -98,3 +98,22 @@ def patch_large_ini_key(handle, key, value):
 
         carry = data[-overlap_size:] if len(data) > overlap_size else data
         offset += len(chunk)
+
+
+def patch_or_append_large_ini_value(path, section, key, value):
+    """Set one value in a large INI without rewriting unrelated bytes."""
+    with path.open('r+b') as handle:
+        if patch_large_ini_key(handle, key, value):
+            return 'in-place'
+
+        handle.seek(0, 2)
+        length = handle.tell()
+        if length:
+            handle.seek(-1, 2)
+            final_byte = handle.read(1)
+            handle.seek(0, 2)
+            if final_byte not in (b'\r', b'\n'):
+                handle.write(b'\r\n')
+        block = f'[{section}]\r\n{key}={value}\r\n'.encode('utf-8')
+        handle.write(block)
+    return 'appended'

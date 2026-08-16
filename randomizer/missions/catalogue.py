@@ -50,9 +50,9 @@ BASE_BUILD = 'base_build'
 TRUE_NO_BUILD = 'true_no_build'
 NO_BUILD_PRODUCTION = 'no_build_production'
 
-# Community-reviewed gameplay classification for all 97 installed campaign
-# maps. Keep every catalogue code explicit: this is player-facing seed data,
-# not a title/stage-name guess.
+# Community-reviewed gameplay classification for Mental Omega's 97 missions
+# plus 30 optional APRA2 missions. Keep every catalogue code explicit: this is
+# player-facing seed data, not a title/stage-name guess.
 MISSION_BUILD_CLASSIFICATIONS = dict(_MISSION_CONFIG['build_classifications'])
 
 TRUE_NO_BUILD_MISSION_CODES = frozenset(

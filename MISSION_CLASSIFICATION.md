@@ -10,6 +10,12 @@ The launcher provides separate inclusion settings for the two no-build categorie
 Turning both off creates a build-only mission pool. Allied 01 remains explicitly
 classified as `base_build`.
 
+Optional APRA2 catalogue entries add 30 missions: 23 `base_build`, two
+`true_no_build`, and five `no_build_production`. Their exact `A01`-`A12`,
+`S01`-`S12`, `ACO1`-`ACO3`, and `SCO1`-`SCO3` mappings live in
+`configs/missions.json`; standard Mental Omega installations keep this 97-map
+table unchanged.
+
 | Mission ID | Installed mission | Classification |
 |---|---|---|
 | `AREDDAWN` | Allied 01: RED DAWN RISING | `base_build` |

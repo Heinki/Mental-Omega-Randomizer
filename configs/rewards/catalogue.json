@@ -795,6 +795,7 @@
         "superweapon": "LightningStormSpecial",
         "superweapon_index": 2,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:Storm",
           "Name": "Lightning Storm",
           "IsPowered": "false",
@@ -862,6 +863,7 @@
         "superweapon": "NukeSpecial",
         "superweapon_index": 0,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
@@ -877,6 +879,7 @@
         "superweapon": "PsychicDominatorSpecial",
         "superweapon_index": 7,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
@@ -892,6 +895,7 @@
         "superweapon": "GreatTempestSpecial",
         "superweapon_index": 48,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       }
@@ -909,6 +913,7 @@
         "superweapon": "ChronoSphereSpecial",
         "superweapon_index": 3,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:Chrono",
           "Name": "Chronoshift Pre",
           "IsPowered": "false",
@@ -983,6 +988,7 @@
         "superweapon": "IronCurtainSpecial",
         "superweapon_index": 1,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
@@ -998,6 +1004,7 @@
         "superweapon": "RageInductorSpecial",
         "superweapon_index": 28,
         "superweapon_rules": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       }
@@ -1624,6 +1631,7 @@
       {
         "superweapon": "AmericanParaDropSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
@@ -1637,6 +1645,7 @@
           "SENGINEER"
         ],
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:ENGITEAM",
           "Name": "Engineering Team",
           "IsPowered": "false",
@@ -1650,12 +1659,14 @@
       {
         "superweapon": "BloodhoundsSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "ZephyrBeaconSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "RechargeTime": "5.5",
           "Money.Amount": "-500",
@@ -1680,11 +1691,14 @@
       },
       {
         "superweapon": "LightningRodSpecial",
-        "values": {}
+        "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer"
+        }
       },
       {
         "superweapon": "WarpMinersSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.AuxBuildings": ""
         }
@@ -1692,6 +1706,7 @@
       {
         "superweapon": "KingsnakesSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -1722,6 +1737,7 @@
           "PANTHER"
         ],
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "Range": "1.5",
           "SW.Sound": "ChronosphereMove",
           "EVA.Ready": "EVA_ReinforcementsReady",
@@ -1743,6 +1759,7 @@
       {
         "superweapon": "RepairDroneSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.NegBuildings": ""
         }
@@ -1750,24 +1767,28 @@
       {
         "superweapon": "TankDropSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "InstantShelterSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "MotorAmbushSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "NavalMineSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -1784,18 +1805,21 @@
       {
         "superweapon": "TerrorDropSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "FlameTowerSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "DrakuvSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -1813,6 +1837,7 @@
       {
         "superweapon": "RepairDronesSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.AuxBuildings": ""
         }
@@ -1821,6 +1846,7 @@
         "superweapon": "EliteReservesSpecial",
         "provider_only": true,
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.AuxBuildings": "",
           "SW.RequiredHouses": "",
@@ -1888,6 +1914,7 @@
       {
         "superweapon": "DisruptorSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.AuxBuildings": ""
         }
@@ -1895,48 +1922,56 @@
       {
         "superweapon": "RisenMonolithSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "RavenSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "VisionSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "MagnetShiftSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "LibraCloneSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "TickTrapSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "QuickFortSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "RuinerSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -1954,18 +1989,21 @@
       {
         "superweapon": "HijackersSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "SpinbladeSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "MegaarenaSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
@@ -1997,6 +2035,7 @@
           }
         },
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "EVA.Ready": "EVA_BattlePowerReady",
           "IsPowered": "false",
           "RechargeTime": "6.5",
@@ -2010,6 +2049,7 @@
       {
         "superweapon": "HarbingerSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2031,24 +2071,28 @@
       {
         "superweapon": "SweeperDropSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "SignalJammerSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "DecoyTeamSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
         }
       },
       {
         "superweapon": "DecoySquadronSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.AuxBuildings": ""
         }
@@ -2056,6 +2100,7 @@
       {
         "superweapon": "MADMineSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
           "SW.ManualFire": "yes",
@@ -2071,6 +2116,7 @@
       {
         "superweapon": "WallbusterSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "Type": "MultiMissile",
           "WeaponType": "MORWBCarrier",
@@ -2196,6 +2242,7 @@
       {
         "superweapon": "ForceShieldSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2217,6 +2264,7 @@
       {
         "superweapon": "TargetPainterSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2238,6 +2286,7 @@
       {
         "superweapon": "SonarPulseSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2259,6 +2308,7 @@
       {
         "superweapon": "MercurySpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "Type": "MultiMissile",
           "Nuke.SiloLaunch": "no",
@@ -2332,6 +2382,7 @@
       {
         "superweapon": "SpySatSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2353,6 +2404,7 @@
       {
         "superweapon": "BlackWidowAlphaSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2374,6 +2426,7 @@
       {
         "superweapon": "BlackWidowSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2395,6 +2448,7 @@
       {
         "superweapon": "ChronoboostSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2416,6 +2470,7 @@
       {
         "superweapon": "CryoshotSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2437,6 +2492,7 @@
       {
         "superweapon": "CryospearSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2458,6 +2514,7 @@
       {
         "superweapon": "GlacialScreenSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2479,6 +2536,7 @@
       {
         "superweapon": "CryomineSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2505,6 +2563,7 @@
       {
         "superweapon": "SpyPlaneSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2526,6 +2585,7 @@
       {
         "superweapon": "SmokebombsSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2547,6 +2607,7 @@
       {
         "superweapon": "EMPulsSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2568,6 +2629,7 @@
       {
         "superweapon": "IrradiateSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2589,6 +2651,7 @@
       {
         "superweapon": "OverchargeSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2610,6 +2673,7 @@
       {
         "superweapon": "IrradiateBetaSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2631,6 +2695,7 @@
       {
         "superweapon": "RadAttackSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2652,6 +2717,7 @@
       {
         "superweapon": "PackAttackSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2673,6 +2739,7 @@
       {
         "superweapon": "EMPMineSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2699,6 +2766,7 @@
       {
         "superweapon": "IllusionSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2720,6 +2788,7 @@
       {
         "superweapon": "KineticBarrierSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2742,6 +2811,7 @@
         "superweapon": "MutationSpecial",
         "ignore_foreign_tech_gate": true,
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2822,6 +2892,7 @@
       {
         "superweapon": "ToxicStrikeSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2843,6 +2914,7 @@
       {
         "superweapon": "RegenDrugsSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2864,6 +2936,7 @@
       {
         "superweapon": "WonderDrugsSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2885,6 +2958,7 @@
       {
         "superweapon": "GenomineSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -2912,6 +2986,7 @@
         "superweapon": "NanofiberSyncSpecial",
         "clone": "MORNanoSyncAlt",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:Nanofiber",
           "Name": "Nanofiber Sync",
           "IsPowered": "false",
@@ -3050,6 +3125,7 @@
       {
         "superweapon": "BoidBlitzSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -3071,6 +3147,7 @@
       {
         "superweapon": "ReconSortieSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -3093,6 +3170,7 @@
         "superweapon": "DevourerSpecial",
         "clone": "MORDevourerAlt",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:Devourer",
           "Name": "Devourer",
           "IsPowered": "false",
@@ -3224,6 +3302,7 @@
       {
         "superweapon": "ChaosTouchSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -3245,6 +3324,7 @@
       {
         "superweapon": "ConfusionGridSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -3273,6 +3353,7 @@
       {
         "superweapon": "StasisGridSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -3299,6 +3380,7 @@
       {
         "superweapon": "TechMissileSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "Type": "MultiMissile",
           "WeaponType": "MORTMCarrier",
@@ -3359,6 +3441,7 @@
       {
         "superweapon": "MaintenanceSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "no",
           "SW.AutoFire": "no",
@@ -3438,6 +3521,7 @@
       {
         "superweapon": "BackwarpSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3517,6 +3601,7 @@
       {
         "superweapon": "NuclearPathSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3596,6 +3681,7 @@
       {
         "superweapon": "GearChangeSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3710,6 +3796,7 @@
           ]
         },
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3728,6 +3815,7 @@
       {
         "superweapon": "BlackoutMissileSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3822,6 +3910,7 @@
           }
         },
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.RequiredHouses": "",
           "SW.ForbiddenHouses": "",
@@ -3905,6 +3994,7 @@
       {
         "superweapon": "HunterSeekerSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "Money.Amount": "0",
           "SW.AuxBuildings": "",
@@ -3966,6 +4056,7 @@
       {
         "superweapon": "TimeFreezeSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "Type": "GenericWarhead",
           "Action": "Custom",
@@ -4050,6 +4141,7 @@
       {
         "superweapon": "StratoSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "Name": "Stratofortress",
           "Type": "SpyPlane",
           "Range": "4",
@@ -4119,6 +4211,7 @@
       {
         "superweapon": "KnightfallSpawn",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "name:moondrop",
           "Name": "Moon Reinforcements",
           "Type": "DropPod",
@@ -4167,6 +4260,7 @@
       {
         "superweapon": "ChronoliftSpecial",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",
           "SW.FireIntoShroud": "yes",
           "SW.AutoFire": "no",
@@ -4214,6 +4308,7 @@
         "clone": "MORV3TestSpecial",
         "sidebar_image": "yuri_shocked.png",
         "values": {
+          "UIDescription": "NOSTR:* Granted by Randomizer",
           "UIName": "NAME:APara",
           "Name": "V3 Test Drop",
           "IsPowered": "false",

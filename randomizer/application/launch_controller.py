@@ -30,6 +30,7 @@ from ._dependencies import (
     SCRIPTED_TECH_LOCK_EXCLUSIONS,
     SPAWN_INI,
     STARTING_UNLOCKED_MISSIONS,
+    UIMD_INI,
     VICTORY_CLOSE_DELAY_MS,
     YR_OPTIONS_INI,
     always_available_miner_rules,
@@ -39,6 +40,7 @@ from ._dependencies import (
     choice_label_from_ini,
     controlled_tech_ids,
     deploy_generated_unit_art,
+    extract_mix_files_sync,
     is_generated_hooked_map,
     is_generated_rules_file,
     launch_rules_for_reward,
@@ -50,6 +52,7 @@ from ._dependencies import (
     mission_player_production_houses,
     mix_reader_assembly_paths,
     patch_large_ini_key,
+    patch_or_append_large_ini_value,
     powershell_mix_reader_load_script,
     prepare_hooked_mission_map,
     read_text,
@@ -624,7 +627,7 @@ throw "Map $name was not found in expandmo*.mix"
                 text = set_ini_value_lines(text, 'Options', 'GameSpeed', game_speed_value)
                 text = set_ini_value_lines(text, 'Options', 'Difficulty', difficulty_value)
                 text = set_ini_value_lines(text, 'Options', 'CampDifficulty', difficulty_value)
-                path.write_text(text, encoding='utf-8')
+                path.write_bytes(text.encode('utf-8'))
                 written.append(path.name)
 
             if written:
@@ -638,10 +641,57 @@ throw "Map $name was not found in expandmo*.mix"
                     + ', '.join(skipped)
                     + '. GameSpeed and difficulty are still written to spawn.ini and other option files.'
                 )
+            try:
+                self.write_optional_phobos_tooltip_options()
+            except Exception:
+                self.append_log(
+                    'Could not prepare optional Phobos tooltip settings; '
+                    'normal randomizer launch remains available.',
+                    error=True,
+                )
+                self.append_log(traceback.format_exc(), error=True)
         except Exception:
             self.append_log('Failed to write launch options:', error=True)
             self.append_log(traceback.format_exc(), error=True)
             raise
+
+    def write_optional_phobos_tooltip_options(self):
+        """Prepare tooltip settings; Phobos itself remains player-supplied."""
+        if not UIMD_INI.exists():
+            extracted = extract_mix_files_sync((('uimd.ini', UIMD_INI),))
+            if not extracted or not UIMD_INI.exists():
+                raise FileNotFoundError(
+                    'Could not extract the installed uimd.ini from MIX archives.'
+                )
+
+        prepared = []
+        targets = (
+            (YR_OPTIONS_INI, 'Phobos', 'ToolTipDescriptions', 'true'),
+            (UIMD_INI, 'ToolTips', 'ExtendedToolTips', 'true'),
+        )
+        for path, section, key, value in targets:
+            if not path.exists():
+                continue
+            if path.exists() and path.stat().st_size > MAX_OPTION_INI_BYTES:
+                mode = patch_or_append_large_ini_value(
+                    path, section, key, value
+                )
+                prepared.append(f'{path.name} ({mode})')
+                continue
+
+            text = read_text(path)
+            updated = set_ini_value_lines(text, section, key, value)
+            updated_bytes = updated.encode('utf-8')
+            if updated_bytes != path.read_bytes():
+                path.write_bytes(updated_bytes)
+                prepared.append(path.name)
+
+        if prepared:
+            self.append_log(
+                'Prepared optional Phobos tooltip settings in '
+                + ', '.join(prepared)
+                + '. Phobos is not bundled or required.'
+            )
 
     def patch_large_options_ini(self, path, values):
         """Patch one-digit option values in oversized/corrupt INIs without rewriting them."""

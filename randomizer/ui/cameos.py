@@ -93,6 +93,12 @@ def extract_mix_files(requests):
         return _extract_mix_files(requests)
 
 
+def extract_mix_files_sync(requests):
+    """Extract MIX members before launch, regardless of caller thread."""
+    with _EXTRACTION_LOCK:
+        return _extract_mix_files(requests)
+
+
 def _extract_mix_files(requests):
     pending = []
     for source_name, output_path in requests:

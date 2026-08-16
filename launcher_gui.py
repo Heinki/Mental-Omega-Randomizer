@@ -281,7 +281,7 @@ def run_self_check():
         mission_reward_multipliers_valid = bool(
             set(MISSION_REWARD_CLASS_BY_CODE)
             == set(MISSION_BUILD_CLASSIFICATIONS)
-            and len(MISSION_REWARD_CLASS_BY_CODE) == 97
+            and len(MISSION_REWARD_CLASS_BY_CODE) == 127
             and mission_reward_multiplier('AREDDAWN') == 1
             and mission_reward_multiplier('ASIREN') == 2
             and mission_reward_multiplier('APANIC') == 3
@@ -291,6 +291,12 @@ def run_self_check():
             and mission_reward_multiplier('FREMNANT') == 3
             and mission_reward_multiplier('ADEMON') == 2
             and mission_reward_multiplier('FCAPSULE') == 2
+            and mission_reward_multiplier('A01') == 1
+            and mission_reward_multiplier('A11') == 3
+            and mission_reward_multiplier('ACO1') == 2
+            and mission_reward_multiplier('S01') == 1
+            and mission_reward_multiplier('S11') == 3
+            and mission_reward_multiplier('SCO1') == 2
         )
         enemy_settings = normalize_enemy_scaling_settings({
             'stack_model_version': 4,

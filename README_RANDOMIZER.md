@@ -345,6 +345,21 @@ Victory is its own reward check. Normally, when the victory marker is detected, 
 
 The launcher reads campaign metadata from `INI\BattleClient.ini`, prepares a loose generated copy of the selected map, and starts:
 
+Optional APRA2 Mental Omega missions listed by an installed `BattleClient.ini`
+are detected alongside the 97 standard missions. APRA2's Allied/Soviet
+missions, finales, operations, and build classifications use the bundled
+catalogue mappings; installations without APRA2 retain the standard catalogue.
+
+Optional Phobos extended tooltips need a player-supplied Phobos installation.
+The randomizer does not bundle, download, install, or require Phobos. Before a
+mission launch it safely enables `[Phobos] ToolTipDescriptions=true` in the
+existing `RA2MD.ini`. When no loose `uimd.ini` exists, it extracts Mental
+Omega's installed file from its MIX archives, then creates or updates the loose
+copy with `[ToolTips] ExtendedToolTips=true`. Existing player/UI settings stay
+intact; no custom UI package is shipped.
+Randomizer unit, building, and power copies carry a short generated-by-
+Randomizer description when Phobos is active.
+
 ```text
 Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
 ```

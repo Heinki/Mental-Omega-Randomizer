@@ -76,12 +76,14 @@ from randomizer.rewards.starting import (
 from randomizer.launch.options import (
     choice_label_from_ini,
     patch_large_ini_key,
+    patch_or_append_large_ini_value,
     spawn_ini_text,
 )
 from randomizer.ui.cameos import (
     cameo_extraction_pending,
     ensure_superweapon_cameos,
     ensure_unit_cameos,
+    extract_mix_files_sync,
     mix_reader_assembly_paths,
     powershell_mix_reader_load_script,
 )
@@ -176,6 +178,7 @@ from randomizer.core.paths import (
     RULESMO_INI,
     SPAWN_INI,
     STATE_PATH,
+    UIMD_INI,
     WINDOW_ICON_PATH,
     YR_OPTIONS_INI,
 )
