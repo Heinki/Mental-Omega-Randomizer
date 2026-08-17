@@ -84,6 +84,7 @@ def run_self_check():
             SessionConfig,
         )
         from Archipelago.catalogue_contract import runtime_catalogue_checksum
+        from Archipelago.run_manifest import expected_logic_spheres
         from Archipelago.yaml_config import (
             parse_player_yaml,
             serialize_player_yaml,
@@ -98,6 +99,11 @@ def run_self_check():
             'progression_mode': 'Classic',
             'mission_goal': 1,
             'mission_order': ['AREDDAWN'],
+            'progression': {
+                'type': 'victory_count',
+                'starting_missions': ['AREDDAWN'],
+                'mission_requirements': {'AREDDAWN': 0},
+            },
             'goal': {'type': 'mission', 'mission_code': 'AREDDAWN'},
             'locations': {
                 'AREDDAWN': {'objective_1': 1, 'victory': 1},
@@ -138,6 +144,20 @@ def run_self_check():
             sort_keys=True,
             separators=(',', ':'),
         ).encode('utf-8')).hexdigest()
+        archipelago_grid_logic_spheres = expected_logic_spheres({
+            'mission_order': ['START_A', 'START_B', 'INNER', 'OUTER'],
+            'progression': {
+                'type': 'grid_neighbors',
+                'starting_missions': ['START_A', 'START_B'],
+                'mission_requirements': {
+                    'START_A': ['INNER'],
+                    'START_B': ['INNER'],
+                    'INNER': ['START_A', 'START_B', 'OUTER'],
+                    'OUTER': ['INNER'],
+                },
+            },
+            'goal': {'type': 'mission', 'mission_code': 'OUTER'},
+        })
         archipelago_player_yaml = serialize_player_yaml(
             archipelago_manifest, "Self Checker's Slot"
         )
@@ -145,7 +165,7 @@ def run_self_check():
             archipelago_player_yaml
         )
         archipelago_slot_data = validate_slot_data({
-            'slot_data_version': 4,
+            'slot_data_version': 5,
             'randomizer_version': APP_VERSION,
             'randomizer_seed': 'APWORLD-SELF-CHECK',
             'catalogue_checksum': archipelago_catalogue_checksum,
@@ -159,12 +179,19 @@ def run_self_check():
             'items': {
                 str(0x4D4F000): 'GI Access',
                 str(0x4D4F001): 'Soviet Conscript Access',
+                str(0x4DFF000): 'Mental Omega Local Victory: AREDDAWN',
             },
             'locations': {
                 'AREDDAWN': {
                     'objective_1': [0x4D5F000],
                     'victory': [0x4D5F001],
                 }
+            },
+            'local_victories': {
+                'AREDDAWN': {
+                    'item': 0x4DFF000,
+                    'location': 0x4DFF000,
+                },
             },
         })
         archipelago_ledger = ReceivedItemLedger()
@@ -196,8 +223,21 @@ def run_self_check():
             and archipelago_slot_data['items'][0x4D4F000] == 'GI Access'
             and archipelago_slot_data['items'][0x4D4F001]
             == 'Soviet Conscript Access'
+            and archipelago_slot_data['items'][0x4DFF000]
+            == 'Mental Omega Local Victory: AREDDAWN'
+            and archipelago_slot_data['local_victories']['AREDDAWN']
+            == {'item': 0x4DFF000, 'location': 0x4DFF000}
             and archipelago_slot_data['catalogue_checksum']
             == archipelago_catalogue_checksum
+            and archipelago_grid_logic_spheres == {
+                'mission_spheres': {
+                    'START_A': 1,
+                    'START_B': 1,
+                    'INNER': 2,
+                    'OUTER': 3,
+                },
+                'goal_sphere': 4,
+            }
             and archipelago_player_document['name']
             == "Self Checker's Slot"
             and archipelago_player_document['run_manifest']

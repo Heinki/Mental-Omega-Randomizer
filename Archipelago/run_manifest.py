@@ -12,7 +12,11 @@ from Archipelago.catalogue_contract import (
     runtime_catalogue_checksum,
 )
 from randomizer.core.version import APP_VERSION
-from randomizer.progression.grid import grid_opening_mission_codes
+from randomizer.progression.grid import (
+    grid_opening_mission_codes,
+    neighbors as grid_neighbors,
+    starting_nodes as grid_starting_nodes,
+)
 from randomizer.rewards.catalogue import REWARD_BY_NAME, REWARD_POOL
 from randomizer.rewards.display import canonical_reward
 from randomizer.rewards.enemy_scaling import plan_enemy_trap_rewards
@@ -131,6 +135,139 @@ def _stable_grid(value):
         "two_start_positions": bool(value.get("two_start_positions", False)),
         "goal": value.get("goal"),
         "nodes": stable_nodes,
+    }
+
+
+def _progression_logic_for_state(state, mission_order):
+    """Freeze launcher-owned local mission unlock rules for AP logic."""
+    mode = str(state.get("progression_mode") or "Classic")
+    if mode == "Grid Mode":
+        grid = state.get("grid") if isinstance(state.get("grid"), dict) else {}
+        starts = grid_starting_nodes(grid)
+        if not starts:
+            raise ValueError("Grid run has no starting mission.")
+        return {
+            "type": "grid_neighbors",
+            "starting_missions": starts,
+            "mission_requirements": {
+                code: grid_neighbors(grid, code)
+                for code in mission_order
+            },
+        }
+
+    try:
+        starting_count = int(state.get("starting_unlocked_missions", 1))
+    except (TypeError, ValueError):
+        starting_count = 1
+    starting_count = max(1, min(len(mission_order), starting_count))
+    return {
+        "type": "victory_count",
+        "starting_missions": mission_order[:starting_count],
+        "mission_requirements": {
+            code: max(0, index - starting_count + 1)
+            for index, code in enumerate(mission_order)
+        },
+    }
+
+
+def expected_logic_spheres(manifest):
+    """Calculate earliest AP reachability spheres from signed local logic.
+
+    These are deterministic logic spheres for every mission marker.  An
+    Archipelago spoiler playthrough can omit optional branches, so its reduced
+    required-path spheres are not a complete mission-by-mission listing.
+    """
+    if not isinstance(manifest, dict):
+        raise ValueError("Archipelago run manifest must be an object.")
+    mission_order = [str(code) for code in manifest.get("mission_order", ())]
+    progression = manifest.get("progression")
+    if not mission_order or not isinstance(progression, dict):
+        raise ValueError("Run manifest has no signed progression graph.")
+    requirements = progression.get("mission_requirements")
+    if not isinstance(requirements, dict):
+        raise ValueError("Run manifest has no mission progression requirements.")
+
+    sphere_by_mission = {}
+    remaining = set(mission_order)
+    progression_type = progression.get("type")
+    sphere = 1
+    if progression_type == "victory_count":
+        completed_count = 0
+        while remaining:
+            unlocked = []
+            for code in mission_order:
+                if code not in remaining:
+                    continue
+                required = requirements.get(code)
+                if (
+                    not isinstance(required, int)
+                    or isinstance(required, bool)
+                    or required < 0
+                ):
+                    raise ValueError(
+                        f"Invalid victory-count requirement for {code}."
+                    )
+                if required <= completed_count:
+                    unlocked.append(code)
+            if not unlocked:
+                break
+            for code in unlocked:
+                sphere_by_mission[code] = sphere
+                remaining.remove(code)
+            completed_count += len(unlocked)
+            sphere += 1
+    elif progression_type == "grid_neighbors":
+        starts = [
+            str(code)
+            for code in progression.get("starting_missions", ())
+            if str(code) in remaining
+        ]
+        for code in starts:
+            sphere_by_mission[code] = 1
+            remaining.remove(code)
+        sphere = 2
+        while remaining:
+            reached = set(sphere_by_mission)
+            unlocked = []
+            for code in mission_order:
+                if code not in remaining:
+                    continue
+                neighbors = requirements.get(code)
+                if not isinstance(neighbors, list):
+                    raise ValueError(f"Invalid Grid neighbors for {code}.")
+                if any(str(neighbor) in reached for neighbor in neighbors):
+                    unlocked.append(code)
+            if not unlocked:
+                break
+            for code in unlocked:
+                sphere_by_mission[code] = sphere
+                remaining.remove(code)
+            sphere += 1
+    else:
+        raise ValueError(f"Unsupported progression type: {progression_type!r}.")
+
+    if remaining:
+        raise ValueError(
+            "Progression graph cannot reach: " + ", ".join(
+                code for code in mission_order if code in remaining
+            )
+        )
+    goal = manifest.get("goal")
+    goal = goal if isinstance(goal, dict) else {}
+    goal_codes = (
+        mission_order
+        if goal.get("type") == "all_missions"
+        else [str(goal.get("mission_code") or mission_order[-1])]
+    )
+    try:
+        goal_sphere = max(sphere_by_mission[code] for code in goal_codes) + 1
+    except KeyError as exc:
+        raise ValueError(
+            f"Progression goal mission is unknown: {exc.args[0]}."
+        ) from None
+    return {
+        "mission_spheres": sphere_by_mission,
+        "goal_sphere": goal_sphere,
     }
 
 
@@ -366,6 +503,7 @@ def build_run_manifest(state, launcher_config=None):
         "progression_mode": progression_mode,
         "mission_goal": int(state.get("mission_goal") or len(mission_order)),
         "mission_order": mission_order,
+        "progression": _progression_logic_for_state(state, mission_order),
         "grid": _stable_grid(state.get("grid")),
         "goal": _goal_for_state(state, mission_order),
         "locations": locations,

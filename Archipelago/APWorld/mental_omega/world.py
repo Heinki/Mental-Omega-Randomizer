@@ -11,12 +11,18 @@ from .data import (
     ITEM_DATA,
     ITEM_NAME_GROUPS,
     ITEM_TABLE,
+    LOCAL_VICTORY_DATA,
+    LOCAL_VICTORY_ITEM_TABLE,
     LOCATION_TABLE,
     MISSION_DATA,
     VICTORY_EVENT,
     location_entries,
 )
-from .manifest import parse_manifest, validate_launcher_settings
+from .manifest import (
+    parse_manifest,
+    progression_for_manifest,
+    validate_launcher_settings,
+)
 from .options import MentalOmegaOptions
 
 
@@ -53,6 +59,7 @@ class MentalOmegaWorld(World):
     item_name_to_id = {
         name: data["id"] for name, data in ITEM_DATA.items()
     }
+    item_name_to_id.update(LOCAL_VICTORY_ITEM_TABLE)
     location_name_to_id = dict(LOCATION_TABLE)
     item_name_groups = ITEM_NAME_GROUPS
     location_name_groups = {
@@ -71,12 +78,20 @@ class MentalOmegaWorld(World):
             if generated_world
             else self.options.run_manifest.value
         )
+        self.progression = progression_for_manifest(self.run_manifest)
         validate_launcher_settings(
             self.options.launcher_settings.value,
             self.run_manifest,
         )
 
     def create_item(self, name: str) -> MentalOmegaItem:
+        if name in LOCAL_VICTORY_ITEM_TABLE:
+            return MentalOmegaItem(
+                name,
+                ItemClassification.progression,
+                LOCAL_VICTORY_ITEM_TABLE[name],
+                self.player,
+            )
         item_id, classification = ITEM_TABLE[name]
         return MentalOmegaItem(name, classification, item_id, self.player)
 
@@ -93,6 +108,73 @@ class MentalOmegaWorld(World):
             None,
             menu,
         )
+        regions = [menu]
+        by_location = {}
+        by_code = {}
+        for code in self.run_manifest["mission_order"]:
+            mission = MISSION_DATA[code]
+            region = Region(mission["title"], self.player, self.multiworld)
+            active = {}
+            for check_id, count in self.run_manifest["locations"][code].items():
+                active.update(dict(location_entries(code, check_id, count)))
+            region.add_locations(active, MentalOmegaLocation)
+            by_location.update({location.name: location for location in region.locations})
+            local_victory = MentalOmegaLocation(
+                self.player,
+                LOCAL_VICTORY_DATA[code]["location_name"],
+                LOCAL_VICTORY_DATA[code]["location_id"],
+                region,
+            )
+            local_victory.place_locked_item(
+                self.create_item(LOCAL_VICTORY_DATA[code]["item_name"])
+            )
+            region.locations.append(local_victory)
+            by_code[code] = region
+            regions.append(region)
+
+        progression = self.progression
+        local_victory_names = {
+            code: LOCAL_VICTORY_DATA[code]["item_name"]
+            for code in self.run_manifest["mission_order"]
+        }
+        if progression["type"] == "victory_count":
+            all_victories = tuple(local_victory_names.values())
+            for code, region in by_code.items():
+                required = progression["mission_requirements"][code]
+                rule = None if required == 0 else (
+                    lambda state, needed=required, names=all_victories:
+                    sum(state.has(name, self.player) for name in names) >= needed
+                )
+                if rule is None:
+                    menu.connect(region)
+                else:
+                    menu.connect(region, rule=rule)
+        else:
+            starts = set(progression["starting_missions"])
+            for code, region in by_code.items():
+                required = tuple(
+                    local_victory_names[neighbor]
+                    for neighbor in progression["mission_requirements"][code]
+                )
+                rule = None if code in starts else (
+                    lambda state, names=required:
+                    any(state.has(name, self.player) for name in names)
+                )
+                if rule is None:
+                    menu.connect(region)
+                else:
+                    menu.connect(region, rule=rule)
+
+        goal = self.run_manifest["goal"]
+        goal_codes = (
+            self.run_manifest["mission_order"]
+            if goal["type"] == "all_missions"
+            else [goal["mission_code"]]
+        )
+        goal_items = tuple(local_victory_names[code] for code in goal_codes)
+        victory.access_rule = lambda state, names=goal_items: all(
+            state.has(name, self.player) for name in names
+        )
         victory.place_locked_item(
             MentalOmegaItem(
                 VICTORY_EVENT,
@@ -102,18 +184,6 @@ class MentalOmegaWorld(World):
             )
         )
         menu.locations.append(victory)
-        regions = [menu]
-        by_location = {}
-        for code in self.run_manifest["mission_order"]:
-            mission = MISSION_DATA[code]
-            region = Region(mission["title"], self.player, self.multiworld)
-            active = {}
-            for check_id, count in self.run_manifest["locations"][code].items():
-                active.update(dict(location_entries(code, check_id, count)))
-            region.add_locations(active, MentalOmegaLocation)
-            by_location.update({location.name: location for location in region.locations})
-            menu.connect(region)
-            regions.append(region)
 
         for placement in self.run_manifest["local_placements"]:
             name, _location_id = location_entries(
@@ -141,8 +211,8 @@ class MentalOmegaWorld(World):
 
     def set_rules(self) -> None:
         # Runtime completion is reported by the embedded client from the
-        # Randomizer's native goal logic.  This private event only tells AP's
-        # generation audit that item placement never gates mission unlocking.
+        # Randomizer's native goal logic. This private event mirrors that goal
+        # for generation without controlling launcher mission availability.
         self.multiworld.completion_condition[self.player] = (
             lambda state: state.has(VICTORY_EVENT, self.player)
         )
@@ -166,7 +236,7 @@ class MentalOmegaWorld(World):
             self.run_manifest["starting_items"]
         )
         return {
-            "slot_data_version": 4,
+            "slot_data_version": 5,
             "randomizer_version": self.run_manifest["randomizer_version"],
             "randomizer_seed": self.run_manifest["randomizer_seed"],
             "catalogue_checksum": CATALOGUE_CHECKSUM,
@@ -178,8 +248,22 @@ class MentalOmegaWorld(World):
             "goal": self.run_manifest["goal"],
             "run_manifest": self.run_manifest,
             "items": {
-                str(ITEM_DATA[name]["id"]): name
-                for name in sorted(used_items)
+                **{
+                    str(ITEM_DATA[name]["id"]): name
+                    for name in sorted(used_items)
+                },
+                **{
+                    str(LOCAL_VICTORY_DATA[code]["item_id"]):
+                    LOCAL_VICTORY_DATA[code]["item_name"]
+                    for code in self.run_manifest["mission_order"]
+                },
             },
             "locations": locations,
+            "local_victories": {
+                code: {
+                    "item": LOCAL_VICTORY_DATA[code]["item_id"],
+                    "location": LOCAL_VICTORY_DATA[code]["location_id"],
+                }
+                for code in self.run_manifest["mission_order"]
+            },
         }

@@ -402,6 +402,31 @@ class UnlockViewController:
             detail_tag_colors[tag] = color_getter(slot)
             return tag
 
+        if archipelago_active:
+            seed_counts = self.archipelago_seed_count_summary()
+            if seed_counts is not None:
+                lines.append('Archipelago seed counts')
+                lines.append(
+                    f'Total checks: {seed_counts["total_checks"]:,}'
+                )
+                recipient_line = (
+                    'Local-player checks: '
+                    f'{seed_counts["local_player_checks"]:,} | '
+                    'Other-player/world checks: '
+                    f'{seed_counts["other_player_checks"]:,}'
+                )
+                if seed_counts['unresolved_checks']:
+                    recipient_line += (
+                        ' | Awaiting details: '
+                        f'{seed_counts["unresolved_checks"]:,}'
+                    )
+                lines.append(recipient_line)
+                lines.append(
+                    'Potential rewards: '
+                    f'{seed_counts["potential_rewards"]:,}'
+                )
+                lines.append('')
+
         selected = self.selected_mission()
         if selected:
             code = selected['code']

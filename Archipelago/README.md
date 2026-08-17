@@ -57,6 +57,42 @@ mission order, Grid, reward slots, and compatibility checks required for this
 exact run. Change launcher controls and save a new Player YAML instead of
 editing generated data. Archipelago rejects mismatched readable settings.
 
+## Mission progression and spheres
+
+Archipelago logic uses one locked, local-only `Local Victory` marker for each
+mission. These markers are never shuffled and never unlock missions inside the
+launcher. The launcher still opens missions from its own persisted victories.
+It reports the matching marker alongside each mission victory so the server's
+logical record stays synchronized.
+
+Mission List/Classic rules use the manifest's exact starting mission count and
+victory-count requirements. Grid rules use the signed start nodes and exact
+orthogonal neighbors from the generated topology. Consequently later mission
+checks enter later logical spheres instead of every mission appearing in
+Sphere 1. The local markers are visible in spoiler/playthrough output because
+they are the explicit bridge between real local progress and Archipelago's
+item-based sphere model.
+
+After each validated connection, `logs/launcher.log` records one
+`archipelago_expected_logic_spheres` event. It groups mission codes by their
+earliest logic sphere, lists the starting missions, and records the expected
+goal sphere. Mission-specific Archipelago diagnostic events also include an
+`expected_logic_sphere` field. These values describe earliest reachability;
+the generated spoiler playthrough may omit optional Grid branches that are not
+required for the goal.
+
+The normal Details tab shows compact counts for the connected seed: active
+reward checks, checks whose placed item belongs to the local player, checks
+whose item belongs to another player/world, and distinct potential rewards
+allowed by the seed's frozen settings and mission-specific pools. Recipient
+counts come from server scouting and can briefly show an awaiting-details
+count while metadata arrives. Local-only victory logic markers are excluded.
+
+Connection diagnostics also record `archipelago_reward_check_counts` with the
+active check count, potential-reward count, and their difference. A negative
+difference is logged at warning level. This is informational only and does not
+change Archipelago generation or fill behavior.
+
 ## Generate and host the room
 
 Generate the multiworld normally with Archipelago 0.6.7 after every player's

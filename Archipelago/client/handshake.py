@@ -15,7 +15,7 @@ from randomizer.core.version import APP_VERSION
 
 
 GAME_NAME = 'Mental Omega'
-SUPPORTED_SLOT_DATA_VERSION = 4
+SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5})
 SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
 CLIENT_VERSION = (0, 6, 7)
 ITEMS_HANDLING_ALL = 0b111
@@ -239,7 +239,8 @@ def validate_slot_data(value):
     if not isinstance(value, Mapping):
         raise ArchipelagoProtocolError('Connected packet has no slot data.')
     slot_data = dict(value)
-    if slot_data.get('slot_data_version') != SUPPORTED_SLOT_DATA_VERSION:
+    slot_data_version = slot_data.get('slot_data_version')
+    if slot_data_version not in SUPPORTED_SLOT_DATA_VERSIONS:
         raise ArchipelagoProtocolError(
             'Unsupported Mental Omega slot-data version: '
             f"{slot_data.get('slot_data_version')!r}."
@@ -342,6 +343,52 @@ def validate_slot_data(value):
         ) from exc
     slot_data['items'] = normalized_items
     slot_data['locations'] = normalized_locations
+    raw_local_victories = slot_data.get('local_victories', {})
+    if slot_data_version >= 5:
+        if (
+            not isinstance(raw_local_victories, Mapping)
+            or set(raw_local_victories) != set(mission_order)
+        ):
+            raise ArchipelagoProtocolError(
+                'Slot data local victories do not match mission order.'
+            )
+    elif raw_local_victories:
+        raise ArchipelagoProtocolError(
+            'Legacy slot data cannot contain local-victory mappings.'
+        )
+    normalized_local_victories = {}
+    logic_item_ids = set()
+    logic_location_ids = set()
+    for code, raw_entry in raw_local_victories.items():
+        if not isinstance(raw_entry, Mapping):
+            raise ArchipelagoProtocolError(
+                f'Slot data local victory for {code} is invalid.'
+            )
+        item_id = raw_entry.get('item')
+        location_id = raw_entry.get('location')
+        if (
+            not isinstance(item_id, int)
+            or isinstance(item_id, bool)
+            or item_id <= 0
+            or not isinstance(location_id, int)
+            or isinstance(location_id, bool)
+            or location_id <= 0
+            or item_id in logic_item_ids
+            or location_id in logic_location_ids
+            or location_id in all_location_ids
+            or normalized_items.get(item_id)
+            != f'Mental Omega Local Victory: {code}'
+        ):
+            raise ArchipelagoProtocolError(
+                f'Slot data local victory for {code} is invalid.'
+            )
+        logic_item_ids.add(item_id)
+        logic_location_ids.add(location_id)
+        normalized_local_victories[code] = {
+            'item': item_id,
+            'location': location_id,
+        }
+    slot_data['local_victories'] = normalized_local_victories
     for key in (
         'randomizer_version',
         'randomizer_seed',

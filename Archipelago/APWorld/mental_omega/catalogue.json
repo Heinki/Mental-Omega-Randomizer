@@ -280739,5 +280739,686 @@
       "check": "victory",
       "slot": 278
     }
+  ],
+  "local_victories": [
+    {
+      "mission": "AREDDAWN",
+      "item_name": "Mental Omega Local Victory: AREDDAWN",
+      "item_id": 81784832,
+      "location_name": "Allied 01: RED DAWN RISING - Local Victory",
+      "location_id": 81784832
+    },
+    {
+      "mission": "AEAGLESFLY",
+      "item_name": "Mental Omega Local Victory: AEAGLESFLY",
+      "item_id": 81784833,
+      "location_name": "Allied 02: EAGLE FLY FREE - Local Victory",
+      "location_id": 81784833
+    },
+    {
+      "mission": "AROADTRIP",
+      "item_name": "Mental Omega Local Victory: AROADTRIP",
+      "item_id": 81784834,
+      "location_name": "Allied 03: ROAD TRIPPIN' - Local Victory",
+      "location_id": 81784834
+    },
+    {
+      "mission": "AHEAVENHELL",
+      "item_name": "Mental Omega Local Victory: AHEAVENHELL",
+      "item_id": 81784835,
+      "location_name": "Allied 04: HEAVEN AND HELL - Local Victory",
+      "location_id": 81784835
+    },
+    {
+      "mission": "ABADAPPLE",
+      "item_name": "Mental Omega Local Victory: ABADAPPLE",
+      "item_id": 81784836,
+      "location_name": "Allied 05: BAD APPLE - Local Victory",
+      "location_id": 81784836
+    },
+    {
+      "mission": "ABMIND",
+      "item_name": "Mental Omega Local Victory: ABMIND",
+      "item_id": 81784837,
+      "location_name": "Allied 06: BEAUTIFUL MIND - Local Victory",
+      "location_id": 81784837
+    },
+    {
+      "mission": "AHAMMERFALL",
+      "item_name": "Mental Omega Local Victory: AHAMMERFALL",
+      "item_id": 81784838,
+      "location_name": "Allied 07: HAMMER TO FALL - Local Victory",
+      "location_id": 81784838
+    },
+    {
+      "mission": "AWRONGSIDE",
+      "item_name": "Mental Omega Local Victory: AWRONGSIDE",
+      "item_id": 81784839,
+      "location_name": "Allied 08: WRONG SIDE - Local Victory",
+      "location_id": 81784839
+    },
+    {
+      "mission": "AZEROSIGNAL",
+      "item_name": "Mental Omega Local Victory: AZEROSIGNAL",
+      "item_id": 81784840,
+      "location_name": "Allied 09: ZERO SIGNAL - Local Victory",
+      "location_id": 81784840
+    },
+    {
+      "mission": "AGARDENER",
+      "item_name": "Mental Omega Local Victory: AGARDENER",
+      "item_id": 81784841,
+      "location_name": "Allied 10: THE GARDENER - Local Victory",
+      "location_id": 81784841
+    },
+    {
+      "mission": "APANIC",
+      "item_name": "Mental Omega Local Victory: APANIC",
+      "item_id": 81784842,
+      "location_name": "Allied 11: PANIC CYCLE - Local Victory",
+      "location_id": 81784842
+    },
+    {
+      "mission": "ASUNLIGHT",
+      "item_name": "Mental Omega Local Victory: ASUNLIGHT",
+      "item_id": 81784843,
+      "location_name": "Allied 12: SUNLIGHT (Finale) - Local Victory",
+      "location_id": 81784843
+    },
+    {
+      "mission": "ASIREN",
+      "item_name": "Mental Omega Local Victory: ASIREN",
+      "item_id": 81784844,
+      "location_name": "Allied 13: THE MERMAID - Local Victory",
+      "location_id": 81784844
+    },
+    {
+      "mission": "APUPPET",
+      "item_name": "Mental Omega Local Victory: APUPPET",
+      "item_id": 81784845,
+      "location_name": "Allied 14: PUPPET MASTER - Local Victory",
+      "location_id": 81784845
+    },
+    {
+      "mission": "ASTONE",
+      "item_name": "Mental Omega Local Victory: ASTONE",
+      "item_id": 81784846,
+      "location_name": "Allied 15: STONE COLD CRAZY - Local Victory",
+      "location_id": 81784846
+    },
+    {
+      "mission": "AGHOST",
+      "item_name": "Mental Omega Local Victory: AGHOST",
+      "item_id": 81784847,
+      "location_name": "Allied 16: GHOST HUNT - Local Victory",
+      "location_id": 81784847
+    },
+    {
+      "mission": "ABOTTLE",
+      "item_name": "Mental Omega Local Victory: ABOTTLE",
+      "item_id": 81784848,
+      "location_name": "Allied 17: BOTTLENECK - Local Victory",
+      "location_id": 81784848
+    },
+    {
+      "mission": "AHYST",
+      "item_name": "Mental Omega Local Victory: AHYST",
+      "item_id": 81784849,
+      "location_name": "Allied 18: HYSTERIA - Local Victory",
+      "location_id": 81784849
+    },
+    {
+      "mission": "ASTORM",
+      "item_name": "Mental Omega Local Victory: ASTORM",
+      "item_id": 81784850,
+      "location_name": "Allied 19: STORMBRINGER - Local Victory",
+      "location_id": 81784850
+    },
+    {
+      "mission": "APARA",
+      "item_name": "Mental Omega Local Victory: APARA",
+      "item_id": 81784851,
+      "location_name": "Allied 20: PARANOIA - Local Victory",
+      "location_id": 81784851
+    },
+    {
+      "mission": "ARELE",
+      "item_name": "Mental Omega Local Victory: ARELE",
+      "item_id": 81784852,
+      "location_name": "Allied 21: RELENTLESS - Local Victory",
+      "location_id": 81784852
+    },
+    {
+      "mission": "AINSOMNIA",
+      "item_name": "Mental Omega Local Victory: AINSOMNIA",
+      "item_id": 81784853,
+      "location_name": "Allied 22: INSOMNIA - Local Victory",
+      "location_id": 81784853
+    },
+    {
+      "mission": "AWITHER",
+      "item_name": "Mental Omega Local Victory: AWITHER",
+      "item_id": 81784854,
+      "location_name": "Allied 23: WITHERSHINS - Local Victory",
+      "location_id": 81784854
+    },
+    {
+      "mission": "AHAMARTIA",
+      "item_name": "Mental Omega Local Victory: AHAMARTIA",
+      "item_id": 81784855,
+      "location_name": "Allied 24: HAMARTIA (Finale) - Local Victory",
+      "location_id": 81784855
+    },
+    {
+      "mission": "SBLEED",
+      "item_name": "Mental Omega Local Victory: SBLEED",
+      "item_id": 81784856,
+      "location_name": "Soviet 01: BLEED RED - Local Victory",
+      "location_id": 81784856
+    },
+    {
+      "mission": "SGGATE",
+      "item_name": "Mental Omega Local Victory: SGGATE",
+      "item_id": 81784857,
+      "location_name": "Soviet 02: GOLDEN GATE - Local Victory",
+      "location_id": 81784857
+    },
+    {
+      "mission": "SHBD",
+      "item_name": "Mental Omega Local Victory: SHBD",
+      "item_id": 81784858,
+      "location_name": "Soviet 03: HAPPY BIRTHDAY - Local Victory",
+      "location_id": 81784858
+    },
+    {
+      "mission": "SSIDE",
+      "item_name": "Mental Omega Local Victory: SSIDE",
+      "item_id": 81784859,
+      "location_name": "Soviet 04: SIDE EFFECT - Local Victory",
+      "location_id": 81784859
+    },
+    {
+      "mission": "SPEACE",
+      "item_name": "Mental Omega Local Victory: SPEACE",
+      "item_id": 81784860,
+      "location_name": "Soviet 05: PEACE TREATY - Local Victory",
+      "location_id": 81784860
+    },
+    {
+      "mission": "SRECH",
+      "item_name": "Mental Omega Local Victory: SRECH",
+      "item_id": 81784861,
+      "location_name": "Soviet 06: RECHARGER - Local Victory",
+      "location_id": 81784861
+    },
+    {
+      "mission": "SIDLE",
+      "item_name": "Mental Omega Local Victory: SIDLE",
+      "item_id": 81784862,
+      "location_name": "Soviet 07: IDLE GOSSIP - Local Victory",
+      "location_id": 81784862
+    },
+    {
+      "mission": "SDEATH",
+      "item_name": "Mental Omega Local Victory: SDEATH",
+      "item_id": 81784863,
+      "location_name": "Soviet 08: DEATH FROM ABOVE - Local Victory",
+      "location_id": 81784863
+    },
+    {
+      "mission": "SROAD",
+      "item_name": "Mental Omega Local Victory: SROAD",
+      "item_id": 81784864,
+      "location_name": "Soviet 09: ROAD TO NOWHERE - Local Victory",
+      "location_id": 81784864
+    },
+    {
+      "mission": "SOPEN",
+      "item_name": "Mental Omega Local Victory: SOPEN",
+      "item_id": 81784865,
+      "location_name": "Soviet 10: THE LUNATIC - Local Victory",
+      "location_id": 81784865
+    },
+    {
+      "mission": "SMACHINE",
+      "item_name": "Mental Omega Local Victory: SMACHINE",
+      "item_id": 81784866,
+      "location_name": "Soviet 11: UNSHAKEABLE - Local Victory",
+      "location_id": 81784866
+    },
+    {
+      "mission": "SDRAGON",
+      "item_name": "Mental Omega Local Victory: SDRAGON",
+      "item_id": 81784867,
+      "location_name": "Soviet 12: DRAGONSTORM (Finale) - Local Victory",
+      "location_id": 81784867
+    },
+    {
+      "mission": "SRAVEN",
+      "item_name": "Mental Omega Local Victory: SRAVEN",
+      "item_id": 81784868,
+      "location_name": "Soviet 13: THE RAVEN - Local Victory",
+      "location_id": 81784868
+    },
+    {
+      "mission": "SAWAKE",
+      "item_name": "Mental Omega Local Victory: SAWAKE",
+      "item_id": 81784869,
+      "location_name": "Soviet 14: AWAKE AND ALIVE - Local Victory",
+      "location_id": 81784869
+    },
+    {
+      "mission": "SEXIST",
+      "item_name": "Mental Omega Local Victory: SEXIST",
+      "item_id": 81784870,
+      "location_name": "Soviet 15: EXIST TO EXIT - Local Victory",
+      "location_id": 81784870
+    },
+    {
+      "mission": "SFIRE",
+      "item_name": "Mental Omega Local Victory: SFIRE",
+      "item_id": 81784871,
+      "location_name": "Soviet 16: FIREWALKING - Local Victory",
+      "location_id": 81784871
+    },
+    {
+      "mission": "SJUGGER",
+      "item_name": "Mental Omega Local Victory: SJUGGER",
+      "item_id": 81784872,
+      "location_name": "Soviet 17: JUGGERNAUT - Local Victory",
+      "location_id": 81784872
+    },
+    {
+      "mission": "SHEART",
+      "item_name": "Mental Omega Local Victory: SHEART",
+      "item_id": 81784873,
+      "location_name": "Soviet 18: HEARTWORK - Local Victory",
+      "location_id": 81784873
+    },
+    {
+      "mission": "SRED",
+      "item_name": "Mental Omega Local Victory: SRED",
+      "item_id": 81784874,
+      "location_name": "Soviet 19: POWER HUNGER - Local Victory",
+      "location_id": 81784874
+    },
+    {
+      "mission": "STHREAD",
+      "item_name": "Mental Omega Local Victory: STHREAD",
+      "item_id": 81784875,
+      "location_name": "Soviet 20: THREAD OF DREAD - Local Victory",
+      "location_id": 81784875
+    },
+    {
+      "mission": "SMELT",
+      "item_name": "Mental Omega Local Victory: SMELT",
+      "item_id": 81784876,
+      "location_name": "Soviet 21: MELTDOWN - Local Victory",
+      "location_id": 81784876
+    },
+    {
+      "mission": "SEARTH",
+      "item_name": "Mental Omega Local Victory: SEARTH",
+      "item_id": 81784877,
+      "location_name": "Soviet 22: EARTHRISE - Local Victory",
+      "location_id": 81784877
+    },
+    {
+      "mission": "SFATAL",
+      "item_name": "Mental Omega Local Victory: SFATAL",
+      "item_id": 81784878,
+      "location_name": "Soviet 23: FATAL IMPACT - Local Victory",
+      "location_id": 81784878
+    },
+    {
+      "mission": "SHAND",
+      "item_name": "Mental Omega Local Victory: SHAND",
+      "item_id": 81784879,
+      "location_name": "Soviet 24: DEATH'S HAND (Finale) - Local Victory",
+      "location_id": 81784879
+    },
+    {
+      "mission": "EPEACE",
+      "item_name": "Mental Omega Local Victory: EPEACE",
+      "item_id": 81784880,
+      "location_name": "Epsilon 01: PEACEKEEPER - Local Victory",
+      "location_id": 81784880
+    },
+    {
+      "mission": "EACCEL",
+      "item_name": "Mental Omega Local Victory: EACCEL",
+      "item_id": 81784881,
+      "location_name": "Epsilon 02: ACCELERANT - Local Victory",
+      "location_id": 81784881
+    },
+    {
+      "mission": "ESCRAP",
+      "item_name": "Mental Omega Local Victory: ESCRAP",
+      "item_id": 81784882,
+      "location_name": "Epsilon 03: SCRAPYARD - Local Victory",
+      "location_id": 81784882
+    },
+    {
+      "mission": "ESHIP",
+      "item_name": "Mental Omega Local Victory: ESHIP",
+      "item_id": 81784883,
+      "location_name": "Epsilon 04: SHIPWRECKED - Local Victory",
+      "location_id": 81784883
+    },
+    {
+      "mission": "EHUMAN",
+      "item_name": "Mental Omega Local Victory: EHUMAN",
+      "item_id": 81784884,
+      "location_name": "Epsilon 05: HUMAN SHIELD - Local Victory",
+      "location_id": 81784884
+    },
+    {
+      "mission": "ELAND",
+      "item_name": "Mental Omega Local Victory: ELAND",
+      "item_id": 81784885,
+      "location_name": "Epsilon 06: LANDLOCKED - Local Victory",
+      "location_id": 81784885
+    },
+    {
+      "mission": "ETHINK",
+      "item_name": "Mental Omega Local Victory: ETHINK",
+      "item_id": 81784886,
+      "location_name": "Epsilon 07: THINK DIFFERENT - Local Victory",
+      "location_id": 81784886
+    },
+    {
+      "mission": "ELORD",
+      "item_name": "Mental Omega Local Victory: ELORD",
+      "item_id": 81784887,
+      "location_name": "Epsilon 08: WARRANTY VOID - Local Victory",
+      "location_id": 81784887
+    },
+    {
+      "mission": "EFIELDS",
+      "item_name": "Mental Omega Local Victory: EFIELDS",
+      "item_id": 81784888,
+      "location_name": "Epsilon 09: KILLING FIELDS - Local Victory",
+      "location_id": 81784888
+    },
+    {
+      "mission": "EFOCUS",
+      "item_name": "Mental Omega Local Victory: EFOCUS",
+      "item_id": 81784889,
+      "location_name": "Epsilon 10: FOCUS SHIFT - Local Victory",
+      "location_id": 81784889
+    },
+    {
+      "mission": "ESING",
+      "item_name": "Mental Omega Local Victory: ESING",
+      "item_id": 81784890,
+      "location_name": "Epsilon 11: SINGULARITY - Local Victory",
+      "location_id": 81784890
+    },
+    {
+      "mission": "EMOON",
+      "item_name": "Mental Omega Local Victory: EMOON",
+      "item_id": 81784891,
+      "location_name": "Epsilon 12: MOONLIGHT (Finale) - Local Victory",
+      "location_id": 81784891
+    },
+    {
+      "mission": "EDILEMMA",
+      "item_name": "Mental Omega Local Victory: EDILEMMA",
+      "item_id": 81784892,
+      "location_name": "Epsilon 13: THE CONQUEROR - Local Victory",
+      "location_id": 81784892
+    },
+    {
+      "mission": "EHUEHUE",
+      "item_name": "Mental Omega Local Victory: EHUEHUE",
+      "item_id": 81784893,
+      "location_name": "Epsilon 14: HUEHUECOYOTL - Local Victory",
+      "location_id": 81784893
+    },
+    {
+      "mission": "EBREED",
+      "item_name": "Mental Omega Local Victory: EBREED",
+      "item_id": 81784894,
+      "location_name": "Epsilon 15: MEMORY DEALER - Local Victory",
+      "location_id": 81784894
+    },
+    {
+      "mission": "EDIVER",
+      "item_name": "Mental Omega Local Victory: EDIVER",
+      "item_id": 81784895,
+      "location_name": "Epsilon 16: DIVERGENCE - Local Victory",
+      "location_id": 81784895
+    },
+    {
+      "mission": "EGODSEND",
+      "item_name": "Mental Omega Local Victory: EGODSEND",
+      "item_id": 81784896,
+      "location_name": "Epsilon 17: GODSEND - Local Victory",
+      "location_id": 81784896
+    },
+    {
+      "mission": "ELIZARD",
+      "item_name": "Mental Omega Local Victory: ELIZARD",
+      "item_id": 81784897,
+      "location_name": "Epsilon 18: LIZARD BRAIN - Local Victory",
+      "location_id": 81784897
+    },
+    {
+      "mission": "EBLOOD",
+      "item_name": "Mental Omega Local Victory: EBLOOD",
+      "item_id": 81784898,
+      "location_name": "Epsilon 19: DANCE OF BLOOD - Local Victory",
+      "location_id": 81784898
+    },
+    {
+      "mission": "EHEAD",
+      "item_name": "Mental Omega Local Victory: EHEAD",
+      "item_id": 81784899,
+      "location_name": "Epsilon 20: MACHINEHEAD - Local Victory",
+      "location_id": 81784899
+    },
+    {
+      "mission": "ESANDS",
+      "item_name": "Mental Omega Local Victory: ESANDS",
+      "item_id": 81784900,
+      "location_name": "Epsilon 21: OBSIDIAN SANDS - Local Victory",
+      "location_id": 81784900
+    },
+    {
+      "mission": "ETOTAL",
+      "item_name": "Mental Omega Local Victory: ETOTAL",
+      "item_id": 81784901,
+      "location_name": "Epsilon 22: UNTHINKABLE - Local Victory",
+      "location_id": 81784901
+    },
+    {
+      "mission": "EREALITY",
+      "item_name": "Mental Omega Local Victory: EREALITY",
+      "item_id": 81784902,
+      "location_name": "Epsilon 23: REALITY CHECK - Local Victory",
+      "location_id": 81784902
+    },
+    {
+      "mission": "EMIGDAL",
+      "item_name": "Mental Omega Local Victory: EMIGDAL",
+      "item_id": 81784903,
+      "location_name": "Epsilon 24: BABEL (Finale) - Local Victory",
+      "location_id": 81784903
+    },
+    {
+      "mission": "FNOBODY",
+      "item_name": "Mental Omega Local Victory: FNOBODY",
+      "item_id": 81784904,
+      "location_name": "Foehn 01: NOBODY HOME - Local Victory",
+      "location_id": 81784904
+    },
+    {
+      "mission": "FKILL",
+      "item_name": "Mental Omega Local Victory: FKILL",
+      "item_id": 81784905,
+      "location_name": "Foehn 02: KILL THE MESSENGER - Local Victory",
+      "location_id": 81784905
+    },
+    {
+      "mission": "FEMPIRE",
+      "item_name": "Mental Omega Local Victory: FEMPIRE",
+      "item_id": 81784906,
+      "location_name": "Foehn 03: TAINTED EMPIRE - Local Victory",
+      "location_id": 81784906
+    },
+    {
+      "mission": "FBEYOND",
+      "item_name": "Mental Omega Local Victory: FBEYOND",
+      "item_id": 81784907,
+      "location_name": "Foehn 04: THE GREAT BEYOND - Local Victory",
+      "location_id": 81784907
+    },
+    {
+      "mission": "FPOINT",
+      "item_name": "Mental Omega Local Victory: FPOINT",
+      "item_id": 81784908,
+      "location_name": "Foehn 05: VANISHING POINT - Local Victory",
+      "location_id": 81784908
+    },
+    {
+      "mission": "FREMNANT",
+      "item_name": "Mental Omega Local Victory: FREMNANT",
+      "item_id": 81784909,
+      "location_name": "Foehn 06: THE REMNANT (Finale) - Local Victory",
+      "location_id": 81784909
+    },
+    {
+      "mission": "ADEMON",
+      "item_name": "Mental Omega Local Victory: ADEMON",
+      "item_id": 81784910,
+      "location_name": "Allied Op: DIGITAL DEMON - Local Victory",
+      "location_id": 81784910
+    },
+    {
+      "mission": "AOBST",
+      "item_name": "Mental Omega Local Victory: AOBST",
+      "item_id": 81784911,
+      "location_name": "Allied Op: OBSTINATE - Local Victory",
+      "location_id": 81784911
+    },
+    {
+      "mission": "ACONV",
+      "item_name": "Mental Omega Local Victory: ACONV",
+      "item_id": 81784912,
+      "location_name": "Allied Op: CONVERGENCE - Local Victory",
+      "location_id": 81784912
+    },
+    {
+      "mission": "AFULL",
+      "item_name": "Mental Omega Local Victory: AFULL",
+      "item_id": 81784913,
+      "location_name": "Allied Op: FULLMETAL - Local Victory",
+      "location_id": 81784913
+    },
+    {
+      "mission": "AGRID",
+      "item_name": "Mental Omega Local Victory: AGRID",
+      "item_id": 81784914,
+      "location_name": "Allied Op: GRIDLOCK - Local Victory",
+      "location_id": 81784914
+    },
+    {
+      "mission": "ASOMNIA",
+      "item_name": "Mental Omega Local Victory: ASOMNIA",
+      "item_id": 81784915,
+      "location_name": "Allied Op: PARASOMNIA - Local Victory",
+      "location_id": 81784915
+    },
+    {
+      "mission": "SARCHE",
+      "item_name": "Mental Omega Local Victory: SARCHE",
+      "item_id": 81784916,
+      "location_name": "Soviet Op: ARCHETYPE - Local Victory",
+      "location_id": 81784916
+    },
+    {
+      "mission": "SECLIPSE",
+      "item_name": "Mental Omega Local Victory: SECLIPSE",
+      "item_id": 81784917,
+      "location_name": "Soviet Op: ECLIPSE - Local Victory",
+      "location_id": 81784917
+    },
+    {
+      "mission": "STROPH",
+      "item_name": "Mental Omega Local Victory: STROPH",
+      "item_id": 81784918,
+      "location_name": "Soviet Op: TROPHY HUNTER - Local Victory",
+      "location_id": 81784918
+    },
+    {
+      "mission": "SNOISE",
+      "item_name": "Mental Omega Local Victory: SNOISE",
+      "item_id": 81784919,
+      "location_name": "Soviet Op: NOISE SEVERE - Local Victory",
+      "location_id": 81784919
+    },
+    {
+      "mission": "SDAWN",
+      "item_name": "Mental Omega Local Victory: SDAWN",
+      "item_id": 81784920,
+      "location_name": "Soviet Op: DAWNBREAKER - Local Victory",
+      "location_id": 81784920
+    },
+    {
+      "mission": "SARMS",
+      "item_name": "Mental Omega Local Victory: SARMS",
+      "item_id": 81784921,
+      "location_name": "Soviet Op: BROTHERS IN ARMS - Local Victory",
+      "location_id": 81784921
+    },
+    {
+      "mission": "ETACI",
+      "item_name": "Mental Omega Local Victory: ETACI",
+      "item_id": 81784922,
+      "location_name": "Epsilon Op: TACITURN - Local Victory",
+      "location_id": 81784922
+    },
+    {
+      "mission": "EASHES",
+      "item_name": "Mental Omega Local Victory: EASHES",
+      "item_id": 81784923,
+      "location_name": "Epsilon Op: FALLEN ASHES - Local Victory",
+      "location_id": 81784923
+    },
+    {
+      "mission": "ERAGE",
+      "item_name": "Mental Omega Local Victory: ERAGE",
+      "item_id": 81784924,
+      "location_name": "Epsilon Op: BLOOD RAGE - Local Victory",
+      "location_id": 81784924
+    },
+    {
+      "mission": "ESPLIT",
+      "item_name": "Mental Omega Local Victory: ESPLIT",
+      "item_id": 81784925,
+      "location_name": "Epsilon Op: SPLIT SECONDS - Local Victory",
+      "location_id": 81784925
+    },
+    {
+      "mission": "ENIGHT",
+      "item_name": "Mental Omega Local Victory: ENIGHT",
+      "item_id": 81784926,
+      "location_name": "Epsilon Op: NIGHTCRAWLER - Local Victory",
+      "location_id": 81784926
+    },
+    {
+      "mission": "ESURV",
+      "item_name": "Mental Omega Local Victory: ESURV",
+      "item_id": 81784927,
+      "location_name": "Epsilon Op: SURVIVORS - Local Victory",
+      "location_id": 81784927
+    },
+    {
+      "mission": "FCAPSULE",
+      "item_name": "Mental Omega Local Victory: FCAPSULE",
+      "item_id": 81784928,
+      "location_name": "Foehn Op: TIME CAPSULE - Local Victory",
+      "location_id": 81784928
+    }
   ]
 }

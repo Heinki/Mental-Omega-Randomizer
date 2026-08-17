@@ -8,7 +8,9 @@ from .archipelago_yaml_controller import ArchipelagoYamlController
 
 from ._dependencies import (
     REWARD_BY_NAME,
+    REWARD_POOL,
     canonical_reward,
+    configured_enemy_reward,
     log_event,
     logging,
     reward_display_name,
@@ -41,12 +43,159 @@ class ArchipelagoController(ArchipelagoYamlController):
             )),
         }
         if isinstance(mission, dict):
+            mission_code = str(mission.get('code', ''))
             context.update({
-                'mission_code': mission.get('code', ''),
+                'mission_code': mission_code,
                 'mission_title': mission.get('title', ''),
                 'scenario': mission.get('scenario', ''),
             })
+            expected_sphere = getattr(
+                self, '_archipelago_logic_spheres', {}
+            ).get(mission_code)
+            if expected_sphere is not None:
+                context['expected_logic_sphere'] = expected_sphere
         return context
+
+    def _cache_archipelago_logic_spheres(self, manifest):
+        """Cache and log earliest mission spheres from signed AP logic."""
+        from Archipelago.run_manifest import expected_logic_spheres
+
+        try:
+            summary = expected_logic_spheres(manifest)
+        except ValueError as exc:
+            self._archipelago_logic_spheres = {}
+            log_event(
+                'archipelago_expected_logic_spheres_failed',
+                level=logging.WARNING,
+                error=str(exc),
+                **self._archipelago_log_context(),
+            )
+            return
+        mission_spheres = summary['mission_spheres']
+        self._archipelago_logic_spheres = dict(mission_spheres)
+        sphere_groups = {}
+        for code in manifest.get('mission_order', ()):
+            sphere = mission_spheres[str(code)]
+            sphere_groups.setdefault(str(sphere), []).append(str(code))
+        progression = manifest.get('progression')
+        progression = progression if isinstance(progression, dict) else {}
+        log_event(
+            'archipelago_expected_logic_spheres',
+            logic_type=progression.get('type', ''),
+            starting_missions=list(progression.get('starting_missions', ())),
+            spheres=sphere_groups,
+            expected_goal_sphere=summary['goal_sphere'],
+            note=(
+                'Earliest reachability; spoiler playthrough may omit optional '
+                'branches.'
+            ),
+            **self._archipelago_log_context(),
+        )
+
+    def _archipelago_potential_reward_count(self):
+        """Count distinct rewards eligible for this signed seed's missions."""
+        cached = getattr(
+            self, '_archipelago_potential_reward_count_cache', None
+        )
+        if cached is not None:
+            return cached
+        slot_data = getattr(self, '_archipelago_slot_data', {})
+        mission_order = (
+            slot_data.get('mission_order', ())
+            if isinstance(slot_data, dict) else ()
+        )
+        blocked_names = set(self.active_starting_unlock_names())
+        names = set()
+        for code in mission_order:
+            for value in self.reward_pool_for_code(str(code)):
+                reward = canonical_reward(value)
+                name = str(reward.get('name') or '').strip()
+                if name and name not in blocked_names:
+                    names.add(name)
+        enemy_settings = self.active_reward_settings().get(
+            'enemy_scaling', {}
+        )
+        if int(enemy_settings.get('maximum_total_buffs', 0) or 0) > 0:
+            for value in REWARD_POOL:
+                reward = configured_enemy_reward(value, enemy_settings)
+                if not isinstance(reward, dict) or not reward.get(
+                    'enemy_reward'
+                ):
+                    continue
+                name = str(reward.get('name') or '').strip()
+                if name:
+                    names.add(name)
+        self._archipelago_potential_reward_count_cache = len(names)
+        return len(names)
+
+    def archipelago_seed_count_summary(self):
+        """Return exact AP reward-location and eligible-pool counts."""
+        ap_state = self._active_archipelago_state()
+        if ap_state is None:
+            return None
+        location_ids = {
+            int(location)
+            for values in getattr(
+                self, '_archipelago_location_groups', {}
+            ).values()
+            for location in values
+            if int(location) > 0
+        }
+        current_slot = int(ap_state.get('slot') or 0)
+        local_checks = 0
+        other_checks = 0
+        for location in location_ids:
+            record = self._archipelago_location_info.get(location)
+            if not isinstance(record, dict):
+                continue
+            try:
+                recipient = int(record.get('player') or 0)
+            except (TypeError, ValueError):
+                continue
+            if recipient <= 0:
+                continue
+            if recipient == current_slot:
+                local_checks += 1
+            else:
+                other_checks += 1
+        return {
+            'total_checks': len(location_ids),
+            'local_player_checks': local_checks,
+            'other_player_checks': other_checks,
+            'unresolved_checks': max(
+                0, len(location_ids) - local_checks - other_checks
+            ),
+            'potential_rewards': self._archipelago_potential_reward_count(),
+        }
+
+    def _log_archipelago_reward_check_counts(self):
+        summary = self.archipelago_seed_count_summary()
+        if summary is None:
+            return
+        checks = summary['total_checks']
+        potential = summary['potential_rewards']
+        difference = potential - checks
+        warning = (
+            'Potential rewards are lower than available Archipelago checks.'
+            if difference < 0 else ''
+        )
+        lines = [
+            f'Checks: {checks}',
+            f'Potential Rewards: {potential}',
+            f'Difference: {difference:+d}',
+        ]
+        if warning:
+            lines.append('WARNING: ' + warning)
+        log_event(
+            'archipelago_reward_check_counts',
+            level=logging.WARNING if warning else logging.INFO,
+            total_checks=checks,
+            potential_rewards=potential,
+            difference=difference,
+            warning=warning,
+            message='\n'.join(lines),
+            **self._archipelago_log_context(),
+        )
 
     @staticmethod
     def _archipelago_slot_identity(slot_data):
@@ -285,6 +434,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_players = {}
         self._archipelago_location_info = {}
         self._archipelago_location_groups = {}
+        self._archipelago_local_victories = {}
+        self._archipelago_logic_spheres = {}
+        self._archipelago_potential_reward_count_cache = None
         self._archipelago_allowed_locations = frozenset()
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
@@ -315,6 +467,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_players = {}
         self._archipelago_location_info = {}
         self._archipelago_location_groups = {}
+        self._archipelago_local_victories = {}
+        self._archipelago_logic_spheres = {}
+        self._archipelago_potential_reward_count_cache = None
         self._archipelago_allowed_locations = frozenset()
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
@@ -680,6 +835,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             self._apply_manifest_launcher_settings(slot_manifest)
             self._synchronize_archipelago_progression_ui(slot_manifest)
             self._promote_archipelago_run()
+            self._log_archipelago_reward_check_counts()
             self._set_archipelago_chat_enabled(True)
             self.archipelago_status_var.set(
                 'Connected — AP rewards active'
@@ -796,10 +952,15 @@ class ArchipelagoController(ArchipelagoYamlController):
                 item_names[item_id] = reward_name
         except (TypeError, ValueError) as exc:
             raise ValueError('slot data item mapping is invalid') from exc
+        local_victory_names = {
+            f'Mental Omega Local Victory: {code}'
+            for code in (slot_data.get('local_victories') or {})
+        }
         unknown = sorted({
             reward_name
             for reward_name in item_names.values()
             if reward_name not in REWARD_BY_NAME
+            and reward_name not in local_victory_names
         })
         if unknown:
             preview = ', '.join(unknown[:3])
@@ -851,7 +1012,24 @@ class ArchipelagoController(ArchipelagoYamlController):
                 }))
                 groups[(str(code).upper(), str(check_id))] = locations
                 allowed.update(locations)
+        local_victories = {}
+        for code, entry in (slot_data.get('local_victories') or {}).items():
+            if not isinstance(entry, dict):
+                continue
+            try:
+                location = int(entry.get('location', 0))
+                item = int(entry.get('item', 0))
+            except (TypeError, ValueError):
+                continue
+            if location <= 0 or item <= 0:
+                continue
+            local_victories[str(code).upper()] = {
+                'item': item,
+                'location': location,
+            }
+            allowed.add(location)
         self._archipelago_location_groups = groups
+        self._archipelago_local_victories = local_victories
         self._archipelago_allowed_locations = frozenset(allowed)
 
     def _load_archipelago_server_state(
@@ -905,7 +1083,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         # Validated HandshakeResult is immutable by convention after delivery.
         # Avoid another full manifest/state copy on Tk thread.
         self._archipelago_slot_data = result.slot_data
+        self._archipelago_potential_reward_count_cache = None
         self._cache_archipelago_location_mappings(result.slot_data)
+        self._cache_archipelago_logic_spheres(slot_manifest)
         self._archipelago_item_names = dict(item_names)
         self._archipelago_players = {
             int(slot): deepcopy(info)
@@ -1341,6 +1521,34 @@ class ArchipelagoController(ArchipelagoYamlController):
             or not getattr(self, '_archipelago_session_validated', False)
         ):
             return ()
+        slot_data = getattr(self, '_archipelago_slot_data', {})
+        logic_item_ids = {
+            int(entry.get('item', 0))
+            for entry in (slot_data.get('local_victories') or {}).values()
+            if isinstance(entry, dict) and int(entry.get('item', 0)) > 0
+        }
+        logic_indexes = {
+            int(self._archipelago_receipt_value(receipt, 'index', -1))
+            for receipt in receipts
+            if int(self._archipelago_receipt_value(receipt, 'item', 0))
+            in logic_item_ids
+        }
+        receipts = tuple(
+            receipt for receipt in receipts
+            if int(self._archipelago_receipt_value(receipt, 'item', 0))
+            not in logic_item_ids
+        )
+        if not receipts:
+            try:
+                changed = session.acknowledge_received(sorted(logic_indexes))
+                if changed:
+                    ap_state['checkpoint'] = session.checkpoint()
+                    self.save_state()
+            except Exception as exc:
+                self.append_archipelago_history(
+                    f'Local victory acknowledgment failed: {exc}'
+                )
+            return ()
         raw_history = ap_state.get('received_rewards', [])
         existing_records = list(self._archipelago_reward_records() or ())
         if not isinstance(raw_history, list) or len(existing_records) != len(
@@ -1437,7 +1645,7 @@ class ArchipelagoController(ArchipelagoYamlController):
                         existing[key] = value
                         metadata_updated = True
 
-        acknowledge_indexes = sorted(incoming_by_index)
+        acknowledge_indexes = sorted(set(incoming_by_index) | logic_indexes)
         if not new_records:
             try:
                 changed = session.acknowledge_received(acknowledge_indexes)
@@ -1565,6 +1773,16 @@ class ArchipelagoController(ArchipelagoYamlController):
         except (TypeError, ValueError):
             return ()
         return tuple(value for value in location_ids if value > 0)
+
+    def _archipelago_local_victory_location(self, code):
+        mapping = getattr(self, '_archipelago_local_victories', {})
+        if not mapping:
+            slot_data = getattr(self, '_archipelago_slot_data', {})
+            if slot_data:
+                self._cache_archipelago_location_mappings(slot_data)
+                mapping = self._archipelago_local_victories
+        entry = mapping.get(str(code).upper(), {})
+        return int(entry.get('location', 0)) if isinstance(entry, dict) else 0
 
     def archipelago_check_location_count(self, code, check_id):
         if self._active_archipelago_state() is None:
@@ -1874,6 +2092,15 @@ class ArchipelagoController(ArchipelagoYamlController):
                 'event_stem': 'mission_completion',
                 'locations': victory_locations,
             })
+        logic_location = self._archipelago_local_victory_location(code)
+        if logic_location:
+            groups.append({
+                'code': str(code).upper(),
+                'check_id': 'local_victory',
+                'label': 'local victory logic',
+                'event_stem': 'local_victory',
+                'locations': (logic_location,),
+            })
         group_keys = {
             (group['code'], group['check_id']) for group in groups
         }
@@ -1900,23 +2127,34 @@ class ArchipelagoController(ArchipelagoYamlController):
                 if not check_id:
                     continue
                 locations = self._archipelago_location_ids(code, check_id)
-                if not locations:
-                    continue
-                groups.append({
-                    'code': str(code).upper(),
-                    'check_id': check_id,
-                    'label': (
-                        'mission completion'
-                        if check_id == 'victory'
-                        else 'objective check'
-                    ),
-                    'event_stem': (
-                        'mission_completion'
-                        if check_id == 'victory'
-                        else 'objective'
-                    ),
-                    'locations': locations,
-                })
+                if locations:
+                    groups.append({
+                        'code': str(code).upper(),
+                        'check_id': check_id,
+                        'label': (
+                            'mission completion'
+                            if check_id == 'victory'
+                            else 'objective check'
+                        ),
+                        'event_stem': (
+                            'mission_completion'
+                            if check_id == 'victory'
+                            else 'objective'
+                        ),
+                        'locations': locations,
+                    })
+                if check_id == 'victory':
+                    logic_location = self._archipelago_local_victory_location(
+                        code
+                    )
+                    if logic_location:
+                        groups.append({
+                            'code': str(code).upper(),
+                            'check_id': 'local_victory',
+                            'label': 'local victory logic',
+                            'event_stem': 'local_victory',
+                            'locations': (logic_location,),
+                        })
         group_keys = {
             (group['code'], group['check_id']) for group in groups
         }

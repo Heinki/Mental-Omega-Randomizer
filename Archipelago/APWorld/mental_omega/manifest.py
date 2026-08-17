@@ -44,6 +44,181 @@ def _positive_counts(value, label, known_names):
     return result
 
 
+def _grid_positions(grid, mission_order):
+    if not isinstance(grid, dict):
+        raise ManifestError("Grid Mode manifest has no grid topology.")
+    nodes = grid.get("nodes")
+    if not isinstance(nodes, dict) or set(nodes) != set(mission_order):
+        raise ManifestError("Grid topology must cover exactly mission_order.")
+    positions = {}
+    for code, node in nodes.items():
+        if not isinstance(node, dict):
+            raise ManifestError(f"Grid node {code!r} is invalid.")
+        x, y = node.get("x"), node.get("y")
+        if (
+            not isinstance(x, int)
+            or isinstance(x, bool)
+            or not isinstance(y, int)
+            or isinstance(y, bool)
+            or x < 0
+            or y < 0
+            or (x, y) in positions
+        ):
+            raise ManifestError(f"Grid node {code!r} has an invalid position.")
+        positions[(x, y)] = code
+    return positions
+
+
+def _validate_progression(value, mode, mission_order, grid):
+    if not isinstance(value, dict):
+        raise ManifestError("Manifest has no local progression logic.")
+    progression_type = value.get("type")
+    starts = value.get("starting_missions")
+    requirements = value.get("mission_requirements")
+    if (
+        not isinstance(starts, list)
+        or not starts
+        or len(set(starts)) != len(starts)
+        or any(code not in mission_order for code in starts)
+    ):
+        raise ManifestError("Manifest starting missions are invalid.")
+    if not isinstance(requirements, dict) or set(requirements) != set(mission_order):
+        raise ManifestError(
+            "Manifest progression requirements must cover exactly mission_order."
+        )
+
+    if mode == "Grid Mode":
+        if progression_type != "grid_neighbors":
+            raise ManifestError("Grid Mode requires grid-neighbor progression.")
+        positions = _grid_positions(grid, mission_order)
+        expected_starts = (
+            [positions.get((1, 0)), positions.get((0, 1))]
+            if grid.get("two_start_positions")
+            else [positions.get((0, 0))]
+        )
+        expected_starts = [code for code in expected_starts if code]
+        if starts != expected_starts:
+            raise ManifestError("Grid starting missions do not match topology.")
+        for code, required_neighbors in requirements.items():
+            if (
+                not isinstance(required_neighbors, list)
+                or len(set(required_neighbors)) != len(required_neighbors)
+                or any(
+                    neighbor not in mission_order or neighbor == code
+                    for neighbor in required_neighbors
+                )
+            ):
+                raise ManifestError(
+                    f"Grid progression requirements for {code!r} are invalid."
+                )
+            node = grid["nodes"][code]
+            expected = [
+                positions[position]
+                for position in (
+                    (node["x"], node["y"] - 1),
+                    (node["x"] - 1, node["y"]),
+                    (node["x"] + 1, node["y"]),
+                    (node["x"], node["y"] + 1),
+                )
+                if position in positions
+            ]
+            if required_neighbors != expected:
+                raise ManifestError(
+                    f"Grid progression requirements for {code!r} do not match topology."
+                )
+            if code not in starts and not required_neighbors:
+                raise ManifestError(f"Grid mission {code!r} cannot be unlocked.")
+        reachable = set(starts)
+        changed = True
+        while changed:
+            changed = False
+            for code, required_neighbors in requirements.items():
+                if code not in reachable and any(
+                    neighbor in reachable for neighbor in required_neighbors
+                ):
+                    reachable.add(code)
+                    changed = True
+        if reachable != set(mission_order):
+            raise ManifestError("Grid progression topology is disconnected.")
+        return value
+
+    if progression_type != "victory_count":
+        raise ManifestError("Mission List/Classic requires victory-count progression.")
+    if starts != mission_order[:len(starts)]:
+        raise ManifestError("Starting missions must be a mission_order prefix.")
+    for index, code in enumerate(mission_order):
+        required = requirements.get(code)
+        expected = max(0, index - len(starts) + 1)
+        if (
+            not isinstance(required, int)
+            or isinstance(required, bool)
+            or required != expected
+        ):
+            raise ManifestError(
+                f"Victory requirement for {code!r} does not match mission order."
+            )
+    return value
+
+
+def progression_for_manifest(value):
+    """Return signed progression, deriving only for legacy schema-1 YAMLs."""
+    mission_order = value["mission_order"]
+    mode = value.get("progression_mode")
+    if value.get("progression") is not None:
+        return _validate_progression(
+            value["progression"], mode, mission_order, value.get("grid")
+        )
+    if mode == "Grid Mode":
+        grid = value.get("grid")
+        positions = _grid_positions(grid, mission_order)
+        starts = (
+            [positions.get((1, 0)), positions.get((0, 1))]
+            if grid.get("two_start_positions")
+            else [positions.get((0, 0))]
+        )
+        starts = [code for code in starts if code]
+        requirements = {}
+        for code in mission_order:
+            node = grid["nodes"][code]
+            requirements[code] = [
+                positions[position]
+                for position in (
+                    (node["x"], node["y"] - 1),
+                    (node["x"] - 1, node["y"]),
+                    (node["x"] + 1, node["y"]),
+                    (node["x"], node["y"] + 1),
+                )
+                if position in positions
+            ]
+        legacy = {
+            "type": "grid_neighbors",
+            "starting_missions": starts,
+            "mission_requirements": requirements,
+        }
+        return _validate_progression(legacy, mode, mission_order, grid)
+    frozen = value.get("frozen_settings")
+    frozen = frozen if isinstance(frozen, dict) else {}
+    default_count = 1 if mode == "Classic" else 3
+    try:
+        starting_count = int(
+            frozen.get("starting_unlocked_missions", default_count)
+        )
+    except (TypeError, ValueError):
+        starting_count = default_count
+    starting_count = max(1, min(len(mission_order), starting_count))
+    legacy = {
+        "type": "victory_count",
+        "starting_missions": mission_order[:starting_count],
+        "mission_requirements": {
+            code: max(0, index - starting_count + 1)
+            for index, code in enumerate(mission_order)
+        },
+    }
+    return _validate_progression(
+        legacy, mode, mission_order, value.get("grid")
+    )
+
+
 def parse_manifest(raw_value):
     if isinstance(raw_value, Mapping):
         value = dict(raw_value)
@@ -83,6 +258,21 @@ def parse_manifest(raw_value):
         or any(code not in MISSION_DATA for code in mission_order)
     ):
         raise ManifestError("Manifest mission_order is invalid.")
+
+    if value.get("progression_mode") not in {
+        "Classic", "Mission List", "Grid Mode"
+    }:
+        raise ManifestError("Manifest progression_mode is invalid.")
+    progression = (
+        _validate_progression(
+            value["progression"],
+            value["progression_mode"],
+            mission_order,
+            value.get("grid"),
+        )
+        if value.get("progression") is not None
+        else None
+    )
 
     raw_locations = value.get("locations")
     if not isinstance(raw_locations, dict) or set(raw_locations) != set(mission_order):
@@ -201,6 +391,8 @@ def parse_manifest(raw_value):
 
     result = dict(value)
     result["mission_order"] = list(mission_order)
+    if progression is not None:
+        result["progression"] = progression
     result["locations"] = locations
     result["item_pool"] = item_pool
     result["starting_items"] = starting_items

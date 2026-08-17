@@ -45,6 +45,24 @@ LOCATION_TABLE = {
     entry["name"]: int(entry["id"])
     for entry in _SNAPSHOT["locations"]
 }
+LOCAL_VICTORY_DATA = {
+    entry["mission"]: {
+        "item_name": entry["item_name"],
+        "item_id": int(entry["item_id"]),
+        "location_name": entry["location_name"],
+        "location_id": int(entry["location_id"]),
+    }
+    for entry in _SNAPSHOT["local_victories"]
+}
+LOCAL_VICTORY_ITEM_TABLE = {
+    data["item_name"]: data["item_id"]
+    for data in LOCAL_VICTORY_DATA.values()
+}
+LOCAL_VICTORY_LOCATION_TABLE = {
+    data["location_name"]: data["location_id"]
+    for data in LOCAL_VICTORY_DATA.values()
+}
+LOCATION_TABLE.update(LOCAL_VICTORY_LOCATION_TABLE)
 LOCATION_SLOTS = defaultdict(lambda: defaultdict(list))
 for _entry in _SNAPSHOT["locations"]:
     LOCATION_SLOTS[_entry["mission"]][_entry["check"]].append(
@@ -61,7 +79,7 @@ for _name, _data in ITEM_DATA.items():
 ITEM_NAME_GROUPS = dict(ITEM_NAME_GROUPS)
 
 # Tables above retain the shared strings/integers they need. Drop the decoded
-# 17,640-entry source list so generation does not keep every location object
+# 35,876-entry source list so generation does not keep every location object
 # twice.
 del _SNAPSHOT, _entry, _name, _data
 

@@ -138,6 +138,9 @@ class LauncherApp(
         self._archipelago_item_names = {}
         self._archipelago_players = {}
         self._archipelago_location_info = {}
+        self._archipelago_local_victories = {}
+        self._archipelago_logic_spheres = {}
+        self._archipelago_potential_reward_count_cache = None
         self._archipelago_server_checked_locations = set()
         self._archipelago_displayed_receipts = set()
         self._archipelago_last_status = None

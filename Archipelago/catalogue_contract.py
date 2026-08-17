@@ -19,6 +19,7 @@ from randomizer.rewards.weights import main_reward_weight_type
 SNAPSHOT_SCHEMA_VERSION = 1
 ITEM_ID_BASE = 0x4D4F000
 LOCATION_ID_BASE = 0x4D5F000
+LOCAL_VICTORY_ID_BASE = 0x4DFF000
 PROTOTYPE_ITEM_IDS = {
     "GI Access": ITEM_ID_BASE,
     "Soviet Conscript Access": ITEM_ID_BASE + 1,
@@ -204,11 +205,38 @@ def build_snapshot(existing=None):
                     "slot": slot,
                 })
 
+    old_logic = {
+        entry["mission"]: entry
+        for entry in (existing or {}).get("local_victories", ())
+        if isinstance(entry, dict) and isinstance(entry.get("mission"), str)
+    }
+    local_victories = []
+    for index, mission in enumerate(projection["missions"]):
+        code = mission["code"]
+        title = mission["title"]
+        previous = old_logic.get(code, {})
+        item_id = int(previous.get("item_id", LOCAL_VICTORY_ID_BASE + index))
+        location_id = int(
+            previous.get("location_id", LOCAL_VICTORY_ID_BASE + index)
+        )
+        if item_id in used_item_ids or location_id in used_location_ids:
+            raise ValueError(f"Local-victory ID collision for {code}.")
+        used_item_ids.add(item_id)
+        used_location_ids.add(location_id)
+        local_victories.append({
+            "mission": code,
+            "item_name": f"Mental Omega Local Victory: {code}",
+            "item_id": item_id,
+            "location_name": f"{title} - Local Victory",
+            "location_id": location_id,
+        })
+
     return {
         **projection,
         "catalogue_checksum": projection_checksum(projection),
         "items": items,
         "locations": locations,
+        "local_victories": local_victories,
     }
 
 
