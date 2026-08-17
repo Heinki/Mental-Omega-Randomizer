@@ -323,7 +323,6 @@
       "STHOR",
       "STARDUSTB",
       "DHANDL",
-      "DHANDR",
       "CBRIS",
       "CZEP",
       "SHINBOT",
@@ -373,10 +372,6 @@
         "image": "hands_of_ereshkigal_left.png",
         "pcx": "mordhandlicon.pcx"
       },
-      "DHANDR": {
-        "image": "hands_of_ereshkigal_right.png",
-        "pcx": "mordhandricon.pcx"
-      },
       "CZEP": {
         "source_pcx": "zepicon.pcx"
       },
@@ -423,11 +418,11 @@
     },
     "unit_base_stats": {
       "YURIX2": [
-        1200,
-        3,
-        300,
+        1500,
+        7,
+        400,
         8,
-        10,
+        8,
         null
       ],
       "STARDUSTB": [
@@ -2647,22 +2642,6 @@
       ]
     ],
     "linked_buff_variants": {
-      "DHANDL": {
-        "DHANDR": {
-          "weapons": {
-            "DeathBolt": {
-              "damage": 75,
-              "rof": 2,
-              "range": 14
-            },
-            "DeathBoltAA": {
-              "damage": 75,
-              "rof": 2,
-              "range": 14
-            }
-          }
-        }
-      },
       "AMCV": {
         "GACNST": {
           "category": "defenses",
@@ -4698,20 +4677,20 @@
         "factions": [
           "Epsilon"
         ],
-        "cost": 1200,
-        "speed": 3,
-        "strength": 300,
+        "cost": 1500,
+        "speed": 7,
+        "strength": 400,
         "sight": 8,
-        "guard_range": 10,
+        "guard_range": 8,
         "weapons": {
-          "MORYuriPrimeControl": {
+          "SuperMindControl": {
             "damage": 1,
-            "rof": 10,
+            "rof": 100,
             "range": 10
           },
           "SuperPsiWave": {
-            "damage": 250,
-            "rof": 75,
+            "damage": 300,
+            "rof": 50,
             "range": 1
           }
         }
@@ -4789,20 +4768,7 @@
       "SHINBOT": 1,
       "YURIX2": 1
     },
-    "standalone_weapon_templates": {
-      "MORYuriPrimeControl": {
-        "Damage": "1",
-        "ROF": "10",
-        "Range": "10",
-        "Projectile": "PsychicControl",
-        "Speed": "100",
-        "Warhead": "Controller",
-        "Anim": "YURICNTL",
-        "FireOnce": "yes",
-        "Report": "YuriMindControl",
-        "MinimumRange": "0.5"
-      }
-    },
+    "standalone_weapon_templates": {},
     "special_damage_fields": {
       "V3": {
         "V3RocketDamage": 250,

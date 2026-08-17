@@ -88,11 +88,6 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Armor': 'f_heroic',
         'PixelSelectionBracketDelta': '0',
     },
-    'DHANDR': {
-        'Strength': '3000',
-        'Armor': 'f_heroic',
-        'PixelSelectionBracketDelta': '0',
-    },
     # Preserved editable packaged rosters may predate hidden-payload fixes.
     # Enforce interaction/UI safety in memory even when those files remain
     # authoritative for every unrelated value.
@@ -127,6 +122,27 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'NoManualEnter': 'yes',
     },
     'YURIX2': {
+        # Existing packaged configs can retain the former Death's Hand
+        # template. Enforce Purgatory Challenge's installed YURIX identity in
+        # memory while retaining the stable YURIX2 reward/catalogue key.
+        'Name': 'Yuri',
+        'UIName': 'NAME:YURIHIMSELF',
+        'Image': 'YURIX',
+        'Primary': 'SuperMindControl',
+        'Secondary': 'SuperPsiWave',
+        'Strength': '400',
+        'Armor': 'sieg',
+        'Speed': '7',
+        'Cost': '1500',
+        'Soylent': '750',
+        'PixelSelectionBracketDelta': '-24',
+        'Experience.MindControlSelfModifier': '100%',
+        'DieSound': 'YuriPrimeDie',
+        'ImmuneToEMP': 'no',
+        'ImmuneToPsionicWeapons': None,
+        'OpenTransportWeapon': None,
+        'BuildLimit': '1',
+        'BuildTimeMultiplier': '2',
         'AttachEffect.Animation': None,
         'AttachEffect.Duration': None,
     },
@@ -882,12 +898,17 @@ def validate_special_roster_contracts():
         'Name': 'Yuri',
         'UIName': 'Name:YURIHIMSELF',
         'Image': 'YURIX',
-        'Strength': '300',
-        'Armor': 'yurix',
-        'Speed': '3',
-        'Primary': 'MORYuriPrimeControl',
+        'Strength': '400',
+        'Armor': 'sieg',
+        'Speed': '7',
+        'Cost': '1500',
+        'PixelSelectionBracketDelta': '-24',
+        'Experience.MindControlSelfModifier': '100%',
+        'ImmuneToEMP': 'no',
+        'Primary': 'SuperMindControl',
         'Secondary': 'SuperPsiWave',
         'BuildLimit': '1',
+        'BuildTimeMultiplier': '2',
     }
     for key, expected in yuri_required.items():
         _actual_key, actual = _case_insensitive_item(yuri, key)
@@ -899,25 +920,32 @@ def validate_special_roster_contracts():
         or yuri_target.get('factions') != ['Epsilon']
         or not yuri_target.get('special_reward')
         or yuri_target.get('build_limit') != 1
+        or yuri_target.get('cost') != 1500
+        or yuri_target.get('speed') != 7
+        or yuri_target.get('strength') != 400
+        or yuri_target.get('guard_range') != 8
+        or yuri_target.get('weapons') != {
+            'SuperMindControl': {
+                'damage': 1, 'rof': 100, 'range': 10,
+            },
+            'SuperPsiWave': {
+                'damage': 300, 'rof': 50, 'range': 1,
+            },
+        }
     ):
         errors.append(f'YURIX2 target metadata={yuri_target!r}')
     yuri_cameo = UNIT_SIDEBAR_IMAGES.get('YURIX2', {})
     if yuri_cameo != {'source_pcx': 'yuriicon.pcx', 'art_id': 'YURIX'}:
         errors.append(f'YURIX2 cameo mapping={yuri_cameo!r}')
-    for key in ('AttachEffect.Animation', 'AttachEffect.Duration'):
+    for key in (
+        'AttachEffect.Animation', 'AttachEffect.Duration',
+        'ImmuneToPsionicWeapons', 'OpenTransportWeapon',
+    ):
         _actual_key, actual = _case_insensitive_item(yuri, key)
         if str(actual or '').strip().lower() not in {'', 'none', '<none>'}:
             errors.append(f'YURIX2.{key}={actual!r}')
-    yuri_weapon = STANDALONE_WEAPON_TEMPLATES.get(
-        'MORYURIPRIMECONTROL', {}
-    )
-    for key, expected in {
-        'Damage': '1', 'ROF': '10', 'Range': '10',
-        'Projectile': 'PsychicControl', 'Warhead': 'Controller',
-    }.items():
-        _actual_key, actual = _case_insensitive_item(yuri_weapon, key)
-        if str(actual or '').lower() != expected.lower():
-            errors.append(f'MORYuriPrimeControl.{key}={actual!r}')
+    if 'MORYURIPRIMECONTROL' in STANDALONE_WEAPON_TEMPLATES:
+        errors.append('Obsolete Death\'s Hand Yuri weapon template remains')
 
     cameo = UNIT_SIDEBAR_IMAGES.get('STARDUSTB', {})
     if cameo != {
@@ -1330,6 +1358,13 @@ def validate_reviewed_vehicle_identity_contracts():
 
 def validate_randomizer_unit_health():
     """Audit the authoritative player templates used by every spawn path."""
+    from randomizer.rewards.catalogue import (
+        BUFF_TARGETS,
+        LINKED_ACCESS_VARIANTS,
+        LINKED_BUFF_VARIANTS,
+        SPECIAL_REWARD_UNIT_IDS,
+    )
+
     _paths, clone_ids, templates = randomizer_unit_roster()
     errors = []
     strengths = {}
@@ -1349,7 +1384,16 @@ def validate_randomizer_unit_health():
             continue
         strengths[source_id] = int(value)
     hand_contracts = {}
-    for source_id in ('DHANDL', 'DHANDR'):
+    right_hand_player_links = bool(
+        'DHANDR' in clone_ids
+        or 'DHANDR' in BUFF_TARGETS
+        or 'DHANDR' in SPECIAL_REWARD_UNIT_IDS
+        or any('DHANDR' in variants for variants in LINKED_ACCESS_VARIANTS.values())
+        or any('DHANDR' in variants for variants in LINKED_BUFF_VARIANTS.values())
+    )
+    if right_hand_player_links:
+        errors.append('Duplicate right Hand of Ereshkigal player clone remains')
+    for source_id in ('DHANDL',):
         template = templates.get(source_id, {})
         _strength_key, raw_strength = _case_insensitive_item(
             template,
@@ -1367,7 +1411,7 @@ def validate_randomizer_unit_health():
             for key, value in template.items()
             if value is not None
         }
-        expected_speed = '9' if source_id == 'DHANDL' else '8'
+        expected_speed = '9'
         weapons_preserved = all(
             values.get(f'{prefix}weapon{number}')
             == ('DeathBoltAA' if number % 2 == 0 else 'DeathBolt')
@@ -1425,6 +1469,7 @@ def validate_randomizer_unit_health():
         'minimum_strength': min(strengths.values(), default=0),
         'maximum_strength': max(strengths.values(), default=0),
         'hands_of_ereshkigal': hand_contracts,
+        'right_hand_native_only': not right_hand_player_links,
     }
 
 

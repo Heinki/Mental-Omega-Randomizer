@@ -47,7 +47,7 @@ STABLE_APPEND_ORDER = (
     'GRUMBLE', 'NAGRUM', 'SYCKLE', 'IDRAG',
     'TRACTOR', 'WORMQ', 'SEIZER', 'SALA', 'SALA_1', 'SALA_2',
     'PHNT', 'SEITAAD', 'ARCH', 'ARCH2', 'RAMW', 'REJU',
-    'STHOR', 'DHANDL', 'DHANDR', 'CZEP', 'SHINBOT', 'HEPH',
+    'STHOR', 'DHANDL', 'CZEP', 'SHINBOT', 'HEPH',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
     'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA', 'YURIX2',
 )
@@ -89,29 +89,10 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Trainable': 'yes',
     },
     'YURIX2': {
-        'Name': 'Yuri',
-        'UIName': 'Name:YURIHIMSELF',
+        # Purgatory Challenge deploys the installed YURIX identity directly.
+        # Keep the stable randomizer reward ID, but do not layer the unrelated
+        # Death's Hand YURIX2 mission tuning over that source definition.
         'Image': 'YURIX',
-        'Cost': '1200',
-        'Soylent': '600',
-        'Strength': '300',
-        'Armor': 'yurix',
-        'Sight': '8',
-        'Speed': '3',
-        'Size': '2',
-        'Primary': 'MORYuriPrimeControl',
-        'Secondary': 'SuperPsiWave',
-        'Deployer': 'yes',
-        'DeployFire': 'yes',
-        'ImmuneToEMP': 'yes',
-        'ImmuneToPsionicWeapons': 'yes',
-        'MovementZone': 'AmphibiousDestroyer',
-        'SpeedType': 'Amphibious',
-        'Locomotor': '{4A582744-9839-11d1-B709-00A024DDAFD1}',
-        'PixelSelectionBracketDelta': '-26',
-        'Experience.MindControlSelfModifier': '75%',
-        'DieSound': 'YuriPrimeDieFinal',
-        'OpenTransportWeapon': '1',
         'BuildLimit': '1',
         'BuildTimeMultiplier': '2',
     },
@@ -171,34 +152,6 @@ TEMPLATE_VALUE_OVERRIDES = {
         # and rely on mission triggers for their scripted lifecycle.  The
         # buildable player copy is a normal damageable unit, so keep its
         # bracket at the normal sprite position.
-        'PixelSelectionBracketDelta': '0',
-        'GuardRange': '15',
-        'WeaponCount': '10',
-        'WeaponStages': '5',
-        'Stage1': '1',
-        'Stage2': '2',
-        'Stage3': '3',
-        'Stage4': '4',
-        'Stage5': '5',
-        'EliteStage1': '1',
-        'EliteStage2': '2',
-        'EliteStage3': '3',
-        'EliteStage4': '4',
-        'EliteStage5': '5',
-        'RateUp': '1',
-        'RateDown': '1',
-        'IsGattling': 'yes',
-        'Gattling.Cycle': 'yes',
-        **{
-            f'{prefix}Weapon{number}': (
-                'DeathBoltAA' if number % 2 == 0 else 'DeathBolt'
-            )
-            for prefix in ('', 'Elite')
-            for number in range(1, 11)
-        },
-        'BuildTimeMultiplier': '1',
-    },
-    'DHANDR': {
         'PixelSelectionBracketDelta': '0',
         'GuardRange': '15',
         'WeaponCount': '10',
@@ -657,7 +610,10 @@ def main():
         for source_id in source_ids:
             if source_id in definitions:
                 continue
-            if source_id in reviewed_infantry:
+            # YURIX2 is the stable reward key, not the requested source body.
+            # Even when the fallback reviewed file already contains that old
+            # clone, rebuild it from Purgatory's installed YURIX definition.
+            if source_id in reviewed_infantry and source_id != 'YURIX2':
                 source_values = infantry_sections[reviewed_infantry[source_id]]
             else:
                 template_source = SPECIAL_TEMPLATE_SOURCES.get(source_id, source_id)
