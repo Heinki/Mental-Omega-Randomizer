@@ -307,6 +307,7 @@ def run_self_check():
             enemy_power_launch_rewards,
         )
         from randomizer.maps.base import randomizer_clone_type_id
+        from randomizer.maps.clone_builder import player_clone_selection_group
         from randomizer.config.player import DEFAULT_CONFIG
         from randomizer.rewards.arsenal import (
             ARSENAL_MODE,
@@ -340,6 +341,15 @@ def run_self_check():
             and mission_reward_multiplier('S11') == 3
             and mission_reward_multiplier('SCO1') == 2
         )
+        player_clone_selection_groups = {
+            'default_source_id': player_clone_selection_group('E2', {}) == 'E2',
+            'authored_group': player_clone_selection_group(
+                'E2', {'GroupAs': 'Conscripts'}
+            ) == 'Conscripts',
+            'case_insensitive_key': player_clone_selection_group(
+                'E2', {'groupas': 'InfantryGroup'}
+            ) == 'InfantryGroup',
+        }
         enemy_settings = normalize_enemy_scaling_settings({
             'stack_model_version': 4,
             'maximum_total_buffs': 7,
@@ -986,6 +996,10 @@ def run_self_check():
             'access_catalog_entries': len(runtime_access_catalog),
             'deploy_clone_links_valid': not deploy_clone_link_gaps,
             'deploy_clone_link_gaps': deploy_clone_link_gaps,
+            'player_clone_selection_groups_valid': all(
+                player_clone_selection_groups.values()
+            ),
+            'player_clone_selection_groups': player_clone_selection_groups,
             'transport_buff_eligibility_valid': bool(
                 transport_buffs['gunner_ids']
                 and set(
@@ -1072,6 +1086,7 @@ def run_self_check():
                 'shin_allied_tech_valid',
                 'access_catalog_valid',
                 'deploy_clone_links_valid',
+                'player_clone_selection_groups_valid',
                 'transport_buff_eligibility_valid',
                 'house_wide_buff_policy_valid',
                 'reprocessor_bounty_support_valid',

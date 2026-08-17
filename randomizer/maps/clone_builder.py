@@ -135,6 +135,14 @@ def _is_direct_weapon_reference_key(key: object) -> bool:
     )
 
 
+def player_clone_selection_group(source_id, native_values):
+    """Return the Ares Type Selection group shared with a clone's source."""
+    authored_group = _value_case_insensitive(native_values or {}, 'GroupAs')
+    if authored_group is not None and str(authored_group).strip():
+        return str(authored_group).strip()
+    return str(source_id or '').strip().upper()
+
+
 def build_player_clone_sections(
     context: PlayerCloneContext,
 ) -> PlayerCloneBuildResult:
@@ -1061,6 +1069,15 @@ def build_player_clone_sections(
             reserved_ids,
         )
         clone_values = dict(clone_source_values)
+        # Ares defaults GroupAs to the TechnoType's own ID. Generated MORP,
+        # compact, and MORR identities would therefore form separate Type
+        # Selection groups unless they explicitly reuse the native source's
+        # authored group (or its ID when no GroupAs tag is authored).
+        selection_group = player_clone_selection_group(
+            unit_id, native_unit_values
+        )
+        _remove_case_insensitive(clone_values, 'GroupAs')
+        clone_values['GroupAs'] = selection_group
         if target.get('category') == 'special_buildings':
             clone_values['BuildCat'] = str(target.get('build_category', 'Tech'))
             clone_values['CameoPriority'] = str(
@@ -1476,6 +1493,7 @@ def build_player_clone_sections(
             'weapon_clone_ids': weapon_clone_ids,
             'clone_base_values': clone_base_values,
             'clone_id': clone_id,
+            'selection_group': selection_group,
             'build_only': build_only_clone,
             # Mission-authored placements/TaskForces can use a clean locked
             # reference identity when the production clone carries cloak or

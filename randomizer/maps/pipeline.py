@@ -46,6 +46,7 @@ from randomizer.maps.rules import (
     validate_native_taskforce_production_filters,
     player_country_buff_rules,
     player_unit_clone_rules,
+    validate_player_clone_selection_groups,
     resolved_academy_clone_rules,
     resolved_delivery_clone_rules,
     resolved_power_player_clone_rules,
@@ -2836,6 +2837,19 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
 
     if self.state:
+        clone_selection_validation = validate_player_clone_selection_groups(
+            lines, clone_handled
+        )
+        if clone_selection_validation['failures']:
+            raise ValueError(
+                'Generated player clone Type Selection validation failed: '
+                + '; '.join(clone_selection_validation['failures'])
+            )
+        if clone_selection_validation['checked']:
+            self.append_log(
+                'Validated Ares Type Selection grouping for '
+                f'{clone_selection_validation["checked"]} player clone(s).'
+            )
         buff_validation = validate_generated_unit_buff_changes(
             lines,
             guarded_rewards,

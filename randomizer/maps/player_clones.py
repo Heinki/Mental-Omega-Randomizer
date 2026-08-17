@@ -37,6 +37,36 @@ from .base import (
 )
 from .assistance import stacked_house_buff_values
 
+
+def validate_player_clone_selection_groups(lines, clone_handled):
+    """Return final player clones whose Ares GroupAs contract was lost."""
+    sections = {
+        str(section).lower(): values
+        for section, values in all_section_value_maps(lines).items()
+    }
+    failures = []
+    checked = 0
+    for source_id, details in (clone_handled or {}).items():
+        expected = str((details or {}).get('selection_group') or '').strip()
+        clone_ids = unique_in_order([
+            str((details or {}).get('clone_id') or '').strip(),
+            str((details or {}).get('reference_clone_id') or '').strip(),
+        ])
+        for clone_id in clone_ids:
+            if not clone_id:
+                continue
+            checked += 1
+            actual = str(
+                sections.get(clone_id.lower(), {}).get('groupas') or ''
+            ).strip()
+            if expected and actual == expected:
+                continue
+            failures.append(
+                f'{source_id}->{clone_id}: GroupAs={actual or "<missing>"}, '
+                f'expected {expected or "<missing>"}'
+            )
+    return {'checked': checked, 'failures': failures}
+
 def player_unit_clone_rules(
     lines,
     rewards,
