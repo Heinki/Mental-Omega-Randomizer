@@ -4785,6 +4785,13 @@
       "id": 81064593
     },
     {
+      "name": "Chrono Miner Expanded Ore Storage I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067786
+    },
+    {
       "name": "Chrono Prison Access",
       "classification": "progression",
       "category": "special_unlocks",
@@ -5021,6 +5028,13 @@
       "category": "unit_unlocks",
       "repeatable": false,
       "id": 81064627
+    },
+    {
+      "name": "Cloning Vats Improved Revenue I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067787
     },
     {
       "name": "Cloning Vats Structure Capacity I",
@@ -5420,6 +5434,83 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064684
+    },
+    {
+      "name": "Crazy Ivan Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81067788
+    },
+    {
+      "name": "Crazy Ivan Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067789
+    },
+    {
+      "name": "Crazy Ivan Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067790
+    },
+    {
+      "name": "Crazy Ivan Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067791
+    },
+    {
+      "name": "Crazy Ivan Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067792
+    },
+    {
+      "name": "Crazy Ivan Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067793
+    },
+    {
+      "name": "Crazy Ivan Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067794
+    },
+    {
+      "name": "Crazy Ivan Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067795
+    },
+    {
+      "name": "Crazy Ivan Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067796
+    },
+    {
+      "name": "Crazy Ivan Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067797
+    },
+    {
+      "name": "Crazy Ivan Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067798
     },
     {
       "name": "Cryocopter Access",
@@ -10329,6 +10420,13 @@
       "id": 81065369
     },
     {
+      "name": "Ghost Miner Expanded Ore Storage I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067799
+    },
+    {
       "name": "Giant Squid Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -11909,6 +12007,13 @@
       "category": "unit_unlocks",
       "repeatable": false,
       "id": 81065595
+    },
+    {
+      "name": "Industrial Plant Improved Revenue I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067800
     },
     {
       "name": "Industrial Plant Structure Capacity I",
@@ -14984,6 +15089,13 @@
       "id": 81066034
     },
     {
+      "name": "Minermite Expanded Ore Storage I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067801
+    },
+    {
       "name": "Mirage Tank Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -16865,6 +16977,13 @@
       "category": "unit_unlocks",
       "repeatable": false,
       "id": 81066304
+    },
+    {
+      "name": "Ore Purifier Improved Revenue I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067802
     },
     {
       "name": "Ore Purifier Structure Capacity I",
@@ -19098,6 +19217,13 @@
       "category": "unit_unlocks",
       "repeatable": false,
       "id": 81066623
+    },
+    {
+      "name": "Reprocessor Improved Revenue I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067803
     },
     {
       "name": "Reprocessor Structure Capacity I",
@@ -21772,6 +21898,13 @@
       "category": "special_unlocks",
       "repeatable": false,
       "id": 81067005
+    },
+    {
+      "name": "Soviet Cloning Vats Improved Revenue I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067804
     },
     {
       "name": "Soviet Cloning Vats Structure Capacity I",
@@ -25827,6 +25960,13 @@
       "id": 81067582
     },
     {
+      "name": "War Miner Expanded Ore Storage I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067805
+    },
+    {
       "name": "Warhawk Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -29605,7 +29745,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "24a1d5b707e7df49c6d0f130e45c1e61048813b5dfd64cd49a886f41b35333f9",
+  "catalogue_checksum": "131222e5e1cf11379626f4adcb3e904a538a96dad94a2981e9c50fba2dd9905e",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

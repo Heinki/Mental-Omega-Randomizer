@@ -36,6 +36,7 @@ MAXIMUM_ENEMY_TRAP_ITEMS = sum(
 # its exact used-item map, location map, and signed state snapshot. Keeping both
 # checksums compatible lets already-hosted rooms reconnect safely.
 BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
+    "24a1d5b707e7df49c6d0f130e45c1e61048813b5dfd64cd49a886f41b35333f9",
     "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
     "f213725f91de177af64eec5a875a08a403c4bc5be0e4f3f7e510db89ba7510f8",
     "a7ffd4cde8ffe5f7f48eed95c1c7af37d61266807738a6f077f23eba41b58e44",
