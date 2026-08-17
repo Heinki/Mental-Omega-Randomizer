@@ -2574,6 +2574,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         installed_rule_sections,
         native_map_sections,
         native_team_validation_ids,
+        player_runtime_ids=(
+            player_runtime_unit_ids - safe_player_clone_unit_ids
+        ),
+        player_forbidden_houses=player_native_exclusions,
     )
     if validated_native_team_units:
         self.append_log(

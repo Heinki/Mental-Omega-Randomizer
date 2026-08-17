@@ -13,7 +13,7 @@
       "range": {"amount_per_stack": 0.5, "maximum_amount": 50.0, "stack_limit": 100},
       "sight": {"amount_per_stack": 1, "maximum_amount": 100, "stack_limit": 100},
       "ammo": {"amount_per_stack": 1, "stack_limit": 20},
-      "storage": {"amount_per_stack": 2, "stack_limit": 5},
+      "storage": {"amount_per_stack": 4, "stack_limit": 5},
       "income": {"amount_per_stack": 5, "stack_limit": 4},
       "sensor_sight_bonus": 2,
       "defense_self_heal_fraction": 0.01,

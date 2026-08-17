@@ -45,6 +45,29 @@ class UnlockViewController:
         if self.unlocks_view_visible():
             self.after_idle(self.refresh_unlock_dashboard)
 
+    def on_unlock_dashboard_search_changed(self, *_args):
+        self.unlock_dashboard_signature = None
+        if self.unlocks_view_visible():
+            self.refresh_unlock_dashboard()
+
+    def unlock_dashboard_search_matches(self, entry):
+        query = self.unlock_dashboard_search_var.get().strip().casefold()
+        if not query:
+            return True
+        reward = entry.get('reward') or {}
+        haystack = ' '.join(str(value) for value in (
+            entry.get('id'),
+            entry.get('label'),
+            entry.get('category'),
+            entry.get('kind'),
+            entry.get('faction'),
+            reward.get('name'),
+            reward.get('description'),
+            reward.get('buff_type'),
+            reward.get('power_category'),
+        ) if value is not None).casefold()
+        return all(term in haystack for term in query.split())
+
     def refresh_unlock_dashboard(self):
         if not hasattr(self, 'unlock_icon_frames'):
             return
@@ -57,10 +80,13 @@ class UnlockViewController:
         selected_entries = [
             entry for entry in entries
             if entry['faction'] == selected_faction
+            and self.unlock_dashboard_search_matches(entry)
         ]
+        search_query = self.unlock_dashboard_search_var.get().strip().casefold()
         signature = (
             bool(self.dark_mode_var.get()),
             selected_faction,
+            search_query,
             tuple(
                 (
                     entry['key'], entry['status'], entry['condition'], entry['privacy'],

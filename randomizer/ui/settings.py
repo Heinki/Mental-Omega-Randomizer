@@ -224,6 +224,7 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_pool_frames = {}
     self.advanced_pool_column_counts = {}
     self.advanced_pool_group_vars = {}
+    self.advanced_pool_search_vars = {}
     for pool_key, pool_label in (
         ('missions', 'Missions'),
         ('units', 'Units / Buildings'),
@@ -349,6 +350,31 @@ def _build_advanced_tab(self, workspace_tabs):
                 faction_var,
                 category_var,
             )
+        search_row = ttk.Frame(controls)
+        search_row.grid(
+            row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
+        )
+        search_row.columnconfigure(1, weight=1)
+        ttk.Label(search_row, text='Search:').grid(
+            row=0, column=0, sticky='w', padx=(0, 6)
+        )
+        search_var = tk.StringVar(value='')
+        self.advanced_pool_search_vars[pool_key] = search_var
+        ttk.Entry(search_row, textvariable=search_var).grid(
+            row=0, column=1, sticky='ew', padx=(0, 4)
+        )
+        ttk.Button(
+            search_row,
+            text='Clear',
+            width=8,
+            command=lambda target=search_var: target.set(''),
+        ).grid(row=0, column=2)
+        search_var.trace_add(
+            'write',
+            lambda *_args, key=pool_key: (
+                self.schedule_advanced_pool_search_refresh(key)
+            ),
+        )
         canvas = tk.Canvas(
             page,
             borderwidth=0,
@@ -405,6 +431,31 @@ def _build_advanced_tab(self, workspace_tabs):
         buff_controls, text='Disable All',
         command=lambda: self.set_advanced_unit_buffs(False),
     ).grid(row=0, column=2, padx=(4, 0))
+    unit_buff_search = tk.StringVar(value='')
+    self.advanced_pool_search_vars['unit_buffs'] = unit_buff_search
+    unit_buff_search_row = ttk.Frame(buff_controls)
+    unit_buff_search_row.grid(
+        row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
+    )
+    unit_buff_search_row.columnconfigure(1, weight=1)
+    ttk.Label(unit_buff_search_row, text='Search:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    ttk.Entry(unit_buff_search_row, textvariable=unit_buff_search).grid(
+        row=0, column=1, sticky='ew', padx=(0, 4)
+    )
+    ttk.Button(
+        unit_buff_search_row,
+        text='Clear',
+        width=8,
+        command=lambda: unit_buff_search.set(''),
+    ).grid(row=0, column=2)
+    unit_buff_search.trace_add(
+        'write',
+        lambda *_args: self.schedule_advanced_pool_search_refresh(
+            'unit_buffs'
+        ),
+    )
     buff_options = ttk.Frame(buff_page)
     buff_options.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(0, 6))
     buff_options.columnconfigure(0, weight=1)
@@ -517,6 +568,31 @@ def _build_advanced_tab(self, workspace_tabs):
         text='Disable All',
         command=lambda: self.set_selected_power_buffs(False),
     ).grid(row=0, column=2, padx=(4, 0))
+    power_buff_search = tk.StringVar(value='')
+    self.advanced_pool_search_vars['power_buffs'] = power_buff_search
+    power_buff_search_row = ttk.Frame(power_buff_controls)
+    power_buff_search_row.grid(
+        row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
+    )
+    power_buff_search_row.columnconfigure(1, weight=1)
+    ttk.Label(power_buff_search_row, text='Search:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    ttk.Entry(
+        power_buff_search_row, textvariable=power_buff_search
+    ).grid(row=0, column=1, sticky='ew', padx=(0, 4))
+    ttk.Button(
+        power_buff_search_row,
+        text='Clear',
+        width=8,
+        command=lambda: power_buff_search.set(''),
+    ).grid(row=0, column=2)
+    power_buff_search.trace_add(
+        'write',
+        lambda *_args: self.schedule_advanced_pool_search_refresh(
+            'power_buffs'
+        ),
+    )
     selected_power_buff_options = ttk.Frame(power_buff_page)
     selected_power_buff_options.grid(
         row=1, column=0, columnspan=2, sticky='ew', pady=(0, 6)

@@ -77,7 +77,7 @@ def _build_window_shell(self):
     mission_view_frame = ttk.Frame(workspace_tabs)
     self.mission_view_frame = mission_view_frame
     mission_view_frame.columnconfigure(0, weight=1)
-    mission_view_frame.rowconfigure(0, weight=1)
+    mission_view_frame.rowconfigure(1, weight=1)
     workspace_tabs.add(
         mission_view_frame,
         text=(
@@ -86,6 +86,26 @@ def _build_window_shell(self):
             else 'Mission List'
         ),
     )
+
+    mission_search_row = ttk.Frame(mission_view_frame)
+    mission_search_row.grid(
+        row=0, column=0, columnspan=2, sticky='ew', pady=(0, 6)
+    )
+    mission_search_row.columnconfigure(1, weight=1)
+    ttk.Label(mission_search_row, text='Search missions:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    self.mission_search_entry = ttk.Entry(
+        mission_search_row, textvariable=self.mission_search_var
+    )
+    self.mission_search_entry.grid(row=0, column=1, sticky='ew', padx=(0, 4))
+    ttk.Button(
+        mission_search_row,
+        text='Clear',
+        width=8,
+        command=lambda: self.mission_search_var.set(''),
+    ).grid(row=0, column=2)
+    self.mission_search_var.trace_add('write', self.on_mission_search_changed)
 
     self.missions_tree = ttk.Treeview(
         mission_view_frame,
@@ -119,7 +139,7 @@ def _build_window_shell(self):
         background='#dff2df',
         foreground='#176b2c',
     )
-    self.missions_tree.grid(row=0, column=0, sticky='nsew')
+    self.missions_tree.grid(row=1, column=0, sticky='nsew')
     self.missions_tree.bind('<<TreeviewSelect>>', self.on_mission_select, add='+')
     self.mission_tooltip = TreeTooltip(self.missions_tree, self.mission_tooltip_text)
 
@@ -128,12 +148,12 @@ def _build_window_shell(self):
         orient='vertical',
         command=self.missions_tree.yview,
     )
-    tree_scrollbar.grid(row=0, column=1, sticky='ns')
+    tree_scrollbar.grid(row=1, column=1, sticky='ns')
     self.missions_tree.configure(yscrollcommand=tree_scrollbar.set)
     self.tree_scrollbar = tree_scrollbar
 
     self.grid_frame = ttk.Frame(mission_view_frame, padding=(4, 4, 4, 4))
-    self.grid_frame.grid(row=0, column=0, columnspan=2, sticky='nsew')
+    self.grid_frame.grid(row=1, column=0, columnspan=2, sticky='nsew')
     self.grid_frame.columnconfigure(0, weight=1)
     self.grid_frame.rowconfigure(0, weight=1)
     self.grid_canvas = tk.Canvas(
@@ -197,7 +217,7 @@ def _build_window_shell(self):
         compact_complete_button,
         'Recovery only: use when a completed mission was not detected.',
     )
-    self.compact_action_row.grid(row=1, column=0, columnspan=2, sticky='ew')
+    self.compact_action_row.grid(row=2, column=0, columnspan=2, sticky='ew')
     self.compact_action_row.grid_remove()
 
     return main_frame
@@ -521,7 +541,7 @@ def _build_info_tabs(self, info_tabs):
     unlocks_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
     self.unlocks_tab = unlocks_frame
     unlocks_frame.columnconfigure(0, weight=1)
-    unlocks_frame.rowconfigure(1, weight=1)
+    unlocks_frame.rowconfigure(2, weight=1)
     info_tabs.add(unlocks_frame, text='Unlocks')
 
     self.unlock_legend_label = ttk.Label(
@@ -533,9 +553,29 @@ def _build_info_tabs(self, info_tabs):
     )
     self.unlock_legend_label.grid(row=0, column=0, sticky='ew', pady=(0, 6))
 
+    dashboard_search_row = ttk.Frame(unlocks_frame)
+    dashboard_search_row.grid(row=1, column=0, sticky='ew', pady=(0, 6))
+    dashboard_search_row.columnconfigure(1, weight=1)
+    ttk.Label(dashboard_search_row, text='Filter:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    ttk.Entry(
+        dashboard_search_row,
+        textvariable=self.unlock_dashboard_search_var,
+    ).grid(row=0, column=1, sticky='ew', padx=(0, 4))
+    ttk.Button(
+        dashboard_search_row,
+        text='Clear',
+        width=8,
+        command=lambda: self.unlock_dashboard_search_var.set(''),
+    ).grid(row=0, column=2)
+    self.unlock_dashboard_search_var.trace_add(
+        'write', self.on_unlock_dashboard_search_changed
+    )
+
     unlocks_notebook = ttk.Notebook(unlocks_frame, style='Unlocks.TNotebook')
     self.unlocks_notebook = unlocks_notebook
-    unlocks_notebook.grid(row=1, column=0, sticky='nsew')
+    unlocks_notebook.grid(row=2, column=0, sticky='nsew')
     unlocks_notebook.bind(
         '<<NotebookTabChanged>>',
         self.on_unlock_dashboard_tab_changed,

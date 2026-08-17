@@ -713,7 +713,7 @@
         "id": "storage",
         "name": "Expanded Ore Storage",
         "setting_label": "Harvester storage",
-        "description": "{plural} gain +2 ore storage capacity per stack in future launched missions.",
+        "description": "{plural} gain +4 ore storage capacity per stack in future launched missions.",
         "requires_stat": "storage",
         "requires_clone": true
       },

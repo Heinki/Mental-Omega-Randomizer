@@ -21,6 +21,58 @@ from ._dependencies import (
 
 class ProgressionController:
 
+    def mission_matches_search(self, mission):
+        query = self.mission_search_var.get().strip().casefold()
+        if not query:
+            return True
+        haystack = ' '.join(str(value) for value in (
+            mission.get('code', ''),
+            mission.get('title', ''),
+            mission.get('side', ''),
+            mission.get('operation', ''),
+            mission.get('scenario', ''),
+        )).casefold()
+        return all(term in haystack for term in query.split())
+
+    def mission_search_codes(self):
+        if not self.mission_search_var.get().strip():
+            return set()
+        return {
+            mission['code'] for mission in self.missions
+            if self.mission_matches_search(mission)
+        }
+
+    def on_mission_search_changed(self, *_args):
+        if not hasattr(self, 'missions_tree'):
+            return
+        if self.active_progression_mode() == 'Grid Mode':
+            self.refresh_grid_tiles()
+            self.after_idle(self.scroll_to_first_grid_search_match)
+        else:
+            self.redraw_mission_tree()
+
+    def scroll_to_first_grid_search_match(self):
+        matches = self.mission_search_codes()
+        if not matches or not getattr(self, 'grid_tile_widgets', None):
+            return
+        grid = self.state.get('grid', {}) if self.state else {}
+        code = min(
+            (value for value in matches if value in self.grid_tile_widgets),
+            key=lambda value: (
+                int(grid.get('nodes', {}).get(value, {}).get('y', 0)),
+                int(grid.get('nodes', {}).get(value, {}).get('x', 0)),
+            ),
+            default=None,
+        )
+        if not code:
+            return
+        tile = self.grid_tile_widgets[code]['tile']
+        self.grid_content_frame.update_idletasks()
+        total_width = max(1, self.grid_content_frame.winfo_width())
+        total_height = max(1, self.grid_content_frame.winfo_height())
+        self.grid_canvas.xview_moveto(max(0.0, tile.winfo_x() / total_width))
+        self.grid_canvas.yview_moveto(max(0.0, tile.winfo_y() / total_height))
+
     def active_progression_mode(self):
         archipelago_mode = getattr(
             self, 'archipelago_progression_mode', lambda: None
@@ -105,6 +157,7 @@ class ProgressionController:
         states = self.sync_grid_progression()
         lookup = self.mission_lookup()
         selected_code = self.selected_mission_code()
+        search_codes = self.mission_search_codes()
         codes = list(mission_codes) if mission_codes is not None else list(self.grid_tile_widgets)
         for code in codes:
             widgets = self.grid_tile_widgets.get(code)
@@ -119,7 +172,14 @@ class ProgressionController:
                     widget.configure(cursor='arrow')
                 widgets['tile'].configure(
                     background=background,
-                    highlightbackground=self.ui_palette()['canvas'],
+                    highlightthickness=(
+                        6 if code in search_codes else 3
+                    ),
+                    highlightbackground=(
+                        '#00eaff'
+                        if code in search_codes
+                        else self.ui_palette()['canvas']
+                    ),
                 )
                 widgets['selection'].configure(background=background)
                 widgets['banner'].grid_remove()
@@ -164,8 +224,11 @@ class ProgressionController:
             hover_highlight = code in getattr(self, 'unlock_hover_grid_codes', set())
             widgets['tile'].configure(
                 background='#d6ad37' if is_goal else background,
+                highlightthickness=6 if code in search_codes else 3,
                 highlightbackground=(
-                    '#45ef7a'
+                    '#00eaff'
+                    if code in search_codes
+                    else '#45ef7a'
                     if hover_highlight
                     else self.ui_palette()['canvas']
                 ),

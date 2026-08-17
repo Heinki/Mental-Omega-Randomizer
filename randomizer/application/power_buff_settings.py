@@ -178,6 +178,29 @@ class PowerBuffSettingsController:
         for child in frame.winfo_children():
             child.destroy()
         entries = self.power_buff_entries()
+        buff_labels = {
+            definition['id']: (
+                definition.get('name'), definition.get('setting_label')
+            )
+            for definition in POWER_BUFF_TYPES
+        }
+        entries = [
+            entry for entry in entries
+            if self.advanced_search_matches(
+                'power_buffs',
+                entry.get('id'),
+                entry.get('label'),
+                entry.get('faction'),
+                entry.get('category'),
+                entry.get('buff_types'),
+                entry.get('reward', {}).get('description'),
+                *(
+                    label
+                    for buff_id in entry.get('buff_types', ())
+                    for label in buff_labels.get(buff_id, ())
+                ),
+            )
+        ]
         entry_ids = {entry['id'] for entry in entries}
         if not entries:
             self.advanced_power_buff_id = ''

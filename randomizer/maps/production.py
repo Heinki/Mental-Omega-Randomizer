@@ -253,6 +253,8 @@ def validate_native_taskforce_production_filters(
     installed_sections,
     native_sections,
     native_taskforce_ids,
+    player_runtime_ids=(),
+    player_forbidden_houses=(),
 ):
     """Reject player-isolation gates on authored non-player team payloads."""
     installed_by_lower = {
@@ -262,6 +264,16 @@ def validate_native_taskforce_production_filters(
     native_by_lower = {
         str(section).lower(): values
         for section, values in (native_sections or {}).items()
+    }
+    player_runtime_ids = {
+        str(value).upper()
+        for value in (player_runtime_ids or ())
+        if str(value).strip()
+    }
+    allowed_player_factory_owners = {
+        str(value).strip().casefold()
+        for value in (player_forbidden_houses or ())
+        if str(value).strip()
     }
 
     def effective_value(source_id, values, key):
@@ -304,7 +316,16 @@ def validate_native_taskforce_production_filters(
             ))
             if value.casefold() not in {'none', '<none>'}
         }
-        if generated_factory != authored_factory:
+        if source_id in player_runtime_ids:
+            added_factory_owners = generated_factory - authored_factory
+            if (
+                not authored_factory.issubset(generated_factory)
+                or not added_factory_owners.issubset(
+                    allowed_player_factory_owners
+                )
+            ):
+                failures.append(f'{source_id}: factory-owner filter changed')
+        elif generated_factory != authored_factory:
             failures.append(f'{source_id}: factory-owner filter changed')
 
     if failures:

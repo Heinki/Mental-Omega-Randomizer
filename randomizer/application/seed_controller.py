@@ -834,6 +834,9 @@ class SeedController:
             visible = [(idx, mission) for idx, mission in enumerate(self.missions) if mission['code'] in shown_codes]
         else:
             visible = list(enumerate(self.missions))
+        visible = [
+            item for item in visible if self.mission_matches_search(item[1])
+        ]
         order_map = self.randomizer_order_map()
         unlocked = set(self.unlocked_mission_codes())
         def default_sort_key(item):

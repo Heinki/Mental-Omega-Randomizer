@@ -341,6 +341,10 @@
       "YURIX2"
     ],
     "unit_sidebar_images": {
+      "IVAN": {
+        "source_pcx": "ivanicon.pcx",
+        "art_id": "TRST"
+      },
       "PERUN": {
         "image": "perun_flagship.png",
         "pcx": "morperunicon.pcx"

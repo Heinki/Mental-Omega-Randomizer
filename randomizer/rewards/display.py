@@ -542,10 +542,8 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
     if buff_type == 'income':
         increase = int(stacking_amount('income', count))
         base_income = int(target.get('produce_cash_amount', 0))
-        delay = int(target.get('produce_cash_delay', 0))
         return [stacked(
-            f'{prefix}Income {base_income} -> {base_income + increase} '
-            f'credits every {delay} frames'
+            f'{prefix}Income {base_income} -> {base_income + increase} credits'
         )]
     if buff_type == 'passenger_capacity':
         base_passengers = int(target.get('passengers', 0))

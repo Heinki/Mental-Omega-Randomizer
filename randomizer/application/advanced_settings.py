@@ -33,6 +33,39 @@ from ._dependencies import (
 
 class AdvancedSettingsController:
 
+    def advanced_search_matches(self, pool_key, *values):
+        variable = getattr(self, 'advanced_pool_search_vars', {}).get(pool_key)
+        query = variable.get().strip().casefold() if variable is not None else ''
+        if not query:
+            return True
+        haystack = ' '.join(
+            str(value) for value in values if value is not None
+        ).casefold()
+        return all(term in haystack for term in query.split())
+
+    def schedule_advanced_pool_search_refresh(self, pool_key):
+        refresh_ids = self.__dict__.setdefault(
+            '_advanced_search_refresh_after_ids', {}
+        )
+        refresh_id = refresh_ids.get(pool_key)
+        if refresh_id is not None:
+            self.after_cancel(refresh_id)
+        refresh_ids[pool_key] = self.after(
+            180,
+            lambda key=pool_key: self._refresh_advanced_pool_search(key),
+        )
+
+    def _refresh_advanced_pool_search(self, pool_key):
+        self.__dict__.setdefault(
+            '_advanced_search_refresh_after_ids', {}
+        ).pop(pool_key, None)
+        if pool_key == 'unit_buffs':
+            self.refresh_advanced_buff_view()
+        elif pool_key == 'power_buffs':
+            self.refresh_advanced_power_buff_view()
+        else:
+            self.refresh_advanced_pool_views(pool_key)
+
     def on_advanced_tab_configure(self, event):
         wraplength = max(340, int(event.width or 0) - 32)
         if hasattr(self, 'advanced_pool_intro_label'):
@@ -254,6 +287,27 @@ class AdvancedSettingsController:
         entries = [
             entry for entry in self.advanced_buff_unit_entries()
             if self.advanced_buff_unit_is_visible(entry)
+        ]
+        buff_labels = {
+            definition['id']: (
+                definition.get('name'), definition.get('setting_label')
+            )
+            for definition in BUFF_TYPES
+        }
+        entries = [
+            entry for entry in entries
+            if self.advanced_search_matches(
+                'unit_buffs',
+                entry.get('id'),
+                entry.get('label'),
+                entry.get('faction'),
+                entry.get('buff_types'),
+                *(
+                    label
+                    for buff_id in entry.get('buff_types', ())
+                    for label in buff_labels.get(buff_id, ())
+                ),
+            )
         ]
         if not entries:
             self.advanced_buff_unit_id = ''
@@ -547,10 +601,17 @@ class AdvancedSettingsController:
         status = 'Excluded from next seeds' if excluded else 'Included in next seeds'
         WidgetTooltip(card, f'{entry["label"]} ({entry["id"]})\n{status}')
 
-    def refresh_advanced_pool_views(self):
+    def refresh_advanced_pool_views(self, pool_key=None):
         if not hasattr(self, 'advanced_pool_frames'):
             return
-        for frame in self.advanced_pool_frames.values():
+        requested = (
+            set(self.advanced_pool_frames)
+            if pool_key is None
+            else {pool_key}
+        )
+        for key, frame in self.advanced_pool_frames.items():
+            if key not in requested:
+                continue
             for child in frame.winfo_children():
                 child.destroy()
 
@@ -573,11 +634,6 @@ class AdvancedSettingsController:
                 or entry.get('faction') == selected_campaign
             )
 
-        mission_frame = self.advanced_pool_frames['missions']
-        mission_icons = {}
-        for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
-            path = GAME_ROOT / 'Resources' / f'{faction}icon.png'
-            mission_icons[faction] = self.advanced_pool_photo(f'mission:{faction}', path)
         campaign_missions = [
             mission for mission in self.missions
             if selected_campaign == CAMPAIGN_FILTERS[0]
@@ -591,21 +647,40 @@ class AdvancedSettingsController:
             ),
             include_operation_missions=self.include_operation_missions_var.get(),
         )
-        mission_columns = self.advanced_pool_column_count('missions')
-        for index, mission in enumerate(visible_missions):
-            faction = normalize_faction(mission.get('side', ''))
-            self.draw_advanced_pool_card(
-                mission_frame,
-                index // mission_columns,
-                index % mission_columns,
-                {
-                    'id': mission['code'].upper(),
-                    'label': mission.get('title') or mission['code'],
-                    'faction': faction,
-                },
+        displayed_missions = [
+            mission for mission in visible_missions
+            if self.advanced_search_matches(
                 'missions',
-                mission_icons.get(faction),
+                mission.get('code'),
+                mission.get('title'),
+                mission.get('side'),
+                mission.get('operation'),
+                mission.get('scenario'),
             )
+        ]
+        if 'missions' in requested:
+            mission_frame = self.advanced_pool_frames['missions']
+            mission_icons = {}
+            for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
+                path = GAME_ROOT / 'Resources' / f'{faction}icon.png'
+                mission_icons[faction] = self.advanced_pool_photo(
+                    f'mission:{faction}', path
+                )
+            mission_columns = self.advanced_pool_column_count('missions')
+            for index, mission in enumerate(displayed_missions):
+                faction = normalize_faction(mission.get('side', ''))
+                self.draw_advanced_pool_card(
+                    mission_frame,
+                    index // mission_columns,
+                    index % mission_columns,
+                    {
+                        'id': mission['code'].upper(),
+                        'label': mission.get('title') or mission['code'],
+                        'faction': faction,
+                    },
+                    'missions',
+                    mission_icons.get(faction),
+                )
 
         all_unit_entries = self.advanced_unit_pool_entries()
         unit_entries = [
@@ -621,33 +696,48 @@ class AdvancedSettingsController:
                 or not entry.get('special_reward')
             )
         ]
-        unit_ids = [entry['id'] for entry in all_unit_entries]
-        cameo_paths = getattr(self, 'advanced_unit_cameo_paths', None)
-        if cameo_paths is None:
-            try:
-                cameo_paths = ensure_unit_cameos(unit_ids)
-            except Exception:
-                cameo_paths = {}
-                log_event(
-                    'advanced_pool_cameos_failed',
-                    level=logging.ERROR,
-                    traceback=traceback.format_exc(),
-                )
-            self.advanced_unit_cameo_paths = cameo_paths
-        unit_frame = self.advanced_pool_frames['units']
-        unit_columns = self.advanced_pool_column_count('units')
-        for index, entry in enumerate(unit_entries):
-            photo = self.advanced_pool_photo(
-                f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
-            )
-            self.draw_advanced_pool_card(
-                unit_frame,
-                index // unit_columns,
-                index % unit_columns,
-                entry,
+        displayed_unit_entries = [
+            entry for entry in unit_entries
+            if self.advanced_search_matches(
                 'units',
-                photo,
+                entry.get('id'),
+                entry.get('label'),
+                entry.get('faction'),
+                entry.get('category'),
             )
+        ]
+        if 'units' in requested:
+            unit_ids = [entry['id'] for entry in all_unit_entries]
+            cameo_paths = dict(
+                getattr(self, 'advanced_unit_cameo_paths', {}) or {}
+            )
+            missing_unit_ids = [
+                unit_id for unit_id in unit_ids if unit_id not in cameo_paths
+            ]
+            if missing_unit_ids:
+                try:
+                    cameo_paths.update(ensure_unit_cameos(missing_unit_ids))
+                except Exception:
+                    log_event(
+                        'advanced_pool_cameos_failed',
+                        level=logging.ERROR,
+                        traceback=traceback.format_exc(),
+                    )
+            self.advanced_unit_cameo_paths = cameo_paths
+            unit_frame = self.advanced_pool_frames['units']
+            unit_columns = self.advanced_pool_column_count('units')
+            for index, entry in enumerate(displayed_unit_entries):
+                photo = self.advanced_pool_photo(
+                    f'unit:{entry["id"]}', cameo_paths.get(entry['id'])
+                )
+                self.draw_advanced_pool_card(
+                    unit_frame,
+                    index // unit_columns,
+                    index % unit_columns,
+                    entry,
+                    'units',
+                    photo,
+                )
 
         all_power_entries = self.advanced_power_pool_entries()
         enabled_power_categories = {
@@ -669,47 +759,67 @@ class AdvancedSettingsController:
                 or not entry['reward'].get('special_reward')
             )
         ]
-        normal_power_ids = [
-            entry['reward'].get('cameo_superweapon', entry['id'])
-            for entry in power_entries
-            if not entry['reward'].get('superweapon_sidebar_image')
-        ]
-        try:
-            power_paths = ensure_superweapon_cameos(normal_power_ids)
-        except Exception:
-            power_paths = {}
-            log_event(
-                'advanced_pool_power_cameos_failed',
-                level=logging.ERROR,
-                traceback=traceback.format_exc(),
-            )
-        self.advanced_power_cameo_paths = power_paths
-        power_frame = self.advanced_pool_frames['powers']
-        power_columns = self.advanced_pool_column_count('powers')
-        for index, entry in enumerate(power_entries):
-            reward = entry['reward']
-            asset_name = reward.get('superweapon_sidebar_image')
-            if asset_name:
-                try:
-                    path = custom_sidebar_preview(asset_name)
-                except Exception:
-                    path = None
-            else:
-                path = power_paths.get(
-                    str(reward.get('cameo_superweapon', entry['id'])).upper()
-                )
-            photo = self.advanced_pool_photo(f'power:{entry["id"]}', path)
-            self.draw_advanced_pool_card(
-                power_frame,
-                index // power_columns,
-                index % power_columns,
-                entry,
+        displayed_power_entries = [
+            entry for entry in power_entries
+            if self.advanced_search_matches(
                 'powers',
-                photo,
+                entry.get('id'),
+                entry.get('label'),
+                entry.get('faction'),
+                entry.get('category'),
+                entry.get('reward', {}).get('description'),
             )
+        ]
+        if 'powers' in requested:
+            normal_power_ids = [
+                entry['reward'].get('cameo_superweapon', entry['id'])
+                for entry in displayed_power_entries
+                if not entry['reward'].get('superweapon_sidebar_image')
+            ]
+            try:
+                power_paths = ensure_superweapon_cameos(normal_power_ids)
+            except Exception:
+                power_paths = {}
+                log_event(
+                    'advanced_pool_power_cameos_failed',
+                    level=logging.ERROR,
+                    traceback=traceback.format_exc(),
+                )
+            self.advanced_power_cameo_paths = power_paths
+            power_frame = self.advanced_pool_frames['powers']
+            power_columns = self.advanced_pool_column_count('powers')
+            for index, entry in enumerate(displayed_power_entries):
+                reward = entry['reward']
+                asset_name = reward.get('superweapon_sidebar_image')
+                if asset_name:
+                    try:
+                        path = custom_sidebar_preview(asset_name)
+                    except Exception:
+                        path = None
+                else:
+                    path = power_paths.get(
+                        str(
+                            reward.get('cameo_superweapon', entry['id'])
+                        ).upper()
+                    )
+                photo = self.advanced_pool_photo(
+                    f'power:{entry["id"]}', path
+                )
+                self.draw_advanced_pool_card(
+                    power_frame,
+                    index // power_columns,
+                    index % power_columns,
+                    entry,
+                    'powers',
+                    photo,
+                )
 
-        self.refresh_advanced_buff_view()
-        self.refresh_advanced_power_buff_view()
+        if 'unit_buffs' in requested:
+            self.refresh_advanced_buff_view()
+        if 'power_buffs' in requested:
+            self.refresh_advanced_power_buff_view()
+        if pool_key is not None:
+            return
         self.refresh_starting_unlocks_view()
 
         included_missions = len(visible_missions) - len(
