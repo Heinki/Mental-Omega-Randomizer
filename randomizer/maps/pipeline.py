@@ -1027,6 +1027,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 and tokens[1].lower() not in {'none', '<none>'}
             ):
                 safe_player_clone_unit_ids.add(tokens[1].upper())
+    player_runtime_unit_ids = {
+        unit_id
+        for unit_id, usage_houses in usage_index.items()
+        if {
+            str(house).lower()
+            for house in usage_houses
+        }.intersection(player_usage_names)
+    }
     player_story_unit_ids = {
         unit_id
         for unit_id in scripted_story_unit_ids
@@ -1110,7 +1118,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 non_player_droppod_payload_ids.add(tokens[1].upper())
     preserved_native_access_ids = (
         set(native_techno_exclusions)
-        | (player_story_unit_ids - safe_player_clone_unit_ids)
+        | (player_runtime_unit_ids - safe_player_clone_unit_ids)
         # Campaign-authored Engineer placements/teams deliberately stay on
         # their native identity so vehicle boarding, CanDrive behavior, and
         # exact mission triggers use the engine-reviewed type. The hidden
@@ -1737,9 +1745,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             # always use the exact-player-House negative gate instead; this
             # leaves authored placements and scripted creation intact.
             factory_owner_only_ids=(
-                build_only_clone_source_ids
+                (
+                    build_only_clone_source_ids
+                    | (player_runtime_unit_ids - safe_player_clone_unit_ids)
+                )
                 - non_player_taskforce_unit_ids
                 - set(ENGINEER_UNIT_IDS)
+            ),
+            player_runtime_ids=(
+                player_runtime_unit_ids - safe_player_clone_unit_ids
             ),
             player_forbidden_houses=player_native_exclusions,
         )

@@ -668,7 +668,7 @@ def _validate_tuning(sections, path):
                 path,
             )
 
-    for effect in ('range', 'sight', 'ammo'):
+    for effect in ('range', 'sight', 'ammo', 'storage', 'income'):
         values = effects.get(effect)
         if (
             not isinstance(values, dict)
@@ -687,7 +687,7 @@ def _validate_tuning(sections, path):
             _invalid(f'Invalid maximum amount for buff effect {effect!r}', path)
     for effect in (
         'production', 'cost', 'armor', 'health', 'damage', 'reload', 'range',
-        'sight', 'ammo',
+        'sight', 'ammo', 'storage', 'income',
     ):
         stack_limit = effects[effect].get('stack_limit')
         if (

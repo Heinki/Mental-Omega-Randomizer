@@ -51,6 +51,7 @@ UNIT_BUFF_WEIGHT_TYPES = (
     ('self_healing', 'Healing'),
     ('sight', 'Vision'),
     ('ammo', 'Ammo'),
+    ('storage', 'Harvester storage'),
     ('passenger_capacity', 'Passenger capacity'),
     ('open_topped', 'Passenger firing'),
     ('cloak', 'Cloaking'),
@@ -58,6 +59,7 @@ UNIT_BUFF_WEIGHT_TYPES = (
     ('veteran', 'Veterancy'),
     ('build_limit', 'Unique / hero unit limit'),
     ('building_limit', 'Special building limit'),
+    ('income', 'Special building income'),
     ('other', 'Other existing buffs'),
 )
 

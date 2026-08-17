@@ -163,6 +163,14 @@ def apply_unit_buff_value(values, target, buff_type, count):
         values['Ammo'] = str(int(round(
             target['ammo'] + stacking_amount('ammo', count)
         )))
+    elif buff_type == 'storage':
+        values['Storage'] = str(int(round(
+            target['storage'] + stacking_amount('storage', count)
+        )))
+    elif buff_type == 'income':
+        values['ProduceCashAmount'] = str(int(round(
+            target['produce_cash_amount'] + stacking_amount('income', count)
+        )))
     elif buff_type == 'passenger_capacity':
         if int(target.get('passengers', 0)) < 1:
             return False
@@ -322,6 +330,8 @@ def _active_direct_buff_counts(
             'health': 'strength',
             'sight': 'sight',
             'ammo': 'ammo',
+            'storage': 'storage',
+            'income': 'produce_cash_amount',
             'passenger_capacity': 'passengers',
             'open_topped': 'passengers',
             'cost': 'cost',

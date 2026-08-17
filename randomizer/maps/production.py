@@ -32,6 +32,7 @@ def original_player_production_gate_rules(
     negative_gate_exclusions=(),
     native_taskforce_ids=(),
     factory_owner_only_ids=(),
+    player_runtime_ids=(),
     player_forbidden_houses=(),
 ):
     """Block native production for houses owning the hidden player gate.
@@ -46,8 +47,10 @@ def original_player_production_gate_rules(
     clones without changing AI production eligibility. Build-only story
     sources instead use ``FactoryOwners.Forbidden`` because their native
     identity must remain creatable by authored player TeamTypes. Native types
-    used by non-player TaskForces keep both fields authored: either generated
-    gate can prevent campaign AI teams from forming.
+    used only by non-player TaskForces keep both fields authored: either
+    generated gate can prevent campaign AI teams from forming. If the same
+    native identity is already player-owned, its authored house filter wins
+    and only player-original factories are excluded.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -71,7 +74,17 @@ def original_player_production_gate_rules(
         for source_id in (factory_owner_only_ids or ())
         if str(source_id).strip()
     }
+    player_runtime_ids = {
+        str(source_id).upper()
+        for source_id in (player_runtime_ids or ())
+        if str(source_id).strip()
+    }
     factory_owner_only_ids.difference_update(native_taskforce_ids)
+    # A native identity already owned by the player cannot carry a matching
+    # ForbiddenHouses value: the engine leaves that object visible but unable
+    # to receive commands. Keep its runtime ownership valid and isolate only
+    # production from factories originally owned by the player.
+    factory_owner_only_ids.update(player_runtime_ids)
     negative_gate_exclusions.update(factory_owner_only_ids)
     negative_gate_exclusions.update(native_taskforce_ids)
     player_forbidden_houses = unique_in_order(
@@ -162,7 +175,10 @@ def original_player_production_gate_rules(
         # keeps enemy/script DropPods valid, and still permits captured enemy
         # technology whose factory was initially built by another country.
         if source_id in negative_gate_exclusions:
-            if source_id in native_taskforce_ids:
+            if (
+                source_id in native_taskforce_ids
+                and source_id not in player_runtime_ids
+            ):
                 factory_forbidden = comma_items(_value_case_insensitive(
                     native_by_lower.get(source_id.lower(), {}),
                     'FactoryOwners.Forbidden',
@@ -186,7 +202,10 @@ def original_player_production_gate_rules(
                     ))
             source_rules['FactoryOwners.Forbidden'] = (
                 ','.join(unique_in_order(factory_forbidden)) or None
-                if source_id in native_taskforce_ids
+                if (
+                    source_id in native_taskforce_ids
+                    and source_id not in player_runtime_ids
+                )
                 else ','.join(unique_in_order(
                     factory_forbidden + list(player_forbidden_houses)
                 )) or None

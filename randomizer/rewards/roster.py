@@ -278,9 +278,9 @@ def _normalize_special_reward_build_times(templates, targets):
     return normalized
 
 
-@lru_cache(maxsize=None)
-def randomizer_unit_ids_with_behavior(key, expected_value='yes'):
-    """Return source IDs selected by an actual static-template behavior tag."""
+@lru_cache(maxsize=1)
+def randomizer_unit_template_values():
+    """Return source-ID values from the active static player templates."""
     paths = _active_roster_paths()
     missing_files = [str(path) for path in paths if not path.is_file()]
     if missing_files:
@@ -302,12 +302,21 @@ def randomizer_unit_ids_with_behavior(key, expected_value='yes'):
             for section, values in _read_sections(bundled_path).items():
                 sections.setdefault(section.lower(), (section, values))
 
-    normalized_key = str(key).strip().lower()
-    normalized_value = str(expected_value).strip().lower()
-    matches = set()
+    templates = {}
     for section, values in sections.values():
         if not section.upper().startswith('MORP'):
             continue
+        templates[section[4:].upper()] = dict(values)
+    return templates
+
+
+@lru_cache(maxsize=None)
+def randomizer_unit_ids_with_behavior(key, expected_value='yes'):
+    """Return source IDs selected by an actual static-template behavior tag."""
+    normalized_key = str(key).strip().lower()
+    normalized_value = str(expected_value).strip().lower()
+    matches = set()
+    for source_id, values in randomizer_unit_template_values().items():
         value = next(
             (
                 raw_value
@@ -317,7 +326,7 @@ def randomizer_unit_ids_with_behavior(key, expected_value='yes'):
             None,
         )
         if value is not None and value.strip().lower() == normalized_value:
-            matches.add(section[4:].upper())
+            matches.add(source_id)
     return frozenset(matches)
 
 

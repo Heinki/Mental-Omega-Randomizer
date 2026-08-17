@@ -205,7 +205,8 @@ def unit_weapon_buff_rules(
                             effective_values,
                         )
             for buff_type in (
-                'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+                'health', 'armor', 'sight', 'ammo', 'storage', 'income',
+                'passenger_capacity',
                 'open_topped', 'self_healing', 'cloak', 'sensors', 'cost',
                 'speed',
             ):
@@ -347,7 +348,8 @@ def native_variant_unit_buff_rules(
         updated_values = dict(base_values)
         applied = False
         for buff_type in (
-            'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+            'health', 'armor', 'sight', 'ammo', 'storage', 'income',
+            'passenger_capacity',
             'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
             'cost', 'speed',
         ):

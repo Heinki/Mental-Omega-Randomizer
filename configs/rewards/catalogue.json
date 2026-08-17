@@ -710,6 +710,14 @@
         "requires_clone": true
       },
       {
+        "id": "storage",
+        "name": "Expanded Ore Storage",
+        "setting_label": "Harvester storage",
+        "description": "{plural} gain +2 ore storage capacity per stack in future launched missions.",
+        "requires_stat": "storage",
+        "requires_clone": true
+      },
+      {
         "id": "passenger_capacity",
         "name": "Expanded Transport",
         "setting_label": "Passenger capacity +1",
@@ -766,6 +774,14 @@
         "setting_label": "Special building limit +1",
         "description": "{plural} can have one additional structure active at the same time in future launched missions.",
         "requires_stat": "building_limit",
+        "requires_clone": true
+      },
+      {
+        "id": "income",
+        "name": "Improved Revenue",
+        "setting_label": "Special building income",
+        "description": "{plural} generate 5 more credits per income cycle per stack in future launched missions.",
+        "requires_stat": "produce_cash_amount",
         "requires_clone": true
       }
     ],

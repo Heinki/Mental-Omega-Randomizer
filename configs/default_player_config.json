@@ -79,7 +79,7 @@
         "include_secondary_superweapon_rewards": true,
         "include_aid_power_rewards": true,
         "include_power_buff_rewards": true,
-        "unit_buff_catalogue_version": 1,
+        "unit_buff_catalogue_version": 2,
         "power_buff_catalogue_version": 1,
         "enabled_buff_types": [
           "production",
@@ -92,6 +92,7 @@
           "reload",
           "range",
           "ammo",
+          "storage",
           "passenger_capacity",
           "open_topped",
           "self_healing",
@@ -99,7 +100,8 @@
           "sensors",
           "veteran",
           "build_limit",
-          "building_limit"
+          "building_limit",
+          "income"
         ],
         "enabled_power_buff_types": [
           "recharge",
@@ -131,6 +133,7 @@
             "self_healing": 100,
             "sight": 100,
             "ammo": 100,
+            "storage": 100,
             "passenger_capacity": 100,
             "open_topped": 100,
             "cloak": 100,
@@ -138,6 +141,7 @@
             "veteran": 100,
             "build_limit": 100,
             "building_limit": 100,
+            "income": 100,
             "other": 100
           },
           "power_buffs": {

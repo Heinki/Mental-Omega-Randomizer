@@ -164,7 +164,8 @@ HOUSE_SCOPED_BUFF_TYPES = {'production', 'veteran'}
 HOUSE_WIDE_BUFF_TYPES = {'production'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
 UNIT_STAT_BUFF_TYPES = {
-    'health', 'sight', 'ammo', 'passenger_capacity', 'open_topped',
+    'health', 'sight', 'ammo', 'storage', 'income',
+    'passenger_capacity', 'open_topped',
     'self_healing', 'cloak', 'sensors',
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
@@ -277,6 +278,7 @@ def _uncached_buff_stack_limit(reward):
     buff_type = reward.get('buff_type')
     if buff_type in {
         'production', 'armor', 'health', 'range', 'sight', 'ammo',
+        'storage', 'income',
     }:
         return stacking_stack_limit(buff_type)
     if buff_type == 'cost':
@@ -531,6 +533,20 @@ def buff_effect_lines(reward, count=1, include_label=True, include_stack=True):
             reward.get('unit'), 'Ammo'
         )
         return [stacked(f'{prefix}{ammo_label} {base_ammo} -> {total_ammo}')]
+    if buff_type == 'storage':
+        increase = int(stacking_amount('storage', count))
+        base_storage = int(target.get('storage', 0))
+        return [stacked(
+            f'{prefix}Ore storage {base_storage} -> {base_storage + increase}'
+        )]
+    if buff_type == 'income':
+        increase = int(stacking_amount('income', count))
+        base_income = int(target.get('produce_cash_amount', 0))
+        delay = int(target.get('produce_cash_delay', 0))
+        return [stacked(
+            f'{prefix}Income {base_income} -> {base_income + increase} '
+            f'credits every {delay} frames'
+        )]
     if buff_type == 'passenger_capacity':
         base_passengers = int(target.get('passengers', 0))
         return [stacked(

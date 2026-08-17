@@ -1065,6 +1065,17 @@ class AdvancedSettingsController:
                     else 'disabled'
                 )
             )
+        income_check = getattr(
+            self, 'buff_type_checks_by_id', {}
+        ).get('income')
+        if income_check is not None:
+            income_check.configure(
+                state=(
+                    'normal'
+                    if buffs_enabled and special_buildings_enabled
+                    else 'disabled'
+                )
+            )
         self.include_defensive_buildings_check.configure(
             state=(
                 'normal' if reward_source_enabled and not arsenal_mode

@@ -14,7 +14,10 @@ from randomizer.rewards.power_buff_definitions import (
     build_power_buff_rewards,
 )
 from randomizer.rewards.enemy_scaling import build_enemy_reward_pool
-from randomizer.rewards.roster import randomizer_unit_ids_with_behavior
+from randomizer.rewards.roster import (
+    randomizer_unit_ids_with_behavior,
+    randomizer_unit_template_values,
+)
 
 
 _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
@@ -592,6 +595,24 @@ def add_complete_faction_buff_targets():
 
 add_complete_faction_buff_targets()
 
+# Normal miners expose clone-local vanilla Storage. Harvest speed remains a
+# global rules setting in the installed engine, so only capacity is eligible.
+_RANDOMIZER_TEMPLATE_VALUES = randomizer_unit_template_values()
+for harvester_id in randomizer_unit_ids_with_behavior('Harvester', 'yes'):
+    target = BUFF_TARGETS.get(harvester_id)
+    template = _RANDOMIZER_TEMPLATE_VALUES.get(harvester_id, {})
+    storage = next((
+        value for key, value in template.items()
+        if str(key).lower() == 'storage'
+    ), None)
+    try:
+        storage = int(float(str(storage).strip()))
+    except (TypeError, ValueError):
+        continue
+    if target is not None and storage > 0:
+        target['storage'] = storage
+        target['allowed_buff_types'] = ['storage']
+
 # Engineers are always-accessible base essentials. Cloaking is their only
 # reward-pool buff for now; direct player clones keep it off enemy Engineers.
 for engineer_id in ENGINEER_UNIT_IDS:
@@ -611,7 +632,7 @@ for definition in SPECIAL_BUILDING_DEFINITIONS:
         continue
     building_id = str(definition['id']).upper()
     label = str(definition['name'])
-    BUFF_TARGETS[building_id] = {
+    target = {
         'label': label,
         'plural': default_plural(label),
         'category': 'special_buildings',
@@ -625,6 +646,25 @@ for definition in SPECIAL_BUILDING_DEFINITIONS:
         'trainable': False,
         'special_reward': bool(definition.get('special_reward')),
     }
+    template = _RANDOMIZER_TEMPLATE_VALUES.get(building_id, {})
+    cash_amount = next((
+        value for key, value in template.items()
+        if str(key).lower() == 'producecashamount'
+    ), None)
+    cash_delay = next((
+        value for key, value in template.items()
+        if str(key).lower() == 'producecashdelay'
+    ), None)
+    try:
+        cash_amount = int(float(str(cash_amount).strip()))
+        cash_delay = int(float(str(cash_delay).strip()))
+    except (TypeError, ValueError):
+        cash_amount = cash_delay = 0
+    if cash_amount > 0 and cash_delay > 0:
+        target['produce_cash_amount'] = cash_amount
+        target['produce_cash_delay'] = cash_delay
+        target['allowed_buff_types'].append('income')
+    BUFF_TARGETS[building_id] = target
 
 # High movement values break campaign pathfinding, formation spacing, landing,
 # and MCV deployment. Every mobile category therefore uses a direct
@@ -746,8 +786,13 @@ def build_buff_rewards():
     for unit_id, target in BUFF_TARGETS.items():
         for buff_type in BUFF_TYPES:
             buff_type_id = buff_type['id']
+            broad_exclusions = (
+                frozenset()
+                if buff_type_id == 'storage' and target.get('storage')
+                else EXCLUDED_BUFF_TYPE_IDS.get('all', frozenset())
+            )
             if unit_id in (
-                EXCLUDED_BUFF_TYPE_IDS.get('all', frozenset())
+                broad_exclusions
                 | EXCLUDED_BUFF_TYPE_IDS.get(buff_type_id, frozenset())
                 | MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(
                     buff_type_id, frozenset()

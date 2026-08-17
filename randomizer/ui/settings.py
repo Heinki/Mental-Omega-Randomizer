@@ -71,7 +71,7 @@ def buff_setting_amount_text(buff_type):
         multiplier = stacking_multiplier('armor', 1)
         amount = round(((1.0 / multiplier) - 1.0) * 100)
         return f'Armor (+{amount}% durability)'
-    if buff_id in {'sight', 'ammo'}:
+    if buff_id in {'sight', 'ammo', 'storage', 'income'}:
         amount = int(stacking_amount(buff_id, 1))
         return f'{buff_type["setting_label"]} (+{amount})'
     if buff_id == 'passenger_capacity':

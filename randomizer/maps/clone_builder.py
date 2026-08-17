@@ -1016,7 +1016,9 @@ def build_player_clone_sections(
         forced_player_clone = unit_id in forced_clone_ids or defense_buildable
         forced_isolated_clone = (
             unit_id in unlimited_limit_ids
-            or bool({'build_limit', 'building_limit'}.intersection(direct_types))
+            or bool({
+                'build_limit', 'building_limit', 'storage', 'income',
+            }.intersection(direct_types))
             or 'speed' in direct_types
         )
         variant_has_effect = bool(direct_types) or any(
@@ -1110,7 +1112,8 @@ def build_player_clone_sections(
         weapon_clone_ids = {}
         clone_base_values = dict(clone_values)
         for buff_type in (
-            'health', 'armor', 'sight', 'ammo', 'passenger_capacity',
+            'health', 'armor', 'sight', 'ammo', 'storage', 'income',
+            'passenger_capacity',
             'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
             'cost', 'speed',
         ):

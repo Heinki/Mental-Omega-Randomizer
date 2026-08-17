@@ -82,6 +82,7 @@
       "Soviets": {
         "infantry": {
           "E2": "Soviet Conscript",
+          "IVAN": "Crazy Ivan",
           "FLAKT": "Flak Trooper",
           "DOG": "Soviet Attack Dog",
           "SENGINEER": "Soviet Engineer",
@@ -1169,6 +1170,14 @@
         125,
         7,
         7,
+        null
+      ],
+      "IVAN": [
+        500,
+        8,
+        110,
+        6,
+        6,
         null
       ],
       "FLAKT": [
@@ -4310,6 +4319,16 @@
           }
         }
       },
+      "IVAN": {
+        "weapons": {
+          "IvanBomber": {
+            "range": 1.83
+          },
+          "IvanBomberE": {
+            "range": 1.83
+          }
+        }
+      },
       "FLAKT": {
         "label": "Flak Trooper",
         "plural": "Flak Troopers",
@@ -4706,6 +4725,7 @@
       "DLPH": "Dolphin",
       "E1": "GI",
       "E2": "Conscript",
+      "IVAN": "Crazy Ivan",
       "DOG": "Soviet Attack Dog",
       "ENGINEER": "Engineer",
       "FORTRESS": "Barracuda",
