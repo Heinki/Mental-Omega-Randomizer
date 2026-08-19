@@ -84,9 +84,8 @@ from randomizer.ui.cameos import (
     ensure_superweapon_cameos,
     ensure_unit_cameos,
     extract_mix_files_sync,
-    mix_reader_assembly_paths,
-    powershell_mix_reader_load_script,
 )
+from randomizer.core.mix import extract_mix_members
 from randomizer.core.diagnostics import event as log_event
 from randomizer.maps.assets import (
     claim_runtime_asset_lease,

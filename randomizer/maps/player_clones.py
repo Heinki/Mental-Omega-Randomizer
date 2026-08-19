@@ -67,6 +67,87 @@ def validate_player_clone_selection_groups(lines, clone_handled):
             )
     return {'checked': checked, 'failures': failures}
 
+
+def player_clone_pad_aircraft_rules(lines, installed_sections, clone_handled):
+    """Mirror pad-bound source aircraft onto their generated clone IDs.
+
+    The engine recognizes airfield-capacity aircraft by exact TechnoType ID in
+    ``[General] PadAircraft``.  Registering a clone in ``[AircraftTypes]`` is
+    not enough: without the duplicate PadAircraft entry, the clone bypasses
+    the dock count and can leave later aircraft queues permanently suspended.
+    """
+    installed_sections = installed_sections or {}
+    installed_general = next(
+        (
+            values
+            for section, values in installed_sections.items()
+            if str(section).lower() == 'general' and isinstance(values, dict)
+        ),
+        {},
+    )
+    map_general = section_value_map_preserve(lines, 'General')
+    map_pad_aircraft = _value_case_insensitive(
+        map_general, 'PadAircraft', None
+    )
+    effective_value = (
+        map_pad_aircraft
+        if map_pad_aircraft is not None
+        else _value_case_insensitive(
+            installed_general, 'PadAircraft', ''
+        )
+    )
+    pad_aircraft = unique_in_order(comma_items(effective_value))
+    pad_sources = {type_id.upper() for type_id in pad_aircraft}
+    if not pad_sources:
+        return {}, []
+
+    additions = []
+    for source_id, details in (clone_handled or {}).items():
+        if str(source_id).upper() not in pad_sources:
+            continue
+        additions.extend((
+            str((details or {}).get('clone_id') or '').strip(),
+            str((details or {}).get('reference_clone_id') or '').strip(),
+        ))
+    additions = [
+        clone_id
+        for clone_id in unique_in_order(additions)
+        if clone_id and clone_id.upper() not in pad_sources
+    ]
+    if not additions:
+        return {}, []
+    return {
+        'General': {
+            'PadAircraft': ','.join(pad_aircraft + additions),
+        },
+    }, additions
+
+
+def validate_player_clone_pad_aircraft(lines, clone_handled):
+    """Return pad-bound player clones absent from final PadAircraft."""
+    general = section_value_map_preserve(lines, 'General')
+    pad_aircraft = {
+        type_id.upper()
+        for type_id in comma_items(
+            _value_case_insensitive(general, 'PadAircraft', '')
+        )
+    }
+    failures = []
+    checked = 0
+    for source_id, details in (clone_handled or {}).items():
+        if str(source_id).upper() not in pad_aircraft:
+            continue
+        for clone_id in unique_in_order((
+            str((details or {}).get('clone_id') or '').strip(),
+            str((details or {}).get('reference_clone_id') or '').strip(),
+        )):
+            if not clone_id:
+                continue
+            checked += 1
+            if clone_id.upper() not in pad_aircraft:
+                failures.append(f'{source_id}->{clone_id}')
+    return {'checked': checked, 'failures': failures}
+
 def player_unit_clone_rules(
     lines,
     rewards,
@@ -497,6 +578,15 @@ def player_unit_clone_rules(
     unsupported = clone_result.unsupported
     missing = clone_result.missing
     native_helper_source_ids = clone_result.native_helper_source_ids
+
+    # build_player_clone_sections can allocate a late paired reference form
+    # for deploy/undeploy links.  Keep the public clone metadata on that final
+    # ID so exact-ID registries such as PadAircraft see every runtime clone.
+    for source_id, reference_clone_id in reference_clone_id_by_source.items():
+        if source_id in handled_by_unit:
+            handled_by_unit[source_id][
+                'reference_clone_id'
+            ] = reference_clone_id
 
 
     # Preserve valid originals for enemy/shared consumers and native helper

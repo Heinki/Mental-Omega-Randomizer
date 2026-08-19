@@ -1,19 +1,16 @@
 """Extract and decode Mental Omega unit cameo PCX files for the Tk UI."""
 
-import json
-import os
 import re
 import struct
-import subprocess
 import threading
 import zlib
 from pathlib import Path
 
 from randomizer.core.diagnostics import event as log_event
+from randomizer.core.mix import extract_mix_members
 from randomizer.core.paths import (
     CAMEO_CACHE_DIR,
     GAME_ROOT,
-    MAP_RENDERER_DIR,
     SOURCE_DIR,
 )
 
@@ -30,37 +27,14 @@ _EXTRACTION_LOCK = threading.Lock()
 _PENDING_LOCK = threading.Lock()
 _ATTEMPTED_CAMEOS = set()
 _PENDING_EXTRACTIONS = set()
-MIX_READER_ASSEMBLY_NAMES = (
-    'NLog.dll',
-    'CNCMaps.Shared.dll',
-    'CNCMaps.FileFormats.dll',
-)
 def cameo_extraction_pending():
     """Return whether a background MIX extraction is still running."""
     with _PENDING_LOCK:
         return bool(_PENDING_EXTRACTIONS)
 
 
-def powershell_literal(value):
-    return "'" + str(value).replace("'", "''") + "'"
-
-
-def mix_reader_assembly_paths():
-    return [MAP_RENDERER_DIR / name for name in MIX_READER_ASSEMBLY_NAMES]
-
-
-def powershell_mix_reader_load_script():
-    """Load marked renderer assemblies without modifying their Zone.Identifier streams."""
-    return '\n'.join(
-        '[void][Reflection.Assembly]::Load([IO.File]::ReadAllBytes('
-        + powershell_literal(path)
-        + '))'
-        for path in mix_reader_assembly_paths()
-    )
-
-
 def extract_mix_files(requests):
-    """Extract requested MIX members using the renderer's bundled MIX reader."""
+    """Extract requested MIX members with the internal read-only parser."""
     normalized = tuple(sorted(
         (str(Path(source).name).upper(), str(Path(output)))
         for source, output in requests
@@ -112,101 +86,27 @@ def _extract_mix_files(requests):
     if not pending:
         return True
 
-    assembly_paths = mix_reader_assembly_paths()
-    if any(not path.exists() for path in assembly_paths):
-        log_event(
-            'cameo_extraction_unavailable',
-            assemblies={path.name: path.exists() for path in assembly_paths},
-        )
-        return False
-
     CAMEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    request_path = CAMEO_CACHE_DIR / (
-        f'extract_requests-{os.getpid()}-{threading.get_ident()}.json'
+    mix_paths = sorted(
+        GAME_ROOT.glob('*.mix'),
+        key=lambda path: path.name.lower(),
+        reverse=True,
     )
-    request_path.write_text(json.dumps(pending), encoding='utf-8')
-    script = f"""
-$ErrorActionPreference = 'Stop'
-{powershell_mix_reader_load_script()}
-$pending = [Collections.Generic.List[object]]::new()
-$decodedRequests = Get-Content -Raw {powershell_literal(request_path)} | ConvertFrom-Json
-foreach($request in $decodedRequests) {{
-    $pending.Add($request)
-}}
-$mixPaths = @(
-    Get-ChildItem {powershell_literal(GAME_ROOT / '*.mix')} |
-        Sort-Object Name -Descending
-)
-# Installed archives always win. Curated Bonus MIX is fallback only.
-if(Test-Path -LiteralPath {powershell_literal(BONUS_MIX_PATH)}) {{
-    $mixPaths += Get-Item -LiteralPath {powershell_literal(BONUS_MIX_PATH)}
-}}
-foreach($mixPath in $mixPaths) {{
-    if($pending.Count -eq 0) {{ break }}
-    $foundHere = [Collections.Generic.List[object]]::new()
-    $stream = [IO.File]::OpenRead($mixPath.FullName)
-    try {{
-        try {{
-            $mix = New-Object CNCMaps.FileFormats.MixFile($stream, $mixPath.Name, $false)
-            foreach($request in @($pending.ToArray())) {{
-                if($mix.ContainsFile([string]$request.name)) {{ $foundHere.Add($request) }}
-            }}
-        }} catch {{
-            # Some installations contain MIX-like archives unsupported by the
-            # renderer reader. Skip that file instead of aborting the complete
-            # cameo scan and freezing every later UI refresh.
-            continue
-        }}
-    }} finally {{
-        $stream.Dispose()
-    }}
-    # Virtual files share their MIX stream. Reopen it for every extraction so
-    # reading one cameo cannot leave the next virtual file at the wrong offset.
-    foreach($request in $foundHere) {{
-        $extractStream = [IO.File]::OpenRead($mixPath.FullName)
-        try {{
-            $extractMix = New-Object CNCMaps.FileFormats.MixFile($extractStream, $mixPath.Name, $false)
-            $virtualFile = $extractMix.OpenFile(
-                [string]$request.name,
-                [CNCMaps.FileFormats.FileFormat]::Ukn,
-                [CNCMaps.FileFormats.VirtualFileSystem.CacheMethod]::NoCache
-            )
-            try {{
-                $parent = [IO.Path]::GetDirectoryName([string]$request.output)
-                [IO.Directory]::CreateDirectory($parent) | Out-Null
-                $bytes = $virtualFile.Read([int]$virtualFile.Length)
-                [IO.File]::WriteAllBytes([string]$request.output, $bytes)
-            }} finally {{
-                if($virtualFile) {{ $virtualFile.Dispose() }}
-            }}
-        }} finally {{
-            $extractStream.Dispose()
-        }}
-        $pending.Remove($request) | Out-Null
-    }}
-}}
-if($pending.Count -gt 0) {{
-    Write-Output ('Missing MIX assets: ' + (($pending | ForEach-Object {{ $_.name }}) -join ', '))
-}}
-"""
-    try:
-        result = subprocess.run(
-            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
-            cwd=GAME_ROOT,
-            capture_output=True,
-            text=True,
-            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
-        )
-    finally:
-        request_path.unlink(missing_ok=True)
+    # Installed archives always win. Curated Bonus MIX is fallback only.
+    if BONUS_MIX_PATH.exists():
+        mix_paths.append(BONUS_MIX_PATH)
+    extracted, missing, skipped = extract_mix_members(
+        mix_paths,
+        ((item['name'], item['output']) for item in pending),
+    )
     log_event(
         'cameo_extraction_finished',
         requested=[item['name'] for item in pending],
-        returncode=result.returncode,
-        stdout=result.stdout.strip(),
-        stderr=result.stderr.strip(),
+        extracted=extracted,
+        missing=missing,
+        skipped_archives=skipped,
     )
-    return result.returncode == 0
+    return not missing
 
 
 def _iter_ini_records(path, strict_sections=False):

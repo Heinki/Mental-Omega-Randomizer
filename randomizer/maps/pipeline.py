@@ -45,7 +45,9 @@ from randomizer.maps.rules import (
     original_player_production_gate_rules,
     validate_native_taskforce_production_filters,
     player_country_buff_rules,
+    player_clone_pad_aircraft_rules,
     player_unit_clone_rules,
+    validate_player_clone_pad_aircraft,
     validate_player_clone_selection_groups,
     resolved_academy_clone_rules,
     resolved_delivery_clone_rules,
@@ -91,7 +93,11 @@ from randomizer.maps.special_buildings import (
     ore_purifier_miner_dock_rules,
     reprocessor_bounty_rules,
 )
-from randomizer.missions.houses import mission_house_config, mission_player_power_houses
+from randomizer.missions.houses import (
+    mission_house_config,
+    mission_player_power_houses,
+    mission_player_production_houses,
+)
 from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
@@ -963,6 +969,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # fields. Unregistered MORP sections enforce unearned access; registered
     # MORP sections carry earned/mission production rules.
     player_native_exclusions = safe_build_countries(lines, records, ())
+    player_factory_exclusions = unique_in_order(
+        list(player_native_exclusions)
+        + [
+            str(records.get(house_name, {}).get('country') or '').strip()
+            for house_name in mission_player_production_houses(code)
+            if str(records.get(house_name, {}).get('country') or '').strip()
+        ]
+    )
     isolated_native_ids = set(owned_clone_rule_overlays)
     isolated_native_ids.update(
         section.upper()
@@ -1756,6 +1770,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 player_runtime_unit_ids - safe_player_clone_unit_ids
             ),
             player_forbidden_houses=player_native_exclusions,
+            player_factory_forbidden_houses=player_factory_exclusions,
         )
         if production_alias_ids:
             aliases = MISSION_NATIVE_PRODUCTION_ALIASES.get(code, {})
@@ -1943,6 +1958,22 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             if clone_id and list_section:
                 expected_generated_techno_types[list_section].append(clone_id)
         remember_generated_techno_types(clone_rule_sections)
+        pad_aircraft_rules, pad_aircraft_clone_ids = (
+            player_clone_pad_aircraft_rules(
+                lines,
+                installed_rule_sections,
+                clone_handled,
+            )
+        )
+        for section, values in pad_aircraft_rules.items():
+            clone_rule_sections.setdefault(section, {}).update(values)
+        if pad_aircraft_clone_ids:
+            self.append_log(
+                'Registered pad-bound player aircraft clones in '
+                '[General] PadAircraft: '
+                + ', '.join(pad_aircraft_clone_ids)
+                + '.'
+            )
         if clone_rule_sections:
             production_trace = {}
             for source_id, details in clone_handled.items():
@@ -2578,6 +2609,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             player_runtime_unit_ids - safe_player_clone_unit_ids
         ),
         player_forbidden_houses=player_native_exclusions,
+        player_factory_forbidden_houses=player_factory_exclusions,
     )
     if validated_native_team_units:
         self.append_log(
@@ -2855,6 +2887,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
 
     if self.state:
+        pad_aircraft_validation = validate_player_clone_pad_aircraft(
+            lines, clone_handled
+        )
+        if pad_aircraft_validation['failures']:
+            raise ValueError(
+                'Generated player aircraft PadAircraft validation failed: '
+                + ', '.join(pad_aircraft_validation['failures'])
+            )
         clone_selection_validation = validate_player_clone_selection_groups(
             lines, clone_handled
         )

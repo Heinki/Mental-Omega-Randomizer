@@ -1454,6 +1454,9 @@
     ],
     "native_runtime_action_team_factory_forbidden_houses": {},
     "native_runtime_player_forbidden_ids": {
+      "ESCRAP": [
+        "YURI"
+      ],
       "EMIGDAL": [
         "ADOG",
         "BASIL",
@@ -1524,7 +1527,8 @@
       ],
       "ESCRAP": [
         "BOREK",
-        "SWLF"
+        "SWLF",
+        "YURI"
       ],
       "ESANDS": [
         "MWF",

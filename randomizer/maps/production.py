@@ -34,6 +34,7 @@ def original_player_production_gate_rules(
     factory_owner_only_ids=(),
     player_runtime_ids=(),
     player_forbidden_houses=(),
+    player_factory_forbidden_houses=(),
 ):
     """Block native production for houses owning the hidden player gate.
 
@@ -91,6 +92,14 @@ def original_player_production_gate_rules(
         str(house).strip()
         for house in (player_forbidden_houses or ())
         if str(house).strip()
+    )
+    player_factory_forbidden_houses = unique_in_order(
+        list(player_forbidden_houses)
+        + [
+            str(house).strip()
+            for house in (player_factory_forbidden_houses or ())
+            if str(house).strip()
+        ]
     )
 
     installed_by_lower = {
@@ -207,7 +216,7 @@ def original_player_production_gate_rules(
                     and source_id not in player_runtime_ids
                 )
                 else ','.join(unique_in_order(
-                    factory_forbidden + list(player_forbidden_houses)
+                    factory_forbidden + list(player_factory_forbidden_houses)
                 )) or None
             )
         installed_values = installed_by_lower.get(source_id.lower(), {})
@@ -255,6 +264,7 @@ def validate_native_taskforce_production_filters(
     native_taskforce_ids,
     player_runtime_ids=(),
     player_forbidden_houses=(),
+    player_factory_forbidden_houses=(),
 ):
     """Reject player-isolation gates on authored non-player team payloads."""
     installed_by_lower = {
@@ -272,7 +282,10 @@ def validate_native_taskforce_production_filters(
     }
     allowed_player_factory_owners = {
         str(value).strip().casefold()
-        for value in (player_forbidden_houses or ())
+        for value in (
+            list(player_forbidden_houses or ())
+            + list(player_factory_forbidden_houses or ())
+        )
         if str(value).strip()
     }
 

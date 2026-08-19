@@ -41,6 +41,7 @@ from ._dependencies import (
     controlled_tech_ids,
     deploy_generated_unit_art,
     extract_mix_files_sync,
+    extract_mix_members,
     is_generated_hooked_map,
     is_generated_rules_file,
     launch_rules_for_reward,
@@ -50,10 +51,8 @@ from ._dependencies import (
     mission_basic_unit_rules,
     original_mcv_access_rules,
     mission_player_production_houses,
-    mix_reader_assembly_paths,
     patch_large_ini_key,
     patch_or_append_large_ini_value,
-    powershell_mix_reader_load_script,
     prepare_hooked_mission_map,
     read_text,
     remove_generated_unit_art,
@@ -412,63 +411,35 @@ class LaunchController:
             shutil.copy2(loose_root_map, output_path)
             return output_path
 
-        assembly_paths = mix_reader_assembly_paths()
-        if any(not path.exists() for path in assembly_paths):
-            missing = ', '.join(path.name for path in assembly_paths if not path.exists())
-            raise FileNotFoundError(f'Map Renderer dependency files are missing: {missing}.')
-
-        mix_paths = sorted(GAME_ROOT.glob('expandmo*.mix'), reverse=True)
+        mix_paths = sorted(
+            GAME_ROOT.glob('expandmo*.mix'),
+            key=lambda path: path.name.lower(),
+            reverse=True,
+        )
         if not mix_paths:
             raise FileNotFoundError('No expandmo*.mix archives found.')
-
-        escaped_name = scenario.upper().replace("'", "''")
-        escaped_output = str(output_path).replace("'", "''")
-        escaped_mixes = [str(path).replace("'", "''") for path in mix_paths]
-        mix_array = ','.join(f"'{path}'" for path in escaped_mixes)
-        script = f"""
-$ErrorActionPreference = 'Stop'
-{powershell_mix_reader_load_script()}
-$name = '{escaped_name}'
-$output = '{escaped_output}'
-foreach ($mixPath in @({mix_array})) {{
-    $fs = [System.IO.File]::OpenRead($mixPath)
-    try {{
-        $mix = New-Object CNCMaps.FileFormats.MixFile($fs, [System.IO.Path]::GetFileName($mixPath), $false)
-        if ($mix.ContainsFile($name)) {{
-            $vf = $mix.OpenFile($name, [CNCMaps.FileFormats.FileFormat]::Ukn, [CNCMaps.FileFormats.VirtualFileSystem.CacheMethod]::NoCache)
-            try {{
-                $target = [System.IO.File]::Create($output)
-                try {{ $vf.CopyTo($target) }} finally {{ $target.Dispose() }}
-            }} finally {{
-                if ($vf) {{ $vf.Dispose() }}
-            }}
-            Write-Output $mixPath
-            exit 0
-        }}
-    }} finally {{
-        $fs.Dispose()
-    }}
-}}
-throw "Map $name was not found in expandmo*.mix"
-"""
-        result = subprocess.run(
-            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
-            cwd=GAME_ROOT,
-            capture_output=True,
-            text=True,
-            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        extracted, missing, skipped = extract_mix_members(
+            mix_paths,
+            ((scenario.upper(), output_path),),
         )
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or 'Map extraction failed.').strip()
+        if missing:
+            detail = f'Map {scenario.upper()} was not found in expandmo*.mix'
+            if skipped:
+                detail += ': ' + '; '.join(skipped)
             log_event(
                 'map_extraction_failed',
                 level=logging.ERROR,
                 scenario=scenario,
-                returncode=result.returncode,
-                stderr=result.stderr.strip(),
-                stdout=result.stdout.strip(),
+                missing=missing,
+                skipped_archives=skipped,
             )
-            raise RuntimeError(detail)
+            raise FileNotFoundError(detail)
+        log_event(
+            'map_extraction_finished',
+            scenario=scenario,
+            extracted=extracted,
+            skipped_archives=skipped,
+        )
         return output_path
 
     def randomized_tech_ids(self):
