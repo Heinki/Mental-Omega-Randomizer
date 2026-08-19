@@ -370,6 +370,41 @@ def mission_production_buildings(
     )))
 
 
+def chaos_production_alternatives(
+    lines,
+    house_records=None,
+    additional_production_houses=(),
+):
+    """Return shared Chaos factories plus exact compatible map variants.
+
+    Installed AI factory variants such as GAPILEB and GAWEAPB are distinct
+    prerequisite identities even though they share the normal building image
+    and production category.  Keep the four primary faction factories, then
+    add every compatible physical or scripted type detected on this map so a
+    captured variant exposes the same Chaos roster.
+    """
+    records = house_records or map_house_records(lines)
+    alternatives = {
+        category: list(building_ids)
+        for category, building_ids in CHAOS_PRODUCTION_ALTERNATIVES.items()
+    }
+    for building_id in _mission_production_buildings(
+        lines,
+        records,
+        additional_production_houses,
+        include_capturable=True,
+    ):
+        production = PRODUCTION_LOOKUP.get(building_id)
+        if not production:
+            continue
+        _family, category = production
+        alternatives.setdefault(category, []).append(building_id)
+    return {
+        category: tuple(unique_in_order(building_ids))
+        for category, building_ids in alternatives.items()
+    }
+
+
 def _player_family(lines, house_records):
     player_house = player_house_from_map(lines)
     if not player_house:
@@ -512,6 +547,10 @@ def single_engineer_rules(
             include_capturable=True,
         )
     )
+    chaos_alternatives = (
+        chaos_production_alternatives(lines, house_records=records)
+        if chaos_mode else {}
+    )
     ordered_families = unique_in_order((
         player_family,
         *ENGINEER_BY_FAMILY,
@@ -573,6 +612,7 @@ def single_engineer_rules(
                 'infantry',
                 native_barracks,
                 special_barracks,
+                production_alternatives=chaos_alternatives,
             ))
         else:
             rule.update(_standard_prerequisite_rules(
@@ -850,9 +890,19 @@ def _alternative_prerequisite_rules(alternatives):
     return rules
 
 
-def _chaos_prerequisite_rules(category, fallback, extra_alternatives=()):
+def _chaos_prerequisite_rules(
+    category,
+    fallback,
+    extra_alternatives=(),
+    production_alternatives=None,
+):
     """Allow a Chaos item from every compatible faction factory."""
-    alternatives = list(CHAOS_PRODUCTION_ALTERNATIVES.get(category, ()))
+    production_alternatives = (
+        CHAOS_PRODUCTION_ALTERNATIVES
+        if production_alternatives is None
+        else production_alternatives
+    )
+    alternatives = list(production_alternatives.get(category, ()))
     if not alternatives and fallback:
         alternatives.append(fallback)
     alternatives.extend(extra_alternatives)
@@ -890,6 +940,10 @@ def always_available_transport_rules(
             include_capturable=True,
         )
     )
+    chaos_alternatives = (
+        chaos_production_alternatives(lines, house_records=records)
+        if chaos_mode else {}
+    )
     rules = {}
     for family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
         if family not in allowed_families:
@@ -901,7 +955,11 @@ def always_available_transport_rules(
             'ForbiddenHouses': 'none',
         }
         if chaos_mode:
-            values.update(_chaos_prerequisite_rules('naval', prerequisite))
+            values.update(_chaos_prerequisite_rules(
+                'naval',
+                prerequisite,
+                production_alternatives=chaos_alternatives,
+            ))
         else:
             values.update(_standard_prerequisite_rules(prerequisite))
         rules[tech_id] = values
