@@ -1,7 +1,5 @@
-BUGS AND IMPROVEMENTS
--------------------------
+## BUGS AND IMPROVEMENTS
 
-INFO
-------------------------------
+## INFO
 
 To use Phobos add dll and edited ini
