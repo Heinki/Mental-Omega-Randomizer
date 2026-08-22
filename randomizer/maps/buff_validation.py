@@ -227,9 +227,7 @@ def validate_generated_unit_buff_changes(
                         sections.get(clone_id, {}),
                         target,
                         details.get('clone_base_values', {}),
-                        allow_existing=bool(
-                            target.get('linked_buff_source')
-                        ),
+                        allow_existing=bool(target.get('linked_buff_source')),
                     )
                 )
             entry = {

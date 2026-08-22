@@ -277,12 +277,16 @@ def _build_right_panel(self, main_frame):
     seed_settings_frame.grid(row=0, column=0, sticky='ew')
     seed_settings_frame.columnconfigure(0, weight=1)
 
-    ttk.Label(seed_settings_frame, text='Seed', font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
+    ttk.Label(
+        seed_settings_frame,
+        text='Seed (leave blank for a random seed)',
+        font=('Segoe UI', 10, 'bold'),
+    ).grid(row=0, column=0, sticky='w')
     seed_row = ttk.Frame(seed_settings_frame)
     seed_row.grid(row=1, column=0, sticky='ew', pady=(0, 6))
     seed_row.columnconfigure(0, weight=1)
     ttk.Entry(seed_row, textvariable=self.seed_var, width=20).grid(row=0, column=0, sticky='ew', padx=(0, 6))
-    ttk.Button(seed_row, text='Generate New Seed', command=self.on_new_seed).grid(row=0, column=1, sticky='ew')
+    ttk.Button(seed_row, text='Generate Seed', command=self.on_new_seed).grid(row=0, column=1, sticky='ew')
 
     options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))

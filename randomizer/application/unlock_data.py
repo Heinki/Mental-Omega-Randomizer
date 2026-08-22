@@ -1,6 +1,9 @@
 """Unlock display models, labels, sources, and tooltips."""
 
 from randomizer.config.tuning import mission_assistance_stack_count
+from randomizer.rewards.power_buff_definitions import (
+    power_payload_buff_unit_ids,
+)
 
 from ._dependencies import (
     ARSENAL_MODE,
@@ -545,6 +548,13 @@ class UnlockDataController:
             )
         ):
             keys.add(f'power:{reward["superweapon"]}')
+            if reward.get('kind') == 'superweapon':
+                keys.update(
+                    f'unit:{unit_id}'
+                    for unit_id in power_payload_buff_unit_ids(
+                        reward['superweapon']
+                    )
+                )
         return keys
 
     def unlock_dashboard_sources(self):
@@ -894,7 +904,10 @@ class UnlockDataController:
             })
 
         for unit_id, target in BUFF_TARGETS.items():
-            if target.get('linked_buff_source'):
+            if (
+                target.get('linked_buff_source')
+                or target.get('inherits_equivalent_payload_buffs')
+            ):
                 continue
             category = target.get('category')
             if category not in category_labels:

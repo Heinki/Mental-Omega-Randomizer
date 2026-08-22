@@ -416,7 +416,7 @@ def randomizer_unit_roster():
     for source_id, target in BUFF_TARGETS.items():
         # Hidden deploy/undeploy forms are cloned from installed/map rules at
         # launch. They are not independent static roster/access identities.
-        if target.get('runtime_transform'):
+        if target.get('runtime_transform') or target.get('power_payload_only'):
             continue
         list_name = ROSTER_CATEGORIES.get(target.get('category'))
         if not list_name:
@@ -623,6 +623,13 @@ def validate_unit_buff_application_contracts():
                 ):
                     peer_target = BUFF_TARGETS.get(peer_id, target)
                     direct_ids = direct_weapon_ids(templates.get(peer_id, {}))
+                    if peer_target.get('power_payload_only'):
+                        # Installed payload-only identities are cloned from
+                        # live rules, not bundled production templates.
+                        direct_ids.update(
+                            str(weapon_id).upper()
+                            for weapon_id in peer_target.get('weapons', {})
+                        )
                     for weapon_id, stats in sorted(
                         peer_target.get('weapons', {}).items()
                     ):
@@ -1483,6 +1490,7 @@ def validate_special_reward_build_times():
         for unit_id, target in BUFF_TARGETS.items()
         if target.get('special_reward')
         and not target.get('runtime_transform')
+        and not target.get('power_payload_only')
         and target.get('category') in ROSTER_CATEGORIES
     )
     errors = []

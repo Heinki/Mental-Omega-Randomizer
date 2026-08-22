@@ -340,6 +340,19 @@
       "YURIX2"
     ],
     "unit_sidebar_images": {
+      "NAFTUR": {
+        "source_pcx": "ftowicon.pcx"
+      },
+      "NABNKRR": {
+        "source_pcx": "bnkricon.pcx",
+        "art_id": "NABNKR"
+      },
+      "YABALL": {
+        "source_pcx": "rinficon.pcx"
+      },
+      "NADIST": {
+        "source_pcx": "disticon.pcx"
+      },
       "IVAN": {
         "source_pcx": "ivanicon.pcx",
         "art_id": "TRST"
@@ -4692,6 +4705,256 @@
             "damage": 300,
             "rof": 50,
             "range": 1
+          }
+        }
+      },
+      "LIBRC": {
+        "label": "Libra Clone",
+        "plural": "Libra Clones",
+        "category": "infantry",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 400,
+        "speed": 10,
+        "strength": 180,
+        "sight": 8,
+        "guard_range": 10,
+        "ammo": 3,
+        "trainable": true,
+        "power_payload_only": true,
+        "inherits_equivalent_payload_buffs": true,
+        "allowed_buff_types": [
+          "armor",
+          "health",
+          "sight",
+          "ammo",
+          "damage",
+          "reload",
+          "range",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "FakeDarts": {
+            "damage": 20,
+            "rof": 90,
+            "range": 10
+          }
+        }
+      },
+      "TNKKIL": {
+        "label": "Tank Killer",
+        "plural": "Tank Killers",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 750,
+        "speed": 6,
+        "strength": 450,
+        "sight": 6,
+        "guard_range": 6.5,
+        "trainable": true,
+        "power_payload_only": true,
+        "special_reward": true,
+        "allowed_buff_types": [
+          "speed",
+          "armor",
+          "health",
+          "sight",
+          "damage",
+          "reload",
+          "range",
+          "self_healing",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "TankKiller": {
+            "damage": 100,
+            "rof": 65,
+            "range": 6.5
+          },
+          "TankKillerE": {
+            "damage": 100,
+            "rof": 65,
+            "range": 6.5
+          }
+        }
+      },
+      "HCAN": {
+        "label": "Hydra Cannon",
+        "plural": "Hydra Cannons",
+        "category": "units",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 750,
+        "speed": 6,
+        "strength": 450,
+        "sight": 6,
+        "guard_range": 7.5,
+        "ammo": 24,
+        "trainable": true,
+        "power_payload_only": true,
+        "special_reward": true,
+        "allowed_buff_types": [
+          "speed",
+          "armor",
+          "health",
+          "sight",
+          "ammo",
+          "damage",
+          "reload",
+          "range",
+          "self_healing",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "HydraCannon": {
+            "damage": 16,
+            "range": 6.5
+          },
+          "HydraCannonE": {
+            "damage": 16,
+            "range": 6.5
+          },
+          "HydraStrike": {
+            "damage": 80,
+            "rof": 10,
+            "range": 7.5
+          }
+        }
+      },
+      "NABNKRR": {
+        "label": "Instant Shelter",
+        "plural": "Instant Shelters",
+        "category": "defenses",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 500,
+        "strength": 900,
+        "sight": 3,
+        "guard_range": 6,
+        "trainable": false,
+        "power_payload_only": true,
+        "allowed_buff_types": [
+          "armor",
+          "health",
+          "sight",
+          "self_healing",
+          "cloak",
+          "sensors"
+        ]
+      },
+      "NAFTUR": {
+        "label": "Flame Tower",
+        "plural": "Flame Towers",
+        "category": "defenses",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 400,
+        "strength": 650,
+        "sight": 7,
+        "guard_range": 6.5,
+        "trainable": true,
+        "power_payload_only": true,
+        "allowed_buff_types": [
+          "armor",
+          "health",
+          "sight",
+          "damage",
+          "reload",
+          "range",
+          "self_healing",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "TurretFlamethrower": {
+            "damage": 50,
+            "rof": 35,
+            "range": 6.5
+          },
+          "TurretFlamethrowerE": {
+            "damage": 50,
+            "rof": 35,
+            "range": 6.5
+          }
+        }
+      },
+      "YABALL": {
+        "label": "Risen Monolith",
+        "plural": "Risen Monoliths",
+        "category": "defenses",
+        "factions": [
+          "Epsilon"
+        ],
+        "cost": 1000,
+        "strength": 1300,
+        "sight": 5,
+        "guard_range": 11,
+        "trainable": true,
+        "power_payload_only": true,
+        "allowed_buff_types": [
+          "armor",
+          "health",
+          "sight",
+          "damage",
+          "reload",
+          "range",
+          "self_healing",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "YuriMonolithShot": {
+            "damage": 100,
+            "rof": 50,
+            "range": 11
+          },
+          "YuriMonolithShotE": {
+            "damage": 100,
+            "rof": 50,
+            "range": 11
+          }
+        }
+      },
+      "NADIST": {
+        "label": "Disruptor",
+        "plural": "Disruptors",
+        "category": "defenses",
+        "factions": [
+          "Soviets"
+        ],
+        "cost": 800,
+        "strength": 800,
+        "sight": 4,
+        "guard_range": 9,
+        "trainable": true,
+        "power_payload_only": true,
+        "allowed_buff_types": [
+          "armor",
+          "health",
+          "sight",
+          "reload",
+          "self_healing",
+          "cloak",
+          "sensors",
+          "veteran"
+        ],
+        "weapons": {
+          "DisruptorField": {
+            "rof": 36
           }
         }
       }

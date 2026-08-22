@@ -16,6 +16,26 @@ def _normalized_ids(values):
     return frozenset(str(value).upper() for value in values)
 
 
+def power_payload_buff_unit_ids(power_id):
+    """Return payload TechnoTypes whose own buffs unlock with one power."""
+    power_id = str(power_id or '').upper()
+    for configured_id, unit_ids in POWER_BUFF_CONFIG['payload'].get(
+        'buff_unit_ids_by_power', {}
+    ).items():
+        if str(configured_id).upper() == power_id:
+            return frozenset(str(unit_id).upper() for unit_id in unit_ids)
+    return frozenset()
+
+
+def payload_buff_unit_ids_for_powers(power_ids):
+    """Return all TechnoTypes made buff-eligible by unlocked powers."""
+    return frozenset(
+        unit_id
+        for power_id in power_ids
+        for unit_id in power_payload_buff_unit_ids(power_id)
+    )
+
+
 POWER_BUFF_POWER_IDS = {
     'cost': _normalized_ids(POWER_BUFF_CONFIG['cost']['power_ids']),
     'area': _normalized_ids(

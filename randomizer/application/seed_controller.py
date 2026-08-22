@@ -50,7 +50,6 @@ class SeedController:
             if not confirmed:
                 return
 
-        self.seed_var.set(f'MO-{random.randrange(0x10000000):08X}')
         self.generate_seed_from_settings()
 
     def generate_seed_from_settings(self):

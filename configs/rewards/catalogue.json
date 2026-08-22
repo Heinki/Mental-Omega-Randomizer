@@ -598,6 +598,42 @@
         "factions": [
           "Neutral"
         ]
+      },
+      {
+        "name": "Tank Killer Access",
+        "description": "Allows Tank Killer production from a Soviet War Factory.",
+        "access_category": "special",
+        "special_reward": true,
+        "rules": {
+          "TNKKIL": {
+            "TechLevel": "1",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAWEAP"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
+      },
+      {
+        "name": "Hydra Cannon Access",
+        "description": "Allows Hydra Cannon production from a Soviet War Factory.",
+        "access_category": "special",
+        "special_reward": true,
+        "rules": {
+          "HCAN": {
+            "TechLevel": "1",
+            "Owner": "USSR,Latin,Chinese,MORPLAYER",
+            "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
+            "ForbiddenHouses": "none",
+            "PrerequisiteOverride": "NAWEAP"
+          }
+        },
+        "factions": [
+          "Soviets"
+        ]
       }
     ],
     "faction_access_rules": {
@@ -2014,6 +2050,43 @@
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
+        },
+        "techno_clones": {
+          "FASPIN": {
+            "clone": "MORSpinbladeUnit",
+            "list": "BuildingTypes",
+            "values": {
+              "Primary": "MORSpinGenerator"
+            }
+          },
+          "SpinGenerator": {
+            "clone": "MORSpinGenerator",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORSpinGeneratorP"
+            }
+          },
+          "SpinGeneratorP": {
+            "clone": "MORSpinGeneratorP",
+            "list": "Projectiles",
+            "values": {
+              "AirburstWeapon": "MORSpinGeneratorReal"
+            }
+          },
+          "SpinGeneratorReal": {
+            "clone": "MORSpinGeneratorReal",
+            "list": "WeaponTypes",
+            "values": {
+              "Warhead": "MORSpinGeneratorWH"
+            }
+          },
+          "SpinGeneratorWH": {
+            "clone": "MORSpinGeneratorWH",
+            "list": "Warheads",
+            "values": {
+              "Verses": "100%,100%,100%,100%,100%,100%,100%,100%,100%,100%,100%"
+            }
+          }
         }
       },
       {
@@ -2158,6 +2231,11 @@
           "SW.Inhibitors": "",
           "SW.AnyInhibitor": "no",
           "SW.CreateRadarEvent": "yes",
+          "Light.Enabled": "no",
+          "Light.Ambient": null,
+          "Light.Red": null,
+          "Light.Green": null,
+          "Light.Blue": null,
           "EMPulse.PulseBall": null,
           "SW.RangeMaximum": null,
           "SW.RangeMinimum": null,
@@ -2198,7 +2276,7 @@
               "OmniFire": null,
               "MinimumRange": null,
               "Anim": null,
-              "Bright": "yes"
+              "Bright": "no"
             }
           },
           "WallbusterUp": {
@@ -4441,6 +4519,26 @@
         "rules": {},
         "factions": [
           "Neutral"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Volkov Mission Form I": {
+        "name": "Volkov Mission Form I (retired)",
+        "description": "Removed from the randomizer because the mission-specific form was not reliable.",
+        "rules": {},
+        "factions": [
+          "Soviets"
+        ],
+        "kind": "retired",
+        "retired_reward": true
+      },
+      "Libra Mission Form I": {
+        "name": "Libra Mission Form I (retired)",
+        "description": "Removed from the randomizer because the mission-specific form was not reliable.",
+        "rules": {},
+        "factions": [
+          "Epsilon"
         ],
         "kind": "retired",
         "retired_reward": true

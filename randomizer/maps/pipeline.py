@@ -15,7 +15,10 @@ from randomizer.maps.ownership import (
     script_referenced_taskforce_unit_ids,
     taskforce_usage_houses,
 )
-from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
+from randomizer.maps.power_buffs import (
+    apply_power_buffs_to_unlock_rewards,
+    equivalent_payload_unit_buff_rewards,
+)
 from randomizer.maps.rules import (
     HOOKED_MAP_MARKER,
     LOCKED_TECH_LEVEL,
@@ -1496,6 +1499,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     safe_player_country_buffs = bool(generation_config.get('safe_player_country_buffs', True))
     require_unlocked_access_for_buffs = self.randomize_unit_access_enabled()
     buff_access_tech_ids = set(fallback_tech_ids) | set(mission_buff_unit_ids)
+    # Power-only payloads have no production-access reward. Owning their power
+    # is their access proof, so their earned unit/defense buffs stay active.
+    buff_access_tech_ids.update(delivery_clone_ids)
     if self.state and experimental_house_buffs:
         player_house, house_buffs = clone_player_country_for_house_buffs(
             lines,
@@ -1603,6 +1609,34 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if self.state:
         guarded_rewards = list(earned_rewards)
         guarded_rewards.extend(assistance_direct_rewards)
+        active_power_ids = {
+            str(reward.get('superweapon') or '').upper()
+            for reward in canonical_rewards(launch_power_rewards)
+            if reward.get('kind') == 'superweapon'
+        }
+        current_player_house = player_house_from_map(lines, records=records)
+        current_player_family = country_family(
+            records.get(current_player_house, {})
+        )
+        player_faction_label = {
+            'allies': 'Allies',
+            'soviets': 'Soviets',
+            'epsilon': 'Epsilon',
+            'foehn': 'Foehn',
+        }.get(
+            current_player_family,
+            normalize_faction(mission.get('side', '')),
+        )
+        guarded_rewards = equivalent_payload_unit_buff_rewards(
+            guarded_rewards,
+            active_power_ids,
+            (
+                set(mission_effective_tech_ids)
+                | set(fallback_tech_ids)
+                | set(mission_buff_unit_ids)
+            ),
+            player_faction_label,
+        )
         buildable_clone_ids = set(fallback_tech_ids)
         buildable_clone_ids.update(mission_effective_tech_ids)
         # Always-available Engineers/transports are deliberately absent from
@@ -1622,6 +1656,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if target.get('category') in {
                     'infantry', 'units', 'aircraft', 'defenses',
                 }
+                and not target.get('power_payload_only')
             )
         helper_autobuild = (
             helper_ai_autobuild_plan(

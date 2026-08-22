@@ -216,6 +216,39 @@
       }
     },
     "payload": {
+      "buff_unit_ids_by_power": {
+        "TankDropSpecial": [
+          "TNKKIL",
+          "HCAN"
+        ],
+        "InstantShelterSpecial": [
+          "NABNKRR"
+        ],
+        "FlameTowerSpecial": [
+          "NAFTUR"
+        ],
+        "RisenMonolithSpecial": [
+          "YABALL"
+        ],
+        "DisruptorSpecial": [
+          "NADIST"
+        ]
+      },
+      "equivalent_hero_buff_sources": {
+        "LibraCloneSpecial": {
+          "payload_unit": "LIBRC",
+          "preferred_source": "LIBRA",
+          "sources_by_faction": {
+            "Allies": "TANY",
+            "Soviets": "VOLKOV",
+            "Epsilon": "LIBRA",
+            "Foehn": "EUREKA"
+          }
+        }
+      },
+      "paradrop_all_type_increases": [
+        "BloodhoundsSpecial"
+      ],
       "unit_delivery_power_ids": [
         "WarpMinersSpecial",
         "KingsnakesSpecial",

@@ -849,7 +849,7 @@ def build_player_clone_sections(
                 )
                 if cameo_priority is not None:
                     clone_source_values['CameoPriority'] = cameo_priority
-        if owned_template is not None:
+        if owned_template is not None or owned_clone_rule_overlays.get(unit_id):
             for key, value in owned_clone_rule_overlays.get(unit_id, {}).items():
                 _remove_case_insensitive(clone_source_values, key)
                 if value is not None:
@@ -857,7 +857,7 @@ def build_player_clone_sections(
             # Mission-authored variants may disable a deploy/conversion link
             # on their native story identity. The separately earned owned
             # clone must retain the complete installed/static reward identity.
-            for key, value in owned_template.items():
+            for key, value in (owned_template or {}).items():
                 if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
                     continue
                 _remove_case_insensitive(clone_source_values, key)
@@ -1013,7 +1013,16 @@ def build_player_clone_sections(
             and unit_id == target_unit_id
             and unit_id in owned_clone_templates
         )
-        forced_player_clone = unit_id in forced_clone_ids or defense_buildable
+        installed_payload_buildable = (
+            unit_id in buildable_ids
+            and unit_id == target_unit_id
+            and target.get('power_payload_only')
+        )
+        forced_player_clone = (
+            unit_id in forced_clone_ids
+            or defense_buildable
+            or installed_payload_buildable
+        )
         forced_isolated_clone = (
             unit_id in unlimited_limit_ids
             or bool({

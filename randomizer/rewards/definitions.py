@@ -784,6 +784,10 @@ GLOBAL_BUFF_REWARDS = _REWARD_CATALOGUE_CONFIG['global_buff_rewards']
 def build_buff_rewards():
     rewards = []
     for unit_id, target in BUFF_TARGETS.items():
+        # Runtime-only payload targets consume another unit's earned buffs.
+        # They need clone metadata, not separately rollable reward cards.
+        if target.get('inherits_equivalent_payload_buffs'):
+            continue
         for buff_type in BUFF_TYPES:
             buff_type_id = buff_type['id']
             broad_exclusions = (

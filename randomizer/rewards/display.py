@@ -171,7 +171,9 @@ UNIT_STAT_BUFF_TYPES = {
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = (
     MAP_GUARDED_BUFF_TYPES
-    | {'cost', 'armor', 'speed', 'build_limit', 'building_limit'}
+    | {
+        'cost', 'armor', 'speed', 'build_limit', 'building_limit',
+    }
 )
 def reward_display_name(reward):
     reward = canonical_reward(reward)

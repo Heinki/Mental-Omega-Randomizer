@@ -900,6 +900,45 @@ def _validate_power_buffs(sections, path):
     ):
         _invalid('Invalid DropPod payload type additions', path)
 
+    buff_unit_ids_by_power = sections['payload'].get(
+        'buff_unit_ids_by_power', {}
+    )
+    if (
+        not isinstance(buff_unit_ids_by_power, dict)
+        or any(
+            not _is_nonempty_string(power_id)
+            or not isinstance(unit_ids, list)
+            or not unit_ids
+            or not all(_is_nonempty_string(unit_id) for unit_id in unit_ids)
+            or len(unit_ids) != len(set(unit_ids))
+            for power_id, unit_ids in buff_unit_ids_by_power.items()
+        )
+    ):
+        _invalid('Invalid power payload buff-unit mapping', path)
+
+    hero_sources = sections['payload'].get(
+        'equivalent_hero_buff_sources', {}
+    )
+    if (
+        not isinstance(hero_sources, dict)
+        or any(
+            not _is_nonempty_string(power_id)
+            or not isinstance(config, dict)
+            or not _is_nonempty_string(config.get('payload_unit'))
+            or not _is_nonempty_string(config.get('preferred_source'))
+            or not isinstance(config.get('sources_by_faction'), dict)
+            or not all(
+                _is_nonempty_string(faction)
+                and _is_nonempty_string(unit_id)
+                for faction, unit_id in config.get(
+                    'sources_by_faction', {}
+                ).items()
+            )
+            for power_id, config in hero_sources.items()
+        )
+    ):
+        _invalid('Invalid equivalent hero payload mapping', path)
+
     for section_name in ('area', 'damage', 'duration', 'vision'):
         for key, entries in sections[section_name].items():
             if not key.endswith('_fields'):

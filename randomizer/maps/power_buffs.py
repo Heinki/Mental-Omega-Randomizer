@@ -9,6 +9,59 @@ from randomizer.rewards.power_buff_definitions import (
 )
 
 
+def equivalent_payload_unit_buff_rewards(
+    rewards,
+    unlocked_power_ids,
+    available_unit_ids,
+    player_faction,
+):
+    """Copy one faction hero's earned combat buffs to Libra Clones.
+
+    The runtime copies retain only buff type/count semantics. LIBRC keeps its
+    own identity, base stats, weapons, art, voices, armor, and behavior.
+    """
+    canonical = canonical_rewards(rewards)
+    unlocked_powers = {
+        str(power_id).upper() for power_id in (unlocked_power_ids or ())
+    }
+    available_units = {
+        str(unit_id).upper() for unit_id in (available_unit_ids or ())
+    }
+    additions = []
+    configurations = POWER_BUFF_CONFIG['payload'].get(
+        'equivalent_hero_buff_sources', {}
+    )
+    for power_id, config in configurations.items():
+        if str(power_id).upper() not in unlocked_powers:
+            continue
+        preferred = str(config.get('preferred_source') or '').upper()
+        faction_source = str(
+            (config.get('sources_by_faction') or {}).get(player_faction, '')
+        ).upper()
+        source_unit = (
+            preferred
+            if preferred and preferred in available_units
+            else faction_source
+        )
+        if not source_unit:
+            continue
+        payload_unit = str(config.get('payload_unit') or '').upper()
+        if not payload_unit:
+            continue
+        for reward in canonical:
+            if (
+                reward.get('kind') != 'buff'
+                or str(reward.get('unit') or '').upper() != source_unit
+            ):
+                continue
+            equivalent = dict(reward)
+            equivalent['unit'] = payload_unit
+            equivalent['force_direct_unit_buff'] = True
+            equivalent['_runtime_canonical'] = True
+            additions.append(equivalent)
+    return list(rewards) + additions
+
+
 def _value(values, key, default=None):
     lowered = str(key).lower()
     return next(
@@ -183,8 +236,11 @@ def _apply_payload(reward, source_values, count):
             if item.strip()
         ]
         if types and len(types) == len(numbers):
-            for index in range(count):
-                numbers[index % len(numbers)] += 1
+            if power_id in payload.get('paradrop_all_type_increases', ()):
+                numbers = [number + count for number in numbers]
+            else:
+                for index in range(count):
+                    numbers[index % len(numbers)] += 1
             # Ares requires both lists when overriding a paradrop payload.
             rules['ParaDrop.Types'] = ','.join(types)
             rules['ParaDrop.Num'] = ','.join(str(number) for number in numbers)

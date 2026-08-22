@@ -11,6 +11,9 @@ from randomizer.rewards.catalogue import (
     canonical_reward,
     unit_role_equivalents,
 )
+from randomizer.rewards.power_buff_definitions import (
+    payload_buff_unit_ids_for_powers,
+)
 from randomizer.config.tuning import REWARD_PLANNING
 from randomizer.rewards.weights import (
     main_reward_weight_type,
@@ -96,6 +99,9 @@ def plan_seed_rewards(
     }
     reward_metadata = {}
     buff_eligible_unit_ids = set(seed_unlocked_tech_ids)
+    buff_eligible_unit_ids.update(
+        payload_buff_unit_ids_for_powers(seed_unlocked_power_ids)
+    )
     buff_equivalents_by_unit = {}
     plan = {
         code: [None] * max(0, int(slots_by_code.get(code, 0)))
@@ -195,8 +201,10 @@ def plan_seed_rewards(
         if name:
             used_access_names.add(name)
         if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
-            seed_unlocked_power_ids.add(
-                str(reward['superweapon']).upper()
+            power_id = str(reward['superweapon']).upper()
+            seed_unlocked_power_ids.add(power_id)
+            buff_eligible_unit_ids.update(
+                payload_buff_unit_ids_for_powers((power_id,))
             )
 
     # Future rewards can reserve unique access names and finite buff capacity
@@ -913,6 +921,9 @@ def plan_seed_rewards(
                 power_id = str(reward['superweapon']).upper()
                 if power_id not in seed_unlocked_power_ids:
                     seed_unlocked_power_ids.add(power_id)
+                    buff_eligible_unit_ids.update(
+                        payload_buff_unit_ids_for_powers((power_id,))
+                    )
                     balanced_target_groups_by_pool_id.clear()
                     weighted_remaining_targets.clear()
         else:
