@@ -43,7 +43,8 @@ POWER_BUFF_POWER_IDS = {
         | set(POWER_BUFF_CONFIG['area']['warhead_fields'])
     ),
     'damage': _normalized_ids(
-        POWER_BUFF_CONFIG['damage']['direct_fields']
+        set(POWER_BUFF_CONFIG['damage']['direct_fields'])
+        | set(POWER_BUFF_CONFIG['damage'].get('techno_fields', {}))
     ),
     'duration': _normalized_ids(
         set(POWER_BUFF_CONFIG['duration']['direct_fields'])

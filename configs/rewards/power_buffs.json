@@ -142,6 +142,7 @@
         "SpySatSpecial": {"field": "SW.Range", "baseline": "12"}
       },
       "warhead_fields": {
+        "MercurySpecial": {"source": "MercuryStrikeWH", "field": "CellSpread", "clone_group": "techno"},
         "MaintenanceSpecial": {"source": "MaintenanceWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "NukeSpecial": {"source": "NUKE", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "GreatTempestSpecial": {"source": "GreatTempestBlastWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
@@ -170,6 +171,9 @@
         "GreatTempestSpecial": {"field": "SW.Damage", "baseline": 25},
         "WallbusterSpecial": {"field": "SW.Damage", "baseline": 250},
         "BoidBlitzSpecial": {"field": "SW.Damage", "baseline": 360}
+      },
+      "techno_fields": {
+        "MercurySpecial": {"source": "MercuryOverdrive", "field": "Damage"}
       }
     },
     "duration": {

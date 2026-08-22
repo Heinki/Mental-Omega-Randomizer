@@ -150,10 +150,40 @@ def _apply_area(reward, installed_sections, count):
     baseline = _value(source_values, warhead['field'])
     if baseline is None:
         return
-    spec = _ensure_auxiliary_clone(
-        reward, source, warhead.get('reference_key')
-    )
+    if warhead.get('clone_group') == 'techno':
+        spec = _ensure_techno_clone(reward, source)
+    else:
+        spec = _ensure_auxiliary_clone(
+            reward, source, warhead.get('reference_key')
+        )
     spec['values'][warhead['field']] = _expanded_range(baseline, count)
+
+
+def _apply_damage(reward, installed_sections, count):
+    power_id = reward['superweapon']
+    damage = POWER_BUFF_CONFIG['damage']
+    factor = float(damage['factor_per_stack'])
+    direct = damage['direct_fields'].get(power_id)
+    if direct:
+        _apply_scalar_rule(
+            reward.setdefault('superweapon_rules', {}),
+            direct,
+            count,
+            factor,
+        )
+    techno = damage.get('techno_fields', {}).get(power_id)
+    if not techno:
+        return
+    source = techno['source']
+    baseline = _value(
+        installed_sections.get(source, {}), techno['field']
+    )
+    if baseline is None:
+        return
+    spec = _ensure_techno_clone(reward, source)
+    spec['values'][techno['field']] = str(
+        _scaled_integer(baseline, factor, count)
+    )
 
 
 def _apply_duration(reward, installed_sections, count):
@@ -332,15 +362,7 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
 
         damage_count = counts.get((power_id.upper(), 'damage'), 0)
         if damage_count:
-            config = POWER_BUFF_CONFIG['damage']
-            spec = config['direct_fields'].get(power_id)
-            if spec:
-                _apply_scalar_rule(
-                    reward.setdefault('superweapon_rules', {}),
-                    spec,
-                    damage_count,
-                    float(config['factor_per_stack']),
-                )
+            _apply_damage(reward, installed_sections, damage_count)
 
         duration_count = counts.get((power_id.upper(), 'duration'), 0)
         if duration_count:
