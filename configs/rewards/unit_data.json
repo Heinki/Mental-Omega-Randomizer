@@ -424,6 +424,14 @@
       "GRAV": {
         "source_pcx": "grav.pcx"
       },
+      "TNKKIL": {
+        "image": "tank_killer.png",
+        "pcx": "mortkicon.pcx"
+      },
+      "HCAN": {
+        "image": "hydra_cannon.png",
+        "pcx": "morhcanicon.pcx"
+      },
       "YURIX2": {
         "source_pcx": "yuriicon.pcx",
         "art_id": "YURIX"

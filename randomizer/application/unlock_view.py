@@ -166,6 +166,15 @@ class UnlockViewController:
                         if fill else ''
                     ),
                 )
+                badge_state = (
+                    'normal' if entry['status'] == 'locked' else 'hidden'
+                )
+                card.itemconfigure(
+                    record['locked_badge_background'], state=badge_state
+                )
+                card.itemconfigure(
+                    record['locked_badge_text'], state=badge_state
+                )
             return
 
         if selected_faction not in self.unlock_icon_frames:
@@ -307,6 +316,25 @@ class UnlockViewController:
                         overlay_id = card.create_rectangle(
                             1, 1, 81, 67, outline=outline, width=2
                         )
+                    locked_badge_background = card.create_rectangle(
+                        2, 2, 43, 14,
+                        fill='#7f1d1d', outline='#fecaca', width=1,
+                        state=(
+                            'normal'
+                            if entry['status'] == 'locked'
+                            else 'hidden'
+                        ),
+                    )
+                    locked_badge_text = card.create_text(
+                        23, 8,
+                        text='LOCKED', fill='#ffffff',
+                        font=('Segoe UI', 7, 'bold'),
+                        state=(
+                            'normal'
+                            if entry['status'] == 'locked'
+                            else 'hidden'
+                        ),
+                    )
                     card.unlock_entry = entry
                     card.bind(
                         '<Enter>',
@@ -328,6 +356,8 @@ class UnlockViewController:
                     self.unlock_dashboard_cards[entry['key']] = {
                         'card': card,
                         'overlay': overlay_id,
+                        'locked_badge_background': locked_badge_background,
+                        'locked_badge_text': locked_badge_text,
                         'tooltip': tooltip,
                         'faction': faction,
                     }

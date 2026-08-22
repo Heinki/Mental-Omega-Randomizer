@@ -135,6 +135,7 @@
         "LightningStormSpecial": {"field": "SW.Range", "baseline": "10"},
         "PsychicDominatorSpecial": {"field": "SW.Range", "baseline": "1"},
         "ChronoSphereSpecial": {"field": "SW.Range", "baseline": "3,3"},
+        "ChronoliftSpecial": {"field": "SW.Range", "baseline": "3,3"},
         "IronCurtainSpecial": {"field": "SW.Range", "baseline": "3,3"},
         "ForceShieldSpecial": {"field": "SW.Range", "baseline": "4"},
         "SonarPulseSpecial": {"field": "SW.Range", "baseline": "5"},

@@ -209,6 +209,64 @@ def resolved_power_player_clone_rules(
     return power_updates, clone_updates
 
 
+def resolved_native_designator_clone_rules(
+    installed_sections,
+    map_sections,
+    clone_handled,
+):
+    """Allow native designator-gated powers to use player clone identities.
+
+    Deployable units can turn into a player-only clone BuildingType while the
+    installed SuperWeaponType still names the native BuildingType in
+    ``SW.Designators``. Preserve the native designator for mission/AI users and
+    append every runtime player clone form.
+    """
+    runtime_clones = {}
+    for source, details in (clone_handled or {}).items():
+        if not isinstance(details, dict):
+            continue
+        clone_ids = unique_in_order(
+            str(details.get(field) or '').strip()
+            for field in ('clone_id', 'reference_clone_id')
+            if str(details.get(field) or '').strip()
+        )
+        if clone_ids:
+            runtime_clones[str(source).upper()] = clone_ids
+    if not runtime_clones:
+        return {}
+
+    # Installed values remain effective when a map section overrides other
+    # fields only, so merge case-insensitively at field level.
+    effective_sections = {}
+    for sections in (installed_sections or {}, map_sections or {}):
+        for section, values in sections.items():
+            if not isinstance(values, dict):
+                continue
+            entry = effective_sections.setdefault(
+                str(section).lower(),
+                {'name': section, 'values': {}},
+            )
+            entry['name'] = section
+            for key, value in values.items():
+                entry['values'][str(key).lower()] = (key, value)
+
+    updates = {}
+    for entry in effective_sections.values():
+        designator = entry['values'].get('sw.designators')
+        if designator is None:
+            continue
+        key, value = designator
+        designators = comma_items(value)
+        expanded = list(designators)
+        for designator_id in designators:
+            expanded.extend(runtime_clones.get(designator_id.upper(), ()))
+        expanded = unique_in_order(expanded)
+        resolved_value = ','.join(expanded)
+        if resolved_value != str(value):
+            updates.setdefault(entry['name'], {})[key] = resolved_value
+    return updates
+
+
 def now_stamp():
     return datetime.now().strftime('%Y%m%d-%H%M%S')
 
