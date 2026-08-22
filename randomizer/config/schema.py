@@ -112,6 +112,7 @@ REQUIRED_SECTIONS = {
         'unit_labels': dict,
         'limited_hero_build_limits': dict,
         'standalone_weapon_templates': dict,
+        'standalone_unit_rule_templates': dict,
         'special_damage_fields': dict,
     },
     'rewards/catalogue.json': {
@@ -415,6 +416,29 @@ def _validate_unit_data(sections, path):
             )
         ):
             _invalid(f'Invalid standalone weapon template for {weapon_id!r}', path)
+
+    for unit_id, lists in sections['standalone_unit_rule_templates'].items():
+        if not _is_nonempty_string(unit_id) or not isinstance(lists, dict):
+            _invalid(f'Invalid standalone unit rules for {unit_id!r}', path)
+        for list_name, templates in lists.items():
+            if (
+                list_name not in {'WeaponTypes', 'Warheads', 'Projectiles'}
+                or not isinstance(templates, dict)
+                or not templates
+            ):
+                _invalid(f'Invalid standalone rule list for {unit_id!r}', path)
+            for section_id, values in templates.items():
+                if (
+                    not _is_nonempty_string(section_id)
+                    or not isinstance(values, dict)
+                    or not all(
+                        _is_nonempty_string(key) and isinstance(value, str)
+                        for key, value in values.items()
+                    )
+                ):
+                    _invalid(
+                        f'Invalid standalone rule template {section_id!r}', path
+                    )
 
     transport_base_stats = sections.get('transport_base_stats', {})
     if not isinstance(transport_base_stats, dict):

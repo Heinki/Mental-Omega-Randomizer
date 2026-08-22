@@ -11,6 +11,7 @@ from ._shared import (
     LOCKED_TECH_LEVEL,
     NONTRAINABLE_UNIT_IDS,
     STANDALONE_WEAPON_TEMPLATES,
+    STANDALONE_UNIT_RULE_TEMPLATES,
     SHARED_WEAPON_USER_IDS,
     TECHNO_TYPE_LISTS,
     UNLOCKED_TECH_LEVEL,
@@ -54,6 +55,8 @@ from .base import (
 LINKED_CLONE_REFERENCE_KEYS = {
     'convert.deploy',
     'convert.deploy.reversedas',
+    'convert.land',
+    'convert.water',
     'reversedas',
     'deploysinto',
     'undeploysinto',
@@ -932,6 +935,7 @@ def build_player_clone_sections(
             unit_id != target_unit_id
             or target.get('category') == 'defenses'
             or mission_player_override
+            or owned_template is not None
         ):
             # Trainable defenses switch weapons after promotion, and mission
             # heroes may replace or disable installed weapons. Pull every
@@ -1120,6 +1124,18 @@ def build_player_clone_sections(
         handled_weapon_types = set()
         weapon_clone_ids = {}
         clone_base_values = dict(clone_values)
+        for list_name, templates in STANDALONE_UNIT_RULE_TEMPLATES.get(
+            unit_id, {}
+        ).items():
+            for section_id, values in templates.items():
+                _register_map_type(
+                    section_rules,
+                    lines,
+                    installed_sections,
+                    list_name,
+                    section_id,
+                )
+                section_rules[section_id] = dict(values)
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'storage', 'income',
             'passenger_capacity',
@@ -1180,13 +1196,11 @@ def build_player_clone_sections(
                     if applied_type:
                         handled_weapon_types.add(buff_type)
                         applied_weapon = True
-            if standalone_weapon_values:
+            if standalone_weapon_values and not applied_weapon:
                 _register_map_type(
                     section_rules, lines, installed_sections, 'WeaponTypes', weapon
                 )
                 section_rules[weapon] = weapon_values
-                if applied_weapon:
-                    handled_weapon_ids.add(weapon.upper())
                 continue
             if not applied_weapon:
                 continue

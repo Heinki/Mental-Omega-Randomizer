@@ -5,6 +5,7 @@
     "excluded_buff_type_ids": {
       "all": ["CMIN", "HARV", "YMIN", "NMIN", "AMCV", "SMCV", "PCV", "FMCV", "GAGAP", "FABTRC"],
       "production": ["HIJACKER"],
+      "cost": ["BRUTM", "BRUTS", "BRUTV"],
     "passenger_capacity": ["CHRP", "SALA", "STHOR"],
       "speed": ["CLEG"],
       "damage": ["GASTAS", "GAPOST", "SPY", "SUPR", "SHAD", "CHRTNK", "CRYO", "HBIRD", "NASCOM", "NAMORT", "NAIRDM", "DUST", "MWF", "EDRN", "YAMPSI", "YARIFT", "YAPSYT", "HIJACKER", "INTRUDER", "REPU", "DRIL", "MIND", "COYO", "QUAD", "YHVR", "FACONF", "FACOAT", "FAINHI", "SYNC", "MSA", "RACC", "COON", "CONF", "ORCIN", "SEAT", "SHARK", "ITNK", "AKULA", "DRED", "DBOAT", "QUETZ", "VCARR", "CARRIER", "V3", "FOX", "YAHCR", "MAD", "LEVI", "SEITAAD"],

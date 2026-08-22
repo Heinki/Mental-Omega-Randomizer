@@ -20,7 +20,9 @@
           "CLEG": "Chrono Legionnaire",
           "TANY": "Tanya",
           "SIEG": "Siegfried",
-          "ARMR": "Norio"
+          "ARMR": "Norio",
+          "ARND": "Arnie Frankfurter",
+          "STLN": "Sammy Stallion"
         },
         "units": {
           "STARDUSTB": "Paradox Engine",
@@ -103,7 +105,10 @@
           "REZNOV": "Col. Reznov",
           "KRUKOV": "Col. Krukov",
           "CYBO": "Cyborg Vanguard",
-          "LUNR": "Soviet Cosmonaut"
+          "LUNR": "Soviet Cosmonaut",
+          "BIKE": "Ivan Biker",
+          "TERROR": "Ivan Cadet",
+          "CYCOM": "Cyborg Commando"
         },
         "units": {
           "CZEP": "Kirov Command Airship",
@@ -111,6 +116,7 @@
           "OTRK": "Old Demo Truck",
           "MADU": "Old M.A.D. Tank",
           "MAMU": "Old Mammoth Tank",
+          "MAMUP": "Apocalypse Prototype",
           "V2": "Old V2 Launcher",
           "ICBM": "Topol-M",
           "GRUMBLE": "Grumble",
@@ -183,7 +189,10 @@
           "UNDER": "Malver",
           "ASSN": "Rahn",
           "RHAD": "Rashidi",
-          "LUNRE": "Epsilon Cosmonaut"
+          "LUNRE": "Epsilon Cosmonaut",
+          "BRUTM": "Psychic Boss Brute",
+          "BRUTS": "Gene Boss Brute",
+          "BRUTV": "Virus Boss Brute"
         },
         "units": {
           "DHANDL": "Hands of Ereshkigal",
@@ -204,6 +213,10 @@
           "MIND": "Mastermind",
           "TELE": "Magnetron",
           "YAHCR": "Gehenna Platform",
+          "YAHCRE": "Gehenna Platform (Earthrise)",
+          "GRND": "Mobile Grinder",
+          "CAOS": "Genequad",
+          "SCAV": "Tyrant",
           "TRACTOR": "Scavenger",
           "WORMQ": "Wormqueen",
           "SALA": "Salamander",
@@ -337,7 +350,20 @@
       "RANGER",
       "LONGBO",
       "GRAV",
-      "YURIX2"
+      "YURIX2",
+      "GRND",
+      "CAOS",
+      "MAMUP",
+      "YAHCRE",
+      "BIKE",
+      "TERROR",
+      "CYCOM",
+      "ARND",
+      "STLN",
+      "SCAV",
+      "BRUTM",
+      "BRUTS",
+      "BRUTV"
     ],
     "unit_sidebar_images": {
       "NAFTUR": {
@@ -381,6 +407,54 @@
       "YAHCR": {
         "source_pcx": "antgehenna.pcx"
       },
+      "YAHCRE": {
+        "source_pcx": "antgehenna.pcx",
+        "art_id": "YAHCRWO"
+      },
+      "GRND": {
+        "source_pcx": "grndicon.pcx"
+      },
+      "CAOS": {
+        "image": "genequad.png",
+        "pcx": "morgenequad.pcx"
+      },
+      "BIKE": {
+        "image": "ivan_biker.png",
+        "pcx": "morivanbiker.pcx"
+      },
+      "TERROR": {
+        "image": "ivan_cadet.png",
+        "pcx": "morivancadet.pcx"
+      },
+      "CYCOM": {
+        "source_pcx": "ccomicon.pcx"
+      },
+      "ARND": {
+        "image": "arni_frankfurter.png",
+        "pcx": "morarnieicon.pcx"
+      },
+      "STLN": {
+        "image": "sammy_stallion.png",
+        "pcx": "morsammyicon.pcx"
+      },
+      "SCAV": {
+        "source_pcx": "scavicon.pcx"
+      },
+      "BRUTM": {
+        "image": "psychic_brute.png",
+        "pcx": "morpsychicbrute.pcx",
+        "art_id": "BRUT"
+      },
+      "BRUTS": {
+        "image": "gene_brute.png",
+        "pcx": "morgenebrute.pcx",
+        "art_id": "BRUT"
+      },
+      "BRUTV": {
+        "image": "virus_brute.png",
+        "pcx": "morvirusbrute.pcx",
+        "art_id": "BRUT"
+      },
       "DHANDL": {
         "image": "hands_of_ereshkigal_left.png",
         "pcx": "mordhandlicon.pcx"
@@ -405,6 +479,10 @@
       },
       "MAMU": {
         "source_pcx": "mamu.pcx"
+      },
+      "MAMUP": {
+        "source_pcx": "copa.pcx",
+        "art_id": "COPA"
       },
       "V2": {
         "source_pcx": "v2.pcx"
@@ -506,6 +584,7 @@
       "OTRK": [1200, 5, 240, 5, 5, null],
       "MADU": [1500, 4, 750, 5, 5, null],
       "MAMU": [1500, 4, 640, 5, 5, null],
+      "MAMUP": [1500, 5, 3600, 5, 5, null],
       "V2": [1600, 4, 360, 6, 9, null],
       "ICBM": [2000, 2, 500, 6, 9, null],
       "ARTY": [900, 4, 330, 5, 5, null],
@@ -1896,6 +1975,18 @@
         18,
         null
       ],
+      "YAHCRE": [1500, 5, 540, 6, 12, null],
+      "GRND": [800, 8, 750, 6, 6, null],
+      "CAOS": [900, 10, 250, 6, 7, null],
+      "BIKE": [300, 10, 135, 7, 7, null],
+      "TERROR": [100, 9, 150, 6, 6, null],
+      "CYCOM": [2500, 7, 2500, 12, 12, null],
+      "ARND": [1000, 6, 100, 9, 9, null],
+      "STLN": [1000, 6, 100, 9, 9, null],
+      "SCAV": [1400, 7, 410, 6, 6, 18],
+      "BRUTM": [1, 7, 8000, 10, 10, 1],
+      "BRUTS": [1, 7, 7000, 10, 10, 1],
+      "BRUTV": [1, 7, 7500, 10, 10, 1],
       "TRACTOR": [
         2000,
         6,
@@ -2706,7 +2797,15 @@
         }
       },
       "MSA": {
+        "MSAW": {
+          "category": "units",
+          "weapons": {}
+        },
         "FAMSA": {
+          "category": "defenses",
+          "weapons": {}
+        },
+        "FAMSAW": {
           "category": "defenses",
           "weapons": {}
         }
@@ -2850,6 +2949,18 @@
               "range": 6.5
             }
           }
+        }
+      },
+      "REAP": {
+        "REAPL": {
+          "category": "units",
+          "weapons": {}
+        }
+      },
+      "GRND": {
+        "YAGRND": {
+          "category": "defenses",
+          "weapons": {}
         }
       }
     },
@@ -3410,6 +3521,85 @@
           "120mmMammothE": {"damage": 80, "rof": 65, "range": 7},
           "MammothMissile": {"damage": 60, "rof": 55, "range": 7},
           "MammothMissileE": {"damage": 60, "rof": 55, "range": 7}
+        }
+      },
+      "MAMUP": {
+        "weapons": {
+          "120mmMammoth": {"damage": 80, "rof": 65, "range": 7},
+          "120mmMammothE": {"damage": 80, "rof": 65, "range": 7},
+          "MammothMissile": {"damage": 60, "rof": 55, "range": 7},
+          "MammothMissileE": {"damage": 60, "rof": 55, "range": 7}
+        }
+      },
+      "YAHCRE": {
+        "weapons": {
+          "MiniAntaresBeam": {"damage": 120, "rof": 120, "range": 12},
+          "MiniAntaresBeamE": {"damage": 120, "rof": 120, "range": 12}
+        }
+      },
+      "CAOS": {
+        "weapons": {
+          "GeneticGas": {"damage": 100, "rof": 45, "range": 3}
+        }
+      },
+      "BIKE": {
+        "weapons": {
+          "JaguarPilotBomb": {"damage": 150, "rof": 10, "range": 1.33}
+        }
+      },
+      "TERROR": {
+        "weapons": {
+          "JaguarPilotBomb": {"damage": 150, "rof": 10, "range": 1.33}
+        }
+      },
+      "CYCOM": {
+        "weapons": {
+          "Plasma": {"damage": 220, "rof": 80, "range": 8},
+          "PlasmaE": {"damage": 220, "rof": 80, "range": 8}
+        }
+      },
+      "ARND": {
+        "weapons": {
+          "TERMIGUN": {"damage": 40, "rof": 5, "range": 6.5},
+          "TERMIGUNE": {"damage": 40, "rof": 5, "range": 6.5},
+          "CyborgGrenade": {"damage": 120, "rof": 100, "range": 6.5},
+          "CyborgGrenadeE": {"damage": 120, "rof": 100, "range": 6.5}
+        }
+      },
+      "STLN": {
+        "weapons": {
+          "SammyGun": {"damage": 65, "rof": 8, "range": 6.5},
+          "CyborgGrenade": {"damage": 120, "rof": 100, "range": 6.5},
+          "CyborgGrenadeE": {"damage": 120, "rof": 100, "range": 6.5}
+        }
+      },
+      "SCAV": {
+        "weapons": {
+          "ToxicPills": {"damage": 30, "rof": 5, "range": 6.5}
+        }
+      },
+      "BRUTM": {
+        "weapons": {
+          "MagnetPunch": {"damage": 100, "rof": 45, "range": 2},
+          "MagnetPunchE": {"damage": 100, "rof": 45, "range": 2},
+          "MagnetSmash": {"damage": 70, "rof": 45, "range": 3.5},
+          "MagnetSmashE": {"damage": 70, "rof": 45, "range": 3.5}
+        }
+      },
+      "BRUTS": {
+        "weapons": {
+          "RedLotusPunch": {"damage": 100, "rof": 45, "range": 2},
+          "RedLotusPunchE": {"damage": 100, "rof": 45, "range": 2},
+          "RedLotusSmash": {"damage": 100, "rof": 45, "range": 3.5},
+          "RedLotusSmashE": {"damage": 100, "rof": 45, "range": 3.5}
+        }
+      },
+      "BRUTV": {
+        "weapons": {
+          "VirusPunch": {"damage": 100, "rof": 45, "range": 2},
+          "VirusPunchE": {"damage": 100, "rof": 45, "range": 2},
+          "VirusSmash": {"damage": 90, "rof": 45, "range": 3.5},
+          "VirusSmashE": {"damage": 90, "rof": 45, "range": 3.5}
         }
       },
       "ARTY": {
@@ -5037,9 +5227,77 @@
       "DHANDL": 1,
       "HEPH": 1,
       "SHINBOT": 1,
-      "YURIX2": 1
+      "YURIX2": 1,
+      "CYCOM": 1,
+      "ARND": 1,
+      "STLN": 1,
+      "BRUTM": 1,
+      "BRUTS": 1,
+      "BRUTV": 1
     },
     "standalone_weapon_templates": {},
+    "standalone_unit_rule_templates": {
+      "BRUTM": {
+        "WeaponTypes": {
+          "MagnetPunch": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "MagnetBattering", "Projectile": "InvisibleLowBrute4", "FireInTransport": "no"},
+          "MagnetPunchE": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "MagnetBatteringE", "Projectile": "InvisibleLowBrute4", "FireInTransport": "no"},
+          "MagnetSmash": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "70", "Report": "BruteCrushing", "Warhead": "MagnetSmashing", "Projectile": "InvisibleLowBrute4", "FireInTransport": "no"},
+          "MagnetSmashE": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "70", "Report": "BruteCrushing", "Warhead": "MagnetSmashingE", "Projectile": "InvisibleLowBrute4", "FireInTransport": "no"},
+          "PsiDeath": {"ROF": "45", "Range": "2", "Speed": "100", "Damage": "100", "Warhead": "MagnetSmashing", "Projectile": "InvisibleLowBrute4"},
+          "PsyDebuff": {"ROF": "10", "Range": "1", "Speed": "100", "Bright": "no", "Damage": "1", "Warhead": "PsyDebuffWH", "Projectile": "CannonInviso"}
+        },
+        "Warheads": {
+          "MagnetBattering": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "6", "Versus.riot": "35%"},
+          "MagnetBatteringE": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "6", "Versus.riot": "65%", "AffectsAllies": "no", "AttachEffect.Duration": "120", "AttachEffect.Animation": "AE-X-F", "AttachEffect.FirepowerMultiplier": "0.75"},
+          "MagnetSmashing": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,105%,95%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "RESRING2", "InfDeath": "6", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "2.5", "AffectsAllies": "no", "Ripple.Radius": "90", "Versus.s_siren2": "-100%"},
+          "MagnetSmashingE": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,105%,95%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "RESRING", "InfDeath": "6", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "2.5", "AffectsAllies": "no", "Ripple.Radius": "120", "Versus.s_siren2": "-100%"},
+          "PsyDebuffWH": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "3%,3%,3%,3%,3%,3%,0%,0%,0%,3%,3%", "AnimList": "BRUTPFX", "InfDeath": "10", "Versus.riot": "35%", "AffectsAllies": "no", "AttachEffect.Duration": "120", "AttachEffect.Animation": "AE-X-F", "Versus.camo.PassiveAcquire": "no", "AttachEffect.FirepowerMultiplier": "0.85"}
+        },
+        "Projectiles": {
+          "InvisibleLowBrute4": {"Image": "none", "Inviso": "yes", "Cluster": "1", "Airburst": "yes", "AirburstSpread": "0.5", "AirburstWeapon": "PsyDebuff", "SubjectToWalls": "no", "SubjectToCliffs": "no", "SubjectToBuildings": "yes", "SubjectToElevation": "no"}
+        }
+      },
+      "BRUTS": {
+        "WeaponTypes": {
+          "RedLotusPunch": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "RedLotusBattering", "Projectile": "InvisibleLowBrute2", "FireInTransport": "no"},
+          "RedLotusPunchE": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "RedLotusBatteringE", "Projectile": "InvisibleLowBrute2", "FireInTransport": "no"},
+          "RedLotusSmash": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "100", "Report": "BruteCrushing", "Warhead": "RedLotusSmashing", "Projectile": "InvisibleLowBrute2", "FireInTransport": "no"},
+          "RedLotusSmashE": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "100", "Report": "BruteCrushing", "Warhead": "RedLotusSmashingE", "Projectile": "InvisibleLowBrute2", "FireInTransport": "no"},
+          "GeneBomb": {"ROF": "10", "Range": "1.73", "Bright": "yes", "Damage": "160", "Report": "MineExplosion", "Suicide": "yes", "Warhead": "GeneBombWH", "Projectile": "Invisible", "FireInTransport": "no", "CellRangefinding": "yes"},
+          "RedLotusDebuff": {"ROF": "10", "Range": "1", "Speed": "100", "Bright": "no", "Damage": "1", "Warhead": "RedLotusDebuffWH", "Projectile": "CannonInviso"}
+        },
+        "Warheads": {
+          "RedLotusBattering": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "10", "Versus.riot": "35%", "AffectsAllies": "no"},
+          "RedLotusBatteringE": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "10", "Versus.riot": "55%", "AffectsAllies": "no", "AttachEffect.Duration": "120", "AttachEffect.Animation": "VENOM", "AttachEffect.ROFMultiplier": "1.75", "Versus.camo.PassiveAcquire": "no", "AttachEffect.SpeedMultiplier": "0.8"},
+          "RedLotusSmashing": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,105%,95%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "VENOMEXP", "InfDeath": "9", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "2.5", "AffectsAllies": "no", "Ripple.Radius": "90", "Versus.s_siren2": "-100%"},
+          "RedLotusSmashingE": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,105%,95%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "GENEFX", "InfDeath": "9", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "3.5", "AffectsAllies": "no", "Ripple.Radius": "120", "Versus.s_siren2": "-100%"},
+          "GeneBombWH": {"Wall": "no", "Wood": "no", "Bright": "yes", "Sparky": "no", "Verses": "150%,135%,100%,0%,0%,0%,0%,0%,0%,0%,0%", "AnimList": "VENOMEXP", "InfDeath": "9", "CellSpread": "3", "Versus.engi": "500%", "Versus.trap": "150%", "CLDisableRed": "yes", "PercentAtMax": ".25", "Versus.brute": "-200%", "AffectsAllies": "yes", "CLDisableBlue": "yes", "Versus.animal": "0%", "Versus.n_dupl": "0%", "Versus.r_esdr": "0%", "Versus.flak_t1": "450%", "Versus.n_clair": "0%", "CombatLightSize": "150%", "AttachEffect.Duration": "120", "AttachEffect.Animation": "VENOM"},
+          "RedLotusDebuffWH": {}
+        },
+        "Projectiles": {
+          "InvisibleLowBrute2": {"Image": "none", "Inviso": "yes", "Cluster": "1", "Airburst": "yes", "AirburstSpread": "0.5", "AirburstWeapon": "RedLotusDebuff", "SubjectToWalls": "no", "SubjectToCliffs": "no", "SubjectToBuildings": "yes", "SubjectToElevation": "no"}
+        }
+      },
+      "BRUTV": {
+        "WeaponTypes": {
+          "VirusPunch": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "VirusBattering", "Projectile": "InvisibleLowBrute3", "FireInTransport": "no"},
+          "VirusPunchE": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "VirusBatteringE", "Projectile": "InvisibleLowBrute3", "FireInTransport": "no"},
+          "VirusSmash": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "90", "Report": "BruteCrushing", "Warhead": "VirusSmashing", "Projectile": "InvisibleLowBrute3", "FireInTransport": "no"},
+          "VirusSmashE": {"ROF": "45", "Ammo": "0", "Range": "3.5", "Speed": "100", "Damage": "90", "Report": "BruteCrushing", "Warhead": "VirusSmashingE", "Projectile": "InvisibleLowBrute3", "FireInTransport": "no"},
+          "VirusDebuff": {"ROF": "10", "Range": "1", "Speed": "100", "Bright": "no", "Damage": "1", "Warhead": "VirusDebuffWH", "Projectile": "CannonInviso"}
+        },
+        "Warheads": {
+          "VirusBattering": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "8", "Versus.riot": "35%"},
+          "VirusBatteringE": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "75%,75%,65%,0%,0%,0%,30%,30%,20%,200%,100%", "AnimList": "BRUTPFX", "InfDeath": "8", "Versus.riot": "65%", "AttachEffect.Duration": "120", "AttachEffect.Animation": "AE-X-D", "AttachEffect.ArmorMultiplier": "0.75"},
+          "VirusSmashing": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,95%,85%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "VIRUSBLOW", "InfDeath": "8", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "2", "Ripple.Radius": "90"},
+          "VirusSmashingE": {"Wall": "no", "Wood": "yes", "Rocker": "yes", "Verses": "105%,95%,85%,100%,100%,100%,50%,50%,50%,50%,50%", "AnimList": "VIRUSBLOWX", "InfDeath": "8", "ShakeXhi": "1", "ShakeXlo": "1", "ShakeYhi": "1", "ShakeYlo": "1", "MaxDebris": "4", "MinDebris": "3", "CellSpread": "2", "Ripple.Radius": "120"},
+          "VirusDebuffWH": {"Wall": "no", "Wood": "yes", "Sparky": "yes", "Verses": "3%,3%,3%,3%,3%,3%,3%,3%,3%,3%,3%", "AnimList": "BRUTPFX", "InfDeath": "10", "Versus.riot": "35%", "AffectsAllies": "no", "AttachEffect.Duration": "120", "AttachEffect.Animation": "AE-X-D", "Versus.camo.PassiveAcquire": "no", "AttachEffect.ArmorMultiplier": "0.85"}
+        },
+        "Projectiles": {
+          "InvisibleLowBrute3": {"Image": "none", "Inviso": "yes", "Cluster": "1", "Airburst": "yes", "AirburstSpread": "0.5", "AirburstWeapon": "VirusDebuff", "SubjectToWalls": "no", "SubjectToCliffs": "no", "SubjectToBuildings": "yes", "SubjectToElevation": "no"}
+        }
+      }
+    },
     "special_damage_fields": {
       "V3": {
         "V3RocketDamage": 250,

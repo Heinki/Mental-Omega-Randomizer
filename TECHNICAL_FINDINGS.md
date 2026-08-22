@@ -244,7 +244,7 @@ Chaos Tier 1 starters use a separate deterministic stream, `<seed>:starting-tier
 
 Chaos Tier 1 defenses use independent deterministic stream `<seed>:starting-tier-one-defenses`. Faction order is shuffled once; ground and anti-air roles take distinct families. Exactly two saved defenses accept all four Yard families, while exclusions still win.
 
-Phobos `CameoPriority` bands keep production cameos in contiguous faction groups with the current player faction first. Buildable Chaos `MORP...` clones copy the map-local original's band after their installed identity is restored, keeping cloned Infantry/Units/Defenses in the same faction groups.
+Phobos `CameoPriority` bands keep production cameos in contiguous faction groups with the current player faction first. Each unit also receives a unique rank from the committed faction roster, preventing map-local clone registration order from shuffling Infantry/Units/Defenses inside a faction. Buildable Chaos `MORP...` clones copy that priority after their installed identity is restored.
 
 ## Buff Safety Model
 

@@ -20,6 +20,7 @@ FALLBACK_REVIEWED_INFANTRY = ROOT / 'configs' / 'RandomizerHeroes.ini'
 DEFAULT_RULES = ROOT.parent / 'RandomizerLauncherData' / 'cameo_cache' / 'rulesmo.ini'
 DEFAULT_OUTPUT_DIR = ROOT / 'configs'
 SUPPLEMENTAL_SOURCE_FILES = (
+    ROOT / 'configs' / 'RandomizerMapOnlySources.ini',
     ROOT.parent / 'MapsMO' / 'Challenge' / 'c_revolution.map',
     ROOT.parent / 'MapsMO' / 'Cooperative' / 'coop_sthunder.map',
     ROOT.parent / 'MapsMO' / 'Cooperative' / 'coop_stoxic.map',
@@ -50,6 +51,9 @@ STABLE_APPEND_ORDER = (
     'STHOR', 'DHANDL', 'CZEP', 'SHINBOT', 'HEPH',
     'KSNK', 'OTRK', 'MADU', 'MAMU', 'V2', 'ICBM',
     'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA', 'YURIX2',
+    'GRND', 'CAOS', 'MAMUP', 'YAHCRE',
+    'BIKE', 'TERROR', 'CYCOM', 'ARND', 'STLN', 'SCAV',
+    'BRUTM', 'BRUTS', 'BRUTV',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 UNFINISHED_ASSET_IDS = frozenset({
@@ -80,6 +84,8 @@ SPECIAL_TEMPLATE_SOURCES = {
     'NAPSIS': 'YAPSIS',
     'NACLONS': 'NACLON',
     'LUNRE': 'LUNR',
+    'MAMUP': 'MAMU',
+    'YAHCRE': 'YAHCR',
 }
 TEMPLATE_VALUE_OVERRIDES = {
     'RAVA': {
@@ -95,6 +101,82 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Image': 'YURIX',
         'BuildLimit': '1',
         'BuildTimeMultiplier': '2',
+    },
+    'MAMUP': {
+        # Soviet Arms Race uses MAMU for the Apocalypse Prototype. Give the
+        # campaign identity its own reward ID, without its scripted operator
+        # and passenger gate.
+        'Name': 'Apocalypse Prototype',
+        'UIName': 'NAME:COPA',
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+        'Image': 'COPA',
+        'Armor': 'ex_apoc',
+        'Strength': '3600',
+        'Speed': '5',
+        'Passengers': '0',
+    },
+    'YAHCRE': {
+        # Earthrise retools YAHCR into a mobile beam platform. Preserve the
+        # installed Gehenna separately and expose this authored variant under
+        # a stable reward identity.
+        'Name': 'Gehenna Platform (Earthrise)',
+        'UIName': 'NOSTR:Gehenna Platform (Earthrise)',
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+        'Image': 'YAHCRWO',
+        'Primary': 'MiniAntaresBeam',
+        'ElitePrimary': 'MiniAntaresBeamE',
+        'Spawns': 'none',
+        'SpawnsNumber': '0',
+        'Speed': '5',
+        'ROT': '3',
+        'Turret': 'yes',
+        'TurretROT': '4',
+        'GuardRange': '12',
+        'NoSpawnAlt': 'no',
+        'PipScale': 'none',
+        'LandTargeting': '0',
+        'ImmuneToPsionics': 'yes',
+        'VoiceMove': 'ChaosDroneMove',
+        'VoiceAttack': 'ChaosDroneAttackCommand',
+        'VoiceSelect': 'ChaosDroneSelect',
+        'MaxDebris': '8',
+        'MinDebris': '4',
+        'Weight': '3',
+    },
+    'GRND': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'CAOS': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'BIKE': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'TERROR': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'CYCOM': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    # Give each boss Brute a distinct ArtType so its manually colored cameo
+    # does not overwrite the shared [BRUT] art section used by every variant.
+    'BRUTM': {
+        'Image': 'BRUTM',
+    },
+    'BRUTS': {
+        'Image': 'BRUTS',
+    },
+    'BRUTV': {
+        'Image': 'BRUTV',
+    },
+    'ARND': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'STLN': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
+    },
+    'SCAV': {
+        'UIDescription': 'NOSTR:* Granted by Randomizer',
     },
     # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
     # prevent its self-targeted field weapon from firing reliably.
@@ -409,6 +491,11 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
 }
 TEMPLATE_VALUE_REMOVALS = {
+    'MAMUP': frozenset({
+        'operator',
+        'initialpayload.types',
+        'initialpayload.nums',
+    }),
     'CHRP': frozenset({
         'entertransportsound',
         'leavetransportsound',
@@ -600,7 +687,10 @@ def main():
             or source_id in EXCLUDED_REVIEWED_INFANTRY_IDS
         ):
             continue
-        if source_id not in target_ids_by_list['InfantryTypes']:
+        # A reviewed infantry file may be the previously generated heroes
+        # file. Do not let an old registry placement override the catalogue's
+        # current TechnoType category.
+        if source_id not in target_categories:
             target_ids_by_list['InfantryTypes'].append(source_id)
             target_categories[source_id] = 'infantry-extra'
 

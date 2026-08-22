@@ -30,6 +30,8 @@ from randomizer.maps.ini import (
 )
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
+    FACTION_DEFENSE_ROSTERS,
+    FACTION_UNIT_ROSTERS,
     unit_role_equivalents,
 )
 from randomizer.config.static import load_static_config
@@ -832,15 +834,42 @@ def mission_basic_unit_rules(
 
 
 def chaos_cameo_priority_rules(player_family):
-    """Keep each faction contiguous on Chaos production sidebars."""
+    """Keep Chaos sidebars in stable faction and roster order."""
     faction_order = ['allies', 'soviets', 'epsilon', 'foehn']
     player_family = str(player_family or '').lower()
     if player_family in faction_order:
         faction_order.remove(player_family)
         faction_order.insert(0, player_family)
-    priorities = {
-        faction: (len(faction_order) - index) * 100
+    faction_priorities = {
+        faction: (len(faction_order) - index) * 1_000
         for index, faction in enumerate(faction_order)
+    }
+
+    # Equal faction-wide priorities only formed broad blocks. Map-local clone
+    # registrations follow earned reward/buff order, so ties made every launch
+    # shuffle units inside those blocks. Rank each production tab by committed
+    # roster order; reviewed extras naturally remain where that roster places
+    # them. Large faction bands keep all ranks from crossing into another side.
+    ordered_ids = {}
+    for faction, categories in FACTION_UNIT_ROSTERS.items():
+        faction_key = str(faction).lower()
+        ordered_ids[(faction_key, 'infantry')] = list(
+            categories.get('infantry', {})
+        )
+        ordered_ids[(faction_key, 'units')] = [
+            *categories.get('units', {}),
+            *categories.get('aircraft', {}),
+        ]
+        ordered_ids[(faction_key, 'buildings')] = list(
+            FACTION_DEFENSE_ROSTERS.get(faction, {})
+        )
+    ranks = {
+        (faction, sidebar, str(unit_id).upper()): rank
+        for (faction, sidebar), unit_ids in ordered_ids.items()
+        for rank, unit_id in enumerate(unit_ids)
+    }
+    next_rank = {
+        key: len(unit_ids) for key, unit_ids in ordered_ids.items()
     }
 
     rules = {}
@@ -854,8 +883,24 @@ def chaos_cameo_priority_rules(player_family):
         if len(factions) != 1:
             continue
         faction = str(factions[0]).lower()
-        if faction in priorities:
-            rules[tech_id] = {'CameoPriority': str(priorities[faction])}
+        category = str(target.get('category') or '').lower()
+        sidebar = {
+            'infantry': 'infantry',
+            'units': 'units',
+            'aircraft': 'units',
+            'defenses': 'buildings',
+        }.get(category)
+        if faction not in faction_priorities or not sidebar:
+            continue
+        rank_key = (faction, sidebar, str(tech_id).upper())
+        rank = ranks.get(rank_key)
+        if rank is None:
+            group_key = (faction, sidebar)
+            rank = next_rank.get(group_key, 0)
+            next_rank[group_key] = rank + 1
+        rules[tech_id] = {
+            'CameoPriority': str(faction_priorities[faction] - rank)
+        }
 
     return rules
 

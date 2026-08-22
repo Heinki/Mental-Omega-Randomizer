@@ -79,6 +79,23 @@ STANDALONE_WEAPON_TEMPLATES = {
         'standalone_weapon_templates', {}
     ).items()
 }
+STANDALONE_UNIT_RULE_TEMPLATES = {
+    str(unit_id).upper(): {
+        str(list_name): {
+            str(section_id): dict(values)
+            for section_id, values in templates.items()
+        }
+        for list_name, templates in lists.items()
+    }
+    for unit_id, lists in _UNIT_DATA_CONFIG.get(
+        'standalone_unit_rule_templates', {}
+    ).items()
+}
+for unit_rules in STANDALONE_UNIT_RULE_TEMPLATES.values():
+    for weapon_id, values in unit_rules.get('WeaponTypes', {}).items():
+        STANDALONE_WEAPON_TEMPLATES.setdefault(
+            weapon_id.upper(), dict(values)
+        )
 
 # Snapshot of the installed 3.3.6 rules values used by map-local stat buffs.
 # Tuple order: Cost, Speed, Strength, Sight, GuardRange, Ammo.  GuardRange
@@ -1281,7 +1298,11 @@ for unit_id, legacy_labels in {
             continue
         suffix = current_name[len(current_label):]
         for legacy_label in legacy_labels:
-            REWARD_ALIASES[f'{legacy_label}{suffix}'] = current_name
+            legacy_name = f'{legacy_label}{suffix}'
+            # A newly added unit may legitimately reuse an old display label.
+            # Current catalogue identities must win over ambiguous save aliases.
+            if legacy_name not in REWARD_BY_NAME:
+                REWARD_ALIASES[legacy_name] = current_name
 for definition in SPECIAL_BUILDING_DEFINITIONS:
     building_name = str(definition['name'])
     REWARD_ALIASES[

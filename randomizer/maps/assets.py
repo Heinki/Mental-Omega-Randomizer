@@ -280,14 +280,15 @@ def _configured_cameo_for_art_id(art_id):
     direct = GENERATED_UNIT_CAMEO_ASSETS.get(wanted)
     if direct:
         return direct
-    return next(
-        (
-            definition
-            for definition in GENERATED_UNIT_CAMEO_ASSETS.values()
-            if str(definition.get('art_id') or '').upper() == wanted
-        ),
-        None,
-    )
+    matches = [
+        definition
+        for definition in GENERATED_UNIT_CAMEO_ASSETS.values()
+        if str(definition.get('art_id') or '').upper() == wanted
+    ]
+    # Several custom identities may deliberately clone one installed ArtType.
+    # An indirect lookup is safe only when its source ArtType is unambiguous;
+    # otherwise it would replace the ordinary unit's cameo with one variant.
+    return matches[0] if len(matches) == 1 else None
 
 
 def _asset_name(value, suffix):
@@ -527,8 +528,8 @@ def deploy_superweapon_sidebar_assets(rewards):
     return deployed
 
 
-def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
-    """Stage custom and campaign-MIX PCX files used by art aliases."""
+def _deploy_generated_unit_sidebar_assets(aliases, target_dir, art_text=''):
+    """Stage cameo and graphics files used by generated ArtType aliases."""
     requested = {
         str(values.get('CameoPCX') or '').lower()
         for values in aliases.values()
@@ -536,7 +537,8 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
     }
     deployed = []
     mix_requests = []
-    for definition in GENERATED_UNIT_CAMEO_ASSETS.values():
+    art_sections = _art_cameo_sections(art_text) if art_text else {}
+    for unit_id, definition in GENERATED_UNIT_CAMEO_ASSETS.items():
         pcx_value = definition.get('source_pcx') or definition.get('pcx')
         pcx_name = _asset_name(pcx_value, '.pcx')
         if pcx_name.lower() not in requested:
@@ -545,13 +547,39 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
             target = Path(target_dir) / pcx_name
             mix_requests.append((pcx_name, target))
             deployed.append(target)
-            continue
-        source = custom_image_path(
-            _asset_name(definition['image'], '.png')
-        )
-        target = Path(target_dir) / pcx_name
-        png_to_pcx(source, target)
-        deployed.append(target)
+        else:
+            source = custom_image_path(
+                _asset_name(definition['image'], '.png')
+            )
+            target = Path(target_dir) / pcx_name
+            png_to_pcx(source, target)
+            deployed.append(target)
+
+        # A unique cameo sometimes requires a unique ArtType even though its
+        # unit still uses an installed sprite or voxel. Copy that source asset
+        # under the generated ArtType name. Without this, the engine searches
+        # for a nonexistent file every frame; infantry becomes invisible and
+        # can severely degrade rendering performance.
+        source_art_id = str(definition.get('art_id') or '').upper()
+        target_art_id = str(unit_id).upper()
+        if (
+            source_art_id
+            and source_art_id != target_art_id
+            and target_art_id in aliases
+            and target_art_id not in art_sections
+        ):
+            source_art = art_sections.get(source_art_id, {})
+            extensions = (
+                ('.vxl', '.hva')
+                if str(source_art.get('voxel') or '').lower() == 'yes'
+                else ('.shp',)
+            )
+            for extension in extensions:
+                source_name = source_art_id.lower() + extension
+                target_name = target_art_id.lower() + extension
+                target = Path(target_dir) / target_name
+                mix_requests.append((source_name, target))
+                deployed.append(target)
     if mix_requests:
         from randomizer.ui.cameos import _extract_mix_files
         extracted = _extract_mix_files(mix_requests)
@@ -562,7 +590,7 @@ def _deploy_generated_unit_sidebar_assets(aliases, target_dir):
         ]
         if not extracted or missing:
             raise CustomAssetError(
-                'Could not extract campaign cameo PCX: '
+                'Could not extract generated ArtType MIX assets: '
                 + (
                     ', '.join(sorted(missing))
                     if missing else 'MIX extraction process failed'
@@ -686,10 +714,13 @@ def generated_unit_art_aliases(map_path, art_text):
             continue
         name = str(values.get('name') or '').strip().lower()
         perun_used = perun_used or image_id == 'PERUN'
-        source_art = art_sections.get(image_id, {})
+        configured_cameo = _configured_cameo_for_art_id(image_id)
+        source_art_id = str(
+            (configured_cameo or {}).get('art_id') or image_id
+        ).upper()
+        source_art = art_sections.get(source_art_id, {})
         cameo = source_art.get('cameopcx')
         alt_cameo = source_art.get('altcameopcx')
-        configured_cameo = _configured_cameo_for_art_id(image_id)
         if name == 'jackal racer prototype':
             cameo = 'jackaicon.pcx'
             alt_cameo = 'jackauico.pcx'
@@ -714,6 +745,12 @@ def generated_unit_art_aliases(map_path, art_text):
         # configured cameo into the complete model art section as well.
         if configured_cameo and cameo:
             aliases[image_id] = {
+                **(
+                    source_art
+                    if image_id != source_art_id
+                    and image_id not in art_sections
+                    else {}
+                ),
                 'CameoPCX': cameo,
                 'AltCameoPCX': alt_cameo or cameo,
             }
@@ -770,7 +807,9 @@ def deploy_generated_unit_art(
         return None, {}
     target.parent.mkdir(parents=True, exist_ok=True)
     unit_assets = _deploy_generated_unit_sidebar_assets(
-        aliases, RUNTIME_ASSET_DIR if staged else target.parent
+        aliases,
+        RUNTIME_ASSET_DIR if staged else target.parent,
+        art_text,
     )
     merged_art = _merge_art_section_values(art_text, aliases)
     target.write_text(
