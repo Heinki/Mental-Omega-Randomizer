@@ -108,7 +108,10 @@
           "cost",
           "area",
           "damage",
+          "health",
           "duration",
+          "effect",
+          "targeting",
           "vision",
           "payload"
         ],

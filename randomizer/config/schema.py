@@ -158,7 +158,10 @@ REQUIRED_SECTIONS = {
         'cost': dict,
         'area': dict,
         'damage': dict,
+        'health': dict,
         'duration': dict,
+        'effect': dict,
+        'targeting': dict,
         'vision': dict,
         'payload': dict,
     },
@@ -885,6 +888,12 @@ def _validate_power_buffs(sections, path):
     buff_ids = [item['id'] for item in buff_types]
     if len(buff_ids) != len(set(buff_ids)):
         _invalid('Duplicate power buff type IDs', path)
+    supported_buff_ids = {
+        'recharge', 'cost', 'area', 'damage', 'health', 'duration',
+        'effect', 'targeting', 'vision', 'payload',
+    }
+    if set(buff_ids) != supported_buff_ids:
+        _invalid('Power buff type definitions do not match supported IDs', path)
     for item in buff_types:
         maximum_stacks = item.get('maximum_stacks')
         if (
@@ -963,7 +972,10 @@ def _validate_power_buffs(sections, path):
     ):
         _invalid('Invalid equivalent hero payload mapping', path)
 
-    for section_name in ('area', 'damage', 'duration', 'vision'):
+    for section_name in (
+        'area', 'damage', 'health', 'duration', 'effect', 'targeting',
+        'vision',
+    ):
         for key, entries in sections[section_name].items():
             if not key.endswith('_fields'):
                 continue
@@ -974,6 +986,92 @@ def _validate_power_buffs(sections, path):
                 _invalid(
                     f'Invalid power field mapping {section_name}.{key}', path
                 )
+
+    for section_name in (
+        'recharge', 'cost', 'damage', 'health', 'duration', 'effect',
+    ):
+        factor = sections[section_name].get('factor_per_stack')
+        if (
+            not isinstance(factor, (int, float))
+            or isinstance(factor, bool)
+            or factor <= 0
+        ):
+            _invalid(
+                f'Invalid power buff factor {section_name}.factor_per_stack',
+                path,
+            )
+
+    internal_deliveries = sections['payload'].get(
+        'internal_unit_delivery_fields', {}
+    )
+    if (
+        not isinstance(internal_deliveries, dict)
+        or any(
+            not _is_nonempty_string(power_id)
+            or not isinstance(spec, dict)
+            or not all(
+                _is_nonempty_string(spec.get(key))
+                for key in ('section', 'field', 'baseline')
+            )
+            for power_id, spec in internal_deliveries.items()
+        )
+    ):
+        _invalid('Invalid internal power payload mapping', path)
+
+    effect_fields = sections['effect'].get('multiplier_fields', {})
+    if any(
+        spec.get('mode') not in {'bonus', 'reduction'}
+        or not all(
+            _is_nonempty_string(spec.get(key))
+            for key in ('source', 'field', 'reference_key', 'effect_label')
+        )
+        or not isinstance(spec.get('baseline'), (int, float))
+        or isinstance(spec.get('baseline'), bool)
+        or spec['baseline'] <= 0
+        for spec in effect_fields.values()
+    ):
+        _invalid('Invalid power status-effect multiplier mapping', path)
+
+    vehicle_fields = sections['targeting'].get('vehicle_armor_fields', {})
+    if any(
+        not _is_nonempty_string(spec.get('source'))
+        or not _is_nonempty_string(spec.get('clone_key'))
+        or not _is_nonempty_string(spec.get('verses'))
+        or (
+            'clear_designators' in spec
+            and not isinstance(spec['clear_designators'], bool)
+        )
+        for spec in vehicle_fields.values()
+    ):
+        _invalid('Invalid all-vehicle power targeting mapping', path)
+
+    health_fields = sections['health'].get('techno_fields', {})
+    if any(
+        not all(
+            _is_nonempty_string(spec.get(key))
+            for key in ('source', 'clone_key', 'field')
+        )
+        for spec in health_fields.values()
+    ):
+        _invalid('Invalid delivered power health mapping', path)
+
+    draining_fields = sections['duration'].get(
+        'draining_techno_fields', {}
+    )
+    if any(
+        not all(
+            _is_nonempty_string(spec.get(key))
+            for key in (
+                'source', 'clone_key', 'strength_field', 'armor',
+                'armor_parent', 'damage_warhead',
+            )
+        )
+        or not isinstance(spec.get('base_verses_percent'), (int, float))
+        or isinstance(spec.get('base_verses_percent'), bool)
+        or spec['base_verses_percent'] <= 0
+        for spec in draining_fields.values()
+    ):
+        _invalid('Invalid draining power lifetime mapping', path)
 
 
 def _validate_enemy_scaling(sections, path):

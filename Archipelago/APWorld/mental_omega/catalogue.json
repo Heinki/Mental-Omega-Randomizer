@@ -1810,6 +1810,97 @@
       "id": 81064155
     },
     {
+      "name": "Apocalypse Prototype Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067806
+    },
+    {
+      "name": "Apocalypse Prototype Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067807
+    },
+    {
+      "name": "Apocalypse Prototype Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067808
+    },
+    {
+      "name": "Apocalypse Prototype Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067809
+    },
+    {
+      "name": "Apocalypse Prototype Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067810
+    },
+    {
+      "name": "Apocalypse Prototype Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067811
+    },
+    {
+      "name": "Apocalypse Prototype Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067812
+    },
+    {
+      "name": "Apocalypse Prototype Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067813
+    },
+    {
+      "name": "Apocalypse Prototype Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067814
+    },
+    {
+      "name": "Apocalypse Prototype Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067815
+    },
+    {
+      "name": "Apocalypse Prototype Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067816
+    },
+    {
+      "name": "Apocalypse Prototype Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067817
+    },
+    {
+      "name": "Apocalypse Prototype Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067818
+    },
+    {
       "name": "Apocalypse Tank Access",
       "classification": "progression",
       "category": "special_unlocks",
@@ -2277,6 +2368,104 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064222
+    },
+    {
+      "name": "Arnie Frankfurter Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067819
+    },
+    {
+      "name": "Arnie Frankfurter Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067820
+    },
+    {
+      "name": "Arnie Frankfurter Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067821
+    },
+    {
+      "name": "Arnie Frankfurter Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067822
+    },
+    {
+      "name": "Arnie Frankfurter Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067823
+    },
+    {
+      "name": "Arnie Frankfurter Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067824
+    },
+    {
+      "name": "Arnie Frankfurter Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067825
+    },
+    {
+      "name": "Arnie Frankfurter Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067826
+    },
+    {
+      "name": "Arnie Frankfurter Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067827
+    },
+    {
+      "name": "Arnie Frankfurter Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067828
+    },
+    {
+      "name": "Arnie Frankfurter Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067829
+    },
+    {
+      "name": "Arnie Frankfurter Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067830
+    },
+    {
+      "name": "Arnie Frankfurter Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067831
+    },
+    {
+      "name": "Arnie Frankfurter Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067832
     },
     {
       "name": "Arsonist Access",
@@ -3301,11 +3490,32 @@
       "id": 81064368
     },
     {
+      "name": "Bloatick Trap Power Extended Effect I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067833
+    },
+    {
       "name": "Bloatick Trap Power Logistics I",
       "classification": "useful",
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064369
+    },
+    {
+      "name": "Bloatick Trap Power Reinforced Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067834
+    },
+    {
+      "name": "Bloatick Trap Power Reinforced Power Structure I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067835
     },
     {
       "name": "Bloodhounds Power",
@@ -4925,6 +5135,13 @@
       "id": 81064612
     },
     {
+      "name": "Chronolift Power Expanded Area I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067836
+    },
+    {
       "name": "Chronoshift Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -5716,6 +5933,104 @@
       "id": 81064713
     },
     {
+      "name": "Cyborg Commando Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067837
+    },
+    {
+      "name": "Cyborg Commando Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067838
+    },
+    {
+      "name": "Cyborg Commando Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067839
+    },
+    {
+      "name": "Cyborg Commando Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067840
+    },
+    {
+      "name": "Cyborg Commando Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067841
+    },
+    {
+      "name": "Cyborg Commando Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067842
+    },
+    {
+      "name": "Cyborg Commando Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067843
+    },
+    {
+      "name": "Cyborg Commando Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067844
+    },
+    {
+      "name": "Cyborg Commando Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067845
+    },
+    {
+      "name": "Cyborg Commando Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067846
+    },
+    {
+      "name": "Cyborg Commando Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067847
+    },
+    {
+      "name": "Cyborg Commando Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067848
+    },
+    {
+      "name": "Cyborg Commando Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067849
+    },
+    {
+      "name": "Cyborg Commando Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067850
+    },
+    {
       "name": "Cyborg Vanguard Access",
       "classification": "progression",
       "category": "special_unlocks",
@@ -6157,11 +6472,32 @@
       "id": 81064776
     },
     {
+      "name": "Devourer Power Amplified Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067851
+    },
+    {
+      "name": "Devourer Power Expanded Area I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067852
+    },
+    {
       "name": "Devourer Power Logistics I",
       "classification": "useful",
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064777
+    },
+    {
+      "name": "Disruptor Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067853
     },
     {
       "name": "Disruptor Power",
@@ -6183,6 +6519,55 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064780
+    },
+    {
+      "name": "Disruptor Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067854
+    },
+    {
+      "name": "Disruptor Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067855
+    },
+    {
+      "name": "Disruptor Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067856
+    },
+    {
+      "name": "Disruptor Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067857
+    },
+    {
+      "name": "Disruptor Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067858
+    },
+    {
+      "name": "Disruptor Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067859
+    },
+    {
+      "name": "Disruptor Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067860
     },
     {
       "name": "Diverbee Access",
@@ -8852,6 +9237,27 @@
       "id": 81065146
     },
     {
+      "name": "Flame Tower Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067861
+    },
+    {
+      "name": "Flame Tower Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067862
+    },
+    {
+      "name": "Flame Tower Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067863
+    },
+    {
       "name": "Flame Tower Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -8871,6 +9277,55 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81065149
+    },
+    {
+      "name": "Flame Tower Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067864
+    },
+    {
+      "name": "Flame Tower Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067865
+    },
+    {
+      "name": "Flame Tower Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067866
+    },
+    {
+      "name": "Flame Tower Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067867
+    },
+    {
+      "name": "Flame Tower Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067868
+    },
+    {
+      "name": "Flame Tower Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067869
+    },
+    {
+      "name": "Flame Tower Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067870
     },
     {
       "name": "Foehn Blast Trench Access",
@@ -10077,6 +10532,104 @@
       "id": 81065320
     },
     {
+      "name": "Gehenna Platform (Earthrise) Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067871
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067872
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067873
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067874
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067875
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067876
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067877
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067878
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067879
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067880
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067881
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067882
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067883
+    },
+    {
+      "name": "Gehenna Platform (Earthrise) Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067884
+    },
+    {
       "name": "Gehenna Platform Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -10168,6 +10721,104 @@
       "id": 81065333
     },
     {
+      "name": "Gene Boss Brute Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067885
+    },
+    {
+      "name": "Gene Boss Brute Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067886
+    },
+    {
+      "name": "Gene Boss Brute Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067887
+    },
+    {
+      "name": "Gene Boss Brute Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067888
+    },
+    {
+      "name": "Gene Boss Brute Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067889
+    },
+    {
+      "name": "Gene Boss Brute Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067890
+    },
+    {
+      "name": "Gene Boss Brute Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067891
+    },
+    {
+      "name": "Gene Boss Brute Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067892
+    },
+    {
+      "name": "Gene Boss Brute Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067893
+    },
+    {
+      "name": "Gene Boss Brute Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067894
+    },
+    {
+      "name": "Gene Boss Brute Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067895
+    },
+    {
+      "name": "Gene Boss Brute Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067896
+    },
+    {
+      "name": "Gene Boss Brute Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067897
+    },
+    {
+      "name": "Gene Boss Brute Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067898
+    },
+    {
       "name": "Geneburst Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -10182,11 +10833,116 @@
       "id": 81065335
     },
     {
+      "name": "Geneburst Power Amplified Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067899
+    },
+    {
+      "name": "Geneburst Power Expanded Area I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067900
+    },
+    {
       "name": "Geneburst Power Logistics I",
       "classification": "useful",
       "category": "power_buffs",
       "repeatable": true,
       "id": 81065336
+    },
+    {
+      "name": "Genequad Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067901
+    },
+    {
+      "name": "Genequad Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067902
+    },
+    {
+      "name": "Genequad Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067903
+    },
+    {
+      "name": "Genequad Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067904
+    },
+    {
+      "name": "Genequad Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067905
+    },
+    {
+      "name": "Genequad Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067906
+    },
+    {
+      "name": "Genequad Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067907
+    },
+    {
+      "name": "Genequad Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067908
+    },
+    {
+      "name": "Genequad Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067909
+    },
+    {
+      "name": "Genequad Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067910
+    },
+    {
+      "name": "Genequad Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067911
+    },
+    {
+      "name": "Genequad Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067912
+    },
+    {
+      "name": "Genequad Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067913
     },
     {
       "name": "Genomine Field Power",
@@ -11911,6 +12667,97 @@
       "id": 81065581
     },
     {
+      "name": "Hydra Cannon Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067914
+    },
+    {
+      "name": "Hydra Cannon Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067915
+    },
+    {
+      "name": "Hydra Cannon Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067916
+    },
+    {
+      "name": "Hydra Cannon Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067917
+    },
+    {
+      "name": "Hydra Cannon Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067918
+    },
+    {
+      "name": "Hydra Cannon Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067919
+    },
+    {
+      "name": "Hydra Cannon Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067920
+    },
+    {
+      "name": "Hydra Cannon Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067921
+    },
+    {
+      "name": "Hydra Cannon Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067922
+    },
+    {
+      "name": "Hydra Cannon Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067923
+    },
+    {
+      "name": "Hydra Cannon Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067924
+    },
+    {
+      "name": "Hydra Cannon Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067925
+    },
+    {
+      "name": "Hydra Cannon Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067926
+    },
+    {
       "name": "Hyperion Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -12261,6 +13108,13 @@
       "id": 81065630
     },
     {
+      "name": "Instant Shelter Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067927
+    },
+    {
       "name": "Instant Shelter Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -12280,6 +13134,41 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81065633
+    },
+    {
+      "name": "Instant Shelter Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067928
+    },
+    {
+      "name": "Instant Shelter Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067929
+    },
+    {
+      "name": "Instant Shelter Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067930
+    },
+    {
+      "name": "Instant Shelter Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067931
+    },
+    {
+      "name": "Instant Shelter Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067932
     },
     {
       "name": "Invader Access",
@@ -12644,6 +13533,174 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065685
+    },
+    {
+      "name": "Ivan Biker Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067933
+    },
+    {
+      "name": "Ivan Biker Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067934
+    },
+    {
+      "name": "Ivan Biker Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067935
+    },
+    {
+      "name": "Ivan Biker Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067936
+    },
+    {
+      "name": "Ivan Biker Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067937
+    },
+    {
+      "name": "Ivan Biker Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067938
+    },
+    {
+      "name": "Ivan Biker Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067939
+    },
+    {
+      "name": "Ivan Biker Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067940
+    },
+    {
+      "name": "Ivan Biker Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067941
+    },
+    {
+      "name": "Ivan Biker Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067942
+    },
+    {
+      "name": "Ivan Biker Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067943
+    },
+    {
+      "name": "Ivan Biker Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067944
+    },
+    {
+      "name": "Ivan Cadet Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067945
+    },
+    {
+      "name": "Ivan Cadet Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067946
+    },
+    {
+      "name": "Ivan Cadet Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067947
+    },
+    {
+      "name": "Ivan Cadet Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067948
+    },
+    {
+      "name": "Ivan Cadet Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067949
+    },
+    {
+      "name": "Ivan Cadet Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067950
+    },
+    {
+      "name": "Ivan Cadet Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067951
+    },
+    {
+      "name": "Ivan Cadet Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067952
+    },
+    {
+      "name": "Ivan Cadet Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067953
+    },
+    {
+      "name": "Ivan Cadet Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067954
+    },
+    {
+      "name": "Ivan Cadet Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067955
+    },
+    {
+      "name": "Ivan Cadet Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067956
     },
     {
       "name": "Jackal Racer Access",
@@ -14970,6 +16027,13 @@
       "id": 81066017
     },
     {
+      "name": "Megaarena Power Universal Vehicle Targeting I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067957
+    },
+    {
       "name": "Megalodon Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -15080,6 +16144,20 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81066033
+    },
+    {
+      "name": "Mercury Strike Power Amplified Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067958
+    },
+    {
+      "name": "Mercury Strike Power Expanded Area I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067959
     },
     {
       "name": "Mercury Strike Power Logistics I",
@@ -15213,6 +16291,76 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81066051
+    },
+    {
+      "name": "Mobile Grinder Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067960
+    },
+    {
+      "name": "Mobile Grinder Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067961
+    },
+    {
+      "name": "Mobile Grinder Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067962
+    },
+    {
+      "name": "Mobile Grinder Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067963
+    },
+    {
+      "name": "Mobile Grinder Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067964
+    },
+    {
+      "name": "Mobile Grinder Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067965
+    },
+    {
+      "name": "Mobile Grinder Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067966
+    },
+    {
+      "name": "Mobile Grinder Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067967
+    },
+    {
+      "name": "Mobile Grinder Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067968
+    },
+    {
+      "name": "Mobile Grinder Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067969
     },
     {
       "name": "Moon Reinforcements Power",
@@ -15549,6 +16697,13 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81066099
+    },
+    {
+      "name": "Nanocharge Power Universal Vehicle Targeting I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067970
     },
     {
       "name": "Nanofiber Sync Power",
@@ -17007,6 +18162,13 @@
       "id": 81066307
     },
     {
+      "name": "Overcharge Power Amplified Status Effect I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81067971
+    },
+    {
       "name": "Overcharge Power Expanded Area I",
       "classification": "useful",
       "category": "power_buffs",
@@ -17915,6 +19077,97 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066437
+    },
+    {
+      "name": "Psychic Boss Brute Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067972
+    },
+    {
+      "name": "Psychic Boss Brute Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067973
+    },
+    {
+      "name": "Psychic Boss Brute Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067974
+    },
+    {
+      "name": "Psychic Boss Brute Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067975
+    },
+    {
+      "name": "Psychic Boss Brute Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067976
+    },
+    {
+      "name": "Psychic Boss Brute Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067977
+    },
+    {
+      "name": "Psychic Boss Brute Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067978
+    },
+    {
+      "name": "Psychic Boss Brute Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067979
+    },
+    {
+      "name": "Psychic Boss Brute Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067980
+    },
+    {
+      "name": "Psychic Boss Brute Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067981
+    },
+    {
+      "name": "Psychic Boss Brute Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067982
+    },
+    {
+      "name": "Psychic Boss Brute Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067983
+    },
+    {
+      "name": "Psychic Boss Brute Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067984
     },
     {
       "name": "Psychic Dominator Power",
@@ -19583,6 +20836,27 @@
       "id": 81066674
     },
     {
+      "name": "Risen Monolith Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067985
+    },
+    {
+      "name": "Risen Monolith Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067986
+    },
+    {
+      "name": "Risen Monolith Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067987
+    },
+    {
       "name": "Risen Monolith Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -19602,6 +20876,55 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81066677
+    },
+    {
+      "name": "Risen Monolith Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067988
+    },
+    {
+      "name": "Risen Monolith Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067989
+    },
+    {
+      "name": "Risen Monolith Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067990
+    },
+    {
+      "name": "Risen Monolith Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067991
+    },
+    {
+      "name": "Risen Monolith Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067992
+    },
+    {
+      "name": "Risen Monolith Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067993
+    },
+    {
+      "name": "Risen Monolith Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067994
     },
     {
       "name": "Roadrunner Access",
@@ -20211,6 +21534,104 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066764
+    },
+    {
+      "name": "Sammy Stallion Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81067995
+    },
+    {
+      "name": "Sammy Stallion Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067996
+    },
+    {
+      "name": "Sammy Stallion Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067997
+    },
+    {
+      "name": "Sammy Stallion Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067998
+    },
+    {
+      "name": "Sammy Stallion Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067999
+    },
+    {
+      "name": "Sammy Stallion Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068000
+    },
+    {
+      "name": "Sammy Stallion Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068001
+    },
+    {
+      "name": "Sammy Stallion Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068002
+    },
+    {
+      "name": "Sammy Stallion Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068003
+    },
+    {
+      "name": "Sammy Stallion Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068004
+    },
+    {
+      "name": "Sammy Stallion Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068005
+    },
+    {
+      "name": "Sammy Stallion Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068006
+    },
+    {
+      "name": "Sammy Stallion Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068007
+    },
+    {
+      "name": "Sammy Stallion Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068008
     },
     {
       "name": "Satellite Scan Power",
@@ -24035,6 +25456,90 @@
       "id": 81067307
     },
     {
+      "name": "Tank Killer Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81068009
+    },
+    {
+      "name": "Tank Killer Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068010
+    },
+    {
+      "name": "Tank Killer Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068011
+    },
+    {
+      "name": "Tank Killer Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068012
+    },
+    {
+      "name": "Tank Killer Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068013
+    },
+    {
+      "name": "Tank Killer Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068014
+    },
+    {
+      "name": "Tank Killer Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068015
+    },
+    {
+      "name": "Tank Killer Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068016
+    },
+    {
+      "name": "Tank Killer Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068017
+    },
+    {
+      "name": "Tank Killer Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068018
+    },
+    {
+      "name": "Tank Killer Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068019
+    },
+    {
+      "name": "Tank Killer Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068020
+    },
+    {
       "name": "Tanya Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -24320,6 +25825,13 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81067348
+    },
+    {
+      "name": "Target Painter Power Amplified Status Effect I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81068021
     },
     {
       "name": "Target Painter Power Expanded Area I",
@@ -25050,6 +26562,20 @@
       "id": 81067452
     },
     {
+      "name": "Toxic Strike Power Amplified Payload I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81068022
+    },
+    {
+      "name": "Toxic Strike Power Expanded Area I",
+      "classification": "useful",
+      "category": "power_buffs",
+      "repeatable": true,
+      "id": 81068023
+    },
+    {
       "name": "Toxic Strike Power Logistics I",
       "classification": "useful",
       "category": "power_buffs",
@@ -25344,6 +26870,104 @@
       "id": 81067494
     },
     {
+      "name": "Tyrant Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81068024
+    },
+    {
+      "name": "Tyrant Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068025
+    },
+    {
+      "name": "Tyrant Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068026
+    },
+    {
+      "name": "Tyrant Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068027
+    },
+    {
+      "name": "Tyrant Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068028
+    },
+    {
+      "name": "Tyrant Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068029
+    },
+    {
+      "name": "Tyrant Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068030
+    },
+    {
+      "name": "Tyrant Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068031
+    },
+    {
+      "name": "Tyrant Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068032
+    },
+    {
+      "name": "Tyrant Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068033
+    },
+    {
+      "name": "Tyrant Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068034
+    },
+    {
+      "name": "Tyrant Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068035
+    },
+    {
+      "name": "Tyrant Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068036
+    },
+    {
+      "name": "Tyrant Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068037
+    },
+    {
       "name": "Ultra Dome Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -25545,6 +27169,104 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067523
+    },
+    {
+      "name": "Virus Boss Brute Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81068038
+    },
+    {
+      "name": "Virus Boss Brute Ammo Reserves I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068039
+    },
+    {
+      "name": "Virus Boss Brute Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068040
+    },
+    {
+      "name": "Virus Boss Brute Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068041
+    },
+    {
+      "name": "Virus Boss Brute Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068042
+    },
+    {
+      "name": "Virus Boss Brute Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068043
+    },
+    {
+      "name": "Virus Boss Brute Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068044
+    },
+    {
+      "name": "Virus Boss Brute Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068045
+    },
+    {
+      "name": "Virus Boss Brute Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068046
+    },
+    {
+      "name": "Virus Boss Brute Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068047
+    },
+    {
+      "name": "Virus Boss Brute Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068048
+    },
+    {
+      "name": "Virus Boss Brute Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068049
+    },
+    {
+      "name": "Virus Boss Brute Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068050
+    },
+    {
+      "name": "Virus Boss Brute Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068051
     },
     {
       "name": "Virus Drill I",
@@ -29745,7 +31467,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "131222e5e1cf11379626f4adcb3e904a538a96dad94a2981e9c50fba2dd9905e",
+  "catalogue_checksum": "138189ee176522b8d2c1ace4a88de9f81fb6b3cfdd82382e0fd79d40c94a3524",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

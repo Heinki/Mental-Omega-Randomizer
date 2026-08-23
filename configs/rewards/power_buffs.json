@@ -32,11 +32,32 @@
         "maximum_stacks": 5
       },
       {
+        "id": "health",
+        "name": "Reinforced Power Structure",
+        "setting_label": "More payload health",
+        "description": "A delivered power structure gains 15% health per stack.",
+        "maximum_stacks": 5
+      },
+      {
         "id": "duration",
         "name": "Extended Effect",
         "setting_label": "Longer effect duration",
         "description": "Timed effect duration is 15% longer per stack.",
         "maximum_stacks": 5
+      },
+      {
+        "id": "effect",
+        "name": "Amplified Status Effect",
+        "setting_label": "Stronger status effect",
+        "description": "A power's armor or firepower modifier is 25% stronger per stack.",
+        "maximum_stacks": 5
+      },
+      {
+        "id": "targeting",
+        "name": "Universal Vehicle Targeting",
+        "setting_label": "Affect all vehicles",
+        "description": "The power affects normal VehicleTypes while excluding hidden, non-scoring, and scripted immunity helpers.",
+        "maximum_stacks": 1
       },
       {
         "id": "vision",
@@ -143,6 +164,9 @@
       },
       "warhead_fields": {
         "MercurySpecial": {"source": "MercuryStrikeWH", "field": "CellSpread", "clone_group": "techno"},
+        "DevourerSpecial": {"source": "DevourerWH", "clone_key": "DevourerWH", "field": "CellSpread", "clone_group": "techno"},
+        "MutationSpecial": {"source": "GeneburstWH", "clone_key": "GeneburstWarhead", "field": "CellSpread", "clone_group": "techno"},
+        "ToxicStrikeSpecial": {"source": "StrikerGunRunWH", "clone_key": "StrikerGunRunWH", "field": "CellSpread", "clone_group": "techno"},
         "MaintenanceSpecial": {"source": "MaintenanceWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "NukeSpecial": {"source": "NUKE", "field": "CellSpread", "reference_key": "SW.Warhead"},
         "GreatTempestSpecial": {"source": "GreatTempestBlastWH", "field": "CellSpread", "reference_key": "SW.Warhead"},
@@ -173,7 +197,16 @@
         "BoidBlitzSpecial": {"field": "SW.Damage", "baseline": 360}
       },
       "techno_fields": {
-        "MercurySpecial": {"source": "MercuryOverdrive", "field": "Damage"}
+        "MercurySpecial": {"source": "MercuryOverdrive", "field": "Damage"},
+        "DevourerSpecial": {"source": "Devourer", "clone_key": "DevourerPayload", "field": "Damage", "baseline": 300},
+        "MutationSpecial": {"source": "GeneburstWeapon", "clone_key": "GeneburstWeapon", "field": "Damage"},
+        "ToxicStrikeSpecial": {"source": "StrikerGunRun", "clone_key": "StrikerGunRun", "field": "Damage"}
+      }
+    },
+    "health": {
+      "factor_per_stack": 1.15,
+      "techno_fields": {
+        "TickTrapSpecial": {"source": "YATUNL", "clone_key": "YATUNL", "field": "Strength"}
       }
     },
     "duration": {
@@ -207,6 +240,53 @@
           ],
           "clone_group": "techno"
         }
+      },
+      "draining_techno_fields": {
+        "TickTrapSpecial": {
+          "source": "YATUNL",
+          "clone_key": "YATUNL",
+          "strength_field": "Strength",
+          "armor": "MORTickTrapArmor",
+          "armor_parent": "tunnel",
+          "damage_warhead": "VisionKillWH",
+          "base_verses_percent": 100
+        }
+      }
+    },
+    "effect": {
+      "factor_per_stack": 1.25,
+      "multiplier_fields": {
+        "TargetPainterSpecial": {
+          "source": "TargetPainterWH",
+          "field": "AttachEffect.ArmorMultiplier",
+          "baseline": 0.8,
+          "reference_key": "SW.Warhead",
+          "mode": "reduction",
+          "effect_label": "Armor reduction"
+        },
+        "OverchargeSpecial": {
+          "source": "OverchargeWH",
+          "field": "AttachEffect.FirepowerMultiplier",
+          "baseline": 1.5,
+          "reference_key": "SW.Warhead",
+          "mode": "bonus",
+          "effect_label": "Firepower bonus"
+        }
+      }
+    },
+    "targeting": {
+      "vehicle_armor_fields": {
+        "NanochargeSpecial": {
+          "source": "NanochargeWH",
+          "clone_key": "NanoWarhead",
+          "verses": "3%",
+          "clear_designators": true
+        },
+        "MegaarenaSpecial": {
+          "source": "MegaarenaRealWH",
+          "clone_key": "MegaarenaRealWH",
+          "verses": "100%"
+        }
       }
     },
     "vision": {
@@ -222,6 +302,9 @@
     },
     "payload": {
       "buff_unit_ids_by_power": {
+        "TickTrapSpecial": [
+          "KAOS"
+        ],
         "TankDropSpecial": [
           "TNKKIL",
           "HCAN"
@@ -269,6 +352,13 @@
         "DecoySquadronSpecial",
         "MADMineSpecial"
       ],
+      "internal_unit_delivery_fields": {
+        "TickTrapSpecial": {
+          "section": "TickTrapSpawn",
+          "field": "Deliver.Types",
+          "baseline": "KAOS"
+        }
+      },
       "paradrop_power_ids": [
         "AmericanParaDropSpecial",
         "MOREngineeringTeamSpecial",

@@ -46,9 +46,19 @@ POWER_BUFF_POWER_IDS = {
         set(POWER_BUFF_CONFIG['damage']['direct_fields'])
         | set(POWER_BUFF_CONFIG['damage'].get('techno_fields', {}))
     ),
+    'health': _normalized_ids(
+        POWER_BUFF_CONFIG['health']['techno_fields']
+    ),
     'duration': _normalized_ids(
         set(POWER_BUFF_CONFIG['duration']['direct_fields'])
         | set(POWER_BUFF_CONFIG['duration']['warhead_fields'])
+        | set(POWER_BUFF_CONFIG['duration'].get('draining_techno_fields', {}))
+    ),
+    'effect': _normalized_ids(
+        POWER_BUFF_CONFIG['effect']['multiplier_fields']
+    ),
+    'targeting': _normalized_ids(
+        POWER_BUFF_CONFIG['targeting']['vehicle_armor_fields']
     ),
     'vision': _normalized_ids(
         POWER_BUFF_CONFIG['vision']['power_fields']
@@ -58,6 +68,9 @@ POWER_BUFF_POWER_IDS = {
         | set(POWER_BUFF_CONFIG['payload']['paradrop_power_ids'])
         | set(POWER_BUFF_CONFIG['payload']['spy_plane_power_ids'])
         | set(POWER_BUFF_CONFIG['payload'].get('drop_pod_power_ids', ()))
+        | set(POWER_BUFF_CONFIG['payload'].get(
+            'internal_unit_delivery_fields', {}
+        ))
     ),
 }
 
@@ -141,9 +154,23 @@ def power_buff_effect_text(reward, count=1):
     if buff_id == 'damage':
         factor = float(POWER_BUFF_CONFIG['damage']['factor_per_stack'])
         return f'Damage {round((factor ** count - 1.0) * 100)}% higher'
+    if buff_id == 'health':
+        factor = float(POWER_BUFF_CONFIG['health']['factor_per_stack'])
+        return f'Payload health {round((factor ** count - 1.0) * 100)}% higher'
     if buff_id == 'duration':
         factor = float(POWER_BUFF_CONFIG['duration']['factor_per_stack'])
         return f'Effect duration {round((factor ** count - 1.0) * 100)}% longer'
+    if buff_id == 'effect':
+        power_id = reward.get('superweapon')
+        spec = POWER_BUFF_CONFIG['effect']['multiplier_fields'].get(
+            power_id, {}
+        )
+        baseline = float(spec.get('baseline', 1.0))
+        factor = float(POWER_BUFF_CONFIG['effect']['factor_per_stack'])
+        percentage = abs(1.0 - baseline) * factor ** count * 100
+        return f'{spec.get("effect_label", "Status effect")} {percentage:g}%'
+    if buff_id == 'targeting':
+        return 'Affects all vehicles'
     if buff_id == 'vision':
         amount = int(POWER_BUFF_CONFIG['vision']['amount_per_stack']) * count
         return f'Plane vision +{amount}'

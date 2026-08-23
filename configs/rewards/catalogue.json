@@ -2011,6 +2011,20 @@
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
+        },
+        "sections": {
+          "TickTrapSpawn": {
+            "clone": "MORTickTrapSpawn"
+          }
+        },
+        "techno_clones": {
+          "YATUNL": {
+            "clone": "MORTickTrap",
+            "list": "BuildingTypes",
+            "values": {
+              "SuperWeapon": "TickTrapSpawn"
+            }
+          }
         }
       },
       {
@@ -2094,6 +2108,40 @@
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false"
+        },
+        "techno_clones": {
+          "FAAREN": {
+            "clone": "MORMegaarenaProjector",
+            "list": "BuildingTypes",
+            "values": {
+              "Secondary": "MORMegaarenaCast"
+            }
+          },
+          "Megaarena": {
+            "clone": "MORMegaarenaCast",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORMegaarenaP"
+            }
+          },
+          "MegaarenaP": {
+            "clone": "MORMegaarenaP",
+            "list": "Projectiles",
+            "values": {
+              "AirburstWeapon": "MORMegaarenaReal"
+            }
+          },
+          "MegaarenaReal": {
+            "clone": "MORMegaarenaReal",
+            "list": "WeaponTypes",
+            "values": {
+              "Warhead": "MORMegaarenaWH"
+            }
+          },
+          "MegaarenaRealWH": {
+            "clone": "MORMegaarenaWH",
+            "list": "Warheads"
+          }
         }
       },
       {
@@ -3003,6 +3051,33 @@
           "SW.AnyInhibitor": "no",
           "SW.RangeMaximum": "-1",
           "SW.RangeMinimum": "-1"
+        },
+        "techno_clones": {
+          "DBAT": {
+            "clone": "MORToxicPlane",
+            "list": "AircraftTypes",
+            "reference_keys": ["SpyPlane.Type"],
+            "values": {
+              "Primary": "MORToxicWeapon",
+              "ElitePrimary": "MORToxicWeapon"
+            }
+          },
+          "StrikerGunRun": {
+            "clone": "MORToxicWeapon",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORToxicP",
+              "Warhead": "MORToxicWH"
+            }
+          },
+          "StrikerGunRunP": {
+            "clone": "MORToxicP",
+            "list": "Projectiles"
+          },
+          "StrikerGunRunWH": {
+            "clone": "MORToxicWH",
+            "list": "Warheads"
+          }
         }
       },
       {
@@ -3385,11 +3460,15 @@
               "Burst": "1",
               "Projectile": "MORSmallDevoDown",
               "Speed": "90",
-              "Warhead": "DevourerWH",
+              "Warhead": "MORDevourerWH",
               "Report": "DevourerStart",
               "OmniFire": null,
               "MinimumRange": null
             }
+          },
+          "DevourerWH": {
+            "clone": "MORDevourerWH",
+            "list": "Warheads"
           }
         }
       },

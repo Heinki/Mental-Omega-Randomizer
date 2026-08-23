@@ -881,6 +881,16 @@ def cloned_superweapon_plan(
                 for reference_key in clone_spec.get('reference_keys') or ():
                     clone_values[str(reference_key)] = auxiliary_clone
 
+        # Narrow map-local additions may safely extend a shared registry or
+        # warhead when every new key targets a private generated type. Existing
+        # installed values remain inherited; native objects never reference the
+        # added private armor/type IDs.
+        global_rules = reward.get('superweapon_global_rules')
+        if isinstance(global_rules, dict):
+            for section, values in global_rules.items():
+                if isinstance(values, dict):
+                    section_rules.setdefault(str(section), {}).update(values)
+
         extra_sections = reward.get('superweapon_rule_sections')
         if isinstance(extra_sections, dict):
             for dependent_source, dependent_overrides in extra_sections.items():

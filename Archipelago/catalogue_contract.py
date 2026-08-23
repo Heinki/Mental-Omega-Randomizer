@@ -30,17 +30,17 @@ MAXIMUM_ENEMY_TRAP_ITEMS = sum(
     if reward.get("enemy_reward")
 )
 
-# Published catalogues before additive Starting Credits, enemy Trap items, and
-# native enemy superweapon Traps.
 # Existing IDs and reward semantics are unchanged, and server slot data carries
-# its exact used-item map, location map, and signed state snapshot. Keeping both
-# checksums compatible lets already-hosted rooms reconnect safely.
+# its exact used-item map, location map, and signed state snapshot. Keeping
+# published catalogue checksums compatible lets already-hosted rooms reconnect
+# safely after additive reward catalogue changes.
 BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
     "24a1d5b707e7df49c6d0f130e45c1e61048813b5dfd64cd49a886f41b35333f9",
     "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
     "f213725f91de177af64eec5a875a08a403c4bc5be0e4f3f7e510db89ba7510f8",
     "a7ffd4cde8ffe5f7f48eed95c1c7af37d61266807738a6f077f23eba41b58e44",
     "2e89563a5b69cd9c7b075f9533a93488d03d35ea218ecc74e602a62a0c665232",
+    "131222e5e1cf11379626f4adcb3e904a538a96dad94a2981e9c50fba2dd9905e",
 })
 
 

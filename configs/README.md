@@ -220,6 +220,19 @@ stack while increasing its minimum and maximum pod count.
 increments only its `Sight`; Spy Plane is deliberately excluded from payload
 count because additional planes do not improve that power.
 
+`health.techno_fields`, `effect.multiplier_fields`, and
+`targeting.vehicle_armor_fields` describe isolated delivered-structure health,
+AttachEffect multiplier, and all-vehicle upgrades. All-vehicle targeting derives
+armor overrides from selectable installed `VehicleTypes`; explicitly
+unselectable or non-scoring spawners, dummy objects, timed beams, and add-ons
+remain excluded. Script-only map armor aliases continue inheriting their
+authored immunity. An optional
+`clone_key` selects an existing private clone whose lookup key differs from its
+installed `source` section. `payload.internal_unit_delivery_fields` increases a
+nested delivery SuperWeaponType instead of duplicating its outer structure.
+`duration.draining_techno_fields` gives timed self-damaging structures a private
+armor alias, allowing health and lifetime stacks to remain independent.
+
 `techno_clones` may provide private weapons, projectiles, warheads, delivered
 academy markers, or hidden EMPulse cannon buildings. A BuildingType with
 `startup_count` is created for each power-grant country; runtime replaces its
