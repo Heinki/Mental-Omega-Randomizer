@@ -599,6 +599,7 @@ def validate_drakuv_contracts():
 def validate_unit_buff_application_contracts():
     """Prove every rollable unit buff changes a clone or direct weapon."""
     from randomizer.maps.buff_values import (
+        _active_direct_buff_counts,
         apply_unit_buff_value,
         apply_weapon_buff_value,
     )
@@ -612,10 +613,41 @@ def validate_unit_buff_application_contracts():
         buff_stack_limit,
         linked_buff_variant_ids,
     )
+    from randomizer.rewards.display import canonical_reward
+    from randomizer.rewards.definitions import SUICIDE_RANGE_EXCLUDED_UNIT_IDS
 
     _paths, _clone_ids, templates = randomizer_unit_roster()
     errors = []
     counts_by_type = {}
+    reward_pairs = {
+        (str(reward.get('unit') or '').upper(), reward.get('buff_type'))
+        for reward in UNIT_BUFF_REWARDS
+    }
+    forced_suicide_range_rewards = []
+    for unit_id in sorted(SUICIDE_RANGE_EXCLUDED_UNIT_IDS):
+        if (unit_id, 'range') in reward_pairs:
+            errors.append(f'{unit_id} still offers harmful range')
+        legacy = {
+            'name': f'Legacy {unit_id} range',
+            'kind': 'buff',
+            'unit': unit_id,
+            'buff_type': 'range',
+        }
+        if canonical_reward(legacy).get('kind') != 'retired':
+            errors.append(f'{unit_id} legacy range remains active')
+        forced_suicide_range_rewards.append({
+            **legacy,
+            '_runtime_canonical': True,
+        })
+    forced_counts = _active_direct_buff_counts(
+        forced_suicide_range_rewards,
+        require_unlocked_access=False,
+    )
+    if forced_counts:
+        errors.append(
+            'mandatory suicide range exclusions reached map buffs: '
+            f'{forced_counts}'
+        )
 
     def direct_weapon_ids(values):
         result = set()
@@ -764,6 +796,9 @@ def validate_unit_buff_application_contracts():
         'rewards': len(UNIT_BUFF_REWARDS),
         'buff_types': counts_by_type,
         'all_change_generated_rules': True,
+        'suicide_range_excluded_ids': sorted(
+            SUICIDE_RANGE_EXCLUDED_UNIT_IDS
+        ),
     }
 
 

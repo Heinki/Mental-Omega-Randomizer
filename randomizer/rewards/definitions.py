@@ -190,10 +190,16 @@ EXCLUDED_BUFF_TYPE_IDS = {
     buff_type: frozenset(str(unit_id).upper() for unit_id in unit_ids)
     for buff_type, unit_ids in _BUFF_EXCEPTION_CONFIG['excluded_buff_type_ids'].items()
 }
+SUICIDE_RANGE_EXCLUDED_UNIT_IDS = frozenset({'BGGY', 'BIKE', 'TERROR'})
 # Engine-safety exclusions cannot depend on replacing editable packaged config
 # during an upgrade. Old RandomizerLauncherData copies remain user-owned.
 MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     'cloak': frozenset({'NAIRDM'}),
+    # Suicide weapons detonate at their firing point. Extra range makes these
+    # units self-destruct before reaching the target, wasting the attack.
+    # Keep this mandatory so retry assistance and externally supplied legacy
+    # rewards cannot bypass the editable catalogue exclusion.
+    'range': SUICIDE_RANGE_EXCLUDED_UNIT_IDS,
     # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
     # not as ordinary cargo. More seats or OpenTopped mixes incompatible
     # passenger logics, so both rewards are absent from every selection path.
