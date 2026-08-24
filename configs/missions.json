@@ -1047,6 +1047,12 @@
       ]
     },
     "player_production_houses": {
+      "AREDDAWN": [
+        "Europeans House"
+      ],
+      "AZEROSIGNAL": [
+        "Pacific House"
+      ],
       "AHYST": [
         "PsiCorps House"
       ],
@@ -1230,6 +1236,9 @@
       ]
     },
     "native_techno_clone_exclusions": {
+      "AZEROSIGNAL": [
+        "AMC"
+      ],
       "AINSOMNIA": [
         "SIEG",
         "TANY"

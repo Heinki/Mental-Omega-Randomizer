@@ -167,6 +167,14 @@ and native variant buff rules, plus reviewed Time Freeze immunity targets.
 An expansion map can use the same sections once its mission code is present in
 the catalogue/classification data.
 
+`player_production_houses` lists houses whose factories later become usable by
+the player without changing their initial factory-owner identity. Native
+production isolation adds each listed house's country to
+`FactoryOwners.Forbidden`, preventing an original unit cameo beside its
+isolated player clone while preserving authored TaskForces. Zero Signal lists
+`Pacific House` so its captured Barracks cannot expose locked native Allied
+infantry.
+
 `original_mcv_access` maps mission codes to native MCV TechnoType IDs. The
 bundled default exposes `AMCV` and `SMCV` only in Foehn 06 (`FREMNANT`). These
 remain original mission identities; no `MORP*` MCV clone is created. Replace

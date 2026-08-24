@@ -16,6 +16,7 @@ from randomizer.maps.houses import (
 )
 from randomizer.maps.ini import all_section_value_maps, parse_action_groups, section_lines
 from randomizer.missions.access import PRODUCTION_LOOKUP, mission_production_buildings
+from randomizer.missions.houses import mission_player_production_houses
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
     canonical_rewards,
@@ -72,6 +73,7 @@ def _positive_production_entry(
     values,
     player_aliases,
     *,
+    factory_owner_aliases=None,
     ignore_factory_owner_filters=False,
 ):
     """Return whether final rules expose a potential human production entry."""
@@ -109,9 +111,10 @@ def _positive_production_entry(
     if forbidden.intersection(player_aliases):
         return False
     if not ignore_factory_owner_filters:
-        if factory_owners and factory_owners.isdisjoint(player_aliases):
+        factory_owner_aliases = factory_owner_aliases or player_aliases
+        if factory_owners and factory_owners.isdisjoint(factory_owner_aliases):
             return False
-        if factory_forbidden.intersection(player_aliases):
+        if factory_forbidden.intersection(factory_owner_aliases):
             return False
     if 'morporiginalgate' in negative:
         return False
@@ -239,6 +242,22 @@ def _player_identity(lines, records):
     return player_house or 'Unknown', player_country, player_record, aliases
 
 
+def _player_factory_owner_aliases(mission, records, player_aliases):
+    """Return initial-owner identities for factories later given to player."""
+    aliases = set(player_aliases)
+    for house in mission_player_production_houses(mission.get('code')):
+        record = records.get(house, {})
+        for value in (
+            house,
+            str(house).removesuffix(' House'),
+            record.get('country', ''),
+            record.get('parent_country', ''),
+        ):
+            if str(value or '').strip():
+                aliases.add(str(value).strip().lower())
+    return aliases
+
+
 def _owned_and_potential_factories(
     lines,
     records,
@@ -251,6 +270,7 @@ def _owned_and_potential_factories(
     owned = []
     capturable = []
     scripted = []
+    capturable_owner_aliases = defaultdict(list)
     for line in section_lines(lines, 'Structures'):
         owner, building_id = _structure_owner_and_type(line)
         source_id = _factory_source_id(building_id, clone_source_by_id)
@@ -270,6 +290,9 @@ def _owned_and_potential_factories(
         )
         if values.get('capturable', '').lower() != 'no':
             capturable.append(building_id)
+            capturable_owner_aliases[building_id].append(
+                frozenset(owner_aliases)
+            )
 
     # Script-created factories are not owned at map start, but matter when a
     # captured-tech report must explain a later sidebar entry.
@@ -286,16 +309,21 @@ def _owned_and_potential_factories(
                 scripted.append(building_id)
     owned = tuple(unique_in_order(owned))
     owned_set = set(owned)
+    capturable = tuple(
+        item for item in unique_in_order(capturable)
+        if item not in owned_set
+    )
     return (
         owned,
-        tuple(
-            item for item in unique_in_order(capturable)
-            if item not in owned_set
-        ),
+        capturable,
         tuple(
             item for item in unique_in_order(scripted)
             if item not in owned_set
         ),
+        {
+            factory_id: tuple(capturable_owner_aliases[factory_id])
+            for factory_id in capturable
+        },
     )
 
 
@@ -380,6 +408,9 @@ def _captured_route_possible(
     clone_source_by_id,
     captured_factories,
     potential_factories,
+    potential_factory_owner_aliases,
+    allowed_factory_owners,
+    forbidden_factory_owners,
 ):
     route_factory_ids = _factory_ids_in_routes(routes, factory_ids)
     for route_id in route_factory_ids:
@@ -392,10 +423,19 @@ def _captured_route_possible(
             )
             if not family or family != route_family:
                 continue
-            if (
-                source_id == route_source
-                or category == route_category
-            ):
+            if source_id != route_source and category != route_category:
+                continue
+            owner_sets = potential_factory_owner_aliases.get(candidate, ())
+            if not owner_sets:
+                return True
+            for owner_aliases in owner_sets:
+                if (
+                    allowed_factory_owners
+                    and allowed_factory_owners.isdisjoint(owner_aliases)
+                ):
+                    continue
+                if forbidden_factory_owners.intersection(owner_aliases):
+                    continue
                 return True
     return False
 
@@ -430,6 +470,9 @@ def build_unit_access_report(
     player_house, player_country, player_record, player_aliases = (
         _player_identity(lines, records)
     )
+    factory_owner_aliases = _player_factory_owner_aliases(
+        mission, records, player_aliases
+    )
     player_family = country_family(player_record)
     player_faction = _PLAYER_FACTION_LABELS.get(
         player_family,
@@ -449,6 +492,7 @@ def build_unit_access_report(
         owned_factories,
         capturable_factories,
         scripted_factories,
+        capturable_factory_owner_aliases,
     ) = _owned_and_potential_factories(
         lines,
         records,
@@ -612,7 +656,11 @@ def build_unit_access_report(
             entry_id, final_sections, installed_sections
         )
         delayed = source_id in delayed_ids
-        if not delayed and not _positive_production_entry(values, player_aliases):
+        if not delayed and not _positive_production_entry(
+            values,
+            player_aliases,
+            factory_owner_aliases=factory_owner_aliases,
+        ):
             # An expected foreign identity can remain dormant because its
             # physical factory is unavailable. It is not a final production
             # entry for this mission and should not clutter the report.
@@ -651,13 +699,16 @@ def build_unit_access_report(
                 native_values, factory_ids, clone_source_by_id
             )
             native_buildable = _positive_production_entry(
-                native_values, player_aliases
+                native_values,
+                player_aliases,
+                factory_owner_aliases=factory_owner_aliases,
             )
             if (
                 not native_buildable
                 and _positive_production_entry(
                     native_values,
                     player_aliases,
+                    factory_owner_aliases=factory_owner_aliases,
                     ignore_factory_owner_filters=True,
                 )
                 and _captured_route_possible(
@@ -666,11 +717,32 @@ def build_unit_access_report(
                     clone_source_by_id,
                     captured_factories,
                     capturable_factories,
+                    capturable_factory_owner_aliases,
+                    {
+                        item.lower()
+                        for item in comma_items(
+                            native_values.get('factoryowners', '')
+                        )
+                        if item.lower() not in {'none', '<none>'}
+                    },
+                    {
+                        item.lower()
+                        for item in comma_items(
+                            native_values.get(
+                                'factoryowners.forbidden', ''
+                            )
+                        )
+                        if item.lower() not in {'none', '<none>'}
+                    },
                 )
             ):
                 native_buildable = True
             if (
-                _positive_production_entry(values, player_aliases)
+                _positive_production_entry(
+                    values,
+                    player_aliases,
+                    factory_owner_aliases=factory_owner_aliases,
+                )
                 and native_buildable
             ):
                 duplicates.append(entry)
@@ -682,7 +754,11 @@ def build_unit_access_report(
         if source_id in expected_ids:
             continue
         values = _effective_values(clone_id, final_sections, installed_sections)
-        if not _positive_production_entry(values, player_aliases):
+        if not _positive_production_entry(
+            values,
+            player_aliases,
+            factory_owner_aliases=factory_owner_aliases,
+        ):
             continue
         routes = _factory_routes(values, factory_ids, clone_source_by_id)
         if not _routes_reachable(
@@ -713,7 +789,11 @@ def build_unit_access_report(
         if source_id not in final_sections:
             continue
         values = _effective_values(source_id, final_sections, installed_sections)
-        if not _positive_production_entry(values, player_aliases):
+        if not _positive_production_entry(
+            values,
+            player_aliases,
+            factory_owner_aliases=factory_owner_aliases,
+        ):
             continue
         routes = _factory_routes(values, factory_ids, clone_source_by_id)
         if not _routes_reachable(
