@@ -267,6 +267,13 @@ def _direct_weapon_reference_key(key):
     )
 
 
+def enemy_weapon_supports_direct_buff(weapon_values):
+    """Reject spawn-manager control weapons from direct stat cloning."""
+    return str(
+        _value_case_insensitive(weapon_values, 'Spawner', 'no')
+    ).strip().lower() not in {'yes', 'true', '1'}
+
+
 def _authored_tech_tier(values):
     try:
         tech_level = int(float(str(
@@ -503,6 +510,11 @@ def enemy_native_unit_buff_rules(
             )
             if not weapon_values:
                 skipped.append(f'{unit_id}/{weapon_id} source rules unavailable')
+                continue
+            if not enemy_weapon_supports_direct_buff(weapon_values):
+                skipped.append(
+                    f'{unit_id}/{weapon_id} spawn-manager weapon unchanged'
+                )
                 continue
             weapon_base = {
                 'damage': parse_float(

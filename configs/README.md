@@ -45,6 +45,9 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `tier_one.json`: subfaction-specific starter units, fixed faction Tier 1
   defensive structures, abstract saved markers, aircraft factories, and
   installed GenericPrerequisite aliases.
+- `shop_mode.json`: Shop Mode run length, mission offers and class rewards,
+  stage difficulty weights, Ore/Mental Coin unit prices, permanent upgrade
+  definitions, and launcher-only challenge modifier effects.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   EVA announcer tags, reward-count messages, faction colors, and
   light/dark palettes.
@@ -92,6 +95,67 @@ that overlap only with full reward-plan and 97-map parity coverage.
   register under engine `VehicleTypes`. Hero file contains capped reward heroes
   plus mapper infantry extras. Mission generation buffs these owned types while
   native IDs remain reserved for campaign AI and scripts.
+
+## Shop Mode balance
+
+`shop_mode.json` is the only static source for Shop Mode economy and run-size
+policy. `settings` defines positive `run_length` and `mission_offer_count`, the
+non-negative `max_selected_permanent_units` and `starting_run_coins`, the
+positive `maximum_starting_ore` and `minimum_shop_price`, and the version-1
+`per_run` reroll policy.
+`archipelago_purchase_locations` is the generated purchase-check count from
+0 through 25, `archipelago_purchase_meta_coin_cost` is their positive shared
+Mental Coin price, and `archipelago_mission_victories_are_locations` controls
+whether the ten stage victories also enter the shuffled AP item pool. These
+values are signed into Shop player YAML and validated again at connection.
+
+`mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
+`finale`. Each class has a display label, unique positive difficulty rank, and
+non-negative Ore (`run_coins`) and Mental Coin (`meta_coins`) rewards.
+`stage_class_weights` uses ascending `through_percent` boundaries ending at
+`100`; each profile supplies non-negative integer weights for all four mission
+classes. Mental Coin rewards must increase strictly with difficulty. Offer
+generation samples only its named Shop RNG stream. A zero class weight is a
+hard stage exclusion: stages 1–2 offer only Act 1, operations begin at stage 5,
+and finales begin at stage 9. Protected opening offers include a fixed-unit or
+hero mission when the eligible campaign pool provides one.
+`unit_inventory_size` controls the deterministic run-shop unit stock. Unit
+stock remains stable during a stage and rotates after each mission victory;
+eligible buffs remain available for every currently owned unit.
+
+`run_unit_prices`, `run_buff_prices`, `permanent_unit_prices`, and
+`permanent_buff_prices` require
+positive `tier_1`, `tier_2`, and `tier_3` prices in strictly increasing order.
+Runtime derives a unit or targeted buff's tier from the same installed
+TechLevel bands used by Randomizer Arsenal.
+Discounted prices use integer percentages, round down, then clamp to
+`minimum_shop_price`.
+
+`permanent_upgrades` maps stable IDs to `display_name`, positive `max_level`,
+one positive price per level, and integer `effects`. Version 1 requires
+`mission_reroll`, `victory_run_coin_bonus`, `starting_capital`, and
+`shop_discount`. `modifiers` maps stable IDs to display text and additive or
+percentage economy effects. Percentage modifiers multiply exactly; flat
+modifiers add. Unknown saved modifier or upgrade IDs fail with a
+clear state error instead of silently changing balance.
+
+Modifier effects support additive `starting_run_coins_flat` and
+`shop_price_flat`, multiplicative `run_reward_percent`,
+`meta_reward_percent`, and `shop_price_percent`, plus non-negative
+`hidden_offer_count` bounded by the mission-offer count. Percentages multiply
+in persisted modifier order; flat effects add. `blind_choice` uses the hidden
+offer count only for presentation and never consumes gameplay RNG.
+
+Example mission reward:
+
+```json
+"operation": {
+  "display_name": "Operation",
+  "difficulty": 3,
+  "run_coins": 7,
+  "meta_coins": 3
+}
+```
 
 ## Mission-specific overrides
 
@@ -281,6 +345,14 @@ state for compatibility but are omitted from the Unlocks list. Weapon buffs
 must change a direct weapon on the isolated player clone. Keep damage rewards
 for shared spawned aircraft, missiles, or payload weapons excluded unless the
 complete payload chain gains a private, validated clone path.
+
+`rewards/unit_data.json` section `spawned_missile_range_support` maps a reviewed
+launcher TechnoType to its spawned missile AircraftType and installed base
+`GuardRange`. When that launcher's weapon range is upgraded, map generation
+adds the same range increase to the missile pursuit envelope. Keep this list
+narrow: extending missile pursuit is safe only when the native launcher's
+unchanged weapon range remains within its original envelope. Akula is the only
+reviewed entry.
 
 ## Load locations
 

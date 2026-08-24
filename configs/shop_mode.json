@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "description": "Shop Mode run rules, mission economy, prices, upgrades, and launcher-only challenge modifiers.",
+  "sections": {
+    "settings": {
+      "run_length": 10,
+      "mission_offer_count": 3,
+      "unit_inventory_size": 8,
+      "max_selected_permanent_units": 5,
+      "starting_run_coins": 5,
+      "maximum_starting_ore": 50,
+      "minimum_shop_price": 1,
+      "reroll_policy": "per_run",
+      "archipelago_purchase_locations": 5,
+      "archipelago_purchase_meta_coin_cost": 5,
+      "archipelago_mission_victories_are_locations": true
+    },
+    "mission_rewards": {
+      "act_1": {
+        "display_name": "Act 1",
+        "difficulty": 1,
+        "run_coins": 3,
+        "meta_coins": 1
+      },
+      "act_2": {
+        "display_name": "Act 2",
+        "difficulty": 2,
+        "run_coins": 5,
+        "meta_coins": 2
+      },
+      "operation": {
+        "display_name": "Operation",
+        "difficulty": 3,
+        "run_coins": 7,
+        "meta_coins": 3
+      },
+      "finale": {
+        "display_name": "Finale",
+        "difficulty": 4,
+        "run_coins": 10,
+        "meta_coins": 4
+      }
+    },
+    "stage_class_weights": [
+      {
+        "through_percent": 20,
+        "weights": {
+          "act_1": 100,
+          "act_2": 0,
+          "operation": 0,
+          "finale": 0
+        }
+      },
+      {
+        "through_percent": 40,
+        "weights": {
+          "act_1": 70,
+          "act_2": 30,
+          "operation": 0,
+          "finale": 0
+        }
+      },
+      {
+        "through_percent": 60,
+        "weights": {
+          "act_1": 30,
+          "act_2": 55,
+          "operation": 15,
+          "finale": 0
+        }
+      },
+      {
+        "through_percent": 80,
+        "weights": {
+          "act_1": 10,
+          "act_2": 50,
+          "operation": 40,
+          "finale": 0
+        }
+      },
+      {
+        "through_percent": 90,
+        "weights": {
+          "act_1": 0,
+          "act_2": 30,
+          "operation": 50,
+          "finale": 20
+        }
+      },
+      {
+        "through_percent": 100,
+        "weights": {
+          "act_1": 0,
+          "act_2": 10,
+          "operation": 35,
+          "finale": 55
+        }
+      }
+    ],
+    "run_unit_prices": {
+      "tier_1": 3,
+      "tier_2": 6,
+      "tier_3": 10
+    },
+    "run_buff_prices": {
+      "tier_1": 2,
+      "tier_2": 4,
+      "tier_3": 6
+    },
+    "permanent_unit_prices": {
+      "tier_1": 10,
+      "tier_2": 25,
+      "tier_3": 50
+    },
+    "permanent_buff_prices": {
+      "tier_1": 5,
+      "tier_2": 8,
+      "tier_3": 12
+    },
+    "permanent_upgrades": {
+      "mission_reroll": {
+        "display_name": "Mission Reroll",
+        "max_level": 3,
+        "prices": [15, 30, 60],
+        "effects": {
+          "rerolls_per_level": 1
+        }
+      },
+      "mission_difficulty_assist": {
+        "display_name": "Mission Difficulty Assist",
+        "max_level": 3,
+        "prices": [20, 40, 80],
+        "effects": {
+          "assists_per_level": 1
+        }
+      },
+      "victory_run_coin_bonus": {
+        "display_name": "Victory Ore Bonus",
+        "max_level": 5,
+        "prices": [10, 20, 35, 55, 80],
+        "effects": {
+          "run_coins_per_level": 1
+        }
+      },
+      "starting_capital": {
+        "display_name": "Starting Ore",
+        "max_level": 45,
+        "prices": [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+        "effects": {
+          "run_coins_per_level": 1
+        }
+      },
+      "shop_discount": {
+        "display_name": "Shop Discount",
+        "max_level": 5,
+        "prices": [15, 30, 50, 75, 110],
+        "effects": {
+          "percent_per_level": 3
+        }
+      }
+    },
+    "modifiers": {
+      "greedy": {
+        "display_name": "Greedy",
+        "description": "+25% Mental Coins earned, -2 starting Ore.",
+        "effects": {
+          "meta_reward_percent": 125,
+          "starting_run_coins_flat": -2
+        }
+      },
+      "veteran_economy": {
+        "display_name": "Veteran Economy",
+        "description": "+20% run-shop prices, +30% mission Ore.",
+        "effects": {
+          "shop_price_percent": 120,
+          "run_reward_percent": 130
+        }
+      },
+      "poor_logistics": {
+        "display_name": "Poor Logistics",
+        "description": "+2 Ore to every run-shop price.",
+        "effects": {
+          "shop_price_flat": 2
+        }
+      },
+      "generous_command": {
+        "display_name": "Generous Command",
+        "description": "+5 starting Ore, -20% Mental Coins earned.",
+        "effects": {
+          "starting_run_coins_flat": 5,
+          "meta_reward_percent": 80
+        }
+      },
+      "blind_choice": {
+        "display_name": "Blind Choice",
+        "description": "One mission offer hides its exact reward until selected.",
+        "effects": {
+          "hidden_offer_count": 1
+        }
+      }
+    }
+  }
+}

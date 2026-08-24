@@ -115,12 +115,16 @@ class ProgressionController:
         )
 
     def redraw_progression_views(self):
-        grid_mode = self.active_progression_mode() == 'Grid Mode'
+        progression_mode = self.active_progression_mode()
+        if progression_mode == 'Shop Mode':
+            return
+        grid_mode = progression_mode == 'Grid Mode'
         if hasattr(self, 'workspace_tabs') and hasattr(self, 'mission_view_frame'):
-            self.workspace_tabs.tab(
-                self.mission_view_frame,
-                text='Grid Mode' if grid_mode else 'Mission List',
-            )
+            if str(self.mission_view_frame) in set(self.workspace_tabs.tabs()):
+                self.workspace_tabs.tab(
+                    self.mission_view_frame,
+                    text='Grid Mode' if grid_mode else 'Mission List',
+                )
         if grid_mode:
             self.missions_tree.grid_remove()
             self.tree_scrollbar.grid_remove()

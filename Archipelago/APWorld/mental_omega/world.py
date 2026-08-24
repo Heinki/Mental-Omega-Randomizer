@@ -15,6 +15,10 @@ from .data import (
     LOCAL_VICTORY_ITEM_TABLE,
     LOCATION_TABLE,
     MISSION_DATA,
+    SHOP_PURCHASE_LOCATION_TABLE,
+    SHOP_STAGE_LOCATION_TABLE,
+    SHOP_STAGE_LOGIC_DATA,
+    SHOP_STAGE_LOGIC_ITEM_TABLE,
     VICTORY_EVENT,
     location_entries,
 )
@@ -60,6 +64,7 @@ class MentalOmegaWorld(World):
         name: data["id"] for name, data in ITEM_DATA.items()
     }
     item_name_to_id.update(LOCAL_VICTORY_ITEM_TABLE)
+    item_name_to_id.update(SHOP_STAGE_LOGIC_ITEM_TABLE)
     location_name_to_id = dict(LOCATION_TABLE)
     item_name_groups = ITEM_NAME_GROUPS
     location_name_groups = {
@@ -69,6 +74,8 @@ class MentalOmegaWorld(World):
         "Mission Completion": {
             name for name in LOCATION_TABLE if " - Mission Complete - " in name
         },
+        "Shop Purchases": set(SHOP_PURCHASE_LOCATION_TABLE),
+        "Shop Victories": set(SHOP_STAGE_LOCATION_TABLE),
     }
 
     def generate_early(self) -> None:
@@ -85,11 +92,15 @@ class MentalOmegaWorld(World):
         )
 
     def create_item(self, name: str) -> MentalOmegaItem:
-        if name in LOCAL_VICTORY_ITEM_TABLE:
+        if name in LOCAL_VICTORY_ITEM_TABLE or name in SHOP_STAGE_LOGIC_ITEM_TABLE:
+            item_id = (
+                LOCAL_VICTORY_ITEM_TABLE.get(name)
+                or SHOP_STAGE_LOGIC_ITEM_TABLE[name]
+            )
             return MentalOmegaItem(
                 name,
                 ItemClassification.progression,
-                LOCAL_VICTORY_ITEM_TABLE[name],
+                item_id,
                 self.player,
             )
         item_id, classification = ITEM_TABLE[name]
@@ -109,6 +120,10 @@ class MentalOmegaWorld(World):
             menu,
         )
         regions = [menu]
+        if self.run_manifest["progression_mode"] == "Shop Mode":
+            self._create_shop_regions(menu, victory, regions)
+            self.multiworld.regions += regions
+            return
         by_location = {}
         by_code = {}
         for code in self.run_manifest["mission_order"]:
@@ -196,6 +211,62 @@ class MentalOmegaWorld(World):
             )
         self.multiworld.regions += regions
 
+    def _create_shop_regions(self, menu, victory, regions):
+        shop = self.run_manifest["shop"]
+        purchase_names = list(SHOP_PURCHASE_LOCATION_TABLE)[
+            :shop["purchase_location_count"]
+        ]
+        menu.add_locations(
+            {
+                name: SHOP_PURCHASE_LOCATION_TABLE[name]
+                for name in purchase_names
+            },
+            MentalOmegaLocation,
+        )
+        previous_marker = None
+        for stage in range(1, shop["run_length"] + 1):
+            region = Region(
+                f"Shop Run Stage {stage}", self.player, self.multiworld
+            )
+            if previous_marker is None:
+                menu.connect(region)
+            else:
+                menu.connect(
+                    region,
+                    rule=lambda state, name=previous_marker: state.has(
+                        name, self.player
+                    ),
+                )
+            if shop["mission_victories_are_locations"]:
+                name = f"Shop Run Mission {stage} Victory"
+                region.add_locations(
+                    {name: SHOP_STAGE_LOCATION_TABLE[name]},
+                    MentalOmegaLocation,
+                )
+            logic = SHOP_STAGE_LOGIC_DATA[stage]
+            logic_location = MentalOmegaLocation(
+                self.player,
+                logic["location_name"],
+                logic["location_id"],
+                region,
+            )
+            logic_location.place_locked_item(
+                self.create_item(logic["item_name"])
+            )
+            region.locations.append(logic_location)
+            previous_marker = logic["item_name"]
+            regions.append(region)
+        victory.access_rule = (
+            lambda state, name=previous_marker: state.has(name, self.player)
+        )
+        victory.place_locked_item(MentalOmegaItem(
+            VICTORY_EVENT,
+            ItemClassification.progression,
+            None,
+            self.player,
+        ))
+        menu.locations.append(victory)
+
     def create_items(self) -> None:
         remaining = Counter(self.run_manifest["item_pool"])
         for placement in self.run_manifest["local_placements"]:
@@ -235,8 +306,34 @@ class MentalOmegaWorld(World):
         used_items = set(self.run_manifest["item_pool"]) | set(
             self.run_manifest["starting_items"]
         )
+        shop = self.run_manifest.get("shop")
+        shop_slot_data = None
+        if shop is not None:
+            shop_slot_data = {
+                **shop,
+                "purchase_locations": list(
+                    SHOP_PURCHASE_LOCATION_TABLE.values()
+                )[:shop["purchase_location_count"]],
+                "stage_victories": [
+                    {
+                        "stage": stage,
+                        "location": (
+                            SHOP_STAGE_LOCATION_TABLE[
+                                f"Shop Run Mission {stage} Victory"
+                            ]
+                            if shop["mission_victories_are_locations"]
+                            else None
+                        ),
+                        "logic_item": SHOP_STAGE_LOGIC_DATA[stage]["item_id"],
+                        "logic_location": SHOP_STAGE_LOGIC_DATA[stage][
+                            "location_id"
+                        ],
+                    }
+                    for stage in range(1, shop["run_length"] + 1)
+                ],
+            }
         return {
-            "slot_data_version": 5,
+            "slot_data_version": 6 if shop is not None else 5,
             "randomizer_version": self.run_manifest["randomizer_version"],
             "randomizer_seed": self.run_manifest["randomizer_seed"],
             "catalogue_checksum": CATALOGUE_CHECKSUM,
@@ -246,24 +343,25 @@ class MentalOmegaWorld(World):
             "mission_goal": self.run_manifest["mission_goal"],
             "mission_order": self.run_manifest["mission_order"],
             "goal": self.run_manifest["goal"],
+            "shop": shop_slot_data,
             "run_manifest": self.run_manifest,
             "items": {
                 **{
                     str(ITEM_DATA[name]["id"]): name
                     for name in sorted(used_items)
                 },
-                **{
+                **({
                     str(LOCAL_VICTORY_DATA[code]["item_id"]):
                     LOCAL_VICTORY_DATA[code]["item_name"]
                     for code in self.run_manifest["mission_order"]
-                },
+                } if shop is None else {}),
             },
             "locations": locations,
-            "local_victories": {
+            "local_victories": ({
                 code: {
                     "item": LOCAL_VICTORY_DATA[code]["item_id"],
                     "location": LOCAL_VICTORY_DATA[code]["location_id"],
                 }
                 for code in self.run_manifest["mission_order"]
-            },
+            } if shop is None else {}),
         }

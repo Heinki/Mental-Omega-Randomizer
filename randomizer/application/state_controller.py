@@ -893,6 +893,28 @@ class StateController:
         self.refresh_progress_view()
         return True
 
+    def randomizer_launch_active(self):
+        return bool(self.state)
+
+    def active_launch_seed(self):
+        return str(self.state.get('seed', '')) if self.state else ''
+
+    def active_launch_campaign_filter(self):
+        if self.state:
+            return str(self.state.get('campaign_filter', ''))
+        return self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
+
+    def launch_state_document(self):
+        return self.state
+
+    def active_starting_rewards_for_report(self):
+        return list(self.state.get('starting_rewards', ())) if self.state else []
+
+    def active_progression_rewards_for_report(self):
+        if not self.state:
+            return []
+        return list(self.earned_rewards_from_checks(include_starting=False))
+
     def active_reward_mode(self):
         generation_context = self.__dict__.get('_seed_generation_context') or {}
         if generation_context.get('reward_mode'):

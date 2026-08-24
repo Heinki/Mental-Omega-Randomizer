@@ -15,6 +15,7 @@ from ._builder_dependencies import (
     tk,
     ttk,
 )
+from .shop import _tree
 
 def _build_window_shell(self):
     main_frame = ttk.Frame(self, padding=(12, 12, 12, 12))
@@ -234,7 +235,7 @@ def _build_right_panel(self, main_frame):
     info_tabs.grid(row=1, column=0, sticky='nsew')
     info_tabs.enable_traversal()
 
-    # Settings occupies the wide workspace beside Mission List/Grid Mode.
+    # Settings occupies the wide workspace beside the active progression view.
     settings_tab = ttk.Frame(self.workspace_tabs)
     self.settings_tab = settings_tab
     settings_tab.columnconfigure(0, weight=1)
@@ -286,7 +287,16 @@ def _build_right_panel(self, main_frame):
     seed_row.grid(row=1, column=0, sticky='ew', pady=(0, 6))
     seed_row.columnconfigure(0, weight=1)
     ttk.Entry(seed_row, textvariable=self.seed_var, width=20).grid(row=0, column=0, sticky='ew', padx=(0, 6))
-    ttk.Button(seed_row, text='Generate Seed', command=self.on_new_seed).grid(row=0, column=1, sticky='ew')
+    self.seed_action_button = ttk.Button(
+        seed_row,
+        text=(
+            'Start Shop Mode'
+            if self.progression_mode_var.get() == 'Shop Mode'
+            else 'Generate Seed'
+        ),
+        command=self.on_new_seed,
+    )
+    self.seed_action_button.grid(row=0, column=1, sticky='ew')
 
     options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
@@ -317,7 +327,7 @@ def _build_right_panel(self, main_frame):
         state='readonly',
         textvariable=self.campaign_var,
         values=CAMPAIGN_FILTERS,
-        width=12,
+        width=14,
     )
     self.campaign_combo.grid(row=2, column=1, sticky='ew', pady=(6, 0))
     self.campaign_combo.bind('<<ComboboxSelected>>', self.on_campaign_filter_changed, add='+')
@@ -462,7 +472,8 @@ def _build_right_panel(self, main_frame):
         self.progression_mode_combo,
         'Classic follows the installed campaign order and opens one mission at a time. '
         'Mission List uses a randomized linear order. Grid Mode uses randomized missions '
-        'on an orthogonal-neighbor board.',
+        'on an orthogonal-neighbor board. Shop Mode replaces the mission view with its '
+        'roguelike run, loadout, and purchase workspace.',
     )
     # Read-only ttk comboboxes retain focus after selection and their class
     # binding consumes the mouse wheel before bind_all sees it. Bind directly
@@ -502,6 +513,193 @@ def _build_right_panel(self, main_frame):
         'optional Grid missions. When disabled, ordinary neighbor progression '
         'and hidden locked missions remain active.',
     )
+
+    shop_settings_frame = ttk.LabelFrame(
+        settings_frame,
+        text='Shop Mode Setup',
+        padding=(12, 12, 12, 12),
+    )
+    self.shop_settings_frame = shop_settings_frame
+    shop_settings_frame.columnconfigure(1, weight=1)
+    ttk.Label(
+        shop_settings_frame,
+        text=(
+            'Shop Mode manages mission count, mission pool, difficulty curve, '
+            'starter access, rewards, and failure rules. Only settings used by '
+            'Shop Mode are shown here.'
+        ),
+        style='Muted.TLabel',
+        justify='left',
+        wraplength=720,
+    ).grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 12))
+
+    ttk.Label(shop_settings_frame, text='Progression').grid(
+        row=1, column=0, sticky='w', padx=(0, 12)
+    )
+    self.shop_progression_mode_combo = ttk.Combobox(
+        shop_settings_frame,
+        state='readonly',
+        textvariable=self.progression_mode_var,
+        values=PROGRESSION_MODES,
+        width=18,
+    )
+    self.shop_progression_mode_combo.grid(row=1, column=1, sticky='ew')
+    self.shop_progression_mode_combo.bind(
+        '<<ComboboxSelected>>', self.on_progression_mode_changed, add='+'
+    )
+
+    ttk.Separator(shop_settings_frame, orient='horizontal').grid(
+        row=2, column=0, columnspan=2, sticky='ew', pady=12
+    )
+    ttk.Label(
+        shop_settings_frame,
+        text='Seed (leave blank for a random seed)',
+        font=('Segoe UI', 10, 'bold'),
+    ).grid(row=3, column=0, columnspan=2, sticky='w')
+    shop_seed_row = ttk.Frame(shop_settings_frame)
+    shop_seed_row.grid(row=4, column=0, columnspan=2, sticky='ew', pady=(2, 10))
+    shop_seed_row.columnconfigure(0, weight=1)
+    self.shop_seed_entry = ttk.Entry(
+        shop_seed_row,
+        textvariable=self.seed_var,
+        width=24,
+    )
+    self.shop_seed_entry.grid(row=0, column=0, sticky='ew')
+
+    shop_run_options = (
+        (
+            'Faction pool', 'shop_faction_pool_combo',
+            self.shop_faction_pool_var, self.shop_faction_pool_options,
+        ),
+        ('Game speed', 'shop_game_speed_combo', self.game_speed_var,
+         [name for name, _ in GAME_SPEEDS]),
+        ('Difficulty', 'shop_difficulty_combo', self.difficulty_var,
+         [name for name, _ in DIFFICULTIES]),
+    )
+    for row, (label, attribute, variable, values) in enumerate(
+        shop_run_options, start=5
+    ):
+        ttk.Label(shop_settings_frame, text=label).grid(
+            row=row, column=0, sticky='w', padx=(0, 12), pady=(4, 0)
+        )
+        combo = ttk.Combobox(
+            shop_settings_frame,
+            state='readonly',
+            textvariable=variable,
+            values=values,
+            width=22,
+        )
+        setattr(self, attribute, combo)
+        combo.grid(row=row, column=1, sticky='ew', pady=(4, 0))
+        combo.bind('<MouseWheel>', self.on_settings_control_mousewheel, add='+')
+    self.shop_faction_pool_combo.bind(
+        '<<ComboboxSelected>>', self.on_shop_faction_pool_changed, add='+'
+    )
+    self.shop_progression_mode_combo.bind(
+        '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
+    )
+    ttk.Label(
+        shop_settings_frame,
+        text=(
+            'Faction Pool limits Shop units, powers, and upgrades to that '
+            'faction (plus neutral items). Missions remain a mixed-campaign '
+            'run, including Foehn Only runs. Shop Mode uses its own reward '
+            'rules, so Standard/Chaos does not apply. The faction pool is '
+            'fixed when a run starts; Game Speed and Difficulty remain '
+            'adjustable.'
+        ),
+        style='Muted.TLabel',
+        justify='left',
+        wraplength=720,
+    ).grid(row=8, column=0, columnspan=2, sticky='ew', pady=(12, 0))
+
+    ttk.Separator(shop_settings_frame, orient='horizontal').grid(
+        row=9, column=0, columnspan=2, sticky='ew', pady=12
+    )
+    ttk.Label(
+        shop_settings_frame,
+        text='Starting Loadout',
+        font=('Segoe UI', 10, 'bold'),
+    ).grid(row=10, column=0, columnspan=2, sticky='w')
+    ttk.Label(
+        shop_settings_frame,
+        text=(
+            'Choose up to 5 permanent or AP-entitled extra units. Mandatory '
+            'Tier 1 starters are added automatically.'
+        ),
+        style='Muted.TLabel',
+        wraplength=720,
+    ).grid(row=11, column=0, columnspan=2, sticky='ew', pady=(2, 6))
+    shop_loadout_frame = ttk.Frame(shop_settings_frame)
+    shop_loadout_frame.grid(
+        row=12, column=0, columnspan=2, sticky='nsew'
+    )
+    self.shop_loadout_select_tree = _tree(
+        shop_loadout_frame,
+        ('name', 'tier', 'source'),
+        (
+            ('name', 'Entitled Extra Unit', 330),
+            ('tier', 'Tier', 80),
+            ('source', 'Source', 130),
+        ),
+        selectmode='extended',
+        height=5,
+        cameos=True,
+    )
+
+    modifier_frame = ttk.LabelFrame(
+        shop_settings_frame, text='Optional Run Modifiers', padding=8
+    )
+    modifier_frame.grid(
+        row=13, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+    )
+    self.shop_modifier_status_var = tk.StringVar(value='')
+    ttk.Label(
+        modifier_frame,
+        textvariable=self.shop_modifier_status_var,
+        style='Shop.Help.TLabel',
+        wraplength=720,
+    ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 6))
+    self.shop_modifier_buttons = []
+    for column in range(2):
+        modifier_frame.columnconfigure(column, weight=1)
+    for index, (modifier_id, variable) in enumerate(
+        self.shop_modifier_vars.items()
+    ):
+        definition = self.shop_config.modifiers[modifier_id]
+        modifier_card = ttk.Frame(modifier_frame, padding=(0, 2))
+        modifier_card.grid(
+            row=1 + index // 2,
+            column=index % 2,
+            sticky='ew',
+            padx=(0, 12),
+        )
+        checkbutton = ttk.Checkbutton(
+            modifier_card,
+            text=f'Enable {definition.display_name}',
+            variable=variable,
+        )
+        checkbutton.grid(row=0, column=0, sticky='w')
+        ttk.Label(
+            modifier_card,
+            text=f'Tradeoff: {definition.description}',
+            style='Muted.TLabel',
+            wraplength=330,
+        ).grid(row=1, column=0, sticky='w', padx=(24, 0))
+        WidgetTooltip(checkbutton, definition.description)
+        self.shop_modifier_buttons.append(checkbutton)
+
+    self.shop_setup_start_button = ttk.Button(
+        shop_settings_frame,
+        text='Start Shop Mode',
+        command=self.on_new_seed,
+        style='Launch.TButton',
+    )
+    self.shop_setup_start_button.grid(
+        row=14, column=0, columnspan=2, sticky='ew', pady=(12, 0)
+    )
+    shop_settings_frame.grid_remove()
+
     button_row = ttk.Frame(right_frame)
     button_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     button_row.columnconfigure(0, weight=1)

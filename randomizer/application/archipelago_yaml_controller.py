@@ -8,7 +8,7 @@ from ._dependencies import filedialog, log_event, save_config, time
 
 class ArchipelagoYamlController:
     _ARCHIPELAGO_PROGRESSION_MODES = {
-        'Classic', 'Mission List', 'Grid Mode'
+        'Classic', 'Mission List', 'Grid Mode', 'Shop Mode'
     }
 
     @staticmethod
@@ -17,7 +17,7 @@ class ArchipelagoYamlController:
         keys = (
             'schema_version', 'randomizer_version', 'randomizer_seed',
             'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
-            'progression_mode', 'mission_goal', 'mission_order', 'goal',
+            'progression_mode', 'mission_goal', 'mission_order', 'goal', 'shop',
         )
         return {
             key: deepcopy(manifest[key])

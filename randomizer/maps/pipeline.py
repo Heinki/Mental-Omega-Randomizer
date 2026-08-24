@@ -158,6 +158,8 @@ from randomizer.rewards.arsenal import ARSENAL_MODE
 
 
 def prepare_hooked_map(self, mission, extra_rules=None):
+    launch_active = self.randomizer_launch_active()
+    active_campaign_filter = self.active_launch_campaign_filter()
     fallback_tech_ids = {
         section.upper()
         for section, values in (extra_rules or {}).items()
@@ -165,8 +167,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     }
     share_basic_equivalent_buffs = bool(
         (
-            self.state
-            and self.state.get('campaign_filter') in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
+            launch_active
+            and active_campaign_filter in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
             and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
         )
         or self.share_chaos_role_buffs_enabled()
@@ -196,8 +198,8 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     similar_tech_reason_for_report = (
         'Single Campaign automatic sharing; buffs only'
         if (
-            self.state
-            and self.state.get('campaign_filter')
+            launch_active
+            and active_campaign_filter
             in {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
             and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
         )
@@ -238,7 +240,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         player_color=self.player_color_var.get(),
         rainbowizer=bool(self.rainbowizer_var.get()),
         rainbow_colors=RAINBOWIZER_COLORS,
-        random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
+        random_key=f'{self.active_launch_seed()}|{code}',
     )
     if color_rules:
         merge_ini_section_values(lines, color_rules)
@@ -254,7 +256,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         self.eva_voice_var.get(),
         EVA_VOICE_TAGS,
         appearance_profiles=EVA_APPEARANCE_PROFILES,
-        random_key=f'{self.state.get("seed", "") if self.state else ""}|{code}',
+        random_key=f'{self.active_launch_seed()}|{code}',
     )
     if eva_rules:
         merge_ini_section_values(lines, eva_rules)
@@ -594,7 +596,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 + '.'
             )
     earned_rewards = (
-        self.launch_rewards_for_mission(code) if self.state else []
+        self.launch_rewards_for_mission(code) if launch_active else []
     )
     credit_bonus = starting_credit_bonus(earned_rewards)
     if credit_bonus:
@@ -648,7 +650,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
     }
     enemy_scaling_entries = (
-        self.active_enemy_scaling_entries() if self.state else []
+        self.active_enemy_scaling_entries() if launch_active else []
     )
     enemy_scaling_rewards = [
         entry['reward'] for entry in enemy_scaling_entries
@@ -1192,7 +1194,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         )
     assistance_unit_ids = []
     mission_buff_unit_ids = []
-    if self.state:
+    if launch_active:
         mission_buff_unit_ids = mission_assistance_unit_ids(
             lines,
             unlocked_unit_ids=mission_effective_tech_ids,
@@ -1201,7 +1203,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             fallback_faction=normalize_faction(mission.get('side', '')),
             configured_helper_houses=reward_helpers,
         )
-    if self.state and self.failure_assistance_enabled():
+    if launch_active and self.failure_assistance_enabled():
         assistance_unit_ids = mission_buff_unit_ids
         self.cache_mission_assistance_units(code, assistance_unit_ids)
     if rule_sections:
@@ -1503,7 +1505,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # Power-only payloads have no production-access reward. Owning their power
     # is their access proof, so their earned unit/defense buffs stay active.
     buff_access_tech_ids.update(delivery_clone_ids)
-    if self.state and experimental_house_buffs:
+    if launch_active and experimental_house_buffs:
         player_house, house_buffs = clone_player_country_for_house_buffs(
             lines,
             earned_rewards,
@@ -1517,7 +1519,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         if house_buffs:
             buff_summary = ', '.join(f'{key}={value}' for key, value in sorted(house_buffs.items()))
             self.append_log(f'Applied trigger-safe player-country buffs to {player_house}: {buff_summary}')
-    elif self.state and safe_player_country_buffs:
+    elif launch_active and safe_player_country_buffs:
         player_house, player_country, house_rule_sections, shared_houses, buffed_allies, skipped_allies = player_country_buff_rules(
             lines,
             earned_rewards,
@@ -1547,7 +1549,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 f'Skipped player-country buffs for {player_house}/{player_country}: '
                 f'non-player house(s) share that country ({", ".join(shared_houses)}).'
             )
-    elif self.state:
+    elif launch_active:
         pending_house_buffs = stacked_house_buff_values(
             earned_rewards,
             require_unlocked_access=require_unlocked_access_for_buffs,
@@ -1607,7 +1609,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 error=True,
             )
 
-    if self.state:
+    if launch_active:
         guarded_rewards = list(earned_rewards)
         guarded_rewards.extend(assistance_direct_rewards)
         active_power_ids = {
@@ -2825,7 +2827,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
 
     rewritten_native_unlocks = rewrite_techlevel_actions(
         lines,
-        mission_unlock_clone_replacements if self.state else {},
+        mission_unlock_clone_replacements if launch_active else {},
         preserved_action_ids=preserved_ai_action_ids,
         keep_source_disabled_ids=(
             MISSION_NATIVE_TECH_UNLOCK_KEEP_SOURCE_DISABLED_IDS.get(code, ())
@@ -2852,7 +2854,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     if removed_techlevel_actions:
         self.append_log(f'Removed {removed_techlevel_actions} native tech unlock action(s) blocked by the randomizer.')
-    checks = self.mission_checks(code) if self.state else []
+    checks = self.mission_checks(code) if launch_active else []
     patch_plan, missing_victory, completed_objectives = pending_check_hook_plan(
         lines,
         checks,
@@ -2932,7 +2934,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             'batch merging: ' + ', '.join(repaired_registrations) + '.'
         )
 
-    if self.state:
+    if launch_active:
         pad_aircraft_validation = validate_player_clone_pad_aircraft(
             lines, clone_handled
         )
@@ -2989,11 +2991,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 error=True,
             )
 
-        starting_rewards_for_report = list(
-            self.state.get('starting_rewards', ())
-        )
-        progression_rewards_for_report = list(
-            self.earned_rewards_from_checks(include_starting=False)
+        starting_rewards_for_report = self.active_starting_rewards_for_report()
+        progression_rewards_for_report = (
+            self.active_progression_rewards_for_report()
         )
         mission_specific_ids_for_report = (
             set(native_required_access_ids)
@@ -3011,10 +3011,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             lines,
             installed_rule_sections,
             mission,
-            self.state,
+            self.launch_state_document(),
             reward_mode=self.active_reward_mode(),
             progression_mode=self.active_progression_mode(),
-            campaign_filter=self.state.get('campaign_filter', ''),
+            campaign_filter=active_campaign_filter,
             starting_rewards=starting_rewards_for_report,
             progression_rewards=progression_rewards_for_report,
             active_rewards=access_report_active_rewards,
@@ -3071,7 +3071,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     if root_map.exists() and not is_generated_hooked_map(root_map):
         backup_file_once(root_map, 'before-randomizer-hook')
     root_map.write_bytes(generated_text.encode('utf-8'))
-    if self.state and hasattr(self, 'record_enemy_reward_applications'):
+    if launch_active and hasattr(self, 'record_enemy_reward_applications'):
         self.record_enemy_reward_applications(
             code,
             ai_reward_applications,

@@ -42,6 +42,7 @@ from ._dependencies import (
 from .window import WindowController
 from .state_controller import StateController
 from .reward_controller import RewardController
+from .shop_controller import ShopController
 from .advanced_settings import AdvancedSettingsController
 from .starting_unlocks import StartingUnlocksController
 from .power_buff_settings import PowerBuffSettingsController
@@ -56,6 +57,7 @@ from .archipelago_controller import ArchipelagoController
 
 class LauncherApp(
     WindowController,
+    ShopController,
     StateController,
     RewardController,
     AdvancedSettingsController,
@@ -149,6 +151,10 @@ class LauncherApp(
         self._archipelago_standalone_state = None
         self._archipelago_standalone_config = None
         self._archipelago_cached_state = None
+        # State migration can query the active progression mode before the
+        # Shop controller's full initialization later in this constructor.
+        self._shop_launch_run = None
+        self._shop_launch_mission_pool = ()
         self.dark_mode_var = tk.BooleanVar(value=bool(self.config.get('dark_mode', False)))
         self.hide_reward_details_var = tk.BooleanVar(
             value=bool(self.config.get('hide_reward_details', False))
@@ -299,8 +305,14 @@ class LauncherApp(
             REWARD_MODES[0],
         )
         self.reward_mode_var = tk.StringVar(value=reward_mode_default)
+        configured_progression_mode = self.config.get('progression_mode')
+        saved_progression_mode = (
+            configured_progression_mode
+            if configured_progression_mode == 'Shop Mode'
+            else self.state.get('progression_mode', configured_progression_mode)
+        )
         progression_mode_default = valid_choice(
-            self.state.get('progression_mode', self.config.get('progression_mode')),
+            saved_progression_mode,
             PROGRESSION_MODES,
             DEFAULT_PROGRESSION_MODE,
         )
@@ -469,6 +481,7 @@ class LauncherApp(
         self._enemy_buffs_view_dirty = True
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
+        self.initialize_shop_controller()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
@@ -489,6 +502,7 @@ class LauncherApp(
     def finish_initial_load(self, missions):
         self.apply_missions(missions)
         self.refresh_progress_view()
+        self.refresh_shop_mode()
         self.initial_load_complete = True
         log_event(
             'launcher_ready',

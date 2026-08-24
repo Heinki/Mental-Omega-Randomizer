@@ -61,7 +61,8 @@
     "progression_modes": [
       "Classic",
       "Mission List",
-      "Grid Mode"
+      "Grid Mode",
+      "Shop Mode"
     ],
     "default_progression_mode": "Mission List",
     "player_colors": [

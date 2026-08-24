@@ -82,7 +82,11 @@ class SeedController:
         self.clear_log()
         seed = self.seed_var.get().strip() or f'MO-{random.randrange(0x10000000):08X}'
         self.seed_var.set(seed)
-        mission_goal = self.selected_mission_goal()
+        mission_goal = (
+            len(seed_missions)
+            if self.progression_mode_var.get() == 'Shop Mode'
+            else self.selected_mission_goal()
+        )
         rewards_per_check = self.selected_rewards_per_check()
         rewards_on_victory_only = bool(
             self.rewards_on_victory_only_var.get()

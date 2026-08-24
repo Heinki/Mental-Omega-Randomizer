@@ -72,6 +72,8 @@ def run_self_check():
         cameos = ensure_unit_cameos(['ABRM'])
         power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
+        from randomizer.shop.self_check import validate_shop_domain
+        shop_domain = validate_shop_domain()
         import websockets
         from websockets.sync.client import connect as websocket_connect
         from Archipelago.client.handshake import (
@@ -85,6 +87,7 @@ def run_self_check():
         )
         from Archipelago.catalogue_contract import runtime_catalogue_checksum
         from Archipelago.run_manifest import expected_logic_spheres
+        from Archipelago.shop_self_check import validate_shop_slot_contract
         from Archipelago.yaml_config import (
             parse_player_yaml,
             serialize_player_yaml,
@@ -194,6 +197,7 @@ def run_self_check():
                 },
             },
         })
+        archipelago_shop_slot_contract_valid = validate_shop_slot_contract()
         archipelago_ledger = ReceivedItemLedger()
         archipelago_pending, archipelago_desynchronized = (
             archipelago_ledger.ingest(0, [{
@@ -220,6 +224,7 @@ def run_self_check():
             and callable(websocket_connect)
             and normalize_server_uri('localhost') == 'ws://localhost:38281/'
             and archipelago_slot_data['mission_order'] == ['AREDDAWN']
+            and archipelago_shop_slot_contract_valid
             and archipelago_slot_data['items'][0x4D4F000] == 'GI Access'
             and archipelago_slot_data['items'][0x4D4F001]
             == 'Soviet Conscript Access'
@@ -305,6 +310,7 @@ def run_self_check():
             enemy_existing_power_grant_plan,
             enemy_existing_power_rule_overrides,
             enemy_power_launch_rewards,
+            enemy_weapon_supports_direct_buff,
         )
         from randomizer.maps.base import randomizer_clone_type_id
         from randomizer.maps.clone_builder import player_clone_selection_group
@@ -489,6 +495,9 @@ def run_self_check():
                 reward.get('enemy_reward')
                 for reward in enemy_traps
             )
+            and enemy_weapon_supports_direct_buff({'Damage': '10'})
+            and not enemy_weapon_supports_direct_buff({'Spawner': 'yes'})
+            and not enemy_weapon_supports_direct_buff({'spawner': 'TRUE'})
             and {
                 reward.get('enemy_effect_id')
                 for reward in enemy_power_rewards
@@ -918,6 +927,8 @@ def run_self_check():
             'lightning_storm_cameo_extracted': 'LIGHTNINGSTORMSPECIAL' in power_cameos,
             'lightning_storm_cameo_path': str(power_cameos.get('LIGHTNINGSTORMSPECIAL', '')),
             'static_configs_valid': len(static_config_paths) == len(REQUIRED_STATIC_CONFIGS),
+            'shop_domain_valid': shop_domain['valid'],
+            'shop_domain': shop_domain,
             'archipelago_client_contract_valid': (
                 archipelago_client_contract_valid
             ),
@@ -1066,6 +1077,7 @@ def run_self_check():
                 'abrams_cameo_extracted',
                 'lightning_storm_cameo_extracted',
                 'static_configs_valid',
+                'shop_domain_valid',
                 'archipelago_client_contract_valid',
                 'randomizer_unit_roster_valid',
                 'drakuv_contracts_valid',

@@ -202,7 +202,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         keys = (
             'slot_data_version', 'randomizer_version', 'randomizer_seed',
             'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
-            'progression_mode', 'mission_goal', 'mission_order', 'goal',
+            'progression_mode', 'mission_goal', 'mission_order', 'goal', 'shop',
         )
         return {
             key: deepcopy(slot_data[key])
@@ -749,6 +749,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 state == 'connected'
                 and self._archipelago_session_validated
             )
+            if hasattr(self, 'sync_shop_ap_panel'):
+                self.sync_shop_ap_panel()
             if state != getattr(self, '_archipelago_last_status', None):
                 self.append_archipelago_history(label)
                 log_event(
@@ -1527,6 +1529,14 @@ class ArchipelagoController(ArchipelagoYamlController):
             for entry in (slot_data.get('local_victories') or {}).values()
             if isinstance(entry, dict) and int(entry.get('item', 0)) > 0
         }
+        shop = slot_data.get('shop')
+        if isinstance(shop, dict):
+            logic_item_ids.update(
+                int(entry.get('logic_item', 0))
+                for entry in shop.get('stage_victories', ())
+                if isinstance(entry, dict)
+                and int(entry.get('logic_item', 0)) > 0
+            )
         logic_indexes = {
             int(self._archipelago_receipt_value(receipt, 'index', -1))
             for receipt in receipts

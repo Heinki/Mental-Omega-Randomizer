@@ -13570,13 +13570,6 @@
       "id": 81067937
     },
     {
-      "name": "Ivan Biker Optics I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067938
-    },
-    {
       "name": "Ivan Biker Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13652,13 +13645,6 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067949
-    },
-    {
-      "name": "Ivan Cadet Optics I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067950
     },
     {
       "name": "Ivan Cadet Recon Package I",
@@ -31467,7 +31453,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "138189ee176522b8d2c1ace4a88de9f81fb6b3cfdd82382e0fd79d40c94a3524",
+  "catalogue_checksum": "50c9f05a972bd6ee585257fd27d43a7837dfbbfce37c59dc51925e28ed6768a1",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

@@ -1236,7 +1236,7 @@ class AdvancedSettingsController:
         self.start_with_tier_one_defenses_check.configure(
             state='disabled' if arsenal_mode else 'normal'
         )
-        if arsenal_mode:
+        if arsenal_mode and self.progression_mode_var.get() != 'Shop Mode':
             self.arsenal_frame.grid()
         else:
             self.arsenal_frame.grid_remove()

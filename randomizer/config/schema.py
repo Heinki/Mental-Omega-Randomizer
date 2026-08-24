@@ -7,6 +7,7 @@ config family can now find its contract without reading packaging behavior.
 from pathlib import Path
 
 from randomizer.config.mission_rewards import validate_mission_reward_config
+from randomizer.config.shop_mode import validate_shop_mode_config
 
 
 class StaticConfigError(RuntimeError):
@@ -83,6 +84,16 @@ REQUIRED_SECTIONS = {
         'standard_families': list,
         'airfields': dict,
         'production_aliases': dict,
+    },
+    'shop_mode.json': {
+        'settings': dict,
+        'mission_rewards': dict,
+        'stage_class_weights': list,
+        'run_unit_prices': dict,
+        'run_buff_prices': dict,
+        'permanent_unit_prices': dict,
+        'permanent_upgrades': dict,
+        'modifiers': dict,
     },
     'ui.json': {
         'difficulties': list,
@@ -370,6 +381,10 @@ def _validate_missions(sections, path):
                         )
 
 
+def _validate_shop_mode(sections, path):
+    validate_shop_mode_config(sections, path, _invalid)
+
+
 def _validate_unit_data(sections, path):
     for unit_id, config in sections['unit_sidebar_images'].items():
         if not _is_nonempty_string(unit_id) or not isinstance(config, dict):
@@ -442,6 +457,24 @@ def _validate_unit_data(sections, path):
                     _invalid(
                         f'Invalid standalone rule template {section_id!r}', path
                     )
+
+    missile_range_support = sections.get('spawned_missile_range_support', {})
+    if not isinstance(missile_range_support, dict):
+        _invalid('Invalid spawned missile range support', path)
+    for unit_id, support in missile_range_support.items():
+        if (
+            not _is_nonempty_string(unit_id)
+            or unit_id not in sections['unit_base_stats']
+            or not isinstance(support, dict)
+            or set(support) != {'missile_id', 'base_guard_range'}
+            or not _is_nonempty_string(support['missile_id'])
+            or isinstance(support['base_guard_range'], bool)
+            or not isinstance(support['base_guard_range'], (int, float))
+            or support['base_guard_range'] <= 0
+        ):
+            _invalid(
+                f'Invalid spawned missile range support for {unit_id!r}', path
+            )
 
     transport_base_stats = sections.get('transport_base_stats', {})
     if not isinstance(transport_base_stats, dict):
@@ -598,6 +631,18 @@ def _validate_special_buildings(sections, path):
 
 
 def _validate_ui(sections, path):
+    progression_modes = sections['progression_modes']
+    required_progression_modes = {
+        'Classic', 'Mission List', 'Grid Mode', 'Shop Mode'
+    }
+    if (
+        not all(_is_nonempty_string(mode) for mode in progression_modes)
+        or len(progression_modes) != len(set(progression_modes))
+        or not required_progression_modes.issubset(progression_modes)
+        or sections['default_progression_mode'] not in progression_modes
+    ):
+        _invalid('Invalid progression mode choices', path)
+
     messages = sections['rewards_per_check_messages']
     if (
         not isinstance(messages.get('maximum'), str)
@@ -1381,6 +1426,7 @@ def _validate_catalogue(sections, path):
 
 CONFIG_VALIDATORS = {
     'missions.json': _validate_missions,
+    'shop_mode.json': _validate_shop_mode,
     'rewards/unit_data.json': _validate_unit_data,
     'rewards/unit_policy.json': _validate_unit_policy,
     'rewards/special_buildings.json': _validate_special_buildings,

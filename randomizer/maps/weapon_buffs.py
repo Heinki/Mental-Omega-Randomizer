@@ -16,6 +16,7 @@ from ._shared import (
     resolve_configured_helper_houses,
     section_lines,
     section_value_map_preserve,
+    stacking_amount,
     stacking_multiplier,
     techno_type_possible_houses,
     unique_in_order,
@@ -33,9 +34,26 @@ from .clone_references import (
 )
 from .base import (
     _value_case_insensitive,
+    format_multiplier,
     merge_unique_csv_bounded,
     parse_float,
 )
+
+
+def spawned_missile_range_guard_rules(target, range_count):
+    """Extend one reviewed spawned missile by its launcher's range gain."""
+    support = (target or {}).get('spawned_missile_range_support')
+    if not support or int(range_count) <= 0:
+        return {}
+    guard_range = float(support['base_guard_range']) + stacking_amount(
+        'range', range_count
+    )
+    return {
+        str(support['missile_id']): {
+            'GuardRange': format_multiplier(guard_range),
+        },
+    }
+
 
 def unit_weapon_buff_rules(
     lines,
@@ -152,6 +170,9 @@ def unit_weapon_buff_rules(
         handled_weapon_ids = {
             str(weapon).upper() for weapon in handled.get('weapon_ids', ())
         }
+        range_applied = 'range' in set(
+            handled.get('clone_weapon_buff_types', ())
+        )
         target = BUFF_TARGETS.get(unit_id, {})
         installed_name = installed_by_lower.get(unit_id.lower())
         native_name = native_by_lower.get(unit_id.lower())
@@ -244,18 +265,29 @@ def unit_weapon_buff_rules(
                 weapon_values = {}
                 for buff_type in ('damage', 'range', 'reload'):
                     if buff_type in weapon_buff_types:
-                        applied = (
-                            apply_weapon_buff_value(
-                                weapon_values,
-                                base_stats,
-                                buff_type,
-                                counts[buff_type],
-                            )
-                            or applied
+                        buff_applied = apply_weapon_buff_value(
+                            weapon_values,
+                            base_stats,
+                            buff_type,
+                            counts[buff_type],
                         )
+                        applied = buff_applied or applied
+                        if buff_type == 'range' and buff_applied:
+                            range_applied = True
                 if not weapon_values:
                     continue
                 rule_sections.setdefault(weapon, {}).update(weapon_values)
+        missile_range_rules = spawned_missile_range_guard_rules(
+            target,
+            counts.get('range', 0) if range_applied else 0,
+        )
+        for missile_id, support_values in missile_range_rules.items():
+            missile_values = rule_sections.setdefault(missile_id, {})
+            missile_values['GuardRange'] = format_multiplier(max(
+                parse_float(support_values.get('GuardRange'), 0),
+                parse_float(missile_values.get('GuardRange'), 0),
+            ))
+            applied = True
         if 'damage' in weapon_buff_types and target.get('special_damage_fields'):
             if unsafe_unit_houses:
                 skipped_units.append(

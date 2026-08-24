@@ -9,6 +9,11 @@ from BaseClasses import ItemClassification
 
 GAME_NAME = "Mental Omega"
 VICTORY_EVENT = "Mental Omega Victory"
+MAXIMUM_SHOP_PURCHASE_LOCATIONS = 25
+MAXIMUM_SHOP_RUN_LENGTH = 20
+SHOP_PURCHASE_LOCATION_ID_BASE = 0x4DFE000
+SHOP_STAGE_LOCATION_ID_BASE = 0x4DFE100
+SHOP_STAGE_LOGIC_ID_BASE = 0x4DFE200
 
 _CLASSIFICATIONS = {
     "progression": ItemClassification.progression,
@@ -63,6 +68,37 @@ LOCAL_VICTORY_LOCATION_TABLE = {
     for data in LOCAL_VICTORY_DATA.values()
 }
 LOCATION_TABLE.update(LOCAL_VICTORY_LOCATION_TABLE)
+SHOP_PURCHASE_LOCATION_TABLE = {
+    f"Roguelike Shop Purchase {index}": (
+        SHOP_PURCHASE_LOCATION_ID_BASE + index - 1
+    )
+    for index in range(1, MAXIMUM_SHOP_PURCHASE_LOCATIONS + 1)
+}
+SHOP_STAGE_LOCATION_TABLE = {
+    f"Shop Run Mission {index} Victory": (
+        SHOP_STAGE_LOCATION_ID_BASE + index - 1
+    )
+    for index in range(1, MAXIMUM_SHOP_RUN_LENGTH + 1)
+}
+SHOP_STAGE_LOGIC_DATA = {
+    index: {
+        "item_name": f"Mental Omega Shop Stage Victory: {index}",
+        "item_id": SHOP_STAGE_LOGIC_ID_BASE + index - 1,
+        "location_name": f"Shop Run Stage {index} - Local Victory",
+        "location_id": SHOP_STAGE_LOGIC_ID_BASE + index - 1,
+    }
+    for index in range(1, MAXIMUM_SHOP_RUN_LENGTH + 1)
+}
+SHOP_STAGE_LOGIC_ITEM_TABLE = {
+    data["item_name"]: data["item_id"]
+    for data in SHOP_STAGE_LOGIC_DATA.values()
+}
+LOCATION_TABLE.update(SHOP_PURCHASE_LOCATION_TABLE)
+LOCATION_TABLE.update(SHOP_STAGE_LOCATION_TABLE)
+LOCATION_TABLE.update({
+    data["location_name"]: data["location_id"]
+    for data in SHOP_STAGE_LOGIC_DATA.values()
+})
 LOCATION_SLOTS = defaultdict(lambda: defaultdict(list))
 for _entry in _SNAPSHOT["locations"]:
     LOCATION_SLOTS[_entry["mission"]][_entry["check"]].append(

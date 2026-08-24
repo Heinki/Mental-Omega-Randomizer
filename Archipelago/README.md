@@ -145,6 +145,14 @@ In Grid Mode, the visible grid and mission availability come from the server.
 Completing checks refreshes progression and unlock information. Finishing the
 Grid goal follows the Grid completion option stored in the room's YAML.
 
+In Shop Mode, use the launcher's **Shop Run** workspace. Its mission pool and
+run length come from the signed room. Every victory reports the next private
+stage marker and may report a shuffled mission-victory location. The
+**AP Purchases** panel spends the displayed persistent Mental Coin price to
+send one generated purchase location; Archipelago determines its item. Pending
+purchases are retried after reconnecting without another debit. Finishing the
+complete Shop run reports the slot goal.
+
 ## Disconnect and continue later
 
 Disconnecting switches the launcher back to the latest standalone Randomizer

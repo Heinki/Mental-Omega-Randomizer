@@ -17,6 +17,21 @@ Start here when changing code. Player settings belong in
   reward data.
 - `randomizer/rewards/display.py`: canonicalization, stacking, and display.
 - `randomizer/rewards/catalogue.py`: stable public reward facade.
+- `randomizer/shop/`: pure Shop Mode models, economy, mission offers,
+  purchases, lifecycle transitions, and persisted-state normalization.
+- `randomizer/shop/persistence.py`: atomic permanent profile/current-run files
+  plus write-ahead recovery for transitions that update both documents.
+- `randomizer/shop/service.py` and `active.py`: immediate purchase/lifecycle
+  persistence and persisted run-loadout resolution.
+- `randomizer/shop/modifiers.py` and `summary.py`: deterministic modifier
+  aggregation/Blind Choice selection plus pure reward and run-summary text.
+- `randomizer/shop/archipelago.py`: stable AP room/team/slot identity plus the
+  idempotent received-item projection used by Shop loadouts. AP inventory stays
+  authoritative in the existing received-item ledger, never in Shop profile
+  permanent purchases.
+- `randomizer/shop/archipelago_purchases.py`: durable per-slot generated-check
+  debits. A pending transaction is saved before location reporting and becomes
+  checked only from authoritative server location state.
 
 ### Static configuration
 
@@ -68,8 +83,16 @@ when an older external `ui.json` has no profiles.
   `advanced_settings.py`, `unlock_data.py`, and `unlock_view.py`: focused UI
   orchestration controllers. Keep pure behavior outside these classes.
 - `randomizer/ui/builder.py`: stable widget-construction facade.
-- `randomizer/ui/layout.py`, `settings.py`, and `overlay.py`: focused widget
-  builders.
+- `randomizer/ui/layout.py`, `settings.py`, `shop.py`, and `overlay.py`: focused
+  widget builders.
+- `randomizer/application/shop_controller.py`: standalone Shop workspace
+  orchestration; mission launching remains in the normal launch controller.
+- `randomizer/application/shop_archipelago_controller.py`: AP ledger, Shop
+  stage/check reconciliation, goal reporting, and generated purchase UI bridge;
+  pure transaction and entitlement rules remain in `randomizer/shop/`.
+- `randomizer/application/shop_polish_controller.py`: mission reward
+  breakdowns, run-result summaries, catalogue sorting/state/tooltips, and
+  unit/power Shop presentation.
 - `randomizer/ui/theme.py`, `grid.py`, and `tooltips.py`: presentation behavior.
 - `randomizer/launch/options.py`: spawn/option INI reading and writing.
 - `randomizer/core/storage.py`: atomic JSON/text persistence.
@@ -83,11 +106,19 @@ when an older external `ui.json` has no profiles.
 2. `randomizer/missions/catalogue.py` builds eligible mission order.
 3. `randomizer/rewards/planning.py` assigns every stored reward using the named seed
    RNG stream.
-4. Application controllers persist complete seed/check state.
-5. Launch calls `randomizer/maps/pipeline.py`.
+4. Application controllers persist complete seed/check state. Shop Mode uses
+   its separate atomic profile/run repository and commits a mission before
+   launch preparation.
+5. Launch calls `randomizer/maps/pipeline.py`; Shop launch context supplies its
+   persisted starters, selected permanent rewards, purchases, and buff stacks
+   through the same access/clone/buff pipeline.
 6. Pipeline reads fresh extracted source, discovers ownership, applies
    access/clones/buffs/powers, injects progress markers, writes one loose map.
-7. Debug-log watcher unlocks stored checks exactly once.
+7. Debug-log watcher unlocks stored checks exactly once. In Shop Mode, victory
+   atomically grants both currencies and creates next-stage offers; detected
+   failure ends the run. AP Shop victories additionally report their locked
+   stage marker and optional shuffled reward location, while generated Mental
+   Coin purchases persist a pending debit before reporting their location.
 
 No pure module imports `randomizer/application/`. Tk variables stay on UI thread.
 Workers receive frozen plain Python data.

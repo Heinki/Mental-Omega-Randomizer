@@ -16,6 +16,7 @@ $workDir = Join-Path $scriptDir "build"
 $iconPath = Join-Path $scriptDir "mo-logo-puzzle-icon.ico"
 $staticConfigPath = Join-Path $scriptDir "configs"
 $assetPath = Join-Path $scriptDir "assets"
+$tkRuntimeHook = Join-Path $scriptDir "tools\pyinstaller_tk_runtime.py"
 $versionInfoPath = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-version.txt"
 $configManifestDir = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-config"
 $configManifestPath = Join-Path $configManifestDir "bundle_manifest.json"
@@ -45,6 +46,24 @@ if (-not (Test-Path -LiteralPath $staticConfigPath -PathType Container)) {
 }
 if (-not (Test-Path -LiteralPath $assetPath -PathType Container)) {
     throw "Launcher asset directory is missing: $assetPath"
+}
+
+# PyInstaller's Tcl/Tk probe can reject otherwise working Python 3.14 installs.
+# Bundle the verified runtime explicitly so windowed builds remain reproducible.
+$pythonRoot = (& python -c "import sys; print(sys.base_prefix)").Trim()
+$tkinterBinary = Join-Path $pythonRoot "DLLs\_tkinter.pyd"
+$tkinterPackage = Join-Path $pythonRoot "Lib\tkinter"
+$tclBinary = Join-Path $pythonRoot "DLLs\tcl86t.dll"
+$tkBinary = Join-Path $pythonRoot "DLLs\tk86t.dll"
+$tclData = Join-Path $pythonRoot "tcl\tcl8.6"
+$tkData = Join-Path $pythonRoot "tcl\tk8.6"
+foreach ($tkRuntimePath in @(
+    $tkinterBinary, $tkinterPackage, $tclBinary, $tkBinary, $tclData, $tkData,
+    $tkRuntimeHook
+)) {
+    if (-not (Test-Path -LiteralPath $tkRuntimePath)) {
+        throw "Required Tcl/Tk runtime path is missing: $tkRuntimePath"
+    }
 }
 
 python -c "from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs; validate_static_configs(REQUIRED_STATIC_CONFIGS); print('Static config preflight passed.')"
@@ -147,6 +166,13 @@ try {
         --add-data "$staticConfigPath\rewards;configs\rewards" `
         --add-data "$configManifestPath;configs" `
         --add-data "$assetPath;assets" `
+        --add-binary "$tkinterBinary;." `
+        --add-data "$tkinterPackage;tkinter" `
+        --add-binary "$tclBinary;." `
+        --add-binary "$tkBinary;." `
+        --add-data "$tclData;_tcl_data" `
+        --add-data "$tkData;_tk_data" `
+        --runtime-hook $tkRuntimeHook `
         --exclude-module logging.handlers `
         --exclude-module ftplib `
         --exclude-module smtplib `

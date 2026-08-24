@@ -1,6 +1,6 @@
 ## BUGS AND IMPROVEMENTS
 
-- Message CalmishPhill for missing cameos - recommended by Nuuk
+- remove range buff for ivan cadet and ivan bike
 
 ## INFO
 

@@ -5298,6 +5298,12 @@
         }
       }
     },
+    "spawned_missile_range_support": {
+      "AKULA": {
+        "missile_id": "CMISL",
+        "base_guard_range": 30
+      }
+    },
     "special_damage_fields": {
       "V3": {
         "V3RocketDamage": 250,

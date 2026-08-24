@@ -15,7 +15,7 @@ from randomizer.core.version import APP_VERSION
 
 
 GAME_NAME = 'Mental Omega'
-SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5})
+SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6})
 SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
 CLIENT_VERSION = (0, 6, 7)
 ITEMS_HANDLING_ALL = 0b111
@@ -234,6 +234,115 @@ def _connect_command(slot_name, password, client_uuid):
     }
 
 
+def _validate_shop_slot_data(raw, manifest, mission_order):
+    if not isinstance(raw, Mapping) or not isinstance(manifest, Mapping):
+        raise ArchipelagoProtocolError('Shop Mode slot data is missing.')
+    policy_keys = (
+        'run_length',
+        'mission_pool',
+        'mission_victories_are_locations',
+        'purchase_location_count',
+        'purchase_meta_coin_cost',
+        'starting_extra_unit_limit',
+    )
+    if (
+        set(raw) != {*policy_keys, 'purchase_locations', 'stage_victories'}
+        or any(raw.get(key) != manifest.get(key) for key in policy_keys)
+    ):
+        raise ArchipelagoProtocolError(
+            'Shop Mode slot data disagrees with run manifest.'
+        )
+    run_length = raw.get('run_length')
+    purchase_count = raw.get('purchase_location_count')
+    purchase_cost = raw.get('purchase_meta_coin_cost')
+    extra_limit = raw.get('starting_extra_unit_limit')
+    purchase_locations = raw.get('purchase_locations')
+    stage_victories = raw.get('stage_victories')
+    if (
+        raw.get('mission_pool') != mission_order
+        or not isinstance(run_length, int)
+        or isinstance(run_length, bool)
+        or not 5 <= run_length <= 20
+        or not isinstance(purchase_count, int)
+        or isinstance(purchase_count, bool)
+        or not 0 <= purchase_count <= 25
+        or not isinstance(purchase_cost, int)
+        or isinstance(purchase_cost, bool)
+        or purchase_cost < 1
+        or not isinstance(extra_limit, int)
+        or isinstance(extra_limit, bool)
+        or not 0 <= extra_limit <= 10
+        or not isinstance(purchase_locations, list)
+        or len(purchase_locations) != purchase_count
+        or not isinstance(stage_victories, list)
+        or len(stage_victories) != run_length
+    ):
+        raise ArchipelagoProtocolError('Shop Mode slot data is invalid.')
+    random_locations = set()
+    logic_locations = set()
+    logic_items = set()
+    for location in purchase_locations:
+        if (
+            not isinstance(location, int)
+            or isinstance(location, bool)
+            or location <= 0
+            or location in random_locations
+        ):
+            raise ArchipelagoProtocolError(
+                'Shop Purchase location mapping is invalid.'
+            )
+        random_locations.add(location)
+    normalized_stages = []
+    locations_enabled = raw.get('mission_victories_are_locations')
+    if not isinstance(locations_enabled, bool):
+        raise ArchipelagoProtocolError('Shop victory-location policy is invalid.')
+    for expected_stage, entry in enumerate(stage_victories, start=1):
+        if not isinstance(entry, Mapping):
+            raise ArchipelagoProtocolError('Shop stage mapping is invalid.')
+        stage = entry.get('stage')
+        location = entry.get('location')
+        logic_item = entry.get('logic_item')
+        logic_location = entry.get('logic_location')
+        if (
+            stage != expected_stage
+            or (
+                location is not None
+                and (
+                    not isinstance(location, int)
+                    or isinstance(location, bool)
+                    or location <= 0
+                )
+            )
+            or (location is None) == locations_enabled
+            or not isinstance(logic_item, int)
+            or isinstance(logic_item, bool)
+            or logic_item <= 0
+            or not isinstance(logic_location, int)
+            or isinstance(logic_location, bool)
+            or logic_location <= 0
+            or location in random_locations
+            or logic_item in logic_items
+            or logic_location in logic_locations
+            or logic_location in random_locations
+        ):
+            raise ArchipelagoProtocolError('Shop stage mapping is invalid.')
+        if location is not None:
+            random_locations.add(location)
+        logic_items.add(logic_item)
+        logic_locations.add(logic_location)
+        normalized_stages.append({
+            'stage': stage,
+            'location': location,
+            'logic_item': logic_item,
+            'logic_location': logic_location,
+        })
+    return {
+        **{key: manifest[key] for key in policy_keys},
+        'purchase_locations': list(purchase_locations),
+        'stage_victories': normalized_stages,
+    }, random_locations, logic_locations, logic_items
+
+
 def validate_slot_data(value):
     """Validate data needed before launcher settings may be locked."""
     if not isinstance(value, Mapping):
@@ -322,8 +431,6 @@ def validate_slot_data(value):
             normalized_checks[check_id] = list(location_ids)
             all_location_ids.update(location_ids)
         normalized_locations[code] = normalized_checks
-    if not all_location_ids:
-        raise ArchipelagoProtocolError('Slot data has no active locations.')
     items = slot_data.get('items')
     if not isinstance(items, Mapping) or not items:
         raise ArchipelagoProtocolError('Slot data has no item mapping.')
@@ -343,8 +450,54 @@ def validate_slot_data(value):
         ) from exc
     slot_data['items'] = normalized_items
     slot_data['locations'] = normalized_locations
+    normalized_shop = None
+    shop_random_locations = set()
+    shop_logic_locations = set()
+    shop_logic_items = set()
+    if slot_data.get('progression_mode') == 'Shop Mode':
+        if slot_data_version < 6:
+            raise ArchipelagoProtocolError(
+                'Shop Mode requires slot-data version 6.'
+            )
+        (
+            normalized_shop,
+            shop_random_locations,
+            shop_logic_locations,
+            shop_logic_items,
+        ) = _validate_shop_slot_data(
+            slot_data.get('shop'), run_manifest.get('shop'), mission_order
+        )
+        if (
+            run_manifest.get('mission_goal') != normalized_shop['run_length']
+            or run_manifest.get('goal') != {
+                'type': 'shop_run',
+                'run_length': normalized_shop['run_length'],
+            }
+        ):
+            raise ArchipelagoProtocolError('Shop Mode goal is invalid.')
+        if (
+            not all_location_ids.isdisjoint(shop_random_locations)
+            or not all_location_ids.isdisjoint(shop_logic_locations)
+            or not shop_random_locations.isdisjoint(shop_logic_locations)
+            or not set(normalized_items).isdisjoint(shop_logic_items)
+        ):
+            raise ArchipelagoProtocolError('Shop Mode IDs collide with slot data.')
+        all_location_ids.update(shop_random_locations)
+        all_location_ids.update(shop_logic_locations)
+    elif slot_data.get('shop') is not None or run_manifest.get('shop') is not None:
+        raise ArchipelagoProtocolError(
+            'Non-Shop slot data cannot contain Shop settings.'
+        )
+    if not all_location_ids:
+        raise ArchipelagoProtocolError('Slot data has no active locations.')
+    slot_data['shop'] = normalized_shop
     raw_local_victories = slot_data.get('local_victories', {})
-    if slot_data_version >= 5:
+    if slot_data.get('progression_mode') == 'Shop Mode':
+        if raw_local_victories:
+            raise ArchipelagoProtocolError(
+                'Shop Mode cannot contain mission local victories.'
+            )
+    elif slot_data_version >= 5:
         if (
             not isinstance(raw_local_victories, Mapping)
             or set(raw_local_victories) != set(mission_order)
@@ -357,8 +510,8 @@ def validate_slot_data(value):
             'Legacy slot data cannot contain local-victory mappings.'
         )
     normalized_local_victories = {}
-    logic_item_ids = set()
-    logic_location_ids = set()
+    logic_item_ids = set(shop_logic_items)
+    logic_location_ids = set(shop_logic_locations)
     for code, raw_entry in raw_local_victories.items():
         if not isinstance(raw_entry, Mapping):
             raise ArchipelagoProtocolError(

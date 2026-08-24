@@ -612,6 +612,16 @@ def add_complete_faction_buff_targets():
 
 add_complete_faction_buff_targets()
 
+# Spawned missile AircraftTypes can have a shorter pursuit envelope than an
+# upgraded launcher. Keep this optional for compatibility with older editable
+# unit-data overrides; configured entries extend only the reviewed launchers.
+for unit_id, support in _UNIT_DATA_CONFIG.get(
+    'spawned_missile_range_support', {}
+).items():
+    BUFF_TARGETS[str(unit_id).upper()][
+        'spawned_missile_range_support'
+    ] = dict(support)
+
 # Normal miners expose clone-local vanilla Storage. Harvest speed remains a
 # global rules setting in the installed engine, so only capacity is eligible.
 _RANDOMIZER_TEMPLATE_VALUES = randomizer_unit_template_values()

@@ -5,8 +5,8 @@ victory checks through its existing debug-log hooks, and applies received
 technology and buff rewards to later generated mission maps.
 
 This APWorld uses a checksum-protected run manifest exported by Mental Omega
-Randomizer 1.30. It supports 4,099 rewards and 35,876 stable possible
-reward-slot locations across the full 97-mission catalogue. Each seed activates
+Randomizer 1.30. It supports the full 97-mission reward catalogue plus stable
+Shop purchase, stage-reward, and private stage-logic IDs. Each seed activates
 only the locations and item counts described by its manifest.
 
 Mission regions follow signed local progression logic. Mission List and
@@ -14,3 +14,10 @@ Classic use victory-count requirements; Grid Mode uses exact starting nodes
 and orthogonal neighbors. One locked `Local Victory` marker per mission makes
 that local progress visible to Archipelago's sphere calculation without
 shuffling mission-unlock items or changing launcher mission availability.
+
+Shop Mode uses a signed eligible mission pool and a ten-stage marker chain.
+Each local victory advances one stage, can release a shuffled
+`Shop Run Mission N Victory` location, and completion of the full run satisfies
+the goal. The launcher can also spend persistent Mental Coins on generated
+`Roguelike Shop Purchase N` locations. Those purchases never request an item;
+Archipelago fill decides the recipient and item normally.

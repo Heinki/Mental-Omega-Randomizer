@@ -23,6 +23,19 @@ def apply_color_mode(self):
     style.configure('TFrame', background=background)
     style.configure('TLabel', background=background, foreground=foreground)
     style.configure('Muted.TLabel', background=background, foreground=palette['muted'])
+    shop_colors = {
+        'Stage': '#79c0ff' if self.dark_mode_var.get() else '#0969da',
+        'Status': '#7ee787' if self.dark_mode_var.get() else '#1a7f37',
+        'Ore': '#f2cc60' if self.dark_mode_var.get() else '#9a6700',
+        'Mental': '#d2a8ff' if self.dark_mode_var.get() else '#8250df',
+        'Reroll': '#76e3ea' if self.dark_mode_var.get() else '#096b72',
+        'Reward': '#f2cc60' if self.dark_mode_var.get() else '#825800',
+        'Help': '#79c0ff' if self.dark_mode_var.get() else '#0550ae',
+    }
+    for name, color in shop_colors.items():
+        style.configure(
+            f'Shop.{name}.TLabel', background=background, foreground=color
+        )
     style.configure(
         'Archipelago.Disconnected.TLabel',
         background=background,
@@ -52,6 +65,20 @@ def apply_color_mode(self):
     style.configure('TRadiobutton', background=background, foreground=foreground)
     style.configure('TButton', background=panel, foreground=foreground, bordercolor=border)
     style.configure('Launch.TButton', background=panel, foreground=foreground, bordercolor=border)
+    style.configure(
+        'Danger.TButton',
+        background='#5c2327' if self.dark_mode_var.get() else '#ffebe9',
+        foreground='#ffb3b8' if self.dark_mode_var.get() else '#cf222e',
+        bordercolor='#f85149' if self.dark_mode_var.get() else '#cf222e',
+    )
+    style.map(
+        'Danger.TButton',
+        background=[
+            ('disabled', panel),
+            ('active', '#8b3036' if self.dark_mode_var.get() else '#ffcecb'),
+        ],
+        foreground=[('disabled', palette['muted'])],
+    )
     style.map(
         'TButton',
         background=[
@@ -133,7 +160,26 @@ def apply_color_mode(self):
         selectforeground=[('readonly', selected_foreground)],
     )
     style.configure('TNotebook', background=background, bordercolor=border)
-    style.configure('TNotebook.Tab', background=panel, foreground=foreground)
+    style.configure(
+        'TNotebook.Tab',
+        background=panel,
+        foreground=foreground,
+        padding=(8, 6),
+    )
+    style.map(
+        'TNotebook.Tab',
+        background=[
+            ('selected', selected),
+            ('active', palette['canvas']),
+            ('disabled', panel),
+        ],
+        foreground=[
+            ('selected', selected_foreground),
+            ('active', foreground),
+            ('disabled', palette['muted']),
+        ],
+        padding=[('selected', (8, 6)), ('active', (8, 6))],
+    )
     style.configure('Randomizer.TNotebook', background=background, bordercolor=border, tabposition='n')
     style.configure(
         'Randomizer.TNotebook.Tab',
@@ -144,8 +190,16 @@ def apply_color_mode(self):
     )
     style.map(
         'Randomizer.TNotebook.Tab',
-        background=[('selected', selected), ('active', palette['canvas'])],
-        foreground=[('selected', selected_foreground), ('active', foreground)],
+        background=[
+            ('selected', selected),
+            ('active', palette['canvas']),
+            ('disabled', panel),
+        ],
+        foreground=[
+            ('selected', selected_foreground),
+            ('active', foreground),
+            ('disabled', palette['muted']),
+        ],
         padding=[('selected', (16, 7)), ('active', (16, 7))],
     )
     style.configure('Unlocks.TNotebook', background=background, bordercolor=border, tabposition='n')
@@ -158,8 +212,16 @@ def apply_color_mode(self):
     )
     style.map(
         'Unlocks.TNotebook.Tab',
-        background=[('selected', selected), ('active', palette['canvas'])],
-        foreground=[('selected', selected_foreground), ('active', foreground)],
+        background=[
+            ('selected', selected),
+            ('active', palette['canvas']),
+            ('disabled', panel),
+        ],
+        foreground=[
+            ('selected', selected_foreground),
+            ('active', foreground),
+            ('disabled', palette['muted']),
+        ],
         padding=[('selected', (7, 7)), ('active', (7, 7))],
     )
     style.configure(
@@ -170,6 +232,7 @@ def apply_color_mode(self):
         bordercolor=border,
     )
     style.configure('StartingUnlocks.Treeview', rowheight=52)
+    style.configure('ShopCameo.Treeview', rowheight=52)
     style.map(
         'Treeview',
         background=[('selected', selected)],
@@ -177,6 +240,8 @@ def apply_color_mode(self):
     )
     style.configure('Treeview.Heading', background=panel, foreground=foreground, bordercolor=border)
     style.map('Treeview.Heading', background=[('active', palette['canvas'])])
+    if hasattr(self, 'configure_shop_tree_tags'):
+        self.configure_shop_tree_tags()
     style.configure(
         'TScrollbar',
         background=panel,

@@ -17,6 +17,7 @@ run in a separate protected manifest.
 - **Classic** mode preserves the installed campaign order, opens only the first mission, and opens the next mission after each victory.
 - **Mission List** mode randomizes the linear mission order, opens the first three missions, and opens one additional mission after each victory.
 - **Grid Mode** opens the top-left node, or the two orthogonal neighbors of top-left when **Two start positions** is enabled. A victory opens the node's up/down/left/right neighbors; diagonal nodes do not open.
+- **Shop Mode** uses a separate 10-mission roguelike run, three stage offers, Ore purchases, and persistent Mental Coin unlocks. Its progress is stored separately from ordinary Randomizer seeds.
 - The generated mission order contains **Missions to finish** missions. Classic and Mission List finish after that many victories. Grid Mode finishes when its bottom-right endgoal is completed, then releases every remaining reward and opens every unfinished node for optional cleanup.
 
 ## Settings Reference
@@ -34,7 +35,7 @@ run in a separate protected manifest.
 | Prioritize included no-build missions in opening | `generation.prioritize_no_build_missions` | `false`/`true`; default `false` | Fills protected Mission List or Grid opening positions with the lowest-stage eligible missions from whichever no-build categories are enabled. Ignored by Classic ordering. | Seed generation |
 | Advanced Pool: Missions | `generation.excluded_mission_codes` | List of mission codes; default empty | Clicking a faction-art mission card greys it out and excludes that mission from future generated seeds. Campaign and no-build filters still apply. Existing runs keep their generated mission order. | Seed generation |
 | Advanced Pool: Superpowers | `generation.excluded_superweapon_ids` | List of SuperWeaponType IDs; default empty | Clicking a power cameo greys it out and removes that power from future generated reward plans. Advanced Pool shows only the selected campaign faction, except All Campaigns shows everything. | Seed generation |
-| Progression | `progression_mode` | `Classic`, `Mission List`, `Grid Mode`; default `Mission List` | Selects original campaign order, a randomized linear mission list, or the orthogonal-neighbor grid described below. | Seed generation |
+| Progression | `progression_mode` | `Classic`, `Mission List`, `Grid Mode`, `Shop Mode`; default `Mission List` | Selects original campaign order, a randomized linear mission list, the orthogonal-neighbor grid, or the separate roguelike Shop workspace described below. | Seed generation |
 | Start with two available missions | `grid_two_start_positions` | `false`/`true`; default `false` | Starts Grid Mode from the cells directly right of and below top-left instead of top-left itself. Requires at least four missions. | Seed generation |
 | Difficulty | `difficulty` | `Casual`, `Normal`, `Mental`; default `Normal` | Writes the selected campaign/human difficulty to launch configuration. It does not change rewards. | Every launch |
 | Game speed | `game_speed` | `0 - Slowest` through `6 - Fastest`; default `3 - Medium` | Writes the engine speed and launches with `-SPEEDCONTROL`, keeping the in-game speed control available. It does not change rewards. | Every launch |
@@ -218,6 +219,28 @@ Classic takes missions directly from the filtered installed campaign catalogue w
 ### Mission List
 
 Mission List uses randomized linear progression. The first three entries in the generated order are open, and each recorded mission victory opens the next entry. Its first five generated entries are drawn from low-level campaign missions (missions 1-6 in the installed catalogue). Optional no-build priority fills these protected positions from the enabled true-no-build and production-no-build categories first. Every later entry is fully shuffled from the remaining eligible pool, so Act 2 and finale missions can appear from position six onward.
+
+### Shop Mode
+
+Shop Mode opens its own **Shop Mode** workspace. Selecting it replaces the normal Settings page with **Shop Setup** and hides the Advanced tab. Shop Setup shows Seed, Shop-only Faction Pool, Game speed, Difficulty, and the Progression selector used to leave Shop Mode. Standard and Chaos reward modes do not apply. The faction pool limits Shop inventory while missions remain mixed-campaign, allowing a ten-stage Foehn-only inventory run. Faction Pool locks after a run starts; Game speed and Difficulty remain adjustable between missions.
+
+Start a run from **Shop Setup**, optionally select up to five owned permanent units and challenge modifiers, then choose one of three deterministic mission offers. Mandatory Tier 1 units and defenses are always included. Each mission card contains its own reroll action, which replaces only that offer. Mission Difficulty Assist lowers game difficulty by one step for one chosen mission while retaining its original Ore and Mental Coin reward.
+
+The header shows stage, run status, Ore, persistent Mental Coins, and rerolls. **Run Shop** sells access and buffs for Ore; locked buffs identify their required unit or power and cannot be purchased early. Purchases persist immediately. **Permanent Unlocks** sells units, account upgrades, and permanent unit-buff stacks for Mental Coins between runs. Permanent buffs are snapshotted when their unit enters a starting loadout. Starting Ore can be raised from 5 to 50. Harder mission classes grant strictly more Mental Coins: Act 1, Act 2, Operation, then Finale.
+
+Run setup offers five persisted modifiers: Greedy, Veteran Economy, Poor Logistics, Generous Command, and Blind Choice. Their configured percentages and flat adjustments combine deterministically and clamp currency to non-negative integers. Blind Choice hides one deterministic offer's exact reward until selection without consuming the mission-generation RNG stream. Active-run modifier controls lock until the run ends.
+
+The Run Shop now exposes Units, Unit Buffs, Powers, and Power Buffs. Search covers reward and target IDs; sorting supports name, tier, price, or status. Locked buffs can remain visible with a tooltip explaining the missing unit or power access, or be hidden with the filter. Mission and catalogue tooltips show exact reward/price state. Victory messages show base reward, modifier adjustment, permanent Victory Bonus, and total.
+
+**Run Summary** preserves active, failed, and completed results across restarts. It reports seed, stages cleared, remaining Ore, persistent Mental Coins, purchases, buff stacks, modifiers, completed missions, and the fatal mission/stage when applicable. Completion opens a `RUN VICTORY` summary; failure opens `RUN OVER` while preserving permanent progression.
+
+Launching commits the selected offer before map preparation. Other offers, rerolls, and purchases lock until the mission ends; a launcher or game crash before a detected result can only relaunch that committed mission. Shop starters, selected permanent units, run purchases, and purchased buff stacks use the normal isolated player-clone map pipeline. Victory grants the displayed currencies and creates the next three offers. Mission 10 victory completes the run.
+
+While an Archipelago slot is active, received unit unlocks join the **New Run / Loadout** entitlement list without costing Mental Coins. They still use one of the five extra-unit slots and are active only when selected. Received buffs and powers are applied automatically, including legitimate stacks from distinct received item indexes. The run stores a snapshot keyed to the validated room, team, and slot; new items received during an active run are merged immediately. Failure never copies, spends, or removes AP items. Starting another run rebuilds the snapshot from the existing AP received-item ledger, including while disconnected, and replayed item indexes do not grant twice.
+
+Generated Archipelago Shop seeds add an **AP Purchases** panel. Each available entry costs the Mental Coin amount frozen into the room and reports one generated location; the server, never the launcher purchase button, determines which item it sends. The Mental Coin debit is saved before the check is queued, then reconciled with server checked-location state after reconnecting, so a retry cannot charge twice. Each Shop mission victory also reports its private stage marker and, when enabled by the seed, a shuffled `Shop Run Mission N Victory` reward location. Completing mission 10 sends the Shop run goal exactly once.
+
+A detected defeat, in-game restart, or game-process exit without a victory marker ends the run. Current game logging cannot reliably distinguish every manual quit or crash from defeat, so those exits use the existing launcher failure semantics and also end the run. Permanent Mental Coins, units, and upgrades survive; Ore and run purchases do not carry into the next run.
 
 ### Grid Mode
 

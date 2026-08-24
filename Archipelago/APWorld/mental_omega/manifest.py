@@ -5,7 +5,14 @@ from collections.abc import Mapping
 from hashlib import sha256
 import json
 
-from .data import CATALOGUE_CHECKSUM, ITEM_DATA, LOCATION_SLOTS, MISSION_DATA
+from .data import (
+    CATALOGUE_CHECKSUM,
+    ITEM_DATA,
+    LOCATION_SLOTS,
+    MAXIMUM_SHOP_PURCHASE_LOCATIONS,
+    MAXIMUM_SHOP_RUN_LENGTH,
+    MISSION_DATA,
+)
 
 
 MANIFEST_SCHEMA_VERSION = 1
@@ -86,6 +93,17 @@ def _validate_progression(value, mode, mission_order, grid):
         raise ManifestError(
             "Manifest progression requirements must cover exactly mission_order."
         )
+
+    if mode == "Shop Mode":
+        if (
+            progression_type != "shop_stages"
+            or starts != mission_order
+            or any(requirements[code] != [] for code in mission_order)
+        ):
+            raise ManifestError(
+                "Shop Mode progression must expose its complete mission pool."
+            )
+        return value
 
     if mode == "Grid Mode":
         if progression_type != "grid_neighbors":
@@ -168,6 +186,17 @@ def progression_for_manifest(value):
         return _validate_progression(
             value["progression"], mode, mission_order, value.get("grid")
         )
+    if mode == "Shop Mode":
+        shop_progression = {
+            "type": "shop_stages",
+            "starting_missions": list(mission_order),
+            "mission_requirements": {
+                code: [] for code in mission_order
+            },
+        }
+        return _validate_progression(
+            shop_progression, mode, mission_order, value.get("grid")
+        )
     if mode == "Grid Mode":
         grid = value.get("grid")
         positions = _grid_positions(grid, mission_order)
@@ -219,6 +248,47 @@ def progression_for_manifest(value):
     )
 
 
+def _validate_shop_settings(value, mode, mission_order):
+    if mode != "Shop Mode":
+        if value is not None:
+            raise ManifestError("Non-Shop manifest cannot contain Shop settings.")
+        return None
+    if not isinstance(value, dict) or set(value) != {
+        "run_length",
+        "mission_pool",
+        "mission_victories_are_locations",
+        "purchase_location_count",
+        "purchase_meta_coin_cost",
+        "starting_extra_unit_limit",
+    }:
+        raise ManifestError("Shop Mode manifest settings are invalid.")
+    run_length = value.get("run_length")
+    purchase_count = value.get("purchase_location_count")
+    purchase_cost = value.get("purchase_meta_coin_cost")
+    extra_limit = value.get("starting_extra_unit_limit")
+    if (
+        not isinstance(run_length, int)
+        or isinstance(run_length, bool)
+        or not 5 <= run_length <= MAXIMUM_SHOP_RUN_LENGTH
+        or len(mission_order) < run_length
+        or value.get("mission_pool") != mission_order
+        or not isinstance(
+            value.get("mission_victories_are_locations"), bool
+        )
+        or not isinstance(purchase_count, int)
+        or isinstance(purchase_count, bool)
+        or not 0 <= purchase_count <= MAXIMUM_SHOP_PURCHASE_LOCATIONS
+        or not isinstance(purchase_cost, int)
+        or isinstance(purchase_cost, bool)
+        or purchase_cost < 1
+        or not isinstance(extra_limit, int)
+        or isinstance(extra_limit, bool)
+        or not 0 <= extra_limit <= 10
+    ):
+        raise ManifestError("Shop Mode manifest settings are out of range.")
+    return dict(value)
+
+
 def parse_manifest(raw_value):
     if isinstance(raw_value, Mapping):
         value = dict(raw_value)
@@ -260,7 +330,7 @@ def parse_manifest(raw_value):
         raise ManifestError("Manifest mission_order is invalid.")
 
     if value.get("progression_mode") not in {
-        "Classic", "Mission List", "Grid Mode"
+        "Classic", "Mission List", "Grid Mode", "Shop Mode"
     }:
         raise ManifestError("Manifest progression_mode is invalid.")
     progression = (
@@ -299,7 +369,14 @@ def parse_manifest(raw_value):
             total_locations += count
         locations[code] = checks
 
-    if total_locations <= 0:
+    shop = _validate_shop_settings(
+        value.get("shop"), value.get("progression_mode"), mission_order
+    )
+    if shop is not None:
+        total_locations += shop["purchase_location_count"]
+        if shop["mission_victories_are_locations"]:
+            total_locations += shop["run_length"]
+    if total_locations <= 0 and shop is None:
         raise ManifestError("Manifest has no active reward locations.")
 
     item_pool = _positive_counts(value.get("item_pool"), "item_pool", ITEM_DATA)
@@ -316,6 +393,8 @@ def parse_manifest(raw_value):
     raw_placements = value.get("local_placements", [])
     if not isinstance(raw_placements, list):
         raise ManifestError("local_placements must be a list.")
+    if shop is not None and raw_placements:
+        raise ManifestError("Shop Mode cannot contain mission local placements.")
     placements = []
     placed_locations = set()
     placed_items = Counter()
@@ -353,12 +432,18 @@ def parse_manifest(raw_value):
 
     goal = value.get("goal")
     if not isinstance(goal, dict) or goal.get("type") not in {
-        "mission", "all_missions", "grid",
+        "mission", "all_missions", "grid", "shop_run",
     }:
         raise ManifestError("Manifest goal is invalid.")
     goal_code = goal.get("mission_code")
     if goal["type"] in {"mission", "grid"} and goal_code not in mission_order:
         raise ManifestError("Manifest goal mission is not in mission_order.")
+    if goal["type"] == "shop_run" and (
+        shop is None or goal.get("run_length") != shop["run_length"]
+    ):
+        raise ManifestError("Manifest Shop goal does not match Shop settings.")
+    if shop is not None and goal["type"] != "shop_run":
+        raise ManifestError("Shop Mode requires a shop_run goal.")
 
     state_snapshot = value.get("state_snapshot")
     if not isinstance(state_snapshot, dict):
@@ -394,6 +479,7 @@ def parse_manifest(raw_value):
     if progression is not None:
         result["progression"] = progression
     result["locations"] = locations
+    result["shop"] = shop
     result["item_pool"] = item_pool
     result["starting_items"] = starting_items
     result["local_placements"] = placements

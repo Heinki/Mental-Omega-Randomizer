@@ -602,6 +602,9 @@ def validate_unit_buff_application_contracts():
         apply_unit_buff_value,
         apply_weapon_buff_value,
     )
+    from randomizer.maps.weapon_buffs import (
+        spawned_missile_range_guard_rules,
+    )
     from randomizer.rewards.catalogue import (
         BUFF_TARGETS,
         UNIT_BUFF_REWARDS,
@@ -690,6 +693,17 @@ def validate_unit_buff_application_contracts():
                                 peer_id,
                                 str(weapon_id).upper(),
                                 tuple(sorted(changed_values.items())),
+                            ))
+                    if buff_type == 'range':
+                        for missile_id, values in sorted(
+                            spawned_missile_range_guard_rules(
+                                peer_target, stack
+                            ).items()
+                        ):
+                            current.append((
+                                peer_id,
+                                str(missile_id).upper(),
+                                tuple(sorted(normalized(values).items())),
                             ))
                 current = tuple(current)
                 if not current or current == previous:

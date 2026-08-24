@@ -518,9 +518,12 @@ class LaunchController:
                     }
                     rule_sections.setdefault(section, {}).update(prepared_values)
 
-        if self.state:
-            earned_rewards = self.earned_rewards_from_checks()
-            self.state['earned_rewards'] = earned_rewards
+        if self.randomizer_launch_active():
+            if self.state and not getattr(
+                self, 'shop_launch_active', lambda: False
+            )():
+                earned_rewards = self.earned_rewards_from_checks()
+                self.state['earned_rewards'] = earned_rewards
             for reward in self.active_launch_rewards():
                 if reward.get('kind') == 'buff' and reward.get('buff_type'):
                     continue
@@ -854,6 +857,11 @@ class LaunchController:
         self.active_mission_attempt = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
+        finish_context = getattr(
+            self, 'finish_progression_launch_context', None
+        )
+        if callable(finish_context):
+            finish_context()
         if getattr(self, '_close_after_game', False):
             self.destroy()
 
@@ -934,6 +942,11 @@ class LaunchController:
             ),
         )
         messagebox.showerror('Launch Failed', 'Failed to write launch files. See log for details.')
+        finish_context = getattr(
+            self, 'finish_progression_launch_context', None
+        )
+        if callable(finish_context):
+            finish_context()
 
     def prepare_mission_launch_files(
         self,
@@ -1049,7 +1062,11 @@ class LaunchController:
         try:
             process = subprocess.Popen(cmd, cwd=GAME_ROOT)
             self.append_log(f'Launched game process PID={process.pid}.')
-            if self.state and mission.get('code') in self.state.get('mission_order', []):
+            if (
+                self.state
+                and not getattr(self, 'shop_launch_active', lambda: False)()
+                and mission.get('code') in self.state.get('mission_order', [])
+            ):
                 try:
                     started_missions = self.state.setdefault('started_missions', [])
                     if mission['code'] not in started_missions:
@@ -1111,6 +1128,11 @@ class LaunchController:
                 ),
             )
             messagebox.showerror('Launch Failed', 'Failed to launch the game. See log for details.')
+            finish_context = getattr(
+                self, 'finish_progression_launch_context', None
+            )
+            if callable(finish_context):
+                finish_context()
         else:
             self.append_log(
                 'Objective/victory hooks are watching debug.log. A detected victory will update the run automatically.'

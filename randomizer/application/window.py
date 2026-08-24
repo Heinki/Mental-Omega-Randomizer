@@ -90,6 +90,8 @@ class WindowController:
             )
         elif hasattr(self, 'advanced_tab') and selected == str(self.advanced_tab):
             self.after_idle(self.refresh_advanced_pool_views)
+        elif hasattr(self, 'shop_tab') and selected == str(self.shop_tab):
+            self.after_idle(self.refresh_shop_mode)
         elif (
             hasattr(self, 'mission_view_frame')
             and selected == str(self.mission_view_frame)
@@ -379,7 +381,7 @@ class WindowController:
 
     def layout_settings_sections(self, width):
         """Use two Settings columns when workspace width can support them."""
-        required = (
+        normal_names = (
             'settings_intro_label',
             'seed_settings_frame',
             'map_colors_frame',
@@ -392,17 +394,28 @@ class WindowController:
             'assistance_frame',
             'appearance_frame',
         )
+        required = (*normal_names, 'shop_settings_frame')
         if not all(hasattr(self, name) for name in required):
             return
+        shop_mode = self.progression_mode_var.get() == 'Shop Mode'
         wide = int(width or 0) >= 840
         buff_columns = 1 if int(width or 0) < 600 else 2
-        layout_signature = (wide, buff_columns)
+        layout_signature = (shop_mode, wide, buff_columns)
         if self.__dict__.get('_settings_layout_signature') == layout_signature:
             return
         self._settings_layout_signature = layout_signature
         widgets = [getattr(self, name) for name in required]
         for widget in widgets:
             widget.grid_forget()
+
+        if shop_mode:
+            self.settings_frame.columnconfigure(0, weight=1, uniform='')
+            self.settings_frame.columnconfigure(1, weight=0, uniform='')
+            self.shop_settings_frame.grid(
+                row=0, column=0, sticky='new'
+            )
+            self.on_settings_content_configure()
+            return
 
         self.settings_frame.columnconfigure(
             0, weight=7 if wide else 1, uniform=''
@@ -465,7 +478,8 @@ class WindowController:
                 pady=(8, 0),
             )
         else:
-            for row, widget in enumerate(widgets[1:], start=1):
+            normal_widgets = [getattr(self, name) for name in normal_names]
+            for row, widget in enumerate(normal_widgets[1:], start=1):
                 widget.grid(row=row, column=0, sticky='ew', pady=(8, 0))
         if self.reward_mode_var.get() != 'Randomizer Arsenal':
             self.arsenal_frame.grid_remove()
