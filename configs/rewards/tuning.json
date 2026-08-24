@@ -29,6 +29,7 @@
     "clone_policy": {
       "unit_id_prefix": "MORP",
       "weapon_id_prefix": "MORW",
+      "ui_description": "NOSTR:* Granted by Randomizer",
       "production_gate_keys": ["techlevel", "buildlimit", "prerequisite", "prerequisiteoverride", "prerequisite.negative", "prerequisite.stolentechs", "prerequisite.requiredtheaters", "factoryowners", "factoryowners.forbidden", "builtat"],
       "production_gate_prefixes": ["prerequisite.list"],
       "required_weapon_fields": ["Projectile", "Warhead"]

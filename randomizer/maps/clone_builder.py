@@ -6,6 +6,7 @@ from typing import Any
 from ._shared import (
     BUFF_TARGETS,
     CLONE_POLICY,
+    CLONE_UI_DESCRIPTION,
     ENGINEER_UNIT_IDS,
     LIMITED_HERO_UNIT_IDS,
     LOCKED_TECH_LEVEL,
@@ -1084,6 +1085,8 @@ def build_player_clone_sections(
             reserved_ids,
         )
         clone_values = dict(clone_source_values)
+        _remove_case_insensitive(clone_values, 'UIDescription')
+        clone_values['UIDescription'] = CLONE_UI_DESCRIPTION
         # Ares defaults GroupAs to the TechnoType's own ID. Generated MORP,
         # compact, and MORR identities would therefore form separate Type
         # Selection groups unless they explicitly reuse the native source's

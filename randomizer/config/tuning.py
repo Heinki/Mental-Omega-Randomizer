@@ -9,6 +9,9 @@ _CONFIG = load_static_config('rewards/tuning.json')
 
 BUFF_EFFECTS = _CONFIG['buff_effects']
 CLONE_POLICY = _CONFIG['clone_policy']
+CLONE_UI_DESCRIPTION = str(
+    CLONE_POLICY.get('ui_description', 'NOSTR:* Granted by Randomizer')
+)
 MISSION_ASSISTANCE = _CONFIG['mission_assistance']
 REWARD_PLANNING = _CONFIG['reward_planning']
 

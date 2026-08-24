@@ -108,7 +108,6 @@ TEMPLATE_VALUE_OVERRIDES = {
         # and passenger gate.
         'Name': 'Apocalypse Prototype',
         'UIName': 'NAME:COPA',
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
         'Image': 'COPA',
         'Armor': 'ex_apoc',
         'Strength': '3600',
@@ -121,7 +120,6 @@ TEMPLATE_VALUE_OVERRIDES = {
         # a stable reward identity.
         'Name': 'Gehenna Platform (Earthrise)',
         'UIName': 'NOSTR:Gehenna Platform (Earthrise)',
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
         'Image': 'YAHCRWO',
         'Primary': 'MiniAntaresBeam',
         'ElitePrimary': 'MiniAntaresBeamE',
@@ -143,21 +141,6 @@ TEMPLATE_VALUE_OVERRIDES = {
         'MinDebris': '4',
         'Weight': '3',
     },
-    'GRND': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'CAOS': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'BIKE': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'TERROR': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'CYCOM': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
     # Give each boss Brute a distinct ArtType so its manually colored cameo
     # does not overwrite the shared [BRUT] art section used by every variant.
     'BRUTM': {
@@ -168,15 +151,6 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'BRUTV': {
         'Image': 'BRUTV',
-    },
-    'ARND': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'STLN': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
-    },
-    'SCAV': {
-        'UIDescription': 'NOSTR:* Granted by Randomizer',
     },
     # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
     # prevent its self-targeted field weapon from firing reliably.
@@ -638,6 +612,7 @@ def main():
         NAVAL_UNIT_IDS,
         SPECIAL_REWARD_UNIT_IDS,
     )
+    from randomizer.config.tuning import CLONE_UI_DESCRIPTION
 
     selected_groups = set(args.group or OUTPUT_GROUPS)
     needs_reviewed_infantry = bool(selected_groups.intersection({'infantry', 'heroes'}))
@@ -743,6 +718,14 @@ def main():
             elif not any(key.lower() == 'image' and value for key, value in values.items()):
                 values['Image'] = source_id
             values.update(TEMPLATE_VALUE_OVERRIDES.get(source_id, {}))
+            description_key = next(
+                (
+                    key for key in values
+                    if str(key).lower() == 'uidescription'
+                ),
+                'UIDescription',
+            )
+            values[description_key] = CLONE_UI_DESCRIPTION
             removed_keys = TEMPLATE_VALUE_REMOVALS.get(source_id, ())
             for key in list(values):
                 if str(key).lower() in removed_keys:

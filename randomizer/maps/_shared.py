@@ -89,6 +89,7 @@ from randomizer.config.static import load_static_config
 from randomizer.config.tuning import (
     BUFF_EFFECTS,
     CLONE_POLICY,
+    CLONE_UI_DESCRIPTION,
     MISSION_ASSISTANCE,
     stacking_amount,
     stacking_multiplier,

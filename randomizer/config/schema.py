@@ -805,6 +805,11 @@ def _validate_tuning(sections, path):
     for key in ('unit_id_prefix', 'weapon_id_prefix'):
         if not _is_nonempty_string(clone_policy.get(key)):
             _invalid(f'Invalid clone policy {key!r}', path)
+    if (
+        'ui_description' in clone_policy
+        and not _is_nonempty_string(clone_policy['ui_description'])
+    ):
+        _invalid("Invalid clone policy 'ui_description'", path)
     for key in (
         'production_gate_keys',
         'production_gate_prefixes',

@@ -268,9 +268,11 @@ comma-separated ID list without copying the map's complete original value:
 ```
 
 `rewards/tuning.json` changes newly generated maps and reward plans. Clone ID
-prefixes and production-field lists are advanced engine policy: keep IDs within
-the Ares 24-character limit and retain `Projectile`/`Warhead` requirements
-unless a modified engine has been tested.
+prefixes, the `ui_description` shown on every Randomizer-owned unit, and
+production-field lists are advanced engine policy: keep IDs within the Ares
+24-character limit and retain `Projectile`/`Warhead` requirements unless a
+modified engine has been tested. Older files without `ui_description` retain
+the compatible `NOSTR:* Granted by Randomizer` default.
 
 Aid reward identity and display data live in `catalogue.json` under
 `aid_power_rewards` (`name`, `description`, `faction`, `superweapon`, `index`).
