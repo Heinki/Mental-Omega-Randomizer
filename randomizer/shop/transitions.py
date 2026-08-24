@@ -10,6 +10,7 @@ from .catalogue import (
     shop_entry_available,
 )
 from .economy import mission_reward, starting_run_coins
+from .mission_modifiers import mission_modifier_for_run_offer
 from .meta import validate_starting_loadout
 from .model import (
     CurrencyReward,
@@ -46,6 +47,9 @@ class VictoryTransition:
 class FailureTransition:
     run: ShopRun
     changed: bool
+    profile: ShopProfile | None = None
+    revived: bool = False
+    salvaged_run_coins: int = 0
 
 
 def victory_key(run_id, stage, mission_code):
@@ -83,6 +87,8 @@ def start_new_run(
     ap_entitlement_ids=(),
     ap_identity=None,
     modifiers=(),
+    starting_draft_buffs=(),
+    maximum_extra_units=None,
     config: ShopModeConfig = SHOP_CONFIG,
 ):
     run_id = str(run_id or '')
@@ -102,6 +108,7 @@ def start_new_run(
         starter_tech_ids=starter_tech_ids,
         selected_reward_ids=selected_reward_ids,
         entitled_reward_ids=entitlements,
+        maximum_extra_units=maximum_extra_units,
         config=config,
     )
     if not loadout.allowed:
@@ -140,6 +147,7 @@ def start_new_run(
     updated_profile = replace(
         profile,
         lifetime_runs_started=profile.lifetime_runs_started + 1,
+        salvaged_run_coins=0,
     )
     run = ShopRun(
         run_id=run_id,
@@ -147,10 +155,13 @@ def start_new_run(
         status=RunStatus.ACTIVE,
         stage=1,
         run_length=config.run_length,
-        run_coins=starting_run_coins(
-            starting_capital_level=profile.upgrade_level('starting_capital'),
-            modifiers=modifier_ids,
-            config=config,
+        run_coins=min(
+            config.maximum_starting_ore,
+            starting_run_coins(
+                starting_capital_level=profile.upgrade_level('starting_capital'),
+                modifiers=modifier_ids,
+                config=config,
+            ) + profile.salvaged_run_coins,
         ),
         campaign_filter=str(campaign_filter or 'All Campaigns'),
         reward_mode=str(reward_mode or 'Standard'),
@@ -170,6 +181,7 @@ def start_new_run(
         )),
         selected_permanent_units=loadout.selected_reward_ids,
         permanent_buffs_snapshot=tuple(permanent_buffs),
+        starting_draft_buffs=tuple(starting_draft_buffs),
         ap_identity=str(ap_identity or '') or None,
         ap_entitlements_snapshot=ap_entitlements,
         mission_offers=offers,
@@ -386,6 +398,14 @@ def apply_mission_victory(
             'victory_run_coin_bonus'
         ),
         modifiers=run.modifiers,
+        mission_modifier=mission_modifier_for_run_offer(
+            run,
+            offer,
+            challenge_slots=profile.upgrade_level(
+                'permanent_challenge_slots'
+            ),
+        ),
+        challenge_hunter_level=profile.upgrade_level('challenge_hunter'),
         config=config,
     )
     key = victory_key(run.run_id, run.stage, mission_code)
@@ -418,11 +438,20 @@ def apply_mission_victory(
     )
 
 
-def apply_mission_failure(run, mission_code):
+def apply_mission_failure(
+    run,
+    mission_code,
+    *,
+    profile=None,
+    maximum_emergency_revivals=0,
+    revival_offers=(),
+    salvage_run_coins=0,
+    maximum_salvaged_run_coins=0,
+):
     mission_code = str(mission_code or '').upper()
     if run.status is RunStatus.FAILED:
         if run.failed_mission_code == mission_code:
-            return FailureTransition(run, False)
+            return FailureTransition(run, False, profile)
         raise ShopTransitionError('Shop run already failed on another mission')
     if run.status is not RunStatus.ACTIVE:
         raise ShopTransitionError('Only an active Shop run can record failure')
@@ -430,13 +459,39 @@ def apply_mission_failure(run, mission_code):
         raise ShopTransitionError(
             f'Mission {mission_code!r} is not committed for current Shop stage'
         )
+    revival_offers = tuple(revival_offers)
+    if run.emergency_revivals_used < max(0, int(maximum_emergency_revivals)):
+        if not revival_offers or any(
+            not isinstance(offer, MissionOffer) for offer in revival_offers
+        ):
+            raise ShopTransitionError(
+                'Emergency Revival requires replacement mission offers'
+            )
+        revived = replace(
+            run,
+            emergency_revivals_used=run.emergency_revivals_used + 1,
+            mission_offers=revival_offers,
+            selected_mission_code=None,
+            mission_committed=False,
+            assisted_mission_code=None,
+        )
+        return FailureTransition(revived, True, profile, True, 0)
     failed = replace(
         run,
         status=RunStatus.FAILED,
         failed_mission_code=mission_code,
         failed_stage=run.stage,
     )
-    return FailureTransition(failed, True)
+    salvage = min(
+        max(0, int(maximum_salvaged_run_coins)),
+        run.run_coins,
+        max(0, int(salvage_run_coins)),
+    )
+    updated_profile = (
+        replace(profile, salvaged_run_coins=salvage)
+        if profile is not None else None
+    )
+    return FailureTransition(failed, True, updated_profile, False, salvage)
 
 
 def abandon_run(run):

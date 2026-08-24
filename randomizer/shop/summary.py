@@ -10,6 +10,8 @@ def reward_breakdown_lines(
     *,
     victory_coin_bonus_level=0,
     modifiers=(),
+    mission_modifier=None,
+    challenge_hunter_level=0,
     config=SHOP_CONFIG,
 ):
     definition = config.mission_rewards[mission_class]
@@ -17,6 +19,8 @@ def reward_breakdown_lines(
         mission_class,
         victory_coin_bonus_level=victory_coin_bonus_level,
         modifiers=modifiers,
+        mission_modifier=mission_modifier,
+        challenge_hunter_level=challenge_hunter_level,
         config=config,
     )
     lines = [
@@ -27,12 +31,29 @@ def reward_breakdown_lines(
         lines.append(
             f'Modified mission Ore: +{reward.base_run_coins}'
         )
-    if reward.meta_coins != definition.meta_coins:
-        lines.append(f'Modified Mental Coins: +{reward.meta_coins}')
+    modified_meta = (
+        reward.meta_coins
+        - reward.mission_bonus_meta_coins
+        - reward.challenge_hunter_meta_coins
+    )
+    if modified_meta != definition.meta_coins:
+        lines.append(f'Modified Mental Coins: +{modified_meta}')
     if reward.victory_bonus_run_coins:
         lines.append(
             'Permanent Victory Bonus: '
             f'+{reward.victory_bonus_run_coins} Ore'
+        )
+    if mission_modifier is not None:
+        lines.append(
+            f'{mission_modifier.title}: '
+            f'+{reward.mission_bonus_run_coins} Ore, '
+            f'+{reward.mission_bonus_meta_coins} Mental Coins'
+        )
+    if reward.challenge_hunter_run_coins or reward.challenge_hunter_meta_coins:
+        lines.append(
+            'Challenge Hunter: '
+            f'+{reward.challenge_hunter_run_coins} Ore, '
+            f'+{reward.challenge_hunter_meta_coins} Mental Coins'
         )
     lines.append(
         f'Total: +{reward.run_coins} Ore, '
@@ -58,6 +79,10 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
         f'Persistent Mental Coins: {profile.meta_coins}',
         f'Run purchases: {sum(item.quantity for item in run.run_purchases)}',
         f'Buff stacks purchased: {sum(item.stacks for item in run.run_buffs)}',
+        f'Free starting draft buffs: '
+        f'{sum(item.stacks for item in run.starting_draft_buffs)}',
+        f'Free Buff Tokens used: {run.free_buff_tokens_used}',
+        f'Emergency Revivals used: {run.emergency_revivals_used}',
         'Modifiers: ' + (
             ', '.join(
                 config.modifiers[item].display_name for item in run.modifiers
@@ -73,6 +98,11 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
                 run.failed_mission_code, run.failed_mission_code
             )
             lines.append(f'Failed at stage {run.failed_stage}: {title}')
+        if profile.salvaged_run_coins:
+            lines.append(
+                f'Recovery Salvage banked: {profile.salvaged_run_coins} Ore '
+                'for the next run.'
+            )
     if run.completed_missions:
         lines.append('Completed missions:')
         lines.extend(

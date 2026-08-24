@@ -6,6 +6,7 @@
       "run_length": 10,
       "mission_offer_count": 3,
       "unit_inventory_size": 8,
+      "power_inventory_size": 6,
       "max_selected_permanent_units": 5,
       "starting_run_coins": 5,
       "maximum_starting_ore": 50,
@@ -150,12 +151,95 @@
           "run_coins_per_level": 1
         }
       },
+      "mission_starting_credits": {
+        "display_name": "Mission Starting Credits",
+        "max_level": 20,
+        "prices": [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+        "effects": {
+          "credits_per_level": 1000
+        }
+      },
       "shop_discount": {
         "display_name": "Shop Discount",
         "max_level": 5,
         "prices": [15, 30, 50, 75, 110],
         "effects": {
-          "percent_per_level": 3
+          "ore_per_level": 1
+        }
+      },
+      "extra_shop_stock": {
+        "display_name": "Extra Shop Stock",
+        "max_level": 5,
+        "prices": [15, 30, 50, 75, 110],
+        "effects": {
+          "units_per_level": 1,
+          "powers_per_level": 1
+        }
+      },
+      "expanded_loadout": {
+        "display_name": "Expanded Loadout",
+        "max_level": 3,
+        "prices": [25, 50, 90],
+        "effects": {
+          "slots_per_level": 1
+        }
+      },
+      "emergency_revival": {
+        "display_name": "Emergency Revival",
+        "max_level": 1,
+        "prices": [100],
+        "effects": {
+          "revivals_per_run": 1
+        }
+      },
+      "free_buff_token": {
+        "display_name": "Free Buff Token",
+        "max_level": 3,
+        "prices": [30, 60, 100],
+        "effects": {
+          "tokens_per_level": 1
+        }
+      },
+      "challenge_hunter": {
+        "display_name": "Challenge Hunter",
+        "max_level": 5,
+        "prices": [20, 35, 55, 80, 110],
+        "effects": {
+          "run_coins_per_level": 1,
+          "meta_coins_every_levels": 2
+        }
+      },
+      "recovery_salvage": {
+        "display_name": "Recovery Salvage",
+        "max_level": 5,
+        "prices": [20, 35, 55, 80, 110],
+        "effects": {
+          "ore_per_level": 5,
+          "maximum_saved_ore": 25
+        }
+      },
+      "starting_buff_draft": {
+        "display_name": "Starting Buff Draft",
+        "max_level": 3,
+        "prices": [25, 50, 90],
+        "effects": {
+          "buffs_per_level": 1
+        }
+      },
+      "discount_specialization": {
+        "display_name": "Discount Specialization",
+        "max_level": 5,
+        "prices": [20, 35, 55, 80, 110],
+        "effects": {
+          "ore_per_level": 1
+        }
+      },
+      "permanent_challenge_slots": {
+        "display_name": "Permanent Challenge Slots",
+        "max_level": 2,
+        "prices": [50, 100],
+        "effects": {
+          "slots_per_level": 1
         }
       }
     },
@@ -193,7 +277,7 @@
       },
       "blind_choice": {
         "display_name": "Blind Choice",
-        "description": "One mission offer hides its exact reward until selected.",
+        "description": "One mission offer hides its exact reward until launched.",
         "effects": {
           "hidden_offer_count": 1
         }

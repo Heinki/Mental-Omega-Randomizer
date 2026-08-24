@@ -20,6 +20,7 @@ def active_shop_reward_ids(run):
         *(buff.reward_id for buff in run.permanent_buffs_snapshot),
         *(purchase.reward_id for purchase in run.run_purchases),
         *(buff.reward_id for buff in run.run_buffs),
+        *(buff.reward_id for buff in run.starting_draft_buffs),
     ]
     return tuple(dict.fromkeys(str(reward_id) for reward_id in reward_ids))
 
@@ -37,6 +38,8 @@ def active_shop_rewards(run):
     for purchase in run.run_purchases:
         reward_ids.extend([purchase.reward_id] * purchase.quantity)
     for buff in run.run_buffs:
+        reward_ids.extend([buff.reward_id] * buff.stacks)
+    for buff in run.starting_draft_buffs:
         reward_ids.extend([buff.reward_id] * buff.stacks)
     return tuple(canonical_reward_for_id(reward_id) for reward_id in reward_ids)
 

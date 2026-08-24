@@ -31,6 +31,8 @@ def apply_color_mode(self):
         'Reroll': '#76e3ea' if self.dark_mode_var.get() else '#096b72',
         'Reward': '#f2cc60' if self.dark_mode_var.get() else '#825800',
         'Help': '#79c0ff' if self.dark_mode_var.get() else '#0550ae',
+        'PlayerBuff': '#7ee787' if self.dark_mode_var.get() else '#1a7f37',
+        'EnemyBuff': '#ff7b72' if self.dark_mode_var.get() else '#cf222e',
     }
     for name, color in shop_colors.items():
         style.configure(

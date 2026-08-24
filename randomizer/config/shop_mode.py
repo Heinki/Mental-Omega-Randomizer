@@ -13,6 +13,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'run_length': (1, 100),
         'mission_offer_count': (1, 10),
         'unit_inventory_size': (1, 100),
+        'power_inventory_size': (1, 100),
         'max_selected_permanent_units': (0, 100),
         'starting_run_coins': (0, 1000000),
         'maximum_starting_ore': (1, 1000000),
@@ -126,11 +127,23 @@ def validate_shop_mode_config(sections, path, invalid):
             invalid(f'Invalid Shop Mode {section_name}', path)
 
     required_upgrades = {
-        'mission_reroll': 'rerolls_per_level',
-        'mission_difficulty_assist': 'assists_per_level',
-        'victory_run_coin_bonus': 'run_coins_per_level',
-        'starting_capital': 'run_coins_per_level',
-        'shop_discount': 'percent_per_level',
+        'mission_reroll': ('rerolls_per_level',),
+        'mission_difficulty_assist': ('assists_per_level',),
+        'victory_run_coin_bonus': ('run_coins_per_level',),
+        'starting_capital': ('run_coins_per_level',),
+        'mission_starting_credits': ('credits_per_level',),
+        'shop_discount': ('ore_per_level',),
+        'extra_shop_stock': ('units_per_level', 'powers_per_level'),
+        'expanded_loadout': ('slots_per_level',),
+        'emergency_revival': ('revivals_per_run',),
+        'free_buff_token': ('tokens_per_level',),
+        'challenge_hunter': (
+            'run_coins_per_level', 'meta_coins_every_levels'
+        ),
+        'recovery_salvage': ('ore_per_level', 'maximum_saved_ore'),
+        'starting_buff_draft': ('buffs_per_level',),
+        'discount_specialization': ('ore_per_level',),
+        'permanent_challenge_slots': ('slots_per_level',),
     }
     upgrades = sections['permanent_upgrades']
     if not set(required_upgrades).issubset(upgrades):
@@ -157,16 +170,17 @@ def validate_shop_mode_config(sections, path, invalid):
             or not isinstance(effects, dict)
         ):
             invalid(f'Invalid Shop Mode upgrade {upgrade_id!r}', path)
-        effect_key = required_upgrades.get(upgrade_id)
-        if effect_key is not None and (
-            not isinstance(effects.get(effect_key), int)
-            or isinstance(effects.get(effect_key), bool)
-            or effects[effect_key] < 1
-        ):
-            invalid(
-                f'Invalid Shop Mode upgrade effect {upgrade_id}.{effect_key}',
-                path,
-            )
+        for effect_key in required_upgrades.get(upgrade_id, ()):
+            if (
+                not isinstance(effects.get(effect_key), int)
+                or isinstance(effects.get(effect_key), bool)
+                or effects[effect_key] < 1
+            ):
+                invalid(
+                    f'Invalid Shop Mode upgrade effect '
+                    f'{upgrade_id}.{effect_key}',
+                    path,
+                )
 
     allowed_modifier_effects = {
         'starting_run_coins_flat',

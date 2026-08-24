@@ -64,6 +64,7 @@ def load_shop_mode_config() -> ShopModeConfig:
         run_length=int(settings['run_length']),
         mission_offer_count=int(settings['mission_offer_count']),
         unit_inventory_size=int(settings['unit_inventory_size']),
+        power_inventory_size=int(settings['power_inventory_size']),
         max_selected_permanent_units=int(
             settings['max_selected_permanent_units']
         ),

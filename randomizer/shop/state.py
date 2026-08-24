@@ -209,6 +209,9 @@ def normalize_shop_profile(document=None, *, config=SHOP_CONFIG):
         permanent_unit_unlocks=unlocks,
         permanent_buffs=permanent_buffs,
         permanent_upgrades=upgrades,
+        salvaged_run_coins=_nonnegative_int(
+            document.get('salvaged_run_coins'), 'salvaged_run_coins'
+        ),
         archipelago_profiles=archipelago_profiles,
     )
 
@@ -402,6 +405,19 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
             'run_buffs',
             'stacks',
             BuffPurchase,
+        ),
+        starting_draft_buffs=_purchase_records(
+            document.get('starting_draft_buffs'),
+            'starting_draft_buffs',
+            'stacks',
+            BuffPurchase,
+        ),
+        free_buff_tokens_used=_nonnegative_int(
+            document.get('free_buff_tokens_used'), 'free_buff_tokens_used'
+        ),
+        emergency_revivals_used=_nonnegative_int(
+            document.get('emergency_revivals_used'),
+            'emergency_revivals_used',
         ),
         mission_offers=offers,
         selected_mission_code=selected_mission,

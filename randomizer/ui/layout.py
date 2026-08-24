@@ -623,16 +623,23 @@ def _build_right_panel(self, main_frame):
     ).grid(row=10, column=0, columnspan=2, sticky='w')
     ttk.Label(
         shop_settings_frame,
-        text=(
-            'Choose up to 5 permanent or AP-entitled extra units. Mandatory '
-            'Tier 1 starters are added automatically.'
-        ),
+        textvariable=self.shop_loadout_help_var,
         style='Muted.TLabel',
         wraplength=720,
     ).grid(row=11, column=0, columnspan=2, sticky='ew', pady=(2, 6))
+    shop_loadout_search = ttk.Frame(shop_settings_frame)
+    shop_loadout_search.grid(
+        row=12, column=0, columnspan=2, sticky='ew', pady=(0, 6)
+    )
+    ttk.Label(shop_loadout_search, text='Search permanent loadout:').pack(
+        side='left'
+    )
+    ttk.Entry(
+        shop_loadout_search, textvariable=self.shop_setup_search_var
+    ).pack(side='left', fill='x', expand=True, padx=(6, 0))
     shop_loadout_frame = ttk.Frame(shop_settings_frame)
     shop_loadout_frame.grid(
-        row=12, column=0, columnspan=2, sticky='nsew'
+        row=13, column=0, columnspan=2, sticky='nsew'
     )
     self.shop_loadout_select_tree = _tree(
         shop_loadout_frame,
@@ -646,12 +653,60 @@ def _build_right_panel(self, main_frame):
         height=5,
         cameos=True,
     )
+    self.shop_loadout_select_tree.bind(
+        '<<TreeviewSelect>>', self.capture_shop_setup_selection
+    )
+
+    permanent_setup_frame = ttk.LabelFrame(
+        shop_settings_frame, text='Permanent Run Bonuses', padding=8
+    )
+    permanent_setup_frame.grid(
+        row=14, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+    )
+    permanent_setup_frame.columnconfigure(1, weight=1)
+    ttk.Label(permanent_setup_frame, text='Starting Buff Draft').grid(
+        row=0, column=0, sticky='w', padx=(0, 12), pady=2
+    )
+    self.shop_starting_buff_draft_combo = ttk.Combobox(
+        permanent_setup_frame,
+        state='readonly',
+        textvariable=self.shop_starting_buff_draft_var,
+        values=[label for label, _value in self.shop_buff_draft_options],
+    )
+    self.shop_starting_buff_draft_combo.grid(row=0, column=1, sticky='ew')
+    ttk.Label(permanent_setup_frame, text='Discount specialization').grid(
+        row=1, column=0, sticky='w', padx=(0, 12), pady=2
+    )
+    self.shop_discount_specialization_combo = ttk.Combobox(
+        permanent_setup_frame,
+        state='readonly',
+        textvariable=self.shop_discount_specialization_var,
+        values=self.shop_discount_specialization_options,
+    )
+    self.shop_discount_specialization_combo.grid(row=1, column=1, sticky='ew')
+    for combo in (
+        self.shop_starting_buff_draft_combo,
+        self.shop_discount_specialization_combo,
+    ):
+        combo.bind(
+            '<<ComboboxSelected>>',
+            lambda _event: self.save_current_launcher_config(),
+            add='+',
+        )
+        combo.bind('<MouseWheel>', self.on_settings_control_mousewheel, add='+')
+    ttk.Label(
+        permanent_setup_frame,
+        textvariable=self.shop_permanent_setup_help_var,
+        style='Shop.Help.TLabel',
+        justify='left',
+        wraplength=720,
+    ).grid(row=2, column=0, columnspan=2, sticky='ew', pady=(6, 0))
 
     modifier_frame = ttk.LabelFrame(
         shop_settings_frame, text='Optional Run Modifiers', padding=8
     )
     modifier_frame.grid(
-        row=13, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+        row=15, column=0, columnspan=2, sticky='ew', pady=(10, 0)
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
     ttk.Label(
@@ -696,7 +751,7 @@ def _build_right_panel(self, main_frame):
         style='Launch.TButton',
     )
     self.shop_setup_start_button.grid(
-        row=14, column=0, columnspan=2, sticky='ew', pady=(12, 0)
+        row=16, column=0, columnspan=2, sticky='ew', pady=(12, 0)
     )
     shop_settings_frame.grid_remove()
 

@@ -85,7 +85,9 @@ def validate_run_purchase(
     return PurchaseValidation(PurchaseResult.OK, reward_id, price)
 
 
-def apply_validated_run_purchase(run, reward, validation):
+def apply_validated_run_purchase(
+    run, reward, validation, *, consume_free_buff_token=False
+):
     """Return updated immutable run after a successful validation."""
     if not validation.allowed:
         return run
@@ -106,6 +108,10 @@ def apply_validated_run_purchase(run, reward, validation):
             run,
             run_coins=run.run_coins - validation.cost,
             run_buffs=run_buffs,
+            free_buff_tokens_used=(
+                run.free_buff_tokens_used + 1
+                if consume_free_buff_token else run.free_buff_tokens_used
+            ),
         )
     existing = {item.reward_id: item.quantity for item in run.run_purchases}
     existing[entry.reward_id] = existing.get(entry.reward_id, 0) + 1

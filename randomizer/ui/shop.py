@@ -70,6 +70,7 @@ def build_shop_tab(self, workspace_tabs):
         name_var = tk.StringVar(value='No mission')
         detail_var = tk.StringVar(value='')
         reward_var = tk.StringVar(value='')
+        effect_var = tk.StringVar(value='')
         ttk.Label(card, textvariable=name_var, font=('Segoe UI', 10, 'bold')).grid(
             row=0, column=0, sticky='w'
         )
@@ -79,12 +80,14 @@ def build_shop_tab(self, workspace_tabs):
         ttk.Label(card, textvariable=reward_var, style='Shop.Reward.TLabel').grid(
             row=2, column=0, sticky='w', pady=(3, 7)
         )
-        button = ttk.Button(
+        effect_label = ttk.Label(
             card,
-            text='Select',
-            command=lambda selected=index: self.select_shop_mission(selected),
+            textvariable=effect_var,
+            style='Shop.Help.TLabel',
+            wraplength=330,
+            justify='left',
         )
-        button.grid(row=3, column=0, sticky='ew')
+        effect_label.grid(row=3, column=0, sticky='ew', pady=(0, 7))
         launch_button = ttk.Button(
             card,
             text='Launch This Mission',
@@ -92,7 +95,7 @@ def build_shop_tab(self, workspace_tabs):
             state='disabled',
             style='Launch.TButton',
         )
-        launch_button.grid(row=4, column=0, sticky='ew', pady=(5, 0))
+        launch_button.grid(row=4, column=0, sticky='ew')
         mission_actions = ttk.Frame(card)
         mission_actions.grid(row=5, column=0, sticky='ew', pady=(5, 0))
         mission_actions.columnconfigure(0, weight=1)
@@ -118,7 +121,8 @@ def build_shop_tab(self, workspace_tabs):
             'name': name_var,
             'detail': detail_var,
             'reward': reward_var,
-            'button': button,
+            'effect': effect_var,
+            'effect_label': effect_label,
             'launch_button': launch_button,
             'reroll_button': reroll_button,
             'ease_button': ease_button,
@@ -270,14 +274,23 @@ def build_shop_tab(self, workspace_tabs):
         state='disabled',
     )
     self.shop_loadout_upgrade_button.grid(row=0, column=1, sticky='e')
+    loadout_search = ttk.Frame(loadout_help)
+    loadout_search.grid(
+        row=1, column=0, columnspan=2, sticky='ew', pady=(6, 0)
+    )
+    ttk.Label(loadout_search, text='Search:').pack(side='left')
+    ttk.Entry(
+        loadout_search, textvariable=self.shop_loadout_search_var
+    ).pack(side='left', fill='x', expand=True, padx=(6, 0))
     loadout_tree_frame = ttk.Frame(loadout)
     loadout_tree_frame.grid(row=1, column=0, sticky='nsew')
     self.shop_loadout_tree = _tree(
         loadout_tree_frame,
-        ('source', 'item', 'upgrades'),
+        ('source', 'item', 'buffs', 'upgrades'),
         (
             ('source', 'Source', 170),
             ('item', 'Active Item', 380),
+            ('buffs', 'Attached Buffs', 150),
             ('upgrades', 'Upgrades', 150),
         ),
         cameos=True,
@@ -296,9 +309,18 @@ def build_shop_tab(self, workspace_tabs):
     permanent = ttk.Frame(panels, padding=8)
     panels.add(permanent, text='Permanent Unlocks')
     permanent.columnconfigure(0, weight=1)
-    permanent.rowconfigure(0, weight=1)
+    permanent.rowconfigure(1, weight=1)
+    permanent_search = ttk.Frame(permanent)
+    permanent_search.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+    permanent_search.columnconfigure(1, weight=1)
+    ttk.Label(permanent_search, text='Search units, buffs, upgrades:').grid(
+        row=0, column=0, sticky='w', padx=(0, 6)
+    )
+    ttk.Entry(
+        permanent_search, textvariable=self.shop_permanent_search_var
+    ).grid(row=0, column=1, sticky='ew')
     permanent_tabs = ttk.Notebook(permanent, style='Unlocks.TNotebook')
-    permanent_tabs.grid(row=0, column=0, sticky='nsew')
+    permanent_tabs.grid(row=1, column=0, sticky='nsew')
 
     permanent_units = ttk.Frame(permanent_tabs, padding=8)
     permanent_tabs.add(permanent_units, text='Units')
@@ -496,4 +518,13 @@ def build_shop_tab(self, workspace_tabs):
     )
 
     self.shop_search_var.trace_add('write', self.refresh_shop_catalogue)
+    self.shop_loadout_search_var.trace_add(
+        'write', lambda *_args: self._refresh_shop_loadout()
+    )
+    self.shop_setup_search_var.trace_add(
+        'write', lambda *_args: self._refresh_shop_setup()
+    )
+    self.shop_permanent_search_var.trace_add(
+        'write', lambda *_args: self._refresh_permanent_shop()
+    )
     self.sync_shop_workspace()

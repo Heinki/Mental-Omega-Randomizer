@@ -20,8 +20,7 @@ from .config import SHOP_CONFIG
 from .economy import (
     permanent_buff_price,
     permanent_unit_price,
-    run_buff_price,
-    run_unit_price,
+    run_reward_price,
 )
 from .meta import (
     purchase_permanent_unit as apply_permanent_unit_purchase,
@@ -194,18 +193,27 @@ class ShopProgressionService:
                 run_coins=run.run_coins,
                 shop_eligible=False,
             )
-        price_function = (
-            run_unit_price
-            if entry.reward_type in {
-                ShopRewardType.UNIT_ACCESS,
-                ShopRewardType.POWER_ACCESS,
-            }
-            else run_buff_price
+        buff_purchase = entry.reward_type in {
+            ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF
+        }
+        token_definition = SHOP_CONFIG.permanent_upgrades['free_buff_token']
+        token_capacity = (
+            profile.upgrade_level('free_buff_token')
+            * int(token_definition.effects['tokens_per_level'])
         )
-        price = price_function(
-            entry.tier or 'tier_1',
+        use_free_token = bool(
+            buff_purchase and run.free_buff_tokens_used < token_capacity
+        )
+        price = 0 if use_free_token else run_reward_price(
+            entry,
             shop_discount_level=profile.upgrade_level('shop_discount'),
             modifiers=run.modifiers,
+            specialization=run.reward_settings.get(
+                'shop_discount_specialization', ''
+            ),
+            specialization_level=profile.upgrade_level(
+                'discount_specialization'
+            ),
         )
         owned = active_shop_reward_ids(run)
         stacks = next(
@@ -217,6 +225,12 @@ class ShopProgressionService:
         ) + next(
             (
                 item.stacks for item in run.permanent_buffs_snapshot
+                if item.reward_id == entry.reward_id
+            ),
+            0,
+        ) + next(
+            (
+                item.stacks for item in run.starting_draft_buffs
                 if item.reward_id == entry.reward_id
             ),
             0,
@@ -243,7 +257,12 @@ class ShopProgressionService:
         )
         if validation.allowed:
             self.repository.save_run(
-                apply_validated_run_purchase(run, reward, validation)
+                apply_validated_run_purchase(
+                    run,
+                    reward,
+                    validation,
+                    consume_free_buff_token=use_free_token,
+                )
             )
         return validation
 
@@ -309,13 +328,42 @@ class ShopProgressionService:
             )
         return transition
 
-    def record_failure(self, mission_code):
-        run = self.repository.load_run()
+    def record_failure(self, mission_code, *, revival_offers=()):
+        profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
-        transition = apply_mission_failure(run, mission_code)
+        revival_definition = SHOP_CONFIG.permanent_upgrades[
+            'emergency_revival'
+        ]
+        salvage_definition = SHOP_CONFIG.permanent_upgrades[
+            'recovery_salvage'
+        ]
+        transition = apply_mission_failure(
+            run,
+            mission_code,
+            profile=profile,
+            maximum_emergency_revivals=(
+                profile.upgrade_level('emergency_revival')
+                * int(revival_definition.effects['revivals_per_run'])
+            ),
+            revival_offers=revival_offers,
+            salvage_run_coins=(
+                profile.upgrade_level('recovery_salvage')
+                * int(salvage_definition.effects['ore_per_level'])
+            ),
+            maximum_salvaged_run_coins=int(
+                salvage_definition.effects['maximum_saved_ore']
+            ),
+        )
         if transition.changed:
-            self.repository.save_run(transition.run)
+            if transition.profile is not None:
+                self.repository.commit(
+                    transition.profile,
+                    transition.run,
+                    f'{run.run_id}:{run.stage}:{mission_code}:failure',
+                )
+            else:
+                self.repository.save_run(transition.run)
         return transition
 
     def give_up_run(self):

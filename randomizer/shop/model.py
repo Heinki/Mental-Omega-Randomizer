@@ -54,6 +54,10 @@ class CurrencyReward:
     meta_coins: int = 0
     base_run_coins: int = 0
     victory_bonus_run_coins: int = 0
+    mission_bonus_run_coins: int = 0
+    mission_bonus_meta_coins: int = 0
+    challenge_hunter_run_coins: int = 0
+    challenge_hunter_meta_coins: int = 0
 
 
 @dataclass(frozen=True)
@@ -93,6 +97,7 @@ class ShopModeConfig:
     run_length: int
     mission_offer_count: int
     unit_inventory_size: int
+    power_inventory_size: int
     max_selected_permanent_units: int
     starting_run_coins: int
     maximum_starting_ore: int
@@ -152,6 +157,7 @@ class ShopProfile:
     permanent_unit_unlocks: tuple[str, ...] = ()
     permanent_buffs: tuple[BuffPurchase, ...] = ()
     permanent_upgrades: Mapping[str, int] = field(default_factory=dict)
+    salvaged_run_coins: int = 0
     archipelago_profiles: Mapping[str, Any] = field(default_factory=dict)
 
     def upgrade_level(self, upgrade_id: str) -> int:
@@ -168,6 +174,7 @@ class ShopProfile:
             'permanent_unit_unlocks': list(self.permanent_unit_unlocks),
             'permanent_buffs': [item.to_dict() for item in self.permanent_buffs],
             'permanent_upgrades': dict(self.permanent_upgrades),
+            'salvaged_run_coins': self.salvaged_run_coins,
             'archipelago_profiles': deepcopy(dict(self.archipelago_profiles)),
         }
 
@@ -196,6 +203,9 @@ class ShopRun:
     ap_entitlements_snapshot: tuple[str, ...] = ()
     run_purchases: tuple[PurchaseRecord, ...] = ()
     run_buffs: tuple[BuffPurchase, ...] = ()
+    starting_draft_buffs: tuple[BuffPurchase, ...] = ()
+    free_buff_tokens_used: int = 0
+    emergency_revivals_used: int = 0
     mission_offers: tuple[MissionOffer, ...] = ()
     selected_mission_code: str | None = None
     mission_committed: bool = False
@@ -231,6 +241,11 @@ class ShopRun:
             'ap_entitlements_snapshot': list(self.ap_entitlements_snapshot),
             'run_purchases': [item.to_dict() for item in self.run_purchases],
             'run_buffs': [item.to_dict() for item in self.run_buffs],
+            'starting_draft_buffs': [
+                item.to_dict() for item in self.starting_draft_buffs
+            ],
+            'free_buff_tokens_used': self.free_buff_tokens_used,
+            'emergency_revivals_used': self.emergency_revivals_used,
             'mission_offers': [item.to_dict() for item in self.mission_offers],
             'selected_mission_code': self.selected_mission_code,
             'mission_committed': self.mission_committed,
