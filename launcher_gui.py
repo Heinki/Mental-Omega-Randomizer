@@ -699,7 +699,11 @@ def run_self_check():
         for unit_id, values in installed_by_upper.items():
             if unit_id not in BUFF_TARGETS:
                 continue
-            for key in ('deploysinto', 'undeploysinto'):
+            # Every type-changing deployment must stay inside one linked
+            # player-clone graph. Convert.Deploy powers fire-mode toggles such
+            # as Speeder Trike; omitting it here let those units convert to a
+            # native form and lose their randomizer buffs on the return trip.
+            for key in ('convert.deploy', 'deploysinto', 'undeploysinto'):
                 target_id = str(values.get(key, '') or '').upper()
                 if target_id in {'', 'NONE', '<NONE>'}:
                     continue

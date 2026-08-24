@@ -2828,6 +2828,193 @@
           "weapons": {}
         }
       },
+      "ETNK": {
+        "ETNK2": {
+          "category": "units",
+          "weapons": {
+            "BulldogPainter": {
+              "range": 9
+            }
+          }
+        }
+      },
+      "BASS": {
+        "BASS2": {
+          "category": "units",
+          "weapons": {
+            "AthenaStrike": {
+              "damage": 175,
+              "rof": 320,
+              "range": 15
+            },
+            "AthenaStrikeE": {
+              "damage": 175,
+              "rof": 320,
+              "range": 15
+            }
+          }
+        }
+      },
+      "SIREN": {
+        "SIREN2": {
+          "category": "units",
+          "weapons": {}
+        }
+      },
+      "AERO": {
+        "AERO2": {
+          "category": "units",
+          "weapons": {
+            "AeroblazeFake": {
+              "range": 9
+            },
+            "AeroblazeSniper": {
+              "damage": 70,
+              "rof": 70,
+              "range": 14.5
+            },
+            "AeroblazeSniperE": {
+              "damage": 70,
+              "rof": 70,
+              "range": 14.5
+            }
+          }
+        }
+      },
+      "CHRTNK": {
+        "CHRTNK2": {
+          "category": "units",
+          "weapons": {
+            "NeutronCannon": {
+              "damage": 1000,
+              "rof": 490,
+              "range": 9
+            },
+            "NeutronCannonE": {
+              "damage": 1250,
+              "rof": 490,
+              "range": 9
+            }
+          }
+        }
+      },
+      "DRON": {
+        "DRON2": {
+          "category": "units",
+          "weapons": {
+            "DroneJump": {
+              "damage": 50,
+              "rof": 60,
+              "range": 2.73
+            },
+            "DroneScratch": {
+              "damage": 75,
+              "rof": 60,
+              "range": 1.83
+            }
+          }
+        }
+      },
+      "SUB": {
+        "SUB2": {
+          "category": "units",
+          "weapons": {
+            "SuperSubTorpedo": {
+              "damage": 150,
+              "rof": 250,
+              "range": 10
+            },
+            "SuperSubTorpedoE": {
+              "damage": 150,
+              "rof": 250,
+              "range": 10
+            }
+          }
+        }
+      },
+      "BURA": {
+        "BURA2": {
+          "category": "units",
+          "weapons": {
+            "BuratinoStrikeSpread": {
+              "damage": 60,
+              "rof": 150,
+              "range": 15
+            },
+            "BuratinoStrikeSpreadE": {
+              "damage": 60,
+              "rof": 150,
+              "range": 15
+            }
+          }
+        }
+      },
+      "TRIKE": {
+        "TRIKE2": {
+          "category": "units",
+          "weapons": {
+            "SpeederStrikeB": {
+              "damage": 28,
+              "rof": 30,
+              "range": 10
+            },
+            "SpeederStrikeBE": {
+              "damage": 28,
+              "rof": 30,
+              "range": 10
+            }
+          }
+        }
+      },
+      "DEVO": {
+        "DEVOD": {
+          "category": "units",
+          "weapons": {
+            "ColossusAAFake": {
+              "range": 11
+            },
+            "ColossusAA": {
+              "damage": 16,
+              "range": 11
+            }
+          }
+        }
+      },
+      "SHADOW": {
+        "SHADOWF": {
+          "category": "units",
+          "weapons": {
+            "ShadowPower": {
+              "damage": 34,
+              "rof": 55,
+              "range": 6
+            },
+            "ShadowPowerE": {
+              "damage": 34,
+              "rof": 55,
+              "range": 6
+            },
+            "StealthScanner": {
+              "range": 0.1
+            }
+          }
+        }
+      },
+      "ROADR": {
+        "ROADR2": {
+          "category": "units",
+          "weapons": {
+            "RoadrunnerChoke": {
+              "damage": 300,
+              "rof": 180,
+              "range": 1.5
+            },
+            "VirtualScanner": {
+              "range": 5
+            }
+          }
+        }
+      },
       "SWPR": {
         "FASWPR": {
           "category": "defenses",
