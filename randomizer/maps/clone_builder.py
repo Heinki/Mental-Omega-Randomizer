@@ -1273,14 +1273,50 @@ def build_player_clone_sections(
                 # Factories evaluate Owner through the active country's
                 # ParentCountry. Campaigns such as SRAVEN use a concrete
                 # ``Player`` child of USSR; Owner=Player alone leaves its
-                # transferred Soviet barracks/factory empty. Include parent
-                # IDs for factory eligibility, while RequiredHouses remains
-                # concrete and keeps hostile USSR descendants off the clone.
-                production_owners = ','.join(
-                    production_owner_countries(
+                # transferred Soviet barracks/factory empty. Captured foreign
+                # factories add a second constraint: the produced type's
+                # Owner must overlap the physical factory type's Owner. Keep
+                # every concrete prerequisite factory's installed/map owners
+                # on the clone, while RequiredHouses remains concrete and
+                # keeps hostile descendants off the clone.
+                prerequisite_owner_ids = []
+                for key, value in clone_values.items():
+                    lowered = str(key).lower()
+                    if not (
+                        lowered in {'prerequisite', 'prerequisiteoverride'}
+                        or (
+                            lowered.startswith('prerequisite.list')
+                            and lowered != 'prerequisite.lists'
+                        )
+                    ):
+                        continue
+                    for prerequisite_id in comma_items(value):
+                        installed_prerequisite = installed_name_by_lower.get(
+                            prerequisite_id.lower()
+                        )
+                        native_prerequisite = native_map_name_by_lower.get(
+                            prerequisite_id.lower()
+                        )
+                        prerequisite_values = _standalone_clone_values_from_maps(
+                            installed_sections.get(installed_prerequisite, {})
+                            if installed_prerequisite else {},
+                            native_map_sections.get(native_prerequisite, {})
+                            if native_prerequisite else {},
+                        )
+                        prerequisite_owner_ids.extend(comma_items(
+                            _value_case_insensitive(
+                                prerequisite_values, 'Owner', ''
+                            )
+                        ))
+                production_owners = ','.join(unique_in_order(
+                    comma_items(_value_case_insensitive(
+                        clone_values, 'Owner', ''
+                    ))
+                    + prerequisite_owner_ids
+                    + production_owner_countries(
                         lines, clone_owner_ids, sections=map_sections
                     )
-                )
+                ))
                 required_houses = ','.join(clone_owner_ids)
                 clone_values.update({
                     'Owner': production_owners,

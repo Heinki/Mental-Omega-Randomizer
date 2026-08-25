@@ -175,6 +175,16 @@ isolated player clone while preserving authored TaskForces. Zero Signal lists
 `Pacific House` so its captured Barracks cannot expose locked native Allied
 infantry.
 
+`scripted_player_buff_taskforces` lists reviewed player or transferred-player
+TaskForce IDs whose unit references follow the launch's isolated player clones.
+Use it when authored Action-created teams must receive player buffs or when
+native production-isolation fields would stop Ares from assembling the team.
+Noise Severe lists its Rhino, Tesla Cruiser, Tigr/Shock/Flak, and paradrop
+TaskForces; their scripted waves therefore form before the FriendlyTank handoff
+and remain available to the player. Optional
+`scripted_player_buff_taskforce_access_requirements` entries limit a rewrite to
+launches that already own every listed source TechnoType.
+
 `original_mcv_access` maps mission codes to native MCV TechnoType IDs. The
 bundled default exposes `AMCV` and `SMCV` only in Foehn 06 (`FREMNANT`). These
 remain original mission identities; no `MORP*` MCV clone is created. Replace

@@ -32,6 +32,7 @@ def original_player_production_gate_rules(
     negative_gate_exclusions=(),
     native_taskforce_ids=(),
     factory_owner_only_ids=(),
+    preserve_forbidden_house_ids=(),
     player_runtime_ids=(),
     player_forbidden_houses=(),
     player_factory_forbidden_houses=(),
@@ -73,6 +74,11 @@ def original_player_production_gate_rules(
     factory_owner_only_ids = {
         str(source_id).upper()
         for source_id in (factory_owner_only_ids or ())
+        if str(source_id).strip()
+    }
+    preserve_forbidden_house_ids = {
+        str(source_id).upper()
+        for source_id in (preserve_forbidden_house_ids or ())
         if str(source_id).strip()
     }
     player_runtime_ids = {
@@ -230,13 +236,18 @@ def original_player_production_gate_rules(
             'ForbiddenHouses',
             _value_case_insensitive(installed_values, 'ForbiddenHouses', ''),
         )
-        if source_id in factory_owner_only_ids:
+        if (
+            source_id in factory_owner_only_ids
+            or source_id in preserve_forbidden_house_ids
+        ):
             # Build-only clones deliberately leave authored placements,
             # TaskForces, Events, and Actions on the native identity. A player
             # ForbiddenHouses value can therefore reject the story team before
-            # it forms (Bleed Red Boris and Fatal Impact's heroes). Hide only
-            # the native factory cameo through FactoryOwners.Forbidden; keep
-            # the authored runtime house filters byte-for-byte effective.
+            # it forms (Bleed Red Boris, Fatal Impact's heroes, and Moonlight's
+            # Soviet Engineers). Keep the authored runtime house filters
+            # byte-for-byte effective. Most build-only sources use the factory
+            # owner gate above; Engineers can safely use only the hidden
+            # negative prerequisite because it does not block Team creation.
             source_rules['ForbiddenHouses'] = (
                 str(effective_forbidden).strip() or None
             )
