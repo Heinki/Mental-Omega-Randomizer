@@ -27,8 +27,10 @@ from randomizer.rewards.definitions import unit_display_label
 from randomizer.rewards.display import buff_effect_lines, reward_display_name
 from randomizer.shop.active import active_shop_rewards
 from randomizer.shop.archipelago import (
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
     ap_automatic_reward_ids,
     ap_unit_entitlement_ids,
+    random_ap_unit_entitlement_ids,
 )
 from randomizer.shop.catalogue import (
     canonical_reward_for_id,
@@ -47,6 +49,7 @@ from randomizer.shop.missions import (
     mission_classes_for_stage,
 )
 from randomizer.shop.mission_modifiers import active_mission_modifier
+from randomizer.shop.meta import validate_starting_loadout
 from randomizer.shop.model import BuffPurchase, RunStatus, ShopRewardType
 from randomizer.shop.persistence import ShopRepository
 from randomizer.shop.service import ShopProgressionService
@@ -1360,7 +1363,58 @@ class ShopController(ShopPolishController):
         starter_tech_ids.update(
             expanded_tier_one_defense_ids(starting_defenses)
         )
+        ap_identity, ap_reward_ids = self.archipelago_shop_context()
+        maximum_extra_units = (
+            self.shop_config.max_selected_permanent_units
+            + self.shop_profile.upgrade_level('expanded_loadout')
+            * int(self.shop_config.permanent_upgrades[
+                'expanded_loadout'
+            ].effects['slots_per_level'])
+        )
         selected = self._selected_loadout_reward_ids()
+        if (
+            ap_identity
+            and self.archipelago_received_unit_loadout_mode()
+            == ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
+        ):
+            permanent_entitlements = set(
+                self.shop_profile.permanent_unit_unlocks
+            )
+            selected = tuple(
+                reward_id for reward_id in selected
+                if reward_id in permanent_entitlements
+            )
+            local_loadout = validate_starting_loadout(
+                starter_tech_ids=starter_tech_ids,
+                selected_reward_ids=selected,
+                entitled_reward_ids=permanent_entitlements,
+                maximum_extra_units=maximum_extra_units,
+            )
+            active_tech_ids = set(local_loadout.active_tech_ids)
+            eligible_ap_units = tuple(
+                reward_id
+                for reward_id in ap_unit_entitlement_ids(ap_reward_ids)
+                for entry in [self._shop_entry_by_reward_id.get(reward_id)]
+                if (
+                    entry is not None
+                    and entry.target_id not in active_tech_ids
+                    and self._shop_entry_available(entry)
+                )
+            )
+            selected += random_ap_unit_entitlement_ids(
+                eligible_ap_units,
+                run_seed=seed,
+                run_number=self.shop_profile.lifetime_runs_started + 1,
+                maximum_count=(
+                    max(
+                        0,
+                        maximum_extra_units - local_loadout.extra_slots_used,
+                    )
+                    if local_loadout.allowed else 0
+                ),
+                ap_identity=ap_identity,
+                excluded_reward_ids=selected,
+            )
         permanent_buff_targets = set(starter_tech_ids)
         permanent_buff_targets.update(
             entry.target_id
@@ -1379,7 +1433,6 @@ class ShopController(ShopPolishController):
                 and entry.target_id in permanent_buff_targets
             )
         )
-        ap_identity, ap_reward_ids = self.archipelago_shop_context()
         modifiers = tuple(
             modifier_id for modifier_id, variable in self.shop_modifier_vars.items()
             if variable.get()
@@ -1421,13 +1474,7 @@ class ShopController(ShopPolishController):
                 ),
                 permanent_buffs=permanent_buffs,
                 starting_draft_buffs=starting_draft_buffs,
-                maximum_extra_units=(
-                    self.shop_config.max_selected_permanent_units
-                    + self.shop_profile.upgrade_level('expanded_loadout')
-                    * int(self.shop_config.permanent_upgrades[
-                        'expanded_loadout'
-                    ].effects['slots_per_level'])
-                ),
+                maximum_extra_units=maximum_extra_units,
                 ap_entitlement_ids=ap_reward_ids,
                 ap_identity=ap_identity,
                 modifiers=modifiers,
@@ -1689,10 +1736,22 @@ class ShopController(ShopPolishController):
                 'expanded_loadout'
             ].effects['slots_per_level'])
         )
-        self.shop_loadout_help_var.set(
-            f'Choose up to {maximum_loadout} permanent or AP-entitled extra '
-            'units. Mandatory Tier 1 starters are added automatically.'
+        random_ap_loadout = (
+            self.archipelago_received_unit_loadout_mode()
+            == ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
         )
+        if random_ap_loadout:
+            self.shop_loadout_help_var.set(
+                f'Choose permanent units; received AP units randomly fill '
+                f'unused slots up to the {maximum_loadout}-unit limit when '
+                'the run starts. Mandatory Tier 1 starters are automatic.'
+            )
+        else:
+            self.shop_loadout_help_var.set(
+                f'Choose up to {maximum_loadout} permanent or AP-entitled '
+                'extra units. Mandatory Tier 1 starters are added '
+                'automatically.'
+            )
         draft_level = self.shop_profile.upgrade_level('starting_buff_draft')
         specialization_level = self.shop_profile.upgrade_level(
             'discount_specialization'
@@ -1711,7 +1770,14 @@ class ShopController(ShopPolishController):
         local_owned = set(self.shop_profile.permanent_unit_unlocks)
         _ap_identity, ap_reward_ids = self.archipelago_shop_context()
         ap_owned = set(ap_unit_entitlement_ids(ap_reward_ids))
-        owned = local_owned | ap_owned
+        active_run = bool(
+            self.shop_run is not None
+            and self.shop_run.status is RunStatus.ACTIVE
+        )
+        selectable_ap_owned = (
+            ap_owned if not random_ap_loadout or active_run else set()
+        )
+        owned = local_owned | selectable_ap_owned
         selected = set(
             self.shop_run.selected_permanent_units
             if self.shop_run is not None else ()

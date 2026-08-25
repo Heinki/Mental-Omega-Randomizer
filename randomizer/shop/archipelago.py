@@ -2,9 +2,14 @@
 
 import hashlib
 import json
+import random
 
 from .catalogue import canonical_reward_for_id, catalogue_entry
 from .model import ShopRewardType
+
+
+ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM = 'random'
+ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL = 'manual'
 
 
 def archipelago_shop_identity(ap_state):
@@ -71,6 +76,38 @@ def ap_unit_entitlement_ids(reward_ids):
             seen.add(entry.reward_id)
             unit_ids.append(entry.reward_id)
     return tuple(unit_ids)
+
+
+def random_ap_unit_entitlement_ids(
+    reward_ids,
+    *,
+    run_seed,
+    run_number,
+    maximum_count,
+    ap_identity='',
+    excluded_reward_ids=(),
+):
+    """Choose a reproducible AP unit loadout for one disposable Shop run."""
+    excluded = {
+        str(reward_id) for reward_id in excluded_reward_ids if str(reward_id)
+    }
+    candidates = tuple(sorted(
+        (
+            reward_id for reward_id in ap_unit_entitlement_ids(reward_ids)
+            if reward_id not in excluded
+        ),
+        key=str.casefold,
+    ))
+    count = max(0, min(int(maximum_count), len(candidates)))
+    if count == len(candidates):
+        return candidates
+    stream = (
+        'shop_archipelago_received_unit_loadout\0'
+        f'{run_seed}\0{int(run_number)}\0{ap_identity}'
+    ).encode('utf-8')
+    seed = int.from_bytes(hashlib.sha256(stream).digest()[:16], 'big')
+    selected = random.Random(seed).sample(candidates, count)
+    return tuple(sorted(selected, key=str.casefold))
 
 
 def ap_automatic_reward_ids(reward_ids):

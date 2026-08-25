@@ -22,6 +22,9 @@ from randomizer.rewards.display import canonical_reward
 from randomizer.rewards.enemy_scaling import plan_enemy_trap_rewards
 from randomizer.rewards.planning import is_max_rewards_achieved_reward
 from randomizer.shop.config import SHOP_CONFIG
+from randomizer.shop.archipelago import (
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
+)
 
 
 MANIFEST_SCHEMA_VERSION = 1
@@ -490,6 +493,9 @@ def _shop_manifest_settings():
         ),
         "starting_extra_unit_limit": (
             SHOP_CONFIG.max_selected_permanent_units
+        ),
+        "received_unit_loadout": (
+            ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
         ),
     }
 

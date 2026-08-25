@@ -3,9 +3,12 @@
 from .config import SHOP_CONFIG, ShopModeConfig
 from .active import active_shop_rewards
 from .archipelago import (
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL,
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
     ap_automatic_reward_ids,
     ap_unit_entitlement_ids,
     archipelago_shop_identity,
+    random_ap_unit_entitlement_ids,
     shop_reward_ids_from_ap_ledger,
 )
 from .economy import (
@@ -62,6 +65,8 @@ __all__ = (
     'apply_mission_difficulty_assist',
     'apply_mission_victory',
     'active_shop_rewards',
+    'ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL',
+    'ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM',
     'ap_automatic_reward_ids',
     'ap_unit_entitlement_ids',
     'archipelago_shop_identity',
@@ -77,6 +82,7 @@ __all__ = (
     'permanent_unit_price',
     'permanent_buff_price',
     'permanent_upgrade_price',
+    'random_ap_unit_entitlement_ids',
     'reroll_missions',
     'run_buff_price',
     'run_summary_lines',

@@ -253,19 +253,26 @@ def _validate_shop_settings(value, mode, mission_order):
         if value is not None:
             raise ManifestError("Non-Shop manifest cannot contain Shop settings.")
         return None
-    if not isinstance(value, dict) or set(value) != {
+    required_keys = {
         "run_length",
         "mission_pool",
         "mission_victories_are_locations",
         "purchase_location_count",
         "purchase_meta_coin_cost",
         "starting_extra_unit_limit",
-    }:
+    }
+    optional_keys = {"received_unit_loadout"}
+    if (
+        not isinstance(value, dict)
+        or not required_keys.issubset(value)
+        or not set(value).issubset(required_keys | optional_keys)
+    ):
         raise ManifestError("Shop Mode manifest settings are invalid.")
     run_length = value.get("run_length")
     purchase_count = value.get("purchase_location_count")
     purchase_cost = value.get("purchase_meta_coin_cost")
     extra_limit = value.get("starting_extra_unit_limit")
+    received_unit_loadout = value.get("received_unit_loadout", "manual")
     if (
         not isinstance(run_length, int)
         or isinstance(run_length, bool)
@@ -284,9 +291,12 @@ def _validate_shop_settings(value, mode, mission_order):
         or not isinstance(extra_limit, int)
         or isinstance(extra_limit, bool)
         or not 0 <= extra_limit <= 10
+        or received_unit_loadout not in {"manual", "random"}
     ):
         raise ManifestError("Shop Mode manifest settings are out of range.")
-    return dict(value)
+    result = dict(value)
+    result["received_unit_loadout"] = received_unit_loadout
+    return result
 
 
 def parse_manifest(raw_value):

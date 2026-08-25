@@ -245,9 +245,22 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         'purchase_meta_coin_cost',
         'starting_extra_unit_limit',
     )
+    received_unit_loadout = raw.get('received_unit_loadout', 'manual')
+    manifest_received_unit_loadout = manifest.get(
+        'received_unit_loadout', 'manual'
+    )
     if (
-        set(raw) != {*policy_keys, 'purchase_locations', 'stage_victories'}
+        not set(raw).issubset({
+            *policy_keys,
+            'received_unit_loadout',
+            'purchase_locations',
+            'stage_victories',
+        })
+        or not {*policy_keys, 'purchase_locations', 'stage_victories'}.issubset(
+            raw
+        )
         or any(raw.get(key) != manifest.get(key) for key in policy_keys)
+        or received_unit_loadout != manifest_received_unit_loadout
     ):
         raise ArchipelagoProtocolError(
             'Shop Mode slot data disagrees with run manifest.'
@@ -272,6 +285,7 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         or not isinstance(extra_limit, int)
         or isinstance(extra_limit, bool)
         or not 0 <= extra_limit <= 10
+        or received_unit_loadout not in {'manual', 'random'}
         or not isinstance(purchase_locations, list)
         or len(purchase_locations) != purchase_count
         or not isinstance(stage_victories, list)
@@ -338,6 +352,7 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         })
     return {
         **{key: manifest[key] for key in policy_keys},
+        'received_unit_loadout': received_unit_loadout,
         'purchase_locations': list(purchase_locations),
         'stage_victories': normalized_stages,
     }, random_locations, logic_locations, logic_items

@@ -15,6 +15,7 @@ from .active import active_shop_power_ids, active_shop_rewards
 from .archipelago import (
     ap_unit_entitlement_ids,
     archipelago_shop_identity,
+    random_ap_unit_entitlement_ids,
     shop_reward_ids_from_ap_ledger,
 )
 from .archipelago_purchases import archipelago_purchase_records
@@ -554,10 +555,11 @@ def _phase_four_checks():
 
 def _phase_five_checks():
     catalogue = shop_catalogue()
-    unit_ids = [
+    selection_pool = [
         entry.reward_id for entry in catalogue
         if entry.reward_type is ShopRewardType.UNIT_ACCESS
-    ][:2]
+    ][:8]
+    unit_ids = selection_pool[:2]
     buff_id = next(
         entry.reward_id for entry in catalogue
         if entry.reward_type is ShopRewardType.UNIT_BUFF
@@ -578,8 +580,39 @@ def _phase_five_checks():
     }
     ap_identity = archipelago_shop_identity(ap_state)
     other_identity = archipelago_shop_identity({**ap_state, 'slot': 4})
+    first_random_loadout = random_ap_unit_entitlement_ids(
+        selection_pool,
+        run_seed='SHOP-AP-RANDOM-LOADOUT',
+        run_number=1,
+        maximum_count=3,
+        ap_identity=ap_identity,
+    )
+    replayed_random_loadout = random_ap_unit_entitlement_ids(
+        reversed(selection_pool),
+        run_seed='SHOP-AP-RANDOM-LOADOUT',
+        run_number=1,
+        maximum_count=3,
+        ap_identity=ap_identity,
+    )
+    next_random_loadout = random_ap_unit_entitlement_ids(
+        selection_pool,
+        run_seed='SHOP-AP-RANDOM-LOADOUT',
+        run_number=2,
+        maximum_count=3,
+        ap_identity=ap_identity,
+    )
     offers = (
         MissionOffer('SC_AP_1', MissionEconomyClass.ACT_1),
+    )
+    random_started = start_new_run(
+        ShopProfile(),
+        run_id='shop-ap-random-run-1',
+        seed='SHOP-AP-RANDOM-LOADOUT',
+        mission_offers=offers,
+        selected_reward_ids=first_random_loadout,
+        ap_entitlement_ids=selection_pool,
+        ap_identity=ap_identity,
+        maximum_extra_units=3,
     )
     started = start_new_run(
         ShopProfile(),
@@ -662,10 +695,33 @@ def _phase_five_checks():
             and unit_ids[1] not in active_names
             and active_names.count(buff_id) == 2
         ),
+        'archipelago_random_restart_loadout_valid': bool(
+            len(first_random_loadout) == 3
+            and first_random_loadout == replayed_random_loadout
+            and first_random_loadout != next_random_loadout
+            and random_started.run.selected_permanent_units
+            == first_random_loadout
+            and set(first_random_loadout).issubset({
+                reward.get('name')
+                for reward in active_shop_rewards(random_started.run)
+            })
+            and random_started.run.run_coins
+            == SHOP_CONFIG.starting_run_coins
+            and not set(random_ap_unit_entitlement_ids(
+                selection_pool,
+                run_seed='SHOP-AP-RANDOM-LOADOUT',
+                run_number=1,
+                maximum_count=3,
+                ap_identity=ap_identity,
+                excluded_reward_ids=first_random_loadout,
+            )).intersection(first_random_loadout)
+        ),
         'archipelago_failure_restart_valid': bool(
             failed.run.status is RunStatus.FAILED
             and restarted.run.ap_identity == ap_identity
             and restarted.run.ap_entitlements_snapshot == ap_reward_ids
+            and restarted.run.run_coins == SHOP_CONFIG.starting_run_coins
+            and restarted.profile.meta_coins == started.profile.meta_coins
             and restarted_names.count(unit_ids[1]) == 1
             and unit_ids[0] not in restarted_names
             and restarted_names.count(buff_id) == 2

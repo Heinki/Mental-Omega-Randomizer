@@ -3,6 +3,7 @@
 from ._dependencies import CAMPAIGN_FILTERS, normalize_faction
 
 from randomizer.shop.archipelago import (
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL,
     archipelago_shop_identity,
     shop_reward_ids_from_ap_ledger,
 )
@@ -70,6 +71,30 @@ class ShopArchipelagoController:
         if not identity:
             return '', ()
         return identity, shop_reward_ids_from_ap_ledger(records)
+
+    def archipelago_received_unit_loadout_mode(self):
+        """Read signed AP restart policy from active or cached slot state."""
+        states = [self._active_archipelago_state()]
+        cached_state = getattr(self, '_archipelago_cached_state', None)
+        if isinstance(cached_state, dict):
+            states.append(cached_state.get('archipelago'))
+        for ap_state in states:
+            if not isinstance(ap_state, dict):
+                continue
+            for source in (
+                ap_state.get('slot_data'),
+                ap_state.get('run_manifest'),
+                ap_state,
+            ):
+                if not isinstance(source, dict):
+                    continue
+                shop = source.get('shop')
+                if not isinstance(shop, dict):
+                    continue
+                mode = str(shop.get('received_unit_loadout') or 'manual')
+                if mode in {'manual', 'random'}:
+                    return mode
+        return ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL
 
     def archipelago_shop_slot_settings(self):
         if self.archipelago_progression_mode() != 'Shop Mode':

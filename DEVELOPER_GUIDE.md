@@ -28,7 +28,9 @@ Start here when changing code. Player settings belong in
 - `randomizer/shop/archipelago.py`: stable AP room/team/slot identity plus the
   idempotent received-item projection used by Shop loadouts. AP inventory stays
   authoritative in the existing received-item ledger, never in Shop profile
-  permanent purchases.
+  permanent purchases. New signed AP Shop seeds use its isolated deterministic
+  run-number stream to roll received unit access into unused loadout slots;
+  received buffs and powers remain automatic.
 - `randomizer/shop/archipelago_purchases.py`: durable per-slot generated-check
   debits. A pending transaction is saved before location reporting and becomes
   checked only from authoritative server location state.

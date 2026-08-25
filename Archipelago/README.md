@@ -151,7 +151,11 @@ stage marker and may report a shuffled mission-victory location. The
 **AP Purchases** panel spends the displayed persistent Mental Coin price to
 send one generated purchase location; Archipelago determines its item. Pending
 purchases are retried after reconnecting without another debit. Finishing the
-complete Shop run reports the slot goal.
+complete Shop run reports the slot goal. Each new run also rolls received AP
+unit unlocks into remaining extra-unit slots, then reapplies every received
+buff and power stack. This restart boost comes only from received AP items; it
+does not alter mission credits, Ore, or Mental Coins. The generated YAML signs
+this behavior as `received_unit_loadout: random` inside its Shop settings.
 
 ## Disconnect and continue later
 

@@ -108,6 +108,9 @@ positive `maximum_starting_ore` and `minimum_shop_price`, and the version-1
 Mental Coin price, and `archipelago_mission_victories_are_locations` controls
 whether the ten stage victories also enter the shuffled AP item pool. These
 values are signed into Shop player YAML and validated again at connection.
+New Shop YAML also signs `received_unit_loadout: random`: each run uses a named,
+deterministic AP-only stream to fill unused extra-unit slots from received unit
+entitlements. This policy never changes Shop currency or mission-credit values.
 
 `mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
 `finale`. Each class has a display label, unique positive difficulty rank, and

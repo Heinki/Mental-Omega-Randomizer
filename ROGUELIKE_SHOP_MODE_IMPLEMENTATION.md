@@ -392,12 +392,10 @@ At new-run setup, the player may choose **up to 5 extra units** from their perma
 
 Mandatory starting Tier 1 units are separate and do not consume those 5 slots.
 
-AP-received unit entitlements may either:
-
-- join the selectable permanent pool, or
-- be auto-active
-
-Use one consistent rule. The preferred rule is described in the Archipelago section: AP unit unlocks join the entitlement pool and may be selected without paying Mental Coins.
+For newly generated AP Shop seeds, received unit entitlements are rolled
+deterministically into remaining extra-unit slots when a run starts. Manually
+selected local permanent units take priority. This AP-only roll does not spend
+or modify credits, Ore, or Mental Coins.
 
 ## 7.2 Permanent unit prices
 
@@ -1129,7 +1127,8 @@ On a new run:
 
 - rebuild AP entitlement set from received item ledger
 - apply current AP unlocks
-- allow them in starting loadout according to Shop Mode rules
+- roll received unit access into unused starting-loadout slots using a named,
+  deterministic stream and the persisted run number
 - preserve AP buff stacks / progression
 - never revoke items because the prior local run failed
 
@@ -1185,6 +1184,8 @@ shop_mission_victories_are_locations: true
 shop_purchase_locations: 5
 
 shop_starting_extra_unit_limit: 5
+
+received_unit_loadout: random
 ```
 
 Do not add options that are purely local UI preferences.
