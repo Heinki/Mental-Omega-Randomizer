@@ -190,7 +190,9 @@ EXCLUDED_BUFF_TYPE_IDS = {
     buff_type: frozenset(str(unit_id).upper() for unit_id in unit_ids)
     for buff_type, unit_ids in _BUFF_EXCEPTION_CONFIG['excluded_buff_type_ids'].items()
 }
-SUICIDE_RANGE_EXCLUDED_UNIT_IDS = frozenset({'BGGY', 'BIKE', 'TERROR'})
+SUICIDE_RANGE_EXCLUDED_UNIT_IDS = frozenset({
+    'BGGY', 'BIKE', 'DBOAT', 'DTRUCK', 'OTRK', 'TERROR',
+})
 # Engine-safety exclusions cannot depend on replacing editable packaged config
 # during an upgrade. Old RandomizerLauncherData copies remain user-owned.
 MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
@@ -1281,6 +1283,9 @@ REWARD_ALIASES = {
     # Old M.A.D. Tank deploy-fire cadence is not a useful adjustable stat.
     # Keep serialized stacks useful without retaining any fire-rate UI/effect.
     'Old M.A.D. Tank Weapon Tuning I': 'Old M.A.D. Tank Reinforced Frames I',
+    # Extra Demobomb range makes the truck detonate before reaching its target.
+    # Preserve published save/AP item identity as a safe same-unit health stack.
+    'Old Demo Truck Optics I': 'Old Demo Truck Reinforced Frames I',
     # These former Firepower rewards described indirect spawned
     # missile/aircraft payload damage. The player clone only owns its direct
     # launcher weapons, so changing the shared payload would either do nothing

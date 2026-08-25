@@ -944,6 +944,10 @@ class ArchipelagoController(ArchipelagoYamlController):
         values = slot_data.get('items', {})
         if not isinstance(values, dict) or not values:
             raise ValueError('slot data has no item mapping')
+        local_victory_names = {
+            f'Mental Omega Local Victory: {code}'
+            for code in (slot_data.get('local_victories') or {})
+        }
         item_names = {}
         try:
             for item_id, reward_name in values.items():
@@ -951,13 +955,15 @@ class ArchipelagoController(ArchipelagoYamlController):
                 reward_name = str(reward_name).strip()
                 if item_id <= 0 or not reward_name or item_id in item_names:
                     raise ValueError
+                if reward_name not in local_victory_names:
+                    canonical_name = str(canonical_reward({
+                        'name': reward_name,
+                    }).get('name') or '').strip()
+                    if canonical_name in REWARD_BY_NAME:
+                        reward_name = canonical_name
                 item_names[item_id] = reward_name
         except (TypeError, ValueError) as exc:
             raise ValueError('slot data item mapping is invalid') from exc
-        local_victory_names = {
-            f'Mental Omega Local Victory: {code}'
-            for code in (slot_data.get('local_victories') or {})
-        }
         unknown = sorted({
             reward_name
             for reward_name in item_names.values()
@@ -1447,10 +1453,15 @@ class ArchipelagoController(ArchipelagoYamlController):
                 index = int(value['index'])
             except (KeyError, TypeError, ValueError):
                 continue
-            reward_name = str(value.get('reward_name', ''))
-            if index < 0 or index in seen or reward_name not in REWARD_BY_NAME:
+            reward_name = str(value.get('reward_name', '')).strip()
+            canonical_name = str(canonical_reward({
+                'name': reward_name,
+            }).get('name') or '').strip()
+            if index < 0 or index in seen or canonical_name not in REWARD_BY_NAME:
                 continue
             seen.add(index)
+            if canonical_name != reward_name:
+                value = {**value, 'reward_name': canonical_name}
             records.append(value)
         return tuple(sorted(records, key=lambda value: int(value['index'])))
 

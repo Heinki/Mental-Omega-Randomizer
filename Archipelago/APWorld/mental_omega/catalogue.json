@@ -17364,13 +17364,6 @@
       "id": 81066195
     },
     {
-      "name": "Old Demo Truck Optics I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81066196
-    },
-    {
       "name": "Old Demo Truck Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -31453,7 +31446,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "50c9f05a972bd6ee585257fd27d43a7837dfbbfce37c59dc51925e28ed6768a1",
+  "catalogue_checksum": "6f12f2a89dc985d182b9520697a489f4f5ba2a0dd21d4fe9f351b18ade8238de",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

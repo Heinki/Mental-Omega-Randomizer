@@ -802,3 +802,15 @@ same native scripted-hero policy already used by AINSOMNIA. It now preserves
 native SIEG through trigger-reference, clone-exclusion, and direct-buff policy,
 then applies earned buffs through `native_variant_buff_rules`. No mission
 Trigger, Tag, Event, Action, TeamType, TaskForce, or ScriptType changes.
+
+## August 25 Suicide-Unit Range Safety
+
+Suicide weapons detonate at their firing point. Extra weapon range therefore
+makes the unit explode before reaching its target. Range rewards are excluded
+for Bomb Buggy, Ivan Biker, Ivan Cadet, Demolition Truck, Old Demo Truck, and
+Mosquito Demoboat. This exclusion is mandatory in code as well as present in
+editable reward policy, so preserved packaged configs, retry assistance, old
+saves, and externally supplied rewards cannot restore the harmful effect.
+Published `Old Demo Truck Optics I` save/AP receipts migrate to Old Demo Truck
+Reinforced Frames instead; the preceding AP catalogue checksum remains accepted
+and its item-ID mapping is canonicalized during connection and ledger recovery.
