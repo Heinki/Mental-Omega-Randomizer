@@ -136,7 +136,10 @@ from randomizer.missions.overrides import (
     MISSION_VICTORY_HOOK_ACTION_IDS,
 )
 from randomizer.missions.safety import safe_build_countries
-from randomizer.missions.access import PRODUCTION_BUILDINGS
+from randomizer.missions.access import (
+    PRODUCTION_BUILDINGS,
+    merged_production_owners,
+)
 from randomizer.missions.catalogue import normalize_faction
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT, GENERATED_MAP_DIR
 from randomizer.rewards.catalogue import (
@@ -957,7 +960,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             values = owned_clone_rule_overlays.get(section)
             if not values:
                 continue
-            values['Owner'] = safe_owners
+            # Access planning already carries every compatible factory's
+            # native Owner countries. Keep those: captured foreign factories
+            # reject a produced type whose Owner overlaps only the player's
+            # custom campaign country. RequiredHouses remains the exact
+            # player/helper isolation gate.
+            values['Owner'] = merged_production_owners(
+                values.get('Owner', ''),
+                safe_owners,
+            )
             values['RequiredHouses'] = safe_owners
             values['ForbiddenHouses'] = denied_owners
     # Generic randomized ownership must not erase mission-authored recovery
@@ -1959,7 +1970,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             }
             restored_values.update(original_values)
             clone_rule_sections[source_id] = restored_values
-        if code == 'FKILL':
+        if (
+            code == 'FKILL'
+            and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
+        ):
             repaired_defenses = []
             for source_id, details in clone_handled.items():
                 if BUFF_TARGETS.get(source_id, {}).get('category') != 'defenses':

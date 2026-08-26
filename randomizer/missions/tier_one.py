@@ -25,9 +25,11 @@ from .access import (
     _special_factory_alternatives,
     all_section_value_maps,
     chaos_cameo_priority_rules,
+    chaos_category_owner_ids,
     chaos_production_alternatives,
     country_family,
     map_house_records,
+    merged_production_owners,
     player_controlled_houses,
     player_house_from_map,
     production_owner_countries,
@@ -570,7 +572,10 @@ def chaos_earned_access_rules(
     )
     for tech_id, entries in entries_by_tech.items():
         tech_level = earned_tech_levels.get(tech_id, entries[0][1])
-        native_owners = entries[0][5]
+        categories = {entry[3] for entry in entries}
+        native_owner_values = [entry[5] for entry in entries]
+        native_owner_values.extend(chaos_category_owner_ids(categories))
+        native_owners = merged_production_owners(*native_owner_values)
         alternatives = []
         for _tech_id, _level, _family, category, prerequisite, _owners in entries:
             alternatives.extend(map_chaos_alternatives.get(category, ()))

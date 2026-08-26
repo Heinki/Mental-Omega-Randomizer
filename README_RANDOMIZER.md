@@ -278,7 +278,7 @@ Foehn Standard can still draw the campaign's bundled Allied/Soviet rewards, but 
 
 ### Chaos
 
-Chaos draws access and buffs independently from all four factions. Each exact unlocked unit or building is available through every compatible Allied, Soviet, Epsilon, and Foehn production category. Any unlocked Barracks shows all unlocked infantry, any compatible War Factory shows all unlocked vehicles, and the same rule applies to airfields, shipyards, and Construction Yards. Foehn unlocks therefore work in non-Foehn campaigns. Mission-specific production may add another valid factory, but cannot narrow Chaos back to one faction. Standard remains separate: own-faction production starts active, while foreign role equivalents retain exact captured-factory prerequisites.
+Chaos draws access and buffs independently from all four factions. Each exact unlocked unit or building is available through every compatible Allied, Soviet, Epsilon, and Foehn production category. Any unlocked Barracks shows all unlocked infantry, any compatible War Factory shows all unlocked vehicles, and the same rule applies to airfields, shipyards, and Construction Yards. Capturing any MCV therefore exposes every earned defense and special building after that MCV deploys. Foehn unlocks work in non-Foehn campaigns. Mission-specific production may add another valid factory, but cannot narrow Chaos back to one faction. Standard remains separate: own-faction production starts active, while foreign role equivalents retain exact captured-factory prerequisites.
 
 ### Randomizer Arsenal
 

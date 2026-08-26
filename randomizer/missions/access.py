@@ -6,6 +6,8 @@ Keep those policies separate: Standard capture translation must never become
 the filter for Chaos access.
 """
 
+from functools import lru_cache
+
 from randomizer.core.collections import comma_items, unique_in_order
 
 from randomizer.maps.rules import safe_engineer_identity_values
@@ -416,6 +418,41 @@ def _player_family(lines, house_records):
 
 def _merged_items(*groups):
     return unique_in_order(item for group in groups for item in group)
+
+
+def merged_production_owners(*owner_values):
+    """Merge comma-separated Owner values without changing their order."""
+    return ','.join(unique_in_order(
+        owner
+        for value in owner_values
+        for owner in comma_items(value)
+    ))
+
+
+@lru_cache(maxsize=None)
+def _chaos_category_owner_ids(category_key):
+    categories = set(category_key)
+    return tuple(unique_in_order(
+        owner
+        for _tech_id, _level, _family, category, _prerequisite, owners
+        in access_catalog()
+        if category in categories
+        for owner in comma_items(owners)
+    ))
+
+
+def chaos_category_owner_ids(categories):
+    """Return native countries behind each shared Chaos production category.
+
+    Captured factories check both their prerequisite identity and whether
+    their native Owner list overlaps the produced TechnoType's Owner list.
+    Derive the country roster from existing access data instead of maintaining
+    a second faction-country mapping.
+    """
+    category_key = tuple(sorted({
+        str(category) for category in categories if category
+    }))
+    return _chaos_category_owner_ids(category_key)
 
 
 def safe_build_countries(lines, house_records=None, additional_houses=()):
