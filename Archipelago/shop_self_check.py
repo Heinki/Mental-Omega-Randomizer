@@ -31,7 +31,7 @@ def validate_shop_slot_contract():
         'starting_extra_unit_limit': (
             SHOP_CONFIG.max_selected_permanent_units
         ),
-        'received_unit_loadout': 'random',
+        'received_unit_loadout': 'all',
     }
     manifest = {
         'schema_version': 1,
@@ -125,8 +125,8 @@ def validate_shop_slot_contract():
     legacy_normalized = validate_slot_data(legacy_slot_data)
     return bool(
         normalized['slot_data_version'] == 6
-        and '"received_unit_loadout": "random"' in player_yaml
-        and normalized['shop']['received_unit_loadout'] == 'random'
+        and '"received_unit_loadout": "all"' in player_yaml
+        and normalized['shop']['received_unit_loadout'] == 'all'
         and normalized['shop']['purchase_locations'] == purchase_locations
         and len(normalized['shop']['stage_victories']) == run_length
         and legacy_normalized['shop']['received_unit_loadout'] == 'manual'

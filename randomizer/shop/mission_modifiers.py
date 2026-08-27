@@ -1,6 +1,8 @@
 """Deterministic one-mission boons and high-risk challenge effects."""
 
 from dataclasses import dataclass
+
+from .text import gem_text
 from hashlib import sha256
 
 from .model import MissionEconomyClass
@@ -25,7 +27,7 @@ class ShopMissionModifier:
     def reward_text(self):
         return (
             f'+{self.bonus_run_coins} Ore / '
-            f'+{self.bonus_meta_coins} Mental Coins'
+            f'+{gem_text(self.bonus_meta_coins)}'
         )
 
 

@@ -86,7 +86,7 @@ Access rewards are unique by reward name. Mission List seed planning walks rewar
 
 The mission-table reward fraction counts reward items, not check objects. Mission Details and mission hover text read stored check reward arrays and display each `reward_display_name`, so a 10-item check shows all ten assignments. The immediate privacy preference replaces pending names with `?????`; completed or Grid-released checks reveal their assigned rewards, and Unlocks continues to reveal all earned rewards. Buff display names use `buff_effect_lines` instead of internal catalogue codenames: `Attack Sub Logistics` is presented as `Typhoon Attack Sub: Cost 20% cheaper`. Compact per-reward listings omit redundant stack suffixes; Unlocks combines duplicate rewards and shows their real cumulative stack count. Stored internal names remain stable for seed compatibility. Legacy items that canonicalize to `retired_reward` stay stored but are omitted from Unlocks instead of filling its Reward list with disabled entries.
 
-Unlocks now has Allies, Soviets, Epsilon, and Foehn cameo dashboards plus the legacy searchable Summary. Its view model indexes serialized check rewards by affected TechnoType or superweapon without consuming RNG or changing state. Unlocked icons remain normal; pending rewards in any currently playable mission are green; assigned later rewards are gray; items absent from the generated seed are black. Hover text aggregates earned buff stacks and names public mission/check sources. Green-icon hover temporarily outlines matching playable Grid tiles; Mission List/Classic instead add a green bold-underlined Treeview tag to matching rows. Leaving the icon or hiding Details restores ordinary styling. Widget and mission-tree tooltips share one active-tooltip owner, hide on replacement/unmap/destruction, and cancel pending callbacks; stale hover cards cannot survive dashboard refreshes or overlap another tooltip. `hide_locked_grid_missions` deliberately converts green candidates to ordinary locked presentation and suppresses their source names and tile highlights, preventing the catalogue from bypassing hidden-node privacy. Search controls are children of Summary only; the outer Unlocks header contains only the wrapped state legend. Shared Chaos/Foehn role buffs index every affected equivalent icon. Dashboard cameos use a Tk-native 4:3 zoom/subsample scale from 60×48 to 80×64, retaining the dependency-free decoder pipeline. Summary expands saved Tier 1 role markers to concrete Allied/Soviet/Epsilon variants and embeds their cameos. Standard always renders native Foehn unit icons unavailable and filters old serialized Foehn unit rewards at launch; Chaos retains them.
+Unlocks now has Allies, Soviets, Epsilon, and Foehn cameo dashboards plus the legacy searchable Summary. Its view model indexes serialized check rewards by affected TechnoType or superweapon without consuming RNG or changing state. Unlocked icons remain normal; pending rewards in any currently playable mission are green; assigned later rewards are gray; items absent from the generated seed are black. Hover text aggregates earned buff stacks and names public mission/check sources. Green-icon hover temporarily outlines matching playable Grid tiles; Mission List/Classic instead add a green bold-underlined Treeview tag to matching rows. Leaving the icon or hiding Details restores ordinary styling. Widget and mission-tree tooltips share one active-tooltip owner, hide on replacement/unmap/destruction, and cancel pending callbacks; stale hover cards cannot survive dashboard refreshes or overlap another tooltip. `hide_locked_grid_missions` deliberately converts green candidates to ordinary locked presentation and suppresses their source names and tile highlights, preventing the catalogue from bypassing hidden-node privacy. Search controls are children of Summary only; the outer Unlocks header contains only the wrapped state legend. Shared Chaos/Foehn role buffs index every affected equivalent icon. Dashboard cameos use a Tk-native 4:3 zoom/subsample scale from 60×48 to 80×64, retaining the dependency-free decoder pipeline. Summary lists Standard Tier 1 starters as abstract mission-equivalent roles, while Chaos and Shop embed their fixed concrete cameos. Legacy concrete Standard starter saves normalize back to roles. Standard always renders native Foehn unit icons unavailable and filters old serialized Foehn unit rewards at launch; Chaos retains them.
 
 Unlocks now also has a Neutral dashboard. Standard production, cost, and armor
 rewards appear there because their generated CountryType multipliers affect
@@ -232,9 +232,9 @@ Map-local unknown buildings declaring `Factory=InfantryType` are special barrack
 
 Foehn Standard draws bundled Allied/Soviet access peers. Standard All Campaigns draws Allied, Soviet, and Epsilon rewards. Full Foehn reward definitions are reserved for Chaos.
 
-The optional Tier 1 starter roster models five explicit roles: ground infantry, anti-air infantry, ground vehicle, anti-air vehicle, and basic aircraft. New Standard seeds persist abstract role markers so each launch can resolve the physical Allied/Soviet/Epsilon production family and authoritative player subfaction. Ground vehicles map to Bulldog/Cavalier/Kappa, Rhino/Qilin/Jaguar, or Lasher/Mantis/Opus; anti-air vehicles map to Stryker/Archon/Tsurugi, Tigr/Halftrack, or Gatling Tank. Allied aircraft map to Stormchild/Harrier/Black Eagle; Soviet and Epsilon use Foxtrot and Dybbuk-Attacker. Installed IDs are `MTNK`, `STORM`, and `FOX`, not community shorthand `CAVAL`, `STRM`, or the `NAAIR` factory. Foehn Lancer/Knightframe and Bison/Draco/Cyclops/Teratorn variants are Chaos-only. Existing exact-ID saves remain compatible, including defense IDs translated by their saved ground/anti-air role. Selected single-campaign Standard discovers every placed or scripted MCV, Construction Yard, and factory as potentially capturable production. Matching starter units, defenses, and airfields are prepared with exact physical prerequisites, so they remain dormant until capture. All Campaigns preserves exact-ID access, Chaos preserves its exact seeded roster, and neither receives captured-production role translation. A 97-map generated-launch audit validated 1,241 T1 unit, defense, and airfield clone sections, including Idle Gossip and Unshakeable. Foehn-only Standard supports its Allied/Soviet operating families. Expanded role variants suppress redundant access rewards and seed buff eligibility.
+The optional Tier 1 starter roster models five roles: ground infantry, anti-air infantry, ground tank, anti-air tank, and basic aircraft. Standard seed-selects one concrete identity for every role and every usable faction family on isolated `<seed>:starting-tier-one-standard:<family>` streams. An all-faction Standard seed therefore stores exactly 15 identities: five Allied, five Soviet, and five Epsilon. `_preferred_standard_starter_family` selects exactly one player/scripted production family for each launch map, and only that family's five selected identities receive rules. All entries retain exact Barracks/War Factory/Airfield prerequisites; a missing category stays dormant until its scripted factory appears. Capturable enemy factories never add another starter family. Legacy Standard role-marker or oversized subtype saves deterministically normalize to the same five-per-family selection at runtime. Ground tank candidates include Bulldog/Cavalier/Kappa, Rhino/Qilin/Jaguar, and Lasher/Mantis/Opus; anti-air tank candidates include Stryker/Archon/Tsurugi, Tigr/Halftrack, and Gatling Tank. Aircraft candidates include Stormchild/Harrier/Black Eagle, Foxtrot, and Dybbuk-Attacker. One candidate fills each slot; siblings are not granted. Chaos and Shop preserve separate exact five-unit total seeded rosters.
 
-The independent Tier 1 defense starter stores one abstract marker in Standard. Selected single-campaign Standard resolves it from physical current, scripted, placed, or Action-125-created Construction Yard families: Allied `GAPILL`/`NASAM`, Soviet `NALASR`/`NAFLAK`, and Epsilon `YAGGUN`, each behind only its native Yard. A foreign defense therefore remains unavailable until its matching MCV/Yard is captured. Base-build maps whose Yard arrives only through opening scripts fall back to current player family; Foehn player maps can fall back to discovered Allied/Soviet operating production. Chaos instead stores exactly one ground and one anti-air defense selected from two distinct shuffled Allied/Soviet/Epsilon/Foehn families; each receives Ares alternatives for all four Construction Yards. Advanced Pool exclusions override starter injection and reward-pool suppression. Eligible starter defense access rewards are removed while defense buffs remain eligible immediately.
+The independent Tier 1 defense starter persists abstract ground and anti-air roles in Standard and resolves them per launch map. Allied `GAPILL`/`NASAM`, Soviet `NALASR`/`NAFLAK`, and Epsilon `YAGGUN` remain behind only their native Yard; Epsilon legitimately collapses both roles to one identity. Legacy Standard saves containing concrete defenses normalize back to the shared role marker. Chaos and Shop instead retain concrete selections; Chaos gives its two defenses Ares alternatives for all four Construction Yards. Advanced Pool exclusions override starter injection and reward-pool suppression. Eligible starter defense access rewards are removed while defense buffs remain eligible immediately.
 
 Standard starter regressions verify that `ESHIP` maps an Epsilon player to Allied starters through its captured Allied base, `AGHOST` maps an Allied campaign mission to Epsilon starters through Epsilon production, scripted-opening base missions fall back to current player family, and Foehn-only `FREMNANT` uses Allied/Soviet operating production while excluding Epsilon/native Foehn starters.
 
@@ -249,7 +249,7 @@ capture. Its four starting Archons remain native mission objects so nearby
 Siege Cadres retain the authored automatic-entry behavior; an earned Archon
 still uses the separate build-only player clone.
 
-Chaos Tier 1 starters use a separate deterministic stream, `<seed>:starting-tier-one`, so mission order and normal reward RNG calls remain unchanged. Faction order is shuffled once across the four guaranteed ground roles, producing exactly one Allied, Soviet, Epsilon, and Foehn unit; roles with subfaction variants make an additional deterministic choice. A fifth seeded role selects a valid Allied/Soviet/Epsilon aircraft variant. Existing seeds retain stored exact IDs. When a player MCV/Construction Yard must provide AircraftType production, the player's native airfield is unlocked; the foreign aircraft faction's structure is never injected. The selected aircraft accepts compatible existing airfields through Chaos production alternatives.
+Chaos Tier 1 starters use a separate deterministic stream, `<seed>:starting-tier-one`, so mission order and normal reward RNG calls remain unchanged. Faction order is shuffled once across the four guaranteed ground roles, producing exactly one Allied, Soviet, Epsilon, and Foehn unit; roles with subfaction variants make an additional deterministic choice. A fifth seeded role selects one Allied/Soviet/Epsilon aircraft. Shop uses the same five-role count with its own isolated streams. Both modes expose exactly five starters total, never every subtype.
 
 Chaos Tier 1 defenses use independent deterministic stream `<seed>:starting-tier-one-defenses`. Faction order is shuffled once; ground and anti-air roles take distinct families. Exactly two saved defenses accept all four Yard families, while exclusions still win. Earned Chaos defenses and special buildings retain those same four Yard alternatives and every corresponding factory-owner country while `RequiredHouses` stays limited to the player and allowed helpers. This is required for captured or scripted foreign MCVs: the engine checks both the prerequisite BuildingType and an `Owner` overlap with its deployed Construction Yard. FKILL's Standard-only Soviet Yard repair no longer narrows Chaos defense clones to `NACNST`.
 
@@ -520,11 +520,12 @@ Yuri `2`, then configured custom tags from `3` onward. Native positive action
 `148` changes are rebound to the selected voice; `-1` still silences EVA for
 authored cinematics.
 
-Standard Tier 1 role markers resolve against each launch map's actual production
-family. Ordinary maps whose MCV/factories appear only after opening scripts fall
-back to the human house family, without granting foreign production. True
-fixed-unit/no-build maps retain no starter combat units; reviewed no-build maps
-with authored production still receive compatible starters.
+Standard Tier 1 starters are saved as five concrete identities per usable
+faction family. Each launch map prepares only its selected family's five behind
+exact prerequisites. Ordinary maps whose MCV/factories appear only after
+opening scripts still use the human-house fallback without adding sibling
+subtypes. True fixed-unit/no-build maps retain no starter combat units;
+reviewed no-build maps with authored production receive compatible equivalents.
 
 ## Known Limits
 
@@ -715,9 +716,10 @@ with authored production still receive compatible starters.
   and indexed the normalized null `Prerequisite.List0=none` sentinel. Runtime
   access discovery therefore returned no defense entries. The catalogue now
   initializes on first use, parses normal/override/numbered prerequisites, and
-  rejects null sentinels. Standard's saved T1 defense marker expands to the five
-  displayed defenses exactly once. Every defense accepts any physical Allied,
-  Soviet, Epsilon, or Foehn Construction Yard, and starter rules apply after
+  rejects null sentinels. Standard's saved T1 defense marker resolves to the
+  selected mission family's ground/anti-air pair; Epsilon legitimately uses
+  one Gatling Cannon identity for both. Chaos uses fixed concrete defenses,
+  and starter rules apply after
   mission-specific defense merges so primary/list prerequisites cannot be
   duplicated or replaced.
 - Soviet 03 retained its original paradrop and back-air TeamTypes, TaskForces,
@@ -802,6 +804,15 @@ same native scripted-hero policy already used by AINSOMNIA. It now preserves
 native SIEG through trigger-reference, clone-exclusion, and direct-buff policy,
 then applies earned buffs through `native_variant_buff_rules`. No mission
 Trigger, Tag, Event, Action, TeamType, TaskForce, or ScriptType changes.
+
+Road Trippin's four player-controlled Guardian GIs are infantry records `16`,
+`17`, `24`, and `25`. Replacing these authored startup objects with the isolated
+`MORPGGI` identity left them selectable but unable to move, matching the earlier
+Stormbringer placed-infantry failure even though both native and cloned movement
+fields were valid. `AROADTRIP` now keeps `GGI` native for placements, TaskForces,
+and exact mission references. Earned Guardian GI buffs are forwarded to that
+native mission identity, so preserving campaign behavior does not discard the
+player's upgrades.
 
 ## August 25 Suicide-Unit Range Safety
 

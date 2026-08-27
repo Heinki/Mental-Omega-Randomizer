@@ -52,9 +52,8 @@ STALINS_FIST_TASKFORCE_IDS = set(_FACTION_CONFIG['stalins_fist_taskforce_ids'])
 STALINS_FIST_FAMILIES = set(_FACTION_CONFIG['stalins_fist_families'])
 
 # Five guaranteed combat roles for the optional seed-start roster. Standard
-# translates each role to the physical production families present in a map.
-# Chaos assigns every faction once across the four ground roles, then selects
-# one true AircraftType from the three factions that own an airfield.
+# selects one concrete identity per role and usable faction family. Chaos and
+# Shop instead select only five identities total across the complete run.
 TIER_ONE_ROLE_UNITS = {
     role: {family: tuple(values) for family, values in families.items()}
     for role, families in _TIER_ONE_CONFIG['role_units'].items()

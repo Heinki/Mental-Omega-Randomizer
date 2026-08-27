@@ -504,8 +504,7 @@ class SeedController:
             self.append_log(
                 'Starting Tier 1 defenses: '
                 + ', '.join(
-                    unit_display_label(unit_id)
-                    for unit_id in self.display_starting_tier_one_defense_ids()
+                    self.display_starting_tier_one_defense_labels()
                 )
                 + '.'
             )

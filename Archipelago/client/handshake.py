@@ -285,7 +285,7 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         or not isinstance(extra_limit, int)
         or isinstance(extra_limit, bool)
         or not 0 <= extra_limit <= 10
-        or received_unit_loadout not in {'manual', 'random'}
+        or received_unit_loadout not in {'all', 'manual', 'random'}
         or not isinstance(purchase_locations, list)
         or len(purchase_locations) != purchase_count
         or not isinstance(stage_victories, list)

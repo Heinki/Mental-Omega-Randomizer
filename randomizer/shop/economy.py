@@ -41,10 +41,14 @@ def mission_reward(
     definition = config.mission_rewards[class_id]
     effects = modifier_effects(modifiers, config)
     base_run_coins = max(
-        0, int(definition.run_coins * effects['run_reward_percent'])
+        0,
+        int(definition.run_coins * effects['run_reward_percent'])
+        + effects['run_reward_flat'],
     )
     meta_coins = max(
-        0, int(definition.meta_coins * effects['meta_reward_percent'])
+        0,
+        int(definition.meta_coins * effects['meta_reward_percent'])
+        + effects['meta_reward_flat'],
     )
     level = _bounded_upgrade_level(
         config, 'victory_run_coin_bonus', victory_coin_bonus_level

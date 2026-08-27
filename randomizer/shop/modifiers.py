@@ -16,7 +16,9 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
     effects = {
         'starting_run_coins_flat': 0,
         'run_reward_percent': Fraction(1, 1),
+        'run_reward_flat': 0,
         'meta_reward_percent': Fraction(1, 1),
+        'meta_reward_flat': 0,
         'shop_price_percent': Fraction(1, 1),
         'shop_price_flat': 0,
         'hidden_offer_count': 0,

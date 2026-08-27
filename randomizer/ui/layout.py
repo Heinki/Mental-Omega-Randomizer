@@ -631,7 +631,7 @@ def _build_right_panel(self, main_frame):
     shop_loadout_search.grid(
         row=12, column=0, columnspan=2, sticky='ew', pady=(0, 6)
     )
-    ttk.Label(shop_loadout_search, text='Search permanent loadout:').pack(
+    ttk.Label(shop_loadout_search, text='Search permanent units:').pack(
         side='left'
     )
     ttk.Entry(
@@ -645,7 +645,7 @@ def _build_right_panel(self, main_frame):
         shop_loadout_frame,
         ('name', 'tier', 'source'),
         (
-            ('name', 'Entitled Extra Unit', 330),
+            ('name', 'Starting Extra Unit', 330),
             ('tier', 'Tier', 80),
             ('source', 'Source', 130),
         ),

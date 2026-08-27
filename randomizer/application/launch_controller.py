@@ -327,7 +327,6 @@ class LaunchController:
             if self.randomize_unit_access_enabled()
             else controlled_tech_ids()
         )
-        earned_access_ids.update(self.active_starting_tier_one_expanded_ids())
         rules = mission_basic_unit_rules(
             lines,
             earned_access_ids=earned_access_ids,
@@ -345,36 +344,60 @@ class LaunchController:
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)
         standard_starter_families = self.active_standard_starter_families()
-        starter_rules = starting_tier_one_rules(
-            lines,
-            starting_unit_ids,
-            standard_families=standard_starter_families,
-            additional_build_houses=(),
-            additional_production_houses=production_houses,
-            excluded_unit_ids=self.active_reward_settings().get(
-                'excluded_unit_access_ids', []
-            ),
-            allow_player_family_fallback=(
-                mission_code not in NO_BUILD_MISSION_CODES
-            ),
-            include_capturable_production=translate_equivalents,
-        )
+        if self.active_progression_mode() == 'Shop Mode':
+            starter_rules = starting_tier_one_rules(
+                lines,
+                starting_unit_ids,
+                chaos_mode=True,
+                additional_build_houses=(),
+                additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
+            )
+        else:
+            starter_rules = starting_tier_one_rules(
+                lines,
+                starting_unit_ids,
+                standard_families=standard_starter_families,
+                additional_build_houses=(),
+                additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
+                allow_player_family_fallback=(
+                    mission_code not in NO_BUILD_MISSION_CODES
+                ),
+                include_capturable_production=False,
+            )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)
-        starter_defense_rules = starting_tier_one_defense_rules(
-            lines,
-            starting_defense_ids,
-            standard_families=standard_starter_families,
-            additional_build_houses=(),
-            additional_production_houses=production_houses,
-            excluded_unit_ids=self.active_reward_settings().get(
-                'excluded_unit_access_ids', []
-            ),
-            allow_player_family_fallback=(
-                mission_code not in NO_BUILD_MISSION_CODES
-            ),
-            include_capturable_production=translate_equivalents,
-        )
+        if self.active_progression_mode() == 'Shop Mode':
+            starter_defense_rules = starting_tier_one_defense_rules(
+                lines,
+                starting_defense_ids,
+                chaos_mode=True,
+                additional_build_houses=(),
+                additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
+            )
+        else:
+            starter_defense_rules = starting_tier_one_defense_rules(
+                lines,
+                starting_defense_ids,
+                standard_families=standard_starter_families,
+                additional_build_houses=(),
+                additional_production_houses=production_houses,
+                excluded_unit_ids=self.active_reward_settings().get(
+                    'excluded_unit_access_ids', []
+                ),
+                allow_player_family_fallback=(
+                    mission_code not in NO_BUILD_MISSION_CODES
+                ),
+                include_capturable_production=False,
+            )
         for section, values in starter_defense_rules.items():
             rules.setdefault(section, {}).update(values)
         rules = merge_required_rules(rules)

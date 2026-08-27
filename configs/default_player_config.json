@@ -15,7 +15,7 @@
       "progression_mode": "Mission List",
       "grid_two_start_positions": false,
       "unlock_all_rewards_after_final_grid_mission": false,
-      "rewards_per_objective": 1,
+      "rewards_per_objective": 4,
       "rewards_on_victory_only": false,
       "use_act_based_reward_multipliers": true,
       "difficulty": "Normal",
@@ -163,7 +163,7 @@
         "buff_allied_helpers": false,
         "enemy_scaling": {
           "stack_model_version": 6,
-          "maximum_total_buffs": 40,
+          "maximum_total_buffs": 0,
           "allowed_buff_ids": ["*"],
           "caps": {}
         },

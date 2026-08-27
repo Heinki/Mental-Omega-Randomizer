@@ -17,6 +17,7 @@ from randomizer.shop.economy import (
 )
 from randomizer.shop.model import RunStatus, ShopRewardType
 from randomizer.shop.modifiers import hidden_offer_codes
+from randomizer.shop.text import gem_text
 from randomizer.shop.inventory import (
     rotating_power_inventory,
     rotating_unit_inventory,
@@ -447,7 +448,7 @@ class ShopPolishController(ShopArchipelagoController):
                 'Exact reward hidden until mission launch'
                 if reward_hidden else
                 f'Base +{definition.run_coins} Ore / '
-                f'+{definition.meta_coins} Mental  •  '
+                f'+{gem_text(definition.meta_coins)}  •  '
                 f'Estimated +{reward.run_coins} / +{reward.meta_coins}'
                 + ('  •  Full reward retained' if assisted else '')
             )
@@ -1083,67 +1084,6 @@ class ShopPolishController(ShopArchipelagoController):
         self.shop_purchase_button.configure(
             state='normal' if buyable else 'disabled'
         )
-        reward_id = self._shop_catalogue_rows.get(
-            selected[0], ''
-        ) if selected else ''
-        entry = self._shop_entry_by_reward_id.get(reward_id)
-        active_tech = set(active_shop_tech_ids(self.shop_run))
-        active_powers = set(active_shop_power_ids(self.shop_run))
-        category = self.shop_category_var.get()
-        can_upgrade = bool(
-            entry is not None
-            and (
-                entry.reward_type is ShopRewardType.UNIT_ACCESS
-                and entry.target_id in active_tech
-                or entry.reward_type is ShopRewardType.POWER_ACCESS
-                and entry.target_id in active_powers
-            )
-            and entry.reward_type in {
-                ShopRewardType.UNIT_ACCESS,
-                ShopRewardType.POWER_ACCESS,
-            }
-        )
-        if category in {'Units', 'Powers'}:
-            is_power = category == 'Powers'
-            owned_targets = (
-                set(active_shop_power_ids(self.shop_run))
-                if is_power and self.shop_run is not None
-                else set(active_shop_tech_ids(self.shop_run))
-                if self.shop_run is not None
-                else set()
-            )
-            buff_entries = (
-                self._shop_power_buff_entries
-                if is_power else self._shop_buff_entries
-            )
-            browsable_count = len(
-                owned_targets & {item.target_id for item in buff_entries}
-            )
-            self.shop_upgrade_selected_button.pack(
-                side='left', before=self.shop_purchase_button
-            )
-            if can_upgrade:
-                action_text = (
-                    'Open Selected Power Upgrades'
-                    if is_power else 'Open Selected Unit Upgrades'
-                )
-                action_state = 'normal'
-            elif selected:
-                action_text = 'Buy Selected Power First' if is_power else 'Buy Selected Unit First'
-                action_state = 'disabled'
-            else:
-                action_text = (
-                    f'Browse Owned Power Upgrades ({browsable_count})'
-                    if is_power else
-                    f'Browse Owned Unit Upgrades ({browsable_count})'
-                )
-                action_state = 'normal' if browsable_count else 'disabled'
-            self.shop_upgrade_selected_button.configure(
-                text=action_text,
-                state=action_state,
-            )
-        else:
-            self.shop_upgrade_selected_button.pack_forget()
         self.refresh_permanent_purchase_buttons()
 
     def _shop_upgrade_effect_text(self, upgrade_id, definition):
@@ -1197,7 +1137,7 @@ class ShopPolishController(ShopArchipelagoController):
                 f'Each level adds +{effects.get("run_coins_per_level", 0)} '
                 'Ore to challenge victories; every '
                 f'{effects.get("meta_coins_every_levels", 0)} levels also adds '
-                '+1 Mental Coin.'
+                f'+{gem_text(1)}.'
             ),
             'recovery_salvage': (
                 f'Each level saves up to {effects.get("ore_per_level", 0)} '

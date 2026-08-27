@@ -3,6 +3,7 @@
 from .config import SHOP_CONFIG, ShopModeConfig
 from .active import active_shop_rewards
 from .archipelago import (
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL,
     ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL,
     ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
     ap_automatic_reward_ids,
@@ -65,6 +66,7 @@ __all__ = (
     'apply_mission_difficulty_assist',
     'apply_mission_victory',
     'active_shop_rewards',
+    'ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL',
     'ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL',
     'ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM',
     'ap_automatic_reward_ids',

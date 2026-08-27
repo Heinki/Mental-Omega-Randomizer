@@ -75,7 +75,7 @@ def validate_shop_mode_config(sections, path, invalid):
         for easier, harder in zip(ordered_rewards, ordered_rewards[1:])
     ):
         invalid(
-            'Shop Mode Mental Coin rewards must increase with difficulty',
+            'Shop Mode Gem rewards must increase with difficulty',
             path,
         )
 
@@ -185,13 +185,44 @@ def validate_shop_mode_config(sections, path, invalid):
     allowed_modifier_effects = {
         'starting_run_coins_flat',
         'run_reward_percent',
+        'run_reward_flat',
         'meta_reward_percent',
+        'meta_reward_flat',
         'shop_price_percent',
         'shop_price_flat',
         'hidden_offer_count',
     }
+    percent_flat_pairs = {
+        'run_reward_percent': 'run_reward_flat',
+        'meta_reward_percent': 'meta_reward_flat',
+        'shop_price_percent': 'shop_price_flat',
+    }
     for modifier_id, definition in sections['modifiers'].items():
         effects = definition.get('effects') if isinstance(definition, dict) else None
+        has_benefit = bool(isinstance(effects, dict) and (
+            effects.get('starting_run_coins_flat', 0) > 0
+            or effects.get('run_reward_flat', 0) > 0
+            or effects.get('meta_reward_flat', 0) > 0
+            or effects.get('run_reward_percent', 100) > 100
+            or effects.get('meta_reward_percent', 100) > 100
+            or effects.get('shop_price_percent', 100) < 100
+            or effects.get('shop_price_flat', 0) < 0
+        ))
+        has_penalty = bool(isinstance(effects, dict) and (
+            effects.get('starting_run_coins_flat', 0) < 0
+            or effects.get('run_reward_flat', 0) < 0
+            or effects.get('meta_reward_flat', 0) < 0
+            or effects.get('run_reward_percent', 100) < 100
+            or effects.get('meta_reward_percent', 100) < 100
+            or effects.get('shop_price_percent', 100) > 100
+            or effects.get('shop_price_flat', 0) > 0
+            or effects.get('hidden_offer_count', 0) > 0
+        ))
+        mixes_percent_and_flat = bool(isinstance(effects, dict) and any(
+            effects.get(percent_key, 100) != 100
+            and effects.get(flat_key, 0) != 0
+            for percent_key, flat_key in percent_flat_pairs.items()
+        ))
         if (
             not _is_nonempty_string(modifier_id)
             or not isinstance(definition, dict)
@@ -211,5 +242,8 @@ def validate_shop_mode_config(sections, path, invalid):
             or not 0 <= effects.get('hidden_offer_count', 0) <= settings.get(
                 'mission_offer_count', 0
             )
+            or not has_benefit
+            or not has_penalty
+            or mixes_percent_and_flat
         ):
             invalid(f'Invalid Shop Mode modifier {modifier_id!r}', path)

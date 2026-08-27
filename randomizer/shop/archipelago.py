@@ -10,6 +10,7 @@ from .model import ShopRewardType
 
 ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM = 'random'
 ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL = 'manual'
+ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL = 'all'
 
 
 def archipelago_shop_identity(ap_state):
@@ -111,10 +112,21 @@ def random_ap_unit_entitlement_ids(
 
 
 def ap_automatic_reward_ids(reward_ids):
-    """Return received AP buffs and powers, preserving legitimate stacks."""
+    """Return every received AP reward, preserving legitimate effect stacks.
+
+    Unit access is entitlement-like and therefore emitted once. Buff and power
+    rewards retain received-item multiplicity so their configured stacking
+    behavior remains unchanged.
+    """
     automatic = []
+    unit_ids = set()
     for reward_id in reward_ids or ():
         entry = catalogue_entry(canonical_reward_for_id(reward_id))
-        if entry is not None and entry.reward_type is not ShopRewardType.UNIT_ACCESS:
-            automatic.append(entry.reward_id)
+        if entry is None:
+            continue
+        if entry.reward_type is ShopRewardType.UNIT_ACCESS:
+            if entry.reward_id in unit_ids:
+                continue
+            unit_ids.add(entry.reward_id)
+        automatic.append(entry.reward_id)
     return tuple(automatic)

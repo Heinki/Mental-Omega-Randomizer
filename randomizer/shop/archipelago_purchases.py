@@ -1,4 +1,4 @@
-"""Durable Mental Coin transactions for generated AP Shop locations."""
+"""Durable Gem transactions for generated AP Shop locations."""
 
 from copy import deepcopy
 from dataclasses import replace

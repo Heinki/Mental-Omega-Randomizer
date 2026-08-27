@@ -3,6 +3,7 @@
 from .config import SHOP_CONFIG
 from .economy import mission_reward
 from .model import RunStatus
+from .text import gem_text
 
 
 def reward_breakdown_lines(
@@ -25,7 +26,7 @@ def reward_breakdown_lines(
     )
     lines = [
         f'{definition.display_name} base: +{definition.run_coins} Ore, '
-        f'+{definition.meta_coins} Mental Coins',
+        f'+{gem_text(definition.meta_coins)}',
     ]
     if reward.base_run_coins != definition.run_coins:
         lines.append(
@@ -37,7 +38,7 @@ def reward_breakdown_lines(
         - reward.challenge_hunter_meta_coins
     )
     if modified_meta != definition.meta_coins:
-        lines.append(f'Modified Mental Coins: +{modified_meta}')
+        lines.append(f'Modified Gems: +{gem_text(modified_meta)}')
     if reward.victory_bonus_run_coins:
         lines.append(
             'Permanent Victory Bonus: '
@@ -47,17 +48,17 @@ def reward_breakdown_lines(
         lines.append(
             f'{mission_modifier.title}: '
             f'+{reward.mission_bonus_run_coins} Ore, '
-            f'+{reward.mission_bonus_meta_coins} Mental Coins'
+            f'+{gem_text(reward.mission_bonus_meta_coins)}'
         )
     if reward.challenge_hunter_run_coins or reward.challenge_hunter_meta_coins:
         lines.append(
             'Challenge Hunter: '
             f'+{reward.challenge_hunter_run_coins} Ore, '
-            f'+{reward.challenge_hunter_meta_coins} Mental Coins'
+            f'+{gem_text(reward.challenge_hunter_meta_coins)}'
         )
     lines.append(
         f'Total: +{reward.run_coins} Ore, '
-        f'+{reward.meta_coins} Mental Coins'
+        f'+{gem_text(reward.meta_coins)}'
     )
     return tuple(lines)
 
@@ -76,7 +77,7 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
         f'Seed: {run.seed}',
         f'Missions won: {len(run.completed_missions)} / {run.run_length}',
         f'Ore remaining: {run.run_coins}',
-        f'Persistent Mental Coins: {profile.meta_coins}',
+        f'Persistent Gems: {profile.meta_coins}',
         f'Run purchases: {sum(item.quantity for item in run.run_purchases)}',
         f'Buff stacks purchased: {sum(item.stacks for item in run.run_buffs)}',
         f'Free starting draft buffs: '

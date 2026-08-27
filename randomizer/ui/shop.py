@@ -44,7 +44,7 @@ def build_shop_tab(self, workspace_tabs):
         (self.shop_stage_var, 'Shop.Stage.TLabel'),
         (self.shop_status_var, 'Shop.Status.TLabel'),
         (self.shop_run_coins_var, 'Shop.Ore.TLabel'),
-        (self.shop_meta_coins_var, 'Shop.Mental.TLabel'),
+        (self.shop_meta_coins_var, 'Shop.Gem.TLabel'),
         (self.shop_rerolls_var, 'Shop.Reroll.TLabel'),
     )
     self.shop_header_labels = []
@@ -236,21 +236,13 @@ def build_shop_tab(self, workspace_tabs):
     )
     shop_action_row = ttk.Frame(run_shop)
     shop_action_row.grid(row=3, column=0, sticky='e', pady=(7, 0))
-    self.shop_upgrade_selected_button = ttk.Button(
-        shop_action_row,
-        text='Upgrade Selected Unit',
-        command=self.view_selected_shop_buffs,
-        state='disabled',
-        style='Launch.TButton',
-    )
-    self.shop_upgrade_selected_button.pack(side='left')
     self.shop_purchase_button = ttk.Button(
         shop_action_row,
         text='Purchase Selected',
         command=self.buy_selected_shop_reward,
         state='disabled',
     )
-    self.shop_purchase_button.pack(side='left', padx=(8, 0))
+    self.shop_purchase_button.pack(side='left')
 
     loadout = ttk.Frame(panels, padding=8)
     panels.add(loadout, text='Current Loadout')
@@ -407,7 +399,7 @@ def build_shop_tab(self, workspace_tabs):
     ttk.Label(
         permanent_buffs,
         text=(
-            'Spend Mental Coins on lasting unit buff stacks. Buffs apply in '
+            'Spend Gems on lasting unit buff stacks. Buffs apply in '
             'future runs whenever that permanently unlocked unit is used.'
         ),
         style='Shop.Help.TLabel',
@@ -477,7 +469,7 @@ def build_shop_tab(self, workspace_tabs):
         (
             ('purchase', 'Generated Purchase', 160),
             ('status', 'Status', 330),
-            ('cost', 'Mental Coin Cost', 150),
+            ('cost', 'Gem Cost', 150),
         ),
         height=10,
     )

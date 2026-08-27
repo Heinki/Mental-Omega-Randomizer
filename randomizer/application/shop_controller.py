@@ -19,18 +19,18 @@ from ._dependencies import (
     ensure_unit_cameos,
 )
 
-from randomizer.missions.tier_one import (
-    expanded_tier_one_defense_ids,
-    expanded_tier_one_unit_ids,
-)
 from randomizer.rewards.definitions import unit_display_label
 from randomizer.rewards.display import buff_effect_lines, reward_display_name
-from randomizer.shop.active import active_shop_rewards
+from randomizer.shop.active import (
+    active_shop_rewards,
+    active_shop_starter_defense_ids,
+    active_shop_starter_unit_ids,
+    shop_starter_defense_ids,
+    shop_starter_unit_ids,
+)
 from randomizer.shop.archipelago import (
-    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
     ap_automatic_reward_ids,
     ap_unit_entitlement_ids,
-    random_ap_unit_entitlement_ids,
 )
 from randomizer.shop.catalogue import (
     canonical_reward_for_id,
@@ -49,10 +49,10 @@ from randomizer.shop.missions import (
     mission_classes_for_stage,
 )
 from randomizer.shop.mission_modifiers import active_mission_modifier
-from randomizer.shop.meta import validate_starting_loadout
 from randomizer.shop.model import BuffPurchase, RunStatus, ShopRewardType
 from randomizer.shop.persistence import ShopRepository
 from randomizer.shop.service import ShopProgressionService
+from randomizer.shop.text import gem_text
 from randomizer.shop.transitions import ShopTransitionError
 from .shop_polish_controller import ShopPolishController
 
@@ -85,7 +85,7 @@ class ShopController(ShopPolishController):
         self.shop_stage_var = tk.StringVar(value='Run — / 10')
         self.shop_status_var = tk.StringVar(value='Status: No Run')
         self.shop_run_coins_var = tk.StringVar(value='Ore: 0')
-        self.shop_meta_coins_var = tk.StringVar(value='Mental Coins: 0')
+        self.shop_meta_coins_var = tk.StringVar(value='Gems: 0')
         self.shop_rerolls_var = tk.StringVar(value='Rerolls: 0 / 0')
         self.shop_message_var = tk.StringVar(value='')
         self.shop_ap_purchase_status_var = tk.StringVar(value='')
@@ -511,7 +511,7 @@ class ShopController(ShopPolishController):
     def active_starting_tier_one_unit_ids(self):
         run = self._shop_context_run()
         if run is not None:
-            return list(run.starting_unit_ids)
+            return list(active_shop_starter_unit_ids(run))
         if self._shop_mode_context_selected():
             return []
         return super().active_starting_tier_one_unit_ids()
@@ -519,7 +519,7 @@ class ShopController(ShopPolishController):
     def active_starting_tier_one_defense_ids(self):
         run = self._shop_context_run()
         if run is not None:
-            return list(run.starting_defense_ids)
+            return list(active_shop_starter_defense_ids(run))
         if self._shop_mode_context_selected():
             return []
         return super().active_starting_tier_one_defense_ids()
@@ -678,11 +678,11 @@ class ShopController(ShopPolishController):
                 if run is None or run.status is RunStatus.ACTIVE
                 else 'Error.TLabel'
                 if run.status is RunStatus.FAILED
-                else 'Shop.Mental.TLabel'
+                else 'Shop.Gem.TLabel'
             )
             self.shop_status_label.configure(style=status_style)
         self.shop_meta_coins_var.set(
-            f'Mental Coins: {self.shop_profile.meta_coins}'
+            f'Gems: {self.shop_profile.meta_coins}'
         )
         capacity = self._shop_reroll_capacity()
         used = run.rerolls_used if run is not None else 0
@@ -861,7 +861,7 @@ class ShopController(ShopPolishController):
             'Give Up Shop Run?',
             'End this run now?\n\n'
             'Run Ore and run purchases will be abandoned. '
-            'Mental Coins and permanent unlocks are kept.',
+            'Gems and permanent unlocks are kept.',
             parent=self,
         ):
             return
@@ -1351,18 +1351,28 @@ class ShopController(ShopPolishController):
             'reward_mode': SHOP_REWARD_MODE,
         }
         try:
-            starting_units = self.starting_tier_one_unit_ids_for_seed(
+            starting_unit_markers = self.starting_tier_one_unit_ids_for_seed(
                 seed, settings
             )
-            starting_defenses = self.starting_tier_one_defense_ids_for_seed(
+            starting_defense_markers = self.starting_tier_one_defense_ids_for_seed(
                 settings, seed=seed
             )
         finally:
             self._seed_generation_context = previous_context
-        starter_tech_ids = set(expanded_tier_one_unit_ids(starting_units))
-        starter_tech_ids.update(
-            expanded_tier_one_defense_ids(starting_defenses)
+        starting_units = shop_starter_unit_ids(
+            seed=seed,
+            starting_unit_ids=starting_unit_markers,
+            faction_filter=faction_filter,
+            excluded_unit_ids=settings.get('excluded_unit_access_ids', ()),
         )
+        starting_defenses = shop_starter_defense_ids(
+            seed=seed,
+            starting_defense_ids=starting_defense_markers,
+            faction_filter=faction_filter,
+            excluded_unit_ids=settings.get('excluded_unit_access_ids', ()),
+        )
+        starter_tech_ids = set(starting_units)
+        starter_tech_ids.update(starting_defenses)
         ap_identity, ap_reward_ids = self.archipelago_shop_context()
         maximum_extra_units = (
             self.shop_config.max_selected_permanent_units
@@ -1371,54 +1381,18 @@ class ShopController(ShopPolishController):
                 'expanded_loadout'
             ].effects['slots_per_level'])
         )
-        selected = self._selected_loadout_reward_ids()
-        if (
-            ap_identity
-            and self.archipelago_received_unit_loadout_mode()
-            == ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
-        ):
-            permanent_entitlements = set(
-                self.shop_profile.permanent_unit_unlocks
-            )
-            selected = tuple(
-                reward_id for reward_id in selected
-                if reward_id in permanent_entitlements
-            )
-            local_loadout = validate_starting_loadout(
-                starter_tech_ids=starter_tech_ids,
-                selected_reward_ids=selected,
-                entitled_reward_ids=permanent_entitlements,
-                maximum_extra_units=maximum_extra_units,
-            )
-            active_tech_ids = set(local_loadout.active_tech_ids)
-            eligible_ap_units = tuple(
-                reward_id
-                for reward_id in ap_unit_entitlement_ids(ap_reward_ids)
-                for entry in [self._shop_entry_by_reward_id.get(reward_id)]
-                if (
-                    entry is not None
-                    and entry.target_id not in active_tech_ids
-                    and self._shop_entry_available(entry)
-                )
-            )
-            selected += random_ap_unit_entitlement_ids(
-                eligible_ap_units,
-                run_seed=seed,
-                run_number=self.shop_profile.lifetime_runs_started + 1,
-                maximum_count=(
-                    max(
-                        0,
-                        maximum_extra_units - local_loadout.extra_slots_used,
-                    )
-                    if local_loadout.allowed else 0
-                ),
-                ap_identity=ap_identity,
-                excluded_reward_ids=selected,
-            )
+        permanent_entitlements = set(self.shop_profile.permanent_unit_unlocks)
+        selected = tuple(
+            reward_id for reward_id in self._selected_loadout_reward_ids()
+            if reward_id in permanent_entitlements
+        )
         permanent_buff_targets = set(starter_tech_ids)
         permanent_buff_targets.update(
             entry.target_id
-            for reward_id in selected
+            for reward_id in (
+                *selected,
+                *ap_unit_entitlement_ids(ap_reward_ids),
+            )
             for entry in [self._shop_entry_by_reward_id.get(reward_id)]
             if entry is not None and entry.target_id
         )
@@ -1567,9 +1541,9 @@ class ShopController(ShopPolishController):
             if source not in record['sources']:
                 record['sources'].append(source)
 
-        for unit_id in run.starting_unit_ids:
+        for unit_id in active_shop_starter_unit_ids(run):
             add_access('Tier 1 Starter', unit_id, raw_unit=True)
-        for unit_id in run.starting_defense_ids:
+        for unit_id in active_shop_starter_defense_ids(run):
             add_access('Tier 1 Defense', unit_id, raw_unit=True)
         ap_units = set(ap_unit_entitlement_ids(run.ap_entitlements_snapshot))
         local_units = set(self.shop_profile.permanent_unit_unlocks)
@@ -1736,20 +1710,17 @@ class ShopController(ShopPolishController):
                 'expanded_loadout'
             ].effects['slots_per_level'])
         )
-        random_ap_loadout = (
-            self.archipelago_received_unit_loadout_mode()
-            == ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
-        )
-        if random_ap_loadout:
+        ap_identity, ap_reward_ids = self.archipelago_shop_context()
+        if ap_identity:
             self.shop_loadout_help_var.set(
-                f'Choose permanent units; received AP units randomly fill '
-                f'unused slots up to the {maximum_loadout}-unit limit when '
-                'the run starts. Mandatory Tier 1 starters are automatic.'
+                f'Choose up to {maximum_loadout} permanent extra units. All '
+                'received AP units are added automatically without using '
+                'these slots. Mandatory Tier 1 starters are automatic.'
             )
         else:
             self.shop_loadout_help_var.set(
-                f'Choose up to {maximum_loadout} permanent or AP-entitled '
-                'extra units. Mandatory Tier 1 starters are added '
+                f'Choose up to {maximum_loadout} permanent extra units. '
+                'Mandatory Tier 1 starters are added '
                 'automatically.'
             )
         draft_level = self.shop_profile.upgrade_level('starting_buff_draft')
@@ -1768,16 +1739,12 @@ class ShopController(ShopPolishController):
             f'category; {"choose category above" if specialization_level else "locked"}.'
         )
         local_owned = set(self.shop_profile.permanent_unit_unlocks)
-        _ap_identity, ap_reward_ids = self.archipelago_shop_context()
         ap_owned = set(ap_unit_entitlement_ids(ap_reward_ids))
         active_run = bool(
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
         )
-        selectable_ap_owned = (
-            ap_owned if not random_ap_loadout or active_run else set()
-        )
-        owned = local_owned | selectable_ap_owned
+        owned = local_owned | (ap_owned if active_run else set())
         selected = set(
             self.shop_run.selected_permanent_units
             if self.shop_run is not None else ()
@@ -1786,6 +1753,8 @@ class ShopController(ShopPolishController):
             selected = set(self._shop_pending_loadout_selection)
         else:
             self._shop_pending_loadout_selection = set(selected)
+        if active_run:
+            selected.update(ap_owned)
         entries = sorted(
             (
                 entry for entry in self._shop_unit_entries
@@ -1890,7 +1859,10 @@ class ShopController(ShopPolishController):
                 row_tag = 'unavailable'
                 buyable = False
             elif self.shop_profile.meta_coins < price:
-                state = f'Need {price - self.shop_profile.meta_coins} more'
+                state = (
+                    f'Need {gem_text(price - self.shop_profile.meta_coins)} '
+                    'more'
+                )
                 row_tag = 'unavailable'
                 buyable = False
             else:
@@ -1904,7 +1876,7 @@ class ShopController(ShopPolishController):
                     entry.reward_id,
                     (entry.tier or '').replace('_', ' ').title(),
                     state,
-                    f'{price} Mental',
+                    gem_text(price),
                 ),
             }
             cameo = cameo_images.get(entry.reward_id)
@@ -1936,11 +1908,14 @@ class ShopController(ShopPolishController):
             elif active_run:
                 state, row_tag, buyable = 'Locked: run active', 'unavailable', False
             elif self.shop_profile.meta_coins < price:
-                state = f'Need {price - self.shop_profile.meta_coins} more'
+                state = (
+                    f'Need {gem_text(price - self.shop_profile.meta_coins)} '
+                    'more'
+                )
                 row_tag, buyable = 'unavailable', False
             else:
                 state, row_tag, buyable = 'Available', 'available', True
-            next_price = 'Max' if maxed else f'{price} Mental'
+            next_price = 'Max' if maxed else gem_text(price)
             iid = f'upgrade-{index}'
             upgrade_tree.insert(
                 '', 'end', iid=iid,
@@ -2018,7 +1993,10 @@ class ShopController(ShopPolishController):
             elif active_run:
                 state, row_tag, buyable = 'Locked: run active', 'unavailable', False
             elif self.shop_profile.meta_coins < price:
-                state = f'Need {price - self.shop_profile.meta_coins} more'
+                state = (
+                    f'Need {gem_text(price - self.shop_profile.meta_coins)} '
+                    'more'
+                )
                 row_tag, buyable = 'unavailable', False
             else:
                 state, row_tag, buyable = 'Available', 'available', True
@@ -2032,7 +2010,7 @@ class ShopController(ShopPolishController):
                     ),
                     f'{stacks} / {maximum}',
                     state,
-                    'Max' if maxed else f'{price} Mental',
+                    'Max' if maxed else gem_text(price),
                 ),
             }
             cameo = cameo_images.get(entry.reward_id)
@@ -2123,7 +2101,7 @@ class ShopController(ShopPolishController):
         validation = outcome.validation
         if validation.allowed:
             self._set_shop_message(
-                f'Purchased {item_id} for {validation.cost} Mental Coins.'
+                f'Purchased {item_id} for {gem_text(validation.cost)}.'
             )
         else:
             self._set_shop_message(

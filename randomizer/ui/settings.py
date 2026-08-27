@@ -842,10 +842,9 @@ def _build_gameplay_settings(self, settings_frame):
     self.start_with_tier_one_units_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.start_with_tier_one_units_check,
-        'Standard grants ground/anti-air infantry, vehicles, and one basic aircraft matching each '
-        'Allied, Soviet, or Epsilon production family and player subfaction in the mission. An available MCV or '
-        'Construction Yard also unlocks the matching airfield. Chaos assigns every faction once '
-        'across the four ground roles using valid subfaction variants, then adds one seeded Allied, Soviet, or Epsilon aircraft. '
+        'Standard seed-selects five exact units for every usable faction family: infantry, anti-air infantry, '
+        'tank, anti-air tank, and aircraft. Each mission uses only its matching family\'s five; sibling variants are not granted. '
+        'Chaos and Shop instead seed-select only five units total, one for each role. '
         'Starter units remain buffable.',
     )
     self.start_with_tier_one_defenses_check = ttk.Checkbutton(
@@ -858,7 +857,8 @@ def _build_gameplay_settings(self, settings_frame):
     )
     WidgetTooltip(
         self.start_with_tier_one_defenses_check,
-        'Unlocks the basic ground and anti-air defenses for each Construction Yard family available to the player. '
+        'Standard grants ground and anti-air defense roles and resolves each mission to its matching faction equivalents. '
+        'Each defense keeps its exact Construction Yard prerequisite. '
         'Allies receive Pillbox and Patriot; Soviets Sentry Gun and Flak Cannon; Epsilon Gatling Cannon. '
         'Chaos also includes Foehn Sonic Emitter and Shrike Nest. Structures remain gated by a matching Construction Yard. '
         'When defensive-building rewards are enabled, starter access rewards are removed while buffs remain eligible.',

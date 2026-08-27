@@ -37,7 +37,7 @@ from .access import (
 )
 
 def tier_one_unit_ids(families):
-    """Return abstract Standard starter roles; launch maps resolve subfactions."""
+    """Return the five abstract combat roles for variant selection."""
     requested = {str(family or '').lower() for family in families}
     if not requested:
         return ()
@@ -47,6 +47,10 @@ def tier_one_role_label(unit_or_marker):
     role = TIER_ONE_ROLE_BY_MARKER.get(str(unit_or_marker or '').upper())
     if not role:
         return ''
+    if role == 'ground_vehicle':
+        return 'Ground Tank'
+    if role == 'anti_air_vehicle':
+        return 'Anti-Air Tank'
     return role.replace('_', ' ').title().replace('Anti Air', 'Anti-Air')
 
 def _tier_one_variant_entries(role, family=None):
@@ -61,8 +65,108 @@ def _tier_one_variant_entries(role, family=None):
             entries.append(entry)
     return entries
 
-def expanded_tier_one_unit_ids(starting_unit_ids):
-    """Expand Standard role markers without granting Chaos-only Foehn units."""
+def select_tier_one_unit_variants(
+    rng,
+    starting_unit_ids,
+    *,
+    families,
+    allowed_roles=None,
+    excluded_unit_ids=(),
+):
+    """Resolve each saved role marker to one concrete seeded unit identity."""
+    available_families = tuple(dict.fromkeys(
+        str(family or '').lower()
+        for family in families
+        if str(family or '').lower() in {
+            *STANDARD_TIER_ONE_FAMILIES,
+            'foehn',
+        }
+    ))
+    allowed = (
+        set(TIER_ONE_ROLE_UNITS)
+        if allowed_roles is None
+        else {str(role) for role in allowed_roles}
+    )
+    excluded = {
+        str(unit_id or '').upper()
+        for unit_id in excluded_unit_ids
+        if unit_id
+    }
+    selected = []
+    for value in starting_unit_ids or ():
+        unit_id = str(value or '').upper()
+        role = TIER_ONE_ROLE_BY_MARKER.get(unit_id)
+        if not role:
+            if unit_id and unit_id not in excluded and unit_id not in selected:
+                selected.append(unit_id)
+            continue
+        if role not in allowed:
+            continue
+        candidates = tuple(dict.fromkeys(
+            entry[0]
+            for family in available_families
+            for entry in _tier_one_variant_entries(role, family)
+            if entry[0] not in excluded
+        ))
+        if candidates:
+            selected.append(rng.choice(candidates))
+    return tuple(selected)
+
+def select_tier_one_defense_variants(
+    rng,
+    starting_defense_ids,
+    *,
+    families,
+    excluded_unit_ids=(),
+):
+    """Resolve the defense marker to one seeded identity for each role."""
+    available_families = tuple(dict.fromkeys(
+        str(family or '').lower()
+        for family in families
+        if str(family or '').lower() in TIER_ONE_DEFENSE_UNITS
+    ))
+    excluded = {
+        str(unit_id or '').upper()
+        for unit_id in excluded_unit_ids
+        if unit_id
+    }
+    selected = []
+    for value in starting_defense_ids or ():
+        unit_id = str(value or '').upper()
+        if unit_id != TIER_ONE_DEFENSE_MARKER:
+            if unit_id and unit_id not in excluded and unit_id not in selected:
+                selected.append(unit_id)
+            continue
+        for role in TIER_ONE_DEFENSE_ROLES:
+            candidates = tuple(dict.fromkeys(
+                TIER_ONE_DEFENSE_ROLE_UNITS[role][family]
+                for family in available_families
+                if (
+                    family in TIER_ONE_DEFENSE_ROLE_UNITS[role]
+                    and TIER_ONE_DEFENSE_ROLE_UNITS[role][family]
+                    not in excluded
+                )
+            ))
+            if candidates:
+                selected.append(rng.choice(candidates))
+    return tuple(dict.fromkeys(selected))
+
+def expanded_tier_one_unit_ids(
+    starting_unit_ids,
+    *,
+    families=None,
+    include_foehn=False,
+):
+    """Expand saved role markers into eligible concrete unit identities."""
+    available_families = [
+        str(family or '').lower()
+        for family in (
+            STANDARD_TIER_ONE_FAMILIES if families is None else families
+        )
+        if str(family or '').lower() in STANDARD_TIER_ONE_FAMILIES
+    ]
+    if include_foehn:
+        available_families.append('foehn')
     expanded = set()
     for value in starting_unit_ids or ():
         unit_id = str(value or '').upper()
@@ -73,7 +177,7 @@ def expanded_tier_one_unit_ids(starting_unit_ids):
             continue
         expanded.update(
             entry[0]
-            for family in STANDARD_TIER_ONE_FAMILIES
+            for family in available_families
             for entry in _tier_one_variant_entries(role, family)
         )
     return expanded
@@ -121,7 +225,7 @@ def _random_tier_one_variant(rng, role, family):
     return rng.choice(variants)[0]
 
 def random_chaos_tier_one_unit_ids(rng):
-    """Assign every faction once on ground, plus one seeded basic aircraft."""
+    """Assign every faction once on ground, plus one seeded aircraft."""
     families = list(STANDARD_TIER_ONE_FAMILIES) + ['foehn']
     rng.shuffle(families)
     units = [
@@ -129,7 +233,9 @@ def random_chaos_tier_one_unit_ids(rng):
         for role, family in zip(TIER_ONE_GROUND_ROLES, families)
     ]
     aircraft_family = rng.choice(STANDARD_TIER_ONE_FAMILIES)
-    units.append(_random_tier_one_variant(rng, 'basic_aircraft', aircraft_family))
+    units.append(_random_tier_one_variant(
+        rng, 'basic_aircraft', aircraft_family
+    ))
     return tuple(units)
 
 def random_chaos_tier_one_defense_ids(rng):
@@ -157,6 +263,57 @@ def _selected_tier_one_roles(selected_ids):
             roles.add(role)
     return roles
 
+def standard_tier_one_unit_markers(starting_unit_ids):
+    """Normalize legacy concrete Standard starters back to abstract roles."""
+    selected_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (starting_unit_ids or ())
+        if unit_id
+    }
+    selected_roles = _selected_tier_one_roles(selected_ids)
+    return tuple(
+        TIER_ONE_ROLE_MARKERS[role]
+        for role in TIER_ONE_ROLE_UNITS
+        if role in selected_roles
+    )
+
+def concrete_tier_one_starter_ids(starting_unit_ids):
+    """Keep recognized concrete/marker identities across all five roles."""
+    allowed_ids = {
+        TIER_ONE_ROLE_MARKERS[role]
+        for role in TIER_ONE_ROLE_UNITS
+    }
+    allowed_ids.update(
+        entry[0]
+        for role in TIER_ONE_ROLE_UNITS
+        for family in STANDARD_TIER_ONE_FAMILIES + ('foehn',)
+        for entry in _tier_one_variant_entries(role, family)
+    )
+    return tuple(dict.fromkeys(
+        unit_id
+        for value in (starting_unit_ids or ())
+        if (unit_id := str(value or '').upper()) in allowed_ids
+    ))
+
+def standard_tier_one_defense_markers(starting_defense_ids):
+    """Normalize legacy concrete Standard defenses to the shared marker."""
+    selected_ids = {
+        str(unit_id or '').upper()
+        for unit_id in (starting_defense_ids or ())
+        if unit_id
+    }
+    known_ids = {
+        unit_id
+        for family_ids in TIER_ONE_DEFENSE_UNITS.values()
+        for unit_id in family_ids
+    }
+    return (
+        (TIER_ONE_DEFENSE_MARKER,)
+        if TIER_ONE_DEFENSE_MARKER in selected_ids
+        or selected_ids.intersection(known_ids)
+        else ()
+    )
+
 def _standard_tier_one_entry(role, family, player_countries):
     configured = TIER_ONE_SUBFACTION_UNITS.get(role, {})
     by_lower = {country.lower(): entry for country, entry in configured.items()}
@@ -165,6 +322,29 @@ def _standard_tier_one_entry(role, family, player_countries):
         if entry and country_family({'country': country}) == family:
             return entry
     return TIER_ONE_ROLE_UNITS[role][family]
+
+def _preferred_standard_starter_family(
+    lines, records, production_categories, allowed
+):
+    """Choose one usable family, preferring complete ground production."""
+    player_family = _player_family(lines, records)
+    ranked = []
+    for index, family in enumerate(STANDARD_TIER_ONE_FAMILIES):
+        if family not in allowed:
+            continue
+        categories = {
+            category
+            for candidate_family, category in production_categories
+            if candidate_family == family
+        }
+        score = (
+            2
+            if 'base' in categories
+            else int('infantry' in categories) + int('vehicles' in categories)
+        )
+        if score:
+            ranked.append((score, family == player_family, -index, family))
+    return max(ranked, default=(0, False, 0, ''))[-1]
 
 def _tier_one_airfield_rules(
     base_families,
@@ -280,9 +460,15 @@ def starting_tier_one_defense_rules(
                     for family, _category in production_categories
                     if family in allowed_families
                 )
-        # Standard resolves the abstract starter roles only for physically
-        # present production families. Foreign versions may be prepared, but
-        # their exact Yard remains required until capture.
+        starter_family = _preferred_standard_starter_family(
+            lines,
+            records,
+            {(family, 'base') for family in base_families},
+            allowed_families,
+        )
+        base_families = {starter_family} if starter_family else set()
+        # Standard resolves the abstract starter roles for one matching
+        # mission family. Sibling faction defenses are never injected.
         eligible_families = tuple(
             family
             for family in STANDARD_TIER_ONE_FAMILIES
@@ -468,6 +654,22 @@ def starting_tier_one_rules(
                 (family, 'vehicles'),
                 (family, 'air'),
             })
+    starter_family = _preferred_standard_starter_family(
+        lines,
+        records,
+        production_categories,
+        allowed_families,
+    )
+    allowed_families = {starter_family} if starter_family else set()
+    production_categories = {
+        (family, category)
+        for family, category in production_categories
+        if family == starter_family
+    }
+    base_families = {
+        family for family, category in production_categories
+        if category == 'base'
+    }
     available_categories = set()
     for family, category in production_categories:
         if family not in allowed_families:
@@ -477,20 +679,45 @@ def starting_tier_one_rules(
             available_categories.add((family, 'infantry'))
             available_categories.add((family, 'vehicles'))
             available_categories.add((family, 'air'))
+    if starter_family:
+        # One known family is enough to prepare the complete four-role set.
+        # Exact Barracks/War Factory prerequisites keep a missing category
+        # dormant until the mission script creates or transfers that factory.
+        available_categories.add((starter_family, 'infantry'))
+        available_categories.add((starter_family, 'vehicles'))
+        available_categories.add((starter_family, 'air'))
 
+    marker_roles = {
+        TIER_ONE_ROLE_BY_MARKER[unit_id]
+        for unit_id in selected_ids
+        if unit_id in TIER_ONE_ROLE_BY_MARKER
+    }
+    selected_aircraft_families = set()
     for role in TIER_ONE_ROLE_UNITS:
-        if role not in selected_roles:
-            continue
-        for family in STANDARD_TIER_ONE_FAMILIES:
+        entries = []
+        if role in marker_roles:
+            entries.extend(
+                (family, *_standard_tier_one_entry(
+                    role, family, player_countries
+                ))
+                for family in STANDARD_TIER_ONE_FAMILIES
+            )
+        else:
+            entries.extend(
+                (family, tech_id, category)
+                for family in STANDARD_TIER_ONE_FAMILIES
+                for tech_id, category in _tier_one_variant_entries(role, family)
+                if tech_id in selected_ids
+            )
+        for family, tech_id, category in dict.fromkeys(entries):
             if family not in allowed_families:
                 continue
-            tech_id, category = _standard_tier_one_entry(
-                role, family, player_countries
-            )
             if tech_id in excluded_ids:
                 continue
             if (family, category) not in available_categories:
                 continue
+            if category == 'air':
+                selected_aircraft_families.add(family)
             prerequisite = CHAOS_PRIMARY_PRODUCTION[family][category]
             values = {
                 'TechLevel': '1',
@@ -502,11 +729,7 @@ def starting_tier_one_rules(
             rules[tech_id] = values
     rules.update(_tier_one_airfield_rules(
         base_families.intersection(allowed_families),
-        (
-            TIER_ONE_ROLE_UNITS['basic_aircraft']
-            if 'basic_aircraft' in selected_roles
-            else ()
-        ),
+        selected_aircraft_families,
         owners,
         required_houses,
     ))

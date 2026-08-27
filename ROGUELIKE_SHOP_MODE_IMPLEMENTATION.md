@@ -69,11 +69,11 @@ Used to buy:
 
 Ore Coins are reset when a new run starts.
 
-### Mental Coins
+### Gems
 
 Permanent account/profile currency.
 
-Mental Coins persist across runs.
+Gems persist across runs.
 
 Used to buy:
 
@@ -83,7 +83,7 @@ Used to buy:
 - additional meta progression modifiers
 - other permanent upgrades described later
 
-Mental Coins are **not lost on run failure**.
+Gems are **not lost on run failure**.
 
 ---
 
@@ -108,7 +108,7 @@ The run sequence is:
 13. If victory:
     - mark the mission slot complete
     - award Ore Coins based on mission difficulty/class
-    - award Mental Coins according to configured policy
+    - award Gems according to configured policy
     - apply permanent victory coin bonus
     - process Archipelago checks/items if connected
     - generate the next set of three mission offers
@@ -160,7 +160,7 @@ Prefer data in `configs/missions.json` or another focused config if classificati
 
 Suggested default economy ranking:
 
-| Class     | Relative difficulty | Default Run Coin reward | Default Meta Coin reward |
+| Class     | Relative difficulty | Default Run Coin reward | Default Gem reward |
 | --------- | ------------------: | ----------------------: | -----------------------: |
 | Act 1     |                   1 |                       3 |                        1 |
 | Act 2     |                   2 |                       5 |                        2 |
@@ -382,7 +382,7 @@ Gameplay must depend only on canonical purchased unlock/upgrades and balances.
 
 ## 7.1 Permanent unit unlocks
 
-Permanent unit unlocks are purchased with Mental Coins.
+Permanent unit unlocks are purchased with Gems.
 
 Once purchased, they stay available for selection at the start of future runs.
 
@@ -395,11 +395,11 @@ Mandatory starting Tier 1 units are separate and do not consume those 5 slots.
 For newly generated AP Shop seeds, received unit entitlements are rolled
 deterministically into remaining extra-unit slots when a run starts. Manually
 selected local permanent units take priority. This AP-only roll does not spend
-or modify credits, Ore, or Mental Coins.
+or modify credits, Ore, or Gems.
 
 ## 7.2 Permanent unit prices
 
-Default Meta Coin price by tier:
+Default Gem price by tier:
 
 | Tier   | Permanent price |
 | ------ | --------------: |
@@ -579,23 +579,23 @@ Example modifiers:
 
 ### Greedy
 
-`+25% Mental Coins earned, -2 starting Ore Coins`
+`Each victory gives 25% more Gems than normal. You start with 2 less Ore.`
 
 ### Veteran Economy
 
-`Shop unit prices +20%, mission Run Coin rewards +30%`
+`Each victory gives 30% more Ore than normal. Each Run Shop price costs 20% more.`
 
 ### Poor Logistics
 
-`Run Shop prices +2 flat`
+`Each victory gives 4 extra Ore, but each Run Shop price costs 2 extra Ore.`
 
 ### Generous Command
 
-`+5 starting Ore Coins, -20% Meta Coin earnings`
+`You start with 5 extra Ore, but each victory gives 20% fewer Gems than normal. Saved Gems are never removed.`
 
 ### Blind Choice
 
-`Mission offer hides one mission's exact reward until selected`
+`+1 Ore per victory, one mission offer hides its exact reward until selected`
 
 Only implement modifiers that can be represented safely by launcher logic.
 
@@ -655,7 +655,7 @@ Show:
 - `Run 4 / 10`
 - Run status: `Active`, `Failed`, `Completed`
 - `Ore Coins: 14`
-- `Mental Coins: 37`
+- `Gems: 37`
 - `Rerolls: 1 / 2`
 - AP connection badge when applicable
 
@@ -670,7 +670,7 @@ Each card:
 - class: Act 1 / Act 2 / Operation / Finale
 - displayed difficulty
 - base Run Coin reward
-- base Meta Coin reward
+- base Gem reward
 - modifier-adjusted estimated reward
 - `Select` button
 
@@ -738,7 +738,7 @@ This is available between runs and may optionally remain view-only during an act
 
 Contains:
 
-- Meta Coin balance
+- Gem balance
 - permanent unit catalogue
 - permanent upgrade catalogue
 - purchased status
@@ -817,7 +817,7 @@ A mission victory has multiple side effects:
 
 - mark victory
 - add Ore Coins
-- add Mental Coins
+- add Gems
 - mark idempotency key
 - AP check
 - generate next offers
@@ -1016,11 +1016,19 @@ Then pass the resulting canonical reward set through the **existing** map pipeli
 
 # 15. Tier 1 starting units
 
-The existing Tier 1 system is authoritative.
+The existing Tier 1 role and subtype data is authoritative.
 
-Do not replace it.
+Shop resolves those markers once per run into exactly five fixed units: the
+four configured ground roles plus one basic aircraft. A subtype is one
+candidate for its role; resolving a marker must never grant every subtype.
+Defense markers similarly resolve to one
+fixed identity per defense role (both Epsilon roles intentionally share
+`YAGGUN`).
 
-Shop Mode must start with the same baseline Tier 1 units that the existing randomizer already provides for the selected faction/families/mode.
+The Shop faction pool limits eligible starter variants. The selection uses an
+isolated seed stream, remains unchanged across restarts, and is stored as
+concrete TechnoType IDs in new run state. Legacy active runs containing role
+markers are resolved by the same deterministic rule at runtime.
 
 The permanent selection of 5 extra units is added **on top** of those starters.
 
@@ -1074,7 +1082,7 @@ Do not key only by slot display name.
 
 ## 16.3 Buying local unlocks while connected to AP
 
-The player may spend local Mental Coins to buy local permanent unlocks.
+The player may spend local Gems to buy local permanent unlocks.
 
 These are local entitlements.
 
@@ -1091,7 +1099,7 @@ Implement this as explicit AP shop checks defined by the APWorld.
 Correct model:
 
 - APWorld generation includes a configurable number of `Shop Purchase` locations
-- the local Shop UI can purchase/claim one of those locations using a Shop/AP purchase currency or configured Meta Coin cost
+- the local Shop UI can purchase/claim one of those locations using a Shop/AP purchase currency or configured Gem cost
 - completing that purchase sends the corresponding AP location check
 - the item placed there may belong to this player or another player, as normal Archipelago behavior dictates
 - the client does not decide which item is granted
@@ -1185,7 +1193,7 @@ shop_purchase_locations: 5
 
 shop_starting_extra_unit_limit: 5
 
-received_unit_loadout: random
+received_unit_loadout: all
 ```
 
 Do not add options that are purely local UI preferences.
@@ -1278,7 +1286,7 @@ For an ordinary run purchase:
 For permanent purchase:
 
 1. validate
-2. subtract Mental Coins
+2. subtract Gems
 3. add permanent entitlement/upgrade
 4. atomic-write profile
 5. refresh UI
@@ -1519,7 +1527,7 @@ At minimum verify:
 - detected failure marks run failed
 - failed run cannot launch another mission
 - new run resets Ore Coins and run purchases
-- Mental Coins/permanent unlocks survive failure
+- Gems/permanent unlocks survive failure
 
 ### Victory idempotency
 
@@ -1598,7 +1606,7 @@ Implement:
 - three mission cards
 - reroll
 - Run Coin display
-- Meta Coin display
+- Gem display
 - unit shop
 - buff shop
 - loadout
@@ -1662,7 +1670,7 @@ The feature is complete when all statements below are true.
 - Mission offers show meaningful difficulty/economy class.
 - A mission failure ends the run.
 - A failed run cannot continue to mission 2/3/etc.
-- Permanent Mental Coins survive run failure.
+- Permanent Gems survive run failure.
 - Permanent unit unlocks survive run failure and application restart.
 - Ore Coins reset on new run.
 - Mission rewards depend on Act 1 / Act 2 / Operation / Finale class.
@@ -1730,7 +1738,7 @@ The player may start a new local run and continue the same AP slot with all AP i
 
 Run purchases are temporary.
 
-Permanent purchases use Mental Coins.
+Permanent purchases use Gems.
 
 AP "purchases" are location checks generated by the APWorld.
 

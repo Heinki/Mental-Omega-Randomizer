@@ -7,15 +7,23 @@ from tempfile import TemporaryDirectory
 from randomizer.config.schema import StaticConfigError, validate_sections
 from randomizer.config.static import load_static_config
 from randomizer.core.storage import atomic_write_json, atomic_write_text
+from randomizer.missions.tier_one import (
+    tier_one_defense_ids,
+    tier_one_unit_ids,
+)
 from randomizer.rewards.rules import tech_ids_for_rewards
-from randomizer.ui.cameos import ensure_superweapon_cameos
+from randomizer.ui.cameos import ensure_superweapon_cameos, ensure_unit_cameos
 
 from .catalogue import canonical_reward_for_id, shop_catalogue
-from .active import active_shop_power_ids, active_shop_rewards
+from .active import (
+    active_shop_power_ids,
+    active_shop_rewards,
+    active_shop_starter_defense_ids,
+    active_shop_starter_unit_ids,
+)
 from .archipelago import (
     ap_unit_entitlement_ids,
     archipelago_shop_identity,
-    random_ap_unit_entitlement_ids,
     shop_reward_ids_from_ap_ledger,
 )
 from .archipelago_purchases import archipelago_purchase_records
@@ -171,6 +179,21 @@ def _permanent_feature_checks(mission_pool):
         stage=run.stage,
         offer_count=SHOP_CONFIG.unit_inventory_size + 2,
     )
+    marker_run = replace(
+        run,
+        starting_unit_ids=tier_one_unit_ids(
+            ('allies', 'soviets', 'epsilon')
+        ),
+        starting_defense_ids=tier_one_defense_ids(
+            ('allies', 'soviets', 'epsilon')
+        ),
+        reward_settings={'shop_faction_filter': 'All Campaigns'},
+    )
+    concrete_starters = active_shop_starter_unit_ids(marker_run)
+    concrete_defenses = active_shop_starter_defense_ids(marker_run)
+    starter_cameos = ensure_unit_cameos(
+        (*concrete_starters, *concrete_defenses)
+    )
     committed = commit_selected_mission(run, offers[0].mission_code)
     revived = apply_mission_failure(
         committed,
@@ -224,6 +247,19 @@ def _permanent_feature_checks(mission_pool):
         'extra_shop_stock_valid': len(stock) == SHOP_CONFIG.unit_inventory_size + 2,
         'shop_power_cameos_valid': bool(
             power_ids and set(power_cameos) == power_ids
+        ),
+        'starter_loadout_display_valid': bool(
+            len(concrete_starters) == 5
+            and len(set(concrete_starters)) == 5
+            and len(concrete_defenses) == 2
+            and concrete_starters == active_shop_starter_unit_ids(marker_run)
+            and concrete_defenses == active_shop_starter_defense_ids(marker_run)
+            and set(starter_cameos)
+            == set(concrete_starters).union(concrete_defenses)
+            and not any(
+                item.startswith('T1_')
+                for item in (*concrete_starters, *concrete_defenses)
+            )
         ),
         'expanded_loadout_valid': expanded.allowed and expanded.extra_slots_used == 6,
         'emergency_revival_valid': bool(
@@ -580,36 +616,14 @@ def _phase_five_checks():
     }
     ap_identity = archipelago_shop_identity(ap_state)
     other_identity = archipelago_shop_identity({**ap_state, 'slot': 4})
-    first_random_loadout = random_ap_unit_entitlement_ids(
-        selection_pool,
-        run_seed='SHOP-AP-RANDOM-LOADOUT',
-        run_number=1,
-        maximum_count=3,
-        ap_identity=ap_identity,
-    )
-    replayed_random_loadout = random_ap_unit_entitlement_ids(
-        reversed(selection_pool),
-        run_seed='SHOP-AP-RANDOM-LOADOUT',
-        run_number=1,
-        maximum_count=3,
-        ap_identity=ap_identity,
-    )
-    next_random_loadout = random_ap_unit_entitlement_ids(
-        selection_pool,
-        run_seed='SHOP-AP-RANDOM-LOADOUT',
-        run_number=2,
-        maximum_count=3,
-        ap_identity=ap_identity,
-    )
     offers = (
         MissionOffer('SC_AP_1', MissionEconomyClass.ACT_1),
     )
-    random_started = start_new_run(
+    all_units_started = start_new_run(
         ShopProfile(),
-        run_id='shop-ap-random-run-1',
-        seed='SHOP-AP-RANDOM-LOADOUT',
+        run_id='shop-ap-all-units-run-1',
+        seed='SHOP-AP-ALL-UNITS',
         mission_offers=offers,
-        selected_reward_ids=first_random_loadout,
         ap_entitlement_ids=selection_pool,
         ap_identity=ap_identity,
         maximum_extra_units=3,
@@ -692,29 +706,17 @@ def _phase_five_checks():
             })
             and ap_unit_entitlement_ids(ap_reward_ids) == tuple(unit_ids)
             and active_names.count(unit_ids[0]) == 1
-            and unit_ids[1] not in active_names
+            and active_names.count(unit_ids[1]) == 1
             and active_names.count(buff_id) == 2
         ),
-        'archipelago_random_restart_loadout_valid': bool(
-            len(first_random_loadout) == 3
-            and first_random_loadout == replayed_random_loadout
-            and first_random_loadout != next_random_loadout
-            and random_started.run.selected_permanent_units
-            == first_random_loadout
-            and set(first_random_loadout).issubset({
+        'archipelago_all_units_loadout_valid': bool(
+            not all_units_started.run.selected_permanent_units
+            and set(selection_pool) == {
                 reward.get('name')
-                for reward in active_shop_rewards(random_started.run)
-            })
-            and random_started.run.run_coins
+                for reward in active_shop_rewards(all_units_started.run)
+            }
+            and all_units_started.run.run_coins
             == SHOP_CONFIG.starting_run_coins
-            and not set(random_ap_unit_entitlement_ids(
-                selection_pool,
-                run_seed='SHOP-AP-RANDOM-LOADOUT',
-                run_number=1,
-                maximum_count=3,
-                ap_identity=ap_identity,
-                excluded_reward_ids=first_random_loadout,
-            )).intersection(first_random_loadout)
         ),
         'archipelago_failure_restart_valid': bool(
             failed.run.status is RunStatus.FAILED
@@ -723,7 +725,7 @@ def _phase_five_checks():
             and restarted.run.run_coins == SHOP_CONFIG.starting_run_coins
             and restarted.profile.meta_coins == started.profile.meta_coins
             and restarted_names.count(unit_ids[1]) == 1
-            and unit_ids[0] not in restarted_names
+            and restarted_names.count(unit_ids[0]) == 1
             and restarted_names.count(buff_id) == 2
             and not restarted.profile.permanent_unit_unlocks
             and not restarted.profile.archipelago_profiles
@@ -831,6 +833,14 @@ def _phase_seven_checks():
         MissionEconomyClass.FINALE,
         modifiers=run.modifiers,
     )
+    poor_logistics_reward = mission_reward(
+        MissionEconomyClass.ACT_1,
+        modifiers=('poor_logistics',),
+    )
+    generous_reward = mission_reward(
+        MissionEconomyClass.OPERATION,
+        modifiers=('generous_command',),
+    )
     breakdown = reward_breakdown_lines(
         MissionEconomyClass.FINALE,
         victory_coin_bonus_level=2,
@@ -892,10 +902,20 @@ def _phase_seven_checks():
             len(hidden) == 1
             and hidden == hidden_offer_codes(run)
             and hidden[0] in {offer.mission_code for offer in offers}
-            and adjusted.run_coins == 13
+            and adjusted.run_coins == 14
             and adjusted.meta_coins == 5
+            and poor_logistics_reward.run_coins == 7
+            and starting_run_coins(modifiers=('poor_logistics',)) == 5
+            and discounted_shop_price(
+                5, modifiers=('poor_logistics',)
+            ) == 7
+            and generous_reward.meta_coins == 2
+            and 'meta_reward_flat' not in SHOP_CONFIG.modifiers[
+                'generous_command'
+            ].effects
             and any('Permanent Victory Bonus: +2' in line for line in breakdown)
-            and any('Total: +15 Ore' in line for line in breakdown)
+            and any('Total: +16 Ore' in line for line in breakdown)
+            and 'Persistent Gems: 42' in completion_summary
             and restored == run
         ),
         'power_shop_purchase_valid': bool(
@@ -936,6 +956,17 @@ def validate_shop_domain():
     try:
         validate_sections(
             'shop_mode.json', hidden_offer_config, 'shop-self-check'
+        )
+        config_validation_valid = False
+    except StaticConfigError:
+        pass
+    mixed_modifier_config = load_static_config('shop_mode.json')
+    mixed_modifier_config['modifiers']['greedy']['effects'][
+        'meta_reward_flat'
+    ] = 1
+    try:
+        validate_sections(
+            'shop_mode.json', mixed_modifier_config, 'shop-self-check'
         )
         config_validation_valid = False
     except StaticConfigError:

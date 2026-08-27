@@ -42,11 +42,11 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
   buildings, amphibious transports, Chaos production, and tech
   ordering, plus default unlock owners and special-factory identities.
-- `tier_one.json`: subfaction-specific starter units, fixed faction Tier 1
-  defensive structures, abstract saved markers, aircraft factories, and
-  installed GenericPrerequisite aliases.
+- `tier_one.json`: subfaction-specific starter equivalents, fixed faction
+  Tier 1 defensive structures, Standard role
+  markers, aircraft factories, and installed GenericPrerequisite aliases.
 - `shop_mode.json`: Shop Mode run length, mission offers and class rewards,
-  stage difficulty weights, Ore/Mental Coin unit prices, permanent upgrade
+  stage difficulty weights, Ore/Gem unit prices, permanent upgrade
   definitions, and launcher-only challenge modifier effects.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   EVA announcer tags, reward-count messages, faction colors, and
@@ -105,19 +105,20 @@ positive `maximum_starting_ore` and `minimum_shop_price`, and the version-1
 `per_run` reroll policy.
 `archipelago_purchase_locations` is the generated purchase-check count from
 0 through 25, `archipelago_purchase_meta_coin_cost` is their positive shared
-Mental Coin price, and `archipelago_mission_victories_are_locations` controls
+Gem price, and `archipelago_mission_victories_are_locations` controls
 whether the ten stage victories also enter the shuffled AP item pool. These
 values are signed into Shop player YAML and validated again at connection.
-New Shop YAML also signs `received_unit_loadout: random`: each run uses a named,
-deterministic AP-only stream to fill unused extra-unit slots from received unit
-entitlements. This policy never changes Shop currency or mission-credit values.
+New Shop YAML signs `received_unit_loadout: all`: every received AP unit is
+active on every Shop run without consuming permanent extra-unit slots. Legacy
+`manual` and `random` rooms remain compatible and receive the same all-unit
+behavior. This policy never changes Shop currency or mission-credit values.
 
 `mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
 `finale`. Each class has a display label, unique positive difficulty rank, and
-non-negative Ore (`run_coins`) and Mental Coin (`meta_coins`) rewards.
+non-negative Ore (`run_coins`) and Gem (`meta_coins`) rewards.
 `stage_class_weights` uses ascending `through_percent` boundaries ending at
 `100`; each profile supplies non-negative integer weights for all four mission
-classes. Mental Coin rewards must increase strictly with difficulty. Offer
+classes. Gem rewards must increase strictly with difficulty. Offer
 generation samples only its named Shop RNG stream. A zero class weight is a
 hard stage exclusion: stages 1–2 offer only Act 1, operations begin at stage 5,
 and finales begin at stage 9. Protected opening offers include a fixed-unit or
@@ -142,11 +143,12 @@ percentage economy effects. Percentage modifiers multiply exactly; flat
 modifiers add. Unknown saved modifier or upgrade IDs fail with a
 clear state error instead of silently changing balance.
 
-Modifier effects support additive `starting_run_coins_flat` and
-`shop_price_flat`, multiplicative `run_reward_percent`,
-`meta_reward_percent`, and `shop_price_percent`, plus non-negative
-`hidden_offer_count` bounded by the mission-offer count. Percentages multiply
-in persisted modifier order; flat effects add. `blind_choice` uses the hidden
+Modifier effects support additive `starting_run_coins_flat`, `run_reward_flat`,
+`meta_reward_flat`, and `shop_price_flat`; multiplicative `run_reward_percent`,
+`meta_reward_percent`, and `shop_price_percent`; plus non-negative
+`hidden_offer_count` bounded by the mission-offer count. One modifier cannot
+apply both percentage and flat adjustments to the same reward or price.
+Percentages multiply in persisted modifier order; flat effects add. `blind_choice` uses the hidden
 offer count only for presentation and never consumes gameplay RNG.
 
 Example mission reward:

@@ -291,7 +291,7 @@ def _validate_shop_settings(value, mode, mission_order):
         or not isinstance(extra_limit, int)
         or isinstance(extra_limit, bool)
         or not 0 <= extra_limit <= 10
-        or received_unit_loadout not in {"manual", "random"}
+        or received_unit_loadout not in {"all", "manual", "random"}
     ):
         raise ManifestError("Shop Mode manifest settings are out of range.")
     result = dict(value)

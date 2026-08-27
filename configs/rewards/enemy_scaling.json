@@ -4,7 +4,7 @@
   "sections": {
     "defaults": {
       "stack_model_version": 6,
-      "maximum_total_buffs": 40,
+      "maximum_total_buffs": 0,
       "allowed_buff_ids": ["*"],
       "caps": {}
     },

@@ -9,6 +9,7 @@ from randomizer.shop.archipelago import (
 )
 from randomizer.shop.archipelago_purchases import archipelago_purchase_records
 from randomizer.shop.model import RunStatus
+from randomizer.shop.text import gem_text
 
 
 class ShopArchipelagoController:
@@ -92,7 +93,7 @@ class ShopArchipelagoController:
                 if not isinstance(shop, dict):
                     continue
                 mode = str(shop.get('received_unit_loadout') or 'manual')
-                if mode in {'manual', 'random'}:
+                if mode in {'all', 'manual', 'random'}:
                     return mode
         return ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL
 
@@ -246,7 +247,7 @@ class ShopArchipelagoController:
             self._report_archipelago_location_groups((group,))
             purchase_index = shop['purchase_locations'].index(location_id) + 1
             self._set_shop_message(
-                f'Spent {validation.cost} Mental Coins on generated AP '
+                f'Spent {gem_text(validation.cost)} on generated AP '
                 f'purchase {purchase_index}. The server determines its item.'
             )
         else:

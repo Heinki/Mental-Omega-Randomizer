@@ -171,19 +171,19 @@ class UnlockDataController:
             return 'No randomizer seed generated yet.'
 
         lines = self.mission_arsenal_summary_lines()
-        starting_unit_ids = self.display_starting_tier_one_unit_ids()
-        if starting_unit_ids:
+        starting_unit_labels = self.display_starting_tier_one_unit_labels()
+        if starting_unit_labels:
             heading = 'Starting Tier 1 Units'
             lines.extend([heading, '=' * len(heading)])
-            for unit_id in sorted(set(starting_unit_ids), key=self.unit_faction_sort_key):
-                lines.append(unit_display_label(unit_id))
+            lines.extend(starting_unit_labels)
             lines.append('')
-        starting_defense_ids = self.display_starting_tier_one_defense_ids()
-        if starting_defense_ids:
+        starting_defense_labels = (
+            self.display_starting_tier_one_defense_labels()
+        )
+        if starting_defense_labels:
             heading = 'Starting Tier 1 Defenses'
             lines.extend([heading, '=' * len(heading)])
-            for unit_id in starting_defense_ids:
-                lines.append(unit_display_label(unit_id))
+            lines.extend(starting_defense_labels)
             lines.append('')
         if any(
             is_max_rewards_achieved_reward(reward)
@@ -482,21 +482,38 @@ class UnlockDataController:
         return sorted(unit_ids, key=self.unit_faction_sort_key)
 
     def display_starting_tier_one_unit_ids(self):
-        """Return concrete starter variants represented by saved role markers."""
-        unit_ids = self.active_starting_tier_one_expanded_ids()
-        if self.active_reward_mode() != 'Chaos':
-            unit_ids = {
-                unit_id
-                for unit_id in unit_ids
-                if self.unit_faction(unit_id) != 'Foehn'
-            }
-        return sorted(unit_ids, key=self.unit_faction_sort_key)
+        """Return exact selected starter IDs for every active mode."""
+        return sorted(
+            self.active_starting_tier_one_expanded_ids(),
+            key=self.unit_faction_sort_key,
+        )
+
+    def display_starting_tier_one_unit_labels(self):
+        return [
+            unit_display_label(unit_id)
+            for unit_id in self.display_starting_tier_one_unit_ids()
+        ]
 
     def display_starting_tier_one_defense_ids(self):
+        if not self.tier_one_starters_are_concrete():
+            return []
         return sorted(
             self.active_starting_tier_one_defense_expanded_ids(),
             key=self.unit_faction_sort_key,
         )
+
+    def display_starting_tier_one_defense_labels(self):
+        if self.tier_one_starters_are_concrete():
+            return [
+                unit_display_label(unit_id)
+                for unit_id in self.display_starting_tier_one_defense_ids()
+            ]
+        if not self.active_starting_tier_one_defense_ids():
+            return []
+        return [
+            'Ground Defense (mission equivalent)',
+            'Anti-Air Defense (mission equivalent)',
+        ]
 
     def unlock_dashboard_reward_keys(
         self,

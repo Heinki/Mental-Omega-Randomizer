@@ -39,7 +39,7 @@ from ._dependencies import (
     clamp_reward_weight,
     create_grid,
     expanded_tier_one_defense_ids,
-    expanded_tier_one_unit_ids,
+    concrete_tier_one_starter_ids,
     filedialog,
     linked_buff_variant_ids,
     log_event,
@@ -58,6 +58,9 @@ from ._dependencies import (
     random,
     random_chaos_tier_one_defense_ids,
     random_chaos_tier_one_unit_ids,
+    select_tier_one_unit_variants,
+    standard_tier_one_defense_markers,
+    standard_tier_one_unit_markers,
     read_json_object,
     read_portable_settings,
     refresh_grid_states,
@@ -690,48 +693,84 @@ class StateController:
                 if not linked_buff_variant_ids(unit_id).intersection(excluded_ids)
             ]
 
-        generation_context = self.__dict__.get('_seed_generation_context') or {}
-        selected = generation_context.get('campaign_filter')
-        if selected is None:
-            selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else 'All Campaigns'
-        families = {
-            'Allies': ('allies',),
-            'Soviets': ('soviets',),
-            'Epsilon': ('epsilon',),
-            'Foehn': ('allies', 'soviets'),
-            'All Campaigns': ('allies', 'soviets', 'epsilon'),
-        }.get(selected, ('allies', 'soviets', 'epsilon'))
+        selected = []
+        for family in self.active_standard_starter_families():
+            selected.extend(select_tier_one_unit_variants(
+                random.Random(
+                    f'{seed}:starting-tier-one-standard:{family}'
+                ),
+                tier_one_unit_ids((family,)),
+                families=(family,),
+                excluded_unit_ids=excluded_ids,
+            ))
         return [
-            marker
-            for marker in tier_one_unit_ids(families)
-            if expanded_tier_one_unit_ids([marker]) - excluded_ids
+            unit_id
+            for unit_id in selected
+            if not linked_buff_variant_ids(unit_id).intersection(excluded_ids)
         ]
+
+    def tier_one_starters_are_concrete(self):
+        """Return whether one fixed roster covers the complete run."""
+        return bool(
+            self.active_reward_mode() == 'Chaos'
+            or self.active_progression_mode() == 'Shop Mode'
+        )
 
     def active_starting_tier_one_unit_ids(self):
         override = self.__dict__.get('_starting_unit_ids_override')
         if override is not None:
-            return list(override)
-        if self.state:
-            return [
+            unit_ids = list(override)
+            return list(concrete_tier_one_starter_ids(unit_ids))
+        elif self.state:
+            unit_ids = [
                 str(unit_id).upper()
                 for unit_id in self.state.get('starting_unit_ids', [])
                 if unit_id
             ]
+        else:
+            return self.starting_tier_one_unit_ids_for_seed(
+                self.seed_var.get() if hasattr(self, 'seed_var') else '',
+            )
+        if self.tier_one_starters_are_concrete():
+            concrete_ids = list(concrete_tier_one_starter_ids(unit_ids))
+            if (
+                self.active_reward_mode() == 'Chaos'
+                and unit_ids
+                and len(standard_tier_one_unit_markers(concrete_ids)) < 5
+            ):
+                seed = str(
+                    (self.state or {}).get('seed')
+                    or (
+                        self.seed_var.get()
+                        if hasattr(self, 'seed_var') else ''
+                    )
+                )
+                return self.starting_tier_one_unit_ids_for_seed(
+                    seed,
+                    self.active_reward_settings(),
+                )
+            return concrete_ids
+        if not unit_ids:
+            return []
+        seed = str(
+            (self.state or {}).get('seed')
+            or (self.seed_var.get() if hasattr(self, 'seed_var') else '')
+        )
         return self.starting_tier_one_unit_ids_for_seed(
-            self.seed_var.get() if hasattr(self, 'seed_var') else '',
+            seed,
+            self.active_reward_settings(),
         )
 
     def active_starting_tier_one_expanded_ids(self):
-        """Resolve starter markers after authoritative Advanced Pool exclusions."""
+        """Return the exact concrete starter identities active in this run."""
         excluded_ids = {
             str(unit_id).upper()
             for unit_id in self.active_reward_settings().get(
                 'excluded_unit_access_ids', []
             )
         }
-        return expanded_tier_one_unit_ids(
-            self.active_starting_tier_one_unit_ids()
-        ) - excluded_ids
+        unit_ids = self.active_starting_tier_one_unit_ids()
+        return set(unit_ids) - excluded_ids
 
     def active_standard_starter_families(self):
         generation_context = self.__dict__.get('_seed_generation_context') or {}
@@ -778,9 +817,6 @@ class StateController:
         marker = tier_one_defense_ids(families)
         eligible_ids = expanded_tier_one_defense_ids(
             marker,
-            include_foehn=(
-                self.active_reward_mode() == 'Chaos'
-            ),
             families=families,
         )
         return list(marker) if eligible_ids - excluded_ids else []
@@ -788,14 +824,18 @@ class StateController:
     def active_starting_tier_one_defense_ids(self):
         override = self.__dict__.get('_starting_defense_ids_override')
         if override is not None:
-            return list(override)
-        if self.state:
-            return [
+            defense_ids = list(override)
+        elif self.state:
+            defense_ids = [
                 str(unit_id).upper()
                 for unit_id in self.state.get('starting_defense_ids', [])
                 if unit_id
             ]
-        return self.starting_tier_one_defense_ids_for_seed()
+        else:
+            return self.starting_tier_one_defense_ids_for_seed()
+        if self.tier_one_starters_are_concrete():
+            return defense_ids
+        return list(standard_tier_one_defense_markers(defense_ids))
 
     def active_starting_tier_one_defense_expanded_ids(self):
         excluded_ids = {
@@ -804,11 +844,11 @@ class StateController:
                 'excluded_unit_access_ids', []
             )
         }
+        defense_ids = self.active_starting_tier_one_defense_ids()
+        if self.tier_one_starters_are_concrete():
+            return set(defense_ids) - excluded_ids
         return expanded_tier_one_defense_ids(
-            self.active_starting_tier_one_defense_ids(),
-            include_foehn=(
-                self.active_reward_mode() == 'Chaos'
-            ),
+            defense_ids,
             families=self.active_standard_starter_families(),
         ) - excluded_ids
 

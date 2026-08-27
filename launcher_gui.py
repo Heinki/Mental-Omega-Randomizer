@@ -292,6 +292,7 @@ def run_self_check():
             AID_POWER_MAP_CONFIGS,
             AID_POWER_UNLOCK_REWARDS,
             BUFF_TARGETS,
+            DEFAULT_REWARDS_PER_CHECK,
             POWER_BUFF_REWARDS,
             REWARD_POOL,
             buff_stack_limit,
@@ -301,6 +302,7 @@ def run_self_check():
         from randomizer.rewards.enemy_scaling import (
             ENEMY_BUFF_DEFINITIONS,
             ENEMY_BUFF_GROUP_DEFINITIONS,
+            ENEMY_SCALING_DEFAULTS,
             enemy_buff_capacity,
             enemy_effect_values,
             normalize_enemy_scaling_settings,
@@ -315,6 +317,12 @@ def run_self_check():
         from randomizer.maps.base import randomizer_clone_type_id
         from randomizer.maps.clone_builder import player_clone_selection_group
         from randomizer.config.player import DEFAULT_CONFIG
+        from randomizer.missions.overrides import (
+            MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
+            MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
+            MISSION_NATIVE_TRIGGER_REFERENCE_IDS,
+            MISSION_NATIVE_VARIANT_BUFF_RULES,
+        )
         from randomizer.rewards.arsenal import (
             ARSENAL_MODE,
             arsenal_reward_pool,
@@ -346,6 +354,28 @@ def run_self_check():
             and mission_reward_multiplier('S01') == 1
             and mission_reward_multiplier('S11') == 3
             and mission_reward_multiplier('SCO1') == 2
+        )
+        default_balance_settings_valid = bool(
+            DEFAULT_REWARDS_PER_CHECK == 4
+            and DEFAULT_CONFIG['rewards_per_objective']
+            == DEFAULT_REWARDS_PER_CHECK
+            and ENEMY_SCALING_DEFAULTS['maximum_total_buffs'] == 0
+            and DEFAULT_CONFIG['generation']['enemy_scaling'][
+                'maximum_total_buffs'
+            ] == ENEMY_SCALING_DEFAULTS['maximum_total_buffs']
+        )
+        road_trippin_native_ggi_valid = bool(
+            'GGI' in MISSION_NATIVE_TRIGGER_REFERENCE_IDS.get('AROADTRIP', ())
+            and 'GGI' in MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(
+                'AROADTRIP', ()
+            )
+            and 'GGI' in MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS.get(
+                'AROADTRIP', ()
+            )
+            and MISSION_NATIVE_VARIANT_BUFF_RULES.get('AROADTRIP') == ({
+                'source_unit': 'GGI',
+                'native_units': ('GGI',),
+            },)
         )
         player_clone_selection_groups = {
             'default_source_id': player_clone_selection_group('E2', {}) == 'E2',
@@ -637,20 +667,73 @@ def run_self_check():
                 if reward.get('unit') == 'SHINBOT'
             )
         )
-        from randomizer.missions.access import access_catalog
-        from randomizer.missions.tier_one import TIER_ONE_DEFENSE_UNITS
+        from randomizer.missions.access import (
+            TIER_ONE_DEFENSE_MARKER,
+            TIER_ONE_DEFENSE_UNITS,
+            TIER_ONE_ROLE_MARKERS,
+            TIER_ONE_ROLE_UNITS,
+            access_catalog,
+        )
+        from randomizer.missions.tier_one import (
+            concrete_tier_one_starter_ids,
+            random_chaos_tier_one_unit_ids,
+            select_tier_one_unit_variants,
+            standard_tier_one_defense_markers,
+            standard_tier_one_unit_markers,
+            tier_one_defense_ids,
+            tier_one_unit_ids,
+        )
         runtime_access_catalog = access_catalog()
         indexed_access_ids = {
             str(entry[0]).upper() for entry in runtime_access_catalog
         }
-        tier_one_defense_ids = {
+        indexed_tier_one_defense_ids = {
             unit_id
             for family_ids in TIER_ONE_DEFENSE_UNITS.values()
             for unit_id in family_ids
         }
         access_catalog_valid = bool(
             runtime_access_catalog
-            and tier_one_defense_ids.issubset(indexed_access_ids)
+            and indexed_tier_one_defense_ids.issubset(indexed_access_ids)
+        )
+        standard_families = ('allies', 'soviets', 'epsilon')
+        standard_unit_markers = tier_one_unit_ids(standard_families)
+        standard_defense_markers = tier_one_defense_ids(standard_families)
+        legacy_concrete_units = tuple(
+            families[family][0]
+            for families in TIER_ONE_ROLE_UNITS.values()
+            for family in ('allies',)
+        )
+        tier_one_standard_roles_valid = bool(
+            standard_unit_markers == tuple(TIER_ONE_ROLE_MARKERS.values())
+            and standard_defense_markers == (TIER_ONE_DEFENSE_MARKER,)
+            and standard_tier_one_unit_markers(legacy_concrete_units)
+            == standard_unit_markers
+            and standard_tier_one_defense_markers(('GAPILL', 'NASAM'))
+            == standard_defense_markers
+        )
+        chaos_tier_one_units = random_chaos_tier_one_unit_ids(
+            random.Random('SELF-CHECK:chaos-tier-one')
+        )
+        standard_tier_one_units = {
+            family: select_tier_one_unit_variants(
+                random.Random(f'SELF-CHECK:standard-tier-one:{family}'),
+                tier_one_unit_ids((family,)),
+                families=(family,),
+            )
+            for family in standard_families
+        }
+        tier_one_starter_count_contract_valid = bool(
+            tier_one_standard_roles_valid
+            and len(standard_unit_markers) == 5
+            and all(
+                len(unit_ids) == 5 and len(set(unit_ids)) == 5
+                for unit_ids in standard_tier_one_units.values()
+            )
+            and len(chaos_tier_one_units) == 5
+            and len(set(chaos_tier_one_units)) == 5
+            and concrete_tier_one_starter_ids(chaos_tier_one_units)
+            == chaos_tier_one_units
         )
         from randomizer.ui.cameos import installed_rules_registry
         _installed_types, installed_sections = installed_rules_registry()
@@ -1009,6 +1092,19 @@ def run_self_check():
             'shin_allied_tech_valid': shin_allied_tech_valid,
             'access_catalog_valid': access_catalog_valid,
             'access_catalog_entries': len(runtime_access_catalog),
+            'tier_one_standard_roles_valid': tier_one_standard_roles_valid,
+            'tier_one_starter_count_contract_valid': (
+                tier_one_starter_count_contract_valid
+            ),
+            'chaos_tier_one_units': list(chaos_tier_one_units),
+            'standard_tier_one_units': {
+                family: list(unit_ids)
+                for family, unit_ids in standard_tier_one_units.items()
+            },
+            'tier_one_standard_unit_markers': list(standard_unit_markers),
+            'tier_one_standard_defense_markers': list(
+                standard_defense_markers
+            ),
             'deploy_clone_links_valid': not deploy_clone_link_gaps,
             'deploy_clone_link_gaps': deploy_clone_link_gaps,
             'player_clone_selection_groups_valid': all(
@@ -1063,6 +1159,8 @@ def run_self_check():
             'mission_reward_multipliers_valid': (
                 mission_reward_multipliers_valid
             ),
+            'default_balance_settings_valid': default_balance_settings_valid,
+            'road_trippin_native_ggi_valid': road_trippin_native_ggi_valid,
             'enemy_scaling_contract_valid': enemy_scaling_contract_valid,
             'eva_voice_profiles_valid': eva_voice_profiles['valid'],
             'eva_voice_profiles': eva_voice_profiles['profiles'],
@@ -1101,6 +1199,8 @@ def run_self_check():
                 'equivalent_buff_access_isolation_valid',
                 'shin_allied_tech_valid',
                 'access_catalog_valid',
+                'tier_one_standard_roles_valid',
+                'tier_one_starter_count_contract_valid',
                 'deploy_clone_links_valid',
                 'player_clone_selection_groups_valid',
                 'transport_buff_eligibility_valid',
@@ -1113,6 +1213,8 @@ def run_self_check():
                 'reward_weight_connections_valid',
                 'randomizer_arsenal_contract_valid',
                 'mission_reward_multipliers_valid',
+                'default_balance_settings_valid',
+                'road_trippin_native_ggi_valid',
                 'enemy_scaling_contract_valid',
                 'eva_voice_profiles_valid',
                 'deterministic_seed_rng_works',

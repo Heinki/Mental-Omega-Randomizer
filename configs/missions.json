@@ -1087,6 +1087,9 @@
       ]
     },
     "native_trigger_reference_ids": {
+      "AROADTRIP": [
+        "GGI"
+      ],
       "AINSOMNIA": [
         "SIEG",
         "TANY"
@@ -1236,6 +1239,9 @@
       ]
     },
     "native_techno_clone_exclusions": {
+      "AROADTRIP": [
+        "GGI"
+      ],
       "AZEROSIGNAL": [
         "AMC"
       ],
@@ -1896,6 +1902,9 @@
       }
     },
     "native_direct_buff_exclusions": {
+      "AROADTRIP": [
+        "GGI"
+      ],
       "AINSOMNIA": [
         "SIEG",
         "TANY"
@@ -1993,6 +2002,12 @@
       ]
     },
     "native_variant_buff_rules": {
+      "AROADTRIP": {
+        "source_unit": "GGI",
+        "native_units": [
+          "GGI"
+        ]
+      },
       "AINSOMNIA": [
         {
           "source_unit": "TANY",

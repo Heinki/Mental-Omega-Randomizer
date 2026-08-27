@@ -41,7 +41,7 @@
       "add_safe_movement_speed": true
     },
     "reward_planning": {
-      "default_rewards_per_check": 1,
+      "default_rewards_per_check": 4,
       "maximum_rewards_per_check": 30,
       "global_buff_reward_interval": 10,
       "buff_stack_limits": {

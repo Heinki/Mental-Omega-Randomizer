@@ -27,7 +27,7 @@ def apply_color_mode(self):
         'Stage': '#79c0ff' if self.dark_mode_var.get() else '#0969da',
         'Status': '#7ee787' if self.dark_mode_var.get() else '#1a7f37',
         'Ore': '#f2cc60' if self.dark_mode_var.get() else '#9a6700',
-        'Mental': '#d2a8ff' if self.dark_mode_var.get() else '#8250df',
+        'Gem': '#d2a8ff' if self.dark_mode_var.get() else '#8250df',
         'Reroll': '#76e3ea' if self.dark_mode_var.get() else '#096b72',
         'Reward': '#f2cc60' if self.dark_mode_var.get() else '#825800',
         'Help': '#79c0ff' if self.dark_mode_var.get() else '#0550ae',

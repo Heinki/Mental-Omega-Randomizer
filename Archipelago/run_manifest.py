@@ -17,13 +17,17 @@ from randomizer.progression.grid import (
     neighbors as grid_neighbors,
     starting_nodes as grid_starting_nodes,
 )
-from randomizer.rewards.catalogue import REWARD_BY_NAME, REWARD_POOL
+from randomizer.rewards.catalogue import (
+    DEFAULT_REWARDS_PER_CHECK,
+    REWARD_BY_NAME,
+    REWARD_POOL,
+)
 from randomizer.rewards.display import canonical_reward
 from randomizer.rewards.enemy_scaling import plan_enemy_trap_rewards
 from randomizer.rewards.planning import is_max_rewards_achieved_reward
 from randomizer.shop.config import SHOP_CONFIG
 from randomizer.shop.archipelago import (
-    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM,
+    ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL,
 )
 
 
@@ -329,7 +333,9 @@ def _launcher_snapshot_for_state(state, config):
         "unlock_all_rewards_after_final_grid_mission": bool(
             state.get("unlock_all_rewards_after_final_grid_mission", False)
         ),
-        "rewards_per_objective": int(state.get("rewards_per_check") or 1),
+        "rewards_per_objective": int(
+            state.get("rewards_per_check") or DEFAULT_REWARDS_PER_CHECK
+        ),
         "rewards_on_victory_only": bool(
             state.get("rewards_on_victory_only", False)
         ),
@@ -495,7 +501,7 @@ def _shop_manifest_settings():
             SHOP_CONFIG.max_selected_permanent_units
         ),
         "received_unit_loadout": (
-            ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_RANDOM
+            ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL
         ),
     }
 

@@ -246,7 +246,7 @@
     "modifiers": {
       "greedy": {
         "display_name": "Greedy",
-        "description": "+25% Mental Coins earned, -2 starting Ore.",
+        "description": "Each victory gives 25% more Gems than normal. You start with 2 less Ore.",
         "effects": {
           "meta_reward_percent": 125,
           "starting_run_coins_flat": -2
@@ -254,7 +254,7 @@
       },
       "veteran_economy": {
         "display_name": "Veteran Economy",
-        "description": "+20% run-shop prices, +30% mission Ore.",
+        "description": "Each victory gives 30% more Ore than normal. Each run-shop price costs 20% more.",
         "effects": {
           "shop_price_percent": 120,
           "run_reward_percent": 130
@@ -262,14 +262,15 @@
       },
       "poor_logistics": {
         "display_name": "Poor Logistics",
-        "description": "+2 Ore to every run-shop price.",
+        "description": "Each victory gives 4 extra Ore, but each run-shop price costs 2 extra Ore.",
         "effects": {
+          "run_reward_flat": 4,
           "shop_price_flat": 2
         }
       },
       "generous_command": {
         "display_name": "Generous Command",
-        "description": "+5 starting Ore, -20% Mental Coins earned.",
+        "description": "You start with 5 extra Ore, but each victory gives 20% fewer Gems than normal. Saved Gems are never removed.",
         "effects": {
           "starting_run_coins_flat": 5,
           "meta_reward_percent": 80
@@ -277,8 +278,9 @@
       },
       "blind_choice": {
         "display_name": "Blind Choice",
-        "description": "One mission offer hides its exact reward until launched.",
+        "description": "+1 Ore per victory, but one mission offer hides its exact reward until launched.",
         "effects": {
+          "run_reward_flat": 1,
           "hidden_offer_count": 1
         }
       }
