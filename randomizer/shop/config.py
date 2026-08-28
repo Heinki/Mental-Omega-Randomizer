@@ -8,6 +8,8 @@ from .model import (
     ModifierDefinition,
     PermanentUpgradeDefinition,
     ShopModeConfig,
+    ShopPowerPriceDefinition,
+    ShopTargetPriceDefinition,
     StageWeightProfile,
 )
 
@@ -87,21 +89,22 @@ def load_shop_mode_config() -> ShopModeConfig:
         ),
         mission_rewards=mission_rewards,
         stage_class_weights=stage_weights,
-        run_unit_prices={
-            str(tier): int(price)
-            for tier, price in sections['run_unit_prices'].items()
+        power_target_prices={
+            str(target_id): ShopPowerPriceDefinition(
+                run_access=definition['run_access'],
+                run_buff=definition['run_buff'],
+            )
+            for target_id, definition
+            in sections['power_target_prices'].items()
         },
-        run_buff_prices={
-            str(tier): int(price)
-            for tier, price in sections['run_buff_prices'].items()
-        },
-        permanent_unit_prices={
-            str(tier): int(price)
-            for tier, price in sections['permanent_unit_prices'].items()
-        },
-        permanent_buff_prices={
-            str(tier): int(price)
-            for tier, price in sections['permanent_buff_prices'].items()
+        unit_target_prices={
+            str(target_id): ShopTargetPriceDefinition(
+                run_access=definition['run_access'],
+                run_buff=definition['run_buff'],
+                permanent_access=definition['permanent_access'],
+                permanent_buff=definition['permanent_buff'],
+            )
+            for target_id, definition in sections['unit_target_prices'].items()
         },
         permanent_upgrades=upgrades,
         modifiers=modifiers,

@@ -7,7 +7,6 @@ def _is_nonempty_string(value):
 
 def validate_shop_mode_config(sections, path, invalid):
     mission_classes = {'act_1', 'act_2', 'operation', 'finale'}
-    tiers = {'tier_1', 'tier_2', 'tier_3'}
     settings = sections['settings']
     integer_settings = {
         'run_length': (1, 100),
@@ -114,24 +113,61 @@ def validate_shop_mode_config(sections, path, invalid):
     if previous_percent != 100:
         invalid('Shop Mode stage weights must cover 100 percent', path)
 
-    for section_name in (
-        'run_unit_prices',
-        'run_buff_prices',
-        'permanent_unit_prices',
-        'permanent_buff_prices',
-    ):
-        prices = sections[section_name]
+    power_prices = sections['power_target_prices']
+    if not power_prices:
+        invalid('Shop Mode power_target_prices cannot be empty', path)
+    for target_id, prices in power_prices.items():
         if (
-            set(prices) != tiers
+            not _is_nonempty_string(target_id)
+            or target_id != target_id.upper()
+            or not isinstance(prices, dict)
+            or set(prices) != {'run_access', 'run_buff'}
             or any(
-                not isinstance(value, int)
-                or isinstance(value, bool)
-                or value < 1
+                value is not None and (
+                    not isinstance(value, int)
+                    or isinstance(value, bool)
+                    or value < 1
+                )
                 for value in prices.values()
             )
-            or not prices['tier_1'] < prices['tier_2'] < prices['tier_3']
+            or all(value is None for value in prices.values())
         ):
-            invalid(f'Invalid Shop Mode {section_name}', path)
+            invalid(
+                f'Invalid Shop Mode power_target_prices.{target_id}', path
+            )
+
+    price_fields = {
+        'run_access',
+        'run_buff',
+        'permanent_access',
+        'permanent_buff',
+    }
+    target_prices = sections['unit_target_prices']
+    if not target_prices:
+        invalid('Shop Mode unit_target_prices cannot be empty', path)
+    for target_id, prices in target_prices.items():
+        if (
+            not _is_nonempty_string(target_id)
+            or target_id != target_id.upper()
+            or not isinstance(prices, dict)
+            or set(prices) != price_fields
+            or any(
+                value is not None and (
+                    not isinstance(value, int)
+                    or isinstance(value, bool)
+                    or value < 1
+                )
+                for value in prices.values()
+            )
+            or (prices.get('run_access') is None)
+            != (prices.get('permanent_access') is None)
+            or (prices.get('run_buff') is None)
+            != (prices.get('permanent_buff') is None)
+            or all(value is None for value in prices.values())
+        ):
+            invalid(
+                f'Invalid Shop Mode unit_target_prices.{target_id}', path
+            )
 
     required_upgrades = {
         'mission_reroll': ('rerolls_per_level',),

@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from randomizer.config.schema import StaticConfigError
 from randomizer.rewards.arsenal import arsenal_tier_for_tech_level
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
@@ -106,6 +107,78 @@ def catalogue_entry(reward):
     )
 
 
+def _validate_unit_target_prices(entries):
+    access_targets = {
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.UNIT_ACCESS
+    }
+    buff_targets = {
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.UNIT_BUFF
+    }
+    expected_targets = access_targets | buff_targets
+    configured_targets = set(SHOP_CONFIG.unit_target_prices)
+    missing = sorted(expected_targets - configured_targets)
+    unknown = sorted(configured_targets - expected_targets)
+    if missing or unknown:
+        raise StaticConfigError(
+            'Shop Mode unit_target_prices must exactly cover shop unit '
+            f'targets; missing={missing}, unknown={unknown} in shop_mode.json'
+        )
+    invalid_access = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.unit_target_prices.items()
+        if (definition.run_access is not None) != (target_id in access_targets)
+    )
+    invalid_buffs = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.unit_target_prices.items()
+        if (definition.run_buff is not None) != (target_id in buff_targets)
+    )
+    if invalid_access or invalid_buffs:
+        raise StaticConfigError(
+            'Shop Mode unit_target_prices availability does not match shop '
+            f'catalogue; access={invalid_access}, buffs={invalid_buffs} '
+            'in shop_mode.json'
+        )
+
+
+def _validate_power_target_prices(entries):
+    access_targets = {
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.POWER_ACCESS
+    }
+    buff_targets = {
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.POWER_BUFF
+    }
+    expected_targets = access_targets | buff_targets
+    configured_targets = set(SHOP_CONFIG.power_target_prices)
+    missing = sorted(expected_targets - configured_targets)
+    unknown = sorted(configured_targets - expected_targets)
+    if missing or unknown:
+        raise StaticConfigError(
+            'Shop Mode power_target_prices must exactly cover shop power '
+            f'targets; missing={missing}, unknown={unknown} in shop_mode.json'
+        )
+    invalid_access = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.power_target_prices.items()
+        if (definition.run_access is not None) != (target_id in access_targets)
+    )
+    invalid_buffs = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.power_target_prices.items()
+        if (definition.run_buff is not None) != (target_id in buff_targets)
+    )
+    if invalid_access or invalid_buffs:
+        raise StaticConfigError(
+            'Shop Mode power_target_prices availability does not match shop '
+            f'catalogue; access={invalid_access}, buffs={invalid_buffs} '
+            'in shop_mode.json'
+        )
+
+
 @lru_cache(maxsize=1)
 def shop_catalogue():
     entries = []
@@ -121,6 +194,8 @@ def shop_catalogue():
             continue
         seen.add(entry.reward_id)
         entries.append(entry)
+    _validate_unit_target_prices(entries)
+    _validate_power_target_prices(entries)
     return tuple(entries)
 
 

@@ -326,11 +326,13 @@ class ShopProgressionService:
             )
         reward = canonical_reward_for_id(reward_id)
         entry = catalogue_entry(reward)
-        price = permanent_unit_price(
-            entry.tier if entry is not None and entry.tier else 'tier_1'
+        shop_eligible = bool(
+            entry is not None
+            and entry.reward_type is ShopRewardType.UNIT_ACCESS
         )
+        price = permanent_unit_price(entry.target_id) if shop_eligible else 0
         outcome = apply_permanent_unit_purchase(
-            profile, reward, price=price, shop_eligible=entry is not None
+            profile, reward, price=price, shop_eligible=shop_eligible
         )
         if outcome.validation.allowed:
             self.repository.save_profile(outcome.profile)
@@ -344,11 +346,13 @@ class ShopProgressionService:
             )
         reward = canonical_reward_for_id(reward_id)
         entry = catalogue_entry(reward)
-        price = permanent_buff_price(
-            entry.tier if entry is not None and entry.tier else 'tier_1'
+        shop_eligible = bool(
+            entry is not None
+            and entry.reward_type is ShopRewardType.UNIT_BUFF
         )
+        price = permanent_buff_price(entry.target_id) if shop_eligible else 0
         outcome = apply_permanent_buff_purchase(
-            profile, reward, price=price, shop_eligible=entry is not None
+            profile, reward, price=price, shop_eligible=shop_eligible
         )
         if outcome.validation.allowed:
             self.repository.save_profile(outcome.profile)

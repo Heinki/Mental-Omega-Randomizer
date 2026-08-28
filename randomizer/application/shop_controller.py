@@ -1994,7 +1994,7 @@ class ShopController(ShopPolishController):
         )
         for index, entry in enumerate(entries):
             iid = f'permanent-{index}'
-            price = permanent_unit_price(entry.tier or 'tier_1')
+            price = permanent_unit_price(entry.target_id)
             if entry.reward_id in owned:
                 state = 'Owned'
                 row_tag = 'owned'
@@ -2137,7 +2137,7 @@ class ShopController(ShopPolishController):
             stacks = stacks_by_reward.get(entry.reward_id, 0)
             maximum = entry.stack_limit or 1
             maxed = stacks >= maximum
-            price = permanent_buff_price(entry.tier or 'tier_1')
+            price = permanent_buff_price(entry.target_id)
             effect_state = 'MAX' if maxed else f'Stacks {stacks} / {maximum}'
             if maxed:
                 state, row_tag, buyable = 'Maximum stacks', 'maxed', False

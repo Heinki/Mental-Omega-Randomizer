@@ -96,6 +96,20 @@ class ModifierDefinition:
 
 
 @dataclass(frozen=True)
+class ShopTargetPriceDefinition:
+    run_access: int | None
+    run_buff: int | None
+    permanent_access: int | None
+    permanent_buff: int | None
+
+
+@dataclass(frozen=True)
+class ShopPowerPriceDefinition:
+    run_access: int | None
+    run_buff: int | None
+
+
+@dataclass(frozen=True)
 class ShopModeConfig:
     run_length: int
     mission_offer_count: int
@@ -112,10 +126,8 @@ class ShopModeConfig:
     excluded_reward_ids: tuple[str, ...]
     mission_rewards: Mapping[MissionEconomyClass, MissionRewardDefinition]
     stage_class_weights: tuple[StageWeightProfile, ...]
-    run_unit_prices: Mapping[str, int]
-    run_buff_prices: Mapping[str, int]
-    permanent_unit_prices: Mapping[str, int]
-    permanent_buff_prices: Mapping[str, int]
+    power_target_prices: Mapping[str, ShopPowerPriceDefinition]
+    unit_target_prices: Mapping[str, ShopTargetPriceDefinition]
     permanent_upgrades: Mapping[str, PermanentUpgradeDefinition]
     modifiers: Mapping[str, ModifierDefinition]
 

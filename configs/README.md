@@ -146,11 +146,28 @@ power still receives a useful mission-only upgrade. The three visible mission
 cards resolve duplicate effects to other entries of the same boon/challenge
 kind without consuming gameplay RNG.
 
-`run_unit_prices`, `run_buff_prices`, `permanent_unit_prices`, and
-`permanent_buff_prices` require
-positive `tier_1`, `tier_2`, and `tier_3` prices in strictly increasing order.
-Runtime derives a unit or targeted buff's tier from the same installed
-TechLevel bands used by Randomizer Arsenal.
+`unit_target_prices` is the complete Shop price table for units, aircraft,
+naval units, defenses, and special buildings. Every Shop target ID must appear
+exactly once. Each entry has `run_access`, `run_buff`, `permanent_access`, and
+`permanent_buff`. Prices are positive integers; use `null` only when that
+target has no corresponding access or buff offer. Run and permanent fields for
+the same offer kind must either both be priced or both be `null`. This table is
+deliberately target-specific: TechLevel still supplies the displayed tier but
+never determines a unit or targeted-buff price.
+
+```json
+"E1": {
+  "run_access": 2,
+  "run_buff": 2,
+  "permanent_access": 8,
+  "permanent_buff": 5
+}
+```
+
+`power_target_prices` is the complete target-specific table for aid powers and
+superweapons. Every Shop power target must appear exactly once with positive
+`run_access` and `run_buff` prices. `null` remains reserved for a future target
+that lacks that offer kind. Powers have no permanent Shop offers.
 Discounted prices use integer percentages, round down, then clamp to
 `minimum_shop_price`.
 

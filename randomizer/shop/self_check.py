@@ -46,6 +46,7 @@ from .economy import (
     permanent_buff_price,
     permanent_unit_price,
     run_buff_price,
+    run_unit_price,
     run_reward_price,
     starting_run_coins,
 )
@@ -1117,18 +1118,20 @@ def _phase_seven_checks():
     )
     power_buff = power_buffs_by_target[power_access.target_id]
     access_reward = canonical_reward_for_id(power_access.reward_id)
+    access_price = run_reward_price(power_access)
     access_validation = validate_run_purchase(
         access_reward,
-        price=3,
+        price=access_price,
         run_coins=run.run_coins,
     )
     with_power = apply_validated_run_purchase(
         run, access_reward, access_validation
     )
     buff_reward = canonical_reward_for_id(power_buff.reward_id)
+    buff_price = run_reward_price(power_buff)
     buff_validation = validate_run_purchase(
         buff_reward,
-        price=2,
+        price=buff_price,
         run_coins=with_power.run_coins,
         active_power_ids=active_shop_power_ids(with_power),
     )
@@ -1180,7 +1183,8 @@ def _phase_seven_checks():
             and power_access.target_id in active_shop_power_ids(with_power)
             and buff_validation.result is PurchaseResult.OK
             and with_buff.run_buffs == (BuffPurchase(power_buff.reward_id, 1),)
-            and with_buff.run_coins == 95
+            and with_buff.run_coins
+            == 100 - access_price - buff_price
         ),
         'run_summary_valid': bool(
             completion_summary[0] == 'RUN VICTORY'
@@ -1203,6 +1207,26 @@ def validate_shop_domain():
     flat_meta_config['mission_rewards']['act_2']['meta_coins'] = 1
     try:
         validate_sections('shop_mode.json', flat_meta_config, 'shop-self-check')
+        config_validation_valid = False
+    except StaticConfigError:
+        pass
+    invalid_price_config = load_static_config('shop_mode.json')
+    invalid_price_config['unit_target_prices']['E1']['run_access'] = 0
+    try:
+        validate_sections(
+            'shop_mode.json', invalid_price_config, 'shop-self-check'
+        )
+        config_validation_valid = False
+    except StaticConfigError:
+        pass
+    invalid_power_price_config = load_static_config('shop_mode.json')
+    invalid_power_price_config['power_target_prices'][
+        'NUKESPECIAL'
+    ]['run_access'] = 0
+    try:
+        validate_sections(
+            'shop_mode.json', invalid_power_price_config, 'shop-self-check'
+        )
         config_validation_valid = False
     except StaticConfigError:
         pass
@@ -1252,22 +1276,47 @@ def validate_shop_domain():
     starting_credit_reward = canonical_reward_for_id(
         'Starting Credits +1,000'
     )
+    unavailable_price_valid = True
+    for price_function, target_id in (
+        (run_unit_price, 'CMIN'),
+        (run_buff_price, 'GAGAP'),
+    ):
+        try:
+            price_function(target_id)
+            unavailable_price_valid = False
+        except ValueError:
+            pass
     economy_valid = bool(
         (act_one.run_coins, act_one.meta_coins) == (3, 1)
         and operation.run_coins == 10
         and operation.meta_coins == 3
         and operation.victory_bonus_run_coins == 3
         and capped_bonus.victory_bonus_run_coins == 5
-        and run_buff_price('tier_1') == 2
+        and len(SHOP_CONFIG.unit_target_prices) == 310
+        and len(SHOP_CONFIG.power_target_prices) == 93
+        and all(
+            SHOP_CONFIG.power_target_prices[target_id].run_access == 12
+            and SHOP_CONFIG.power_target_prices[target_id].run_buff == 6
+            for target_id in (
+                'LIGHTNINGSTORMSPECIAL',
+                'NUKESPECIAL',
+                'PSYCHICDOMINATORSPECIAL',
+                'GREATTEMPESTSPECIAL',
+            )
+        )
+        and run_unit_price('E1') == 2
+        and run_unit_price('AHMV') == 4
+        and run_unit_price('STARDUSTB') == 12
+        and run_buff_price('SPY') == 2
+        and run_buff_price('STARDUSTB') == 6
         and (failed.run_coins, failed.meta_coins) == (0, 0)
         and meta_rewards_by_difficulty == [1, 2, 3, 4]
         and discounted_shop_price(0, shop_discount_level=999) == 1
-        and permanent_unit_price('tier_1')
-        < permanent_unit_price('tier_2')
-        < permanent_unit_price('tier_3')
-        and permanent_buff_price('tier_1')
-        < permanent_buff_price('tier_2')
-        < permanent_buff_price('tier_3')
+        and permanent_unit_price('SPY') == 10
+        and permanent_unit_price('STARDUSTB') == 60
+        and permanent_buff_price('SPY') == 5
+        and permanent_buff_price('STARDUSTB') == 12
+        and unavailable_price_valid
         and starting_run_coins(starting_capital_level=999) == 50
         and starting_credit_upgrade.max_level == 20
         and starting_credit_upgrade.effects['credits_per_level'] == 1000
