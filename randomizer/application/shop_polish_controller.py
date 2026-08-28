@@ -16,9 +16,15 @@ from randomizer.shop.economy import (
     run_reward_price,
 )
 from randomizer.shop.model import RunStatus, ShopRewardType
-from randomizer.shop.modifiers import hidden_offer_codes
+from randomizer.shop.modifiers import (
+    hidden_offer_codes,
+    modifier_difficulty,
+    modifier_effects,
+)
 from randomizer.shop.text import gem_text
 from randomizer.shop.inventory import (
+    guarantee_premium_offer,
+    preserve_locked_offer,
     rotating_power_inventory,
     rotating_unit_inventory,
 )
@@ -26,6 +32,7 @@ from randomizer.shop.mission_modifiers import (
     mission_modifier_for_run_offer,
 )
 from randomizer.shop.summary import reward_breakdown_lines, run_summary_lines
+from randomizer.shop.transitions import ShopTransitionError
 
 from .shop_archipelago_controller import ShopArchipelagoController
 
@@ -155,12 +162,17 @@ class ShopPolishController(ShopArchipelagoController):
                 '#161b22' if dark else '#f6f8fa',
                 '#6e7681' if dark else '#8c959f',
             ),
+            'selected_loadout': (
+                '#17365d' if dark else '#ddf4ff',
+                '#79c0ff' if dark else '#0550ae',
+            ),
         }
         for tree_name in (
             'shop_catalogue_tree',
             'shop_permanent_unit_tree',
             'shop_upgrade_tree',
             'shop_permanent_buff_tree',
+            'shop_loadout_select_tree',
         ):
             tree = getattr(self, tree_name, None)
             if tree is None:
@@ -388,6 +400,7 @@ class ShopPolishController(ShopArchipelagoController):
         )
         for index, card in enumerate(self.shop_mission_cards):
             if index >= len(offers):
+                card['frame'].grid_remove()
                 card['frame'].configure(text=f'Choice {index + 1}')
                 card['code'] = ''
                 card['name'].set('No mission')
@@ -406,6 +419,7 @@ class ShopPolishController(ShopArchipelagoController):
                     state='disabled', text='Ease Difficulty'
                 )
                 continue
+            card['frame'].grid()
             offer = offers[index]
             mission_modifier = mission_modifier_for_run_offer(
                 run,
@@ -438,6 +452,7 @@ class ShopPolishController(ShopArchipelagoController):
             card['detail'].set(
                 f'{faction} • {definition.display_name} • '
                 f'Reward Tier {definition.difficulty}'
+                f' • Run difficulty +{modifier_difficulty(run.modifiers)}'
                 + (
                     f' • Game difficulty {self.shop_eased_difficulty_labels()[0]}'
                     f' -> {self.shop_eased_difficulty_labels()[1]}'
@@ -568,20 +583,25 @@ class ShopPolishController(ShopArchipelagoController):
             )
             if run.free_buff_tokens_used < capacity:
                 return 0
+        coupon_definition = self.shop_config.permanent_upgrades['coupon_book']
+        coupon_discount = (
+            self.shop_profile.upgrade_level('coupon_book')
+            * int(coupon_definition.effects['ore_per_level'])
+            if run.coupon_used_stage != run.stage else 0
+        )
         return run_reward_price(
             entry,
             shop_discount_level=self.shop_profile.upgrade_level('shop_discount'),
             modifiers=run.modifiers,
-            specialization=run.reward_settings.get(
-                'shop_discount_specialization', ''
-            ),
             specialization_level=self.shop_profile.upgrade_level(
                 'discount_specialization'
             ),
+            coupon_discount_ore=coupon_discount,
         )
 
     def _selected_shop_catalogue_entries(self):
         return {
+            'Offers': (*self._shop_unit_entries, *self._shop_power_entries),
             'Units': self._shop_unit_entries,
             'Unit Buffs': self._shop_buff_entries,
             'Powers': self._shop_power_entries,
@@ -594,12 +614,24 @@ class ShopPolishController(ShopArchipelagoController):
         buff_category = category in {'Unit Buffs', 'Power Buffs'}
         if not buff_category:
             self.shop_buff_target_frame.pack_forget()
+            self.shop_catalogue_back_button.pack_forget()
+            if not self.shop_access_view_frame.winfo_manager():
+                self.shop_access_view_frame.pack(
+                    side='left', before=self.shop_search_label
+                )
             self._shop_buff_target_ids = {}
             return ''
+        self.shop_access_view_frame.pack_forget()
         self.shop_buff_target_frame.pack(
             side='left', before=self.shop_search_label
         )
+        self.shop_catalogue_back_button.pack(
+            side='left', before=self.shop_buff_target_frame, padx=(0, 10)
+        )
         is_unit = category == 'Unit Buffs'
+        self.shop_buff_target_label.configure(
+            text='Upgrade unit:' if is_unit else 'Upgrade power:'
+        )
         owned = active_tech if is_unit else active_powers
         target_ids = sorted({
             entry.target_id for entry in candidates
@@ -623,10 +655,6 @@ class ShopPolishController(ShopArchipelagoController):
         if current not in mapping:
             current = labels[0] if labels else ''
         self.shop_buff_target_var.set(current)
-        self.shop_buff_target_combo.configure(
-            values=labels,
-            state='readonly' if labels else 'disabled',
-        )
         return mapping.get(current, '')
 
     def _shop_catalogue_entry_state(
@@ -725,12 +753,16 @@ class ShopPolishController(ShopArchipelagoController):
         self._shop_catalogue_details = {}
         term = self.shop_search_var.get().strip().casefold()
         run = self.shop_run
+        modifier_values = modifier_effects(run.modifiers) if run else None
         active_tech = set(active_shop_tech_ids(run))
         active_powers = set(active_shop_power_ids(run))
         visible = []
         category = self.shop_category_var.get()
-        access_category = category in {'Units', 'Powers'}
+        access_category = category in {'Offers', 'Units', 'Powers'}
         buff_category = category in {'Unit Buffs', 'Power Buffs'}
+        owned_view = bool(
+            access_category and self.shop_access_view_var.get() == 'Owned'
+        )
         tree.column(
             'upgrades',
             width=130 if access_category else 0,
@@ -745,29 +777,79 @@ class ShopPolishController(ShopArchipelagoController):
             ),
         )
         tree.heading('name', text='Effect' if buff_category else 'Reward')
-        self.shop_show_locked_button.configure(
-            state='disabled' if buff_category else 'normal'
-        )
         candidates = tuple(
             entry for entry in self._selected_shop_catalogue_entries()
-            if self._shop_entry_available(entry, run)
+            if owned_view or self._shop_entry_available(entry, run)
         )
         selected_target = self._sync_shop_buff_target_selector(
             category, candidates, active_tech, active_powers
         )
-        if category == 'Units':
+        access_candidates = candidates
+        stock_definition = self.shop_config.permanent_upgrades[
+            'extra_shop_stock'
+        ]
+        unit_offer_count = (
+            self.shop_config.unit_inventory_size
+            + self.shop_profile.upgrade_level('extra_shop_stock')
+            * int(stock_definition.effects['units_per_level'])
+            + (modifier_values['unit_inventory_flat'] if modifier_values else 0)
+        )
+        power_offer_count = (
+            self.shop_config.power_inventory_size
+            + self.shop_profile.upgrade_level('extra_shop_stock')
+            * int(stock_definition.effects['powers_per_level'])
+            + (modifier_values['power_inventory_flat'] if modifier_values else 0)
+        )
+        if owned_view:
+            candidates = tuple(
+                entry for entry in candidates
+                if (
+                    entry.reward_type is ShopRewardType.UNIT_ACCESS
+                    and entry.target_id in active_tech
+                ) or (
+                    entry.reward_type is ShopRewardType.POWER_ACCESS
+                    and entry.target_id in active_powers
+                )
+            )
+        elif category == 'Offers':
+            unit_candidates = tuple(
+                entry for entry in candidates
+                if entry.reward_type is ShopRewardType.UNIT_ACCESS
+            )
+            power_candidates = tuple(
+                entry for entry in candidates
+                if entry.reward_type is ShopRewardType.POWER_ACCESS
+            )
+            candidates = (
+                (*rotating_unit_inventory(
+                    unit_candidates,
+                    run_seed=run.seed,
+                    stage=run.stage,
+                    offer_count=(
+                        unit_offer_count
+                    ),
+                    excluded_target_ids=active_tech,
+                ), *rotating_power_inventory(
+                    power_candidates,
+                    run_seed=run.seed,
+                    stage=run.stage,
+                    offer_count=(
+                        power_offer_count
+                    ),
+                    excluded_target_ids=active_powers,
+                ))
+                if run is not None else ()
+            )
+        elif category == 'Units':
             candidates = (
                 rotating_unit_inventory(
                     candidates,
                     run_seed=run.seed,
                     stage=run.stage,
                     offer_count=(
-                        self.shop_config.unit_inventory_size
-                        + self.shop_profile.upgrade_level('extra_shop_stock')
-                        * int(self.shop_config.permanent_upgrades[
-                            'extra_shop_stock'
-                        ].effects['units_per_level'])
+                        unit_offer_count
                     ),
+                    excluded_target_ids=active_tech,
                 )
                 if run is not None else ()
             )
@@ -778,12 +860,9 @@ class ShopPolishController(ShopArchipelagoController):
                     run_seed=run.seed,
                     stage=run.stage,
                     offer_count=(
-                        self.shop_config.power_inventory_size
-                        + self.shop_profile.upgrade_level('extra_shop_stock')
-                        * int(self.shop_config.permanent_upgrades[
-                            'extra_shop_stock'
-                        ].effects['powers_per_level'])
+                        power_offer_count
                     ),
+                    excluded_target_ids=active_powers,
                 )
                 if run is not None else ()
             )
@@ -792,6 +871,38 @@ class ShopPolishController(ShopArchipelagoController):
                 entry for entry in candidates
                 if entry.target_id == selected_target
             )
+        if run is not None and access_category and not owned_view:
+            locked_entry = self._shop_entry_by_reward_id.get(
+                run.stock_lock_reward_id or ''
+            )
+            if (
+                locked_entry is not None
+                and run.stock_lock_stage is not None
+                and run.stage <= run.stock_lock_stage + 1
+                and self._shop_entry_available(locked_entry, run)
+                and locked_entry.target_id not in active_tech
+                and locked_entry.target_id not in active_powers
+            ):
+                candidates = preserve_locked_offer(candidates, locked_entry)
+            protected = (
+                (locked_entry.reward_id,)
+                if locked_entry is not None else ()
+            )
+            premium = self.shop_config.permanent_upgrades['premium_supplier']
+            if self.shop_profile.upgrade_level('premium_supplier'):
+                eligible = tuple(
+                    entry for entry in access_candidates
+                    if entry.target_id not in active_tech
+                    and entry.target_id not in active_powers
+                )
+                candidates = guarantee_premium_offer(
+                    candidates,
+                    eligible,
+                    run_seed=run.seed,
+                    stage=run.stage,
+                    minimum_stage=int(premium.effects['minimum_stage']),
+                    protected_reward_ids=protected,
+                )
         for entry in candidates:
             if term and term not in (
                 entry.reward_id + ' ' + entry.target_id
@@ -801,8 +912,6 @@ class ShopPolishController(ShopArchipelagoController):
                 entry, run, active_tech, active_powers
             )
             if buff_category and detail[2]:
-                continue
-            if detail[2] and not self.shop_show_locked_var.get():
                 continue
             visible.append((entry, detail))
         tier_order = {'tier_1': 1, 'tier_2': 2, 'tier_3': 3, None: 0}
@@ -836,6 +945,28 @@ class ShopPolishController(ShopArchipelagoController):
                 'Buy a buff repeatedly to add stacks up to its listed limit.'
                 if visible else
                 'Select an owned power above. No unavailable-power buffs are shown.'
+            )
+        elif owned_view:
+            unit_count = sum(
+                entry.reward_type is ShopRewardType.UNIT_ACCESS
+                for entry in candidates
+            )
+            self.shop_catalogue_help_var.set(
+                f'{len(candidates)} active purchases and starting unlocks '
+                f'({unit_count} units/buildings, '
+                f'{len(candidates) - unit_count} powers). Use Open Upgrades '
+                'to buy more buff stacks.'
+            )
+        elif category == 'Offers':
+            power_count = sum(
+                entry.reward_type is ShopRewardType.POWER_ACCESS
+                for entry in candidates
+            )
+            self.shop_catalogue_help_var.set(
+                f'{len(candidates)} current offers, including {power_count} '
+                f'powers, for stage {run.stage if run is not None else "—"}. '
+                'Stock changes after each mission victory. Buy an item, then '
+                'use its Open Upgrades button.'
             )
         elif category == 'Units':
             self.shop_catalogue_help_var.set(
@@ -902,8 +1033,17 @@ class ShopPolishController(ShopArchipelagoController):
                 'tags': (row_tag,),
                 'values': (
                 self._shop_catalogue_display_name(entry, state, stacks),
-                (entry.tier or '').replace('_', ' ').title(),
-                state,
+                (
+                    'Power'
+                    if entry.reward_type is ShopRewardType.POWER_ACCESS
+                    else (entry.tier or '').replace('_', ' ').title()
+                ),
+                (
+                    state + ' • Locked'
+                    if run is not None
+                    and entry.reward_id == run.stock_lock_reward_id
+                    else state
+                ),
                 (
                     'FREE TOKEN'
                     if price == 0 and entry.reward_type in {
@@ -943,6 +1083,12 @@ class ShopPolishController(ShopArchipelagoController):
                     if buff_category else ''
                 )
                 + (f'\nCurrent stacks: {stacks}' if stacks else '')
+                + (
+                    '\nStock Lock: preserved through the next stage rotation.'
+                    if run is not None
+                    and entry.reward_id == run.stock_lock_reward_id
+                    else ''
+                )
             )
             if entry.reward_id == selected_reward_id:
                 restore_iid = iid
@@ -1027,6 +1173,15 @@ class ShopPolishController(ShopArchipelagoController):
         self.refresh_shop_catalogue()
         self.shop_panels.select(0)
 
+    def show_shop_offers(self):
+        self.shop_category_var.set('Offers')
+        self.shop_search_var.set('')
+        self.refresh_shop_catalogue()
+
+    def show_shop_owned_access(self):
+        self.shop_access_view_var.set('Owned')
+        self.show_shop_offers()
+
     def view_selected_shop_buffs(self):
         selected = self.shop_catalogue_tree.selection()
         reward_id = self._shop_catalogue_rows.get(
@@ -1044,24 +1199,10 @@ class ShopPolishController(ShopArchipelagoController):
             self._show_shop_buffs_for_target(entry.target_id, power=True)
 
     def browse_owned_unit_upgrades(self, *, power=False):
-        run = self.shop_run
-        if run is None:
-            return
-        owned = (
-            set(active_shop_power_ids(run))
-            if power else set(active_shop_tech_ids(run))
-        )
-        entries = (
-            self._shop_power_buff_entries if power else self._shop_buff_entries
-        )
-        target_id = next(
-            (
-                target for target in sorted({entry.target_id for entry in entries})
-                if target in owned
-            ),
-            '',
-        )
-        self._show_shop_buffs_for_target(target_id, power=power)
+        del power
+        if self.shop_run is not None:
+            self.show_shop_owned_access()
+            self.shop_panels.select(0)
 
     def view_selected_loadout_buffs(self, _event=None):
         selected = self.shop_loadout_tree.selection()
@@ -1084,7 +1225,58 @@ class ShopPolishController(ShopArchipelagoController):
         self.shop_purchase_button.configure(
             state='normal' if buyable else 'disabled'
         )
+        if hasattr(self, 'shop_stock_lock_button'):
+            reward_id = self._shop_catalogue_rows.get(
+                selected[0], ''
+            ) if selected else ''
+            entry = self._shop_entry_by_reward_id.get(reward_id)
+            access_offer = bool(
+                entry is not None
+                and entry.reward_type in {
+                    ShopRewardType.UNIT_ACCESS,
+                    ShopRewardType.POWER_ACCESS,
+                }
+                and selected
+                and self._shop_catalogue_buyable.get(selected[0], False)
+            )
+            has_upgrade = self.shop_profile.upgrade_level('stock_lock') > 0
+            already_locked = bool(
+                self.shop_run is not None
+                and reward_id
+                and self.shop_run.stock_lock_reward_id == reward_id
+            )
+            self.shop_stock_lock_button.configure(
+                state=(
+                    'normal'
+                    if access_offer and has_upgrade and not already_locked
+                    and not self.shop_launch_active()
+                    else 'disabled'
+                ),
+                text=(
+                    'Locked for Next Stage'
+                    if already_locked else 'Lock Selected Offer'
+                    if has_upgrade else 'Stock Lock Locked'
+                ),
+            )
         self.refresh_permanent_purchase_buttons()
+
+    def lock_selected_shop_offer(self):
+        selected = self.shop_catalogue_tree.selection()
+        reward_id = self._shop_catalogue_rows.get(
+            selected[0], ''
+        ) if selected else ''
+        if not reward_id:
+            return
+        try:
+            self.shop_run = self.shop_service.lock_shop_offer(reward_id)
+        except ShopTransitionError as exc:
+            self._set_shop_message(exc, error=True)
+        else:
+            self._shop_focus_reward_id = reward_id
+            self._set_shop_message(
+                f'Locked {reward_id}; it remains offered next stage.'
+            )
+        self.refresh_shop_mode()
 
     def _shop_upgrade_effect_text(self, upgrade_id, definition):
         effects = definition.effects
@@ -1144,18 +1336,35 @@ class ShopPolishController(ShopArchipelagoController):
                 'unused Ore after a mission failure for the next run, capped '
                 f'at {effects.get("maximum_saved_ore", 0)} Ore.'
             ),
-            'starting_buff_draft': (
-                f'Each level grants +{effects.get("buffs_per_level", 0)} free '
-                'Tier 1 buff at run start. Preferred buff type is chosen in Shop Setup.'
-            ),
             'discount_specialization': (
-                f'Each level reduces prices in the Shop Setup specialization '
+                f'Each level reduces all run-shop unit, buff, and power prices '
                 f'by {effects.get("ore_per_level", 0)} Ore, minimum price 1 Ore.'
             ),
             'permanent_challenge_slots': (
                 f'Each level guarantees +{effects.get("slots_per_level", 0)} '
                 'special mission choice. Stages 1-5 grant player support; '
                 'stages 6+ become AI challenges with bonus rewards.'
+            ),
+            'coupon_book': (
+                f'First paid shop purchase each stage costs '
+                f'{effects.get("ore_per_level", 0)} less Ore per level.'
+            ),
+            'stock_lock': (
+                'Preserve one selected unit, building, or power offer through '
+                'the next mission-victory stock rotation.'
+            ),
+            'veteran_academy': (
+                'Units selected in the permanent starting loadout begin '
+                'missions as Veterans.'
+            ),
+            'gem_dividend': (
+                f'On run victory, gain 1 Gem per '
+                f'{effects.get("ore_per_gem", 0)} remaining Ore, capped at '
+                f'{effects.get("maximum_gems_per_level", 0)} Gem per level.'
+            ),
+            'premium_supplier': (
+                f'From stage {effects.get("minimum_stage", 0)}, guarantee '
+                'one higher-tier access offer in each stock rotation.'
             ),
         }
         return templates.get(
@@ -1187,6 +1396,14 @@ class ShopPolishController(ShopArchipelagoController):
         )
         self.shop_permanent_unit_button.configure(
             state='normal' if unit_allowed else 'disabled'
+        )
+        owned_unit_selected = bool(
+            unit_selection
+            and self._shop_permanent_rows.get(unit_selection[0], '')
+            in self.shop_profile.permanent_unit_unlocks
+        )
+        self.shop_permanent_unit_buffs_button.configure(
+            state='normal' if owned_unit_selected else 'disabled'
         )
         self.shop_permanent_upgrade_button.configure(
             state='normal' if upgrade_allowed else 'disabled'
@@ -1309,7 +1526,14 @@ class ShopPolishController(ShopArchipelagoController):
                 'challenge_hunter'
             ),
         )
-        self._set_shop_message(f'{source}: {code} victory. ' + ' | '.join(lines))
+        dividend = transition.reward.gem_dividend_meta_coins
+        self._set_shop_message(
+            f'{source}: {code} victory. ' + ' | '.join(lines)
+            + (
+                f' | Gem Dividend: +{gem_text(dividend)}'
+                if dividend else ''
+            )
+        )
         if transition.run.status is RunStatus.COMPLETED:
             self.shop_panels.select(self.shop_summary_panel)
 

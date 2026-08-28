@@ -172,6 +172,10 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
+Shop Gems and permanent unlocks live in `shop_profile.json`; the current run's
+Ore, purchases, and mission state live in `shop_run.json`. Releases replace
+neither file. Both use atomic writes and forward-compatible normalization, so
+an update adds new defaults without resetting existing currency or purchases.
 Every Python module stays below 1,000 lines. Public facades such as
 `randomizer.maps.rules`, `randomizer.missions.safety`, and
 `randomizer.rewards.catalogue` keep callers independent from internal splits.

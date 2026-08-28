@@ -832,6 +832,11 @@ def validate_limited_hero_build_limits():
             )
         if (unit_id, 'build_limit') not in reward_pairs:
             errors.append(f'{unit_id} lacks command-capacity reward')
+    _key, yuri_prime_cloneable = _case_insensitive_item(
+        templates.get('YURIPR', {}), 'Cloneable'
+    )
+    if str(yuri_prime_cloneable or '').lower() != 'no':
+        errors.append('YURIPR must be Cloneable=no to protect its build queue')
     if errors:
         raise ValueError(
             'Limited hero build-limit validation failed: ' + '; '.join(errors)
@@ -840,6 +845,7 @@ def validate_limited_hero_build_limits():
         'types': len(LIMITED_HERO_BUILD_LIMITS),
         'unit_ids': sorted(LIMITED_HERO_BUILD_LIMITS),
         'command_capacity_rewards': len(LIMITED_HERO_BUILD_LIMITS),
+        'unclonable_limited_ids': ['YURIPR'],
     }
 
 

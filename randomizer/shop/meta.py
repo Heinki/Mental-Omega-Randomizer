@@ -117,7 +117,7 @@ def purchase_permanent_upgrade(
     config: ShopModeConfig = SHOP_CONFIG,
 ):
     definition = config.permanent_upgrades.get(str(upgrade_id))
-    if definition is None:
+    if definition is None or not definition.purchasable:
         validation = PurchaseValidation(PurchaseResult.NOT_SHOP_ELIGIBLE)
         return ProfilePurchaseOutcome(profile, validation)
     current_level = profile.upgrade_level(definition.id)

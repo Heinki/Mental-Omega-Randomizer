@@ -14,7 +14,8 @@
       "reroll_policy": "per_run",
       "archipelago_purchase_locations": 5,
       "archipelago_purchase_meta_coin_cost": 5,
-      "archipelago_mission_victories_are_locations": true
+      "archipelago_mission_victories_are_locations": true,
+      "excluded_reward_ids": ["Foehn Blast Trench Access"]
     },
     "mission_rewards": {
       "act_1": {
@@ -220,6 +221,7 @@
       },
       "starting_buff_draft": {
         "display_name": "Starting Buff Draft",
+        "purchasable": false,
         "max_level": 3,
         "prices": [25, 50, 90],
         "effects": {
@@ -227,7 +229,7 @@
         }
       },
       "discount_specialization": {
-        "display_name": "Discount Specialization",
+        "display_name": "Global Shop Discount",
         "max_level": 5,
         "prices": [20, 35, 55, 80, 110],
         "effects": {
@@ -241,6 +243,233 @@
         "effects": {
           "slots_per_level": 1
         }
+      },
+      "coupon_book": {
+        "display_name": "Coupon Book",
+        "max_level": 3,
+        "prices": [25, 50, 90],
+        "effects": {
+          "ore_per_level": 1
+        }
+      },
+      "stock_lock": {
+        "display_name": "Stock Lock",
+        "max_level": 1,
+        "prices": [60],
+        "effects": {
+          "locks_per_stage": 1
+        }
+      },
+      "veteran_academy": {
+        "display_name": "Veteran Academy",
+        "max_level": 1,
+        "prices": [80],
+        "effects": {
+          "veteran_loadout": 1
+        }
+      },
+      "gem_dividend": {
+        "display_name": "Gem Dividend",
+        "max_level": 3,
+        "prices": [35, 70, 120],
+        "effects": {
+          "ore_per_gem": 5,
+          "maximum_gems_per_level": 1
+        }
+      },
+      "premium_supplier": {
+        "display_name": "Premium Supplier",
+        "max_level": 1,
+        "prices": [75],
+        "effects": {
+          "minimum_stage": 3,
+          "guaranteed_offers": 1
+        }
+      }
+    },
+    "mission_effects": {
+      "command_surge": {
+        "title": "Command Surge",
+        "description": "Player and allied-helper production time is 30% shorter.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Faction Production Drill I", "Faction Production Drill I"],
+        "buffs_allied_helpers": true
+      },
+      "tempest_support": {
+        "title": "Great Tempest Support",
+        "description": "Player receives Great Tempest with faster recharge and stronger damage for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Great Tempest Power", "Great Tempest Power Accelerated Recharge I", "Great Tempest Power Amplified Payload I"]
+      },
+      "lightning_storm_support": {
+        "title": "Lightning Storm Support",
+        "description": "Player receives Lightning Storm with faster recharge and stronger damage for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Lightning Storm Power", "Lightning Storm Power Accelerated Recharge I", "Lightning Storm Power Amplified Payload I"]
+      },
+      "nuclear_missile_support": {
+        "title": "Nuclear Missile Support",
+        "description": "Player receives Nuclear Missile with faster recharge and stronger damage for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Nuclear Missile Power", "Nuclear Missile Power Accelerated Recharge I", "Nuclear Missile Power Amplified Payload I"]
+      },
+      "psychic_dominator_support": {
+        "title": "Psychic Dominator Support",
+        "description": "Player receives Psychic Dominator with faster recharge and stronger damage for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Psychic Dominator Power", "Psychic Dominator Power Accelerated Recharge I", "Psychic Dominator Power Amplified Payload I"]
+      },
+      "airborne_support": {
+        "title": "Airborne Support Drop",
+        "description": "Player receives Airborne with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Airborne Power", "Airborne Power Reinforced Payload I", "Airborne Power Accelerated Recharge I"]
+      },
+      "bloodhounds_support": {
+        "title": "Bloodhounds Support Drop",
+        "description": "Player receives Bloodhounds with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Bloodhounds Power", "Bloodhounds Power Reinforced Payload I", "Bloodhounds Power Accelerated Recharge I"]
+      },
+      "ultra_miner_support": {
+        "title": "Ultra Miner Support Drop",
+        "description": "Player receives Ultra Miner with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Ultra Miner Power", "Ultra Miner Power Reinforced Payload I", "Ultra Miner Power Accelerated Recharge I"]
+      },
+      "paladin_support": {
+        "title": "Paladin Support Drop",
+        "description": "Player receives Paladin Aid with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Paladin Aid Power", "Paladin Aid Power Reinforced Payload I", "Paladin Aid Power Accelerated Recharge I"]
+      },
+      "repair_drone_support": {
+        "title": "Repair Drone Support Drop",
+        "description": "Player receives Repair Drone with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Repair Drone Power", "Repair Drone Power Reinforced Payload I", "Repair Drone Power Accelerated Recharge I"]
+      },
+      "tank_drop_support": {
+        "title": "Tank Support Drop",
+        "description": "Player receives Tank Drop with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Tank Drop Power", "Tank Drop Power Reinforced Payload I", "Tank Drop Power Accelerated Recharge I"]
+      },
+      "motor_ambush_support": {
+        "title": "Motor Ambush Support",
+        "description": "Player receives Motor Ambush with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Motor Ambush Power", "Motor Ambush Power Reinforced Payload I", "Motor Ambush Power Accelerated Recharge I"]
+      },
+      "terror_drop_support": {
+        "title": "Terror Drone Support Drop",
+        "description": "Player receives Terror Drop with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Terror Drop Power", "Terror Drop Power Reinforced Payload I", "Terror Drop Power Accelerated Recharge I"]
+      },
+      "drakuv_support": {
+        "title": "Drakuv Support Drop",
+        "description": "Player receives Drakuv with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Drakuv Prison Vehicle Power", "Drakuv Prison Vehicle Power Reinforced Payload I", "Drakuv Prison Vehicle Power Accelerated Recharge I"]
+      },
+      "repair_drones_support": {
+        "title": "Repair Drones Support Drop",
+        "description": "Player receives Repair Drones with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Repair Drones Power", "Repair Drones Power Reinforced Payload I", "Repair Drones Power Accelerated Recharge I"]
+      },
+      "libra_clones_support": {
+        "title": "Libra Clones Support Drop",
+        "description": "Player receives Libra Clones with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Libra Clones Power", "Libra Clones Power Reinforced Payload I", "Libra Clones Power Accelerated Recharge I"]
+      },
+      "ruiner_support": {
+        "title": "Ruiner Support Drop",
+        "description": "Player receives Ruiner with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Ruiner Power", "Ruiner Power Reinforced Payload I", "Ruiner Power Accelerated Recharge I"]
+      },
+      "hijackers_support": {
+        "title": "Hijackers Support Drop",
+        "description": "Player receives Hijackers with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Hijackers Power", "Hijackers Power Reinforced Payload I", "Hijackers Power Accelerated Recharge I"]
+      },
+      "sweeper_support": {
+        "title": "Sweeper Support Drop",
+        "description": "Player receives Sweeper Drop with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Sweeper Drop Power", "Sweeper Drop Power Reinforced Payload I", "Sweeper Drop Power Accelerated Recharge I"]
+      },
+      "decoy_team_support": {
+        "title": "Decoy Team Support",
+        "description": "Player receives Decoy Team with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Decoy Team Power", "Decoy Team Power Reinforced Payload I", "Decoy Team Power Accelerated Recharge I"]
+      },
+      "decoy_squadron_support": {
+        "title": "Decoy Squadron Support",
+        "description": "Player receives Decoy Squadron with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Decoy Squadron Power", "Decoy Squadron Power Reinforced Payload I", "Decoy Squadron Power Accelerated Recharge I"]
+      },
+      "engineering_team_support": {
+        "title": "Engineering Team Support Drop",
+        "description": "Player receives Engineering Team with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Engineering Team Power", "Engineering Team Power Reinforced Payload I", "Engineering Team Power Accelerated Recharge I"]
+      },
+      "moon_reinforcements_support": {
+        "title": "Moon Reinforcements",
+        "description": "Player receives Moon Reinforcements with one extra payload and faster recharge for this mission.",
+        "bonus_run_coins": 1,
+        "bonus_meta_coins": 1,
+        "player_reward_ids": ["Moon Reinforcements Power", "Moon Reinforcements Power Reinforced Payload I", "Moon Reinforcements Power Accelerated Recharge I"]
+      },
+      "armored_vanguard": {
+        "title": "Armored AI Vanguard",
+        "description": "Hostile AI Tier 1 units have 11% stronger armor.",
+        "bonus_run_coins": 2,
+        "bonus_meta_coins": 1,
+        "enemy_reward_id": "AI T1 Unit Armor"
+      },
+      "lethal_vanguard": {
+        "title": "Lethal AI Vanguard",
+        "description": "Hostile AI Tier 1 units deal 15% more damage.",
+        "bonus_run_coins": 2,
+        "bonus_meta_coins": 1,
+        "enemy_reward_id": "AI T1 Unit Firepower"
+      },
+      "tempest_threat": {
+        "title": "AI Great Tempest",
+        "description": "Hostile AI receives a repeating Great Tempest power.",
+        "bonus_run_coins": 3,
+        "bonus_meta_coins": 2,
+        "enemy_reward_id": "AI Foehn Great Tempest"
       }
     },
     "modifiers": {
@@ -282,6 +511,89 @@
         "effects": {
           "run_reward_flat": 1,
           "hidden_offer_count": 1
+        }
+      },
+      "glass_cannon": {
+        "display_name": "Glass Cannon",
+        "description": "Player units deal 25% more damage but have 20% less durability.",
+        "effects": {
+          "player_damage_percent": 125,
+          "player_armor_percent": 80
+        }
+      },
+      "overclocked_factories": {
+        "display_name": "Overclocked Factories",
+        "description": "Production time is 25% shorter, but player unit and structure costs are 20% higher.",
+        "effects": {
+          "production_time_percent": 75,
+          "player_cost_percent": 120
+        }
+      },
+      "black_market": {
+        "display_name": "Black Market",
+        "description": "Each stage has 4 extra Shop offers, but run-shop prices are 25% higher.",
+        "effects": {
+          "unit_inventory_flat": 2,
+          "power_inventory_flat": 2,
+          "shop_price_percent": 125
+        }
+      },
+      "elite_force": {
+        "display_name": "Elite Force",
+        "description": "Three guaranteed starters begin Veteran, but the other two guaranteed starter slots are removed.",
+        "effects": {
+          "starter_veteran": 1,
+          "starter_unit_count_flat": -2
+        }
+      },
+      "no_safety_net": {
+        "display_name": "No Safety Net",
+        "description": "Each victory gives 1 extra Gem, but rerolls, difficulty assists, and Emergency Revival are disabled.",
+        "effects": {
+          "meta_reward_flat": 1,
+          "disable_rerolls": 1,
+          "disable_assists": 1,
+          "disable_revivals": 1
+        }
+      },
+      "support_doctrine": {
+        "display_name": "Support Doctrine",
+        "description": "Aid powers recharge 30% faster, but combat units build 20% slower.",
+        "effects": {
+          "support_recharge_percent": 70,
+          "combat_production_time_percent": 120
+        }
+      },
+      "war_economy": {
+        "display_name": "War Economy",
+        "description": "Start with 5 extra Ore, but every mission starts with 3,000 fewer in-game Credits.",
+        "effects": {
+          "starting_run_coins_flat": 5,
+          "mission_starting_credits_flat": -3000
+        }
+      },
+      "narrow_intelligence": {
+        "display_name": "Narrow Intelligence",
+        "description": "Mission victories give 30% more Ore, but each stage offers only 2 missions.",
+        "effects": {
+          "run_reward_percent": 130,
+          "mission_offer_count_flat": -1
+        }
+      },
+      "liquid_assets": {
+        "display_name": "Liquid Assets",
+        "description": "Run-shop prices are 20% lower, but unused Ore disappears after each stage.",
+        "effects": {
+          "shop_price_percent": 80,
+          "liquidate_ore_after_victory": 1
+        }
+      },
+      "treasure_hunter": {
+        "display_name": "Treasure Hunter",
+        "description": "Challenge missions give double base Gems, but normal missions give 25% less Ore.",
+        "effects": {
+          "challenge_meta_reward_percent": 200,
+          "normal_run_reward_percent": 75
         }
       }
     }

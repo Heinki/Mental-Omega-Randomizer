@@ -3,6 +3,7 @@
 from .config import SHOP_CONFIG
 from .economy import mission_reward
 from .model import RunStatus
+from .modifiers import modifier_difficulty
 from .text import gem_text
 
 
@@ -84,6 +85,7 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
         f'{sum(item.stacks for item in run.starting_draft_buffs)}',
         f'Free Buff Tokens used: {run.free_buff_tokens_used}',
         f'Emergency Revivals used: {run.emergency_revivals_used}',
+        f'Run difficulty: +{modifier_difficulty(run.modifiers)}',
         'Modifiers: ' + (
             ', '.join(
                 config.modifiers[item].display_name for item in run.modifiers

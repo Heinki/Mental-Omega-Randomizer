@@ -92,6 +92,7 @@ from randomizer.maps.settings import (
     mission_eva_voice_rules,
     mission_house_color_rules,
 )
+from randomizer.maps.shop_modifiers import apply_shop_clone_modifiers
 from randomizer.maps.special_buildings import (
     DEFAULT_REFINERY_MINER_IDS,
     ore_purifier_miner_dock_rules,
@@ -105,6 +106,7 @@ from randomizer.missions.houses import (
 from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
+    MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS,
     MISSION_HELPER_BUFF_EXCLUDED_HOUSES,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
@@ -601,8 +603,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     earned_rewards = (
         self.launch_rewards_for_mission(code) if launch_active else []
     )
-    credit_bonus = starting_credit_bonus(earned_rewards)
-    if credit_bonus:
+    credit_adjustment = (
+        starting_credit_bonus(earned_rewards)
+        + int(self.active_reward_settings().get(
+            'shop_mission_starting_credits_flat', 0
+        ))
+    )
+    if credit_adjustment:
         player_house = player_house_from_map(lines, records=records)
         house_values = section_value_map_preserve(lines, player_house)
         authored_credits = next(
@@ -620,17 +627,20 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             # House Credits are stored in hundreds by the game/map format.
             merge_ini_section_values(lines, {
                 player_house: {
-                    'Credits': str(authored_credit_units + credit_bonus // 100),
+                    'Credits': str(max(
+                        0,
+                        authored_credit_units + credit_adjustment // 100,
+                    )),
                 },
             })
             self.append_log(
-                f'Applied +{credit_bonus:,} starting credits to {player_house} '
+                f'Applied {credit_adjustment:+,} starting credits to {player_house} '
                 f'for {code} (authored {authored_credit_units * 100:,}; '
-                f'launch total {authored_credit_units * 100 + credit_bonus:,}).'
+                f'launch total {max(0, authored_credit_units * 100 + credit_adjustment):,}).'
             )
         else:
             self.append_log(
-                f'Could not apply +{credit_bonus:,} starting credits for {code}: '
+                f'Could not apply {credit_adjustment:+,} starting credits for {code}: '
                 f'player house={player_house or "unresolved"}, '
                 f'authored Credits={authored_credits!r}.',
                 error=True,
@@ -2023,6 +2033,21 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             )
             if clone_id and list_section:
                 expected_generated_techno_types[list_section].append(clone_id)
+        shop_modifier_report = apply_shop_clone_modifiers(
+            clone_rule_sections,
+            clone_handled,
+            self.active_reward_settings(),
+        )
+        if any(shop_modifier_report.values()):
+            self.append_log(
+                'Applied composed Shop run clone modifiers: '
+                + ', '.join(
+                    f'{key.replace("_", " ")}={value}'
+                    for key, value in shop_modifier_report.items()
+                    if value
+                )
+                + '.'
+            )
         remember_generated_techno_types(clone_rule_sections)
         pad_aircraft_rules, pad_aircraft_clone_ids = (
             player_clone_pad_aircraft_rules(
@@ -2631,6 +2656,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         enemy_scaling_rewards,
         installed_rule_sections,
         native_map_sections,
+        excluded_unit_ids=MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS.get(code, ()),
     )
     if enemy_unit_rules:
         merge_ini_section_values(lines, enemy_unit_rules)

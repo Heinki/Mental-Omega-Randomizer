@@ -141,12 +141,16 @@ class ShopRepository:
             if not transaction_id:
                 raise ValueError('Shop transaction_id must be non-empty')
             normalized_profile = normalize_shop_profile(profile.to_dict())
-            normalized_run = normalize_shop_run(run.to_dict())
+            normalized_run = (
+                None if run is None else normalize_shop_run(run.to_dict())
+            )
             document = {
                 'schema_version': SHOP_TRANSACTION_SCHEMA_VERSION,
                 'transaction_id': transaction_id,
                 'profile': normalized_profile.to_dict(),
-                'run': normalized_run.to_dict(),
+                'run': (
+                    None if normalized_run is None else normalized_run.to_dict()
+                ),
             }
             atomic_write_json(self.paths.transaction, document, indent=None)
 
@@ -166,16 +170,24 @@ class ShopRepository:
                     'transaction_id'
                 ]:
                     raise ValueError('Shop transaction_id must be non-empty')
-                profile = normalize_shop_profile(document.get('profile'))
-                run = normalize_shop_run(document.get('run'))
-                if run is None:
+                if 'run' not in document:
                     raise ValueError('Shop transaction has no run target')
+                profile = normalize_shop_profile(document.get('profile'))
+                run_document = document['run']
+                run = (
+                    None
+                    if run_document is None
+                    else normalize_shop_run(run_document)
+                )
             except Exception as exc:
                 self._raise_invalid(
                     'Shop transaction', self.paths.transaction, exc
                 )
             atomic_write_json(self.paths.profile, profile.to_dict(), indent=None)
-            atomic_write_json(self.paths.run, run.to_dict(), indent=None)
+            if run is None:
+                self.paths.run.unlink(missing_ok=True)
+            else:
+                atomic_write_json(self.paths.run, run.to_dict(), indent=None)
             self.paths.transaction.unlink(missing_ok=True)
             return True
 

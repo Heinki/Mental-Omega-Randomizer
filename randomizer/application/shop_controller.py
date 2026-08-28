@@ -1,12 +1,13 @@
 """Standalone Shop Mode UI coordination."""
 
+from collections import Counter
 from dataclasses import replace
-from hashlib import sha256
 import uuid
 import tkinter as tk
 from tkinter import messagebox
 
 from ._dependencies import (
+    BUFF_TARGETS,
     BUFF_TYPES,
     DIFFICULTIES,
     GAME_EXE,
@@ -25,6 +26,7 @@ from randomizer.shop.active import (
     active_shop_rewards,
     active_shop_starter_defense_ids,
     active_shop_starter_unit_ids,
+    active_shop_tech_ids,
     shop_starter_defense_ids,
     shop_starter_unit_ids,
 )
@@ -49,8 +51,17 @@ from randomizer.shop.missions import (
     mission_classes_for_stage,
 )
 from randomizer.shop.mission_modifiers import active_mission_modifier
-from randomizer.shop.model import BuffPurchase, RunStatus, ShopRewardType
-from randomizer.shop.persistence import ShopRepository
+from randomizer.shop.modifiers import (
+    modifier_difficulty,
+    modifier_effects,
+    modifier_mission_offer_count,
+)
+from randomizer.shop.model import (
+    SHOP_ACCESS_REWARD_MODE,
+    RunStatus,
+    ShopRewardType,
+)
+from randomizer.shop.persistence import ShopPersistenceError, ShopRepository
 from randomizer.shop.service import ShopProgressionService
 from randomizer.shop.text import gem_text
 from randomizer.shop.transitions import ShopTransitionError
@@ -74,8 +85,9 @@ SHOP_FACTION_CAMPAIGNS = {
 SHOP_CAMPAIGN_FACTIONS = {
     campaign: label for label, campaign in SHOP_FACTION_CAMPAIGNS.items()
 }
-SHOP_REWARD_MODE = 'Standard'
-SHOP_DISCOUNT_SPECIALIZATIONS = ('Units', 'Buffs', 'Powers')
+# Shop progression grants exact purchased identities. Reuse Chaos' isolated
+# access pipeline internally; Shop Mode still owns its separate economy/UI.
+SHOP_REWARD_MODE = SHOP_ACCESS_REWARD_MODE
 class ShopController(ShopPolishController):
     def initialize_shop_controller(self):
         self.shop_config = SHOP_CONFIG
@@ -87,6 +99,7 @@ class ShopController(ShopPolishController):
         self.shop_run_coins_var = tk.StringVar(value='Ore: 0')
         self.shop_meta_coins_var = tk.StringVar(value='Gems: 0')
         self.shop_rerolls_var = tk.StringVar(value='Rerolls: 0 / 0')
+        self.shop_difficulty_var = tk.StringVar(value='Difficulty: +0')
         self.shop_message_var = tk.StringVar(value='')
         self.shop_ap_purchase_status_var = tk.StringVar(value='')
         saved_faction_pool = self.config.get('shop_faction_pool')
@@ -96,40 +109,24 @@ class ShopController(ShopPolishController):
             )
         self.shop_faction_pool_options = SHOP_FACTION_POOLS
         self.shop_faction_pool_var = tk.StringVar(value=saved_faction_pool)
-        self.shop_buff_draft_options = (
-            ('Any Buff', ''),
-            *((item['setting_label'], item['id']) for item in BUFF_TYPES),
-        )
-        draft_labels = {label for label, _value in self.shop_buff_draft_options}
-        saved_draft = str(self.config.get('shop_starting_buff_draft') or '')
-        if saved_draft not in draft_labels:
-            saved_draft = 'Any Buff'
-        self.shop_starting_buff_draft_var = tk.StringVar(value=saved_draft)
-        saved_specialization = str(
-            self.config.get('shop_discount_specialization') or 'Units'
-        )
-        if saved_specialization not in SHOP_DISCOUNT_SPECIALIZATIONS:
-            saved_specialization = 'Units'
-        self.shop_discount_specialization_options = SHOP_DISCOUNT_SPECIALIZATIONS
-        self.shop_discount_specialization_var = tk.StringVar(
-            value=saved_specialization
-        )
         self.shop_loadout_help_var = tk.StringVar(value='')
-        self.shop_permanent_setup_help_var = tk.StringVar(value='')
-        self.shop_category_var = tk.StringVar(value='Units')
+        self.shop_category_var = tk.StringVar(value='Offers')
+        self.shop_access_view_var = tk.StringVar(value='Available')
         self.shop_buff_target_var = tk.StringVar(value='')
         self.shop_permanent_buff_target_var = tk.StringVar(value='')
+        self.shop_permanent_unit_filter_var = tk.StringVar(value='All')
         self.shop_search_var = tk.StringVar(value='')
         self.shop_loadout_search_var = tk.StringVar(value='')
         self.shop_setup_search_var = tk.StringVar(value='')
         self.shop_permanent_search_var = tk.StringVar(value='')
         self.shop_sort_var = tk.StringVar(value='Name')
-        self.shop_show_locked_var = tk.BooleanVar(value=True)
         self.shop_summary_var = tk.StringVar(value='No Shop run exists.')
         self.shop_modifier_vars = {
             modifier_id: tk.BooleanVar(value=False)
             for modifier_id in self.shop_config.modifiers
         }
+        for variable in self.shop_modifier_vars.values():
+            variable.trace_add('write', self._refresh_shop_modifier_difficulty)
         catalogue = shop_catalogue()
         self._shop_entry_by_reward_id = {
             entry.reward_id: entry for entry in catalogue
@@ -162,6 +159,7 @@ class ShopController(ShopPolishController):
         self._shop_permanent_buff_target_ids = {}
         self._shop_loadout_rows = {}
         self._shop_pending_loadout_selection = set()
+        self._shop_loadout_selection_initialized = False
         self._shop_current_loadout_targets = {}
         self._shop_loadout_details = {}
         self._shop_catalogue_upgrade_buttons = {}
@@ -197,12 +195,6 @@ class ShopController(ShopPolishController):
 
     def save_current_launcher_config(self):
         self.config['shop_faction_pool'] = self.shop_faction_pool_var.get()
-        self.config['shop_starting_buff_draft'] = (
-            self.shop_starting_buff_draft_var.get()
-        )
-        self.config['shop_discount_specialization'] = (
-            self.shop_discount_specialization_var.get()
-        )
         return super().save_current_launcher_config()
 
     def apply_portable_settings(self, config):
@@ -211,16 +203,6 @@ class ShopController(ShopPolishController):
         self.shop_faction_pool_var.set(
             saved if saved in SHOP_FACTION_POOLS else SHOP_FACTION_POOLS[0]
         )
-        draft = str(self.config.get('shop_starting_buff_draft') or 'Any Buff')
-        if draft not in {item[0] for item in self.shop_buff_draft_options}:
-            draft = 'Any Buff'
-        self.shop_starting_buff_draft_var.set(draft)
-        specialization = str(
-            self.config.get('shop_discount_specialization') or 'Units'
-        )
-        if specialization not in SHOP_DISCOUNT_SPECIALIZATIONS:
-            specialization = 'Units'
-        self.shop_discount_specialization_var.set(specialization)
         return result
 
     def sync_shop_workspace(self):
@@ -336,32 +318,11 @@ class ShopController(ShopPolishController):
             text='Run Active' if active else 'Start Shop Mode',
         )
         self.shop_faction_pool_combo.configure(
-            state='disabled' if locked or active else 'readonly'
+            state='disabled' if locked else 'readonly'
         )
-        setup_combos = (
-            (
-                self.shop_starting_buff_draft_combo,
-                'starting_buff_draft',
-            ),
-            (
-                self.shop_discount_specialization_combo,
-                'discount_specialization',
-            ),
+        self.shop_game_speed_combo.configure(
+            state='disabled' if locked else 'readonly'
         )
-        for combo, upgrade_id in setup_combos:
-            combo.configure(
-                state=(
-                    'disabled'
-                    if locked or active
-                    or self.shop_profile.upgrade_level(upgrade_id) <= 0
-                    else 'readonly'
-                )
-            )
-        for combo in (
-            self.shop_game_speed_combo,
-            self.shop_difficulty_combo,
-        ):
-            combo.configure(state='disabled' if locked else 'readonly')
 
     def on_progression_mode_changed(self, event=None):
         self.sync_shop_workspace()
@@ -412,7 +373,9 @@ class ShopController(ShopPolishController):
     def active_reward_mode(self):
         run = self._shop_context_run()
         if run is not None:
-            return run.reward_mode
+            # Legacy Shop runs serialized "Standard". Never let that old
+            # implementation detail restore Standard's faction translation.
+            return SHOP_REWARD_MODE
         if self._shop_mode_context_selected():
             return SHOP_REWARD_MODE
         return super().active_reward_mode()
@@ -422,6 +385,33 @@ class ShopController(ShopPolishController):
             return 'Shop Mode'
         return super().active_progression_mode()
 
+    def _shop_modifier_clone_seed_plan(self, run):
+        existing = Counter(
+            (
+                str(reward.get('unit') or '').upper(),
+                str(reward.get('buff_type') or ''),
+            )
+            for reward in active_shop_rewards(run)
+            if reward.get('kind') == 'buff'
+        )
+        armor = {}
+        damage = {}
+        for target_id in active_shop_tech_ids(run):
+            target = BUFF_TARGETS.get(target_id, {})
+            armor_reward = canonical_reward_for_id(
+                f'{target.get("label", target_id)} Armor Plating I'
+            )
+            if armor_reward.get('buff_type') == 'armor':
+                armor[target_id] = existing[(target_id, 'armor')]
+            if not target.get('weapons'):
+                continue
+            damage_reward = canonical_reward_for_id(
+                f'{target.get("label", target_id)} Firepower I'
+            )
+            if damage_reward.get('buff_type') == 'damage':
+                damage[target_id] = existing[(target_id, 'damage')]
+        return armor, damage
+
     def active_reward_settings(self):
         run = self._shop_context_run()
         if run is not None:
@@ -429,6 +419,22 @@ class ShopController(ShopPolishController):
             settings['start_with_tier_one_units'] = True
             settings['start_with_tier_one_defenses'] = True
             settings['failure_assistance'] = False
+            effects = modifier_effects(run.modifiers)
+            for key in (
+                'player_damage_percent',
+                'player_armor_percent',
+                'production_time_percent',
+                'combat_production_time_percent',
+                'player_cost_percent',
+                'mission_starting_credits_flat',
+            ):
+                value = effects[key]
+                settings[f'shop_{key}'] = (
+                    float(value) if key.endswith('_percent') else int(value)
+                )
+            armor_seeds, damage_seeds = self._shop_modifier_clone_seed_plan(run)
+            settings['shop_modifier_armor_seed_stacks'] = armor_seeds
+            settings['shop_modifier_damage_seed_stacks'] = damage_seeds
             mission_modifier = self._active_shop_mission_modifier(run)
             if mission_modifier is not None and mission_modifier.buffs_allied_helpers:
                 settings['buff_allied_helpers'] = True
@@ -437,7 +443,9 @@ class ShopController(ShopPolishController):
 
     def active_launch_rewards(self):
         if self.shop_launch_active():
-            rewards = list(active_shop_rewards(self._shop_launch_run))
+            run = self._shop_launch_run
+            effects = modifier_effects(run.modifiers)
+            rewards = [dict(item) for item in active_shop_rewards(run)]
             starting_credit_level = self.shop_profile.upgrade_level(
                 'mission_starting_credits'
             )
@@ -446,7 +454,7 @@ class ShopController(ShopPolishController):
                 for _index in range(starting_credit_level)
             )
             mission_modifier = self._active_shop_mission_modifier(
-                self._shop_launch_run
+                run
             )
             if mission_modifier is not None:
                 for reward_id in mission_modifier.player_reward_ids:
@@ -454,6 +462,59 @@ class ShopController(ShopPolishController):
                     if reward.get('kind') == 'superweapon':
                         reward['superweapon_ignore_foreign_tech_gate'] = True
                     rewards.append(reward)
+            veteran_targets = set()
+            if self.shop_profile.upgrade_level('veteran_academy'):
+                for reward_id in run.selected_permanent_units:
+                    entry = self._shop_entry_by_reward_id.get(reward_id)
+                    if entry is not None and entry.target_id:
+                        veteran_targets.add(entry.target_id.upper())
+            if effects['starter_veteran']:
+                veteran_targets.update(active_shop_starter_unit_ids(run))
+            for target_id in sorted(veteran_targets):
+                target = BUFF_TARGETS.get(target_id, {})
+                reward_name = f'{target.get("label", target_id)} Veteran Training I'
+                try:
+                    reward = dict(canonical_reward_for_id(reward_name))
+                except KeyError:
+                    continue
+                if reward.get('buff_type') == 'veteran':
+                    rewards.append(reward)
+            if effects['player_armor_percent'] != 1:
+                armor_seeds, _damage_seeds = (
+                    self._shop_modifier_clone_seed_plan(run)
+                )
+                for target_id in armor_seeds:
+                    target = BUFF_TARGETS.get(target_id, {})
+                    reward_name = f'{target.get("label", target_id)} Armor Plating I'
+                    reward = dict(canonical_reward_for_id(reward_name))
+                    reward['force_direct_unit_buff'] = True
+                    reward['_shop_modifier_clone_seed'] = True
+                    rewards.append(reward)
+            if effects['player_damage_percent'] != 1:
+                _armor_seeds, damage_seeds = (
+                    self._shop_modifier_clone_seed_plan(run)
+                )
+                for target_id in damage_seeds:
+                    target = BUFF_TARGETS.get(target_id, {})
+                    reward_name = f'{target.get("label", target_id)} Firepower I'
+                    reward = dict(canonical_reward_for_id(reward_name))
+                    reward['force_direct_unit_buff'] = True
+                    reward['_shop_modifier_clone_seed'] = True
+                    rewards.append(reward)
+            support_factor = float(effects['support_recharge_percent'])
+            if support_factor != 1.0:
+                for index, reward in enumerate(rewards):
+                    if (
+                        reward.get('kind') == 'superweapon'
+                        and reward.get('power_category') == 'aid'
+                    ):
+                        updated = dict(reward)
+                        updated['superweapon_recharge_multiplier'] = (
+                            float(updated.get(
+                                'superweapon_recharge_multiplier', 1.0
+                            )) * support_factor
+                        )
+                        rewards[index] = updated
             return rewards
         return super().active_launch_rewards()
 
@@ -553,10 +614,7 @@ class ShopController(ShopPolishController):
     def foehn_standard_bundles_enabled(self):
         run = self._shop_context_run()
         if run is not None:
-            return bool(
-                run.campaign_filter == 'Foehn'
-                and run.reward_mode == 'Standard'
-            )
+            return False
         return super().foehn_standard_bundles_enabled()
 
     def failure_assistance_enabled(self):
@@ -585,6 +643,11 @@ class ShopController(ShopPolishController):
         return super().record_enemy_reward_applications(code, applications)
 
     def _shop_reroll_capacity(self):
+        run = self.__dict__.get('shop_run')
+        if run is not None and modifier_effects(
+            run.modifiers
+        )['disable_rerolls']:
+            return 0
         level = self.shop_profile.upgrade_level('mission_reroll')
         per_level = self.shop_config.permanent_upgrades[
             'mission_reroll'
@@ -592,6 +655,11 @@ class ShopController(ShopPolishController):
         return level * int(per_level)
 
     def _shop_difficulty_assist_capacity(self):
+        run = self.__dict__.get('shop_run')
+        if run is not None and modifier_effects(
+            run.modifiers
+        )['disable_assists']:
+            return 0
         level = self.shop_profile.upgrade_level('mission_difficulty_assist')
         per_level = self.shop_config.permanent_upgrades[
             'mission_difficulty_assist'
@@ -639,7 +707,7 @@ class ShopController(ShopPolishController):
             reward_mode = SHOP_REWARD_MODE
             campaign_filter = self.shop_campaign_filter()
         else:
-            reward_mode = run.reward_mode
+            reward_mode = SHOP_REWARD_MODE
             campaign_filter = self.shop_run_faction_filter(run)
         return shop_entry_available(
             entry,
@@ -878,6 +946,56 @@ class ShopController(ShopPolishController):
             self.workspace_tabs.select(self.settings_tab)
             self.sync_shop_settings_view(reset_scroll=True)
 
+    def open_shop_permanent_upgrades(self):
+        self.sync_shop_workspace()
+        self.workspace_tabs.select(self.shop_tab)
+        self.shop_panels.select(self.shop_permanent_panel)
+        self.shop_permanent_tabs.select(self.shop_permanent_upgrades_panel)
+
+    def open_selected_permanent_unit_buffs(self):
+        selected = self.shop_permanent_unit_tree.selection()
+        if not selected:
+            return
+        reward_id = self._shop_permanent_rows.get(selected[0], '')
+        if reward_id not in self.shop_profile.permanent_unit_unlocks:
+            return
+        self.shop_permanent_search_var.set('')
+        self.shop_permanent_buff_target_var.set(reward_id)
+        active_run = bool(
+            self.shop_run is not None
+            and self.shop_run.status is RunStatus.ACTIVE
+        )
+        self._refresh_permanent_buffs(active_run)
+        self.shop_permanent_tabs.select(self.shop_permanent_buffs_panel)
+
+    def show_shop_permanent_units(self):
+        self.shop_permanent_tabs.select(self.shop_permanent_units_panel)
+
+    def reset_shop_profile(self):
+        if self.shop_launch_active():
+            self._set_shop_message(
+                'Close the running mission before resetting the Shop profile.',
+                error=True,
+            )
+            return
+        if not messagebox.askyesno(
+            'Reset Shop Profile?',
+            'This permanently deletes all Shop Gems, permanent units, '
+            'permanent buffs, upgrades, lifetime totals, and the current '
+            'Shop run. This cannot be undone.\n\nReset everything?',
+            parent=self,
+        ):
+            return
+        try:
+            self.shop_profile, self.shop_run = self.shop_service.reset_profile()
+        except (OSError, ShopPersistenceError) as exc:
+            self._set_shop_message(f'Profile reset failed: {exc}', error=True)
+            return
+        self._shop_pending_loadout_selection.clear()
+        self._shop_loadout_selection_initialized = True
+        self._set_shop_message('Shop profile and current run reset.')
+        self.refresh_shop_mode()
+
     def _repair_shop_mission_offers(self, run):
         if (
             run is None
@@ -887,8 +1005,9 @@ class ShopController(ShopPolishController):
         ):
             return run
         allowed = mission_classes_for_stage(run.stage, run.run_length)
+        offer_count = modifier_mission_offer_count(run.modifiers)
         offers_valid = bool(
-            len(run.mission_offers) == self.shop_config.mission_offer_count
+            len(run.mission_offers) == offer_count
             and all(
                 offer.economy_class in allowed
                 for offer in run.mission_offers
@@ -903,8 +1022,9 @@ class ShopController(ShopPolishController):
             run_length=run.run_length,
             completed_codes=run.completed_missions,
             reroll_count=run.rerolls_used,
+            offer_count=offer_count,
         )
-        if len(offers) != self.shop_config.mission_offer_count:
+        if len(offers) != offer_count:
             return run
         repaired = replace(
             run,
@@ -1126,6 +1246,7 @@ class ShopController(ShopPolishController):
                     stage=run.stage + 1,
                     run_length=run.run_length,
                     completed_codes=run.completed_missions + (code,),
+                    offer_count=modifier_mission_offer_count(run.modifiers),
                 )
             transition = self.shop_service.record_victory(
                 code, next_offers=next_offers
@@ -1162,7 +1283,9 @@ class ShopController(ShopPolishController):
                 'emergency_revival'
             ]
             revival_capacity = (
-                self.shop_profile.upgrade_level('emergency_revival')
+                0
+                if modifier_effects(run.modifiers)['disable_revivals']
+                else self.shop_profile.upgrade_level('emergency_revival')
                 * int(revival_definition.effects['revivals_per_run'])
             )
             revival_offers = ()
@@ -1179,6 +1302,7 @@ class ShopController(ShopPolishController):
                     previous_offer_codes=(
                         offer.mission_code for offer in run.mission_offers
                     ),
+                    offer_count=modifier_mission_offer_count(run.modifiers),
                 )
             transition = self.shop_service.record_failure(
                 code, revival_offers=revival_offers
@@ -1226,20 +1350,40 @@ class ShopController(ShopPolishController):
             self.finish_progression_launch_context()
 
     def _selected_loadout_reward_ids(self):
-        self.capture_shop_setup_selection()
         return tuple(sorted(self._shop_pending_loadout_selection))
 
-    def capture_shop_setup_selection(self, _event=None):
-        if not hasattr(self, 'shop_loadout_select_tree'):
-            return
-        visible = set(self._shop_loadout_rows.values())
-        selected = {
-            self._shop_loadout_rows[item]
-            for item in self.shop_loadout_select_tree.selection()
-            if item in self._shop_loadout_rows
-        }
-        self._shop_pending_loadout_selection.difference_update(visible)
-        self._shop_pending_loadout_selection.update(selected)
+    def _maximum_shop_loadout(self):
+        definition = self.shop_config.permanent_upgrades['expanded_loadout']
+        return (
+            self.shop_config.max_selected_permanent_units
+            + self.shop_profile.upgrade_level('expanded_loadout')
+            * int(definition.effects['slots_per_level'])
+        )
+
+    def toggle_shop_setup_unit(self, event):
+        if (
+            self.shop_run is not None
+            and self.shop_run.status is RunStatus.ACTIVE
+        ):
+            return 'break'
+        iid = self.shop_loadout_select_tree.identify_row(event.y)
+        reward_id = self._shop_loadout_rows.get(iid, '')
+        if not reward_id:
+            return 'break'
+        if reward_id in self._shop_pending_loadout_selection:
+            self._shop_pending_loadout_selection.remove(reward_id)
+        elif len(self._shop_pending_loadout_selection) >= self._maximum_shop_loadout():
+            self._set_shop_message(
+                f'Starting loadout allows up to '
+                f'{self._maximum_shop_loadout()} extra units.',
+                error=True,
+            )
+            return 'break'
+        else:
+            self._shop_pending_loadout_selection.add(reward_id)
+        self._shop_loadout_selection_initialized = True
+        self._refresh_shop_setup()
+        return 'break'
 
     def shop_reward_settings_for_new_run(self):
         """Remove hidden normal-mode tuning from Shop Mode run behavior."""
@@ -1282,47 +1426,6 @@ class ShopController(ShopPolishController):
         settings['enemy_scaling'] = enemy_scaling
         return settings
 
-    def _starting_buff_draft(self, seed, active_target_ids):
-        level = self.shop_profile.upgrade_level('starting_buff_draft')
-        per_level = int(self.shop_config.permanent_upgrades[
-            'starting_buff_draft'
-        ].effects['buffs_per_level'])
-        count = level * per_level
-        if count <= 0:
-            return ()
-        selected_label = self.shop_starting_buff_draft_var.get()
-        selected_type = dict(self.shop_buff_draft_options).get(
-            selected_label, ''
-        )
-        preferred = []
-        fallback = []
-        for entry in self._shop_buff_entries:
-            if (
-                entry.tier != 'tier_1'
-                or entry.target_id not in active_target_ids
-                or not self._shop_entry_available(entry)
-            ):
-                continue
-            reward = canonical_reward_for_id(entry.reward_id)
-            if selected_type and reward.get('buff_type') == selected_type:
-                preferred.append(entry)
-            else:
-                fallback.append(entry)
-        sort_key = lambda entry: (
-            sha256(
-                f'{seed}\0starting_buff_draft\0{entry.reward_id}'.encode(
-                    'utf-8'
-                )
-            ).digest(),
-            entry.reward_id,
-        )
-        preferred.sort(key=sort_key)
-        fallback.sort(key=sort_key)
-        candidates = preferred + fallback
-        return tuple(
-            BuffPurchase(entry.reward_id, 1) for entry in candidates[:count]
-        )
-
     def start_shop_run(self):
         if not self.missions:
             messagebox.showwarning(
@@ -1340,11 +1443,13 @@ class ShopController(ShopPolishController):
         salvaged_ore = self.shop_profile.salvaged_run_coins
         self.seed_var.set(seed)
         settings = self.shop_reward_settings_for_new_run()
+        modifiers = tuple(
+            modifier_id for modifier_id, variable in self.shop_modifier_vars.items()
+            if variable.get()
+        )
+        effects = modifier_effects(modifiers)
         faction_filter = self.shop_campaign_filter()
         settings['shop_faction_filter'] = faction_filter
-        settings['shop_discount_specialization'] = (
-            self.shop_discount_specialization_var.get()
-        )
         previous_context = self.__dict__.get('_seed_generation_context')
         self._seed_generation_context = {
             'campaign_filter': faction_filter,
@@ -1365,6 +1470,11 @@ class ShopController(ShopPolishController):
             faction_filter=faction_filter,
             excluded_unit_ids=settings.get('excluded_unit_access_ids', ()),
         )
+        if effects['starter_unit_count_flat'] == -2 and len(starting_units) >= 5:
+            # Preserve one infantry, one vehicle, and the aircraft role.
+            starting_units = (
+                starting_units[0], starting_units[2], starting_units[-1]
+            )
         starting_defenses = shop_starter_defense_ids(
             seed=seed,
             starting_defense_ids=starting_defense_markers,
@@ -1374,13 +1484,7 @@ class ShopController(ShopPolishController):
         starter_tech_ids = set(starting_units)
         starter_tech_ids.update(starting_defenses)
         ap_identity, ap_reward_ids = self.archipelago_shop_context()
-        maximum_extra_units = (
-            self.shop_config.max_selected_permanent_units
-            + self.shop_profile.upgrade_level('expanded_loadout')
-            * int(self.shop_config.permanent_upgrades[
-                'expanded_loadout'
-            ].effects['slots_per_level'])
-        )
+        maximum_extra_units = self._maximum_shop_loadout()
         permanent_entitlements = set(self.shop_profile.permanent_unit_unlocks)
         selected = tuple(
             reward_id for reward_id in self._selected_loadout_reward_ids()
@@ -1396,9 +1500,6 @@ class ShopController(ShopPolishController):
             for entry in [self._shop_entry_by_reward_id.get(reward_id)]
             if entry is not None and entry.target_id
         )
-        starting_draft_buffs = self._starting_buff_draft(
-            seed, permanent_buff_targets
-        )
         permanent_buffs = tuple(
             item for item in self.shop_profile.permanent_buffs
             if (
@@ -1406,10 +1507,6 @@ class ShopController(ShopPolishController):
                 is not None
                 and entry.target_id in permanent_buff_targets
             )
-        )
-        modifiers = tuple(
-            modifier_id for modifier_id, variable in self.shop_modifier_vars.items()
-            if variable.get()
         )
         try:
             mission_pool = self._shop_run_mission_pool()
@@ -1422,11 +1519,13 @@ class ShopController(ShopPolishController):
                 mission_pool,
                 run_seed=seed,
                 stage=1,
+                offer_count=modifier_mission_offer_count(modifiers),
             )
-            if len(offers) != self.shop_config.mission_offer_count:
+            expected_offer_count = modifier_mission_offer_count(modifiers)
+            if len(offers) != expected_offer_count:
                 raise ShopTransitionError(
                     'Shop Mode needs at least '
-                    f'{self.shop_config.mission_offer_count} eligible Act 1 '
+                    f'{expected_offer_count} eligible Act 1 '
                     'missions for its protected opening'
                 )
             self.shop_service.start_run(
@@ -1447,7 +1546,6 @@ class ShopController(ShopPolishController):
                     self.shop_profile.permanent_unit_unlocks
                 ),
                 permanent_buffs=permanent_buffs,
-                starting_draft_buffs=starting_draft_buffs,
                 maximum_extra_units=maximum_extra_units,
                 ap_entitlement_ids=ap_reward_ids,
                 ap_identity=ap_identity,
@@ -1459,8 +1557,7 @@ class ShopController(ShopPolishController):
             messagebox.showerror('Shop Run Failed', str(exc), parent=self)
         else:
             self._set_shop_message(
-                f'Started Shop run with seed {seed}. '
-                f'Starting draft: {len(starting_draft_buffs)} buff(s).'
+                f'Started Shop run with seed {seed}.'
                 + (
                     f' Recovery Salvage added {salvaged_ore} Ore.'
                     if salvaged_ore else ''
@@ -1700,44 +1797,10 @@ class ShopController(ShopPolishController):
 
     def _refresh_shop_setup(self):
         tree = self.shop_loadout_select_tree
-        self.capture_shop_setup_selection()
         tree.delete(*tree.get_children())
         self._shop_loadout_rows = {}
-        expanded_level = self.shop_profile.upgrade_level('expanded_loadout')
-        maximum_loadout = (
-            self.shop_config.max_selected_permanent_units
-            + expanded_level * int(self.shop_config.permanent_upgrades[
-                'expanded_loadout'
-            ].effects['slots_per_level'])
-        )
+        maximum_loadout = self._maximum_shop_loadout()
         ap_identity, ap_reward_ids = self.archipelago_shop_context()
-        if ap_identity:
-            self.shop_loadout_help_var.set(
-                f'Choose up to {maximum_loadout} permanent extra units. All '
-                'received AP units are added automatically without using '
-                'these slots. Mandatory Tier 1 starters are automatic.'
-            )
-        else:
-            self.shop_loadout_help_var.set(
-                f'Choose up to {maximum_loadout} permanent extra units. '
-                'Mandatory Tier 1 starters are added '
-                'automatically.'
-            )
-        draft_level = self.shop_profile.upgrade_level('starting_buff_draft')
-        specialization_level = self.shop_profile.upgrade_level(
-            'discount_specialization'
-        )
-        specialization_ore = (
-            specialization_level * int(self.shop_config.permanent_upgrades[
-                'discount_specialization'
-            ].effects['ore_per_level'])
-        )
-        self.shop_permanent_setup_help_var.set(
-            f'Starting Buff Draft: {draft_level} free Tier 1 buff(s) at run '
-            f'start; {"choose preferred type above" if draft_level else "locked"}. '
-            f'Discount Specialization: {specialization_ore} Ore off selected '
-            f'category; {"choose category above" if specialization_level else "locked"}.'
-        )
         local_owned = set(self.shop_profile.permanent_unit_unlocks)
         ap_owned = set(ap_unit_entitlement_ids(ap_reward_ids))
         active_run = bool(
@@ -1745,16 +1808,30 @@ class ShopController(ShopPolishController):
             and self.shop_run.status is RunStatus.ACTIVE
         )
         owned = local_owned | (ap_owned if active_run else set())
-        selected = set(
-            self.shop_run.selected_permanent_units
-            if self.shop_run is not None else ()
-        )
-        if self.shop_run is None:
-            selected = set(self._shop_pending_loadout_selection)
+        if active_run:
+            selected = set(self.shop_run.selected_permanent_units)
+            self._shop_pending_loadout_selection = selected & local_owned
         else:
-            self._shop_pending_loadout_selection = set(selected)
+            if not self._shop_loadout_selection_initialized:
+                self._shop_pending_loadout_selection = set(
+                    self.shop_run.selected_permanent_units
+                    if self.shop_run is not None else ()
+                ) & local_owned
+                self._shop_loadout_selection_initialized = True
+            self._shop_pending_loadout_selection.intersection_update(local_owned)
+            selected = set(self._shop_pending_loadout_selection)
         if active_run:
             selected.update(ap_owned)
+        self.shop_loadout_help_var.set(
+            f'Click a row to toggle it for next run. Selected '
+            f'{len(self._shop_pending_loadout_selection)} / {maximum_loadout}. '
+            + (
+                'Received AP units are automatic and use no slots. '
+                if ap_identity else ''
+            )
+            + 'Mandatory Tier 1 starters are automatic.'
+            + (' Selection locked during active run.' if active_run else '')
+        )
         entries = sorted(
             (
                 entry for entry in self._shop_unit_entries
@@ -1768,7 +1845,6 @@ class ShopController(ShopPolishController):
             ),
             key=lambda entry: entry.reward_id.casefold(),
         )
-        selection = []
         cameo_images = self._prepare_shop_unit_cameos(
             entry.reward_id for entry in entries
         )
@@ -1776,7 +1852,17 @@ class ShopController(ShopPolishController):
             iid = f'loadout-{index}'
             options = {
                 'iid': iid,
+                'tags': (
+                    ('selected_loadout',)
+                    if entry.reward_id in selected else ()
+                ),
                 'values': (
+                    (
+                        '✓ Active'
+                        if active_run and entry.reward_id in selected
+                        else '✓ Selected'
+                        if entry.reward_id in selected else '—'
+                    ),
                     entry.reward_id,
                     (entry.tier or '').replace('_', ' ').title(),
                     (
@@ -1794,15 +1880,11 @@ class ShopController(ShopPolishController):
                 options['image'] = cameo
             tree.insert('', 'end', **options)
             self._shop_loadout_rows[iid] = entry.reward_id
-            if entry.reward_id in selected:
-                selection.append(iid)
-        if selection:
-            tree.selection_set(selection)
         modifiers_locked = bool(
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
         )
-        tree.configure(selectmode='none' if modifiers_locked else 'extended')
+        tree.configure(selectmode='none')
         if modifiers_locked:
             selected_modifiers = set(self.shop_run.modifiers)
             for modifier_id, variable in self.shop_modifier_vars.items():
@@ -1823,6 +1905,27 @@ class ShopController(ShopPolishController):
             )
         for button in self.shop_modifier_buttons:
             button.configure(state='disabled' if modifiers_locked else 'normal')
+        self._refresh_shop_modifier_difficulty()
+
+    def _refresh_shop_modifier_difficulty(self, *_args):
+        if not hasattr(self, 'shop_difficulty_var'):
+            return
+        modifiers = (
+            self.shop_run.modifiers
+            if self.shop_run is not None
+            and self.shop_run.status is RunStatus.ACTIVE
+            else tuple(
+                modifier_id
+                for modifier_id, variable in self.shop_modifier_vars.items()
+                if variable.get()
+            )
+        )
+        score = modifier_difficulty(modifiers)
+        self.shop_difficulty_var.set(f'Difficulty: +{score}')
+        if hasattr(self, 'shop_modifier_difficulty_var'):
+            self.shop_modifier_difficulty_var.set(
+                f'Run difficulty +{score}'
+            )
 
     def _refresh_permanent_shop(self):
         active_run = bool(
@@ -1835,12 +1938,26 @@ class ShopController(ShopPolishController):
         self._shop_permanent_buyable = {}
         term = self.shop_permanent_search_var.get().strip().casefold()
         owned = set(self.shop_profile.permanent_unit_unlocks)
+        unit_filter = self.shop_permanent_unit_filter_var.get()
         entries = sorted(
             (
                 entry for entry in self._shop_unit_entries
-                if not term or term in (
-                    entry.reward_id + ' ' + entry.target_id
-                ).casefold()
+                if (
+                    unit_filter == 'All'
+                    or (
+                        unit_filter == 'Owned'
+                        and entry.reward_id in owned
+                    )
+                    or (
+                        unit_filter == 'Not Owned'
+                        and entry.reward_id not in owned
+                    )
+                )
+                and (
+                    not term or term in (
+                        entry.reward_id + ' ' + entry.target_id
+                    ).casefold()
+                )
             ),
             key=lambda item: item.reward_id.casefold(),
         )
@@ -1892,6 +2009,8 @@ class ShopController(ShopPolishController):
         for index, (upgrade_id, definition) in enumerate(
             self.shop_config.permanent_upgrades.items()
         ):
+            if not definition.purchasable:
+                continue
             if term and term not in (
                 upgrade_id + ' ' + definition.display_name + ' '
                 + ' '.join(definition.effects)
@@ -1934,6 +2053,13 @@ class ShopController(ShopPolishController):
 
     def _refresh_permanent_buffs(self, active_run):
         tree = self.shop_permanent_buff_tree
+        previous_selection = tree.selection()
+        selected_reward_id = self.__dict__.pop(
+            '_shop_permanent_buff_focus_reward_id', ''
+        ) or (
+            self._shop_permanent_buff_rows.get(previous_selection[0], '')
+            if previous_selection else ''
+        )
         tree.delete(*tree.get_children())
         self._shop_permanent_buff_rows = {}
         self._shop_permanent_buff_buyable = {}
@@ -1953,10 +2079,6 @@ class ShopController(ShopPolishController):
         if selected_label not in self._shop_permanent_buff_target_ids:
             selected_label = labels[0] if labels else ''
             self.shop_permanent_buff_target_var.set(selected_label)
-        self.shop_permanent_buff_target_combo.configure(
-            values=labels,
-            state='readonly' if labels else 'disabled',
-        )
         target_id = self._shop_permanent_buff_target_ids.get(
             selected_label, ''
         )
@@ -1982,6 +2104,7 @@ class ShopController(ShopPolishController):
         cameo_images = self._prepare_shop_unit_cameos(
             entry.reward_id for entry in entries
         )
+        restore_iid = ''
         for index, entry in enumerate(entries):
             stacks = stacks_by_reward.get(entry.reward_id, 0)
             maximum = entry.stack_limit or 1
@@ -2019,6 +2142,11 @@ class ShopController(ShopPolishController):
             tree.insert('', 'end', **options)
             self._shop_permanent_buff_rows[iid] = entry.reward_id
             self._shop_permanent_buff_buyable[iid] = buyable
+            if entry.reward_id == selected_reward_id:
+                restore_iid = iid
+        if restore_iid:
+            tree.selection_set(restore_iid)
+            tree.see(restore_iid)
         self.refresh_permanent_buff_button()
 
     def refresh_permanent_buff_button(self, _event=None):
@@ -2064,6 +2192,8 @@ class ShopController(ShopPolishController):
         except ShopTransitionError as exc:
             self._set_shop_message(exc, error=True)
         else:
+            if outcome.validation.allowed:
+                self._shop_permanent_buff_focus_reward_id = reward_id
             self._report_profile_purchase(outcome, reward_id)
         self.refresh_shop_mode()
 

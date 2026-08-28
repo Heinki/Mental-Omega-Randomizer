@@ -8,7 +8,6 @@ from randomizer.missions.tier_one import (
     TIER_ONE_ROLE_MARKERS,
     select_tier_one_defense_variants,
     select_tier_one_unit_variants,
-    tier_one_unit_ids,
 )
 from randomizer.rewards.rules import tech_ids_for_rewards
 
@@ -36,13 +35,18 @@ def _starter_families(campaign):
 def shop_starter_unit_ids(
     *, seed, starting_unit_ids, faction_filter, excluded_unit_ids=()
 ):
-    """Resolve exactly five fixed Shop identities, one for each role."""
+    """Resolve fixed Shop identities, or preserve saved concrete IDs."""
     if not starting_unit_ids:
         return ()
     families = _starter_families(faction_filter)
+    requested_ids = tuple(dict.fromkeys(
+        str(item).upper() for item in starting_unit_ids if str(item)
+    ))
+    if not set(requested_ids).intersection(TIER_ONE_ROLE_MARKERS.values()):
+        return requested_ids
     ground_units = select_tier_one_unit_variants(
         random.Random(f'{seed}:shop-tier-one-units'),
-        tier_one_unit_ids(families),
+        requested_ids,
         families=families,
         allowed_roles=TIER_ONE_GROUND_ROLES,
         excluded_unit_ids=excluded_unit_ids,
@@ -53,7 +57,7 @@ def shop_starter_unit_ids(
     ) or tuple(STANDARD_TIER_ONE_FAMILIES)
     aircraft_units = select_tier_one_unit_variants(
         random.Random(f'{seed}:shop-tier-one-aircraft'),
-        (TIER_ONE_ROLE_MARKERS['basic_aircraft'],),
+        requested_ids,
         families=aircraft_families,
         allowed_roles=('basic_aircraft',),
         excluded_unit_ids=excluded_unit_ids,

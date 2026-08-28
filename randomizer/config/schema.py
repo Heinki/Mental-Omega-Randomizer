@@ -44,6 +44,7 @@ REQUIRED_SECTIONS = {
         'techno_base_rules': dict,
         'map_section_rules': dict,
         'native_direct_buff_exclusions': dict,
+        'enemy_native_buff_exclusions': dict,
         'native_variant_buff_rules': dict,
         'native_tech_unlock_ids': dict,
         'native_unlock_owned_access_rules': dict,
@@ -93,6 +94,7 @@ REQUIRED_SECTIONS = {
         'run_buff_prices': dict,
         'permanent_unit_prices': dict,
         'permanent_upgrades': dict,
+        'mission_effects': dict,
         'modifiers': dict,
     },
     'ui.json': {
@@ -228,6 +230,7 @@ def _validate_missions(sections, path):
         'victory_hook_action_ids',
         'native_runtime_identity_preserve_ids',
         'time_freeze_immune_techno_ids',
+        'enemy_native_buff_exclusions',
     ):
         for code, unit_ids in sections.get(section, {}).items():
             if (

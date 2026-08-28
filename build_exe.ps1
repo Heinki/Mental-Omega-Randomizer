@@ -20,6 +20,7 @@ $tkRuntimeHook = Join-Path $scriptDir "tools\pyinstaller_tk_runtime.py"
 $versionInfoPath = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-version.txt"
 $configManifestDir = Join-Path ([IO.Path]::GetTempPath()) "MentalOmegaRandomizer-$PID-config"
 $configManifestPath = Join-Path $configManifestDir "bundle_manifest.json"
+$tclBundleData = Join-Path $configManifestDir "_tcl_data"
 
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
@@ -147,6 +148,24 @@ New-Item -ItemType Directory -Path $configManifestDir -Force | Out-Null
     [Text.UTF8Encoding]::new($false)
 )
 
+# Tcl 8.6.15 can source init.tcl before defining ::tcl_library in this pinned
+# embedded runtime. Bundle a tiny wrapper and keep the unmodified stock script
+# beside it. The installed Python runtime is never edited.
+Copy-Item -LiteralPath $tclData -Destination $tclBundleData -Recurse
+$bundledInit = Join-Path $tclBundleData 'init.tcl'
+$bundledOriginalInit = Join-Path $tclBundleData '_mor_original_init.tcl'
+Move-Item -LiteralPath $bundledInit -Destination $bundledOriginalInit
+$tclBootstrap = @'
+# Mental Omega Randomizer bundled Tcl bootstrap
+set ::tcl_library [file dirname [info script]]
+source [file join $::tcl_library _mor_original_init.tcl]
+'@
+[IO.File]::WriteAllText(
+    $bundledInit,
+    $tclBootstrap,
+    [Text.UTF8Encoding]::new($false)
+)
+
 # Archipelago uses compressed ws/wss connections. Keep SSL, HTTP, and email
 # available for the bundled websockets handshake implementation.
 try {
@@ -154,6 +173,7 @@ try {
         --noconfirm `
         --clean `
         --onefile `
+        --runtime-tmpdir . `
         --noupx `
         --optimize 1 `
         --windowed `
@@ -170,7 +190,7 @@ try {
         --add-data "$tkinterPackage;tkinter" `
         --add-binary "$tclBinary;." `
         --add-binary "$tkBinary;." `
-        --add-data "$tclData;_tcl_data" `
+        --add-data "$tclBundleData;_tcl_data" `
         --add-data "$tkData;_tk_data" `
         --runtime-hook $tkRuntimeHook `
         --exclude-module logging.handlers `
@@ -188,7 +208,23 @@ try {
 } finally {
     Remove-Item -LiteralPath $versionInfoPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $configManifestPath -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $configManifestDir -Force -ErrorAction SilentlyContinue
+    $resolvedManifestDir = [IO.Path]::GetFullPath($configManifestDir)
+    $resolvedTempRoot = [IO.Path]::GetFullPath(
+        [IO.Path]::GetTempPath()
+    ).TrimEnd('\') + '\'
+    if (
+        -not $resolvedManifestDir.StartsWith(
+            $resolvedTempRoot,
+            [StringComparison]::OrdinalIgnoreCase
+        ) -or
+        [IO.Path]::GetFileName($resolvedManifestDir) -ne (
+            "MentalOmegaRandomizer-$PID-config"
+        )
+    ) {
+        throw "Refusing to remove unexpected build staging path: $resolvedManifestDir"
+    }
+    Remove-Item -LiteralPath $resolvedManifestDir -Recurse -Force `
+        -ErrorAction SilentlyContinue
 }
 
 $builtExe = Join-Path $distDir "MentalOmegaRandomizer.exe"

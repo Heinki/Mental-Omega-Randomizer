@@ -186,6 +186,11 @@ TEMPLATE_VALUE_OVERRIDES = {
     'YURIX': {
         'BuildTimeMultiplier': '2',
     },
+    'YURIPR': {
+        # A free Cloning Vats copy can satisfy the hero BuildLimit while the
+        # paid copy remains queued forever. Keep this limited hero unclonable.
+        'Cloneable': 'no',
+    },
     'GHTNKP': {
         'Name': 'Gharial Prototype',
         'Image': 'GHTNK2',

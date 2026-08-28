@@ -568,13 +568,11 @@ def _build_right_panel(self, main_frame):
 
     shop_run_options = (
         (
-            'Faction pool', 'shop_faction_pool_combo',
+            'Next run faction pool', 'shop_faction_pool_combo',
             self.shop_faction_pool_var, self.shop_faction_pool_options,
         ),
         ('Game speed', 'shop_game_speed_combo', self.game_speed_var,
          [name for name, _ in GAME_SPEEDS]),
-        ('Difficulty', 'shop_difficulty_combo', self.difficulty_var,
-         [name for name, _ in DIFFICULTIES]),
     )
     for row, (label, attribute, variable, values) in enumerate(
         shop_run_options, start=5
@@ -605,8 +603,8 @@ def _build_right_panel(self, main_frame):
             'faction (plus neutral items). Missions remain a mixed-campaign '
             'run, including Foehn Only runs. Shop Mode uses its own reward '
             'rules, so Standard/Chaos does not apply. The faction pool is '
-            'fixed when a run starts; Game Speed and Difficulty remain '
-            'adjustable.'
+            'fixed when a run starts; Game Speed remains adjustable. Mission '
+            'difficulty is chosen from each mission card during the run.'
         ),
         style='Muted.TLabel',
         justify='left',
@@ -643,78 +641,41 @@ def _build_right_panel(self, main_frame):
     )
     self.shop_loadout_select_tree = _tree(
         shop_loadout_frame,
-        ('name', 'tier', 'source'),
+        ('selected', 'name', 'tier', 'source'),
         (
+            ('selected', 'Next Run', 90),
             ('name', 'Starting Extra Unit', 330),
             ('tier', 'Tier', 80),
             ('source', 'Source', 130),
         ),
-        selectmode='extended',
+        selectmode='none',
         height=5,
         cameos=True,
     )
     self.shop_loadout_select_tree.bind(
-        '<<TreeviewSelect>>', self.capture_shop_setup_selection
+        '<ButtonRelease-1>', self.toggle_shop_setup_unit
     )
-
-    permanent_setup_frame = ttk.LabelFrame(
-        shop_settings_frame, text='Permanent Run Bonuses', padding=8
-    )
-    permanent_setup_frame.grid(
-        row=14, column=0, columnspan=2, sticky='ew', pady=(10, 0)
-    )
-    permanent_setup_frame.columnconfigure(1, weight=1)
-    ttk.Label(permanent_setup_frame, text='Starting Buff Draft').grid(
-        row=0, column=0, sticky='w', padx=(0, 12), pady=2
-    )
-    self.shop_starting_buff_draft_combo = ttk.Combobox(
-        permanent_setup_frame,
-        state='readonly',
-        textvariable=self.shop_starting_buff_draft_var,
-        values=[label for label, _value in self.shop_buff_draft_options],
-    )
-    self.shop_starting_buff_draft_combo.grid(row=0, column=1, sticky='ew')
-    ttk.Label(permanent_setup_frame, text='Discount specialization').grid(
-        row=1, column=0, sticky='w', padx=(0, 12), pady=2
-    )
-    self.shop_discount_specialization_combo = ttk.Combobox(
-        permanent_setup_frame,
-        state='readonly',
-        textvariable=self.shop_discount_specialization_var,
-        values=self.shop_discount_specialization_options,
-    )
-    self.shop_discount_specialization_combo.grid(row=1, column=1, sticky='ew')
-    for combo in (
-        self.shop_starting_buff_draft_combo,
-        self.shop_discount_specialization_combo,
-    ):
-        combo.bind(
-            '<<ComboboxSelected>>',
-            lambda _event: self.save_current_launcher_config(),
-            add='+',
-        )
-        combo.bind('<MouseWheel>', self.on_settings_control_mousewheel, add='+')
-    ttk.Label(
-        permanent_setup_frame,
-        textvariable=self.shop_permanent_setup_help_var,
-        style='Shop.Help.TLabel',
-        justify='left',
-        wraplength=720,
-    ).grid(row=2, column=0, columnspan=2, sticky='ew', pady=(6, 0))
 
     modifier_frame = ttk.LabelFrame(
         shop_settings_frame, text='Optional Run Modifiers', padding=8
     )
     modifier_frame.grid(
-        row=15, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+        row=14, column=0, columnspan=2, sticky='ew', pady=(10, 0)
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
+    self.shop_modifier_difficulty_var = tk.StringVar(value='Difficulty +0')
     ttk.Label(
         modifier_frame,
         textvariable=self.shop_modifier_status_var,
         style='Shop.Help.TLabel',
         wraplength=720,
     ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 6))
+    ttk.Label(
+        modifier_frame,
+        textvariable=self.shop_modifier_difficulty_var,
+        font=('Segoe UI', 10, 'bold'),
+        style='Shop.Reward.TLabel',
+    ).grid(row=0, column=1, sticky='e', pady=(0, 6))
     self.shop_modifier_buttons = []
     for column in range(2):
         modifier_frame.columnconfigure(column, weight=1)

@@ -825,3 +825,38 @@ saves, and externally supplied rewards cannot restore the harmful effect.
 Published `Old Demo Truck Optics I` save/AP receipts migrate to Old Demo Truck
 Reinforced Frames instead; the preceding AP catalogue checksum remains accepted
 and its item-ID mapping is canonicalized during connection and ledger recovery.
+
+## August 27 Shop Access and Mission-Opening Safety
+
+Shop runs originally serialized and launched through Standard reward mode.
+That path translates access through map factions and compatible production,
+which could expose unpurchased naval identities and multiple faction airfields.
+Shop now uses the Chaos isolation/access pipeline internally for both legacy
+and new runs: only exact starter, permanent, AP, and purchased identities are
+active. The player-facing mode and economy remain Shop Mode.
+
+Shop mission-card bonuses now resolve in offer order without duplicate visible
+effects. This does not consume gameplay RNG: the existing SHA-256 Shop stream
+selects each raw effect, then duplicate boons or challenges advance through the
+configured pool. Temporary power boons include their access reward plus safe
+recharge and payload/damage buffs, so owning the power does not make the bonus
+empty. Profile reset uses the existing write-ahead Shop transaction and permits
+an explicit null run target; recovery writes the empty profile and removes only
+the current Shop run file before clearing the journal.
+
+Starting Buff Draft duplicated Free Buff Token while choosing only a buff type,
+not its random unit target. New runs no longer generate draft buffs, and the
+upgrade is hidden and unpurchasable. Its stable config ID and serialized run
+field remain accepted so old profiles and active runs do not become invalid.
+
+Yuri Prime's player clone is build-limited but was cloneable. A mission-owned
+Cloning Vats could create the free copy while the paid copy was still queued;
+the hero cap then left the infantry queue blocked. `MORPYURIPR` now uses
+`Cloneable=no`, generated from the same roster override as its static template.
+Its installed `BuildTimeMultiplier=1.2` is unrelated to this cap transition.
+
+Shipwrecked places Airborne Humvees under the hostile UnitedStates House during
+the Engineer/MCV opening. Tier 1 enemy firepower cloned `HumveeGun`, allowing
+the opening guard to kill the objective Engineer before entry. Mission policy
+now excludes only native `AHMV` from enemy tier-unit cloning in `ESHIP`; other
+hostile houses and units still receive configured AI scaling.

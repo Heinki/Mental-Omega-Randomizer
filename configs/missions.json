@@ -1901,6 +1901,9 @@
         }
       }
     },
+    "enemy_native_buff_exclusions": {
+      "ESHIP": ["AHMV"]
+    },
     "native_direct_buff_exclusions": {
       "AROADTRIP": [
         "GGI"

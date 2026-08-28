@@ -11,6 +11,7 @@ from .catalogue import (
 )
 from .economy import mission_reward, starting_run_coins
 from .mission_modifiers import mission_modifier_for_run_offer
+from .modifiers import modifier_effects
 from .meta import validate_starting_loadout
 from .model import (
     CurrencyReward,
@@ -408,6 +409,21 @@ def apply_mission_victory(
         challenge_hunter_level=profile.upgrade_level('challenge_hunter'),
         config=config,
     )
+    if final_victory:
+        dividend_level = profile.upgrade_level('gem_dividend')
+        dividend_effects = config.permanent_upgrades['gem_dividend'].effects
+        remaining_ore = run.run_coins + reward.run_coins
+        dividend = min(
+            dividend_level
+            * int(dividend_effects['maximum_gems_per_level']),
+            remaining_ore // int(dividend_effects['ore_per_gem']),
+        )
+        if dividend:
+            reward = replace(
+                reward,
+                meta_coins=reward.meta_coins + dividend,
+                gem_dividend_meta_coins=dividend,
+            )
     key = victory_key(run.run_id, run.stage, mission_code)
     updated_profile = replace(
         profile,
@@ -420,17 +436,29 @@ def apply_mission_victory(
             profile.lifetime_runs_completed + (1 if final_victory else 0)
         ),
     )
+    effects = modifier_effects(run.modifiers, config)
+    carried_ore = (
+        0 if effects['liquidate_ore_after_victory'] else run.run_coins
+    )
+    expire_stock_lock = bool(
+        run.stock_lock_stage is not None
+        and run.stock_lock_stage < run.stage
+    )
     updated_run = replace(
         run,
         status=RunStatus.COMPLETED if final_victory else RunStatus.ACTIVE,
         stage=run.stage if final_victory else run.stage + 1,
-        run_coins=run.run_coins + reward.run_coins,
+        run_coins=carried_ore + reward.run_coins,
         mission_offers=() if final_victory else next_offers,
         selected_mission_code=None,
         mission_committed=False,
         assisted_mission_code=None,
         completed_missions=run.completed_missions + (mission_code,),
         rewarded_victories=run.rewarded_victories + (key,),
+        stock_lock_reward_id=(
+            None if expire_stock_lock else run.stock_lock_reward_id
+        ),
+        stock_lock_stage=None if expire_stock_lock else run.stock_lock_stage,
     )
     updated_run = normalize_shop_run(updated_run.to_dict(), config=config)
     return VictoryTransition(

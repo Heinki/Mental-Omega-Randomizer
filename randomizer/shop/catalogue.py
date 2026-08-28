@@ -13,6 +13,7 @@ from randomizer.rewards.roster import randomizer_unit_template_values
 from randomizer.rewards.rules import tech_ids_for_rewards
 
 from .model import ShopCatalogueEntry, ShopRewardType
+from .config import SHOP_CONFIG
 
 
 def canonical_reward_id(reward):
@@ -109,9 +110,14 @@ def catalogue_entry(reward):
 def shop_catalogue():
     entries = []
     seen = set()
+    excluded = set(SHOP_CONFIG.excluded_reward_ids)
     for reward in REWARD_POOL:
         entry = catalogue_entry(reward)
-        if entry is None or entry.reward_id in seen:
+        if (
+            entry is None
+            or entry.reward_id in seen
+            or entry.reward_id in excluded
+        ):
             continue
         seen.add(entry.reward_id)
         entries.append(entry)

@@ -1,5 +1,8 @@
 """Filesystem boundary for Shop lifecycle and purchase transactions."""
 
+from dataclasses import replace
+from uuid import uuid4
+
 from .active import (
     active_shop_power_ids,
     active_shop_reward_ids,
@@ -27,7 +30,8 @@ from .meta import (
     purchase_permanent_buff as apply_permanent_buff_purchase,
     purchase_permanent_upgrade as apply_permanent_upgrade_purchase,
 )
-from .model import RunStatus, ShopRewardType
+from .model import RunStatus, ShopProfile, ShopRewardType
+from .modifiers import modifier_effects
 from .persistence import ShopRepository
 from .purchases import apply_validated_run_purchase, validate_run_purchase
 from .transitions import (
@@ -66,6 +70,16 @@ class ShopProgressionService:
             transition.transaction_id,
         )
         return transition
+
+    def reset_profile(self):
+        """Atomically clear permanent progression and current run state."""
+        profile = ShopProfile()
+        self.repository.commit(
+            profile,
+            None,
+            f'shop-profile-reset:{uuid4()}',
+        )
+        return profile, None
 
     def commit_mission(self, mission_code):
         run = self.repository.load_run()
@@ -146,6 +160,8 @@ class ShopProgressionService:
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
+        if modifier_effects(run.modifiers)['disable_rerolls']:
+            raise ShopTransitionError('No Safety Net disables mission rerolls')
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_reroll']
         maximum = (
             profile.upgrade_level('mission_reroll')
@@ -164,6 +180,10 @@ class ShopProgressionService:
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
+        if modifier_effects(run.modifiers)['disable_assists']:
+            raise ShopTransitionError(
+                'No Safety Net disables difficulty assists'
+            )
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_difficulty_assist']
         maximum = (
             profile.upgrade_level('mission_difficulty_assist')
@@ -204,16 +224,20 @@ class ShopProgressionService:
         use_free_token = bool(
             buff_purchase and run.free_buff_tokens_used < token_capacity
         )
+        coupon_definition = SHOP_CONFIG.permanent_upgrades['coupon_book']
+        coupon_discount = (
+            profile.upgrade_level('coupon_book')
+            * int(coupon_definition.effects['ore_per_level'])
+            if run.coupon_used_stage != run.stage else 0
+        )
         price = 0 if use_free_token else run_reward_price(
             entry,
             shop_discount_level=profile.upgrade_level('shop_discount'),
             modifiers=run.modifiers,
-            specialization=run.reward_settings.get(
-                'shop_discount_specialization', ''
-            ),
             specialization_level=profile.upgrade_level(
                 'discount_specialization'
             ),
+            coupon_discount_ore=coupon_discount,
         )
         owned = active_shop_reward_ids(run)
         stacks = next(
@@ -256,15 +280,43 @@ class ShopProgressionService:
             ),
         )
         if validation.allowed:
-            self.repository.save_run(
-                apply_validated_run_purchase(
-                    run,
-                    reward,
-                    validation,
-                    consume_free_buff_token=use_free_token,
-                )
+            updated = apply_validated_run_purchase(
+                run,
+                reward,
+                validation,
+                consume_free_buff_token=use_free_token,
             )
+            if not use_free_token and coupon_discount:
+                updated = replace(updated, coupon_used_stage=run.stage)
+            if updated.stock_lock_reward_id == entry.reward_id:
+                updated = replace(
+                    updated,
+                    stock_lock_reward_id=None,
+                    stock_lock_stage=None,
+                )
+            self.repository.save_run(updated)
         return validation
+
+    def lock_shop_offer(self, reward_id):
+        profile, run = self.repository.load()
+        if run is None or run.status is not RunStatus.ACTIVE:
+            raise ShopTransitionError('Stock Lock requires an active Shop run')
+        if run.mission_committed:
+            raise ShopTransitionError('Cannot lock stock during a mission')
+        if profile.upgrade_level('stock_lock') <= 0:
+            raise ShopTransitionError('Purchase Stock Lock first')
+        entry = catalogue_entry(canonical_reward_for_id(reward_id))
+        if entry is None or entry.reward_type not in {
+            ShopRewardType.UNIT_ACCESS, ShopRewardType.POWER_ACCESS
+        }:
+            raise ShopTransitionError('Only access offers can be stock-locked')
+        updated = replace(
+            run,
+            stock_lock_reward_id=entry.reward_id,
+            stock_lock_stage=run.stage,
+        )
+        self.repository.save_run(updated)
+        return updated
 
     def purchase_permanent_unit(self, reward_id):
         profile, run = self.repository.load()
@@ -338,11 +390,13 @@ class ShopProgressionService:
         salvage_definition = SHOP_CONFIG.permanent_upgrades[
             'recovery_salvage'
         ]
+        effects = modifier_effects(run.modifiers)
         transition = apply_mission_failure(
             run,
             mission_code,
             profile=profile,
             maximum_emergency_revivals=(
+                0 if effects['disable_revivals'] else
                 profile.upgrade_level('emergency_revival')
                 * int(revival_definition.effects['revivals_per_run'])
             ),

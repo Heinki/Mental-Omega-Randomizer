@@ -45,6 +45,7 @@ def load_shop_mode_config() -> ShopModeConfig:
                 str(effect): int(value)
                 for effect, value in definition['effects'].items()
             },
+            purchasable=bool(definition.get('purchasable', True)),
         )
         for upgrade_id, definition in sections['permanent_upgrades'].items()
     }
@@ -80,6 +81,9 @@ def load_shop_mode_config() -> ShopModeConfig:
         ),
         archipelago_mission_victories_are_locations=bool(
             settings['archipelago_mission_victories_are_locations']
+        ),
+        excluded_reward_ids=tuple(
+            str(reward_id) for reward_id in settings['excluded_reward_ids']
         ),
         mission_rewards=mission_rewards,
         stage_class_weights=stage_weights,

@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 SHOP_PROFILE_SCHEMA_VERSION = 1
 SHOP_RUN_SCHEMA_VERSION = 1
+SHOP_ACCESS_REWARD_MODE = 'Chaos'
 
 
 class MissionEconomyClass(str, Enum):
@@ -58,6 +59,7 @@ class CurrencyReward:
     mission_bonus_meta_coins: int = 0
     challenge_hunter_run_coins: int = 0
     challenge_hunter_meta_coins: int = 0
+    gem_dividend_meta_coins: int = 0
 
 
 @dataclass(frozen=True)
@@ -82,6 +84,7 @@ class PermanentUpgradeDefinition:
     max_level: int
     prices: tuple[int, ...]
     effects: Mapping[str, int]
+    purchasable: bool = True
 
 
 @dataclass(frozen=True)
@@ -106,6 +109,7 @@ class ShopModeConfig:
     archipelago_purchase_locations: int
     archipelago_purchase_meta_coin_cost: int
     archipelago_mission_victories_are_locations: bool
+    excluded_reward_ids: tuple[str, ...]
     mission_rewards: Mapping[MissionEconomyClass, MissionRewardDefinition]
     stage_class_weights: tuple[StageWeightProfile, ...]
     run_unit_prices: Mapping[str, int]
@@ -212,6 +216,9 @@ class ShopRun:
     completed_missions: tuple[str, ...] = ()
     rewarded_victories: tuple[str, ...] = ()
     modifiers: tuple[str, ...] = ()
+    coupon_used_stage: int | None = None
+    stock_lock_reward_id: str | None = None
+    stock_lock_stage: int | None = None
     failed_mission_code: str | None = None
     failed_stage: int | None = None
 
@@ -252,6 +259,9 @@ class ShopRun:
             'completed_missions': list(self.completed_missions),
             'rewarded_victories': list(self.rewarded_victories),
             'modifiers': list(self.modifiers),
+            'coupon_used_stage': self.coupon_used_stage,
+            'stock_lock_reward_id': self.stock_lock_reward_id,
+            'stock_lock_stage': self.stock_lock_stage,
             'failed_mission_code': self.failed_mission_code,
             'failed_stage': self.failed_stage,
         }

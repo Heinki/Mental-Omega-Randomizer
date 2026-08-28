@@ -296,6 +296,7 @@ def enemy_native_unit_buff_rules(
     rewards,
     installed_sections,
     authored_map_sections,
+    excluded_unit_ids=(),
 ):
     """Buff native hostile T1/T2/T3 units; keep player clones separate."""
     counts, definitions = _effect_counts(rewards)
@@ -375,11 +376,15 @@ def enemy_native_unit_buff_rules(
         'sensors', 'speed',
     )
     weapon_buff_order = ('damage', 'range', 'reload')
+    excluded_unit_ids = {
+        str(unit_id).upper() for unit_id in (excluded_unit_ids or ())
+    }
 
     for unit_id, target in sorted(BUFF_TARGETS.items()):
         unit_id = str(unit_id).upper()
         if (
-            target.get('category') not in candidate_categories
+            unit_id in excluded_unit_ids
+            or target.get('category') not in candidate_categories
             or target.get('special_reward')
             or not target.get('trainable', True)
         ):

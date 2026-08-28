@@ -38,7 +38,7 @@ def build_shop_tab(self, workspace_tabs):
 
     header = ttk.Frame(tab)
     header.grid(row=0, column=0, sticky='ew', pady=(0, 8))
-    for column in range(5):
+    for column in range(6):
         header.columnconfigure(column, weight=1)
     header_items = (
         (self.shop_stage_var, 'Shop.Stage.TLabel'),
@@ -46,6 +46,7 @@ def build_shop_tab(self, workspace_tabs):
         (self.shop_run_coins_var, 'Shop.Ore.TLabel'),
         (self.shop_meta_coins_var, 'Shop.Gem.TLabel'),
         (self.shop_rerolls_var, 'Shop.Reroll.TLabel'),
+        (self.shop_difficulty_var, 'Shop.Status.TLabel'),
     )
     self.shop_header_labels = []
     for column, (variable, label_style) in enumerate(header_items):
@@ -154,30 +155,36 @@ def build_shop_tab(self, workspace_tabs):
     run_shop.rowconfigure(2, weight=1)
     filters = ttk.Frame(run_shop)
     filters.grid(row=0, column=0, sticky='ew', pady=(0, 6))
-    ttk.Label(filters, text='Category:').pack(side='left')
-    category = ttk.Combobox(
+    self.shop_catalogue_back_button = ttk.Button(
         filters,
-        textvariable=self.shop_category_var,
-        values=('Units', 'Unit Buffs', 'Powers', 'Power Buffs'),
-        state='readonly',
-        width=14,
+        text='Back to All Offers',
+        command=self.show_shop_offers,
     )
-    category.pack(side='left', padx=(5, 10))
-    category.bind('<<ComboboxSelected>>', self.refresh_shop_catalogue)
     self.shop_buff_target_frame = ttk.Frame(filters)
-    ttk.Label(
+    self.shop_buff_target_label = ttk.Label(
         self.shop_buff_target_frame, text='Upgrade unit:'
-    ).pack(side='left')
-    self.shop_buff_target_combo = ttk.Combobox(
+    )
+    self.shop_buff_target_label.pack(side='left')
+    self.shop_buff_target_value = ttk.Label(
         self.shop_buff_target_frame,
         textvariable=self.shop_buff_target_var,
-        state='readonly',
-        width=25,
+        style='Shop.Help.TLabel',
     )
-    self.shop_buff_target_combo.pack(side='left', padx=(5, 10))
-    self.shop_buff_target_combo.bind(
+    self.shop_buff_target_value.pack(side='left', padx=(5, 10))
+    self.shop_access_view_frame = ttk.Frame(filters)
+    ttk.Label(self.shop_access_view_frame, text='Show:').pack(side='left')
+    self.shop_access_view_combo = ttk.Combobox(
+        self.shop_access_view_frame,
+        textvariable=self.shop_access_view_var,
+        values=('Available', 'Owned'),
+        state='readonly',
+        width=10,
+    )
+    self.shop_access_view_combo.pack(side='left', padx=(5, 10))
+    self.shop_access_view_combo.bind(
         '<<ComboboxSelected>>', self.refresh_shop_catalogue
     )
+    self.shop_access_view_frame.pack(side='left')
     self.shop_search_label = ttk.Label(filters, text='Search:')
     self.shop_search_label.pack(side='left')
     ttk.Entry(filters, textvariable=self.shop_search_var).pack(
@@ -193,13 +200,6 @@ def build_shop_tab(self, workspace_tabs):
     )
     sort_box.pack(side='left', padx=(5, 0))
     sort_box.bind('<<ComboboxSelected>>', self.refresh_shop_catalogue)
-    self.shop_show_locked_button = ttk.Checkbutton(
-        filters,
-        text='Show unavailable',
-        variable=self.shop_show_locked_var,
-        command=self.refresh_shop_catalogue,
-    )
-    self.shop_show_locked_button.pack(side='left', padx=(10, 0))
     self.shop_catalogue_help_var = tk.StringVar(value='')
     ttk.Label(
         run_shop,
@@ -214,7 +214,7 @@ def build_shop_tab(self, workspace_tabs):
         ('name', 'tier', 'state', 'price', 'upgrades'),
         (
             ('name', 'Reward', 270),
-            ('tier', 'Tier', 75),
+            ('tier', 'Type / Tier', 90),
             ('state', 'State', 155),
             ('price', 'Price', 85),
             ('upgrades', 'Upgrades', 145),
@@ -236,6 +236,13 @@ def build_shop_tab(self, workspace_tabs):
     )
     shop_action_row = ttk.Frame(run_shop)
     shop_action_row.grid(row=3, column=0, sticky='e', pady=(7, 0))
+    self.shop_stock_lock_button = ttk.Button(
+        shop_action_row,
+        text='Lock Selected Offer',
+        command=self.lock_selected_shop_offer,
+        state='disabled',
+    )
+    self.shop_stock_lock_button.pack(side='left', padx=(0, 7))
     self.shop_purchase_button = ttk.Button(
         shop_action_row,
         text='Purchase Selected',
@@ -299,6 +306,7 @@ def build_shop_tab(self, workspace_tabs):
     )
 
     permanent = ttk.Frame(panels, padding=8)
+    self.shop_permanent_panel = permanent
     panels.add(permanent, text='Permanent Unlocks')
     permanent.columnconfigure(0, weight=1)
     permanent.rowconfigure(1, weight=1)
@@ -311,15 +319,34 @@ def build_shop_tab(self, workspace_tabs):
     ttk.Entry(
         permanent_search, textvariable=self.shop_permanent_search_var
     ).grid(row=0, column=1, sticky='ew')
+    ttk.Button(
+        permanent_search,
+        text='Reset Profile…',
+        command=self.reset_shop_profile,
+        style='Danger.TButton',
+    ).grid(row=0, column=2, sticky='e', padx=(8, 0))
     permanent_tabs = ttk.Notebook(permanent, style='Unlocks.TNotebook')
+    self.shop_permanent_tabs = permanent_tabs
     permanent_tabs.grid(row=1, column=0, sticky='nsew')
 
     permanent_units = ttk.Frame(permanent_tabs, padding=8)
+    self.shop_permanent_units_panel = permanent_units
     permanent_tabs.add(permanent_units, text='Units')
     permanent_units.columnconfigure(0, weight=1)
-    permanent_units.rowconfigure(0, weight=1)
+    permanent_units.rowconfigure(1, weight=1)
+    permanent_unit_filter = ttk.Frame(permanent_units)
+    permanent_unit_filter.grid(row=0, column=0, sticky='w', pady=(0, 6))
+    ttk.Label(permanent_unit_filter, text='Show units:').pack(side='left')
+    for label in ('All', 'Not Owned', 'Owned'):
+        ttk.Radiobutton(
+            permanent_unit_filter,
+            text=label,
+            value=label,
+            variable=self.shop_permanent_unit_filter_var,
+            command=self._refresh_permanent_shop,
+        ).pack(side='left', padx=(8, 0))
     unit_frame = ttk.Frame(permanent_units)
-    unit_frame.grid(row=0, column=0, sticky='nsew')
+    unit_frame.grid(row=1, column=0, sticky='nsew')
     self.shop_permanent_unit_tree = _tree(
         unit_frame,
         ('name', 'tier', 'state', 'price'),
@@ -344,16 +371,26 @@ def build_shop_tab(self, workspace_tabs):
         textvariable=self.shop_permanent_unit_info_var,
         wraplength=820,
         justify='left',
-    ).grid(row=1, column=0, sticky='w', pady=(7, 4))
+    ).grid(row=2, column=0, sticky='w', pady=(7, 4))
+    permanent_unit_actions = ttk.Frame(permanent_units)
+    permanent_unit_actions.grid(row=3, column=0, sticky='ew')
+    self.shop_permanent_unit_buffs_button = ttk.Button(
+        permanent_unit_actions,
+        text='View Buffs for Owned Unit',
+        command=self.open_selected_permanent_unit_buffs,
+        state='disabled',
+    )
+    self.shop_permanent_unit_buffs_button.pack(side='left')
     self.shop_permanent_unit_button = ttk.Button(
-        permanent_units,
+        permanent_unit_actions,
         text='Select a Unit',
         command=self.buy_selected_permanent_unit,
         state='disabled',
     )
-    self.shop_permanent_unit_button.grid(row=2, column=0, sticky='e')
+    self.shop_permanent_unit_button.pack(side='right')
 
     permanent_upgrades = ttk.Frame(permanent_tabs, padding=8)
+    self.shop_permanent_upgrades_panel = permanent_upgrades
     permanent_tabs.add(permanent_upgrades, text='Upgrades')
     permanent_upgrades.columnconfigure(0, weight=1)
     permanent_upgrades.rowconfigure(0, weight=1)
@@ -393,31 +430,34 @@ def build_shop_tab(self, workspace_tabs):
     self.shop_permanent_upgrade_button.grid(row=2, column=0, sticky='e')
 
     permanent_buffs = ttk.Frame(permanent_tabs, padding=8)
+    self.shop_permanent_buffs_panel = permanent_buffs
     permanent_tabs.add(permanent_buffs, text='Permanent Unit Buffs')
     permanent_buffs.columnconfigure(0, weight=1)
     permanent_buffs.rowconfigure(2, weight=1)
     ttk.Label(
         permanent_buffs,
         text=(
-            'Spend Gems on lasting unit buff stacks. Buffs apply in '
-            'future runs whenever that permanently unlocked unit is used.'
+            '1. Buy a unit on Units. 2. Select it below. 3. Buy lasting buff '
+            'stacks with Gems. Buffs apply whenever that unit is selected '
+            'for a future run. Purchases are available only between runs.'
         ),
         style='Shop.Help.TLabel',
         wraplength=820,
     ).grid(row=0, column=0, sticky='w', pady=(0, 6))
     permanent_buff_filter = ttk.Frame(permanent_buffs)
     permanent_buff_filter.grid(row=1, column=0, sticky='ew', pady=(0, 6))
-    ttk.Label(permanent_buff_filter, text='Upgrade unit:').pack(side='left')
-    self.shop_permanent_buff_target_combo = ttk.Combobox(
+    ttk.Label(permanent_buff_filter, text='Selected unit:').pack(side='left')
+    self.shop_permanent_buff_target_label = ttk.Label(
         permanent_buff_filter,
         textvariable=self.shop_permanent_buff_target_var,
-        state='readonly',
-        width=34,
+        style='Shop.Help.TLabel',
     )
-    self.shop_permanent_buff_target_combo.pack(side='left', padx=(6, 0))
-    self.shop_permanent_buff_target_combo.bind(
-        '<<ComboboxSelected>>', lambda _event: self._refresh_permanent_shop()
-    )
+    self.shop_permanent_buff_target_label.pack(side='left', padx=(6, 12))
+    ttk.Button(
+        permanent_buff_filter,
+        text='Choose from Units',
+        command=self.show_shop_permanent_units,
+    ).pack(side='left')
     permanent_buff_tree_frame = ttk.Frame(permanent_buffs)
     permanent_buff_tree_frame.grid(row=2, column=0, sticky='nsew')
     self.shop_permanent_buff_tree = _tree(

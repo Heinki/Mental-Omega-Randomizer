@@ -557,6 +557,14 @@ If the Shop later rotates inventory instead of showing the full catalogue, incre
 
 Do not implement unless the first Shop uses rotating offers.
 
+### Implemented account upgrades
+
+- Coupon Book: first paid shop purchase each stage costs 1–3 less Ore.
+- Stock Lock: preserve one selected access offer through the next victory rotation.
+- Veteran Academy: selected permanent-loadout units begin Veteran.
+- Gem Dividend: completed runs convert remaining Ore into a level-capped Gem bonus.
+- Premium Supplier: later stages guarantee one higher-tier access offer.
+
 ### Second Chance
 
 This is potentially powerful and conflicts with the core "one failure ends the run" identity.
@@ -597,9 +605,12 @@ Example modifiers:
 
 `+1 Ore per victory, one mission offer hides its exact reward until selected`
 
-Only implement modifiers that can be represented safely by launcher logic.
-
-Do not patch arbitrary combat values in version 1 unless reusing the existing buff system.
+Implemented additions are Glass Cannon, Overclocked Factories, Black Market,
+Elite Force, No Safety Net, Support Doctrine, War Economy, Narrow Intelligence,
+Liquid Assets, and Treasure Hunter. Combat modifiers reuse isolated player
+clones and existing weapon-clone paths. Each distinct active modifier adds one
+displayed difficulty point. Percentages compose multiplicatively and flat
+effects add, so enabling several modifiers cannot overwrite an earlier hook.
 
 ## 9.1 Modifier selection
 
@@ -683,12 +694,9 @@ Buttons:
 
 ### Run Shop
 
-Sections/tabs/filter controls:
-
-- Units
-- Unit Buffs
-- Powers
-- Power Buffs
+The main table shows one rotating access list with an **Available / Owned**
+filter. Owned access rows expose **Open Upgrades**, which opens the valid buff
+table for that exact unit or power. Searchable tables replace target dropdowns.
 
 Cards show:
 
@@ -698,6 +706,9 @@ Cards show:
 - current state
 - price
 - purchase button
+
+Repeat buff purchases retain row selection until Ore is insufficient or the
+stack limit is reached.
 
 Unit card states:
 
@@ -771,6 +782,10 @@ Contains permanent/meta progression only.
 
 Never reset automatically on new seed or new run.
 
+Launcher upgrades must also never replace this file. Normalization may add
+defaults for newly introduced fields, but it must preserve the saved Gem
+balance, permanent purchases, and lifetime values.
+
 ## 11.2 Current run
 
 Example:
@@ -778,6 +793,11 @@ Example:
 `shop_run.json`
 
 Contains the currently active/failed/completed run.
+
+Launcher upgrades must preserve active runs, including Ore, purchases, buffs,
+offers, and victory idempotency keys. Legacy `reward_mode` values remain valid;
+Shop launch semantics are selected by Shop Mode itself rather than rewriting
+the saved document.
 
 Suggested schema:
 

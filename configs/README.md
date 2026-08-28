@@ -47,7 +47,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   markers, aircraft factories, and installed GenericPrerequisite aliases.
 - `shop_mode.json`: Shop Mode run length, mission offers and class rewards,
   stage difficulty weights, Ore/Gem unit prices, permanent upgrade
-  definitions, and launcher-only challenge modifier effects.
+  definitions, reward exclusions, and launcher-only mission effects.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   EVA announcer tags, reward-count messages, faction colors, and
   light/dark palettes.
@@ -112,6 +112,8 @@ New Shop YAML signs `received_unit_loadout: all`: every received AP unit is
 active on every Shop run without consuming permanent extra-unit slots. Legacy
 `manual` and `random` rooms remain compatible and receive the same all-unit
 behavior. This policy never changes Shop currency or mission-credit values.
+`excluded_reward_ids` removes canonical rewards from Shop stock without
+retiring them from normal Randomizer progression or old save receipts.
 
 `mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
 `finale`. Each class has a display label, unique positive difficulty rank, and
@@ -125,7 +127,24 @@ and finales begin at stage 9. Protected opening offers include a fixed-unit or
 hero mission when the eligible campaign pool provides one.
 `unit_inventory_size` controls the deterministic run-shop unit stock. Unit
 stock remains stable during a stage and rotates after each mission victory;
-eligible buffs remain available for every currently owned unit.
+eligible buffs remain available for every currently owned unit. Access entries
+whose target is already active are removed before display and receive stable
+replacement offers, covering starters, permanent/AP access, and run purchases.
+`power_inventory_size` controls the power stock shown beside unit/building
+offers in the same Run Shop list and uses the same owned-access exclusion.
+`discount_specialization` retains its stable save ID but applies its configured
+`ore_per_level` discount to all run-shop access and buff entries. Old saved
+category fields remain readable and are ignored.
+
+`mission_effects` defines deterministic one-mission player boons and hostile
+challenges. Each entry contains display text, non-negative Ore/Gem bonuses,
+and exactly one of `player_reward_ids` or `enemy_reward_id`.
+`exclusive_reward_ids` suppresses a player boon when its access reward is
+already active. Prefer access plus payload/recharge rewards for temporary
+support boons: an unowned power becomes available, while an already-owned
+power still receives a useful mission-only upgrade. The three visible mission
+cards resolve duplicate effects to other entries of the same boon/challenge
+kind without consuming gameplay RNG.
 
 `run_unit_prices`, `run_buff_prices`, `permanent_unit_prices`, and
 `permanent_buff_prices` require
@@ -136,20 +155,24 @@ Discounted prices use integer percentages, round down, then clamp to
 `minimum_shop_price`.
 
 `permanent_upgrades` maps stable IDs to `display_name`, positive `max_level`,
-one positive price per level, and integer `effects`. Version 1 requires
-`mission_reroll`, `victory_run_coin_bonus`, `starting_capital`, and
-`shop_discount`. `modifiers` maps stable IDs to display text and additive or
+one positive price per level, and integer `effects`. Optional boolean
+`purchasable` defaults to `true`; `false` retains a retired upgrade ID for old
+profile normalization while hiding it and rejecting new purchases. Version 1 requires
+the full stable account-upgrade catalogue, including `coupon_book`,
+`stock_lock`, `veteran_academy`, `gem_dividend`, and `premium_supplier`.
+`modifiers` maps stable IDs to display text and additive or
 percentage economy effects. Percentage modifiers multiply exactly; flat
 modifiers add. Unknown saved modifier or upgrade IDs fail with a
 clear state error instead of silently changing balance.
 
-Modifier effects support additive `starting_run_coins_flat`, `run_reward_flat`,
-`meta_reward_flat`, and `shop_price_flat`; multiplicative `run_reward_percent`,
-`meta_reward_percent`, and `shop_price_percent`; plus non-negative
-`hidden_offer_count` bounded by the mission-offer count. One modifier cannot
-apply both percentage and flat adjustments to the same reward or price.
-Percentages multiply in persisted modifier order; flat effects add. `blind_choice` uses the hidden
-offer count only for presentation and never consumes gameplay RNG.
+Modifier effects support economy, stock size, mission-choice count, starter
+composition/veterancy, player clone damage/durability/cost/production,
+aid-power recharge, mission starting Credits, and feature-disable flags.
+Percentages multiply in persisted modifier order; flat effects add. Each
+distinct active ID contributes one visible difficulty point. `blind_choice`
+uses the hidden-offer count only for presentation and never consumes gameplay
+RNG. Combat changes are applied to isolated player clones; overlapping
+production modifiers multiply instead of overwriting each other.
 
 Example mission reward:
 

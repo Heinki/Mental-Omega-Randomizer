@@ -40,16 +40,20 @@ def mission_reward(
         ) from exc
     definition = config.mission_rewards[class_id]
     effects = modifier_effects(modifiers, config)
-    base_run_coins = max(
-        0,
-        int(definition.run_coins * effects['run_reward_percent'])
-        + effects['run_reward_flat'],
+    base_run_coins = int(
+        definition.run_coins * effects['run_reward_percent']
     )
-    meta_coins = max(
-        0,
-        int(definition.meta_coins * effects['meta_reward_percent'])
-        + effects['meta_reward_flat'],
-    )
+    meta_coins = int(definition.meta_coins * effects['meta_reward_percent'])
+    if getattr(mission_modifier, 'challenge', False):
+        meta_coins = int(
+            meta_coins * effects['challenge_meta_reward_percent']
+        )
+    else:
+        base_run_coins = int(
+            base_run_coins * effects['normal_run_reward_percent']
+        )
+    base_run_coins = max(0, base_run_coins + effects['run_reward_flat'])
+    meta_coins = max(0, meta_coins + effects['meta_reward_flat'])
     level = _bounded_upgrade_level(
         config, 'victory_run_coin_bonus', victory_coin_bonus_level
     )
@@ -63,6 +67,10 @@ def mission_reward(
     mission_bonus_meta = max(
         0, int(getattr(mission_modifier, 'bonus_meta_coins', 0))
     )
+    if getattr(mission_modifier, 'challenge', False):
+        mission_bonus_meta = int(
+            mission_bonus_meta * effects['challenge_meta_reward_percent']
+        )
     hunter_level = _bounded_upgrade_level(
         config, 'challenge_hunter', challenge_hunter_level
     )
@@ -229,14 +237,14 @@ def run_reward_price(
     modifiers=(),
     specialization='',
     specialization_level=0,
+    coupon_discount_ore=0,
     config: ShopModeConfig = SHOP_CONFIG,
 ):
-    """Return one run-shop price, including selected category specialization."""
-    groups = {
-        'Units': {ShopRewardType.UNIT_ACCESS},
-        'Powers': {ShopRewardType.POWER_ACCESS},
-        'Buffs': {ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF},
-    }
+    """Return one run-shop price, including all permanent discounts."""
+    # ``specialization`` remains accepted for old callers and saved runs. Its
+    # former category value is intentionally ignored: every level now applies
+    # to units, buffs, and powers.
+    del specialization
     specialization_level = _bounded_upgrade_level(
         config, 'discount_specialization', specialization_level
     )
@@ -245,7 +253,7 @@ def run_reward_price(
     ].effects['ore_per_level']
     extra_ore = (
         specialization_level * int(per_level)
-        if entry.reward_type in groups.get(str(specialization), set()) else 0
+        + max(0, int(coupon_discount_ore))
     )
     base_prices = (
         config.run_unit_prices

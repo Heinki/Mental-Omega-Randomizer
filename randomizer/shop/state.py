@@ -342,6 +342,27 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         raise ShopStateError(
             f'Unknown Shop run modifier IDs: {unknown_modifiers}'
         )
+    coupon_used_stage = document.get('coupon_used_stage')
+    if coupon_used_stage is not None:
+        coupon_used_stage = _positive_int(
+            coupon_used_stage, 'coupon_used_stage', 1
+        )
+        if coupon_used_stage > run_length:
+            raise ShopStateError('Shop coupon_used_stage exceeds run length')
+    stock_lock_reward_id = _string(
+        document.get('stock_lock_reward_id'), 'stock_lock_reward_id'
+    )
+    stock_lock_stage = document.get('stock_lock_stage')
+    if stock_lock_stage is not None:
+        stock_lock_stage = _positive_int(
+            stock_lock_stage, 'stock_lock_stage', 1
+        )
+        if stock_lock_stage > run_length:
+            raise ShopStateError('Shop stock_lock_stage exceeds run length')
+    if bool(stock_lock_reward_id) != bool(stock_lock_stage):
+        raise ShopStateError(
+            'Shop stock lock requires both reward ID and stage'
+        )
     return ShopRun(
         schema_version=SHOP_RUN_SCHEMA_VERSION,
         run_id=_string(document.get('run_id'), 'run_id', required=True),
@@ -429,6 +450,9 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
             document.get('rewarded_victories'), 'rewarded_victories'
         ),
         modifiers=modifiers,
+        coupon_used_stage=coupon_used_stage,
+        stock_lock_reward_id=stock_lock_reward_id,
+        stock_lock_stage=stock_lock_stage,
         failed_mission_code=failed_mission,
         failed_stage=failed_stage,
     )

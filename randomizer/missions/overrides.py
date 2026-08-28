@@ -186,6 +186,12 @@ MISSION_MAP_SECTION_RULES = dict(_MISSION_CONFIG['map_section_rules'])
 
 MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = _frozenset_mapping('native_direct_buff_exclusions')
 
+# Native hostile mission units whose authored opening behavior is objective
+# critical and must not receive tier weapon/stat clones.
+MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS = _frozenset_mapping(
+    'enemy_native_buff_exclusions'
+)
+
 MISSION_NATIVE_VARIANT_BUFF_RULES = {
     code: tuple(
         {
