@@ -16,7 +16,11 @@ from randomizer.missions.tier_one import (
 from randomizer.maps.shop_modifiers import apply_shop_clone_modifiers
 from randomizer.rewards.catalogue import REWARD_BY_NAME
 from randomizer.rewards.rules import tech_ids_for_rewards
-from randomizer.ui.cameos import ensure_superweapon_cameos, ensure_unit_cameos
+from randomizer.ui.cameos import (
+    ARCHIPELAGO_CAMEO_PATH,
+    ensure_superweapon_cameos,
+    ensure_unit_cameos,
+)
 
 from .catalogue import canonical_reward_for_id, shop_catalogue
 from .active import (
@@ -31,7 +35,10 @@ from .archipelago import (
     archipelago_shop_identity,
     shop_reward_ids_from_ap_ledger,
 )
-from .archipelago_purchases import archipelago_purchase_records
+from .archipelago_purchases import (
+    archipelago_purchase_placement_text,
+    archipelago_purchase_records,
+)
 from .config import SHOP_CONFIG
 from .economy import (
     discounted_shop_price,
@@ -1742,6 +1749,27 @@ def validate_shop_domain():
         'config_validation_valid': config_validation_valid,
         'economy_valid': economy_valid,
         'catalogue_valid': len(catalogue) > 100,
+        'archipelago_cameo_asset_valid': bool(
+            ARCHIPELAGO_CAMEO_PATH.is_file()
+            and ARCHIPELAGO_CAMEO_PATH.read_bytes().startswith(
+                b'\x89PNG\r\n\x1a\n'
+            )
+        ),
+        'archipelago_purchase_display_valid': bool(
+            archipelago_purchase_placement_text({
+                'item_name': 'Progressive Sword',
+                'item': 42,
+                'recipient_player': 'Link',
+                'player': 3,
+                'recipient_game': 'A Link to the Past',
+            }) == (
+                'Progressive Sword',
+                'Link (A Link to the Past)',
+            )
+            and archipelago_purchase_placement_text({}) == (
+                'Awaiting server details', '—'
+            )
+        ),
         'shop_reward_exclusions_valid': bool(
             'Foehn Blast Trench Access' in SHOP_CONFIG.excluded_reward_ids
             and all(

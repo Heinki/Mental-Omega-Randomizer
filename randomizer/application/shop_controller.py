@@ -65,6 +65,7 @@ from randomizer.shop.persistence import ShopPersistenceError, ShopRepository
 from randomizer.shop.service import ShopProgressionService
 from randomizer.shop.text import gem_text
 from randomizer.shop.transitions import ShopTransitionError
+from randomizer.ui.cameos import ARCHIPELAGO_CAMEO_PATH
 from .shop_polish_controller import ShopPolishController
 
 
@@ -917,6 +918,18 @@ class ShopController(ShopPolishController):
             for item_id in item_ids
         }
 
+    def _shop_archipelago_cameo(self):
+        cache_key = 'archipelago:item'
+        if cache_key not in self._shop_cameo_images:
+            try:
+                self._shop_cameo_images[cache_key] = tk.PhotoImage(
+                    master=self,
+                    file=str(ARCHIPELAGO_CAMEO_PATH),
+                )
+            except tk.TclError:
+                self._shop_cameo_images[cache_key] = None
+        return self._shop_cameo_images[cache_key]
+
     def give_up_shop_run(self):
         run = self.shop_run
         if (
@@ -1610,7 +1623,7 @@ class ShopController(ShopPolishController):
             return
         records = {}
 
-        def add_access(source, item, *, raw_unit=False):
+        def add_access(source, item, *, raw_unit=False, archipelago=False):
             entry = self._shop_entry_by_reward_id.get(item)
             if entry is not None and entry.reward_type not in {
                 ShopRewardType.UNIT_ACCESS,
@@ -1634,9 +1647,11 @@ class ShopController(ShopPolishController):
                 'target_id': target_id,
                 'is_power': is_power,
                 'buffs': [],
+                'archipelago_item': False,
             })
             if source not in record['sources']:
                 record['sources'].append(source)
+            record['archipelago_item'] |= bool(archipelago)
 
         for unit_id in active_shop_starter_unit_ids(run):
             add_access('Tier 1 Starter', unit_id, raw_unit=True)
@@ -1651,12 +1666,12 @@ class ShopController(ShopPolishController):
                 source = 'Permanent / AP Selected'
             else:
                 source = 'Permanent Selected'
-            add_access(source, reward_id)
+            add_access(source, reward_id, archipelago=reward_id in ap_units)
         ap_rewards = tuple(ap_automatic_reward_ids(
             run.ap_entitlements_snapshot
         ))
         for reward_id in ap_rewards:
-            add_access('AP Received', reward_id)
+            add_access('AP Received', reward_id, archipelago=True)
         for item in run.run_purchases:
             add_access('Purchased This Run', item.reward_id)
 
@@ -1695,8 +1710,11 @@ class ShopController(ShopPolishController):
                     'target_id': entry.target_id,
                     'is_power': is_power,
                     'buffs': [],
+                    'archipelago_item': False,
                 })
             record['buffs'].append((source, reward_id, int(stacks)))
+            if source == 'AP Received':
+                record['archipelago_item'] = True
 
         rows = sorted(
             records.values(),
@@ -1729,7 +1747,8 @@ class ShopController(ShopPolishController):
             if not term or term in haystack:
                 visible.append(record)
         cameo_images = self._prepare_shop_unit_cameos(
-            record['item'] for record in visible if not record['is_power']
+            record['item'] for record in visible
+            if not record['is_power'] and not record['archipelago_item']
         )
         unit_buff_targets = {entry.target_id for entry in self._shop_buff_entries}
         power_buff_targets = {
@@ -1768,7 +1787,11 @@ class ShopController(ShopPolishController):
                     '' if has_upgrades else '—',
                 ),
             }
-            cameo = cameo_images.get(item)
+            cameo = (
+                self._shop_archipelago_cameo()
+                if record['archipelago_item']
+                else cameo_images.get(item)
+            )
             if cameo is not None:
                 options['image'] = cameo
             tree.insert('', 'end', **options)
@@ -1847,6 +1870,7 @@ class ShopController(ShopPolishController):
         )
         cameo_images = self._prepare_shop_unit_cameos(
             entry.reward_id for entry in entries
+            if entry.reward_id not in ap_owned
         )
         for index, entry in enumerate(entries):
             iid = f'loadout-{index}'
@@ -1875,7 +1899,11 @@ class ShopController(ShopPolishController):
                     ),
                 ),
             }
-            cameo = cameo_images.get(entry.reward_id)
+            cameo = (
+                self._shop_archipelago_cameo()
+                if entry.reward_id in ap_owned
+                else cameo_images.get(entry.reward_id)
+            )
             if cameo is not None:
                 options['image'] = cameo
             tree.insert('', 'end', **options)

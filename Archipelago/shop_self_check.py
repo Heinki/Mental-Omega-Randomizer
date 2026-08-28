@@ -8,6 +8,7 @@ from randomizer.shop.config import SHOP_CONFIG
 
 from .catalogue_contract import runtime_catalogue_checksum
 from .client.handshake import validate_slot_data
+from .client.session import _scout_location_ids
 from .yaml_config import serialize_player_yaml
 
 
@@ -128,6 +129,9 @@ def validate_shop_slot_contract():
         and '"received_unit_loadout": "all"' in player_yaml
         and normalized['shop']['received_unit_loadout'] == 'all'
         and normalized['shop']['purchase_locations'] == purchase_locations
+        and set(purchase_locations).issubset(
+            _scout_location_ids(normalized)
+        )
         and len(normalized['shop']['stage_victories']) == run_length
         and legacy_normalized['shop']['received_unit_loadout'] == 'manual'
     )

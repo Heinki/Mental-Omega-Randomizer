@@ -26,6 +26,27 @@ from .ledger import ReceivedItemLedger
 CLIENT_GOAL = 30
 
 
+def _scout_location_ids(slot_data):
+    """Return every shuffled location whose item metadata the UI displays."""
+    locations = {
+        int(location)
+        for mission in slot_data.get('locations', {}).values()
+        if isinstance(mission, Mapping)
+        for values in mission.values()
+        if isinstance(values, list)
+        for location in values
+        if int(location) > 0
+    }
+    shop = slot_data.get('shop')
+    if isinstance(shop, Mapping):
+        locations.update(
+            int(location)
+            for location in shop.get('purchase_locations', ())
+            if int(location) > 0
+        )
+    return tuple(sorted(locations))
+
+
 class ArchipelagoIdentityMismatch(ArchipelagoProtocolError):
     """A persisted client checkpoint belongs to another generated session."""
 
@@ -546,15 +567,7 @@ class ArchipelagoSession:
                 'cmd': 'GetDataPackage',
                 'games': sorted(games),
             })
-        scout_locations = sorted({
-            int(location)
-            for mission in result.slot_data.get('locations', {}).values()
-            if isinstance(mission, Mapping)
-            for values in mission.values()
-            if isinstance(values, list)
-            for location in values
-            if int(location) > 0
-        })
+        scout_locations = _scout_location_ids(result.slot_data)
         if scout_locations:
             commands.append({
                 'cmd': 'LocationScouts',

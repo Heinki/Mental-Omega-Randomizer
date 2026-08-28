@@ -7,7 +7,10 @@ from randomizer.shop.archipelago import (
     archipelago_shop_identity,
     shop_reward_ids_from_ap_ledger,
 )
-from randomizer.shop.archipelago_purchases import archipelago_purchase_records
+from randomizer.shop.archipelago_purchases import (
+    archipelago_purchase_placement_text,
+    archipelago_purchase_records,
+)
 from randomizer.shop.model import RunStatus
 from randomizer.shop.text import gem_text
 
@@ -282,6 +285,7 @@ class ShopArchipelagoController:
             self, '_archipelago_server_checked_locations', ()
         ))
         cost = shop['purchase_meta_coin_cost']
+        archipelago_cameo = self._shop_archipelago_cameo()
         for index, location_id in enumerate(shop['purchase_locations'], start=1):
             record = records.get(str(location_id), {})
             if location_id in checked or record.get('status') == 'checked':
@@ -290,12 +294,20 @@ class ShopArchipelagoController:
                 status = 'Pending server acknowledgement'
             else:
                 status = 'Available'
+            item = self._archipelago_location_info.get(location_id, {})
+            item_name, recipient = archipelago_purchase_placement_text(item)
             iid = f'ap-purchase-{index}'
-            tree.insert('', 'end', iid=iid, values=(index, status, cost))
+            options = {
+                'iid': iid,
+                'values': (index, item_name, recipient, status, cost),
+            }
+            if archipelago_cameo is not None:
+                options['image'] = archipelago_cameo
+            tree.insert('', 'end', **options)
             self._shop_ap_purchase_rows[iid] = location_id
         self.shop_ap_purchase_status_var.set(
-            'Each purchase sends one generated location; its item is '
-            'server-assigned.'
+            'Each purchase sends its generated Archipelago item to the '
+            'shown player/world. Placement remains server-assigned.'
         )
         self.shop_ap_purchase_button.configure(state='normal')
 

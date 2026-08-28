@@ -19,6 +19,7 @@ from ._dependencies import (
     ttk,
     unit_display_label,
 )
+from randomizer.ui.cameos import ARCHIPELAGO_CAMEO_PATH
 
 class UnlockViewController:
 
@@ -67,6 +68,25 @@ class UnlockViewController:
             reward.get('power_category'),
         ) if value is not None).casefold()
         return all(term in haystack for term in query.split())
+
+    def unlock_key_is_archipelago(self, key):
+        return bool(
+            self.archipelago_run_active()
+            and self.unlock_dashboard_sources().get(key, {}).get('earned')
+        )
+
+    def unlock_dashboard_entry_is_archipelago(self, entry):
+        return self.unlock_key_is_archipelago(entry['key'])
+
+    def _unlock_archipelago_cameo(self):
+        cache_key = 'archipelago:item'
+        if cache_key not in self.cameo_photo_cache:
+            try:
+                photo = tk.PhotoImage(file=str(ARCHIPELAGO_CAMEO_PATH))
+            except tk.TclError:
+                photo = None
+            self.cameo_photo_cache[cache_key] = photo
+        return self.cameo_photo_cache[cache_key]
 
     def refresh_unlock_dashboard(self):
         if not hasattr(self, 'unlock_icon_frames'):
@@ -131,6 +151,7 @@ class UnlockViewController:
                 (
                     entry['key'], entry['faction'], entry['category'],
                     entry['label'], entry['kind'], entry['id'],
+                    self.unlock_dashboard_entry_is_archipelago(entry),
                     str((entry.get('reward') or {}).get('superweapon_sidebar_image', '')),
                 )
                 for entry in selected_entries
@@ -183,8 +204,16 @@ class UnlockViewController:
         self.unlock_dashboard_structure_signatures = structure_signatures
 
         entries = selected_entries
-        unit_ids = [entry['id'] for entry in entries if entry['kind'] == 'unit']
-        power_entries = [entry for entry in entries if entry['kind'] == 'power']
+        unit_ids = [
+            entry['id'] for entry in entries
+            if entry['kind'] == 'unit'
+            and not self.unlock_dashboard_entry_is_archipelago(entry)
+        ]
+        power_entries = [
+            entry for entry in entries
+            if entry['kind'] == 'power'
+            and not self.unlock_dashboard_entry_is_archipelago(entry)
+        ]
         try:
             unit_paths = ensure_unit_cameos(unit_ids)
         except Exception:
@@ -217,12 +246,24 @@ class UnlockViewController:
 
         photos = {}
         for entry in entries:
-            cache_key = entry['id'] if entry['kind'] == 'unit' else entry['key']
-            photo = self.cameo_photo_cache.get(cache_key)
+            archipelago_item = self.unlock_dashboard_entry_is_archipelago(
+                entry
+            )
+            cache_key = (
+                'archipelago:item'
+                if archipelago_item
+                else entry['id'] if entry['kind'] == 'unit'
+                else entry['key']
+            )
+            photo = (
+                self._unlock_archipelago_cameo()
+                if archipelago_item
+                else self.cameo_photo_cache.get(cache_key)
+            )
             path = None
-            if entry['kind'] == 'unit':
+            if not archipelago_item and entry['kind'] == 'unit':
                 path = unit_paths.get(entry['id'])
-            elif entry['kind'] == 'power':
+            elif not archipelago_item and entry['kind'] == 'power':
                 asset_name = entry['reward'].get('superweapon_sidebar_image')
                 if asset_name:
                     try:
@@ -770,23 +811,40 @@ class UnlockViewController:
         self.unlocks_text.insert('end', text)
         self.unlock_cameo_images = {}
         if unit_ids:
+            archipelago_unit_ids = {
+                unit_id for unit_id in unit_ids
+                if self.unlock_key_is_archipelago(f'unit:{unit_id}')
+            }
             try:
-                cameo_paths = ensure_unit_cameos(unit_ids)
+                cameo_paths = ensure_unit_cameos(
+                    set(unit_ids) - archipelago_unit_ids
+                )
             except Exception:
                 cameo_paths = {}
                 log_event('cameo_load_failed', level=logging.ERROR, traceback=traceback.format_exc())
+            archipelago_photo = (
+                self._unlock_archipelago_cameo()
+                if archipelago_unit_ids else None
+            )
+            resolved_unit_ids = set(cameo_paths)
+            if archipelago_photo is not None:
+                resolved_unit_ids.update(archipelago_unit_ids)
             log_event(
                 'cameos_resolved',
                 requested=len(unit_ids),
-                resolved=len(cameo_paths),
-                missing=sorted(set(unit_ids) - set(cameo_paths)),
+                resolved=len(resolved_unit_ids),
+                missing=sorted(set(unit_ids) - resolved_unit_ids),
             )
             photos = {}
             for unit_id in unit_ids:
                 cameo_path = cameo_paths.get(unit_id)
-                if not cameo_path:
+                photo = (
+                    archipelago_photo
+                    if unit_id in archipelago_unit_ids
+                    else self.cameo_photo_cache.get(unit_id)
+                )
+                if photo is None and not cameo_path:
                     continue
-                photo = self.cameo_photo_cache.get(unit_id)
                 if photo is None:
                     try:
                         photo = tk.PhotoImage(file=str(cameo_path))
@@ -849,8 +907,14 @@ class UnlockViewController:
 
         power_ids = sorted(set(re.findall(r'\[\[MOR_POWER:([A-Za-z0-9_]+)\]\]', text)))
         if power_ids:
+            archipelago_power_ids = {
+                power_id for power_id in power_ids
+                if self.unlock_key_is_archipelago(f'power:{power_id}')
+            }
             try:
-                power_cameo_paths = ensure_superweapon_cameos(power_ids)
+                power_cameo_paths = ensure_superweapon_cameos(
+                    set(power_ids) - archipelago_power_ids
+                )
             except Exception:
                 power_cameo_paths = {}
                 log_event(
@@ -859,11 +923,20 @@ class UnlockViewController:
                     traceback=traceback.format_exc(),
                 )
             normalized_power_ids = {power_id.upper() for power_id in power_ids}
+            archipelago_photo = (
+                self._unlock_archipelago_cameo()
+                if archipelago_power_ids else None
+            )
+            resolved_power_ids = set(power_cameo_paths)
+            if archipelago_photo is not None:
+                resolved_power_ids.update(
+                    power_id.upper() for power_id in archipelago_power_ids
+                )
             log_event(
                 'superweapon_cameos_resolved',
                 requested=len(normalized_power_ids),
-                resolved=len(power_cameo_paths),
-                missing=sorted(normalized_power_ids - set(power_cameo_paths)),
+                resolved=len(resolved_power_ids),
+                missing=sorted(normalized_power_ids - resolved_power_ids),
             )
             for power_id in power_ids:
                 token = f'[[MOR_POWER:{power_id}]]'
@@ -871,7 +944,11 @@ class UnlockViewController:
                 while position:
                     self.unlocks_text.delete(position, f'{position}+{len(token)}c')
                     cache_key = f'power:{power_id.upper()}'
-                    photo = self.cameo_photo_cache.get(cache_key)
+                    photo = (
+                        archipelago_photo
+                        if power_id in archipelago_power_ids
+                        else self.cameo_photo_cache.get(cache_key)
+                    )
                     cameo_path = power_cameo_paths.get(power_id.upper())
                     if photo is None and cameo_path:
                         try:

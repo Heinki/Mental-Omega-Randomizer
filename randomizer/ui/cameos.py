@@ -18,6 +18,7 @@ from randomizer.core.paths import (
 ART_CACHE_PATH = CAMEO_CACHE_DIR / 'artmo.ini'
 RULES_CACHE_PATH = CAMEO_CACHE_DIR / 'rulesmo.ini'
 BONUS_MIX_PATH = SOURCE_DIR / 'assets' / 'expandmo21 Bonus.mix'
+ARCHIPELAGO_CAMEO_PATH = SOURCE_DIR / 'assets' / 'archipelago.png'
 SAFE_ASSET_NAME = re.compile(r'^[A-Za-z0-9_.-]+$')
 _ART_CAMEO_NAMES = None
 _RULES_ART_NAMES = None

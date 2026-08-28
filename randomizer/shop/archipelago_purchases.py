@@ -9,6 +9,22 @@ from .model import PurchaseResult, PurchaseValidation
 TRANSACTION_KEY = 'shop_purchase_transactions'
 
 
+def archipelago_purchase_placement_text(record):
+    """Return stable item and recipient labels for one scouted purchase."""
+    if not isinstance(record, dict) or not record:
+        return 'Awaiting server details', '—'
+    item_name = str(record.get('item_name') or '').strip()
+    if not item_name:
+        item_name = f'Item #{int(record.get("item", 0))}'
+    recipient = str(record.get('recipient_player') or '').strip()
+    if not recipient:
+        recipient = f'Player {int(record.get("player", 0))}'
+    recipient_game = str(record.get('recipient_game') or '').strip()
+    if recipient_game:
+        recipient = f'{recipient} ({recipient_game})'
+    return item_name, recipient
+
+
 def archipelago_purchase_records(profile, identity):
     scoped = profile.archipelago_profiles.get(str(identity), {})
     if not isinstance(scoped, dict):

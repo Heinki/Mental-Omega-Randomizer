@@ -505,13 +505,16 @@ def build_shop_tab(self, workspace_tabs):
     ap_purchase_frame.grid(row=1, column=0, sticky='nsew')
     self.shop_ap_purchase_tree = _tree(
         ap_purchase_frame,
-        ('purchase', 'status', 'cost'),
+        ('purchase', 'item', 'recipient', 'status', 'cost'),
         (
-            ('purchase', 'Generated Purchase', 160),
-            ('status', 'Status', 330),
-            ('cost', 'Gem Cost', 150),
+            ('purchase', 'Purchase', 75),
+            ('item', 'Archipelago Item', 230),
+            ('recipient', 'Recipient / World', 180),
+            ('status', 'Status', 210),
+            ('cost', 'Gem Cost', 80),
         ),
         height=10,
+        cameos=True,
     )
     self.shop_ap_purchase_tree.bind(
         '<Double-1>', self.buy_selected_archipelago_purchase

@@ -149,13 +149,16 @@ In Shop Mode, use the launcher's **Shop Run** workspace. Its mission pool and
 run length come from the signed room. Every victory reports the next private
 stage marker and may report a shuffled mission-victory location. The
 **AP Purchases** panel spends the displayed persistent Gem price to
-send one generated purchase location; Archipelago determines its item. Pending
-purchases are retried after reconnecting without another debit. Finishing the
-complete Shop run reports the slot goal. Every received AP unit unlock is active
-for every run without consuming permanent extra-unit slots. Every received buff
-and power stack is also reapplied. This restart boost comes only from received
-AP items; it does not alter mission credits, Ore, or Gems. Generated
-YAML signs this behavior as `received_unit_loadout: all` in Shop settings.
+send one generated purchase location; Archipelago determines its item. Each row
+uses the Archipelago emblem and shows the scouted item name plus its recipient
+player/world. Pending purchases are retried after reconnecting without another
+debit. Finishing the complete Shop run reports the slot goal. Every received AP
+unit unlock is active for every run without consuming permanent extra-unit
+slots. Received AP items use the same emblem in Shop loadouts and both Unlocks
+views. Every received buff and power stack is also reapplied. This restart
+boost comes only from received AP items; it does not alter mission credits, Ore,
+or Gems. Generated YAML signs this behavior as `received_unit_loadout: all` in
+Shop settings.
 
 ## Disconnect and continue later
 
