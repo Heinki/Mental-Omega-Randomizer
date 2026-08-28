@@ -17,6 +17,7 @@ class IniLines(list):
         self._section_values_cache = {}
         self._section_values_preserve_cache = {}
         self._all_sections_cache = None
+        self._all_sections_preserve_cache = None
 
     def __setitem__(self, key, value):
         super().__setitem__(key, value)
@@ -184,6 +185,33 @@ def all_section_value_maps(lines):
             current_values[key.strip().lower()] = value.strip()
     if isinstance(lines, IniLines):
         lines._all_sections_cache = {
+            section: dict(values) for section, values in sections.items()
+        }
+    return sections
+
+
+def all_section_value_maps_preserve(lines):
+    """Return every section while preserving key spelling and casing."""
+    if (
+        isinstance(lines, IniLines)
+        and lines._all_sections_preserve_cache is not None
+    ):
+        return {
+            section: dict(values)
+            for section, values in lines._all_sections_preserve_cache.items()
+        }
+    sections = {}
+    current_values = None
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            current_values = {}
+            sections[stripped[1:-1].strip()] = current_values
+        elif current_values is not None and '=' in line:
+            key, value = line.split('=', 1)
+            current_values[key.strip()] = value.strip()
+    if isinstance(lines, IniLines):
+        lines._all_sections_preserve_cache = {
             section: dict(values) for section, values in sections.items()
         }
     return sections

@@ -9,6 +9,7 @@ from randomizer.rewards.enemy_scaling import (
 
 from ._shared import (
     all_section_value_maps,
+    all_section_value_maps_preserve,
     BUFF_TARGETS,
     build_unit_usage_index,
     canonical_house_name,
@@ -313,7 +314,8 @@ def enemy_native_unit_buff_rules(
 
     sections = all_section_value_maps(lines)
     sections_by_lower = {
-        str(section).lower(): values for section, values in sections.items()
+        str(section).lower(): values
+        for section, values in all_section_value_maps_preserve(lines).items()
     }
     installed_by_lower = {
         str(section).lower(): values

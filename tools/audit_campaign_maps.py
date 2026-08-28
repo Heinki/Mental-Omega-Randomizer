@@ -18,7 +18,10 @@ if str(ROOT) not in sys.path:
 from randomizer.application.launch_controller import LaunchController
 from randomizer.config.player import DEFAULT_CONFIG
 from randomizer.core.paths import BATTLE_CLIENT_INI, GENERATED_MAP_DIR
-from randomizer.maps._shared import section_value_map_preserve
+from randomizer.maps._shared import (
+    all_section_value_maps_preserve,
+    section_value_map_preserve,
+)
 from randomizer.maps.base import is_generated_hooked_map
 from randomizer.missions.catalogue import parse_missions
 from randomizer.rewards.catalogue import (
@@ -196,6 +199,29 @@ def _assert_targeted_contracts(generated_paths):
             raise AssertionError(f'{path.name} has cloneable MORPYURIPR')
     if not yuri_prime_maps:
         raise AssertionError('No generated map contained MORPYURIPR')
+
+    for path in generated_paths:
+        lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
+        sections = all_section_value_maps_preserve(lines)
+        sections_by_lower = {
+            str(section).lower(): values
+            for section, values in sections.items()
+        }
+        enemy_weapon_ids = [
+            str(value)
+            for value in sections_by_lower.get('weapontypes', {}).values()
+            if str(value).upper().startswith('MORE')
+        ]
+        for weapon_id in enemy_weapon_ids:
+            values = sections_by_lower.get(weapon_id.lower(), {})
+            missing = [
+                key for key in ('Projectile', 'Warhead') if key not in values
+            ]
+            if missing:
+                raise AssertionError(
+                    f'{path.name} enemy weapon {weapon_id} lacks exact-cased '
+                    f'{", ".join(missing)}'
+                )
 
 
 def main():
