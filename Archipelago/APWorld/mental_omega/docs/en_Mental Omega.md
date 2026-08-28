@@ -5,7 +5,7 @@ victory checks through its existing debug-log hooks, and applies received
 technology and buff rewards to later generated mission maps.
 
 This APWorld uses a checksum-protected run manifest exported by Mental Omega
-Randomizer 1.30. It supports the full 97-mission reward catalogue plus stable
+Randomizer 1.31. It supports the full 97-mission reward catalogue plus stable
 Shop purchase, stage-reward, and private stage-logic IDs. Each seed activates
 only the locations and item counts described by its manifest.
 

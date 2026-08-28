@@ -2,7 +2,7 @@
 
 1. Close Archipelago tools and copy this `.apworld` into Archipelago 0.6.7's
    `custom_worlds` folder.
-2. Put Mental Omega Randomizer 1.30 in a separate, unmodified Mental Omega
+2. Put Mental Omega Randomizer 1.31 in a separate, unmodified Mental Omega
    3.3.6 game root.
 3. Choose the desired launcher settings. In its **Archipelago** tab, set the
    slot name, then choose **Save Player YAML**. No separate local seed or YAML
