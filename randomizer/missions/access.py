@@ -1001,8 +1001,15 @@ def always_available_transport_rules(
     lines,
     chaos_mode=False,
     additional_build_houses=(),
+    additional_factories_by_unit=None,
 ):
     """Make relevant amphibious transports immediately buildable."""
+    additional_factories_by_unit = {
+        str(unit_id).upper(): tuple(factory_ids)
+        for unit_id, factory_ids in (
+            additional_factories_by_unit or {}
+        ).items()
+    }
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     player_countries = safe_build_countries(
@@ -1027,8 +1034,14 @@ def always_available_transport_rules(
     )
     rules = {}
     for family, (tech_id, prerequisite) in AMPHIBIOUS_TRANSPORTS.items():
-        if family not in allowed_families:
+        if (
+            family not in allowed_families
+            and tech_id.upper() not in additional_factories_by_unit
+        ):
             continue
+        additional_factories = additional_factories_by_unit.get(
+            tech_id.upper(), ()
+        )
         values = {
             'TechLevel': '1',
             'Owner': owners,
@@ -1039,10 +1052,13 @@ def always_available_transport_rules(
             values.update(_chaos_prerequisite_rules(
                 'naval',
                 prerequisite,
+                additional_factories,
                 production_alternatives=chaos_alternatives,
             ))
         else:
-            values.update(_standard_prerequisite_rules(prerequisite))
+            values.update(_standard_prerequisite_rules(
+                prerequisite, additional_factories
+            ))
         rules[tech_id] = values
     return rules
 

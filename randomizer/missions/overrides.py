@@ -174,6 +174,18 @@ MISSION_OBJECTIVE_CLONE_EVENT_REFS = {
     ).items()
 }
 
+# Extra physical factories that may build an always-available amphibious
+# transport in one reviewed mission. Normal naval production remains valid.
+MISSION_TRANSPORT_FACTORY_EXCEPTIONS = {
+    code: {
+        str(unit_id).upper(): tuple(factory_ids)
+        for unit_id, factory_ids in values.items()
+    }
+    for code, values in _MISSION_CONFIG.get(
+        'transport_factory_exceptions', {}
+    ).items()
+}
+
 # Mission-only production merged after progression locks. These never become
 # permanent seed rewards.
 MISSION_REQUIRED_ACCESS_RULES = dict(_MISSION_CONFIG['required_access_rules'])

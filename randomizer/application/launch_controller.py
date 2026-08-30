@@ -21,6 +21,7 @@ from ._dependencies import (
     MISSION_ORIGINAL_MCV_ACCESS_IDS,
     MISSION_REQUIRED_ACCESS_RULES,
     MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS,
+    MISSION_TRANSPORT_FACTORY_EXCEPTIONS,
     NEXT_OBJECTIVE_CHECK_ID,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
@@ -133,6 +134,9 @@ class LaunchController:
             {},
         )
         mission_code = str(mission.get('code') or '').upper()
+        transport_factory_exceptions = (
+            MISSION_TRANSPORT_FACTORY_EXCEPTIONS.get(mission_code, {})
+        )
         excluded_special_infantry_factories = (
             MISSION_SPECIAL_INFANTRY_FACTORY_EXCLUSIONS.get(
                 mission_code, ()
@@ -265,6 +269,7 @@ class LaunchController:
                 lines,
                 chaos_mode=True,
                 additional_build_houses=(),
+                additional_factories_by_unit=transport_factory_exceptions,
             )
             for section, values in transport_rules.items():
                 rules.setdefault(section, {}).update(values)
@@ -341,6 +346,7 @@ class LaunchController:
         transport_rules = always_available_transport_rules(
             lines,
             additional_build_houses=(),
+            additional_factories_by_unit=transport_factory_exceptions,
         )
         for section, values in transport_rules.items():
             rules.setdefault(section, {}).update(values)

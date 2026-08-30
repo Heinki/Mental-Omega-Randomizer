@@ -5,6 +5,46 @@ from tkinter import ttk
 
 
 _active_tooltip = None
+_TOOLTIP_MARGIN = 4
+
+
+def _owner_bounds(widget):
+    """Return client-area screen bounds for the window owning a widget."""
+    owner = widget.winfo_toplevel()
+    owner.update_idletasks()
+    left = owner.winfo_rootx()
+    top = owner.winfo_rooty()
+    return (
+        left,
+        top,
+        left + max(1, owner.winfo_width()),
+        top + max(1, owner.winfo_height()),
+    )
+
+
+def _confined_tooltip_position(
+    widget,
+    tip_width,
+    tip_height,
+    pointer_x,
+    pointer_y,
+    horizontal_gap,
+    vertical_gap,
+):
+    """Place a tooltip beside the pointer inside its launcher window."""
+    left, top, right, bottom = _owner_bounds(widget)
+    x = pointer_x + horizontal_gap
+    if x + tip_width > right - _TOOLTIP_MARGIN:
+        x = pointer_x - horizontal_gap - tip_width
+    maximum_x = max(left + _TOOLTIP_MARGIN, right - tip_width - _TOOLTIP_MARGIN)
+    maximum_y = max(top + _TOOLTIP_MARGIN, bottom - tip_height - _TOOLTIP_MARGIN)
+    return (
+        max(left + _TOOLTIP_MARGIN, min(x, maximum_x)),
+        max(
+            top + _TOOLTIP_MARGIN,
+            min(pointer_y + vertical_gap, maximum_y),
+        ),
+    )
 
 
 def _activate_tooltip(owner):
@@ -101,16 +141,17 @@ class WidgetTooltip:
         self.tip.update_idletasks()
         tip_width = self.tip.winfo_reqwidth()
         tip_height = self.tip.winfo_reqheight()
-        screen_width = self.widget.winfo_screenwidth()
-        screen_height = self.widget.winfo_screenheight()
         pointer_x = self.widget.winfo_pointerx()
         pointer_y = self.widget.winfo_pointery()
-        gap = 24
-        if pointer_x + gap + tip_width <= screen_width - 4:
-            x = pointer_x + gap
-        else:
-            x = max(4, pointer_x - gap - tip_width)
-        y = max(4, min(pointer_y + 12, screen_height - tip_height - 4))
+        x, y = _confined_tooltip_position(
+            self.widget,
+            tip_width,
+            tip_height,
+            pointer_x,
+            pointer_y,
+            24,
+            12,
+        )
         self.tip.wm_geometry(f'+{x}+{y}')
 
     def hide(self, _event=None):
@@ -149,8 +190,8 @@ class TreeTooltip:
             self.hide()
             return
 
-        x = self.tree.winfo_rootx() + event.x + 18
-        y = self.tree.winfo_rooty() + event.y + 12
+        pointer_x = self.tree.winfo_rootx() + event.x
+        pointer_y = self.tree.winfo_rooty() + event.y
         if row != self.current_row:
             self.hide()
             self.current_row = row
@@ -169,6 +210,16 @@ class TreeTooltip:
                     wraplength=620,
                 )
                 label.grid(row=0, column=0)
+        self.tip.update_idletasks()
+        x, y = _confined_tooltip_position(
+            self.tree,
+            self.tip.winfo_reqwidth(),
+            self.tip.winfo_reqheight(),
+            pointer_x,
+            pointer_y,
+            18,
+            12,
+        )
         self.tip.wm_geometry(f'+{x}+{y}')
 
     def _build_reward_tooltip(self, text):

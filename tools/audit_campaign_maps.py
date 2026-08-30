@@ -73,7 +73,12 @@ class _HookAudit(LaunchController):
 
 
 class _AuditLauncher(LaunchController):
-    def __init__(self, reward_mode='Chaos', progression_mode='Shop Mode'):
+    def __init__(
+        self,
+        reward_mode='Chaos',
+        progression_mode='Shop Mode',
+        enemy_effect_ids=None,
+    ):
         self._reward_mode = reward_mode
         self._progression_mode = progression_mode
         self.config = deepcopy(DEFAULT_CONFIG)
@@ -102,8 +107,19 @@ class _AuditLauncher(LaunchController):
             for reward_id in player_reward_ids
         ]
         self.enemy_entries = []
+        selected_enemy_effect_ids = (
+            None
+            if enemy_effect_ids is None
+            else {str(effect_id) for effect_id in enemy_effect_ids}
+        )
         for definition in ENEMY_BUFF_DEFINITIONS:
-            if not str(definition['id']).startswith('tier1_'):
+            if (
+                selected_enemy_effect_ids is None
+                and not str(definition['id']).startswith('tier1_')
+            ) or (
+                selected_enemy_effect_ids is not None
+                and definition['id'] not in selected_enemy_effect_ids
+            ):
                 continue
             reward = canonical_reward({'name': definition['name']})
             for _stack in range(int(definition['maximum_stacks'])):
@@ -191,6 +207,18 @@ class _AuditLauncher(LaunchController):
 
     def active_starting_tier_one_defense_expanded_ids(self):
         return ()
+
+    def active_starting_tier_one_unit_ids(self):
+        return ()
+
+    def active_starting_tier_one_defense_ids(self):
+        return ()
+
+    def active_standard_starter_families(self):
+        return ()
+
+    def active_unlocked_reward_tech_ids(self):
+        return unlocked_reward_tech_ids(self.player_rewards)
 
     def launch_state_document(self):
         return {
@@ -374,6 +402,99 @@ def _assert_mermaid_mode_matrix(missions):
                 root_map.unlink()
 
 
+def _mission_prerequisites(values):
+    prerequisites = [str(values.get('Prerequisite') or '').upper()]
+    try:
+        list_count = int(str(values.get('Prerequisite.Lists') or '0'))
+    except ValueError:
+        list_count = 0
+    prerequisites.extend(
+        str(values.get(f'Prerequisite.List{index}') or '').upper()
+        for index in range(1, list_count + 1)
+    )
+    return {value for value in prerequisites if value}
+
+
+def _assert_golden_gate_transport_factories(missions):
+    mission = next(mission for mission in missions if mission['code'] == 'SGGATE')
+    for reward_mode in ('Standard', 'Chaos'):
+        launcher = _AuditLauncher(
+            reward_mode=reward_mode,
+            progression_mode='Shop Mode',
+        )
+        allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+        extra_rules = launcher.map_rules_for_launch(
+            allowed_unlocked_tech_ids=allowed
+        )
+        for section, values in launcher.mission_required_launch_rules(
+            mission
+        ).items():
+            extra_rules.setdefault(section, {}).update(values)
+        hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+        if hook is None:
+            raise AssertionError(f'No SGGATE map for Shop Mode/{reward_mode}')
+        generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+        transport = section_value_map_preserve(
+            generated_path.read_text(
+                encoding='utf-8', errors='ignore'
+            ).splitlines(),
+            'MORPSAPC',
+        )
+        missing = {'GAWEAP', 'NAYARD'} - _mission_prerequisites(transport)
+        if missing:
+            raise AssertionError(
+                f'SGGATE Shop Mode/{reward_mode} Zubr lacks factory path(s): '
+                + ', '.join(sorted(missing))
+            )
+        root_map = Path(hook['root_map'])
+        if root_map.is_file() and is_generated_hooked_map(root_map):
+            root_map.unlink()
+
+
+def _assert_taciturn_tier_three_weapon_clone(missions):
+    mission = next(mission for mission in missions if mission['code'] == 'ETACI')
+    launcher = _AuditLauncher(
+        reward_mode='Standard',
+        progression_mode='Shop Mode',
+        enemy_effect_ids={'tier3_damage'},
+    )
+    allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+    extra_rules = launcher.map_rules_for_launch(
+        allowed_unlocked_tech_ids=allowed
+    )
+    for section, values in launcher.mission_required_launch_rules(
+        mission
+    ).items():
+        extra_rules.setdefault(section, {}).update(values)
+    hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+    if hook is None:
+        raise AssertionError('No ETACI map for Tier 3 enemy weapon audit')
+    generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+    lines = generated_path.read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    weapon_ids = [
+        str(value)
+        for value in section_value_map_preserve(lines, 'WeaponTypes').values()
+        if str(value).upper() == 'MORE3TTNKTANKBOLT'
+    ]
+    if len(weapon_ids) != 1:
+        raise AssertionError(
+            'ETACI Tier 3 damage audit did not create one TankBolt clone'
+        )
+    weapon = section_value_map_preserve(lines, weapon_ids[0])
+    if (
+        weapon.get('Projectile') != 'NotbounceEMP'
+        or weapon.get('Warhead') != 'ElectricTank2'
+    ):
+        raise AssertionError(
+            f'ETACI enemy weapon {weapon_ids[0]} lacks complete authored rules'
+        )
+    root_map = Path(hook['root_map'])
+    if root_map.is_file() and is_generated_hooked_map(root_map):
+        root_map.unlink()
+
+
 def main():
     _assert_hook_restart_race()
     missions = parse_missions(BATTLE_CLIENT_INI)
@@ -401,6 +522,8 @@ def main():
             print(f'[{index:02d}/97] {mission["code"]}', flush=True)
         _assert_targeted_contracts(generated)
         _assert_mermaid_mode_matrix(missions)
+        _assert_golden_gate_transport_factories(missions)
+        _assert_taciturn_tier_three_weapon_clone(missions)
         if not any(
             'Applied composed Shop run clone modifiers:' in message
             for _error, message in launcher.logs
@@ -413,7 +536,7 @@ def main():
                 root_map.unlink()
     print(
         'All 97 campaign maps passed Shop modifier/boon/Yuri/AI audit; '
-        'Mermaid passed all progression/reward modes.'
+        'Mermaid, Golden Gate, and Taciturn focused checks passed.'
     )
 
 

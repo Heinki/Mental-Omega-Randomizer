@@ -316,6 +316,13 @@ Entered-by-PsiCorps tag to the authored Driller, so Malver boarding completes
 the evacuation condition even though transported passengers remain live game
 objects.
 
+`transport_factory_exceptions` adds reviewed physical factory alternatives to
+an always-available amphibious transport without removing its normal naval
+yard path. Keys are mission codes, then transport TechnoType IDs; each value is
+a non-empty list of extra factory IDs. Golden Gate adds `GAWEAP` for `SAPC`, so
+its Zubr can be rebuilt from the captured Allied War Factory or Soviet Naval
+Yard in every reward mode.
+
 `special_infantry_factory_exclusions` lists map-local `Factory=InfantryType`
 buildings that serve only authored mission production. Excluded factories are
 never appended to randomizer Engineer, Standard infantry, or Chaos infantry

@@ -40,6 +40,7 @@ REQUIRED_SECTIONS = {
         'special_infantry_factory_exclusions': dict,
         'victory_hook_action_ids': dict,
         'objective_clone_event_refs': dict,
+        'transport_factory_exceptions': dict,
         'required_access_rules': dict,
         'techno_base_rules': dict,
         'map_section_rules': dict,
@@ -300,6 +301,38 @@ def _validate_missions(sections, path):
                 f'Invalid native_production_aliases entry for {code!r}',
                 path,
             )
+
+    for code, unit_factories in sections[
+        'transport_factory_exceptions'
+    ].items():
+        if (
+            not _is_nonempty_string(code)
+            or code not in sections['build_classifications']
+            or not isinstance(unit_factories, dict)
+            or not unit_factories
+        ):
+            _invalid(
+                f'Invalid transport_factory_exceptions entry for {code!r}',
+                path,
+            )
+        for unit_id, factory_ids in unit_factories.items():
+            if (
+                not _is_nonempty_string(unit_id)
+                or not isinstance(factory_ids, list)
+                or not factory_ids
+                or any(
+                    not _is_nonempty_string(factory_id)
+                    for factory_id in factory_ids
+                )
+                or len(factory_ids) != len({
+                    factory_id.upper() for factory_id in factory_ids
+                })
+            ):
+                _invalid(
+                    'Invalid transport factory list for '
+                    f'{code!r}/{unit_id!r}',
+                    path,
+                )
 
     for code, redirects in sections.get(
         'objective_hook_action_redirects', {}

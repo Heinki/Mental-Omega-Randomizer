@@ -1613,20 +1613,14 @@
         ]
       }
     },
-    "required_access_rules": {
+    "transport_factory_exceptions": {
       "SGGATE": {
-        "SAPC": {
-          "TechLevel": "1",
-          "BuildLimit": null,
-          "Owner": "USSR,Latin,Chinese,MORPLAYER",
-          "RequiredHouses": "USSR,Latin,Chinese,MORPLAYER",
-          "ForbiddenHouses": "none",
-          "Prerequisite": "NAWEAP",
-          "PrerequisiteOverride": null,
-          "Prerequisite.List0": null,
-          "Prerequisite.Lists": null
-        }
-      },
+        "SAPC": [
+          "GAWEAP"
+        ]
+      }
+    },
+    "required_access_rules": {
       "EHEAD": {
         "FOX": {
           "TechLevel": "1",
