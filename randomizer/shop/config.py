@@ -10,6 +10,7 @@ from .model import (
     ShopModeConfig,
     ShopPowerPriceDefinition,
     ShopTargetPriceDefinition,
+    StageDifficultyProfile,
     StageWeightProfile,
 )
 
@@ -36,6 +37,16 @@ def load_shop_mode_config() -> ShopModeConfig:
             },
         )
         for profile in sections['stage_class_weights']
+    )
+    stage_difficulty_weights = tuple(
+        StageDifficultyProfile(
+            through_percent=int(profile['through_percent']),
+            weights={
+                str(difficulty): int(weight)
+                for difficulty, weight in profile['weights'].items()
+            },
+        )
+        for profile in sections['stage_difficulty_weights']
     )
     upgrades = {
         upgrade_id: PermanentUpgradeDefinition(
@@ -89,6 +100,7 @@ def load_shop_mode_config() -> ShopModeConfig:
         ),
         mission_rewards=mission_rewards,
         stage_class_weights=stage_weights,
+        stage_difficulty_weights=stage_difficulty_weights,
         power_target_prices={
             str(target_id): ShopPowerPriceDefinition(
                 run_access=definition['run_access'],

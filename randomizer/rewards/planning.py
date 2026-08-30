@@ -4,6 +4,7 @@ import random
 
 from randomizer.progression.grid import grid_opening_mission_codes
 from randomizer.rewards.rules import tech_ids_for_rewards
+from randomizer.rewards.access_limits import normalize_access_limits
 from randomizer.rewards.catalogue import (
     ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
@@ -70,6 +71,7 @@ def plan_seed_rewards(
     avoid_unlocked_access=False,
     blocked_reward_names=(),
     reserved_rewards=(),
+    access_limits=None,
 ):
     """Assign rewards without reading GUI or mutable launcher state.
 
@@ -78,6 +80,10 @@ def plan_seed_rewards(
     """
     rng = random.Random(f'{seed}:{rng_namespace}')
     used_access_names = set()
+    normalized_access_limits = normalize_access_limits(access_limits)
+    access_limits_enabled = normalized_access_limits['enabled']
+    counted_unit_access_ids = set()
+    counted_power_access_ids = set()
     seed_unlocked_tech_ids = (
         set(starting_unlocked_tech_ids)
         | set(ALWAYS_AVAILABLE_TECH_IDS)
@@ -150,6 +156,43 @@ def plan_seed_rewards(
             seed_unlocked_tech_ids | reserved_tech_ids
         ))
 
+    def access_limit_allows(reward):
+        if not access_limits_enabled or reward.get('kind') == 'buff':
+            return True
+        if reward.get('kind') == 'superweapon':
+            power_id = str(reward.get('superweapon') or '').upper()
+            return (
+                not power_id
+                or power_id in counted_power_access_ids
+                or len(counted_power_access_ids)
+                < normalized_access_limits['powers']
+            )
+        metadata = reward_metadata.get(id(reward), {})
+        reward_tech_ids = metadata.get('tech_ids')
+        if reward_tech_ids is None:
+            reward_tech_ids = frozenset(tech_ids_for_rewards([reward]))
+        new_ids = set(reward_tech_ids) - counted_unit_access_ids
+        return (
+            len(counted_unit_access_ids) + len(new_ids)
+            <= normalized_access_limits['units']
+        )
+
+    def record_access_reward(reward):
+        name = reward.get('name')
+        if name:
+            used_access_names.add(name)
+        if reward.get('kind') == 'superweapon':
+            power_id = str(reward.get('superweapon') or '').upper()
+            if power_id:
+                counted_power_access_ids.add(power_id)
+            return
+        if reward.get('kind') != 'buff':
+            metadata = reward_metadata.get(id(reward), {})
+            reward_tech_ids = metadata.get('tech_ids')
+            if reward_tech_ids is None:
+                reward_tech_ids = tech_ids_for_rewards([reward])
+            counted_unit_access_ids.update(reward_tech_ids)
+
     def buff_count_key(reward):
         unit = reward.get('unit')
         if share_role_buffs and unit and not reward.get('global_buff'):
@@ -197,9 +240,7 @@ def plan_seed_rewards(
             buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
             record_buff_target(reward)
             continue
-        name = reward.get('name')
-        if name:
-            used_access_names.add(name)
+        record_access_reward(reward)
         if reward.get('kind') == 'superweapon' and reward.get('superweapon'):
             power_id = str(reward['superweapon']).upper()
             seed_unlocked_power_ids.add(power_id)
@@ -231,9 +272,7 @@ def plan_seed_rewards(
             buff_counts[count_key] = buff_counts.get(count_key, 0) + 1
             record_buff_target(reward)
             continue
-        name = reward.get('name')
-        if name:
-            used_access_names.add(name)
+        record_access_reward(reward)
 
     # Cache each faction pool once. Canonicalization and metadata are static
     # during one draw.
@@ -530,10 +569,13 @@ def plan_seed_rewards(
             if access_already_unlocked(reward):
                 access.pop(index)
                 continue
+            if not access_limit_allows(reward):
+                access.pop(index)
+                continue
             if unit_only and not is_unit_access(reward):
                 continue
             access.pop(index)
-            used_access_names.add(name)
+            record_access_reward(reward)
             return dict(reward)
         return None
 
@@ -638,6 +680,8 @@ def plan_seed_rewards(
                 continue
             if access_already_unlocked(reward):
                 continue
+            if not access_limit_allows(reward):
+                continue
             count_key = metadata.get('count_key', name)
             if limit is not None and buff_counts.get(count_key, 0) >= limit:
                 continue
@@ -720,7 +764,7 @@ def plan_seed_rewards(
                     affected_target_keys(selected_target_key)
                 )
         else:
-            used_access_names.add(reward.get('name'))
+            record_access_reward(reward)
         return reward
 
     def weighted_choice(items, weight_for):
@@ -752,6 +796,8 @@ def plan_seed_rewards(
                 if not reward_prerequisites_met(reward):
                     continue
                 if access_already_unlocked(reward):
+                    continue
+                if not access_limit_allows(reward):
                     continue
                 if unit_only and not metadata['unit_access']:
                     continue
@@ -853,7 +899,7 @@ def plan_seed_rewards(
             record_drawn_buff(reward)
             balanced_target_groups_by_pool_id.clear()
         else:
-            used_access_names.add(reward.get('name'))
+            record_access_reward(reward)
         return reward
 
     slot_order = []

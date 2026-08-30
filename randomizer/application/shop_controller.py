@@ -48,6 +48,7 @@ from randomizer.shop.economy import (
 )
 from randomizer.shop.missions import (
     generate_mission_offers,
+    mission_difficulty,
     mission_classes_for_stage,
 )
 from randomizer.shop.mission_modifiers import active_mission_modifier
@@ -680,23 +681,39 @@ class ShopController(ShopPolishController):
             run, challenge_slots=self._shop_challenge_slots()
         )
 
-    def shop_eased_difficulty_labels(self):
+    def shop_mission_difficulty_label(self, run, mission_code):
+        if run is None:
+            return 'Casual'
+        return mission_difficulty(
+            run.seed,
+            run.stage,
+            mission_code,
+            run_length=run.run_length,
+        )
+
+    def shop_mission_difficulty_value(self, run, mission_code):
+        return dict(DIFFICULTIES).get(
+            self.shop_mission_difficulty_label(run, mission_code),
+            0,
+        )
+
+    def shop_eased_difficulty_labels(self, run, mission_code):
         labels = [name for name, _value in DIFFICULTIES]
-        current = self.difficulty_var.get()
+        current = self.shop_mission_difficulty_label(run, mission_code)
         try:
             index = labels.index(current)
         except ValueError:
-            index = 1
+            index = 0
         return current, labels[max(0, index - 1)]
 
     def get_selected_difficulty_value(self):
-        value = super().get_selected_difficulty_value()
         run = self.__dict__.get('_shop_launch_run')
-        if (
-            run is not None
-            and run.selected_mission_code
-            and run.assisted_mission_code == run.selected_mission_code
-        ):
+        if run is None or not run.selected_mission_code:
+            return super().get_selected_difficulty_value()
+        value = self.shop_mission_difficulty_value(
+            run, run.selected_mission_code
+        )
+        if run.assisted_mission_code == run.selected_mission_code:
             return max(0, value - 1)
         return value
 
@@ -764,7 +781,59 @@ class ShopController(ShopPolishController):
         self._refresh_shop_history()
         self._refresh_archipelago_shop_purchases()
         self.refresh_shop_settings_controls()
+        if hasattr(self, 'shop_debug_mission_combo'):
+            self.refresh_shop_debug_completion_choices()
         self.refresh_progress_view()
+
+    def refresh_shop_debug_completion_choices(self):
+        """Populate the hidden developer picker from current Shop offers."""
+        if not hasattr(self, 'shop_debug_mission_combo'):
+            return
+        run = self.shop_repository.load_run()
+        offers = (
+            tuple(run.mission_offers)
+            if run is not None and run.status is RunStatus.ACTIVE
+            else ()
+        )
+        if run is not None and run.mission_committed:
+            offers = tuple(
+                offer for offer in offers
+                if offer.mission_code == run.selected_mission_code
+            )
+        previous_code = self.shop_debug_mission_codes.get(
+            self.shop_debug_mission_var.get(),
+            '',
+        )
+        labels = []
+        code_by_label = {}
+        for offer in offers:
+            code = str(offer.mission_code or '').upper()
+            mission = self._shop_mission(code)
+            title = str(mission.get('title') or code)
+            label = f'{title} [{code}]'
+            labels.append(label)
+            code_by_label[label] = code
+        self.shop_debug_mission_codes = code_by_label
+        self.shop_debug_mission_combo.configure(
+            values=labels,
+            state='readonly' if labels else 'disabled',
+        )
+        selected_code = (
+            str(run.selected_mission_code or '').upper()
+            if run is not None and run.mission_committed
+            else previous_code
+        )
+        selected_label = next(
+            (
+                label for label, code in code_by_label.items()
+                if code == selected_code
+            ),
+            labels[0] if labels else '',
+        )
+        self.shop_debug_mission_var.set(selected_label)
+        self.shop_debug_complete_button.configure(
+            state='normal' if labels else 'disabled'
+        )
 
     def _shop_unit_id_for_item(self, item_id):
         entry = catalogue_entry(canonical_reward_for_id(item_id))
@@ -1105,7 +1174,7 @@ class ShopController(ShopPolishController):
         except (IndexError, ShopTransitionError, ValueError) as exc:
             self._set_shop_message(exc, error=True)
         else:
-            normal, eased = self.shop_eased_difficulty_labels()
+            normal, eased = self.shop_eased_difficulty_labels(run, code)
             self._set_shop_message(
                 f'{code} eased from {normal} to {eased}; reward unchanged.'
             )
@@ -1347,18 +1416,32 @@ class ShopController(ShopPolishController):
             messagebox.showwarning('Shop Mode', 'No active Shop run.', parent=self)
             return
         code = str(run.selected_mission_code or '').upper()
+        if not run.mission_committed:
+            code = self.shop_debug_mission_codes.get(
+                self.shop_debug_mission_var.get(),
+                '',
+            )
         if not code:
             messagebox.showwarning(
-                'Shop Mode', 'Select a Shop mission first.', parent=self
+                'Shop Mode',
+                'Choose a current Shop mission beside the developer button.',
+                parent=self,
             )
             return
         try:
+            if not run.mission_committed:
+                run = self.shop_service.select_mission(code)
             run = self.shop_service.commit_mission(code)
             self._shop_launch_run = run
             self._shop_launch_mission_pool = tuple(
                 self._shop_run_mission_pool(run)
             )
             self.unlock_mission_check(code, 'victory', 'Debug override')
+        except ShopTransitionError as exc:
+            self._set_shop_message(exc, error=True)
+            messagebox.showwarning(
+                'Cannot Complete Shop Mission', str(exc), parent=self
+            )
         finally:
             self.finish_progression_launch_context()
 

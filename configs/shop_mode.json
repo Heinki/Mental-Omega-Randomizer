@@ -99,6 +99,24 @@
         }
       }
     ],
+    "stage_difficulty_weights": [
+      {
+        "through_percent": 30,
+        "weights": {"Casual": 80, "Normal": 20, "Mental": 0}
+      },
+      {
+        "through_percent": 50,
+        "weights": {"Casual": 35, "Normal": 65, "Mental": 0}
+      },
+      {
+        "through_percent": 70,
+        "weights": {"Casual": 20, "Normal": 60, "Mental": 20}
+      },
+      {
+        "through_percent": 100,
+        "weights": {"Casual": 10, "Normal": 45, "Mental": 45}
+      }
+    ],
     "power_target_prices": {
       "AMERICANPARADROPSPECIAL": {"run_access": 4, "run_buff": 2},
       "BACKWARPSPECIAL": {"run_access": 9, "run_buff": 5},

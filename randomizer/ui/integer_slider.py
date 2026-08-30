@@ -93,6 +93,12 @@ class IntegerSlider(ttk.Frame):
     def set(self, value):
         self._set_value(value)
 
+    def set_bounds(self, minimum, maximum):
+        """Update the allowed integer range and clamp the current value."""
+        self.minimum = int(minimum)
+        self.maximum = max(self.minimum, int(maximum))
+        self._set_value(self._raw_variable_value())
+
     def refresh_theme(self, palette):
         self.palette = dict(palette or {})
         background = self.palette.get('background', '#f0f0f0')

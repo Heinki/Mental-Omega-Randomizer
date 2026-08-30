@@ -90,6 +90,7 @@ REQUIRED_SECTIONS = {
         'settings': dict,
         'mission_rewards': dict,
         'stage_class_weights': list,
+        'stage_difficulty_weights': list,
         'power_target_prices': dict,
         'unit_target_prices': dict,
         'permanent_upgrades': dict,
@@ -205,6 +206,24 @@ def _validate_required_sections(config_key, sections, path):
         if not isinstance(sections[section], expected_type):
             _invalid(
                 f'Section {section!r} must be {expected_type.__name__}',
+                path,
+            )
+
+
+def _validate_default_player_config(sections, path):
+    generation = sections['defaults'].get('generation')
+    if not isinstance(generation, dict):
+        _invalid("Default 'generation' setting must be an object", path)
+    limits = generation.get('access_limits')
+    if not isinstance(limits, dict):
+        _invalid("Default 'access_limits' setting must be an object", path)
+    if not isinstance(limits.get('enabled'), bool):
+        _invalid("Default access_limits.enabled must be a boolean", path)
+    for key in ('units', 'powers'):
+        value = limits.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            _invalid(
+                f'Default access_limits.{key} must be a positive integer',
                 path,
             )
 
@@ -1432,6 +1451,7 @@ def _validate_catalogue(sections, path):
 
 
 CONFIG_VALIDATORS = {
+    'default_player_config.json': _validate_default_player_config,
     'missions.json': _validate_missions,
     'shop_mode.json': _validate_shop_mode,
     'rewards/unit_data.json': _validate_unit_data,

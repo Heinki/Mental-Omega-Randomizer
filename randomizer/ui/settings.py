@@ -983,11 +983,101 @@ def _build_gameplay_settings(self, settings_frame):
         'Adds only buffs valid for already-unlocked powers. Native mission powers remain unchanged.',
     )
 
+    self.access_limits_frame = ttk.Frame(reward_frame)
+    self.access_limits_frame.grid(row=13, column=0, sticky='ew', pady=(8, 0))
+    self.access_limits_frame.columnconfigure(0, weight=1)
+    self.limit_access_rewards_check = ttk.Checkbutton(
+        self.access_limits_frame,
+        text='Limit Units/Powers',
+        variable=self.limit_access_rewards_var,
+        command=self.refresh_setting_states,
+    )
+    self.limit_access_rewards_check.grid(
+        row=0, column=0, columnspan=3, sticky='w'
+    )
+    WidgetTooltip(
+        self.limit_access_rewards_check,
+        'Caps total unit/building and power unlocks across Starting Rewards and mission rewards. '
+        'Exact Starting Unlocks count toward the caps but are never removed. Tier 1 starters and '
+        'always-available essentials remain outside them. Disabled preserves unrestricted planning. '
+        'Shop Mode and Randomizer Arsenal do not use these caps.',
+    )
+    self.access_limit_options_frame = ttk.Frame(
+        self.access_limits_frame,
+        padding=(20, 6, 0, 2),
+    )
+    self.access_limit_options_frame.grid(row=1, column=0, sticky='ew')
+    self.access_limit_options_frame.columnconfigure(0, weight=1)
+
+    self.unit_access_limit_row = ttk.Frame(self.access_limit_options_frame)
+    self.unit_access_limit_row.grid(row=0, column=0, sticky='ew')
+    self.unit_access_limit_row.columnconfigure(0, weight=1)
+    ttk.Label(
+        self.unit_access_limit_row,
+        text='Units / buildings',
+        font=('Segoe UI', 9, 'bold'),
+    ).grid(row=0, column=0, sticky='w')
+    self.unit_access_limit_max_label = ttk.Label(
+        self.unit_access_limit_row,
+        text='',
+        style='Muted.TLabel',
+    )
+    self.unit_access_limit_max_label.grid(row=0, column=1, sticky='e')
+    self.unit_access_limit_slider = IntegerSlider(
+        self.unit_access_limit_row,
+        variable=self.unit_access_limit_var,
+        minimum=1,
+        maximum=max(1, len(REWARD_POOL)),
+        palette=self.ui_palette(),
+    )
+    self.unit_access_limit_slider.grid(
+        row=1, column=0, columnspan=2, sticky='ew', pady=(1, 0)
+    )
+
+    self.power_access_limit_row = ttk.Frame(self.access_limit_options_frame)
+    self.power_access_limit_row.grid(row=1, column=0, sticky='ew', pady=(7, 0))
+    self.power_access_limit_row.columnconfigure(0, weight=1)
+    ttk.Label(
+        self.power_access_limit_row,
+        text='Superpowers / aid powers',
+        font=('Segoe UI', 9, 'bold'),
+    ).grid(row=0, column=0, sticky='w')
+    self.power_access_limit_max_label = ttk.Label(
+        self.power_access_limit_row,
+        text='',
+        style='Muted.TLabel',
+    )
+    self.power_access_limit_max_label.grid(row=0, column=1, sticky='e')
+    self.power_access_limit_slider = IntegerSlider(
+        self.power_access_limit_row,
+        variable=self.power_access_limit_var,
+        minimum=1,
+        maximum=max(1, len(REWARD_POOL)),
+        palette=self.ui_palette(),
+    )
+    self.power_access_limit_slider.grid(
+        row=1, column=0, columnspan=2, sticky='ew', pady=(1, 0)
+    )
+    for control in (
+        self.unit_access_limit_slider,
+        self.power_access_limit_slider,
+    ):
+        WidgetTooltip(
+            control.canvas,
+            'Maximum unique access identities assigned to this generated seed. '
+            'Remaining reward slots use eligible buffs when possible.',
+        )
+        WidgetTooltip(
+            control.value_entry,
+            'Type an exact value or use arrow keys. The value is clamped to '
+            'the currently available reward pool.',
+        )
+
     ttk.Separator(reward_frame, orient='horizontal').grid(
-        row=13, column=0, sticky='ew', pady=(8, 6)
+        row=14, column=0, sticky='ew', pady=(8, 6)
     )
     starting_rewards_frame = ttk.Frame(reward_frame)
-    starting_rewards_frame.grid(row=14, column=0, sticky='ew')
+    starting_rewards_frame.grid(row=15, column=0, sticky='ew')
     starting_rewards_frame.columnconfigure(1, weight=1)
     ttk.Label(starting_rewards_frame, text='Starting Rewards').grid(
         row=0, column=0, sticky='w', padx=(0, 8)

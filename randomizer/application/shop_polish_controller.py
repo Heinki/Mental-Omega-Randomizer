@@ -335,6 +335,11 @@ class ShopPolishController(ShopArchipelagoController):
                     run.mission_committed
                     and run.selected_mission_code == offer.mission_code
                 )
+                normal_difficulty, eased_difficulty = (
+                    self.shop_eased_difficulty_labels(
+                        run, offer.mission_code
+                    )
+                )
                 marker = ' [IN PROGRESS]' if selected else ''
                 lines.extend((
                     '',
@@ -342,10 +347,10 @@ class ShopPolishController(ShopArchipelagoController):
                     f'({offer.mission_code}){marker}',
                     f'{mission.get("side") or "Unknown faction"} | '
                     f'{definition.display_name} | '
-                    f'Reward Tier {definition.difficulty}'
+                    f'Reward Tier {definition.difficulty} | '
+                    f'Game difficulty {normal_difficulty}'
                     + (
-                        f' | Game difficulty {self.shop_eased_difficulty_labels()[0]}'
-                        f' -> {self.shop_eased_difficulty_labels()[1]}'
+                        f' -> {eased_difficulty}'
                         if run.assisted_mission_code == offer.mission_code
                         else ''
                     ),
@@ -405,6 +410,10 @@ class ShopPolishController(ShopArchipelagoController):
                 card['code'] = ''
                 card['name'].set('No mission')
                 card['detail'].set('')
+                card['difficulty'].set('')
+                card['difficulty_label'].configure(
+                    style='Shop.Difficulty.Casual.TLabel'
+                )
                 card['reward'].set('')
                 card['effect'].set('')
                 card['effect_label'].configure(style='Shop.Help.TLabel')
@@ -444,20 +453,32 @@ class ShopPolishController(ShopArchipelagoController):
                 and run.selected_mission_code == offer.mission_code
             )
             assisted = run.assisted_mission_code == offer.mission_code
+            normal_difficulty, eased_difficulty = (
+                self.shop_eased_difficulty_labels(run, offer.mission_code)
+            )
             reward_hidden = offer.mission_code in hidden and not selected
             title = mission.get('title') or offer.mission_code
             faction = mission.get('side') or 'Unknown faction'
             card['code'] = offer.mission_code
             card['name'].set(f'{title} ({offer.mission_code})')
             card['detail'].set(
-                f'{faction} • {definition.display_name} • '
-                f'Reward Tier {definition.difficulty}'
-                f' • Run difficulty +{modifier_difficulty(run.modifiers)}'
+                f'Faction: {faction}\n'
+                f'Mission class: {definition.display_name}\n'
+                f'Reward tier: {definition.difficulty}\n'
+                f'Run difficulty: +{modifier_difficulty(run.modifiers)}'
+            )
+            effective_difficulty = (
+                eased_difficulty if assisted else normal_difficulty
+            )
+            card['difficulty'].set(
+                f'Game difficulty: {normal_difficulty}'
                 + (
-                    f' • Game difficulty {self.shop_eased_difficulty_labels()[0]}'
-                    f' -> {self.shop_eased_difficulty_labels()[1]}'
+                    f' → {eased_difficulty} (Eased)'
                     if assisted else ''
                 )
+            )
+            card['difficulty_label'].configure(
+                style=f'Shop.Difficulty.{effective_difficulty}.TLabel'
             )
             card['reward'].set(
                 'Exact reward hidden until mission launch'
@@ -538,7 +559,9 @@ class ShopPolishController(ShopArchipelagoController):
                     if rerolls_left else 'No Rerolls Left'
                 ),
             )
-            base_difficulty = super().get_selected_difficulty_value()
+            base_difficulty = self.shop_mission_difficulty_value(
+                run, offer.mission_code
+            )
             can_assist = bool(
                 enabled
                 and assists_left
@@ -546,8 +569,9 @@ class ShopPolishController(ShopArchipelagoController):
                 and not run.assisted_mission_code
             )
             if assisted:
-                normal, eased = self.shop_eased_difficulty_labels()
-                assist_text = f'Eased: {normal} -> {eased}'
+                assist_text = (
+                    f'Eased: {normal_difficulty} -> {eased_difficulty}'
+                )
             elif base_difficulty <= 0:
                 assist_text = 'Already Casual'
             elif run.assisted_mission_code:

@@ -24,6 +24,7 @@ from ._dependencies import (
     NEXT_OBJECTIVE_CHECK_ID,
     NO_BUILD_MISSION_CODES,
     OPTIONS_INI,
+    RESTART_FAILURE_GRACE_MS,
     REWARD_POOL,
     RULESMO_INI,
     SCRIPTED_TECH_BUILD_LIMIT,
@@ -768,16 +769,45 @@ class LaunchController:
                     check_id,
                     'In-game hook',
                 )
-                if check_id == 'victory' and unlocked:
-                    self.schedule_game_close_after_victory()
+                if check_id == 'victory':
+                    self.active_hook.pop('restart_detected_at', None)
+                    if unlocked:
+                        self.schedule_game_close_after_victory()
 
             if 'MapClass::Init_Clear entry' in line:
                 if self.active_hook.get('scenario_ready'):
                     self.active_hook['scenario_ready'] = False
                     if not self.is_mission_complete(code):
-                        self.record_failed_mission_attempt(code, 'In-game mission restart detected')
+                        # The engine may print Init_Clear before the victory
+                        # marker TeamType name during mission teardown. Give
+                        # that marker two watcher polls to arrive before an
+                        # actual restart is recorded as a failed attempt.
+                        self.active_hook.setdefault(
+                            'restart_detected_at',
+                            time.monotonic(),
+                        )
             elif 'Capture_Mouse()' in line:
                 self.active_hook['scenario_ready'] = True
+
+    def process_pending_restart_failure(self):
+        """Record a genuine in-game restart after the victory-marker grace."""
+        if not self.active_hook:
+            return False
+        detected_at = self.active_hook.get('restart_detected_at')
+        if detected_at is None:
+            return False
+        code = self.active_hook['mission_code']
+        if self.is_mission_complete(code):
+            self.active_hook.pop('restart_detected_at', None)
+            return False
+        elapsed_ms = (time.monotonic() - detected_at) * 1000
+        if elapsed_ms < RESTART_FAILURE_GRACE_MS:
+            return False
+        self.active_hook.pop('restart_detected_at', None)
+        return self.record_failed_mission_attempt(
+            code,
+            'In-game mission restart detected',
+        )
 
     def schedule_game_close_after_victory(self):
         hook = self.active_hook
@@ -842,6 +872,8 @@ class LaunchController:
                 self.process_hook_log_text(text)
             except OSError as exc:
                 self.append_log(f'Hook log read failed: {exc}', error=True)
+
+        self.process_pending_restart_failure()
 
         process = self.active_game_process
         if process is not None and process.poll() is None:

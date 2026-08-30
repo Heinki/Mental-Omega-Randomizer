@@ -32,6 +32,11 @@ that overlap only with full reward-plan and 97-map parity coverage.
   `generation.starting_unlock_rewards` stores portable canonical reward names
   manually selected in Advanced -> Starting Unlocks; only permanent content
   access/power rewards survive normalization, and legacy configs default empty.
+  `generation.access_limits` optionally caps unique unit/building and power
+  unlock identities across Starting Rewards and mission rewards. Its `units`
+  and `powers` values are positive integers; `enabled` defaults to `false`, so
+  absent legacy settings retain unrestricted planning. Shop Mode and Randomizer
+  Arsenal ignore these caps.
 - `missions.json`: mission build classifications, configurable mission reward
   classes/multipliers and per-mission overrides, optional-operation membership, helper/enemy house policy,
   production/power house exceptions, native identity exclusions, map-specific
@@ -125,6 +130,13 @@ generation samples only its named Shop RNG stream. A zero class weight is a
 hard stage exclusion: stages 1–2 offer only Act 1, operations begin at stage 5,
 and finales begin at stage 9. Protected opening offers include a fixed-unit or
 hero mission when the eligible campaign pool provides one.
+`stage_difficulty_weights` independently controls actual in-game Casual,
+Normal, and Mental difficulty for each visible mission offer. Profiles use the
+same ascending percentage boundaries. The offer's difficulty is derived from
+run seed, stage, and mission code without consuming mission-selection RNG.
+Stages 1–3 are Casual-heavy, stages 4–5 are Normal-heavy, stages 6–7 introduce
+Mental, and stages 8–10 give Normal and Mental equal weight. Difficulty Assist
+reduces only the chosen offer by one step.
 `unit_inventory_size` controls the deterministic run-shop unit stock. Unit
 stock remains stable during a stage and rotates after each mission victory;
 eligible buffs remain available for every currently owned unit. Access entries
@@ -250,6 +262,10 @@ script-created native units. Power Hunger excludes `SAPC` because its player
 MCV delivery team needs the authored Zubr identity. Its map-authored
 `TechLevel=-1` still blocks native player production, while the isolated
 buildable transport clone remains available.
+
+Mermaid likewise excludes its map-local `TANY`. The authored Tanya changes
+weapons after collecting her equipment, and its placed unit, attached trigger,
+and scripted control flow must never inherit the hidden player production gate.
 
 Bleed Red excludes its map-local `MORALES` identity because Ares also evaluates
 the randomizer's hidden production gate while assembling the authored Boris

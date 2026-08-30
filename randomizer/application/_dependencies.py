@@ -196,6 +196,7 @@ from randomizer.maps.rules import (
     map_house_records,
 )
 from randomizer.rewards.rules import tech_ids_for_rewards, unlocked_reward_tech_ids
+from randomizer.rewards.access_limits import normalize_access_limits
 from randomizer.missions.safety import (
     always_available_miner_rules,
     always_available_transport_rules,
@@ -253,6 +254,7 @@ from randomizer.ui.tooltips import WidgetTooltip
 DEFAULT_MISSION_GOAL = int(DEFAULT_CONFIG['mission_goal'])
 CHECK_SCHEMA_VERSION = 18
 HOOK_POLL_MS = 1500
+RESTART_FAILURE_GRACE_MS = 3000
 VICTORY_CLOSE_DELAY_MS = 2500
 MAX_OPTION_INI_BYTES = 2 * 1024 * 1024
 

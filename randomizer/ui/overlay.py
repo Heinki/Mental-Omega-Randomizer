@@ -2,6 +2,7 @@
 
 from ._builder_dependencies import (
     LAUNCHER_LOG,
+    WidgetTooltip,
     scrolledtext,
     tk,
     ttk,
@@ -27,6 +28,33 @@ def _build_log_and_overlay(self, main_frame):
         sticky='w',
         padx=(8, 0),
     )
+    self.shop_debug_mission_var = tk.StringVar(value='')
+    self.shop_debug_mission_codes = {}
+    self.shop_debug_mission_combo = ttk.Combobox(
+        log_header,
+        textvariable=self.shop_debug_mission_var,
+        state='readonly',
+        width=32,
+    )
+    self.shop_debug_mission_combo.grid(
+        row=0, column=2, sticky='e', padx=(8, 6)
+    )
+    WidgetTooltip(
+        self.shop_debug_mission_combo,
+        'Choose which current Shop mission the developer override completes.',
+    )
+    self.shop_debug_complete_button = ttk.Button(
+        log_header,
+        text='Developer: Complete Mission',
+        command=self.on_debug_mark_complete,
+    )
+    self.shop_debug_complete_button.grid(row=0, column=3, sticky='e')
+    WidgetTooltip(
+        self.shop_debug_complete_button,
+        'Shop developer override: completes the chosen current mission and grants its rewards.',
+    )
+    self.shop_debug_mission_combo.grid_remove()
+    self.shop_debug_complete_button.grid_remove()
     self.log_text = scrolledtext.ScrolledText(
         main_frame,
         height=10,
@@ -37,6 +65,7 @@ def _build_log_and_overlay(self, main_frame):
     )
     self.log_text.grid(row=9, column=0, columnspan=2, sticky='nsew')
     self.log_text.grid_remove()
+    self.sync_debug_completion_controls()
 
     main_frame.rowconfigure(2, weight=1)
     main_frame.rowconfigure(9, weight=0)

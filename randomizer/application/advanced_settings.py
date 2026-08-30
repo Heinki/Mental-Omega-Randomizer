@@ -838,6 +838,7 @@ class AdvancedSettingsController:
                 f'superpowers {included_powers}/{len(visible_power_ids)} included'
             )
         )
+        self.refresh_access_limit_controls()
 
     def toggle_advanced_pool_entry(self, pool_key, item_id):
         if self.gameplay_settings_locked():
@@ -1236,6 +1237,7 @@ class AdvancedSettingsController:
         self.start_with_tier_one_defenses_check.configure(
             state='disabled' if arsenal_mode else 'normal'
         )
+        self.refresh_access_limit_controls()
         if arsenal_mode and self.progression_mode_var.get() != 'Shop Mode':
             self.arsenal_frame.grid()
         else:
@@ -1283,6 +1285,55 @@ class AdvancedSettingsController:
         ):
             self.refresh_advanced_pool_views()
         self._enforce_archipelago_control_lock()
+
+    def refresh_access_limit_controls(self):
+        """Clamp access-cap controls to the currently available reward pool."""
+        if not hasattr(self, 'access_limits_frame'):
+            return
+        arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
+        if arsenal_mode:
+            self.access_limits_frame.grid_remove()
+            return
+        self.access_limits_frame.grid()
+        capacities = self.access_limit_capacities()
+        enabled = bool(self.limit_access_rewards_var.get())
+        show_options = enabled and any(capacities.values())
+        if show_options:
+            self.access_limit_options_frame.grid()
+        else:
+            self.access_limit_options_frame.grid_remove()
+        self.limit_access_rewards_check.configure(
+            state='normal' if any(capacities.values()) else 'disabled'
+        )
+        for category, variable, slider, label, row in (
+            (
+                'units', self.unit_access_limit_var,
+                self.unit_access_limit_slider,
+                self.unit_access_limit_max_label,
+                self.unit_access_limit_row,
+            ),
+            (
+                'powers', self.power_access_limit_var,
+                self.power_access_limit_slider,
+                self.power_access_limit_max_label,
+                self.power_access_limit_row,
+            ),
+        ):
+            maximum = capacities[category]
+            if maximum > 0:
+                row.grid()
+            else:
+                row.grid_remove()
+            slider.set_bounds(1, max(1, maximum))
+            try:
+                value = int(variable.get())
+            except (TypeError, ValueError, tk.TclError):
+                value = 1
+            bounded = max(1, min(max(1, maximum), value))
+            if value != bounded:
+                variable.set(bounded)
+            slider.set(bounded)
+            label.configure(text=f'1–{maximum} available')
 
     def update_mission_goal_limit(self):
         if not self.missions:

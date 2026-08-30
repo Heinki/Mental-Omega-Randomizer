@@ -60,6 +60,25 @@ class WindowController:
         elif self.archipelago_run_staged():
             parts.append('Standalone — AP YAML ready')
         self.header_summary_var.set(' • '.join(parts))
+        self.sync_debug_completion_controls()
+
+    def sync_debug_completion_controls(self):
+        """Keep the Shop override hidden inside the expanded launcher log."""
+        shop_selected = self.progression_mode_var.get() == 'Shop Mode'
+        if hasattr(self, 'debug_complete_button'):
+            if shop_selected:
+                self.debug_complete_button.grid_remove()
+            else:
+                self.debug_complete_button.grid()
+        if not hasattr(self, 'shop_debug_complete_button'):
+            return
+        if shop_selected and self.log_visible_var.get():
+            self.refresh_shop_debug_completion_choices()
+            self.shop_debug_mission_combo.grid()
+            self.shop_debug_complete_button.grid()
+        else:
+            self.shop_debug_mission_combo.grid_remove()
+            self.shop_debug_complete_button.grid_remove()
 
     def toggle_settings_panel(self):
         self.unlock_hover_card_key = None
@@ -791,6 +810,7 @@ class WindowController:
             self.log_toggle_button.configure(text='Hide Launcher Log')
             self.log_visible_var.set(True)
             self.log_text.see('end')
+        self.sync_debug_completion_controls()
 
     def append_log(self, message, error=False):
         log_event(

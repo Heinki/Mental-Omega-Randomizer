@@ -60,6 +60,11 @@
           "power_buff"
         ],
         "randomize_unit_access": true,
+        "access_limits": {
+          "enabled": false,
+          "units": 1,
+          "powers": 1
+        },
         "start_with_tier_one_units": false,
         "start_with_tier_one_defenses": false,
         "starting_reward_count": 0,

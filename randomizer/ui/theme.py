@@ -38,6 +38,17 @@ def apply_color_mode(self):
         style.configure(
             f'Shop.{name}.TLabel', background=background, foreground=color
         )
+    shop_difficulty_colors = {
+        'Casual': '#7ee787' if self.dark_mode_var.get() else '#1a7f37',
+        'Normal': '#ffa657' if self.dark_mode_var.get() else '#bc4c00',
+        'Mental': '#ff7b72' if self.dark_mode_var.get() else '#cf222e',
+    }
+    for name, color in shop_difficulty_colors.items():
+        style.configure(
+            f'Shop.Difficulty.{name}.TLabel',
+            background=background,
+            foreground=color,
+        )
     style.configure(
         'Archipelago.Disconnected.TLabel',
         background=background,
@@ -275,6 +286,12 @@ def apply_color_mode(self):
         canvas.configure(background=palette['canvas'])
     for slider in getattr(self, 'reward_weight_slider_controls', ()):
         slider.refresh_theme(palette)
+    for slider in (
+        getattr(self, 'unit_access_limit_slider', None),
+        getattr(self, 'power_access_limit_slider', None),
+    ):
+        if slider is not None:
+            slider.refresh_theme(palette)
     for text_name in (
         'rewards_text', 'unlocks_text', 'archipelago_history_text'
     ):

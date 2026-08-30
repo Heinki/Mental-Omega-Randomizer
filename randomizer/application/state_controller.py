@@ -46,6 +46,7 @@ from ._dependencies import (
     logging,
     messagebox,
     normalize_assistance_units,
+    normalize_access_limits,
     normalize_arsenal_settings,
     normalize_enemy_scaling_settings,
     plan_enemy_check_rewards,
@@ -343,6 +344,9 @@ class StateController:
             if str(buff_type) in {item['id'] for item in BUFF_TYPES}
         ]
         randomize_access = bool(generation_config.get('randomize_unit_access', 'access' in enabled_reward_types))
+        access_limits = normalize_access_limits(
+            generation_config.get('access_limits')
+        )
         start_with_tier_one_units = bool(generation_config.get('start_with_tier_one_units', False))
         start_with_tier_one_defenses = bool(
             generation_config.get('start_with_tier_one_defenses', False)
@@ -390,6 +394,7 @@ class StateController:
         return {
             'arsenal': arsenal_settings,
             'randomize_unit_access': randomize_access,
+            'access_limits': access_limits,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'starting_reward_count': normalize_starting_reward_count(generation_config.get('starting_reward_count', 0)),
@@ -460,6 +465,11 @@ class StateController:
             return self.config_reward_settings()
         all_faction_mode = self.reward_mode_var.get() in {'Chaos', ARSENAL_MODE}
         randomize_access = all_faction_mode or bool(self.randomize_unit_access_var.get())
+        access_limits = normalize_access_limits({
+            'enabled': self.limit_access_rewards_var.get(),
+            'units': self.unit_access_limit_var.get(),
+            'powers': self.power_access_limit_var.get(),
+        })
         arsenal_settings = normalize_arsenal_settings({
             'factions': [
                 faction for faction in ARSENAL_FACTIONS
@@ -544,6 +554,7 @@ class StateController:
         return {
             'arsenal': arsenal_settings,
             'randomize_unit_access': randomize_access,
+            'access_limits': access_limits,
             'start_with_tier_one_units': start_with_tier_one_units,
             'start_with_tier_one_defenses': start_with_tier_one_defenses,
             'starting_reward_count': normalize_starting_reward_count(self.starting_reward_count_var.get()),
@@ -620,6 +631,9 @@ class StateController:
             else self.current_reward_settings()
         )
         settings.setdefault('randomize_unit_access', True)
+        settings['access_limits'] = normalize_access_limits(
+            settings.get('access_limits')
+        )
         settings['arsenal'] = normalize_arsenal_settings(
             settings.get('arsenal')
         )
@@ -1050,6 +1064,7 @@ class StateController:
         self.config['generation'].pop('experimental_player_unit_clones', None)
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
+        self.config['generation']['access_limits'] = reward_settings['access_limits']
         self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
         self.config['generation']['start_with_tier_one_defenses'] = reward_settings['start_with_tier_one_defenses']
         self.config['generation']['starting_reward_count'] = reward_settings['starting_reward_count']
@@ -1250,6 +1265,15 @@ class StateController:
             REWARD_MODES,
             REWARD_MODES[0],
         ))
+        self.limit_access_rewards_var.set(
+            reward_settings['access_limits']['enabled']
+        )
+        self.unit_access_limit_var.set(
+            reward_settings['access_limits']['units']
+        )
+        self.power_access_limit_var.set(
+            reward_settings['access_limits']['powers']
+        )
 
         self.excluded_mission_codes = {
             str(code).upper()

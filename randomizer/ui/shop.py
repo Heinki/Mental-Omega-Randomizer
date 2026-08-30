@@ -70,16 +70,29 @@ def build_shop_tab(self, workspace_tabs):
         card.grid(row=0, column=index, sticky='nsew', padx=(0 if index == 0 else 4, 0))
         name_var = tk.StringVar(value='No mission')
         detail_var = tk.StringVar(value='')
+        difficulty_var = tk.StringVar(value='')
         reward_var = tk.StringVar(value='')
         effect_var = tk.StringVar(value='')
         ttk.Label(card, textvariable=name_var, font=('Segoe UI', 10, 'bold')).grid(
             row=0, column=0, sticky='w'
         )
-        ttk.Label(card, textvariable=detail_var, style='Muted.TLabel').grid(
-            row=1, column=0, sticky='w', pady=(3, 0)
+        ttk.Label(
+            card,
+            textvariable=detail_var,
+            style='Muted.TLabel',
+            justify='left',
+        ).grid(
+            row=1, column=0, sticky='w', pady=(4, 0)
         )
+        difficulty_label = ttk.Label(
+            card,
+            textvariable=difficulty_var,
+            style='Shop.Difficulty.Casual.TLabel',
+            font=('Segoe UI', 10, 'bold'),
+        )
+        difficulty_label.grid(row=2, column=0, sticky='w', pady=(5, 2))
         ttk.Label(card, textvariable=reward_var, style='Shop.Reward.TLabel').grid(
-            row=2, column=0, sticky='w', pady=(3, 7)
+            row=3, column=0, sticky='w', pady=(3, 7)
         )
         effect_label = ttk.Label(
             card,
@@ -88,7 +101,7 @@ def build_shop_tab(self, workspace_tabs):
             wraplength=330,
             justify='left',
         )
-        effect_label.grid(row=3, column=0, sticky='ew', pady=(0, 7))
+        effect_label.grid(row=4, column=0, sticky='ew', pady=(0, 7))
         launch_button = ttk.Button(
             card,
             text='Launch This Mission',
@@ -96,9 +109,9 @@ def build_shop_tab(self, workspace_tabs):
             state='disabled',
             style='Launch.TButton',
         )
-        launch_button.grid(row=4, column=0, sticky='ew')
+        launch_button.grid(row=5, column=0, sticky='ew')
         mission_actions = ttk.Frame(card)
-        mission_actions.grid(row=5, column=0, sticky='ew', pady=(5, 0))
+        mission_actions.grid(row=6, column=0, sticky='ew', pady=(5, 0))
         mission_actions.columnconfigure(0, weight=1)
         mission_actions.columnconfigure(1, weight=1)
         reroll_button = ttk.Button(
@@ -116,11 +129,14 @@ def build_shop_tab(self, workspace_tabs):
         )
         ease_button.grid(row=0, column=1, sticky='ew', padx=(3, 0))
         card.columnconfigure(0, weight=1)
+        card.rowconfigure(4, weight=1)
         tooltip = WidgetTooltip(card, '')
         self.shop_mission_cards.append({
             'frame': card,
             'name': name_var,
             'detail': detail_var,
+            'difficulty': difficulty_var,
+            'difficulty_label': difficulty_label,
             'reward': reward_var,
             'effect': effect_var,
             'effect_label': effect_label,

@@ -3084,44 +3084,6 @@
           }
         }
       },
-      "JACKAL": {
-        "JACKALP": {
-          "weapons": {
-            "JackalZap": {
-              "damage": 40,
-              "rof": 70,
-              "range": 6
-            },
-            "JackalZapE": {
-              "damage": 40,
-              "rof": 70,
-              "range": 6
-            }
-          }
-        }
-      },
-      "DIVER": {
-        "DIVERP": {
-          "weapons": {
-            "DiverbeeAttack": {
-              "damage": 220,
-              "rof": 500,
-              "range": 7
-            }
-          }
-        }
-      },
-      "TARCHIA": {
-        "TARCHIAP": {
-          "weapons": {
-            "TarchiaCannonOld": {
-              "damage": 110,
-              "rof": 50,
-              "range": 18
-            }
-          }
-        }
-      },
       "ROBO": {
         "ROBOW": {
           "weapons": {

@@ -1,5 +1,6 @@
 """Focused executable contracts for Shop Mode domain and persistence."""
 
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -66,6 +67,8 @@ from .missions import (
     classify_mission,
     generate_mission_offers,
     mission_classes_for_stage,
+    mission_difficulty,
+    mission_difficulty_weights_for_stage,
 )
 from .mission_modifiers import (
     MISSION_MODIFIERS,
@@ -1210,6 +1213,17 @@ def validate_shop_domain():
         config_validation_valid = False
     except StaticConfigError:
         pass
+    invalid_difficulty_config = load_static_config('shop_mode.json')
+    invalid_difficulty_config['stage_difficulty_weights'][0]['weights'][
+        'Normal'
+    ] = -1
+    try:
+        validate_sections(
+            'shop_mode.json', invalid_difficulty_config, 'shop-self-check'
+        )
+        config_validation_valid = False
+    except StaticConfigError:
+        pass
     invalid_price_config = load_static_config('shop_mode.json')
     invalid_price_config['unit_target_prices']['E1']['run_access'] = 0
     try:
@@ -1324,6 +1338,35 @@ def validate_shop_domain():
         * starting_credit_upgrade.effects['credits_per_level'] == 20000
         and starting_credit_reward.get('credits_per_stack') == 1000
         and starting_credit_reward.get('maximum_credits') == 20000
+    )
+
+    difficulty_samples = {
+        stage: Counter(
+            mission_difficulty(
+                f'SHOP-DIFFICULTY-{sample}', stage, 'SAMPLE'
+            )
+            for sample in range(1000)
+        )
+        for stage in (3, 4, 6, 8)
+    }
+    stage_game_difficulty_valid = bool(
+        mission_difficulty_weights_for_stage(3)
+        == {'Casual': 80, 'Normal': 20, 'Mental': 0}
+        and mission_difficulty_weights_for_stage(4)
+        == {'Casual': 35, 'Normal': 65, 'Mental': 0}
+        and mission_difficulty_weights_for_stage(6)
+        == {'Casual': 20, 'Normal': 60, 'Mental': 20}
+        and mission_difficulty_weights_for_stage(8)
+        == {'Casual': 10, 'Normal': 45, 'Mental': 45}
+        and difficulty_samples[3]['Mental'] == 0
+        and difficulty_samples[4]['Normal'] > difficulty_samples[4]['Casual']
+        and difficulty_samples[4]['Mental'] == 0
+        and all(difficulty_samples[6][name] > 0 for name in (
+            'Casual', 'Normal', 'Mental'
+        ))
+        and difficulty_samples[8]['Mental'] > difficulty_samples[8]['Casual']
+        and mission_difficulty('DETERMINISTIC', 6, 'SAMPLE')
+        == mission_difficulty('DETERMINISTIC', 6, 'SAMPLE')
     )
 
     catalogue = shop_catalogue()
@@ -1797,6 +1840,7 @@ def validate_shop_domain():
     details = {
         'config_validation_valid': config_validation_valid,
         'economy_valid': economy_valid,
+        'stage_game_difficulty_valid': stage_game_difficulty_valid,
         'catalogue_valid': len(catalogue) > 100,
         'archipelago_cameo_asset_valid': bool(
             ARCHIPELAGO_CAMEO_PATH.is_file()

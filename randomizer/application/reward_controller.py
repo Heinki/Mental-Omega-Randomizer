@@ -358,6 +358,23 @@ class RewardController:
         )
         return pool
 
+    def access_limit_capacities(self):
+        """Return unique available unit/building and power identities."""
+        if self.active_reward_mode() == ARSENAL_MODE:
+            return {'units': 0, 'powers': 0}
+        unit_ids = set()
+        power_ids = set()
+        for reward in self.reward_pool_for_code('__access_limits__'):
+            if reward.get('kind') == 'buff':
+                continue
+            if reward.get('kind') == 'superweapon':
+                power_id = str(reward.get('superweapon') or '').upper()
+                if power_id:
+                    power_ids.add(power_id)
+                continue
+            unit_ids.update(tech_ids_for_rewards([reward]))
+        return {'units': len(unit_ids), 'powers': len(power_ids)}
+
     def configured_manual_starting_rewards(self):
         """Resolve exact selected rewards, omitting duplicate TechnoType access."""
         selected = set(self.active_starting_unlock_names())
@@ -431,6 +448,11 @@ class RewardController:
             rng_namespace='starting-rewards',
             avoid_unlocked_access=True,
             blocked_reward_names=self.active_starting_unlock_names(),
+            access_limits=(
+                None
+                if self.active_progression_mode() == 'Shop Mode'
+                else settings.get('access_limits')
+            ),
         )
         rewards = plan[code]
         real_rewards = [
@@ -1023,6 +1045,14 @@ class RewardController:
             blocked_reward_names=self.active_starting_unlock_names(),
             rng_namespace=rng_namespace,
             reserved_rewards=reserved_rewards,
+            access_limits=(
+                None
+                if (
+                    self.active_reward_mode() == ARSENAL_MODE
+                    or progression_mode == 'Shop Mode'
+                )
+                else self.active_reward_settings().get('access_limits')
+            ),
         )
 
     def mission_reward_summary(self, code):
