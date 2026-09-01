@@ -16,7 +16,7 @@ from .data import (
 
 
 MANIFEST_SCHEMA_VERSION = 1
-RANDOMIZER_VERSION = "1.32"
+RANDOMIZER_VERSION = "1.33"
 
 
 class ManifestError(ValueError):

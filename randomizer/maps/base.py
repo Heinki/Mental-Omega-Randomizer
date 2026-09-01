@@ -930,7 +930,10 @@ def cloned_superweapon_plan(
                             values[key] = dependent_clone
 
         grant_buildings = tuple(reward.get('superweapon_grant_buildings') or ())
-        if grant_buildings and superweapon_required_houses:
+        primary_buildings = tuple(
+            reward.get('superweapon_primary_buildings') or ()
+        )
+        if (grant_buildings or primary_buildings) and superweapon_required_houses:
             clone_values['SW.RequiredHouses'] = ','.join(
                 unique_in_order(superweapon_required_houses)
             )
@@ -938,6 +941,7 @@ def cloned_superweapon_plan(
         if runtime_index in granted_indices:
             continue
         granted_indices.add(runtime_index)
+        attached_to_building = False
         if grant_buildings:
             for building_id in grant_buildings:
                 building_id = str(building_id or '').strip()
@@ -958,8 +962,20 @@ def cloned_superweapon_plan(
                 attached = unique_in_order(comma_items(existing) + [clone_type])
                 _remove_case_insensitive(pending, 'SuperWeapons')
                 pending['SuperWeapons'] = ','.join(attached)
+            attached_to_building = True
+        if primary_buildings:
+            for building_id in primary_buildings:
+                building_id = str(building_id or '').strip()
+                if not building_id:
+                    continue
+                pending = section_rules.setdefault(building_id, {})
+                _remove_case_insensitive(pending, 'SuperWeapon')
+                pending['SuperWeapon'] = clone_type
+            attached_to_building = True
+        if attached_to_building:
             clone_names.append(clone_type)
-            continue
+            if not reward.get('superweapon_grant_action'):
+                continue
         if reward.get('superweapon_provider_only'):
             clone_names.append(clone_type)
             continue

@@ -153,6 +153,7 @@ from randomizer.rewards.catalogue import (
     reward_rule_summary,
     unit_display_label,
     linked_buff_variant_ids,
+    payload_buff_power_ids_for_unit,
     unit_role_equivalents,
     valid_choice,
 )

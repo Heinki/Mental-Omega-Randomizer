@@ -5,6 +5,7 @@ import random
 from randomizer.missions.tier_one import (
     STANDARD_TIER_ONE_FAMILIES,
     TIER_ONE_GROUND_ROLES,
+    TIER_ONE_NAVAL_ROLES,
     TIER_ONE_ROLE_MARKERS,
     select_tier_one_defense_variants,
     select_tier_one_unit_variants,
@@ -62,7 +63,26 @@ def shop_starter_unit_ids(
         allowed_roles=('basic_aircraft',),
         excluded_unit_ids=excluded_unit_ids,
     )
-    return tuple((*ground_units, *aircraft_units))
+    naval_rng = random.Random(f'{seed}:shop-tier-one-naval')
+    naval_units = []
+    for role in TIER_ONE_NAVAL_ROLES:
+        selected = select_tier_one_unit_variants(
+            naval_rng,
+            requested_ids,
+            families=families,
+            allowed_roles=(role,),
+            excluded_unit_ids=(*excluded_unit_ids, *naval_units),
+        )
+        if not selected:
+            selected = select_tier_one_unit_variants(
+                naval_rng,
+                requested_ids,
+                families=families,
+                allowed_roles=(role,),
+                excluded_unit_ids=excluded_unit_ids,
+            )
+        naval_units.extend(selected)
+    return tuple(dict.fromkeys((*ground_units, *aircraft_units, *naval_units)))
 
 
 def shop_starter_defense_ids(
@@ -78,7 +98,7 @@ def shop_starter_defense_ids(
 
 
 def active_shop_starter_unit_ids(run):
-    """Return five fixed concrete Tier-1 starters for this run."""
+    """Return fixed concrete land, aircraft, and naval Tier-1 starters."""
     if run is None:
         return ()
     return shop_starter_unit_ids(

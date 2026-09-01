@@ -31,6 +31,18 @@
         "allies": ["STORM", "air"],
         "soviets": ["FOX", "air"],
         "epsilon": ["BLIGHT", "air"]
+      },
+      "naval_attack": {
+        "allies": ["DEST", "naval"],
+        "soviets": ["SUB", "naval"],
+        "epsilon": ["SLED", "naval"],
+        "foehn": ["SWORD", "naval"]
+      },
+      "anti_air_ship": {
+        "allies": ["AEGIS", "naval"],
+        "soviets": ["SWLF", "naval"],
+        "epsilon": ["SLED", "naval"],
+        "foehn": ["MANTA", "naval"]
       }
     },
     "role_markers": {
@@ -38,7 +50,9 @@
       "anti_air_infantry": "T1_ANTI_AIR_INFANTRY",
       "ground_vehicle": "T1_GROUND_VEHICLE",
       "anti_air_vehicle": "T1_ANTI_AIR_VEHICLE",
-      "basic_aircraft": "T1_BASIC_AIRCRAFT"
+      "basic_aircraft": "T1_BASIC_AIRCRAFT",
+      "naval_attack": "T1_NAVAL_ATTACK",
+      "anti_air_ship": "T1_ANTI_AIR_SHIP"
     },
     "defense_marker": "T1_BASIC_DEFENSES",
     "defense_role_units": {
@@ -104,6 +118,7 @@
       }
     },
     "ground_roles": ["ground_infantry", "anti_air_infantry", "ground_vehicle", "anti_air_vehicle"],
+    "naval_roles": ["naval_attack", "anti_air_ship"],
     "standard_families": ["allies", "soviets", "epsilon"],
     "airfields": {
       "allies": "GAAIRC",

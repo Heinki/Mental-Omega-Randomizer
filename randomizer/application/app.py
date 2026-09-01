@@ -82,14 +82,20 @@ class LauncherApp(
                 pass
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        window_width = min(1600, max(1100, screen_width - 160))
-        window_height = min(1000, max(700, screen_height - 160))
+        minimum_width = min(800, max(480, screen_width - 80))
+        minimum_height = min(560, max(400, screen_height - 80))
+        window_width = min(
+            1600, max(minimum_width, screen_width - 160)
+        )
+        window_height = min(
+            1000, max(minimum_height, screen_height - 120)
+        )
         window_x = max(0, (screen_width - window_width) // 2)
         window_y = max(0, (screen_height - window_height) // 2)
         self.geometry(
             f'{window_width}x{window_height}+{window_x}+{window_y}'
         )
-        self.minsize(1100, 700)
+        self.minsize(minimum_width, minimum_height)
         self.resizable(True, True)
         self.protocol('WM_DELETE_WINDOW', self.close_launcher)
 

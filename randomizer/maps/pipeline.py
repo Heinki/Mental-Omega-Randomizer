@@ -17,6 +17,7 @@ from randomizer.maps.ownership import (
 )
 from randomizer.maps.power_buffs import (
     apply_power_buffs_to_unlock_rewards,
+    building_bound_power_launch_rewards,
     equivalent_payload_unit_buff_rewards,
 )
 from randomizer.maps.rules import (
@@ -107,6 +108,7 @@ from randomizer.missions.overrides import (
     MISSION_CLONE_ONLY_COUNTRY_BUFF_TYPES,
     MISSION_DISABLED_TRIGGERS,
     MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS,
+    MISSIONS_WITH_ENEMY_SCALING_DISABLED,
     MISSION_HELPER_BUFF_EXCLUDED_HOUSES,
     MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS,
     MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS,
@@ -665,6 +667,12 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     enemy_scaling_entries = (
         self.active_enemy_scaling_entries() if launch_active else []
     )
+    if code in MISSIONS_WITH_ENEMY_SCALING_DISABLED and enemy_scaling_entries:
+        self.append_log(
+            f'Skipped all configured AI scaling rewards for {code}: '
+            'reviewed mission-opening safety exception.'
+        )
+        enemy_scaling_entries = []
     enemy_scaling_rewards = [
         entry['reward'] for entry in enemy_scaling_entries
     ]
@@ -686,7 +694,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         # rewards. It must not infer access again from role equivalence.
         share_basic_equivalent_buffs = False
     power_aux_buildings = {}
-    power_launch_inputs = list(earned_rewards)
+    power_launch_inputs = building_bound_power_launch_rewards(
+        earned_rewards,
+        owned_clone_ids,
+    )
     if self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}:
         player_house = player_house_from_map(lines, records=records)
         player_family = country_family(records.get(player_house, {}))
@@ -953,13 +964,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         reward_display_name(reward)
         for reward in canonical_rewards(launch_power_rewards)
         if reward.get('kind') == 'superweapon'
-        and reward.get('superweapon_grant_buildings')
+        and (
+            reward.get('superweapon_grant_buildings')
+            or reward.get('superweapon_primary_buildings')
+        )
     ]
     if building_bound_power_names:
         self.append_log(
-            'Prepared isolated Barracks-bound power clone(s): '
+            'Prepared isolated building-bound power clone(s): '
             + ', '.join(building_bound_power_names)
-            + '. These powers are not granted through map-start action 34.'
+            + '.'
         )
     if self.randomized_tech_ids():
         safe_owners = ','.join(

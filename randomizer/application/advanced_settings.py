@@ -23,6 +23,7 @@ from ._dependencies import (
     logging,
     normalize_faction,
     reward_display_name,
+    payload_buff_power_ids_for_unit,
     tk,
     tech_ids_for_rewards,
     traceback,
@@ -214,6 +215,13 @@ class AdvancedSettingsController:
             and linked_buff_variant_ids(unit_id).intersection(
                 self.excluded_unit_access_ids
             )
+        ):
+            return False
+        payload_power_ids = payload_buff_power_ids_for_unit(unit_id)
+        if (
+            included_only
+            and payload_power_ids
+            and payload_power_ids.issubset(self.excluded_superweapon_ids)
         ):
             return False
         selected_campaign = self.campaign_var.get()

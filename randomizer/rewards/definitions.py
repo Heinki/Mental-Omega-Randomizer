@@ -477,7 +477,7 @@ def build_special_building_unlock_rewards():
             rules[building_id]['BuildCat'] = str(definition['build_category'])
         if definition.get('cameo_priority') is not None:
             rules[building_id]['CameoPriority'] = str(definition['cameo_priority'])
-        rewards.append({
+        reward = {
             'name': f'{label} Access',
             'description': (
                 f'Allows construction of the {label} directly from the '
@@ -487,7 +487,12 @@ def build_special_building_unlock_rewards():
             'special_reward': bool(definition.get('special_reward')),
             'rules': rules,
             'factions': [faction],
-        })
+        }
+        if definition.get('granted_superweapon'):
+            reward['building_superweapon'] = str(
+                definition['granted_superweapon']
+            )
+        rewards.append(reward)
     return rewards
 
 

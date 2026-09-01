@@ -51,9 +51,9 @@ STALINS_FIST_PLACEMENT_IDS = set(_FACTION_CONFIG['stalins_fist_placement_ids'])
 STALINS_FIST_TASKFORCE_IDS = set(_FACTION_CONFIG['stalins_fist_taskforce_ids'])
 STALINS_FIST_FAMILIES = set(_FACTION_CONFIG['stalins_fist_families'])
 
-# Five guaranteed combat roles for the optional seed-start roster. Standard
-# selects one concrete identity per role and usable faction family. Chaos and
-# Shop instead select only five identities total across the complete run.
+# Guaranteed land, aircraft, and naval combat roles for the optional seed-start
+# roster. Standard selects one concrete identity per role and usable faction
+# family. Chaos and Shop instead select one mixed concrete roster per run.
 TIER_ONE_ROLE_UNITS = {
     role: {family: tuple(values) for family, values in families.items()}
     for role, families in _TIER_ONE_CONFIG['role_units'].items()
@@ -80,6 +80,7 @@ TIER_ONE_SUBFACTION_UNITS = {
     for role, countries in _TIER_ONE_CONFIG['subfaction_units'].items()
 }
 TIER_ONE_GROUND_ROLES = tuple(_TIER_ONE_CONFIG['ground_roles'])
+TIER_ONE_NAVAL_ROLES = tuple(_TIER_ONE_CONFIG['naval_roles'])
 
 STANDARD_TIER_ONE_FAMILIES = tuple(_TIER_ONE_CONFIG['standard_families'])
 
@@ -518,7 +519,14 @@ def _special_infantry_factories(sections, excluded_factory_ids=()):
     )
 
 
-def _map_provides_stalins_fist(lines, sections):
+def _map_provides_stalins_fist(lines, sections, available_unit_ids=()):
+    if {
+        str(unit_id).upper()
+        for unit_id in available_unit_ids
+        if unit_id
+    }.intersection(STALINS_FIST_TASKFORCE_IDS):
+        return True
+
     for section in ('Units', 'Structures'):
         for line in section_lines(lines, section):
             if '=' not in line:
@@ -543,10 +551,15 @@ def _special_factory_alternatives(
     category,
     sections=None,
     excluded_infantry_factory_ids=(),
+    available_unit_ids=(),
 ):
     sections = sections if sections is not None else all_section_value_maps(lines)
     alternatives = []
-    if category == 'vehicles' and _map_provides_stalins_fist(lines, sections):
+    if category == 'vehicles' and _map_provides_stalins_fist(
+        lines,
+        sections,
+        available_unit_ids,
+    ):
         alternatives.append(STALINS_FIST_FACTORY)
     if category == 'infantry':
         alternatives.extend(_special_infantry_factories(
@@ -803,7 +816,11 @@ def mission_basic_unit_rules(
     # from that corresponding family.
     if (
         player_family in STALINS_FIST_FAMILIES
-        and _map_provides_stalins_fist(lines, sections)
+        and _map_provides_stalins_fist(
+            lines,
+            sections,
+            available_access,
+        )
     ):
         for tech_id, tech_level, family, category, prerequisite, native_owners in access_catalog():
             if (

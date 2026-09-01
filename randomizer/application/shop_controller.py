@@ -1567,9 +1567,10 @@ class ShopController(ShopPolishController):
             excluded_unit_ids=settings.get('excluded_unit_access_ids', ()),
         )
         if effects['starter_unit_count_flat'] == -2 and len(starting_units) >= 5:
-            # Preserve one infantry, one vehicle, and the aircraft role.
+            # Remove one infantry and one vehicle while preserving aircraft
+            # and naval safety roles.
             starting_units = (
-                starting_units[0], starting_units[2], starting_units[-1]
+                starting_units[0], starting_units[2], *starting_units[4:]
             )
         starting_defenses = shop_starter_defense_ids(
             seed=seed,

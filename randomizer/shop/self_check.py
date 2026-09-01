@@ -445,8 +445,10 @@ def _permanent_feature_checks(mission_pool):
             power_ids and set(power_cameos) == power_ids
         ),
         'starter_loadout_display_valid': bool(
-            len(concrete_starters) == 5
-            and len(set(concrete_starters)) == 5
+            len(concrete_starters) == 7
+            and len(set(concrete_starters)) == 7
+            and concrete_starters[-2] in {'DEST', 'SUB', 'SLED', 'SWORD'}
+            and concrete_starters[-1] in {'AEGIS', 'SWLF', 'SLED', 'MANTA'}
             and len(concrete_defenses) == 2
             and concrete_starters == active_shop_starter_unit_ids(marker_run)
             and concrete_defenses == active_shop_starter_defense_ids(marker_run)

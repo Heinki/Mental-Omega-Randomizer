@@ -298,6 +298,10 @@ def run_self_check():
             buff_stack_limit,
             canonical_reward,
             linked_buff_variant_ids,
+            payload_buff_power_ids_for_unit,
+        )
+        from randomizer.maps.power_buffs import (
+            building_bound_power_launch_rewards,
         )
         from randomizer.rewards.enemy_scaling import (
             ENEMY_BUFF_DEFINITIONS,
@@ -670,12 +674,16 @@ def run_self_check():
         from randomizer.missions.access import (
             TIER_ONE_DEFENSE_MARKER,
             TIER_ONE_DEFENSE_UNITS,
+            TIER_ONE_NAVAL_ROLES,
             TIER_ONE_ROLE_MARKERS,
             TIER_ONE_ROLE_UNITS,
             access_catalog,
+            _map_provides_stalins_fist,
         )
         from randomizer.missions.tier_one import (
+            _preferred_standard_starter_family,
             concrete_tier_one_starter_ids,
+            expanded_tier_one_unit_ids,
             random_chaos_tier_one_unit_ids,
             select_tier_one_unit_variants,
             standard_tier_one_defense_markers,
@@ -692,9 +700,16 @@ def run_self_check():
             for family_ids in TIER_ONE_DEFENSE_UNITS.values()
             for unit_id in family_ids
         }
+        indexed_tier_one_unit_ids = {
+            entry[0]
+            for families in TIER_ONE_ROLE_UNITS.values()
+            for entry in families.values()
+        }
         access_catalog_valid = bool(
             runtime_access_catalog
-            and indexed_tier_one_defense_ids.issubset(indexed_access_ids)
+            and (
+                indexed_tier_one_defense_ids | indexed_tier_one_unit_ids
+            ).issubset(indexed_access_ids)
         )
         standard_families = ('allies', 'soviets', 'epsilon')
         standard_unit_markers = tier_one_unit_ids(standard_families)
@@ -712,8 +727,49 @@ def run_self_check():
             and standard_tier_one_defense_markers(('GAPILL', 'NASAM'))
             == standard_defense_markers
         )
+        tier_one_naval_roles_valid = bool(
+            TIER_ONE_NAVAL_ROLES == ('naval_attack', 'anti_air_ship')
+            and {
+                role: {
+                    family: entry[0]
+                    for family, entry in TIER_ONE_ROLE_UNITS[role].items()
+                }
+                for role in TIER_ONE_NAVAL_ROLES
+            } == {
+                'naval_attack': {
+                    'allies': 'DEST', 'soviets': 'SUB',
+                    'epsilon': 'SLED', 'foehn': 'SWORD',
+                },
+                'anti_air_ship': {
+                    'allies': 'AEGIS', 'soviets': 'SWLF',
+                    'epsilon': 'SLED', 'foehn': 'MANTA',
+                },
+            }
+            and all(
+                entry[1] == 'naval'
+                for role in TIER_ONE_NAVAL_ROLES
+                for entry in TIER_ONE_ROLE_UNITS[role].values()
+            )
+            and _preferred_standard_starter_family(
+                [], {}, {('soviets', 'naval')}, set(standard_families)
+            ) == 'soviets'
+        )
         chaos_tier_one_units = random_chaos_tier_one_unit_ids(
             random.Random('SELF-CHECK:chaos-tier-one')
+        )
+        all_chaos_tier_one_ids = expanded_tier_one_unit_ids(
+            tier_one_unit_ids(standard_families),
+            include_foehn=True,
+        )
+        soviet_tier_one_ids = expanded_tier_one_unit_ids(
+            tier_one_unit_ids(('soviets',)),
+            families=('soviets',),
+        )
+        soviet_only_chaos_tier_one_units = random_chaos_tier_one_unit_ids(
+            random.Random('SELF-CHECK:chaos-tier-one'),
+            excluded_unit_ids=(
+                all_chaos_tier_one_ids - soviet_tier_one_ids
+            ),
         )
         standard_tier_one_units = {
             family: select_tier_one_unit_variants(
@@ -725,15 +781,71 @@ def run_self_check():
         }
         tier_one_starter_count_contract_valid = bool(
             tier_one_standard_roles_valid
-            and len(standard_unit_markers) == 5
+            and tier_one_naval_roles_valid
+            and len(standard_unit_markers) == 7
             and all(
-                len(unit_ids) == 5 and len(set(unit_ids)) == 5
-                for unit_ids in standard_tier_one_units.values()
+                len(unit_ids) == len({
+                    TIER_ONE_ROLE_UNITS[role][family][0]
+                    for role in TIER_ONE_ROLE_UNITS
+                    if family in TIER_ONE_ROLE_UNITS[role]
+                })
+                and len(unit_ids) == len(set(unit_ids))
+                for family, unit_ids in standard_tier_one_units.items()
             )
-            and len(chaos_tier_one_units) == 5
-            and len(set(chaos_tier_one_units)) == 5
+            and len(chaos_tier_one_units) == 7
+            and len(set(chaos_tier_one_units)) == 7
             and concrete_tier_one_starter_ids(chaos_tier_one_units)
             == chaos_tier_one_units
+        )
+        tier_one_exclusion_backfill_valid = bool(
+            len(soviet_only_chaos_tier_one_units) == 7
+            and set(soviet_only_chaos_tier_one_units).issubset(
+                soviet_tier_one_ids
+            )
+        )
+        industrial_plant_reward = next(
+            reward for reward in REWARD_POOL
+            if reward.get('name') == 'Industrial Plant Access'
+        )
+        gear_change_reward = next(
+            reward for reward in REWARD_POOL
+            if reward.get('name') == 'Gear Change Power'
+        )
+        building_bound_gear = building_bound_power_launch_rewards(
+            [industrial_plant_reward],
+            {'NAINDP': 'MORPNAINDP'},
+        )
+        explicit_building_bound_gear = building_bound_power_launch_rewards(
+            [industrial_plant_reward, gear_change_reward],
+            {'NAINDP': 'MORPNAINDP'},
+        )
+        building_bound_power_valid = bool(
+            industrial_plant_reward.get('building_superweapon')
+            == 'GearChangeSpecial'
+            and len(building_bound_gear) == 2
+            and any(
+                reward.get('superweapon') == 'GearChangeSpecial'
+                and reward.get('superweapon_primary_buildings')
+                == ['MORPNAINDP']
+                and not reward.get('superweapon_grant_action')
+                for reward in building_bound_gear
+            )
+            and any(
+                reward.get('superweapon') == 'GearChangeSpecial'
+                and reward.get('superweapon_primary_buildings')
+                == ['MORPNAINDP']
+                and reward.get('superweapon_grant_action') is True
+                for reward in explicit_building_bound_gear
+            )
+        )
+        payload_power_visibility_valid = bool(
+            payload_buff_power_ids_for_unit('YABALL')
+            == frozenset({'RISENMONOLITHSPECIAL'})
+            and not payload_buff_power_ids_for_unit('HARV')
+        )
+        stalins_fist_deploy_factory_valid = bool(
+            _map_provides_stalins_fist([], {}, ('MWF',))
+            and not _map_provides_stalins_fist([], {}, ())
         )
         from randomizer.ui.cameos import installed_rules_registry
         _installed_types, installed_sections = installed_rules_registry()
@@ -1093,8 +1205,17 @@ def run_self_check():
             'access_catalog_valid': access_catalog_valid,
             'access_catalog_entries': len(runtime_access_catalog),
             'tier_one_standard_roles_valid': tier_one_standard_roles_valid,
+            'tier_one_naval_roles_valid': tier_one_naval_roles_valid,
             'tier_one_starter_count_contract_valid': (
                 tier_one_starter_count_contract_valid
+            ),
+            'tier_one_exclusion_backfill_valid': (
+                tier_one_exclusion_backfill_valid
+            ),
+            'building_bound_power_valid': building_bound_power_valid,
+            'payload_power_visibility_valid': payload_power_visibility_valid,
+            'stalins_fist_deploy_factory_valid': (
+                stalins_fist_deploy_factory_valid
             ),
             'chaos_tier_one_units': list(chaos_tier_one_units),
             'standard_tier_one_units': {
@@ -1200,7 +1321,12 @@ def run_self_check():
                 'shin_allied_tech_valid',
                 'access_catalog_valid',
                 'tier_one_standard_roles_valid',
+                'tier_one_naval_roles_valid',
                 'tier_one_starter_count_contract_valid',
+                'tier_one_exclusion_backfill_valid',
+                'building_bound_power_valid',
+                'payload_power_visibility_valid',
+                'stalins_fist_deploy_factory_valid',
                 'deploy_clone_links_valid',
                 'player_clone_selection_groups_valid',
                 'transport_buff_eligibility_valid',

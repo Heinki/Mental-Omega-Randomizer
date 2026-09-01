@@ -88,6 +88,7 @@ class _AuditLauncher(LaunchController):
         self.rainbowizer_var = _Value(False)
         self.eva_voice_var = _Value('Mission default')
         self.logs = []
+        self.enemy_applications = {}
         reward_by_name = {
             reward.get('name'): reward for reward in REWARD_POOL
             if reward.get('name')
@@ -97,6 +98,9 @@ class _AuditLauncher(LaunchController):
             'GI Access',
             'GI Firepower I',
             'GI Armor Plating I',
+            'Industrial Plant Access',
+            'Rhino Heavy Tank Access',
+            "Stalin's Fist Access",
             'Stinger Access',
             'Tanya Access',
         ]
@@ -193,8 +197,8 @@ class _AuditLauncher(LaunchController):
     def cache_mission_assistance_units(self, _code, _unit_ids):
         return None
 
-    def record_enemy_reward_applications(self, _code, _applications):
-        return None
+    def record_enemy_reward_applications(self, code, applications):
+        self.enemy_applications[code] = deepcopy(applications)
 
     def active_starting_rewards_for_report(self):
         return []
@@ -332,6 +336,38 @@ def _assert_targeted_contracts(generated_paths):
     ):
         raise AssertionError('ESHIP hostile AHMV received a tier weapon clone')
 
+
+    for mission_code in ('SHBD', 'SEXIST'):
+        path = next(
+            candidate for candidate in generated_paths
+            if candidate.name.upper() == f'{mission_code}.MAP'
+        )
+        lines = path.read_text(
+            encoding='utf-8', errors='ignore'
+        ).splitlines()
+        industrial_plant = section_value_map_preserve(
+            lines, 'MORPNAINDP'
+        )
+        gear_change = section_value_map_preserve(lines, 'MORGearChange')
+        gear_spawner = section_value_map_preserve(lines, 'MORGearSpawner')
+        rhino = section_value_map_preserve(lines, 'MORPHTNK')
+        if industrial_plant.get('SuperWeapon') != 'MORGearChange':
+            raise AssertionError(
+                f'{mission_code} Industrial Plant lacks private Gear Change'
+            )
+        if gear_change.get('HunterSeeker.Type') != 'MORGearSpawner':
+            raise AssertionError(
+                f'{mission_code} private Gear Change lacks its spawner'
+            )
+        if 'Latin' not in str(gear_spawner.get('Owner') or '').split(','):
+            raise AssertionError(
+                f'{mission_code} Gear Change spawner rejects Latin owner'
+            )
+        if 'MORPNAFIST' not in _mission_prerequisites(rhino):
+            raise AssertionError(
+                f'{mission_code} Rhino lacks deployed Stalin\'s Fist factory path'
+            )
+
     yuri_prime_maps = 0
     for path in generated_paths:
         lines = path.read_text(encoding='utf-8', errors='ignore').splitlines()
@@ -451,6 +487,8 @@ def _assert_golden_gate_transport_factories(missions):
             root_map.unlink()
 
 
+
+
 def _assert_taciturn_tier_three_weapon_clone(missions):
     mission = next(mission for mission in missions if mission['code'] == 'ETACI')
     launcher = _AuditLauncher(
@@ -509,7 +547,14 @@ def main():
     generated = []
     try:
         for index, mission in enumerate(missions, 1):
-            hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+            launch_rules = deepcopy(extra_rules)
+            for section, values in launcher.mission_required_launch_rules(
+                mission
+            ).items():
+                launch_rules.setdefault(section, {}).update(values)
+            hook = launcher.prepare_hooked_map(
+                mission, extra_rules=launch_rules
+            )
             if hook is None:
                 raise AssertionError(f'No generated map for {mission["code"]}')
             generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
@@ -521,6 +566,17 @@ def main():
                 root_map.unlink()
             print(f'[{index:02d}/97] {mission["code"]}', flush=True)
         _assert_targeted_contracts(generated)
+        if launcher.enemy_applications.get('AWITHER') != []:
+            raise AssertionError(
+                'AWITHER received AI scaling despite its opening-safety policy'
+            )
+        if not any(
+            'Skipped all configured AI scaling rewards for AWITHER:' in message
+            for _error, message in launcher.logs
+        ):
+            raise AssertionError(
+                'AWITHER AI-scaling safety exception was not reported'
+            )
         _assert_mermaid_mode_matrix(missions)
         _assert_golden_gate_transport_factories(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)

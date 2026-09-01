@@ -591,6 +591,8 @@ def enemy_native_unit_buff_rules(
     return rules, unique_in_order(applied_units), unique_in_order(skipped), applications
 
 
+
+
 def enemy_existing_power_grant_plan(lines, rewards, installed_types):
     """Grant reviewed native powers by runtime index; create no clone section."""
     runtime_types = list(installed_types or ())

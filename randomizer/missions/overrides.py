@@ -198,6 +198,12 @@ MISSION_MAP_SECTION_RULES = dict(_MISSION_CONFIG['map_section_rules'])
 
 MISSION_NATIVE_DIRECT_BUFF_EXCLUSIONS = _frozenset_mapping('native_direct_buff_exclusions')
 
+# Missions whose scripted opening cannot absorb accumulated AI rewards without
+# becoming unwinnable. Player rewards and authored mission difficulty remain.
+MISSIONS_WITH_ENEMY_SCALING_DISABLED = frozenset(
+    _MISSION_CONFIG.get('enemy_scaling_disabled_missions', ())
+)
+
 # Native hostile mission units whose authored opening behavior is objective
 # critical and must not receive tier weapon/stat clones.
 MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS = _frozenset_mapping(

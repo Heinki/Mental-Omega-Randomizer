@@ -47,9 +47,12 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `factions.json`: Engineers, MCV/Construction Yard mapping, production
   buildings, amphibious transports, Chaos production, and tech
   ordering, plus default unlock owners and special-factory identities.
-- `tier_one.json`: subfaction-specific starter equivalents, fixed faction
-  Tier 1 defensive structures, Standard role
-  markers, aircraft factories, and installed GenericPrerequisite aliases.
+- `tier_one.json`: subfaction-specific land/air starter equivalents, faction
+  naval-attack and anti-air ship equivalents, fixed faction Tier 1 defensive
+  structures, Standard role markers, aircraft factories, and installed
+  GenericPrerequisite aliases. `ground_roles` and `naval_roles` identify the
+  separately faction-shuffled Chaos/Shop role groups; every naval-role entry
+  must use production category `naval`.
 - `shop_mode.json`: Shop Mode run length, mission offers and class rewards,
   stage difficulty weights, Ore/Gem unit prices, permanent upgrade
   definitions, reward exclusions, and launcher-only mission effects.
@@ -68,8 +71,10 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/special_buildings.json`: editable faction economy/special-building
   access rewards, including labels, native Construction Yards, tech levels,
   build limits, sidebar build category/priority, and whether repeatable +1
-  capacity rewards are generated. Chaos translates these to every faction
-  Construction Yard.
+  capacity rewards are generated. Optional `granted_superweapon` names the
+  power supplied by that structure; launch creates one private power copy and
+  binds it to the isolated player building clone. Chaos translates these
+  buildings to every faction Construction Yard.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
   damage, duration, delivered-payload, and reconnaissance-plane vision buff

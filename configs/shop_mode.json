@@ -945,7 +945,7 @@
       },
       "elite_force": {
         "display_name": "Elite Force",
-        "description": "Three guaranteed starters begin Veteran, but the other two guaranteed starter slots are removed.",
+        "description": "Remaining guaranteed starters begin Veteran, while one infantry and one tank starter slot are removed.",
         "effects": {
           "starter_veteran": 1,
           "starter_unit_count_flat": -2

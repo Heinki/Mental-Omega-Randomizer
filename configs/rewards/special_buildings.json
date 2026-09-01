@@ -25,6 +25,7 @@
         "capacity_stack_limit": 3,
         "build_category": "Tech",
         "cameo_priority": -1000,
+        "granted_superweapon": "GearChangeSpecial",
         "capacity_rewards": true
       },
       {

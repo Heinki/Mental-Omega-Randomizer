@@ -36,6 +36,28 @@ def payload_buff_unit_ids_for_powers(power_ids):
     )
 
 
+PAYLOAD_BUFF_POWER_IDS_BY_UNIT = {}
+for _power_id, _unit_ids in POWER_BUFF_CONFIG['payload'].get(
+    'buff_unit_ids_by_power', {}
+).items():
+    for _unit_id in _unit_ids:
+        PAYLOAD_BUFF_POWER_IDS_BY_UNIT.setdefault(
+            str(_unit_id).upper(), set()
+        ).add(str(_power_id).upper())
+PAYLOAD_BUFF_POWER_IDS_BY_UNIT = {
+    unit_id: frozenset(power_ids)
+    for unit_id, power_ids in PAYLOAD_BUFF_POWER_IDS_BY_UNIT.items()
+}
+
+
+def payload_buff_power_ids_for_unit(unit_id):
+    """Return powers that make one payload TechnoType buff-eligible."""
+    return PAYLOAD_BUFF_POWER_IDS_BY_UNIT.get(
+        str(unit_id or '').upper(),
+        frozenset(),
+    )
+
+
 POWER_BUFF_POWER_IDS = {
     'cost': _normalized_ids(POWER_BUFF_CONFIG['cost']['power_ids']),
     'area': _normalized_ids(

@@ -101,6 +101,11 @@ class WindowController:
         if not hasattr(self, 'workspace_tabs'):
             return
         selected = self.workspace_tabs.select()
+        if (
+            hasattr(self, 'shop_tab')
+            and selected != str(self.shop_tab)
+        ):
+            self._shop_details_auto_collapsed = False
         if hasattr(self, 'settings_tab') and selected == str(self.settings_tab):
             self.after_idle(
                 lambda: self.layout_settings_sections(
@@ -110,6 +115,7 @@ class WindowController:
         elif hasattr(self, 'advanced_tab') and selected == str(self.advanced_tab):
             self.after_idle(self.refresh_advanced_pool_views)
         elif hasattr(self, 'shop_tab') and selected == str(self.shop_tab):
+            self.collapse_shop_details_if_narrow()
             self.after_idle(self.refresh_shop_mode)
         elif (
             hasattr(self, 'mission_view_frame')
@@ -557,6 +563,125 @@ class WindowController:
         """Scroll Settings without changing the focused readonly control."""
         if hasattr(self, 'settings_canvas'):
             self.settings_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
+        return 'break'
+
+    def on_shop_canvas_configure(self, event):
+        """Fit Shop content to its viewport without crushing narrow controls."""
+        if not hasattr(self, 'shop_canvas_window'):
+            return
+        if (
+            not getattr(self, '_shop_details_auto_collapsed', False)
+            and not getattr(self, '_shop_detail_collapse_pending', False)
+        ):
+            self._shop_detail_collapse_pending = True
+            self.after_idle(self.collapse_shop_details_if_narrow)
+        content_width = max(680, event.width)
+        self.shop_canvas.itemconfigure(
+            self.shop_canvas_window, width=content_width
+        )
+        self.layout_shop_content(content_width)
+        self.after_idle(self.resize_shop_canvas_window)
+
+    def collapse_shop_details_if_narrow(self):
+        self._shop_detail_collapse_pending = False
+        if not all(hasattr(self, name) for name in (
+            'shop_tab', 'workspace_tabs', 'settings_panel_visible'
+        )):
+            return
+        narrow_shop = (
+            self.workspace_tabs.select() == str(self.shop_tab)
+            and 1 < self.winfo_width() < 1100
+        )
+        if (
+            narrow_shop
+            and not getattr(self, '_shop_details_auto_collapsed', False)
+        ):
+            self._shop_details_auto_collapsed = True
+            if self.settings_panel_visible:
+                self.toggle_settings_panel()
+
+    def on_shop_content_configure(self, _event=None):
+        if not hasattr(self, 'shop_canvas'):
+            return
+        self.shop_canvas.configure(scrollregion=self.shop_canvas.bbox('all'))
+
+    def resize_shop_canvas_window(self):
+        """Fill tall viewports while retaining vertical overflow scrolling."""
+        if not hasattr(self, 'shop_canvas_window'):
+            return
+        self.shop_content_frame.update_idletasks()
+        height = max(
+            self.shop_canvas.winfo_height(),
+            self.shop_content_frame.winfo_reqheight(),
+        )
+        self.shop_canvas.itemconfigure(self.shop_canvas_window, height=height)
+        self.shop_canvas.configure(scrollregion=self.shop_canvas.bbox('all'))
+
+    def layout_shop_content(self, width):
+        """Stack mission cards and wrap their text when workspace is narrow."""
+        if not hasattr(self, 'shop_mission_cards'):
+            return
+        compact = width < 900
+        columns = 1 if compact else 3
+        for column in range(3):
+            self.shop_choices_frame.columnconfigure(
+                column,
+                weight=1 if column < columns else 0,
+                uniform='shop_missions' if not compact else '',
+            )
+        for index, card in enumerate(self.shop_mission_cards):
+            row = index if compact else 0
+            column = 0 if compact else index
+            card['frame'].grid_configure(
+                row=row,
+                column=column,
+                padx=(0 if column == 0 else 4, 0),
+                pady=(0 if row == 0 else 4, 0),
+            )
+        card_width = width - 36 if compact else (width - 52) // 3
+        wraplength = max(180, card_width - 22)
+        for card in self.shop_mission_cards:
+            for key in (
+                'name_label', 'detail_label', 'reward_label', 'effect_label'
+            ):
+                card[key].configure(wraplength=wraplength)
+        self.shop_message_label.configure(wraplength=max(220, width - 140))
+
+        header_columns = 3 if compact else 6
+        for column in range(6):
+            self.shop_header_frame.columnconfigure(
+                column, weight=1 if column < header_columns else 0
+            )
+        for index, label in enumerate(self.shop_header_labels):
+            label.grid_configure(
+                row=index // header_columns,
+                column=index % header_columns,
+                pady=(3 if compact and index >= header_columns else 0, 0),
+            )
+
+    def on_shop_mousewheel(self, event):
+        if not all(hasattr(self, name) for name in (
+            'shop_canvas', 'shop_tab', 'workspace_tabs'
+        )):
+            return None
+        if self.workspace_tabs.select() != str(self.shop_tab):
+            return None
+        pointer_x = self.winfo_pointerx()
+        pointer_y = self.winfo_pointery()
+        left = self.shop_canvas.winfo_rootx()
+        top = self.shop_canvas.winfo_rooty()
+        right = left + self.shop_canvas.winfo_width()
+        bottom = top + self.shop_canvas.winfo_height()
+        if not (left <= pointer_x <= right and top <= pointer_y <= bottom):
+            return None
+        if event.state & 0x0001:
+            self.shop_canvas.xview_scroll(
+                -1 if event.delta > 0 else 1, 'units'
+            )
+        else:
+            self.shop_canvas.yview_scroll(
+                -1 if event.delta > 0 else 1, 'units'
+            )
         return 'break'
 
     def on_grid_configure(self, _event=None):

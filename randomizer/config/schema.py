@@ -45,6 +45,7 @@ REQUIRED_SECTIONS = {
         'techno_base_rules': dict,
         'map_section_rules': dict,
         'native_direct_buff_exclusions': dict,
+        'enemy_scaling_disabled_missions': list,
         'enemy_native_buff_exclusions': dict,
         'native_variant_buff_rules': dict,
         'native_tech_unlock_ids': dict,
@@ -83,6 +84,7 @@ REQUIRED_SECTIONS = {
         'defense_units': dict,
         'subfaction_units': dict,
         'ground_roles': list,
+        'naval_roles': list,
         'standard_families': list,
         'airfields': dict,
         'production_aliases': dict,
@@ -240,6 +242,19 @@ def _validate_missions(sections, path):
         _invalid(f'Invalid mission build classifications: {invalid}', path)
 
     validate_mission_reward_config(sections, path, _invalid)
+
+    disabled_enemy_scaling = sections.get(
+        'enemy_scaling_disabled_missions', []
+    )
+    if (
+        any(
+            not _is_nonempty_string(code)
+            or code not in sections['build_classifications']
+            for code in disabled_enemy_scaling
+        )
+        or len(set(disabled_enemy_scaling)) != len(disabled_enemy_scaling)
+    ):
+        _invalid('Invalid enemy_scaling_disabled_missions', path)
 
     for section in (
         'helper_buff_excluded_houses',
@@ -679,6 +694,10 @@ def _validate_special_buildings(sections, path):
             or not isinstance(building.get('capacity_rewards', False), bool)
             or not isinstance(building.get('build_category', 'Tech'), str)
             or not isinstance(building.get('cameo_priority', -1000), int)
+            or (
+                building.get('granted_superweapon') is not None
+                and not _is_nonempty_string(building['granted_superweapon'])
+            )
         ):
             _invalid(f'Invalid special building entry {index}', path)
         seen_ids.add(normalized_id)
@@ -932,10 +951,25 @@ def _validate_tier_one(sections, path):
         for entry in (entries.values() if isinstance(entries, dict) else [entries])
     ):
         _invalid('Invalid Tier 1 unit mapping', path)
-    if not set(sections['ground_roles']).issubset(roles):
-        _invalid('Invalid Tier 1 ground roles', path)
-
+    ground_roles = set(sections['ground_roles'])
+    naval_roles = set(sections['naval_roles'])
     expected_families = set(sections['standard_families']) | {'foehn'}
+    if not ground_roles.issubset(roles):
+        _invalid('Invalid Tier 1 ground roles', path)
+    if (
+        not naval_roles
+        or len(naval_roles) != len(sections['naval_roles'])
+        or not naval_roles.issubset(roles)
+        or ground_roles.intersection(naval_roles)
+        or any(set(roles[role]) != expected_families for role in naval_roles)
+        or any(
+            entry[1].lower() != 'naval'
+            for role in naval_roles
+            for entry in roles[role].values()
+        )
+    ):
+        _invalid('Invalid Tier 1 naval roles', path)
+
     invalid_defenses = (
         not sections['defense_marker']
         or not sections['defense_roles']

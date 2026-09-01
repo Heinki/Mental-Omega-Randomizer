@@ -2,11 +2,69 @@
 
 from copy import deepcopy
 
-from randomizer.rewards.catalogue import canonical_rewards
+from randomizer.rewards.catalogue import REWARD_POOL, canonical_rewards
 from randomizer.rewards.power_buff_definitions import (
     POWER_BUFF_CONFIG,
     power_buff_stack_limit,
 )
+
+
+def building_bound_power_launch_rewards(rewards, owned_clone_ids):
+    """Bind access-granted building powers to their isolated player clone."""
+    canonical = canonical_rewards(rewards)
+    bindings = {}
+    for reward in canonical:
+        power_id = str(reward.get('building_superweapon') or '').upper()
+        if not power_id:
+            continue
+        for source_id in reward.get('rules', {}):
+            clone_id = owned_clone_ids.get(str(source_id).upper())
+            if clone_id:
+                bindings.setdefault(power_id, []).append(clone_id)
+    if not bindings:
+        return list(rewards)
+
+    power_rewards = {
+        str(reward.get('superweapon') or '').upper(): reward
+        for reward in REWARD_POOL
+        if reward.get('kind') == 'superweapon'
+        and reward.get('superweapon')
+    }
+    missing = sorted(set(bindings) - set(power_rewards))
+    if missing:
+        raise ValueError(
+            'Special-building power has no matching unlock reward: '
+            + ', '.join(missing)
+        )
+
+    output = []
+    explicit_power_ids = {
+        str(reward.get('superweapon') or '').upper()
+        for reward in canonical
+        if reward.get('kind') == 'superweapon'
+    }
+    for reward in canonical:
+        power_id = str(reward.get('superweapon') or '').upper()
+        if power_id not in bindings:
+            output.append(reward)
+            continue
+        attached = deepcopy(reward)
+        attached['superweapon_primary_buildings'] = list(dict.fromkeys(
+            bindings[power_id]
+        ))
+        attached['superweapon_grant_action'] = True
+        attached['_runtime_canonical'] = True
+        output.append(attached)
+    for power_id, building_ids in bindings.items():
+        if power_id in explicit_power_ids:
+            continue
+        attached = deepcopy(power_rewards[power_id])
+        attached['superweapon_primary_buildings'] = list(dict.fromkeys(
+            building_ids
+        ))
+        attached['_runtime_canonical'] = True
+        output.append(attached)
+    return output
 
 
 def equivalent_payload_unit_buff_rewards(

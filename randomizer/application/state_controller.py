@@ -696,16 +696,16 @@ class StateController:
         if not settings.get('start_with_tier_one_units', False):
             return []
         excluded_ids = {
-            str(unit_id).upper()
+            variant_id
             for unit_id in settings.get('excluded_unit_access_ids', [])
+            for variant_id in linked_buff_variant_ids(unit_id)
         }
         if self.active_reward_mode() == 'Chaos':
             rng = random.Random(f'{seed}:starting-tier-one')
-            return [
-                unit_id
-                for unit_id in random_chaos_tier_one_unit_ids(rng)
-                if not linked_buff_variant_ids(unit_id).intersection(excluded_ids)
-            ]
+            return list(random_chaos_tier_one_unit_ids(
+                rng,
+                excluded_unit_ids=excluded_ids,
+            ))
 
         selected = []
         for family in self.active_standard_starter_families():
@@ -750,7 +750,8 @@ class StateController:
             if (
                 self.active_reward_mode() == 'Chaos'
                 and unit_ids
-                and len(standard_tier_one_unit_markers(concrete_ids)) < 5
+                and len(standard_tier_one_unit_markers(concrete_ids))
+                < len(tier_one_unit_ids(('allies',)))
             ):
                 seed = str(
                     (self.state or {}).get('seed')
@@ -815,18 +816,18 @@ class StateController:
         if not settings.get('start_with_tier_one_defenses', False):
             return []
         excluded_ids = {
-            str(unit_id).upper()
+            variant_id
             for unit_id in settings.get('excluded_unit_access_ids', [])
+            for variant_id in linked_buff_variant_ids(unit_id)
         }
         if self.active_reward_mode() == 'Chaos':
             if seed is None:
                 seed = self.seed_var.get() if hasattr(self, 'seed_var') else ''
             rng = random.Random(f'{seed}:starting-tier-one-defenses')
-            return [
-                unit_id
-                for unit_id in random_chaos_tier_one_defense_ids(rng)
-                if unit_id not in excluded_ids
-            ]
+            return list(random_chaos_tier_one_defense_ids(
+                rng,
+                excluded_unit_ids=excluded_ids,
+            ))
         families = self.active_standard_starter_families()
         marker = tier_one_defense_ids(families)
         eligible_ids = expanded_tier_one_defense_ids(
