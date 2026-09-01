@@ -1,4 +1,4 @@
-PyInstaller==6.21.0
+PyInstaller==6.22.2
 altgraph==0.17.5
 packaging==26.2
 pefile==2024.8.26
