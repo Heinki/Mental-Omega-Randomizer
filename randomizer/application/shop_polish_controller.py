@@ -1194,9 +1194,6 @@ class ShopPolishController(ShopArchipelagoController):
         self.shop_category_var.set('Power Buffs' if power else 'Unit Buffs')
         if self.shop_search_var.get():
             self.shop_search_var.set('')
-        # shop_search_var has a write trace that refreshes the catalogue.
-        # Arm the exact target only after clearing it so an intermediate
-        # refresh cannot consume the request and fall back to the first unit.
         self._shop_requested_buff_target_id = target_id
         self.refresh_shop_catalogue()
         self.shop_panels.select(0)
