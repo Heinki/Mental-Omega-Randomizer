@@ -128,15 +128,17 @@ powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
 
 A Linux maintainer with Wine and the pinned Windows Python 3.14.6 runtime at
-`C:\Python3146` can build the identical Windows target from the repository:
+`C:\Python3146` can build the Windows launcher and matching APWorld together:
 
 ```bash
 cd RandomizerLauncher
-./build_exe_wine.sh
+./build_all_linux.sh
 ```
 
 Set `WINE_PYTHON` to a different Windows Python executable when necessary. The
-output remains `MentalOmegaRandomizer.exe` in the Mental Omega folder.
+outputs are `MentalOmegaRandomizer.exe` in the Mental Omega folder and
+`Archipelago/mental_omega.apworld`. Use `build_exe_wine.sh` only when an
+EXE-only build is intentionally required.
 
 Build both current local artifacts in one command with:
 
@@ -192,6 +194,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `tools/` | Maintainer-only data generation |
 | `build_exe.ps1` | PyInstaller build workflow |
 | `build_exe_wine.sh` | Windows PyInstaller build through Wine on Linux |
+| `build_all_linux.sh` | Combined Linux launcher + APWorld build workflow |
 | `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.

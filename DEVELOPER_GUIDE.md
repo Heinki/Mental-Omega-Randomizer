@@ -169,6 +169,17 @@ Packaging:
 .\build_archipelago_release.ps1
 ```
 
+Equivalent Linux maintainer commands (the EXE remains a Windows executable):
+
+```bash
+./build_all_linux.sh
+./build_exe_wine.sh
+python3 Archipelago/build_apworld.py
+```
+
+Changes affecting the catalogue or APWorld require matching launcher and
+APWorld builds through `build_all.ps1` or `build_all_linux.sh`.
+
 Ownership, clone, AI, power, Action, or mission-map changes require all 97
 extracted maps. Determinism refactors require exact old/new plan parity, not
 distribution-only checks.
