@@ -113,7 +113,7 @@ class WindowController:
                 )
             )
         elif hasattr(self, 'advanced_tab') and selected == str(self.advanced_tab):
-            self.after_idle(self.refresh_advanced_pool_views)
+            self.on_advanced_notebook_tab_changed()
         elif hasattr(self, 'shop_tab') and selected == str(self.shop_tab):
             self.collapse_shop_details_if_narrow()
             self.after_idle(self.refresh_shop_mode)
@@ -270,7 +270,15 @@ class WindowController:
             mode='indeterminate', maximum=100, value=0
         )
         self.busy_progress.start(12)
-        self.configure(cursor='wait')
+        # Tk cursor names differ by windowing system: Windows provides
+        # ``wait`` while X11 commonly provides ``watch``. Prefer the native
+        # Windows cursor and fall back without making startup depend on either.
+        for cursor_name in ('wait', 'watch'):
+            try:
+                self.configure(cursor=cursor_name)
+                break
+            except tk.TclError:
+                continue
         try:
             self.busy_overlay.grab_set()
         except tk.TclError:

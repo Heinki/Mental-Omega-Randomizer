@@ -309,7 +309,9 @@ def _permanent_feature_checks(mission_pool):
         for reward in power_rewards
         if (reward.get('superweapon_rules') or {}).get('SidebarPCX')
     }
-    power_cameos = ensure_superweapon_cameos(power_ids, sidebar_overrides)
+    power_cameos = ensure_superweapon_cameos(
+        power_ids, sidebar_overrides, synchronous=True
+    )
     offers = generate_mission_offers(
         mission_pool, run_seed='SHOP-PERMANENT-FEATURES', stage=1
     )
@@ -385,7 +387,7 @@ def _permanent_feature_checks(mission_pool):
     concrete_starters = active_shop_starter_unit_ids(marker_run)
     concrete_defenses = active_shop_starter_defense_ids(marker_run)
     starter_cameos = ensure_unit_cameos(
-        (*concrete_starters, *concrete_defenses)
+        (*concrete_starters, *concrete_defenses), synchronous=True
     )
     committed = commit_selected_mission(run, offers[0].mission_code)
     revived = apply_mission_failure(

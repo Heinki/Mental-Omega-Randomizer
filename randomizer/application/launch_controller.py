@@ -53,12 +53,14 @@ from ._dependencies import (
     mission_basic_unit_rules,
     original_mcv_access_rules,
     mission_player_production_houses,
+    os,
     patch_large_ini_key,
     patch_or_append_large_ini_value,
     prepare_hooked_mission_map,
     read_text,
     remove_generated_unit_art,
     set_ini_value_lines,
+    signal,
     shutil,
     single_engineer_rules,
     spawn_ini_text,
@@ -66,6 +68,7 @@ from ._dependencies import (
     starting_tier_one_rules,
     subprocess,
     summarize_basic_unit_rules,
+    sys,
     tech_ids_for_rewards,
     time,
     traceback,
@@ -724,7 +727,40 @@ class LaunchController:
         remove_generated_unit_art()
 
     def build_command(self):
-        return f'"{GAME_LAUNCHER_EXE}" "{GAME_EXE.name}" -SPAWN -CD -SPEEDCONTROL -LOG'
+        command = [
+            str(GAME_LAUNCHER_EXE),
+            GAME_EXE.name,
+            '-SPAWN',
+            '-CD',
+            '-SPEEDCONTROL',
+            '-LOG',
+        ]
+        if sys.platform == 'win32':
+            return command
+        wine = shutil.which('wine')
+        if not wine:
+            raise FileNotFoundError(
+                'Wine is required to launch Mental Omega on this platform.'
+            )
+        winepath = shutil.which('winepath')
+        if not winepath:
+            raise FileNotFoundError(
+                'winepath is required to resolve the Mental Omega executable.'
+            )
+        environment = os.environ.copy()
+        environment['WINEDEBUG'] = '-all'
+        resolved_path = subprocess.run(
+            [winepath, '-w', str(GAME_EXE)],
+            cwd=GAME_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        if not resolved_path:
+            raise RuntimeError('Wine could not resolve the Mental Omega executable.')
+        command[1] = resolved_path
+        return [wine, *command]
 
     def process_hook_log_text(self, text):
         if not self.active_hook or not text:
@@ -836,6 +872,17 @@ class LaunchController:
         if self.active_game_process is not process or self.active_hook is not hook:
             return
         if process.poll() is not None:
+            return
+
+        if sys.platform != 'win32':
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+                self.append_log('Closed the spawned Wine process group after victory.')
+            except OSError as exc:
+                self.append_log(
+                    f'Could not close the game after victory: {exc}',
+                    error=True,
+                )
             return
 
         creation_flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
@@ -1118,10 +1165,26 @@ class LaunchController:
     ):
         scenario = mission['scenario']
         cmd = self.build_command()
-        self.append_log('Attempting game launch via: ' + cmd)
+        command_text = subprocess.list2cmdline(cmd)
+        self.append_log('Attempting game launch via: ' + command_text)
 
         try:
-            process = subprocess.Popen(cmd, cwd=GAME_ROOT)
+            popen_options = {}
+            if sys.platform != 'win32':
+                environment = os.environ.copy()
+                overrides = environment.get('WINEDLLOVERRIDES', '')
+                if not any(
+                    entry.strip().lower().startswith('ddraw=')
+                    for entry in overrides.split(';')
+                ):
+                    environment['WINEDLLOVERRIDES'] = ';'.join(
+                        value for value in (overrides, 'ddraw=n,b') if value
+                    )
+                popen_options.update(
+                    env=environment,
+                    start_new_session=True,
+                )
+            process = subprocess.Popen(cmd, cwd=GAME_ROOT, **popen_options)
             self.append_log(f'Launched game process PID={process.pid}.')
             if (
                 self.state
@@ -1149,7 +1212,7 @@ class LaunchController:
                 code=mission.get('code'),
                 title=mission.get('title'),
                 scenario=scenario,
-                command=cmd,
+                command=command_text,
                 difficulty=difficulty_value,
                 game_speed=game_speed_value,
                 hook_markers=(hook or {}).get('markers', {}),

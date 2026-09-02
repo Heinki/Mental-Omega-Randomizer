@@ -1352,7 +1352,7 @@ class UnlockDataController:
             self.advanced_unit_cameo_paths = None
             self.unlock_dashboard_signature = None
             self.unlock_dashboard_structure_signatures = {}
-            self.refresh_advanced_pool_views()
+            self.refresh_active_advanced_view()
             self.refresh_progress_view()
 
         self.cameo_retry_after_id = self.after(1000, retry)

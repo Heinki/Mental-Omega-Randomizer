@@ -34,6 +34,51 @@ from ._dependencies import (
 
 class AdvancedSettingsController:
 
+    ADVANCED_VIEW_KEYS = (
+        'missions',
+        'units',
+        'powers',
+        'unit_buffs',
+        'power_buffs',
+        'starting_unlocks',
+    )
+
+    def active_advanced_view_key(self):
+        """Return the visible Advanced subpage without rendering hidden pages."""
+        if (
+            not hasattr(self, 'workspace_tabs')
+            or not hasattr(self, 'advanced_tab')
+            or self.workspace_tabs.select() != str(self.advanced_tab)
+            or not hasattr(self, 'advanced_notebook')
+        ):
+            return None
+        try:
+            index = self.advanced_notebook.index(
+                self.advanced_notebook.select()
+            )
+        except tk.TclError:
+            return None
+        if 0 <= index < len(self.ADVANCED_VIEW_KEYS):
+            return self.ADVANCED_VIEW_KEYS[index]
+        return None
+
+    def refresh_active_advanced_view(self):
+        key = self.active_advanced_view_key()
+        if key == 'starting_unlocks':
+            self.refresh_starting_unlocks_view()
+        elif key:
+            self.refresh_advanced_pool_views(key)
+
+    def on_advanced_notebook_tab_changed(self, _event=None):
+        if self.__dict__.get('_active_advanced_refresh_after_id') is not None:
+            return
+
+        def refresh():
+            self._active_advanced_refresh_after_id = None
+            self.refresh_active_advanced_view()
+
+        self._active_advanced_refresh_after_id = self.after_idle(refresh)
+
     def advanced_search_matches(self, pool_key, *values):
         variable = getattr(self, 'advanced_pool_search_vars', {}).get(pool_key)
         query = variable.get().strip().casefold() if variable is not None else ''
@@ -108,12 +153,14 @@ class AdvancedSettingsController:
         counts[pool_key] = columns
         if not hasattr(self, 'advanced_pool_frames'):
             return
+        if self.active_advanced_view_key() != pool_key:
+            return
         if self.__dict__.get('_advanced_pool_refresh_after_id') is not None:
             return
 
         def refresh():
             self._advanced_pool_refresh_after_id = None
-            self.refresh_advanced_pool_views()
+            self.refresh_advanced_pool_views(pool_key)
 
         self._advanced_pool_refresh_after_id = self.after_idle(refresh)
 
@@ -612,11 +659,13 @@ class AdvancedSettingsController:
     def refresh_advanced_pool_views(self, pool_key=None):
         if not hasattr(self, 'advanced_pool_frames'):
             return
-        requested = (
-            set(self.advanced_pool_frames)
-            if pool_key is None
-            else {pool_key}
-        )
+        active_key = self.active_advanced_view_key()
+        requested = {
+            key for key in (
+                {active_key} if pool_key is None else {pool_key}
+            )
+            if key in self.advanced_pool_frames
+        }
         for key, frame in self.advanced_pool_frames.items():
             if key not in requested:
                 continue
@@ -828,7 +877,6 @@ class AdvancedSettingsController:
             self.refresh_advanced_power_buff_view()
         if pool_key is not None:
             return
-        self.refresh_starting_unlocks_view()
 
         included_missions = len(visible_missions) - len(
             {mission['code'].upper() for mission in visible_missions}

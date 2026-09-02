@@ -69,8 +69,10 @@ def run_self_check():
     report_path = APP_DIR / 'self_check.json'
     try:
         APP_DIR.mkdir(parents=True, exist_ok=True)
-        cameos = ensure_unit_cameos(['ABRM'])
-        power_cameos = ensure_superweapon_cameos(['LightningStormSpecial'])
+        cameos = ensure_unit_cameos(['ABRM'], synchronous=True)
+        power_cameos = ensure_superweapon_cameos(
+            ['LightningStormSpecial'], synchronous=True
+        )
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         from randomizer.shop.self_check import validate_shop_domain
         shop_domain = validate_shop_domain()

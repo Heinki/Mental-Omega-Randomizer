@@ -220,6 +220,11 @@ def _build_advanced_tab(self, workspace_tabs):
     advanced_notebook = ttk.Notebook(advanced_tab, style='Unlocks.TNotebook')
     self.advanced_notebook = advanced_notebook
     advanced_notebook.grid(row=2, column=0, sticky='nsew')
+    advanced_notebook.bind(
+        '<<NotebookTabChanged>>',
+        self.on_advanced_notebook_tab_changed,
+        add='+',
+    )
     self.advanced_pool_canvases = {}
     self.advanced_pool_frames = {}
     self.advanced_pool_column_counts = {}

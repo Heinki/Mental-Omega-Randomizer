@@ -102,6 +102,17 @@ Run the launcher from source, starting in the Mental Omega folder:
 python RandomizerLauncher\launcher_gui.py
 ```
 
+On Linux, create and activate a virtual environment in `RandomizerLauncher`,
+install `requirements-runtime.txt`, then run the same entry point:
+
+```bash
+cd RandomizerLauncher
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-runtime.txt
+python launcher_gui.py
+```
+
 Before packaging, compile every source module to catch syntax and import-time parsing errors:
 
 ```powershell
@@ -115,6 +126,17 @@ Build the packaged launcher from the Mental Omega folder with:
 ```powershell
 powershell -ExecutionPolicy Bypass -File RandomizerLauncher\build_exe.ps1
 ```
+
+A Linux maintainer with Wine and the pinned Windows Python 3.14.6 runtime at
+`C:\Python3146` can build the identical Windows target from the repository:
+
+```bash
+cd RandomizerLauncher
+./build_exe_wine.sh
+```
+
+Set `WINE_PYTHON` to a different Windows Python executable when necessary. The
+output remains `MentalOmegaRandomizer.exe` in the Mental Omega folder.
 
 Build both current local artifacts in one command with:
 
@@ -169,6 +191,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `configs/` | Editable static policy/templates plus ignored `player/` runtime YAML |
 | `tools/` | Maintainer-only data generation |
 | `build_exe.ps1` | PyInstaller build workflow |
+| `build_exe_wine.sh` | Windows PyInstaller build through Wine on Linux |
 | `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
