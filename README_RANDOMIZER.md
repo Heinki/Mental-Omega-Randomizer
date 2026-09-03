@@ -11,7 +11,7 @@ run in a separate protected manifest.
 
 ## Seed Lifecycle
 
-- **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan.
+- **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan. The Seed name field is optional: a blank field always creates a new identifier, while a typed name is reused intentionally.
 - Seed-generation settings are copied into `randomizer_state.json`. Changing gameplay settings afterward affects the next seed. Dark mode, reward-name privacy, and locked-grid mission privacy apply immediately.
 - Difficulty and game speed are launch settings and may be changed between missions.
 - **Classic** mode preserves the installed campaign order, opens only the first mission, and opens the next mission after each victory.
@@ -223,7 +223,7 @@ Mission List uses randomized linear progression. The first three entries in the 
 
 ### Shop Mode
 
-Shop Mode opens its own **Shop Mode** workspace. Selecting it replaces the normal Settings page with **Shop Setup** and hides the Advanced tab. Shop Setup shows Seed, Shop-only Faction Pool, Game speed, and the Progression selector used to leave Shop Mode. Standard and Chaos reward modes do not apply. The faction pool limits Shop inventory while missions remain mixed-campaign, allowing a ten-stage Foehn-only inventory run. Faction Pool locks after a run starts; Game speed remains adjustable. Mission Difficulty Assist is chosen per offered mission during the run.
+Shop Mode opens its own **Shop Mode** workspace. Selecting it replaces the normal Settings page with **Shop Setup** and hides the Advanced tab. Shop Setup shows Seed, the two no-build mission inclusion options, Shop-only Faction Pool, Game speed, and the Progression selector used to leave Shop Mode. Standard and Chaos reward modes do not apply. The faction pool limits Shop inventory while missions remain mixed-campaign, allowing a ten-stage Foehn-only inventory run. Faction Pool and mission-pool options lock after a run starts; Game speed remains adjustable. Mission Difficulty Assist is chosen per offered mission during the run.
 
 Start a run from **Shop Setup**, click owned permanent-unit rows to mark the next-run loadout, optionally enable challenge modifiers, then choose from the deterministic mission offers. Selected rows show a check and distinct color; the counter reports used slots. Each seed normally fixes seven mandatory Tier 1 roles—two infantry, two tanks, one aircraft, one naval attacker, and one naval anti-air unit—plus one defense per defense role. One multi-role Epsilon Piranha can satisfy both naval roles. **Elite Force** removes one infantry and one tank while retaining the aircraft and both naval safety roles. Subfaction variants are candidates for those slots, not extra roster entries. Each mission card contains its own reroll action, which replaces only that offer. Cards also show their seeded game difficulty: stages 1–3 are 80% Casual / 20% Normal, stages 4–5 are 35% Casual / 65% Normal, stages 6–7 are 20% Casual / 60% Normal / 20% Mental, and stages 8–10 are 10% Casual / 45% Normal / 45% Mental. Mission Difficulty Assist lowers the chosen offer by one step while retaining its original Ore and Gem reward.
 

@@ -418,20 +418,18 @@ class LaunchController:
     def cleanup_generated_root_maps(self):
         for path in list(GAME_ROOT.glob('*.MAP')) + list(GAME_ROOT.glob('*.map')):
             if is_generated_hooked_map(path):
-                result = subprocess.run(
-                    [
-                        'powershell',
-                        '-NoProfile',
-                        '-Command',
-                        f"Remove-Item -LiteralPath '{str(path).replace(chr(39), chr(39) + chr(39))}' -Force",
-                    ],
-                    cwd=GAME_ROOT,
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode != 0 and callable(self.__dict__.get('append_log')) and 'log_text' in self.__dict__:
-                    detail = (result.stderr or 'Remove-Item failed.').strip()
-                    self.append_log(f'Could not remove generated hooked map {path.name}: {detail}', error=True)
+                try:
+                    path.unlink()
+                except OSError as exc:
+                    if (
+                        callable(self.__dict__.get('append_log'))
+                        and 'log_text' in self.__dict__
+                    ):
+                        self.append_log(
+                            f'Could not remove generated hooked map '
+                            f'{path.name}: {exc}',
+                            error=True,
+                        )
 
     def extract_campaign_map(self, scenario):
         EXTRACTED_MAP_DIR.mkdir(parents=True, exist_ok=True)

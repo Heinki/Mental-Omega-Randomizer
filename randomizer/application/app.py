@@ -214,7 +214,12 @@ class LauncherApp(
             EVA_VOICE_CHOICES,
             EVA_VOICE_CHOICES[0],
         ))
-        self.seed_var = tk.StringVar(value=self.state.get('seed', self.config.get('seed', '')))
+        # The seed field is an input for an explicitly requested seed, not a
+        # display of the active run.  Prefilling it with the active seed makes
+        # the next "Generate Seed" action silently replay the old run.
+        self.seed_var = tk.StringVar(value=(
+            self.config.get('seed', '') if not self.state else ''
+        ))
         default_goal = self.state.get('mission_goal', self.config.get('mission_goal', DEFAULT_MISSION_GOAL))
         self.mission_goal_var = tk.IntVar(value=int(default_goal or DEFAULT_MISSION_GOAL))
         default_rewards_per_check = clamp_int(

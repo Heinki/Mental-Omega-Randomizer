@@ -42,7 +42,14 @@ def _build_window_shell(self):
         text='Hide Details',
         command=self.toggle_settings_panel,
     )
-    self.settings_toggle_button.grid(row=0, column=1, rowspan=2, sticky='ne')
+    self.settings_toggle_button.grid(row=0, column=1, sticky='ne')
+    self.copy_seed_button = ttk.Button(
+        main_frame,
+        text='Copy Seed',
+        command=self.copy_active_seed,
+        state='disabled',
+    )
+    self.copy_seed_button.grid(row=1, column=1, sticky='ne', pady=(2, 10))
     self.subtitle_label = ttk.Label(
         main_frame,
         textvariable=self.header_summary_var,
@@ -280,7 +287,7 @@ def _build_right_panel(self, main_frame):
 
     ttk.Label(
         seed_settings_frame,
-        text='Seed (leave blank for a random seed)',
+        text='Seed name (optional; blank generates a new seed)',
         font=('Segoe UI', 10, 'bold'),
     ).grid(row=0, column=0, sticky='w')
     seed_row = ttk.Frame(seed_settings_frame)
@@ -553,7 +560,7 @@ def _build_right_panel(self, main_frame):
     )
     ttk.Label(
         shop_settings_frame,
-        text='Seed (leave blank for a random seed)',
+        text='Seed name (optional; blank generates a new seed)',
         font=('Segoe UI', 10, 'bold'),
     ).grid(row=3, column=0, columnspan=2, sticky='w')
     shop_seed_row = ttk.Frame(shop_settings_frame)
@@ -596,6 +603,34 @@ def _build_right_panel(self, main_frame):
     self.shop_progression_mode_combo.bind(
         '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
     )
+    shop_mission_filters = ttk.LabelFrame(
+        shop_settings_frame, text='Mission Pool', padding=8
+    )
+    shop_mission_filters.grid(
+        row=7, column=0, columnspan=2, sticky='ew', pady=(8, 0)
+    )
+    self.shop_include_no_build_missions_check = ttk.Checkbutton(
+        shop_mission_filters,
+        text='Include no-build missions',
+        variable=self.include_no_build_missions_var,
+    )
+    self.shop_include_no_build_missions_check.grid(row=0, column=0, sticky='w')
+    self.shop_include_no_build_production_missions_check = ttk.Checkbutton(
+        shop_mission_filters,
+        text='Include no-build missions with production',
+        variable=self.include_no_build_production_missions_var,
+    )
+    self.shop_include_no_build_production_missions_check.grid(
+        row=1, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.shop_include_no_build_missions_check,
+        'Include true no-build missions using fixed or scripted units.',
+    )
+    WidgetTooltip(
+        self.shop_include_no_build_production_missions_check,
+        'Include missions without normal base building but with limited production.',
+    )
     ttk.Label(
         shop_settings_frame,
         text=(
@@ -609,25 +644,25 @@ def _build_right_panel(self, main_frame):
         style='Muted.TLabel',
         justify='left',
         wraplength=720,
-    ).grid(row=8, column=0, columnspan=2, sticky='ew', pady=(12, 0))
+    ).grid(row=9, column=0, columnspan=2, sticky='ew', pady=(12, 0))
 
     ttk.Separator(shop_settings_frame, orient='horizontal').grid(
-        row=9, column=0, columnspan=2, sticky='ew', pady=12
+        row=10, column=0, columnspan=2, sticky='ew', pady=12
     )
     ttk.Label(
         shop_settings_frame,
         text='Starting Loadout',
         font=('Segoe UI', 10, 'bold'),
-    ).grid(row=10, column=0, columnspan=2, sticky='w')
+    ).grid(row=11, column=0, columnspan=2, sticky='w')
     ttk.Label(
         shop_settings_frame,
         textvariable=self.shop_loadout_help_var,
         style='Muted.TLabel',
         wraplength=720,
-    ).grid(row=11, column=0, columnspan=2, sticky='ew', pady=(2, 6))
+    ).grid(row=12, column=0, columnspan=2, sticky='ew', pady=(2, 6))
     shop_loadout_search = ttk.Frame(shop_settings_frame)
     shop_loadout_search.grid(
-        row=12, column=0, columnspan=2, sticky='ew', pady=(0, 6)
+        row=13, column=0, columnspan=2, sticky='ew', pady=(0, 6)
     )
     ttk.Label(shop_loadout_search, text='Search permanent units:').pack(
         side='left'
@@ -637,7 +672,7 @@ def _build_right_panel(self, main_frame):
     ).pack(side='left', fill='x', expand=True, padx=(6, 0))
     shop_loadout_frame = ttk.Frame(shop_settings_frame)
     shop_loadout_frame.grid(
-        row=13, column=0, columnspan=2, sticky='nsew'
+        row=14, column=0, columnspan=2, sticky='nsew'
     )
     self.shop_loadout_select_tree = _tree(
         shop_loadout_frame,
@@ -660,7 +695,7 @@ def _build_right_panel(self, main_frame):
         shop_settings_frame, text='Optional Run Modifiers', padding=8
     )
     modifier_frame.grid(
-        row=14, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+        row=15, column=0, columnspan=2, sticky='ew', pady=(10, 0)
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
     self.shop_modifier_difficulty_var = tk.StringVar(value='Difficulty +0')
@@ -712,7 +747,7 @@ def _build_right_panel(self, main_frame):
         style='Launch.TButton',
     )
     self.shop_setup_start_button.grid(
-        row=16, column=0, columnspan=2, sticky='ew', pady=(12, 0)
+        row=17, column=0, columnspan=2, sticky='ew', pady=(12, 0)
     )
     shop_settings_frame.grid_remove()
 

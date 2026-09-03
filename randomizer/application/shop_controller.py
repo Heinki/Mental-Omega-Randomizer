@@ -778,6 +778,8 @@ class ShopController(ShopPolishController):
         self._refresh_shop_loadout()
         self._refresh_shop_setup()
         self._refresh_permanent_shop()
+        if hasattr(self, 'header_summary_var'):
+            self.update_header_summary()
         self._refresh_shop_history()
         self._refresh_archipelago_shop_purchases()
         self.refresh_shop_settings_controls()
@@ -1535,9 +1537,13 @@ class ShopController(ShopPolishController):
                 parent=self,
             )
             return
-        seed = self.seed_var.get().strip() or uuid.uuid4().hex[:16].upper()
+        requested_seed = self.seed_var.get().strip()
+        seed = requested_seed or uuid.uuid4().hex[:16].upper()
         salvaged_ore = self.shop_profile.salvaged_run_coins
-        self.seed_var.set(seed)
+        # Only a seed typed by the player is an instruction to reuse it.
+        # Automatically generated run IDs must not remain in the input field.
+        if not requested_seed:
+            self.seed_var.set('')
         settings = self.shop_reward_settings_for_new_run()
         modifiers = tuple(
             modifier_id for modifier_id, variable in self.shop_modifier_vars.items()

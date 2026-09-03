@@ -80,8 +80,8 @@ class SeedController:
             return
 
         self.clear_log()
-        seed = self.seed_var.get().strip() or f'MO-{random.randrange(0x10000000):08X}'
-        self.seed_var.set(seed)
+        requested_seed = self.seed_var.get().strip()
+        seed = requested_seed or f'MO-{random.randrange(0x10000000):08X}'
         mission_goal = (
             len(seed_missions)
             if self.progression_mode_var.get() == 'Shop Mode'
@@ -200,6 +200,7 @@ class SeedController:
         return {
             **generation_context,
             'seed': seed,
+            'seed_was_explicit': bool(requested_seed),
             'seed_missions': list(seed_missions),
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
@@ -418,6 +419,7 @@ class SeedController:
         return {
             'state': state,
             'seed': seed,
+            'seed_was_explicit': options.get('seed_was_explicit', False),
             'mission_goal': mission_goal,
             'rewards_per_check': rewards_per_check,
             'rewards_on_victory_only': rewards_on_victory_only,
@@ -466,7 +468,11 @@ class SeedController:
         campaign_limits = result['campaign_limits']
         progression_mode = result['progression_mode']
         grid = result['grid']
-        self.seed_var.set(seed)
+        # Keep an explicitly requested seed visible for intentional replay;
+        # leave the input blank after an automatic seed so the next run is
+        # actually new.
+        if not result.get('seed_was_explicit', False):
+            self.seed_var.set('')
         self.reset_archipelago_after_new_seed()
         self.save_state()
         self.save_launcher_config(seed, mission_goal, rewards_per_check)

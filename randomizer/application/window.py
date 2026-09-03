@@ -48,6 +48,7 @@ class WindowController:
 
     def update_header_summary(self, *_args):
         """Show the core selected run settings beneath the launcher title."""
+        seed = self.current_display_seed()
         parts = [
             self.campaign_var.get(),
             self.reward_mode_var.get(),
@@ -55,12 +56,35 @@ class WindowController:
             self.difficulty_var.get(),
             self.game_speed_var.get(),
         ]
+        if seed:
+            parts.insert(0, f'Seed: {seed}')
         if self.archipelago_run_active():
             parts.append('Archipelago')
         elif self.archipelago_run_staged():
             parts.append('Standalone — AP YAML ready')
         self.header_summary_var.set(' • '.join(parts))
+        if hasattr(self, 'copy_seed_button'):
+            self.copy_seed_button.configure(
+                state='normal' if seed else 'disabled'
+            )
         self.sync_debug_completion_controls()
+
+    def current_display_seed(self):
+        """Return the seed belonging to the currently displayed run."""
+        shop_run = getattr(self, 'shop_run', None)
+        if self.progression_mode_var.get() == 'Shop Mode':
+            return str(getattr(shop_run, 'seed', '') or '')
+        return str(self.active_launch_seed() or '')
+
+    def copy_active_seed(self):
+        seed = self.current_display_seed()
+        if not seed:
+            return
+        self.clipboard_clear()
+        self.clipboard_append(seed)
+        self.update()
+        if hasattr(self, 'append_log'):
+            self.append_log(f'Copied seed {seed} to the clipboard.')
 
     def sync_debug_completion_controls(self):
         """Keep the Shop override hidden inside the expanded launcher log."""
