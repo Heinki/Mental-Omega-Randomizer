@@ -727,7 +727,7 @@ class LaunchController:
     def build_command(self):
         command = [
             str(GAME_LAUNCHER_EXE),
-            GAME_EXE.name,
+            str(GAME_EXE),
             '-SPAWN',
             '-CD',
             '-SPEEDCONTROL',
@@ -1168,7 +1168,14 @@ class LaunchController:
 
         try:
             popen_options = {}
-            if sys.platform != 'win32':
+            launch_target = cmd
+            if sys.platform == 'win32':
+                # Give CreateProcessW both fields explicitly. This avoids a
+                # packaged/windowed Python edge case where Syringe starts but
+                # receives an empty lpCommandLine and displays its usage box.
+                launch_target = command_text
+                popen_options['executable'] = str(GAME_LAUNCHER_EXE)
+            else:
                 environment = os.environ.copy()
                 overrides = environment.get('WINEDLLOVERRIDES', '')
                 if not any(
@@ -1182,7 +1189,11 @@ class LaunchController:
                     env=environment,
                     start_new_session=True,
                 )
-            process = subprocess.Popen(cmd, cwd=GAME_ROOT, **popen_options)
+            process = subprocess.Popen(
+                launch_target,
+                cwd=str(GAME_ROOT),
+                **popen_options,
+            )
             self.append_log(f'Launched game process PID={process.pid}.')
             if (
                 self.state

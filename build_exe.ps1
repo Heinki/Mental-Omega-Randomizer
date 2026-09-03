@@ -67,6 +67,13 @@ foreach ($tkRuntimePath in @(
     }
 }
 
+python -m compileall -q -f `
+    (Join-Path $scriptDir "launcher_gui.py") `
+    (Join-Path $scriptDir "randomizer")
+if ($LASTEXITCODE -ne 0) {
+    throw "Source bytecode refresh failed; EXE was not built."
+}
+
 python -c "from randomizer.config.static import REQUIRED_STATIC_CONFIGS, validate_static_configs; validate_static_configs(REQUIRED_STATIC_CONFIGS); print('Static config preflight passed.')"
 if ($LASTEXITCODE -ne 0) {
     throw "Static config preflight failed; EXE was not built."

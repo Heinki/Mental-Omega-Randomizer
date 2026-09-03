@@ -7,6 +7,7 @@ Wine, allowing Linux maintainers to produce the same PyInstaller target.
 from __future__ import annotations
 
 import argparse
+import compileall
 import hashlib
 import json
 import os
@@ -127,6 +128,13 @@ def build(output: Path) -> None:
         )
 
     sys.path.insert(0, str(PROJECT_ROOT))
+    bytecode_ready = compileall.compile_file(
+        PROJECT_ROOT / 'launcher_gui.py', force=True, quiet=1
+    ) and compileall.compile_dir(
+        PROJECT_ROOT / 'randomizer', force=True, quiet=1
+    )
+    if not bytecode_ready:
+        raise RuntimeError('Source bytecode refresh failed; EXE was not built.')
     from randomizer.config.static import (
         REQUIRED_STATIC_CONFIGS,
         validate_static_configs,
