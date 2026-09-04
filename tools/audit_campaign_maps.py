@@ -321,6 +321,18 @@ def _assert_targeted_contracts(generated_paths):
         raise AssertionError(
             'ESCRAP Event 01000028 no longer watches native story STING'
         )
+    stalins_fist_loss = str(
+        scrapyard_events.get('01000032', '')
+    ).split(',')
+    if (
+        len(stalins_fist_loss) < 9
+        or stalins_fist_loss[4].upper() != 'MWF'
+        or stalins_fist_loss[8].upper() != 'NAFIST'
+    ):
+        raise AssertionError(
+            'ESCRAP Event 01000032 no longer watches native story '
+            'MWF/NAFIST'
+        )
 
     shipwrecked = next(
         path for path in generated_paths if path.name.upper() == 'ESHIP.MAP'
