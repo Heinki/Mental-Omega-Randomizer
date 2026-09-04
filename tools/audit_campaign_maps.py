@@ -101,6 +101,14 @@ class _AuditLauncher(LaunchController):
             'Industrial Plant Access',
             'Rhino Heavy Tank Access',
             "Stalin's Fist Access",
+            "Stalin's Fist Drill I",
+            "Stalin's Fist Logistics I",
+            "Stalin's Fist Mobility I",
+            "Stalin's Fist Armor Plating I",
+            "Stalin's Fist Reinforced Frames I",
+            "Stalin's Fist Recon Package I",
+            "Stalin's Fist Stealth Systems I",
+            "Stalin's Fist Sensor Suite I",
             'Stinger Access',
             'Tanya Access',
         ]
@@ -332,6 +340,39 @@ def _assert_targeted_contracts(generated_paths):
         raise AssertionError(
             'ESCRAP Event 01000032 no longer watches native story '
             'MWF/NAFIST'
+        )
+    scrapyard_units = section_value_map_preserve(scrapyard_lines, 'Units')
+    if not any(
+        len(tokens) >= 2
+        and tokens[0].lower() == 'scorpioncell house'
+        and tokens[1].upper() == 'MWF'
+        for value in scrapyard_units.values()
+        if (tokens := [token.strip() for token in str(value).split(',')])
+    ):
+        raise AssertionError(
+            'ESCRAP starting Stalin\'s Fist no longer uses native MWF'
+        )
+    stalins_fist_taskforce = section_value_map_preserve(
+        scrapyard_lines, '01000321'
+    )
+    if not any(
+        len(tokens) >= 2 and tokens[1].upper() == 'MWF'
+        for value in stalins_fist_taskforce.values()
+        if (tokens := [token.strip() for token in str(value).split(',')])
+    ):
+        raise AssertionError(
+            'ESCRAP scripted Stalin\'s Fist no longer uses native MWF'
+        )
+    player_stalins_fist = section_value_map_preserve(
+        scrapyard_lines, 'MORPMWF'
+    )
+    if (
+        player_stalins_fist.get('Speed') != '6'
+        or str(player_stalins_fist.get('Cloakable')).lower() != 'yes'
+        or str(player_stalins_fist.get('Sensors')).lower() != 'yes'
+    ):
+        raise AssertionError(
+            'ESCRAP isolated player Stalin\'s Fist lost its earned buffs'
         )
 
     shipwrecked = next(

@@ -174,7 +174,7 @@ class ShopArchipelagoController:
         self._archipelago_allowed_locations = frozenset(allowed)
 
     def _shop_run_mission_pool(self, run=None):
-        run = self.shop_run if run is None else run
+        """Use fresh UI filters unless an existing run is supplied explicitly."""
         if run is not None and run.eligible_mission_codes:
             codes = run.eligible_mission_codes
         else:

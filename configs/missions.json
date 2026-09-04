@@ -1098,6 +1098,10 @@
         "MWF",
         "NAFIST"
       ],
+      "ESCRAP": [
+        "MWF",
+        "NAFIST"
+      ],
       "ASTORM": [
         "SIEG"
       ],
@@ -1129,6 +1133,8 @@
       ],
       "ESCRAP": [
         "BOREK",
+        "MWF",
+        "NAFIST",
         "SWLF",
         "YURI"
       ],
@@ -1554,6 +1560,8 @@
       ],
       "ESCRAP": [
         "BOREK",
+        "MWF",
+        "NAFIST",
         "SWLF",
         "YURI"
       ],
@@ -1931,6 +1939,8 @@
         "YURIPR"
       ],
       "ESCRAP": [
+        "MWF",
+        "NAFIST",
         "YURI"
       ],
       "ESHIP": [
