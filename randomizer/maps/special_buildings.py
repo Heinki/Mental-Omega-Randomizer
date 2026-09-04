@@ -45,7 +45,7 @@ def validate_original_refinery_contract():
     """Self-check installed refinery IDs and their untouched FreeUnit pairs."""
     from randomizer.ui.cameos import installed_rules_registry
 
-    _superweapons, installed_sections = installed_rules_registry()
+    _superweapons, installed_sections = installed_rules_registry(synchronous=True)
     registered = {
         str(value).strip().upper()
         for value in installed_sections.get('BuildingTypes', {}).values()

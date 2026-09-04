@@ -53,6 +53,7 @@ from ._dependencies import (
     mission_basic_unit_rules,
     original_mcv_access_rules,
     mission_player_production_houses,
+    ordered_mix_paths,
     os,
     patch_large_ini_key,
     patch_or_append_large_ini_value,
@@ -442,11 +443,7 @@ class LaunchController:
             shutil.copy2(loose_root_map, output_path)
             return output_path
 
-        mix_paths = sorted(
-            GAME_ROOT.glob('expandmo*.mix'),
-            key=lambda path: path.name.lower(),
-            reverse=True,
-        )
+        mix_paths = ordered_mix_paths(GAME_ROOT.glob('expandmo*.mix'))
         if not mix_paths:
             raise FileNotFoundError('No expandmo*.mix archives found.')
         extracted, missing, skipped = extract_mix_members(

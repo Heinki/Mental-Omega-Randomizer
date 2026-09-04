@@ -479,6 +479,102 @@ def randomizer_unit_roster():
     return paths, clone_ids, templates
 
 
+def _lowered_key_map(values):
+    return {str(key).lower(): key for key in values}
+
+
+def installed_rules_template_overlay(templates, installed_sections):
+    """Rebuild clone templates from the live installed rules registry.
+
+    The committed ``configs/Randomizer*.ini`` roster is baked from stock
+    Mental Omega rules. A submod that edits ``rulesmo.ini`` therefore leaves
+    every ``MORP*`` player copy on the stock stat line while its native source
+    uses the submodded one. Replay the same reviewed template policy against
+    whatever rules the installation actually loads so the player clone and its
+    native identity stay one unit.
+
+    Static roster values remain authoritative wherever the live registry has
+    no matching source section (reviewed map-only rewards such as Super Thor,
+    the boss Brutes, and campaign-only heroes) and wherever the value wires up
+    a generated ``MORP*`` identity. Returns ``(templates, report)`` and never
+    mutates its input.
+    """
+    from randomizer.rewards.catalogue import BUFF_TARGETS, SPECIAL_REWARD_UNIT_IDS
+    from randomizer.config.tuning import CLONE_UI_DESCRIPTION
+    from randomizer.rewards.template_policy import (
+        build_template_values,
+        case_insensitive_section,
+        template_source_id,
+    )
+
+    overlaid = {source_id: dict(values) for source_id, values in templates.items()}
+    report = {'updated': {}, 'unchanged': [], 'no_installed_source': []}
+    if not installed_sections:
+        report['no_installed_source'] = sorted(overlaid)
+        return overlaid, report
+
+    for source_id, template in sorted(templates.items()):
+        source_name = case_insensitive_section(
+            installed_sections, template_source_id(source_id)
+        )
+        if not source_name:
+            report['no_installed_source'].append(source_id)
+            continue
+        target = BUFF_TARGETS.get(source_id, {})
+        rebuilt = build_template_values(
+            source_id,
+            installed_sections[source_name],
+            category=target.get('category'),
+            special_reward=source_id in SPECIAL_REWARD_UNIT_IDS,
+            description=CLONE_UI_DESCRIPTION,
+        )
+        # Clone wiring (Convert.Deploy, Passengers.Allowed, InitialPayload,
+        # miner Dock lists) names generated MORP identities that exist only in
+        # the randomizer roster. Reviewed policy already restores these, but an
+        # older editable packaged roster can carry ones this build does not
+        # know; never drop them to installed rules.
+        rebuilt_keys = _lowered_key_map(rebuilt)
+        for key, value in template.items():
+            if 'MORP' not in str(value).upper():
+                continue
+            rebuilt.pop(rebuilt_keys.get(str(key).lower(), key), None)
+            rebuilt[key] = value
+        rebuilt.update(MANDATORY_TEMPLATE_OVERRIDES.get(source_id, {}))
+        before, after = _lowered_key_map(template), _lowered_key_map(rebuilt)
+        changed = sorted(
+            key for key in set(before) | set(after)
+            if str(template.get(before.get(key))) != str(rebuilt.get(after.get(key)))
+        )
+        if changed:
+            report['updated'][source_id] = changed
+        else:
+            report['unchanged'].append(source_id)
+        overlaid[source_id] = rebuilt
+    _normalize_special_reward_build_times(overlaid, BUFF_TARGETS)
+    return overlaid, report
+
+
+def summarize_installed_rules_overlay(report, limit=12):
+    """Return one log line describing an installed-rules template overlay."""
+    updated = report.get('updated', {})
+    if not updated:
+        return (
+            'Player clone templates already match the installed rules '
+            'registry; no submod stat differences found.'
+        )
+    named = sorted(updated, key=lambda key: (-len(updated[key]), key))
+    shown = ', '.join(
+        f'{source_id} ({len(updated[source_id])} key(s))'
+        for source_id in named[:limit]
+    )
+    if len(named) > limit:
+        shown += f', and {len(named) - limit} more'
+    return (
+        f'Rebuilt {len(updated)} player clone template(s) from the installed '
+        f'rules registry: {shown}.'
+    )
+
+
 def validate_randomizer_unit_roster():
     paths, clone_ids, templates = randomizer_unit_roster()
     return {

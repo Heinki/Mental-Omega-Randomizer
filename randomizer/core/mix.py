@@ -1,8 +1,43 @@
 """Minimal read-only support for unencrypted Westwood MIX archives."""
 
+import re
 import struct
 import zlib
 from pathlib import Path
+
+
+# Expansion archives are read before the base game archives, and inside
+# them the highest number wins. Mental Omega ships expandmo*; expandmd*
+# and expand* are the Yuri's Revenge and Red Alert 2 sets underneath it.
+EXPANSION_MIX_NAME = re.compile(r'^expand(mo|md)?([0-9]{1,3})$', re.IGNORECASE)
+EXPANSION_MIX_RANK = {'mo': 2, 'md': 1, '': 0}
+
+
+def ordered_mix_paths(paths):
+    """Return archives in engine precedence order, highest priority first.
+
+    A plain descending name sort gets two things wrong: it scans ra2.mix
+    and thememo.mix ahead of every expansion, and it ranks expandmo99
+    above expandmo100. Numbered expansions are therefore ordered
+    numerically and always precede the unnumbered archives, which keep the
+    descending name order that already puts the newer "md" sets first.
+    """
+    expansions = []
+    others = []
+    for path in (Path(item) for item in paths):
+        match = EXPANSION_MIX_NAME.match(path.stem)
+        if match:
+            rank = EXPANSION_MIX_RANK[(match.group(1) or '').lower()]
+            expansions.append(
+                (rank, int(match.group(2)), path.name.lower(), path)
+            )
+        else:
+            others.append(path)
+    ordered = [item[3] for item in sorted(expansions, reverse=True)]
+    ordered.extend(
+        sorted(others, key=lambda path: path.name.lower(), reverse=True)
+    )
+    return ordered
 
 
 class MixFormatError(ValueError):
