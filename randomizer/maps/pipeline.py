@@ -160,7 +160,11 @@ from randomizer.ui.config import (
     EVA_VOICE_TAGS,
     RAINBOWIZER_COLORS,
 )
-from randomizer.rewards.roster import randomizer_unit_roster
+from randomizer.rewards.roster import (
+    installed_rules_template_overlay,
+    randomizer_unit_roster,
+    summarize_installed_rules_overlay,
+)
 from randomizer.rewards.arsenal import ARSENAL_MODE
 
 
@@ -335,7 +339,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             'action-created TaskForce identities through every clone, gate, '
             'and buff pass.'
         )
-    installed_superweapon_types, installed_rule_sections = installed_rules_registry()
+    installed_superweapon_types, installed_rule_sections = (
+        installed_rules_registry(synchronous=True)
+    )
     installed_building_ids = {
         str(building_id).strip()
         for building_id in installed_rule_sections.get(
@@ -401,6 +407,29 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         owned_clone_ids,
         owned_clone_templates,
     ) = randomizer_unit_roster()
+    # The committed roster is baked from stock Mental Omega rules. Replay the
+    # reviewed template policy over whatever rules this installation actually
+    # loads, so a submodded unit and its player clone are the same unit rather
+    # than two sidebar entries with different stats.
+    owned_clone_templates, installed_overlay_report = (
+        installed_rules_template_overlay(
+            owned_clone_templates,
+            installed_rule_sections,
+        )
+    )
+    if installed_overlay_report['updated']:
+        self.append_log(
+            summarize_installed_rules_overlay(installed_overlay_report)
+        )
+    elif not installed_rule_sections:
+        # Silence here is exactly the bug this overlay exists to fix: clones
+        # would keep stock stats beside submodded natives with no explanation.
+        self.append_log(
+            'Installed rules registry is empty; player clones fall back to '
+            'the committed stock roster. Submod stat changes will not reach '
+            'them until RULESMO.INI can be read from the game directory.',
+            error=True,
+        )
     mission_base_rules = MISSION_TECHNO_BASE_RULES.get(code, {})
     native_names_by_lower = {
         str(section).lower(): section for section in native_map_sections

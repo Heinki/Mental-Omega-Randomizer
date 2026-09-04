@@ -104,7 +104,12 @@ that overlap only with full reward-plan and 97-map parity coverage.
   remaining definitions are Mental Omega 3.3.6 identity snapshots. Ships still
   register under engine `VehicleTypes`. Hero file contains capped reward heroes
   plus mapper infantry extras. Mission generation buffs these owned types while
-  native IDs remain reserved for campaign AI and scripts.
+  native IDs remain reserved for campaign AI and scripts. These files are a
+  stock-rules snapshot, not the final clone body: map generation replays the
+  shared template policy in `randomizer/rewards/template_policy.py` over the
+  installed rules registry, so a submodded `rulesmo.ini` reaches every player
+  clone. A reward whose source section is absent from installed rules (Super
+  Thor, boss Brutes, campaign-only heroes) keeps its committed definition.
 
 ## Shop Mode balance
 

@@ -850,7 +850,12 @@ def run_self_check():
             and not _map_provides_stalins_fist([], {}, ())
         )
         from randomizer.ui.cameos import installed_rules_registry
-        _installed_types, installed_sections = installed_rules_registry()
+        # Self-check contracts read installed rules directly. A submod update
+        # retires the asset cache, so rebuild it here instead of reporting a
+        # failed contract against an empty registry.
+        _installed_types, installed_sections = installed_rules_registry(
+            synchronous=True
+        )
         installed_by_upper = {
             str(section).upper(): {
                 str(key).lower(): value for key, value in values.items()
