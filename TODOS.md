@@ -2,7 +2,7 @@
 
 - hi there! is it just me or are cloaked prism towers bugged? as in they don't link with each other whenever they attack
 - check if hero units can be cloned from cloning vats aswell
-- Smaller resolution for shopmode not working
+- Archipelago Shopmode not working at all
 
 ## INFO
 

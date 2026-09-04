@@ -277,11 +277,44 @@ class ShopArchipelagoController:
             )
         self.refresh_shop_mode()
 
+    def refresh_archipelago_purchase_button(self, _event=None):
+        """Enable AP purchase only for the currently selected offer."""
+        button = getattr(self, 'shop_ap_purchase_button', None)
+        tree = getattr(self, 'shop_ap_purchase_tree', None)
+        if button is None or tree is None:
+            return
+        selected = tree.selection()
+        location_id = self._shop_ap_purchase_rows.get(
+            selected[0], 0
+        ) if selected else 0
+        shop = self.archipelago_shop_slot_settings()
+        identity, _reward_ids = self.archipelago_shop_context()
+        records = archipelago_purchase_records(self.shop_profile, identity)
+        checked = set(getattr(
+            self, '_archipelago_server_checked_locations', ()
+        ))
+        can_buy = bool(
+            location_id
+            and shop is not None
+            and identity
+            and self.shop_archipelago_game_active()
+            and location_id in set(shop['purchase_locations'])
+            and location_id not in checked
+            and str(location_id) not in records
+            and self.shop_profile.meta_coins >= shop['purchase_meta_coin_cost']
+        )
+        button.configure(state='normal' if can_buy else 'disabled')
+
     def _refresh_archipelago_shop_purchases(self):
         self.sync_shop_ap_panel()
         tree = getattr(self, 'shop_ap_purchase_tree', None)
         if tree is None:
             return
+        previous_selection = tree.selection()
+        previous_location = (
+            self._shop_ap_purchase_rows.get(previous_selection[0], 0)
+            if previous_selection else 0
+        )
         tree.delete(*tree.get_children())
         self._shop_ap_purchase_rows = {}
         shop = self.archipelago_shop_slot_settings()
@@ -321,11 +354,13 @@ class ShopArchipelagoController:
                 options['image'] = archipelago_cameo
             tree.insert('', 'end', **options)
             self._shop_ap_purchase_rows[iid] = location_id
+            if location_id == previous_location:
+                tree.selection_set(iid)
         self.shop_ap_purchase_status_var.set(
             'Each purchase sends its generated Archipelago item to the '
             'shown player/world. Placement remains server-assigned.'
         )
-        self.shop_ap_purchase_button.configure(state='normal')
+        self.refresh_archipelago_purchase_button()
 
     def is_run_complete(self):
         if self.archipelago_progression_mode() == 'Shop Mode':
@@ -366,6 +401,6 @@ class ShopArchipelagoController:
                 identity,
                 getattr(self, '_archipelago_server_checked_locations', ()),
             )
-        if self.shop_mode_selected():
+        if self.shop_archipelago_game_active() or self.shop_mode_selected():
             self.refresh_shop_mode()
         return result

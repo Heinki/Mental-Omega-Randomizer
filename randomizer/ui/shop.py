@@ -590,6 +590,9 @@ def build_shop_tab(self, workspace_tabs):
     self.shop_ap_purchase_tree.bind(
         '<Double-1>', self.buy_selected_archipelago_purchase
     )
+    self.shop_ap_purchase_tree.bind(
+        '<<TreeviewSelect>>', self.refresh_archipelago_purchase_button
+    )
     self.shop_ap_purchase_button = ttk.Button(
         ap_purchases,
         text='Buy Generated Check',
