@@ -75,6 +75,31 @@ from ._dependencies import (
     traceback,
 )
 
+
+def quote_windows_argument(argument):
+    """Quote even whitespace-free arguments, preserving Windows CRT escaping."""
+    encoded = subprocess.list2cmdline([argument])
+    if encoded.startswith('"'):
+        return encoded
+    # list2cmdline already escapes embedded quotes. When adding outer quotes,
+    # trailing backslashes must be doubled so they cannot escape the closing one.
+    trailing_backslashes = len(argument) - len(argument.rstrip('\\'))
+    return '"' + encoded + '\\' * trailing_backslashes + '"'
+
+
+def windows_syringe_command_line(argv):
+    """Syringe parses its raw command line and requires a quoted host EXE.
+
+    Passing a list to Windows Popen loses these mandatory quotes whenever the
+    host path has no whitespace. Keep argv structured until this final boundary.
+    """
+    return ' '.join((
+        subprocess.list2cmdline(argv[:1]),
+        quote_windows_argument(argv[1]),
+        subprocess.list2cmdline(argv[2:]),
+    )).rstrip()
+
+
 class LaunchController:
 
     def unlocked_mission_codes(self):
@@ -1159,13 +1184,16 @@ class LaunchController:
         launch_note='',
     ):
         scenario = mission['scenario']
-        cmd = self.build_command()
-        command_text = subprocess.list2cmdline(cmd)
-        self.append_log('Attempting game launch via: ' + command_text)
-
         try:
+            cmd = self.build_command()
             popen_options = {}
-            if sys.platform != 'win32':
+            launch_target = cmd
+            if sys.platform == 'win32':
+                launch_target = windows_syringe_command_line(cmd)
+                popen_options['executable'] = cmd[0]
+                command_text = launch_target
+            else:
+                command_text = subprocess.list2cmdline(cmd)
                 environment = os.environ.copy()
                 overrides = environment.get('WINEDLLOVERRIDES', '')
                 if not any(
@@ -1179,8 +1207,9 @@ class LaunchController:
                     env=environment,
                     start_new_session=True,
                 )
+            self.append_log('Attempting game launch via: ' + command_text)
             process = subprocess.Popen(
-                cmd,
+                launch_target,
                 cwd=str(GAME_ROOT),
                 **popen_options,
             )

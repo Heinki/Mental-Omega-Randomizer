@@ -391,7 +391,7 @@ Randomizer unit, building, and power copies carry a short generated-by-
 Randomizer description when Phobos is active.
 
 ```text
-Syringe.exe gamemd.exe -SPAWN -CD -SPEEDCONTROL -LOG
+Syringe.exe "gamemd.exe" -SPAWN -CD -SPEEDCONTROL -LOG
 ```
 
 The generated map contains the current tech locks/unlocks, safe rewards, and objective/victory marker actions. The launcher watches `debug\debug.log`, records each marker once, and removes the temporary root map when the spawned process exits. After detected victory it waits briefly, closes the spawned game process tree, and prevents continuation into the normal campaign flow.

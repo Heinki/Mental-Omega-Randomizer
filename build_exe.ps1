@@ -79,6 +79,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Static config preflight failed; EXE was not built."
 }
 
+python -m unittest randomizer.launch.self_check -v
+if ($LASTEXITCODE -ne 0) {
+    throw "Mission launch regression checks failed; EXE was not built."
+}
+
 $appVersion = (& python -c "from randomizer.core.version import APP_VERSION; print(APP_VERSION)").Trim()
 if ($LASTEXITCODE -ne 0 -or $appVersion -notmatch '^\d+\.\d+(\.\d+)?$') {
     throw "Invalid APP_VERSION in randomizer/core/version.py: $appVersion"
@@ -257,6 +262,15 @@ if ($missingArchiveEntries.Count -gt 0) {
         "Built launcher is missing required Tcl/Tk archive entries: " +
         ($missingArchiveEntries -join ', ')
     )
+}
+$launchCheck = Start-Process -FilePath $builtExe `
+    -ArgumentList '--launch-self-check' -WorkingDirectory $distDir -PassThru
+if (-not $launchCheck.WaitForExit(120000)) {
+    $launchCheck.Kill()
+    throw "Packaged mission launch check timed out; EXE was not copied."
+}
+if ($launchCheck.ExitCode -ne 0) {
+    throw "Packaged mission launch check failed; EXE was not copied."
 }
 Copy-Item -Force $builtExe $outputPath
 

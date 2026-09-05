@@ -151,11 +151,24 @@ Routine:
 
 ```powershell
 python -m compileall -q .
+python -m unittest randomizer.launch.self_check -v
 python launcher_gui.py --self-check
 git diff --check
 ```
 
 Packaging:
+
+Both Windows build drivers run the mission launch regression suite before
+packaging and run `MentalOmegaRandomizer.exe --launch-self-check` on the built
+artifact before copying it to the output location. The focused check needs no
+game assets and verifies both the Windows command string and the Linux Wine argv
+boundary. On Windows Python, the suite also inspects a real child's raw command
+line. Full gameplay still requires an installed copy of Mental Omega.
+
+Syringe requires quotes around the host executable even when its filename has
+no spaces: `Syringe.exe "gamemd.exe" -SPAWN -CD -SPEEDCONTROL -LOG`.
+Do not replace the Windows command string with an argv list: Python's automatic
+quoting removes the mandatory quotes. Linux passes a real argv list to Wine.
 
 ```powershell
 # Build the game-root EXE and tracked Archipelago/mental_omega.apworld.

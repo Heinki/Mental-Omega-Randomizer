@@ -74,6 +74,8 @@ def run_self_check():
             ['LightningStormSpecial'], synchronous=True
         )
         static_config_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
+        from randomizer.launch.self_check import validate_launch_contract
+        launch_contract = validate_launch_contract()
         from randomizer.shop.self_check import validate_shop_domain
         shop_domain = validate_shop_domain()
         import websockets
@@ -1121,6 +1123,7 @@ def run_self_check():
             EVA_APPEARANCE_PROFILES,
         )
         checks = {
+            'mission_launch_contract': launch_contract,
             'app_version': APP_VERSION,
             'game_root': str(GAME_ROOT),
             'runtime_data_writable': APP_DIR.exists(),
@@ -1365,6 +1368,11 @@ def run_self_check():
 
 
 if __name__ == '__main__':
+    if '--launch-self-check' in sys.argv:
+        from randomizer.launch.self_check import validate_launch_contract
+        # A focused packaged check needs no game assets, GUI, or player state.
+        validate_launch_contract()
+        raise SystemExit(0)
     if '--self-check' in sys.argv:
         raise SystemExit(run_self_check())
     raise SystemExit(run_launcher())

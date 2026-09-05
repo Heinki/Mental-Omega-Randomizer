@@ -142,6 +142,10 @@ def build(output: Path) -> None:
     from randomizer.core.version import APP_VERSION
 
     validate_static_configs(REQUIRED_STATIC_CONFIGS)
+    run_checked(
+        [sys.executable, '-m', 'unittest', 'randomizer.launch.self_check', '-v'],
+        cwd=PROJECT_ROOT,
+    )
 
     python_root = Path(sys.base_prefix)
     icon = require_path(PROJECT_ROOT / 'mo-logo-puzzle-icon.ico', 'Launcher icon')
@@ -279,6 +283,8 @@ def build(output: Path) -> None:
                 'Built launcher is missing required Tcl/Tk entries: '
                 + ', '.join(missing)
             )
+        # Exercise the bundled launch controller before replacing the player EXE.
+        run_checked([str(built), '--launch-self-check'], cwd=dist, timeout=120)
         shutil.copy2(built, output)
 
     if old_runtime.exists():
