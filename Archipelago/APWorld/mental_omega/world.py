@@ -200,7 +200,7 @@ class MentalOmegaWorld(World):
         )
         menu.locations.append(victory)
 
-        for placement in self.run_manifest["local_placements"]:
+        for placement in self.run_manifest.get("local_placements", []):
             name, _location_id = location_entries(
                 placement["mission"],
                 placement["check"],
@@ -269,14 +269,14 @@ class MentalOmegaWorld(World):
 
     def create_items(self) -> None:
         remaining = Counter(self.run_manifest["item_pool"])
-        for placement in self.run_manifest["local_placements"]:
+        for placement in self.run_manifest.get("local_placements", []):
             remaining[placement["item"]] -= 1
         self.multiworld.itempool += [
             self.create_item(name)
             for name, count in remaining.items()
             for _ in range(count)
         ]
-        for name, count in self.run_manifest["starting_items"].items():
+        for name, count in self.run_manifest.get("starting_items", {}).items():
             for _ in range(count):
                 self.multiworld.push_precollected(self.create_item(name))
 
@@ -304,7 +304,7 @@ class MentalOmegaWorld(World):
                 for check_id, count in self.run_manifest["locations"][code].items()
             }
         used_items = set(self.run_manifest["item_pool"]) | set(
-            self.run_manifest["starting_items"]
+            self.run_manifest.get("starting_items", {})
         )
         shop = self.run_manifest.get("shop")
         shop_slot_data = None

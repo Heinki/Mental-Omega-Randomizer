@@ -6,7 +6,6 @@ import json
 
 from randomizer.config.player import (
     parse_simple_yaml_text,
-    simple_yaml_mapping_lines,
 )
 
 
@@ -46,9 +45,12 @@ def serialize_player_yaml(manifest, slot_name):
         "  # Change settings in the launcher, then save a new Player YAML.\n"
         "  launcher_settings:\n"
     )
-    output += "\n".join(
-        simple_yaml_mapping_lines(launcher_settings, indent=4)
-    )
+    settings_lines = json.dumps(
+        launcher_settings, ensure_ascii=False, sort_keys=True, indent=2,
+    ).splitlines()
+    output = output.removesuffix("  launcher_settings:\n")
+    output += "  launcher_settings: " + settings_lines[0] + "\n"
+    output += "\n".join("    " + line for line in settings_lines[1:])
     # Archipelago options are mappings and scalars, not embedded document
     # fragments.  Keep required generated world input as one normal mapping
     # option.  JSON flow syntax is valid YAML and remains dependency-free.
@@ -96,6 +98,9 @@ def parse_player_yaml(text):
             capture_launcher_settings = False
             if stripped.startswith("launcher_settings:"):
                 capture_launcher_settings = True
+                inline = stripped.split(":", 1)[1].strip()
+                if inline:
+                    launcher_setting_lines.append(inline)
                 continue
             if stripped.startswith(("generated_world:", "run_manifest:")):
                 capture_manifest = True
@@ -127,9 +132,11 @@ def parse_player_yaml(text):
         raise ValueError("Player YAML generated_world is not valid JSON.") from exc
     if not isinstance(manifest, dict):
         raise ValueError("Player YAML generated_world must be an object.")
-    launcher_settings = parse_simple_yaml_text(
-        "\n".join(launcher_setting_lines)
-    ) if launcher_setting_lines else {}
+    settings_text = "\n".join(launcher_setting_lines).strip()
+    launcher_settings = (
+        json.loads(settings_text) if settings_text.startswith("{")
+        else parse_simple_yaml_text(settings_text)
+    ) if settings_text else {}
     if not launcher_settings:
         frozen = manifest.get("frozen_settings")
         launcher_settings = (

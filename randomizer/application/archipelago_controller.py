@@ -253,6 +253,8 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Maintain the complete set of gameplay-affecting UI controls."""
         excluded = set(self._widget_descendants(self.appearance_frame))
         excluded.add(self.appearance_frame)
+        # Starting a Shop run is gameplay, not a mutable generation setting.
+        excluded.add(getattr(self, 'shop_setup_start_button', None))
         candidates = [
             *self._widget_descendants(self.settings_frame),
             *self._widget_descendants(self.advanced_tab),
@@ -289,6 +291,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                 widget.configure(state='disabled')
             except Exception:
                 pass
+        if hasattr(self, 'refresh_shop_settings_controls'):
+            self.refresh_shop_settings_controls()
 
     def set_archipelago_controls_locked(self, locked):
         locked = bool(locked)
@@ -310,6 +314,8 @@ class ArchipelagoController(ArchipelagoYamlController):
                     continue
             self._archipelago_locked_widget_states = saved
             self._archipelago_gameplay_locked = True
+            if hasattr(self, 'refresh_shop_settings_controls'):
+                self.refresh_shop_settings_controls()
             return
         self._archipelago_gameplay_locked = False
         saved = self._archipelago_locked_widget_states

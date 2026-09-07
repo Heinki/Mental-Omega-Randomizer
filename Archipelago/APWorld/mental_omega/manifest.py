@@ -317,13 +317,15 @@ def parse_manifest(raw_value):
         raise ManifestError("generated_world must contain one mapping.")
     if value.get("schema_version") != MANIFEST_SCHEMA_VERSION:
         raise ManifestError("Unsupported run-manifest schema version.")
-    if value.get("randomizer_version") != RANDOMIZER_VERSION:
-        raise ManifestError(
-            f"Manifest requires Randomizer {value.get('randomizer_version')!r}; "
-            f"APWorld requires {RANDOMIZER_VERSION}."
-        )
+    # Release labels are informational. Schema, catalogue and content below
+    # determine compatibility, including between launcher patch releases.
+    if (
+        not isinstance(value.get("randomizer_version"), str)
+        or not value["randomizer_version"].strip()
+    ):
+        raise ManifestError("Manifest randomizer_version is required.")
     if value.get("catalogue_checksum") != CATALOGUE_CHECKSUM:
-        raise ManifestError("Manifest reward/mission catalogue checksum is stale.")
+        raise ManifestError("Manifest reward/mission catalogue is incompatible. Install the APWorld shipped with this launcher, then export a fresh Player YAML.")
     if value.get("manifest_checksum") != manifest_checksum(value):
         raise ManifestError("Manifest checksum is missing or invalid.")
 
@@ -484,16 +486,10 @@ def parse_manifest(raw_value):
                 f"Manifest server state misses active checks for {code}."
             )
 
-    result = dict(value)
-    result["mission_order"] = list(mission_order)
-    if progression is not None:
-        result["progression"] = progression
-    result["locations"] = locations
-    result["shop"] = shop
-    result["item_pool"] = item_pool
-    result["starting_items"] = starting_items
-    result["local_placements"] = placements
-    return result
+    # Return the exact validated document. Adding optional defaults here would
+    # invalidate its checksum when fill_slot_data sends it to the launcher.
+    return value
+
 
 
 def validate_launcher_settings(settings, manifest):

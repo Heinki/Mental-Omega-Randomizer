@@ -369,12 +369,13 @@ def validate_slot_data(value):
             'Unsupported Mental Omega slot-data version: '
             f"{slot_data.get('slot_data_version')!r}."
         )
-    if slot_data.get('randomizer_version') != SUPPORTED_RANDOMIZER_VERSION:
-        raise ArchipelagoProtocolError(
-            'Slot requires Mental Omega Randomizer '
-            f"{slot_data.get('randomizer_version')!r}; "
-            f'client is {SUPPORTED_RANDOMIZER_VERSION}.'
-        )
+    # A launcher release bump does not change the wire contract. Validate the
+    # slot schema and exact manifest/catalogue identity instead.
+    if (
+        not isinstance(slot_data.get('randomizer_version'), str)
+        or not slot_data['randomizer_version'].strip()
+    ):
+        raise ArchipelagoProtocolError('Slot data randomizer_version is required.')
     for checksum_name in ('catalogue_checksum', 'manifest_checksum'):
         checksum = slot_data.get(checksum_name)
         if (
@@ -388,6 +389,8 @@ def validate_slot_data(value):
     run_manifest = slot_data.get('run_manifest')
     if not isinstance(run_manifest, Mapping):
         raise ArchipelagoProtocolError('Slot data has no run manifest.')
+    if run_manifest.get('schema_version') != 1:
+        raise ArchipelagoProtocolError('Unsupported run-manifest schema version.')
     unsigned_manifest = dict(run_manifest)
     unsigned_manifest.pop('manifest_checksum', None)
     calculated_manifest_checksum = sha256(json.dumps(

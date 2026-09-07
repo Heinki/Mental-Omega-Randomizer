@@ -316,7 +316,9 @@ class ShopController(ShopPolishController):
             state='disabled' if locked or active else 'normal'
         )
         self.shop_setup_start_button.configure(
-            state='disabled' if locked or active else 'normal',
+            state='disabled' if active or (
+                locked and not self.shop_archipelago_game_active()
+            ) else 'normal',
             text='Run Active' if active else 'Start Shop Mode',
         )
         self.shop_faction_pool_combo.configure(

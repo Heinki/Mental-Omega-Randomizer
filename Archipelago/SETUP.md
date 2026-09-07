@@ -46,3 +46,31 @@ refreshes every affected view; reconnecting loads the AP server state again.
 
 Every participant generating or hosting the room needs the APWorld installed.
 Only the Mental Omega player needs the game and Randomizer launcher.
+
+## Shop Mode and YAML compatibility fixes
+
+Replace the installed APWorld in Archipelago's `custom_worlds` folder with the
+APWorld from this checkout, then restart Archipelago before generating. An
+older installed APWorld keeps its old version checks even after the launcher
+is updated. In particular, Mental Omega's `1.34` versus `1.33` error means the
+installed APWorld is outdated.
+
+Launcher release labels no longer reject an otherwise compatible run. Schema,
+mission/reward catalogue, and manifest integrity checks still reject incompatible
+or damaged input. The APWorld preserves the exported manifest unchanged,
+including legacy optional fields. Player YAML uses JSON-compatible YAML mappings
+to preserve setting types exactly. Re-export through **Save Player YAML** when
+changing settings or replacing an incompatible catalogue.
+
+For an AP Shop run, select **Shop Mode**, save the Player YAML, generate and host
+the room, then connect the launcher. **Start Shop Mode** remains available after
+connection validation and after a failed or completed run. Generation settings
+remain locked while connected. AP purchases are scouted; stage victories are
+sent as checks, and stage-marker receipts are acknowledged without becoming
+ordinary Shop rewards. Only a completed run belonging to the current AP slot
+can report its goal.
+
+Run `tools/check_archipelago_integration.py --archipelago-root /path/to/Archipelago`
+with Archipelago 0.6.7's Python environment to verify YAML, generation, item fill,
+beatability, handshake, and Shop controls. Add `--apworld /path/to/game.apworld`
+to test the packaged world.
