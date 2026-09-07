@@ -1377,8 +1377,12 @@ def build_player_clone_sections(
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
             if unit_id in initial_payload_source_ids:
                 # InitialPayload creation must not inherit native faction or
-                # prerequisite gates. Keep support types locked, owned by the
-                # carrier's player, and unselectable outside their parent.
+                # prerequisite gates. Keep support types locked and owned by
+                # the carrier's player. Preserve the source's Selectable rule:
+                # normal payload infantry (for example Guardian GIs carried
+                # by Super Thor) can also be placed or paradropped and must
+                # remain controllable, while implementation helpers such as
+                # SALA_1/SALA_2 already inherit Selectable=no.
                 if owner_ids:
                     clone_values['Owner'] = ','.join(
                         production_owner_countries(
@@ -1388,7 +1392,6 @@ def build_player_clone_sections(
                         )
                     )
                     clone_values['RequiredHouses'] = ','.join(owner_ids)
-                clone_values['Selectable'] = 'no'
                 _remove_case_insensitive(
                     clone_values,
                     'ForbiddenHouses',

@@ -55,6 +55,7 @@ from randomizer.maps.rules import (
     validate_player_clone_selection_groups,
     resolved_academy_clone_rules,
     resolved_delivery_clone_rules,
+    resolved_primary_power_building_rules,
     resolved_native_designator_clone_rules,
     resolved_power_player_clone_rules,
     resolved_map_section_rules,
@@ -2243,6 +2244,16 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             merge_ini_section_values(lines, academy_clone_rules)
             self.append_log(
                 'Resolved delivered Academy targets to current player clone IDs.'
+            )
+        primary_power_building_rules = resolved_primary_power_building_rules(
+            cloned_power_rules,
+            clone_handled,
+            owned_clone_ids,
+        )
+        if primary_power_building_rules:
+            merge_ini_section_values(lines, primary_power_building_rules)
+            self.append_log(
+                'Resolved building-bound powers to current player clone IDs.'
             )
         delivery_clone_rules = resolved_delivery_clone_rules(
             cloned_power_rules,

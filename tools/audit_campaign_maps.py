@@ -390,7 +390,7 @@ def _assert_targeted_contracts(generated_paths):
         raise AssertionError('ESHIP hostile AHMV received a tier weapon clone')
 
 
-    for mission_code in ('SHBD', 'SEXIST'):
+    for mission_code in ('ESHIP', 'SHBD', 'SEXIST'):
         path = next(
             candidate for candidate in generated_paths
             if candidate.name.upper() == f'{mission_code}.MAP'
@@ -398,27 +398,85 @@ def _assert_targeted_contracts(generated_paths):
         lines = path.read_text(
             encoding='utf-8', errors='ignore'
         ).splitlines()
+        industrial_plant_ids = [
+            str(type_id)
+            for type_id in section_value_map_preserve(
+                lines, 'BuildingTypes'
+            ).values()
+            if str(type_id).upper().startswith('MORPNAINDP')
+        ]
+        if len(industrial_plant_ids) != 1:
+            raise AssertionError(
+                f'{mission_code} has no unique registered Industrial Plant clone'
+            )
         industrial_plant = section_value_map_preserve(
-            lines, 'MORPNAINDP'
+            lines, industrial_plant_ids[0]
         )
         gear_change = section_value_map_preserve(lines, 'MORGearChange')
         gear_spawner = section_value_map_preserve(lines, 'MORGearSpawner')
-        rhino = section_value_map_preserve(lines, 'MORPHTNK')
         if industrial_plant.get('SuperWeapon') != 'MORGearChange':
             raise AssertionError(
-                f'{mission_code} Industrial Plant lacks private Gear Change'
+                f'{mission_code} registered Industrial Plant lacks private '
+                'Gear Change'
             )
         if gear_change.get('HunterSeeker.Type') != 'MORGearSpawner':
             raise AssertionError(
                 f'{mission_code} private Gear Change lacks its spawner'
             )
-        if 'Latin' not in str(gear_spawner.get('Owner') or '').split(','):
+        player_country = 'PsiCorps' if mission_code == 'ESHIP' else 'Latin'
+        if player_country not in str(gear_spawner.get('Owner') or '').split(','):
             raise AssertionError(
-                f'{mission_code} Gear Change spawner rejects Latin owner'
+                f'{mission_code} Gear Change spawner rejects {player_country} owner'
             )
-        if 'MORPNAFIST' not in _mission_prerequisites(rhino):
+        if mission_code in {'SHBD', 'SEXIST'} and 'MORPNAFIST' not in (
+            _mission_prerequisites(
+                section_value_map_preserve(lines, 'MORPHTNK')
+            )
+        ):
             raise AssertionError(
                 f'{mission_code} Rhino lacks deployed Stalin\'s Fist factory path'
+            )
+
+    for mission_code in ('EACCEL', 'AREDDAWN', 'SHBD'):
+        path = next(
+            candidate for candidate in generated_paths
+            if candidate.name.upper() == f'{mission_code}.MAP'
+        )
+        lines = path.read_text(
+            encoding='utf-8', errors='ignore'
+        ).splitlines()
+        airborne = section_value_map_preserve(lines, 'MORAmericanParaDrop')
+        payload_ids = [
+            type_id.strip()
+            for type_id in str(airborne.get('ParaDrop.Types') or '').split(',')
+            if type_id.strip()
+        ]
+        guardian_ids = [
+            type_id for type_id in payload_ids
+            if section_value_map_preserve(lines, type_id).get('Image') == 'GGI2'
+        ]
+        if len(guardian_ids) != 1:
+            raise AssertionError(
+                f'{mission_code} Airborne lacks one Guardian GI player clone'
+            )
+        guardian_id = guardian_ids[0]
+        guardian = section_value_map_preserve(lines, guardian_id)
+        if (
+            str(guardian.get('Selectable') or '').lower() == 'no'
+            or str(guardian.get('IsSelectableCombatant') or '').lower() != 'yes'
+        ):
+            raise AssertionError(
+                f'{mission_code} Airborne Guardian GI is uncontrollable'
+            )
+        if mission_code == 'AREDDAWN' and not any(
+            len(tokens) >= 2
+            and tokens[0].lower() == 'unitedstates house'
+            and tokens[1].upper() == guardian_id.upper()
+            for value in section_value_map_preserve(lines, 'Infantry').values()
+            if (tokens := [token.strip() for token in str(value).split(',')])
+        ):
+            raise AssertionError(
+                'AREDDAWN starting Guardian GIs do not use the selectable clone'
             )
 
     yuri_prime_maps = 0
@@ -540,6 +598,81 @@ def _assert_golden_gate_transport_factories(missions):
             root_map.unlink()
 
 
+def _assert_mode_switch_buff_clones(missions):
+    mission = next(mission for mission in missions if mission['code'] == 'SHBD')
+    linked_modes = {
+        'ETNK': 'ETNK2',
+        'AERO': 'AERO2',
+        'AHVYBOT2': 'AHVYBOT2B',
+        'SUB': 'SUB2',
+        'DEVO': 'DEVOD',
+        'BURA': 'BURA2',
+        'BASS': 'BASS2',
+        'CHRTNK': 'CHRTNK2',
+        'DRON': 'DRON2',
+        'SIREN': 'SIREN2',
+        'TRIKE': 'TRIKE2',
+        'SHADOW': 'SHADOWF',
+        'ROADR': 'ROADR2',
+        'ARCH': 'ARCH2',
+    }
+    reward_by_name = {
+        reward.get('name'): reward
+        for reward in REWARD_POOL
+        if reward.get('name')
+    }
+    from randomizer.rewards.catalogue import BUFF_TARGETS
+    reward_names = []
+    for source_id in linked_modes:
+        label = BUFF_TARGETS[source_id]['label']
+        reward_names.extend((
+            f'{label} Access',
+            f'{label} Reinforced Frames I',
+        ))
+    launcher = _AuditLauncher()
+    launcher.player_rewards = [
+        canonical_reward(reward_by_name[name]) for name in reward_names
+    ]
+    allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+    extra_rules = launcher.map_rules_for_launch(
+        allowed_unlocked_tech_ids=allowed
+    )
+    hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+    if hook is None:
+        raise AssertionError('No SHBD map for mode-switch buff audit')
+    generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+    lines = generated_path.read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    registered = {
+        str(type_id).upper()
+        for type_id in section_value_map_preserve(
+            lines, 'VehicleTypes'
+        ).values()
+    }
+    for source_id, mode_id in linked_modes.items():
+        source_clone = f'MORP{source_id}'
+        mode_clone = f'MORP{mode_id}'
+        if {source_clone.upper(), mode_clone.upper()} - registered:
+            raise AssertionError(
+                f'SHBD mode-switch clone registration missing for '
+                f'{source_id}/{mode_id}'
+            )
+        source_values = section_value_map_preserve(lines, source_clone)
+        mode_values = section_value_map_preserve(lines, mode_clone)
+        if (
+            source_values.get('Convert.Deploy') != mode_clone
+            or mode_values.get('Convert.Deploy') != source_clone
+        ):
+            raise AssertionError(
+                f'SHBD mode switch escapes buffed clones for '
+                f'{source_id}/{mode_id}'
+            )
+    root_map = Path(hook['root_map'])
+    if root_map.is_file() and is_generated_hooked_map(root_map):
+        root_map.unlink()
+
+
 
 
 def _assert_taciturn_tier_three_weapon_clone(missions):
@@ -632,6 +765,7 @@ def main():
             )
         _assert_mermaid_mode_matrix(missions)
         _assert_golden_gate_transport_factories(missions)
+        _assert_mode_switch_buff_clones(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
         if not any(
             'Applied composed Shop run clone modifiers:' in message

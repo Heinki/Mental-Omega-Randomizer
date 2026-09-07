@@ -322,7 +322,10 @@ def run_self_check():
             enemy_power_launch_rewards,
             enemy_weapon_supports_direct_buff,
         )
-        from randomizer.maps.base import randomizer_clone_type_id
+        from randomizer.maps.base import (
+            randomizer_clone_type_id,
+            resolved_primary_power_building_rules,
+        )
         from randomizer.maps.clone_builder import player_clone_selection_group
         from randomizer.config.player import DEFAULT_CONFIG
         from randomizer.missions.overrides import (
@@ -823,6 +826,11 @@ def run_self_check():
             [industrial_plant_reward, gear_change_reward],
             {'NAINDP': 'MORPNAINDP'},
         )
+        collision_safe_gear_binding = resolved_primary_power_building_rules(
+            {'MORPNAINDP': {'SuperWeapon': 'MORGearChange'}},
+            {'NAINDP': {'clone_id': 'MORPNAINDP3DD2FF1BE0'}},
+            {'NAINDP': 'MORPNAINDP'},
+        )
         building_bound_power_valid = bool(
             industrial_plant_reward.get('building_superweapon')
             == 'GearChangeSpecial'
@@ -841,6 +849,11 @@ def run_self_check():
                 and reward.get('superweapon_grant_action') is True
                 for reward in explicit_building_bound_gear
             )
+            and collision_safe_gear_binding == {
+                'MORPNAINDP3DD2FF1BE0': {
+                    'SuperWeapon': 'MORGearChange',
+                },
+            }
         )
         payload_power_visibility_valid = bool(
             payload_buff_power_ids_for_unit('YABALL')

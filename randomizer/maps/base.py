@@ -164,6 +164,49 @@ def resolved_delivery_clone_rules(
                 updates.setdefault(section, {})[key] = resolved_value
     return updates
 
+
+def resolved_primary_power_building_rules(
+    power_rule_sections,
+    clone_handled,
+    owned_clone_ids,
+):
+    """Move building-bound powers onto collision-safe runtime clone IDs.
+
+    Power planning runs before player clone IDs are allocated. If the static
+    MORP ID is already reserved, the clone builder selects a collision-safe
+    ID; leaving the power on the preferred ID creates an orphan INI section
+    while the buildable clone keeps its native power.
+    """
+    handled = {
+        str(source).upper(): str(details.get('clone_id') or '').strip()
+        for source, details in (clone_handled or {}).items()
+        if isinstance(details, dict)
+    }
+    sections_by_lower = {
+        str(section).lower(): values
+        for section, values in (power_rule_sections or {}).items()
+        if isinstance(values, dict)
+    }
+    updates = {}
+    for source_id, preferred_clone_id in (owned_clone_ids or {}).items():
+        runtime_clone_id = handled.get(str(source_id).upper())
+        if not runtime_clone_id:
+            continue
+        preferred_values = sections_by_lower.get(
+            str(preferred_clone_id).lower(), {}
+        )
+        power_values = {
+            key: value
+            for key, value in preferred_values.items()
+            if str(key).lower() in {
+                'superweapon', 'superweapon2', 'superweapons',
+            }
+        }
+        if power_values:
+            updates.setdefault(runtime_clone_id, {}).update(power_values)
+    return updates
+
+
 def resolved_power_player_clone_rules(
     power_rule_sections,
     clone_handled,
