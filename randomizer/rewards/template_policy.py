@@ -144,6 +144,7 @@ TEMPLATE_VALUE_OVERRIDES = {
     'GHTNKP': {
         'Name': 'Gharial Prototype',
         'Image': 'GHTNK2',
+        'WaterImage': 'GHTNK2W',
         'IFVMode': '3',
         'Primary': 'GharialBetaCannon',
         'Weapon1': 'GharialBetaCannon',

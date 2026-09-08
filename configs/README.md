@@ -61,7 +61,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   light/dark palettes.
 - `rewards/unit_data.json`: unit and defense rosters, base stats, reviewed
   transport passenger/open-top baselines and behavior exclusions, weapon stats,
-  cross-faction role-equivalence groups, linked land/water buff identities,
+  cross-faction role-equivalence groups, linked deployment/mutation buff identities,
   buff targets, labels, hero limits, and
   special weapon damage fields.
 - `rewards/unit_policy.json`: installed capabilities, reward exclusions,

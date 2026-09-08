@@ -908,3 +908,49 @@ authored `TechLevel=11` remains until Action `01000302` lowers it to `7`; native
 prerequisites and mission identities remain intact. Standard may register a
 linked Construction Yard buff counterpart, but it stays locked and receives
 no MCV unlock action, so only the native MCV becomes buildable.
+
+## Foehn Nanofiber mutations and weapon buffs
+
+Nanofiber Sync does not use a TechnoType conversion field. Its seven warheads
+kill matching infantry armor types with `InfDeathAnim=NANODEATH1..7`; the art
+animations index `General.AnimToInfantry` and preserve victim ownership. See
+[Ares infantry warheads](https://ares-developers.github.io/Ares-docs/new/warheads/infantry.html)
+and [mutation ownership](https://ares-developers.github.io/Ares-docs/new/makeinfantryowner.html).
+Adding linked buff targets alone therefore leaves mutations spawning native units.
+
+The linked pairs are KNIGHT/KINGS, BANE/BANE_N, CLAIR/DUPL, ZORB/ZORB_N,
+COVE/RAIL, HUNTR/DEVI, and SYNC/SYNC_N. Each evolved clone uses its own installed
+stats and weapons with the source unit's earned stacks. `maps/nanofiber.py`
+appends private clone IDs to the mutation list, preserving all native slots.
+Private armor aliases prevent native mutation warheads from consuming player
+clones. An appended seven-stage weapon chain targets those aliases and uses
+private animations deployed through the temporary art overlay. Mutation damage
+uses final clone health so health and armor stacks do not prevent conversion.
+Native infantry, evolved forms, and their mutation animation slots remain intact.
+
+The first implementation registered private animations only in the map. The
+reported Allied 02 (`AEAGLESFLY`) disappearance was reproduced in the player's
+September 8 autosave: all seven private AnimTypes had a null SHP pointer and
+`MakeInfantry=-1`, despite correct deployed art sections. Ares 3.0 creates these
+map-only AnimTypes after animation art initialization. The mutation therefore
+killed the original infantry without spawning replacements.
+
+Art deployment now also stages a complete copy of the installed `rulesmo.ini`,
+adding only the private animation registrations before art initialization.
+The map still supplies all unit definitions, buffs, and `AnimToInfantry` slots.
+The runtime asset manifest removes both temporary INIs after play. Custom loose
+rules are not overwritten, and required mutation-asset deployment failures stop
+launch instead of continuing with lethal, incomplete mutations. An isolated
+engine launch of the player's Allied 02 map confirmed all seven private
+AnimTypes now have loaded sprites and `MakeInfantry` values 8 through 14 in the
+new autosave. Existing saves retain the broken serialized definitions; restart
+the mission through the updated launcher. Actual battlefield conversion remains
+a separate smoke check.
+
+Knightfall payloads resolve KNIGHT/COVE through the normal delivery clone path,
+including compact runtime IDs. Mastodon firepower buffs clone `PrometheusBlast`
+and replace both normal and elite firing slots; zero-damage charge weapons
+remain charge weapons. Proto-Gharial uses `WaterImage=GHTNK2W` in both the static
+roster and installed-rules template policy.
+
+Visual and combat behavior still require confirmation in-game.

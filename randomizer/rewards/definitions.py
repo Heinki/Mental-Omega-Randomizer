@@ -365,7 +365,7 @@ LINKED_BUFF_VARIANTS = {
 
 
 def linked_buff_variant_ids(unit_id):
-    """Return one gameplay identity and its land/water presentation variants."""
+    """Return one gameplay identity and its deployment/mutation variants."""
     unit_id = str(unit_id or '').upper()
     if not unit_id:
         return frozenset()

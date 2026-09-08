@@ -2149,7 +2149,7 @@
         "sections": {
           "KnightfallSpawn": {
             "clone": "MORFoehnKnightfallSpawn",
-            "DropPod.Types": "MORFKnight,MORFCove"
+            "DropPod.Types": "KNIGHT,COVE"
           }
         },
         "techno_clones": {
@@ -2159,16 +2159,6 @@
             "values": {
               "SuperWeapon": "KnightfallSpawn"
             }
-          },
-          "FoehnKnightfallKnight": {
-            "source": "KNIGHT",
-            "clone": "MORFKnight",
-            "list": "InfantryTypes"
-          },
-          "FoehnKnightfallCove": {
-            "source": "COVE",
-            "clone": "MORFCove",
-            "list": "InfantryTypes"
           }
         },
         "values": {

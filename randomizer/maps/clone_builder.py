@@ -481,7 +481,7 @@ def build_player_clone_sections(
     # Deploying/converting units and initial-payload support identities must
     # exist even when access was earned without any matching buff. Keep those
     # forms tied to the source reward so later stacks affect every mode.
-    for target_unit_id in sorted(buildable_ids):
+    for target_unit_id in sorted(buildable_ids | forced_clone_ids):
         if target_unit_id not in BUFF_TARGETS:
             continue
         for unit_id in sorted(
@@ -498,6 +498,8 @@ def build_player_clone_sections(
                 ),
             ))
             existing_candidate_ids.add(unit_id)
+            if target_unit_id in forced_clone_ids:
+                forced_clone_ids.add(unit_id)
     clone_candidates.extend(
         (unit_id, unit_id, counts_by_unit.get(unit_id, {}))
         for unit_id in sorted(native_helper_source_ids.intersection(buildable_ids))

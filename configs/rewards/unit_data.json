@@ -2754,6 +2754,113 @@
       ]
     ],
     "linked_buff_variants": {
+      "KNIGHT": {
+        "KINGS": {
+          "category": "infantry",
+          "weapons": {
+            "KingsGun": {
+              "damage": 80.0,
+              "rof": 90.0,
+              "range": 7.5
+            }
+          },
+          "nanofiber_stage": 1
+        }
+      },
+      "BANE": {
+        "BANE_N": {
+          "category": "infantry",
+          "weapons": {
+            "GodsbaneMissile": {
+              "rof": 80.0,
+              "range": 10.0
+            }
+          },
+          "nanofiber_stage": 2
+        }
+      },
+      "CLAIR": {
+        "DUPL": {
+          "category": "infantry",
+          "weapons": {
+            "DuplicantAttack": {
+              "damage": 150.0,
+              "rof": 10.0,
+              "range": 1.33
+            },
+            "VirtualScanner": {
+              "range": 5.0
+            }
+          },
+          "nanofiber_stage": 3
+        }
+      },
+      "ZORB": {
+        "ZORB_N": {
+          "category": "infantry",
+          "weapons": {
+            "ZorbLongAttack": {
+              "damage": 90.0,
+              "rof": 140.0,
+              "range": 10.0
+            },
+            "ZorbTractorWind": {
+              "damage": 60.0,
+              "rof": 140.0,
+              "range": 10.0
+            }
+          },
+          "nanofiber_stage": 4
+        }
+      },
+      "COVE": {
+        "RAIL": {
+          "category": "infantry",
+          "weapons": {
+            "RailguneerBlast": {
+              "damage": 65.0,
+              "rof": 100.0,
+              "range": 7.0
+            },
+            "RailguneerBlast2": {
+              "damage": 65.0,
+              "rof": 100.0,
+              "range": 7.0
+            }
+          },
+          "nanofiber_stage": 5
+        }
+      },
+      "HUNTR": {
+        "DEVI": {
+          "category": "infantry",
+          "weapons": {
+            "ConfuseRifle": {
+              "damage": 120.0,
+              "rof": 100.0,
+              "range": 10.5
+            },
+            "ConfuseRifleAA": {
+              "damage": 120.0,
+              "rof": 110.0,
+              "range": 9.5
+            }
+          },
+          "nanofiber_stage": 6
+        }
+      },
+      "SYNC": {
+        "SYNC_N": {
+          "category": "infantry",
+          "weapons": {
+            "BondEruption": {
+              "rof": 80.0,
+              "range": 2.0
+            }
+          },
+          "nanofiber_stage": 7
+        }
+      },
       "AMCV": {
         "GACNST": {
           "category": "defenses",
@@ -4352,6 +4459,11 @@
             "rof": 40,
             "range": 8
           }
+        }
+      },
+      "PROME": {
+        "weapons": {
+          "PrometheusBlast": {"damage": 150}
         }
       },
       "PROMEP": {

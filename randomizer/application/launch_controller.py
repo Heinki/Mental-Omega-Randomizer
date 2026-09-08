@@ -1096,9 +1096,9 @@ class LaunchController:
             ),
         )
         try:
-            # Loose generated rulesmo.ini files can crash spawned missions or make
-            # the MO client reject the install. Keep rewards in launcher state
-            # until we have a safe map-specific injection path.
+            # Remove stale runtime overlays before generating this mission.
+            # Rewards remain map-local; animation preload rules, when needed,
+            # contain complete installed rules plus early type registrations.
             self.disable_generated_rules_for_client()
             self.cleanup_generated_root_maps()
             claim_runtime_asset_lease()
@@ -1147,7 +1147,14 @@ class LaunchController:
                             + ', '.join(sorted(art_aliases))
                             + '.'
                         )
-                except Exception:
+                except Exception as exc:
+                    if '[mornanofiberanimations]' in read_text(
+                        hook['root_map']
+                    ).lower():
+                        raise RuntimeError(
+                            'Required Nanofiber mutation assets could not be '
+                            'prepared; launch stopped to prevent infantry loss.'
+                        ) from exc
                     self.append_log(
                         'Could not prepare temporary unit cameo art; '
                         'existing custom art was left untouched.',

@@ -3030,6 +3030,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             f'Removed {removed_after_patching} additional native tech unlock action(s) after hook patching.'
         )
 
+    from randomizer.maps.nanofiber import nanofiber_clone_rules
+    mutation_rules = nanofiber_clone_rules(
+        lines, installed_rule_sections, clone_handled
+    ) if launch_active else {}
+    if mutation_rules:
+        merge_ini_section_values(lines, mutation_rules)
+        self.append_log('Linked Nanofiber mutations to buffed player clones.')
+
     registration_rules, repaired_registrations = (
         reconcile_generated_techno_registrations(
             lines,
