@@ -1,4 +1,4 @@
-name: Build attested Windows release
+name: Build Windows release
 
 on:
   workflow_dispatch:
@@ -12,13 +12,10 @@ permissions:
 
 jobs:
   build:
-    name: Build and attest Archipelago release
+    name: Build Archipelago release
     runs-on: windows-latest
     permissions:
       contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
     steps:
       - name: Check out source
         uses: actions/checkout@v7
@@ -39,11 +36,6 @@ jobs:
       - name: Build complete Archipelago release
         shell: powershell
         run: .\build_archipelago_release.ps1 -OutputDirectory 'release'
-
-      - name: Attest build provenance
-        uses: actions/attest@v4
-        with:
-          subject-path: '${{ github.workspace }}/release/MentalOmegaRandomizer.exe'
 
       - name: Upload player downloads
         uses: actions/upload-artifact@v7

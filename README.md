@@ -37,7 +37,7 @@ No badge or antivirus scan can prove that any program is harmless. Releases use 
 - GitHub Actions builds tagged Windows releases from repository source on a clean hosted runner.
 - CodeQL scans Python source, and dependency review rejects newly introduced vulnerable build dependencies.
 - Every release includes the launcher, APWorld, setup guide, release manifest,
-  `SHA256SUMS.txt`, and GitHub-signed launcher build provenance.
+  and `SHA256SUMS.txt`.
 - The complete Windows/Archipelago package build must succeed before a release
   is published.
 
@@ -49,13 +49,7 @@ $actual = (Get-FileHash .\MentalOmegaRandomizer.exe -Algorithm SHA256).Hash.ToLo
 $actual -eq $expected
 ```
 
-Expected result is `True`. With [GitHub CLI](https://cli.github.com/) installed, verify that GitHub built the exact EXE from this repository:
-
-```powershell
-gh attestation verify .\MentalOmegaRandomizer.exe --repo Heinki/Mental-Omega-Randomizer
-```
-
-Build provenance proves where the file came from; it is not an antivirus verdict. Microsoft SmartScreen may still warn about a new or unsigned EXE because file and publisher reputation are separate from malware detection. Do not disable antivirus. If Defender incorrectly detects a release, submit that exact release to [Microsoft Security Intelligence](https://www.microsoft.com/wdsi/filesubmission) as a software developer and include the resulting submission ID in the issue report. Authenticode code signing remains the next step for showing a verified publisher name.
+Expected result is `True`. Matching checksums confirm that the file matches the published checksum; they are not an antivirus verdict. Microsoft SmartScreen may still warn about a new or unsigned EXE because file and publisher reputation are separate from malware detection. Do not disable antivirus. If Defender incorrectly detects a release, submit that exact release to [Microsoft Security Intelligence](https://www.microsoft.com/wdsi/filesubmission) as a software developer and include the resulting submission ID in the issue report. Authenticode code signing remains the next step for showing a verified publisher name.
 
 ### Supported game content
 
