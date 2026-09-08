@@ -255,7 +255,7 @@ def _requested_upgrade_modifier_checks():
             and len(premium) == 2
         ),
         'gem_dividend_valid': bool(
-            dividend.reward.gem_dividend_meta_coins == 3
+            dividend.reward.gem_dividend_meta_coins == 4
             and dividend.profile.meta_coins == dividend.reward.meta_coins
         ),
         'liquid_assets_valid': bool(

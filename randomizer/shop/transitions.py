@@ -407,23 +407,10 @@ def apply_mission_victory(
             ),
         ),
         challenge_hunter_level=profile.upgrade_level('challenge_hunter'),
+        gem_dividend_level=profile.upgrade_level('gem_dividend'),
+        remaining_run_coins=run.run_coins,
         config=config,
     )
-    if final_victory:
-        dividend_level = profile.upgrade_level('gem_dividend')
-        dividend_effects = config.permanent_upgrades['gem_dividend'].effects
-        remaining_ore = run.run_coins + reward.run_coins
-        dividend = min(
-            dividend_level
-            * int(dividend_effects['maximum_gems_per_level']),
-            remaining_ore // int(dividend_effects['ore_per_gem']),
-        )
-        if dividend:
-            reward = replace(
-                reward,
-                meta_coins=reward.meta_coins + dividend,
-                gem_dividend_meta_coins=dividend,
-            )
     key = victory_key(run.run_id, run.stage, mission_code)
     updated_profile = replace(
         profile,

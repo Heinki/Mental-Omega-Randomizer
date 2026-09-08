@@ -27,6 +27,8 @@ def mission_reward(
     successful=True,
     mission_modifier=None,
     challenge_hunter_level=0,
+    gem_dividend_level=0,
+    remaining_run_coins=0,
     config: ShopModeConfig = SHOP_CONFIG,
 ):
     """Return configured victory currency; failures always return zero."""
@@ -84,13 +86,23 @@ def mission_reward(
         hunter_level // interval
         if getattr(mission_modifier, 'challenge', False) else 0
     )
+    dividend_level = _bounded_upgrade_level(
+        config, 'gem_dividend', gem_dividend_level
+    )
+    dividend_effects = config.permanent_upgrades['gem_dividend'].effects
+    # Use the held balance before rewards or Liquid Assets are applied.
+    # Victory Ore must not earn its own dividend, and no Ore is consumed.
+    dividend = min(
+        dividend_level * int(dividend_effects['maximum_gems_per_level']),
+        max(0, int(remaining_run_coins)) // int(dividend_effects['ore_per_gem']),
+    )
     return CurrencyReward(
         run_coins=(
             base_run_coins + victory_bonus + mission_bonus_run
             + challenge_hunter_run
         ),
         meta_coins=(
-            meta_coins + mission_bonus_meta + challenge_hunter_meta
+            meta_coins + mission_bonus_meta + challenge_hunter_meta + dividend
         ),
         base_run_coins=base_run_coins,
         victory_bonus_run_coins=victory_bonus,
@@ -98,6 +110,7 @@ def mission_reward(
         mission_bonus_meta_coins=mission_bonus_meta,
         challenge_hunter_run_coins=challenge_hunter_run,
         challenge_hunter_meta_coins=challenge_hunter_meta,
+        gem_dividend_meta_coins=dividend,
     )
 
 

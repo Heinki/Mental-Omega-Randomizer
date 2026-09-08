@@ -14,6 +14,8 @@ def reward_breakdown_lines(
     modifiers=(),
     mission_modifier=None,
     challenge_hunter_level=0,
+    gem_dividend_level=0,
+    remaining_run_coins=0,
     config=SHOP_CONFIG,
 ):
     definition = config.mission_rewards[mission_class]
@@ -23,6 +25,8 @@ def reward_breakdown_lines(
         modifiers=modifiers,
         mission_modifier=mission_modifier,
         challenge_hunter_level=challenge_hunter_level,
+        gem_dividend_level=gem_dividend_level,
+        remaining_run_coins=remaining_run_coins,
         config=config,
     )
     lines = [
@@ -37,6 +41,7 @@ def reward_breakdown_lines(
         reward.meta_coins
         - reward.mission_bonus_meta_coins
         - reward.challenge_hunter_meta_coins
+        - reward.gem_dividend_meta_coins
     )
     if modified_meta != definition.meta_coins:
         lines.append(f'Modified Gems: +{gem_text(modified_meta)}')
@@ -56,6 +61,10 @@ def reward_breakdown_lines(
             'Challenge Hunter: '
             f'+{reward.challenge_hunter_run_coins} Ore, '
             f'+{gem_text(reward.challenge_hunter_meta_coins)}'
+        )
+    if reward.gem_dividend_meta_coins:
+        lines.append(
+            f'Gem Dividend: +{gem_text(reward.gem_dividend_meta_coins)}'
         )
     lines.append(
         f'Total: +{reward.run_coins} Ore, '

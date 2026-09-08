@@ -1852,6 +1852,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             }
         ) - (
             set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
+            # Reviewed native MCV access has no player clone. The generic
+            # randomized-ID gate would forbid it even after Action 106.
+            | original_mcv_access_ids
             | refinery_building_ids
         )
         production_gate_rules = original_player_production_gate_rules(

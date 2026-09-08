@@ -375,6 +375,10 @@ class ShopPolishController(ShopArchipelagoController):
                         challenge_hunter_level=(
                             self.shop_profile.upgrade_level('challenge_hunter')
                         ),
+                        gem_dividend_level=self.shop_profile.upgrade_level(
+                            'gem_dividend'
+                        ),
+                        remaining_run_coins=run.run_coins,
                     ))
             if not run.mission_offers:
                 lines.append('Run finished. See Run Summary and Run History.')
@@ -447,6 +451,10 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
+                gem_dividend_level=self.shop_profile.upgrade_level(
+                    'gem_dividend'
+                ),
+                remaining_run_coins=run.run_coins,
             )
             selected = bool(
                 run.mission_committed
@@ -515,6 +523,10 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
+                gem_dividend_level=self.shop_profile.upgrade_level(
+                    'gem_dividend'
+                ),
+                remaining_run_coins=run.run_coins,
             )
             card['tooltip'].text = (
                 'Blind Choice hides this reward until mission launch.'
@@ -1383,9 +1395,10 @@ class ShopPolishController(ShopArchipelagoController):
                 'missions as Veterans.'
             ),
             'gem_dividend': (
-                f'On run victory, gain 1 Gem per '
-                f'{effects.get("ore_per_gem", 0)} remaining Ore, capped at '
-                f'{effects.get("maximum_gems_per_level", 0)} Gem per level.'
+                f'On each mission victory, gain 1 Gem per '
+                f'{effects.get("ore_per_gem", 0)} Ore held before victory, '
+                f'capped at {effects.get("maximum_gems_per_level", 0)} '
+                'Gems per level. Does not spend Ore.'
             ),
             'premium_supplier': (
                 f'From stage {effects.get("minimum_stage", 0)}, guarantee '
@@ -1550,14 +1563,11 @@ class ShopPolishController(ShopArchipelagoController):
             challenge_hunter_level=self.shop_profile.upgrade_level(
                 'challenge_hunter'
             ),
+            gem_dividend_level=self.shop_profile.upgrade_level('gem_dividend'),
+            remaining_run_coins=previous_run.run_coins,
         )
-        dividend = transition.reward.gem_dividend_meta_coins
         self._set_shop_message(
             f'{source}: {code} victory. ' + ' | '.join(lines)
-            + (
-                f' | Gem Dividend: +{gem_text(dividend)}'
-                if dividend else ''
-            )
         )
         if transition.run.status is RunStatus.COMPLETED:
             self.shop_panels.select(self.shop_summary_panel)

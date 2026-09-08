@@ -1896,7 +1896,8 @@
       }
     },
     "enemy_scaling_disabled_missions": [
-      "AWITHER"
+      "AWITHER",
+      "ASOMNIA"
     ],
     "enemy_native_buff_exclusions": {
       "ESHIP": ["AHMV"]

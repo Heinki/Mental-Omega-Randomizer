@@ -24,6 +24,7 @@ from randomizer.maps._shared import (
     section_value_map_preserve,
 )
 from randomizer.maps.base import is_generated_hooked_map
+from randomizer.maps.ini import parse_action_groups
 from randomizer.missions.catalogue import parse_missions
 from randomizer.rewards.catalogue import (
     REWARD_POOL,
@@ -549,6 +550,86 @@ def _assert_mermaid_mode_matrix(missions):
                 root_map.unlink()
 
 
+def _assert_reported_mission_mode_matrix(missions):
+    """Check the Remnant unlock and Parasomnia safety with full AI rewards."""
+    for progression_mode in ('Mission List', 'Grid Mode', 'Shop Mode'):
+        for reward_mode in ('Standard', 'Chaos'):
+            launcher = _AuditLauncher(
+                reward_mode=reward_mode,
+                progression_mode=progression_mode,
+                enemy_effect_ids=[item['id'] for item in ENEMY_BUFF_DEFINITIONS],
+            )
+            for code in ('FREMNANT', 'ASOMNIA'):
+                mission = next(item for item in missions if item['code'] == code)
+                context = f'{code}/{progression_mode}/{reward_mode}'
+                source = all_section_value_maps_preserve(
+                    launcher.extract_campaign_map(mission['scenario'])
+                    .read_text(encoding='utf-8-sig').splitlines()
+                )
+                rules = launcher.map_rules_for_launch(
+                    allowed_unlocked_tech_ids=unlocked_reward_tech_ids(
+                        launcher.player_rewards
+                    )
+                )
+                for section, values in launcher.mission_required_launch_rules(
+                    mission
+                ).items():
+                    rules.setdefault(section, {}).update(values)
+                hook = launcher.prepare_hooked_map(mission, extra_rules=rules)
+                if hook is None:
+                    raise AssertionError(f'No generated map for {context}')
+                path = GENERATED_MAP_DIR / mission['scenario'].upper()
+                sections = all_section_value_maps_preserve(
+                    path.read_text(encoding='utf-8-sig').splitlines()
+                )
+                if code == 'ASOMNIA':
+                    if launcher.enemy_applications.get(code) != []:
+                        raise AssertionError(f'AI scaling broke opening safety: {context}')
+                    if not any(
+                        f'Skipped all configured AI scaling rewards for {code}:' in msg
+                        for _error, msg in launcher.logs
+                    ):
+                        raise AssertionError(f'Missing opening-safety log: {context}')
+                else:
+                    action_id = '01000302'
+                    if sections['Actions'][action_id] != source['Actions'][action_id]:
+                        raise AssertionError(f'MCV announcement/unlock changed: {context}')
+                    _, actions = parse_action_groups(sections['Actions'][action_id])
+                    unlocks = {group[2]: int(group[7]) for group in actions if group[0] == '106'}
+                    player_level = int(sections['Guild3 House']['TechLevel'])
+                    registered = set(sections.get('VehicleTypes', {}).values())
+                    for unit_id in ('AMCV', 'SMCV'):
+                        values = sections[unit_id]
+                        if not int(values['TechLevel']) > player_level >= unlocks[unit_id]:
+                            raise AssertionError(f'{unit_id} lost delayed unlock: {context}')
+                        for field in ('ForbiddenHouses', 'FactoryOwners.Forbidden'):
+                            denied = set(str(values.get(field, '')).lower().split(','))
+                            if denied.intersection({'guild3', 'morplayer'}):
+                                raise AssertionError(f'{unit_id} player production forbidden: {context}')
+                        # Standard can prepare a locked reference counterpart
+                        # through the Construction Yard's linked buff family.
+                        # Only the native MCV may become buildable at unlock.
+                        clone_id = 'MORP' + unit_id
+                        if clone_id in registered:
+                            clone_level = int(sections[clone_id]['TechLevel'])
+                            if 0 <= clone_level <= player_level:
+                                raise AssertionError(f'{unit_id} duplicate MCV production: {context}')
+                            for value in sections.get('Actions', {}).values():
+                                _, groups = parse_action_groups(value)
+                                if any(group[0] == '106' and group[2] == clone_id
+                                       for group in groups):
+                                    raise AssertionError(f'{unit_id} clone unlocked by script: {context}')
+                        for field in ('Owner', 'RequiredHouses'):
+                            if 'Guild3' not in values[field].split(','):
+                                raise AssertionError(f'{unit_id} missing player access: {context}')
+                        if any('MOR' in str(value) for key, value in values.items()
+                               if key.startswith('Prerequisite')):
+                            raise AssertionError(f'{unit_id} retains generated prerequisite gate: {context}')
+                root_map = Path(hook['root_map'])
+                if root_map.is_file() and is_generated_hooked_map(root_map):
+                    root_map.unlink()
+
+
 def _mission_prerequisites(values):
     prerequisites = [str(values.get('Prerequisite') or '').upper()]
     try:
@@ -764,6 +845,7 @@ def main():
                 'AWITHER AI-scaling safety exception was not reported'
             )
         _assert_mermaid_mode_matrix(missions)
+        _assert_reported_mission_mode_matrix(missions)
         _assert_golden_gate_transport_factories(missions)
         _assert_mode_switch_buff_clones(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
@@ -779,7 +861,7 @@ def main():
                 root_map.unlink()
     print(
         'All 97 campaign maps passed Shop modifier/boon/Yuri/AI audit; '
-        'Mermaid, Golden Gate, and Taciturn focused checks passed.'
+        'Mermaid, Remnant, Parasomnia, Golden Gate, and Taciturn focused checks passed.'
     )
 
 

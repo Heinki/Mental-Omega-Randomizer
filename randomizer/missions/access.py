@@ -1125,7 +1125,7 @@ def original_mcv_access_rules(
     mcv_ids,
     additional_build_houses=(),
 ):
-    """Expose configured native MCVs for the exact mission player only."""
+    """Allow native MCV ownership while preserving authored unlock timing."""
     sections = all_section_value_maps(lines)
     records = map_house_records(lines, sections=sections)
     player_countries = safe_build_countries(
@@ -1137,7 +1137,11 @@ def original_mcv_access_rules(
     required_houses = ','.join(player_countries)
     return {
         str(mcv_id).upper(): {
-            'TechLevel': '1',
+            # FREMNANT starts these at 11; Action 106 lowers them to 7
+            # when the mission announces MCV construction.
+            'TechLevel': sections.get(str(mcv_id).upper(), {}).get(
+                'techlevel', '1'
+            ),
             'Owner': owners,
             'RequiredHouses': required_houses,
             'ForbiddenHouses': 'none',

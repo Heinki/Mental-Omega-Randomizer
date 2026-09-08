@@ -894,3 +894,17 @@ the Engineer/MCV opening. Tier 1 enemy firepower cloned `HumveeGun`, allowing
 the opening guard to kill the objective Engineer before entry. Mission policy
 now excludes only native `AHMV` from enemy tier-unit cloning in `ESHIP`; other
 hostile houses and units still receive configured AI scaling.
+
+Parasomnia (`ASOMNIA`) now uses the same mission-wide enemy-scaling exclusion
+as Withershins. Its scripted fleet opening cannot absorb accumulated hostile
+stat or power rewards. The shared launch pipeline suppresses those rewards in
+both Shop and normal randomized missions without changing authored combat.
+
+The Remnant (`FREMNANT`) explicitly permits native `AMCV` and `SMCV` production.
+The generic randomized-type production gate previously reintroduced player
+`ForbiddenHouses` despite that exception, so Action 106 announced construction
+but could not expose either MCV. These two IDs now bypass that gate. Their
+authored `TechLevel=11` remains until Action `01000302` lowers it to `7`; native
+prerequisites and mission identities remain intact. Standard may register a
+linked Construction Yard buff counterpart, but it stays locked and receives
+no MCV unlock action, so only the native MCV becomes buildable.

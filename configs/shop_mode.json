@@ -679,7 +679,7 @@
         "prices": [35, 70, 120],
         "effects": {
           "ore_per_gem": 5,
-          "maximum_gems_per_level": 1
+          "maximum_gems_per_level": 2
         }
       },
       "premium_supplier": {

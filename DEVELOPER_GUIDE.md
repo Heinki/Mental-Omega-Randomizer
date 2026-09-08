@@ -147,11 +147,13 @@ Workers receive frozen plain Python data.
 
 ## Validation
 
+Do not add unit tests. Use the existing launcher self-checks and campaign-map
+audits for validation.
+
 Routine:
 
 ```powershell
 python -m compileall -q .
-python -m unittest randomizer.launch.self_check -v
 python launcher_gui.py --self-check
 git diff --check
 ```

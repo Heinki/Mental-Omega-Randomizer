@@ -199,6 +199,12 @@ one positive price per level, and integer `effects`. Optional boolean
 profile normalization while hiding it and rejecting new purchases. Version 1 requires
 the full stable account-upgrade catalogue, including `coupon_book`,
 `stock_lock`, `veteran_academy`, `gem_dividend`, and `premium_supplier`.
+
+Gem Dividend pays on every mission victory from the Ore balance held before
+the victory reward or Liquid Assets liquidation. The defaults grant 1 Gem per
+5 Ore, capped at 2 Gems per upgrade level; the held Ore is not spent. The
+mission preview and victory total include this bonus.
+
 `modifiers` maps stable IDs to display text and additive or
 percentage economy effects. Percentage modifiers multiply exactly; flat
 modifiers add. Unknown saved modifier or upgrade IDs fail with a
@@ -254,9 +260,17 @@ launches that already own every listed source TechnoType.
 
 `original_mcv_access` maps mission codes to native MCV TechnoType IDs. The
 bundled default exposes `AMCV` and `SMCV` only in Foehn 06 (`FREMNANT`). These
-remain original mission identities; no `MORP*` MCV clone is created. Replace
+remain original mission identities; production uses the native MCVs. Their
+authored TechLevel and Action 106 unlock timing remain intact, and generic
+player production gates exclude these IDs. Any linked Construction Yard buff
+counterpart stays locked and receives no MCV unlock action. Replace
 that mission's list to change the available MCVs, or set it to `[]` to disable
 the exception. Missions absent from the mapping receive no original MCV access.
+
+`enemy_scaling_disabled_missions` suppresses all acquired AI stat and power
+rewards for missions whose scripted opening cannot survive them. Withershins
+and Parasomnia use this exception. Authored enemies and mission difficulty
+remain unchanged, and acquired AI rewards still apply to other missions.
 
 `time_freeze_immune_techno_ids` maps mission codes to exact scripted
 TechnoTypes. Generation gives each target a mission-private armor alias that
