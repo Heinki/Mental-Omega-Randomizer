@@ -134,6 +134,8 @@ def _is_direct_weapon_reference_key(key: object) -> bool:
     return (
         lowered in {
             'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+            'prismforwarding.supportweapon',
+            'prismforwarding.elitesupportweapon',
         }
         or re.fullmatch(r'(?:elite)?weapon\d+', lowered) is not None
     )

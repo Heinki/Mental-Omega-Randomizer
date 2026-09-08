@@ -34,6 +34,67 @@ def _sanitize_engineer_clone_values(values, target):
     # stacks are applied later, so this cannot erase a legitimate reward.
     return values
 
+
+def prism_forwarding_clone_rules(lines, installed_sections, clone_handled):
+    """Preserve prism roles and allowed links across native/player identities."""
+    effective = {
+        str(section).upper(): {str(k).lower(): v for k, v in values.items()}
+        for section, values in installed_sections.items()
+    }
+    for section, values in all_section_value_maps(lines).items():
+        effective.setdefault(str(section).upper(), {}).update(values)
+    buildings = {
+        str(value).upper()
+        for value in effective.get('BUILDINGTYPES', {}).values()
+    }
+    prism_type = str(effective.get('GENERAL', {}).get('prismtype', 'ATESLA')).upper()
+    families = {}
+    sources = {}
+    rules = {}
+    for source, details in clone_handled.items():
+        source = str(source).upper()
+        if source not in buildings:
+            continue
+        native = effective.get(source, {})
+        mode = native.get('prismforwarding', 'yes' if source == prism_type else 'no')
+        if str(mode).lower() not in {'yes', 'true', '1', 'forward', 'attack'}:
+            continue
+        family = [source]
+        for field in ('clone_id', 'reference_clone_id'):
+            clone = str(details.get(field) or '').upper()
+            if not clone or clone not in buildings or clone in family:
+                continue
+            family.append(clone)
+            sources[clone] = source
+            # Ares defaults forwarding off for every identity except PrismType.
+            if 'prismforwarding' not in effective.get(clone, {}):
+                rules.setdefault(clone, {})['PrismForwarding'] = mode
+        if len(family) > 1:
+            families[source] = family
+    if not families:
+        return rules
+    for building in sorted(buildings):
+        values = effective.get(building, {})
+        source = sources.get(building, building)
+        mode = values.get('prismforwarding', rules.get(building, {}).get(
+            'PrismForwarding', 'yes' if building == prism_type else 'no'
+        ))
+        if str(mode).lower() not in {'yes', 'true', '1', 'forward', 'attack'}:
+            continue
+        targets = values.get('prismforwarding.targets')
+        if targets is None:
+            targets = effective.get(source, {}).get('prismforwarding.targets', source)
+        expanded = []
+        for target in str(targets).split(','):
+            target = target.strip().upper()
+            if target:
+                expanded.extend(families.get(target, [target]))
+        expanded = list(dict.fromkeys(expanded))
+        if expanded != [item.strip().upper() for item in str(targets).split(',')]:
+            rules.setdefault(building, {})['PrismForwarding.Targets'] = ','.join(expanded)
+    return rules
+
+
 def _clone_reference_rules(
     lines,
     replacements,

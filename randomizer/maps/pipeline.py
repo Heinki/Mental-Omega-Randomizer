@@ -3053,6 +3053,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             'batch merging: ' + ', '.join(repaired_registrations) + '.'
         )
 
+    from randomizer.maps.clone_references import prism_forwarding_clone_rules
+    prism_rules = prism_forwarding_clone_rules(
+        lines, installed_rule_sections, clone_handled
+    ) if launch_active else {}
+    if prism_rules:
+        merge_ini_section_values(lines, prism_rules)
+        self.append_log('Linked native and player prism defense networks.')
+
     if launch_active:
         pad_aircraft_validation = validate_player_clone_pad_aircraft(
             lines, clone_handled

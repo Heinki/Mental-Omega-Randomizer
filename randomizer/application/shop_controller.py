@@ -324,9 +324,6 @@ class ShopController(ShopPolishController):
         self.shop_faction_pool_combo.configure(
             state='disabled' if locked else 'readonly'
         )
-        self.shop_game_speed_combo.configure(
-            state='disabled' if locked else 'readonly'
-        )
 
     def on_progression_mode_changed(self, event=None):
         self.sync_shop_workspace()

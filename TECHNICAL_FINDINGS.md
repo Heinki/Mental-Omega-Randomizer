@@ -954,3 +954,24 @@ remain charge weapons. Proto-Gharial uses `WaterImage=GHTNK2W` in both the stati
 roster and installed-rules template policy.
 
 Visual and combat behavior still require confirmation in-game.
+
+## Prism forwarding on cloned defenses
+
+Installed `ATESLA` omits `PrismForwarding=yes` because Ares enables forwarding
+implicitly only for `General.PrismType=ATESLA`. Player clones have different
+IDs and lose that default. Cloak rewards exposed the problem by creating a
+clone; the published Ares support-selection routine does not reject cloak.
+The former generated Allied 02 clone also retained stock
+`PrismForwarding.SupportWeapon` and `EliteSupportWeapon` while its ordinary
+weapon slots pointed at buffed private weapons.
+
+The final clone-reference pass now materializes the source forwarding mode
+and expands existing allowed target families to include native, production,
+and mission-reference identities. Native and cloned towers can support each
+other under the installed ownership/alliance rules. Explicit disabled modes
+and directed target restrictions remain respected. Weapon cloning also
+rewrites both prism support references so range and reload upgrades apply to
+support beams. Cloak rewards remain enabled; live combat still needs confirmation.
+
+References: [Ares prism forwarding defaults and weapon fields](https://ares-developers.github.io/Ares-docs/new/buildings/prismforwarding.html),
+[Ares support tower selection](https://github.com/Ares-Developers/Ares/blob/master/src/Ext/Building/PrismForward.cpp).

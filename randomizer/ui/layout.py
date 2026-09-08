@@ -5,7 +5,6 @@ from ._builder_dependencies import (
     CAMPAIGN_FILTERS,
     DEFAULT_MISSION_GOAL,
     DIFFICULTIES,
-    GAME_SPEEDS,
     MAX_REWARDS_PER_CHECK,
     PROGRESSION_MODES,
     REWARD_MODES,
@@ -317,16 +316,6 @@ def _build_right_panel(self, main_frame):
         width=6,
     )
     self.mission_goal_spinbox.grid(row=0, column=1, sticky='w')
-    ttk.Label(options_row, text='Game speed').grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
-    self.game_speed_combo = ttk.Combobox(
-        options_row,
-        state='readonly',
-        textvariable=self.game_speed_var,
-        values=[name for name, _ in GAME_SPEEDS],
-        width=10,
-    )
-    self.game_speed_combo.grid(row=1, column=1, sticky='ew', pady=(6, 0))
-
     self.campaign_label = ttk.Label(options_row, text='Campaign')
     self.campaign_label.grid(row=2, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.campaign_combo = ttk.Combobox(
@@ -486,7 +475,6 @@ def _build_right_panel(self, main_frame):
     # binding consumes the mouse wheel before bind_all sees it. Bind directly
     # so scrolling Settings never changes a previously focused option.
     for combo in (
-        self.game_speed_combo,
         self.campaign_combo,
         self.difficulty_combo,
         self.reward_mode_combo,
@@ -578,8 +566,6 @@ def _build_right_panel(self, main_frame):
             'Next run faction pool', 'shop_faction_pool_combo',
             self.shop_faction_pool_var, self.shop_faction_pool_options,
         ),
-        ('Game speed', 'shop_game_speed_combo', self.game_speed_var,
-         [name for name, _ in GAME_SPEEDS]),
     )
     for row, (label, attribute, variable, values) in enumerate(
         shop_run_options, start=5
@@ -638,7 +624,7 @@ def _build_right_panel(self, main_frame):
             'faction (plus neutral items). Missions remain a mixed-campaign '
             'run, including Foehn Only runs. Shop Mode uses its own reward '
             'rules, so Standard/Chaos does not apply. The faction pool is '
-            'fixed when a run starts; Game Speed remains adjustable. Mission '
+            'fixed when a run starts. Mission '
             'difficulty is chosen from each mission card during the run.'
         ),
         style='Muted.TLabel',
