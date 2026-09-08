@@ -41,6 +41,7 @@ from .archipelago_purchases import (
     archipelago_purchase_records,
 )
 from .config import SHOP_CONFIG
+from .missions_self_check import validate_shop_mission_selection
 from .economy import (
     discounted_shop_price,
     mission_reward,
@@ -1621,8 +1622,11 @@ def validate_shop_domain():
         and mission_classes_for_stage(1) == {
             MissionEconomyClass.ACT_1
         }
-        and MissionEconomyClass.FINALE not in mission_classes_for_stage(8)
-        and MissionEconomyClass.FINALE in mission_classes_for_stage(9)
+        and mission_classes_for_stage(2) == {MissionEconomyClass.ACT_1}
+        and all(
+            mission_classes_for_stage(stage) == set(MissionEconomyClass)
+            for stage in range(3, SHOP_CONFIG.run_length + 1)
+        )
         and offers == generate_mission_offers(
             mission_pool, run_seed='SHOP-SELF-CHECK', stage=1
         )
@@ -1895,6 +1899,7 @@ def validate_shop_domain():
         'state_round_trip_valid': state_round_trip_valid,
         'catalogue_entries': len(catalogue),
     }
+    details.update(validate_shop_mission_selection())
     details.update(_phase_two_checks(mission_pool))
     details.update(_phase_four_checks())
     details.update(_phase_five_checks())

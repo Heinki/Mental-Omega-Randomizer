@@ -1119,7 +1119,7 @@ class ShopController(ShopPolishController):
         )
         self.shop_repository.save_run(repaired)
         self._set_shop_message(
-            f'Updated stage {run.stage} offers for gradual Shop difficulty.'
+            f'Updated stage {run.stage} Shop mission offers.'
         )
         return repaired
 

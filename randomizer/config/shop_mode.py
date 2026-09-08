@@ -85,34 +85,6 @@ def validate_shop_mode_config(sections, path, invalid):
             path,
         )
 
-    profiles = sections['stage_class_weights']
-    if not profiles:
-        invalid('Shop Mode stage class weights cannot be empty', path)
-    previous_percent = 0
-    for profile in profiles:
-        if not isinstance(profile, dict):
-            invalid('Invalid Shop Mode stage weight profile', path)
-        through_percent = profile.get('through_percent')
-        weights = profile.get('weights')
-        if (
-            not isinstance(through_percent, int)
-            or isinstance(through_percent, bool)
-            or not previous_percent < through_percent <= 100
-            or not isinstance(weights, dict)
-            or set(weights) != mission_classes
-            or any(
-                not isinstance(value, int)
-                or isinstance(value, bool)
-                or value < 0
-                for value in weights.values()
-            )
-            or not any(weights.values())
-        ):
-            invalid('Invalid Shop Mode stage weight profile', path)
-        previous_percent = through_percent
-    if previous_percent != 100:
-        invalid('Shop Mode stage weights must cover 100 percent', path)
-
     difficulty_names = {'Casual', 'Normal', 'Mental'}
     difficulty_profiles = sections['stage_difficulty_weights']
     if not difficulty_profiles:

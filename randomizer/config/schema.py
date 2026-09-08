@@ -92,7 +92,6 @@ REQUIRED_SECTIONS = {
     'shop_mode.json': {
         'settings': dict,
         'mission_rewards': dict,
-        'stage_class_weights': list,
         'stage_difficulty_weights': list,
         'power_target_prices': dict,
         'unit_target_prices': dict,

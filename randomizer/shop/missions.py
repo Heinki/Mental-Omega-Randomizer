@@ -17,6 +17,7 @@ from .model import MissionEconomyClass, MissionOffer, ShopModeConfig
 
 _CLASS_ORDER = tuple(MissionEconomyClass)
 SHOP_DIFFICULTIES = ('Casual', 'Normal', 'Mental')
+SHOP_OPENING_STAGES = 2
 
 
 def classify_mission(mission):
@@ -47,24 +48,13 @@ def classify_mission(mission):
     return MissionEconomyClass.ACT_2
 
 
-def _stage_weights(stage, run_length, config):
-    progress_percent = min(100, max(1, stage) * 100 // max(1, run_length))
-    for profile in config.stage_class_weights:
-        if progress_percent <= profile.through_percent:
-            return profile.weights
-    return config.stage_class_weights[-1].weights
-
-
 def mission_classes_for_stage(
     stage, run_length=None, config: ShopModeConfig = SHOP_CONFIG
 ):
-    """Return mission classes explicitly enabled for one run stage."""
-    run_length = config.run_length if run_length is None else int(run_length)
-    weights = _stage_weights(int(stage), run_length, config)
-    return frozenset(
-        class_id for class_id in _CLASS_ORDER
-        if int(weights.get(class_id, 0)) > 0
-    )
+    """Protect the first two missions, regardless of the configured run length."""
+    if int(stage) <= SHOP_OPENING_STAGES:
+        return frozenset((MissionEconomyClass.ACT_1,))
+    return frozenset(_CLASS_ORDER)
 
 
 def mission_difficulty_weights_for_stage(
@@ -160,30 +150,20 @@ def generate_mission_offers(
     rng = random.Random(
         f'{run_seed}:shop_mission_offers:{stage}:{reroll_count}'
     )
-    by_class = {class_id: [] for class_id in _CLASS_ORDER}
-    for mission in candidates:
-        by_class[classify_mission(mission)].append(mission)
-    for class_missions in by_class.values():
-        class_missions.sort(key=lambda item: item['code'])
-
-    weights = _stage_weights(stage, run_length, config)
-    eligible_classes = [
-        class_id for class_id in _CLASS_ORDER
-        if weights.get(class_id, 0) > 0 and by_class[class_id]
-    ]
-    eligible_candidates = [
-        mission for class_id in eligible_classes
-        for mission in by_class[class_id]
-    ]
+    allowed = mission_classes_for_stage(stage, run_length, config)
+    eligible_candidates = sorted(
+        (mission for mission in candidates if classify_mission(mission) in allowed),
+        key=lambda item: item['code'],
+    )
     if not eligible_candidates:
         return ()
     selected = []
     selected_codes = set()
     # Early fixed-unit/hero missions provide one approachable option without
     # allowing Act 2, operations, or finales into the protected opening.
-    if stage * 100 <= 20 * run_length:
+    if stage <= SHOP_OPENING_STAGES:
         hero_candidates = [
-            mission for mission in by_class[MissionEconomyClass.ACT_1]
+            mission for mission in eligible_candidates
             if (
                 mission.get('true_no_build')
                 or mission.get('build_classification') == 'true_no_build'
@@ -196,21 +176,18 @@ def generate_mission_offers(
             ))
             selected_codes.add(hero['code'])
 
-    while len(selected) < min(offer_count, len(eligible_candidates)):
-        available_classes = [
-            class_id for class_id in eligible_classes
-            if any(item['code'] not in selected_codes for item in by_class[class_id])
-        ]
-        if not available_classes:
-            break
-        class_id = _weighted_class_choice(rng, available_classes, weights)
-        class_candidates = [
-            item for item in by_class[class_id]
-            if item['code'] not in selected_codes
-        ]
-        mission = rng.choice(class_candidates)
-        selected.append(MissionOffer(mission['code'], class_id))
-        selected_codes.add(mission['code'])
+    # Sample missions directly: every remaining mission has equal probability,
+    # and an offer can contain any mix of classes, including three finales.
+    remaining = [
+        mission for mission in eligible_candidates
+        if mission['code'] not in selected_codes
+    ]
+    selected.extend(
+        MissionOffer(mission['code'], classify_mission(mission))
+        for mission in rng.sample(
+            remaining, min(offer_count - len(selected), len(remaining))
+        )
+    )
 
     previous = {str(code).upper() for code in previous_offer_codes or ()}
     selected_set = {offer.mission_code for offer in selected}

@@ -133,13 +133,14 @@ retiring them from normal Randomizer progression or old save receipts.
 `mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
 `finale`. Each class has a display label, unique positive difficulty rank, and
 non-negative Ore (`run_coins`) and Gem (`meta_coins`) rewards.
-`stage_class_weights` uses ascending `through_percent` boundaries ending at
-`100`; each profile supplies non-negative integer weights for all four mission
-classes. Gem rewards must increase strictly with difficulty. Offer
-generation samples only its named Shop RNG stream. A zero class weight is a
-hard stage exclusion: stages 1–2 offer only Act 1, operations begin at stage 5,
-and finales begin at stage 9. Protected opening offers include a fixed-unit or
-hero mission when the eligible campaign pool provides one.
+Gem rewards must increase strictly with difficulty. Offer generation samples
+only its named Shop RNG stream. Stages 1–2 offer only Act 1 and include a
+fixed-unit or hero mission when the eligible pool provides one. From stage 3,
+every remaining eligible mission has equal selection probability, regardless
+of class or run length. All three offers can be finales. Completed missions
+and duplicate offers are excluded; mission-pool inclusion settings still apply.
+The former `stage_class_weights` section is no longer used; older configuration
+files containing it remain loadable.
 `stage_difficulty_weights` independently controls actual in-game Casual,
 Normal, and Mental difficulty for each visible mission offer. Profiles use the
 same ascending percentage boundaries. The offer's difficulty is derived from

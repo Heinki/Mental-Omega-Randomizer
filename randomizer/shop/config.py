@@ -11,7 +11,6 @@ from .model import (
     ShopPowerPriceDefinition,
     ShopTargetPriceDefinition,
     StageDifficultyProfile,
-    StageWeightProfile,
 )
 
 
@@ -28,16 +27,6 @@ def load_shop_mode_config() -> ShopModeConfig:
         )
         for class_id, definition in sections['mission_rewards'].items()
     }
-    stage_weights = tuple(
-        StageWeightProfile(
-            through_percent=int(profile['through_percent']),
-            weights={
-                MissionEconomyClass(class_id): int(weight)
-                for class_id, weight in profile['weights'].items()
-            },
-        )
-        for profile in sections['stage_class_weights']
-    )
     stage_difficulty_weights = tuple(
         StageDifficultyProfile(
             through_percent=int(profile['through_percent']),
@@ -99,7 +88,6 @@ def load_shop_mode_config() -> ShopModeConfig:
             str(reward_id) for reward_id in settings['excluded_reward_ids']
         ),
         mission_rewards=mission_rewards,
-        stage_class_weights=stage_weights,
         stage_difficulty_weights=stage_difficulty_weights,
         power_target_prices={
             str(target_id): ShopPowerPriceDefinition(

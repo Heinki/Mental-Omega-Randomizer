@@ -72,12 +72,6 @@ class MissionRewardDefinition:
 
 
 @dataclass(frozen=True)
-class StageWeightProfile:
-    through_percent: int
-    weights: Mapping[MissionEconomyClass, int]
-
-
-@dataclass(frozen=True)
 class StageDifficultyProfile:
     through_percent: int
     weights: Mapping[str, int]
@@ -131,7 +125,6 @@ class ShopModeConfig:
     archipelago_mission_victories_are_locations: bool
     excluded_reward_ids: tuple[str, ...]
     mission_rewards: Mapping[MissionEconomyClass, MissionRewardDefinition]
-    stage_class_weights: tuple[StageWeightProfile, ...]
     stage_difficulty_weights: tuple[StageDifficultyProfile, ...]
     power_target_prices: Mapping[str, ShopPowerPriceDefinition]
     unit_target_prices: Mapping[str, ShopTargetPriceDefinition]
