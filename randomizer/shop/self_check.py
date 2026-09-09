@@ -1170,7 +1170,7 @@ def _phase_seven_checks():
             len(hidden) == 1
             and hidden == hidden_offer_codes(run)
             and hidden[0] in {offer.mission_code for offer in offers}
-            and adjusted.run_coins == 14
+            and adjusted.run_coins == 13
             and adjusted.meta_coins == 5
             and poor_logistics_reward.run_coins == 7
             and starting_run_coins(modifiers=('poor_logistics',)) == 5
@@ -1182,7 +1182,7 @@ def _phase_seven_checks():
                 'generous_command'
             ].effects
             and any('Permanent Victory Bonus: +2' in line for line in breakdown)
-            and any('Total: +16 Ore' in line for line in breakdown)
+            and any('Total: +15 Ore' in line for line in breakdown)
             and 'Persistent Gems: 42' in completion_summary
             and restored == run
         ),
