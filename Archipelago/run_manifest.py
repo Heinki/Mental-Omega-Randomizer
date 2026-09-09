@@ -28,6 +28,8 @@ from randomizer.rewards.planning import is_max_rewards_achieved_reward
 from randomizer.shop.config import SHOP_CONFIG
 from randomizer.shop.archipelago import (
     ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_ALL,
+    ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+    ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
 )
 
 
@@ -497,6 +499,8 @@ def _shop_manifest_settings():
         "purchase_meta_coin_cost": (
             SHOP_CONFIG.archipelago_purchase_meta_coin_cost
         ),
+        "item_location_count": ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+        "items_per_victory": ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
         "starting_extra_unit_limit": (
             SHOP_CONFIG.max_selected_permanent_units
         ),
@@ -564,11 +568,7 @@ def build_run_manifest(state, launcher_config=None):
             raise ValueError(
                 "Shop Mode AP mission pool is smaller than its run length."
             )
-        random_location_count = shop["purchase_location_count"] + (
-            shop["run_length"]
-            if shop["mission_victories_are_locations"]
-            else 0
-        )
+        random_location_count = shop["item_location_count"]
         item_pool = _shop_item_pool(
             rewards_by_code, mission_order, random_location_count
         )

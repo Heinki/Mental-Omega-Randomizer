@@ -47,15 +47,15 @@ currently visible on the Randomizer's **Settings** and **Advanced** pages.
 6. Give the YAML to the room host, or place it in Archipelago's `Players`
    folder if you are generating the room yourself.
 
-**Save Player YAML** both saves the current Archipelago settings and exports a
-fresh player file. There is no YAML import step in the launcher. To change the
-run, change the visible launcher settings and save a new YAML before generating
-the Archipelago room.
+**Save Player YAML** saves current Archipelago settings and exports a reusable
+player file. There is no YAML import step in the launcher. Reuse that file for
+additional rooms with the same settings; every Archipelago generation assigns
+a fresh Randomizer seed. Re-export only after changing launcher settings.
 
-`generated_world` is a normal Archipelago mapping option containing generated
-mission order, Grid, reward slots, and compatibility checks required for this
-exact run. Change launcher controls and save a new Player YAML instead of
-editing generated data. Archipelago rejects mismatched readable settings.
+`generated_world` is a checksum-protected, seed-independent template containing
+mission order, Grid, reward slots, and compatibility data. Archipelago restores
+the settings, assigns the room-specific seed, then signs data sent to the
+launcher. Do not edit generated template data.
 
 ## Mission progression and spheres
 

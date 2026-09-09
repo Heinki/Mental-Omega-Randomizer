@@ -2,6 +2,7 @@
 
 from collections import Counter
 from collections.abc import Mapping
+from copy import deepcopy
 from hashlib import sha256
 import json
 
@@ -9,6 +10,7 @@ from .data import (
     CATALOGUE_CHECKSUM,
     ITEM_DATA,
     LOCATION_SLOTS,
+    MAXIMUM_SHOP_ITEM_LOCATIONS,
     MAXIMUM_SHOP_PURCHASE_LOCATIONS,
     MAXIMUM_SHOP_RUN_LENGTH,
     MISSION_DATA,
@@ -36,6 +38,33 @@ def manifest_checksum(value):
     unsigned = dict(value)
     unsigned.pop("manifest_checksum", None)
     return sha256(canonical_json(unsigned).encode("utf-8")).hexdigest()
+
+
+def launcher_settings_checksum(value):
+    return sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def instantiate_manifest(template, launcher_settings, randomizer_seed):
+    """Create one room-specific manifest from reusable Player YAML data."""
+    if not isinstance(launcher_settings, dict) or not launcher_settings:
+        raise ManifestError("launcher_settings must be a non-empty mapping.")
+    if not isinstance(randomizer_seed, str) or not randomizer_seed.strip():
+        raise ManifestError("Generated Randomizer seed is invalid.")
+    value = deepcopy(template)
+    value["randomizer_seed"] = randomizer_seed
+    snapshot = value.get("state_snapshot")
+    if not isinstance(snapshot, dict):
+        raise ManifestError("Manifest has no server state snapshot.")
+    snapshot["seed"] = randomizer_seed
+    frozen = value.get("frozen_settings")
+    if not isinstance(frozen, dict):
+        frozen = {}
+        value["frozen_settings"] = frozen
+    frozen.pop("launcher_checksum", None)
+    frozen["launcher"] = deepcopy(launcher_settings)
+    frozen["launcher"]["seed"] = randomizer_seed
+    value["manifest_checksum"] = manifest_checksum(value)
+    return value
 
 
 def _positive_counts(value, label, known_names):
@@ -259,6 +288,8 @@ def _validate_shop_settings(value, mode, mission_order):
         "mission_victories_are_locations",
         "purchase_location_count",
         "purchase_meta_coin_cost",
+        "item_location_count",
+        "items_per_victory",
         "starting_extra_unit_limit",
     }
     optional_keys = {"received_unit_loadout"}
@@ -271,6 +302,8 @@ def _validate_shop_settings(value, mode, mission_order):
     run_length = value.get("run_length")
     purchase_count = value.get("purchase_location_count")
     purchase_cost = value.get("purchase_meta_coin_cost")
+    item_location_count = value.get("item_location_count")
+    items_per_victory = value.get("items_per_victory")
     extra_limit = value.get("starting_extra_unit_limit")
     received_unit_loadout = value.get("received_unit_loadout", "manual")
     if (
@@ -288,6 +321,17 @@ def _validate_shop_settings(value, mode, mission_order):
         or not isinstance(purchase_cost, int)
         or isinstance(purchase_cost, bool)
         or purchase_cost < 1
+        or not isinstance(item_location_count, int)
+        or isinstance(item_location_count, bool)
+        or not (
+            purchase_count
+            + (run_length if value["mission_victories_are_locations"] else 0)
+            <= item_location_count
+            <= MAXIMUM_SHOP_ITEM_LOCATIONS
+        )
+        or not isinstance(items_per_victory, int)
+        or isinstance(items_per_victory, bool)
+        or not 1 <= items_per_victory <= item_location_count
         or not isinstance(extra_limit, int)
         or isinstance(extra_limit, bool)
         or not 0 <= extra_limit <= 10
@@ -385,9 +429,7 @@ def parse_manifest(raw_value):
         value.get("shop"), value.get("progression_mode"), mission_order
     )
     if shop is not None:
-        total_locations += shop["purchase_location_count"]
-        if shop["mission_victories_are_locations"]:
-            total_locations += shop["run_length"]
+        total_locations += shop["item_location_count"]
     if total_locations <= 0 and shop is None:
         raise ManifestError("Manifest has no active reward locations.")
 
@@ -493,14 +535,24 @@ def parse_manifest(raw_value):
 
 
 def validate_launcher_settings(settings, manifest):
-    """Reject hand edits until the launcher regenerates the signed run."""
+    """Validate editable settings against old fixed or new reusable YAML."""
     frozen = manifest.get("frozen_settings")
     expected = frozen.get("launcher") if isinstance(frozen, dict) else None
-    if not settings:
+    expected_checksum = (
+        frozen.get("launcher_checksum") if isinstance(frozen, dict) else None
+    )
+    if not settings and expected:
         return expected
     if not isinstance(settings, dict):
         raise ManifestError("launcher_settings must be a mapping.")
-    if settings != expected:
+    if not settings:
+        raise ManifestError("launcher_settings cannot be empty.")
+    if expected_checksum and launcher_settings_checksum(settings) != expected_checksum:
+        raise ManifestError(
+            "launcher_settings were edited after YAML export. Change settings "
+            "in Mental Omega Randomizer, then save the YAML again."
+        )
+    if expected and settings != expected:
         raise ManifestError(
             "launcher_settings were edited after run generation. Load this "
             "YAML in Mental Omega Randomizer, generate a new seed, then "

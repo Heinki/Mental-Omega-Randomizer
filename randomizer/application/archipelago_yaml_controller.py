@@ -91,9 +91,15 @@ class ArchipelagoYamlController:
                 )
         else:
             status = (
-                f'Player YAML saved: {seed} | {mode} | '
+                f'Reusable Player YAML saved: {mode} | '
                 f'{checksum[:12]}… | slot {slot}. '
-                'Connect to load the generated run from the server.'
+                'Each generated AP room gets a fresh Randomizer seed.'
+                if seed == 'random'
+                else (
+                    f'Player YAML saved: {seed} | {mode} | '
+                    f'{checksum[:12]}… | slot {slot}. '
+                    'Connect to load the generated run from the server.'
+                )
             )
             if self.archipelago_status_var.get().startswith('Disconnected'):
                 self.archipelago_status_var.set(
@@ -206,14 +212,18 @@ class ArchipelagoYamlController:
     ):
         try:
             from Archipelago.run_manifest import build_run_manifest
-            from Archipelago.yaml_config import serialize_player_yaml
+            from Archipelago.yaml_config import (
+                parse_player_yaml,
+                serialize_player_yaml,
+            )
             from randomizer.core.storage import atomic_write_text
 
             manifest = build_run_manifest(result['state'], launcher_config)
             yaml_text = serialize_player_yaml(manifest, slot_name)
             atomic_write_text(path, yaml_text)
+            template = parse_player_yaml(yaml_text)['run_manifest']
             self._stage_archipelago_manifest(
-                manifest, slot_name, yaml_text, result['state']
+                template, slot_name, yaml_text, result['state']
             )
         finally:
             self.clear_seed_generation_overrides()

@@ -57,8 +57,8 @@ def build(output_directory: Path) -> Path:
 
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     manifest.update({
-        'compatible_version': 7,
-        'version': 7,
+        'compatible_version': 8,
+        'version': 8,
         'maximum_ap_version': '0.6.7',
     })
     manifest_data = json.dumps(

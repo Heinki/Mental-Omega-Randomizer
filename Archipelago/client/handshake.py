@@ -15,7 +15,7 @@ from randomizer.core.version import APP_VERSION
 
 
 GAME_NAME = 'Mental Omega'
-SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6})
+SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6, 7})
 SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
 CLIENT_VERSION = (0, 6, 7)
 ITEMS_HANDLING_ALL = 0b111
@@ -234,17 +234,21 @@ def _connect_command(slot_name, password, client_uuid):
     }
 
 
-def _validate_shop_slot_data(raw, manifest, mission_order):
+def _validate_shop_slot_data(raw, manifest, mission_order, slot_data_version):
     if not isinstance(raw, Mapping) or not isinstance(manifest, Mapping):
         raise ArchipelagoProtocolError('Shop Mode slot data is missing.')
-    policy_keys = (
+    policy_keys = [
         'run_length',
         'mission_pool',
         'mission_victories_are_locations',
         'purchase_location_count',
         'purchase_meta_coin_cost',
         'starting_extra_unit_limit',
-    )
+    ]
+    modern_item_stream = slot_data_version >= 7
+    if modern_item_stream:
+        policy_keys.extend(('item_location_count', 'items_per_victory'))
+    policy_keys = tuple(policy_keys)
     received_unit_loadout = raw.get('received_unit_loadout', 'manual')
     manifest_received_unit_loadout = manifest.get(
         'received_unit_loadout', 'manual'
@@ -255,6 +259,7 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
             'received_unit_loadout',
             'purchase_locations',
             'stage_victories',
+            *({'item_locations'} if modern_item_stream else set()),
         })
         or not {*policy_keys, 'purchase_locations', 'stage_victories'}.issubset(
             raw
@@ -270,6 +275,7 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
     purchase_cost = raw.get('purchase_meta_coin_cost')
     extra_limit = raw.get('starting_extra_unit_limit')
     purchase_locations = raw.get('purchase_locations')
+    item_locations = raw.get('item_locations') if modern_item_stream else None
     stage_victories = raw.get('stage_victories')
     if (
         raw.get('mission_pool') != mission_order
@@ -290,22 +296,51 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         or len(purchase_locations) != purchase_count
         or not isinstance(stage_victories, list)
         or len(stage_victories) != run_length
+        or (
+            modern_item_stream
+            and (
+                not isinstance(raw.get('item_location_count'), int)
+                or isinstance(raw.get('item_location_count'), bool)
+                or raw['item_location_count'] != 120
+                or not isinstance(raw.get('items_per_victory'), int)
+                or isinstance(raw.get('items_per_victory'), bool)
+                or raw['items_per_victory'] != 12
+                or not isinstance(item_locations, list)
+                or len(item_locations) != raw['item_location_count']
+            )
+        )
     ):
         raise ArchipelagoProtocolError('Shop Mode slot data is invalid.')
-    random_locations = set()
+    random_locations = set(item_locations or ())
+    if modern_item_stream and (
+        any(
+            not isinstance(location, int)
+            or isinstance(location, bool)
+            or location <= 0
+            for location in item_locations
+        )
+        or len(random_locations) != len(item_locations)
+    ):
+        raise ArchipelagoProtocolError(
+            'Shop item location mapping is invalid.'
+        )
     logic_locations = set()
     logic_items = set()
+    assigned_random_locations = set()
     for location in purchase_locations:
         if (
             not isinstance(location, int)
             or isinstance(location, bool)
             or location <= 0
-            or location in random_locations
+            or location in assigned_random_locations
+            or (modern_item_stream and location not in random_locations)
         ):
             raise ArchipelagoProtocolError(
                 'Shop Purchase location mapping is invalid.'
             )
-        random_locations.add(location)
+        assigned_random_locations.add(location)
+        if not modern_item_stream:
+            random_locations.add(location)
     normalized_stages = []
     locations_enabled = raw.get('mission_victories_are_locations')
     if not isinstance(locations_enabled, bool):
@@ -334,14 +369,21 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
             or not isinstance(logic_location, int)
             or isinstance(logic_location, bool)
             or logic_location <= 0
-            or location in random_locations
+            or (
+                modern_item_stream
+                and location is not None
+                and location not in random_locations
+            )
+            or (location is not None and location in assigned_random_locations)
             or logic_item in logic_items
             or logic_location in logic_locations
             or logic_location in random_locations
         ):
             raise ArchipelagoProtocolError('Shop stage mapping is invalid.')
         if location is not None:
-            random_locations.add(location)
+            assigned_random_locations.add(location)
+            if not modern_item_stream:
+                random_locations.add(location)
         logic_items.add(logic_item)
         logic_locations.add(logic_location)
         normalized_stages.append({
@@ -354,6 +396,10 @@ def _validate_shop_slot_data(raw, manifest, mission_order):
         **{key: manifest[key] for key in policy_keys},
         'received_unit_loadout': received_unit_loadout,
         'purchase_locations': list(purchase_locations),
+        **(
+            {'item_locations': list(item_locations)}
+            if modern_item_stream else {}
+        ),
         'stage_victories': normalized_stages,
     }, random_locations, logic_locations, logic_items
 
@@ -483,7 +529,8 @@ def validate_slot_data(value):
             shop_logic_locations,
             shop_logic_items,
         ) = _validate_shop_slot_data(
-            slot_data.get('shop'), run_manifest.get('shop'), mission_order
+            slot_data.get('shop'), run_manifest.get('shop'), mission_order,
+            slot_data_version,
         )
         if (
             run_manifest.get('mission_goal') != normalized_shop['run_length']

@@ -1,10 +1,14 @@
-"""Synthetic Shop Mode slot-data v6 contract check."""
+"""Synthetic Shop Mode slot-data contract check."""
 
 import json
 from hashlib import sha256
 
 from randomizer.core.version import APP_VERSION
 from randomizer.shop.config import SHOP_CONFIG
+from randomizer.shop.archipelago import (
+    ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+    ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
+)
 
 from .catalogue_contract import runtime_catalogue_checksum
 from .client.handshake import validate_slot_data
@@ -29,6 +33,8 @@ def validate_shop_slot_contract():
         'purchase_meta_coin_cost': (
             SHOP_CONFIG.archipelago_purchase_meta_coin_cost
         ),
+        'item_location_count': ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+        'items_per_victory': ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
         'starting_extra_unit_limit': (
             SHOP_CONFIG.max_selected_permanent_units
         ),
@@ -51,9 +57,7 @@ def validate_shop_slot_contract():
         'goal': {'type': 'shop_run', 'run_length': run_length},
         'shop': shop,
         'locations': {code: {} for code in mission_order},
-        'item_pool': {'GI Access': purchase_count + (
-            run_length if victories_are_locations else 0
-        )},
+        'item_pool': {'GI Access': ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT},
         'starting_items': {},
         'local_placements': [],
         'grid': None,
@@ -84,8 +88,18 @@ def validate_shop_slot_contract():
         'logic_item': 0x4DFE200 + stage - 1,
         'logic_location': 0x4DFE200 + stage - 1,
     } for stage in range(1, run_length + 1)]
+    item_locations = [
+        *purchase_locations,
+        *(entry['location'] for entry in stages if entry['location']),
+    ]
+    item_locations.extend(
+        0x4DFE300 + index
+        for index in range(
+            ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT - len(item_locations)
+        )
+    )
     slot_data = {
-        'slot_data_version': 6,
+        'slot_data_version': 7,
         'randomizer_version': APP_VERSION,
         'randomizer_seed': manifest['randomizer_seed'],
         'catalogue_checksum': manifest['catalogue_checksum'],
@@ -97,6 +111,7 @@ def validate_shop_slot_contract():
         'goal': manifest['goal'],
         'shop': {
             **shop,
+            'item_locations': item_locations,
             'purchase_locations': purchase_locations,
             'stage_victories': stages,
         },
@@ -108,6 +123,11 @@ def validate_shop_slot_contract():
     normalized = validate_slot_data(slot_data)
     legacy_manifest = json.loads(json.dumps(manifest))
     legacy_manifest['shop'].pop('received_unit_loadout')
+    legacy_manifest['shop'].pop('item_location_count')
+    legacy_manifest['shop'].pop('items_per_victory')
+    legacy_manifest['item_pool'] = {'GI Access': purchase_count + (
+        run_length if victories_are_locations else 0
+    )}
     legacy_manifest['manifest_checksum'] = sha256(json.dumps(
         {
             key: value for key, value in legacy_manifest.items()
@@ -118,20 +138,27 @@ def validate_shop_slot_contract():
         separators=(',', ':'),
     ).encode('utf-8')).hexdigest()
     legacy_slot_data = json.loads(json.dumps(slot_data))
+    legacy_slot_data['slot_data_version'] = 6
     legacy_slot_data['shop'].pop('received_unit_loadout')
+    legacy_slot_data['shop'].pop('item_location_count')
+    legacy_slot_data['shop'].pop('items_per_victory')
+    legacy_slot_data['shop'].pop('item_locations')
     legacy_slot_data['run_manifest'] = legacy_manifest
     legacy_slot_data['manifest_checksum'] = legacy_manifest[
         'manifest_checksum'
     ]
     legacy_normalized = validate_slot_data(legacy_slot_data)
     return bool(
-        normalized['slot_data_version'] == 6
+        normalized['slot_data_version'] == 7
         and '"received_unit_loadout": "all"' in player_yaml
         and normalized['shop']['received_unit_loadout'] == 'all'
         and normalized['shop']['purchase_locations'] == purchase_locations
         and set(purchase_locations).issubset(
             _scout_location_ids(normalized)
         )
+        and len(normalized['shop']['item_locations']) == 120
+        and len(_scout_location_ids(normalized)) == 120
         and len(normalized['shop']['stage_victories']) == run_length
+        and legacy_normalized['slot_data_version'] == 6
         and legacy_normalized['shop']['received_unit_loadout'] == 'manual'
     )

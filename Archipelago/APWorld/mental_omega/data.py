@@ -11,9 +11,11 @@ GAME_NAME = "Mental Omega"
 VICTORY_EVENT = "Mental Omega Victory"
 MAXIMUM_SHOP_PURCHASE_LOCATIONS = 25
 MAXIMUM_SHOP_RUN_LENGTH = 20
+MAXIMUM_SHOP_ITEM_LOCATIONS = 120
 SHOP_PURCHASE_LOCATION_ID_BASE = 0x4DFE000
 SHOP_STAGE_LOCATION_ID_BASE = 0x4DFE100
 SHOP_STAGE_LOGIC_ID_BASE = 0x4DFE200
+SHOP_PROGRESS_LOCATION_ID_BASE = 0x4DFE300
 
 _CLASSIFICATIONS = {
     "progression": ItemClassification.progression,
@@ -93,12 +95,33 @@ SHOP_STAGE_LOGIC_ITEM_TABLE = {
     data["item_name"]: data["item_id"]
     for data in SHOP_STAGE_LOGIC_DATA.values()
 }
+SHOP_PROGRESS_LOCATION_TABLE = {
+    f"Shop Run Item {index}": SHOP_PROGRESS_LOCATION_ID_BASE + index - 1
+    for index in range(1, MAXIMUM_SHOP_ITEM_LOCATIONS + 1)
+}
 LOCATION_TABLE.update(SHOP_PURCHASE_LOCATION_TABLE)
 LOCATION_TABLE.update(SHOP_STAGE_LOCATION_TABLE)
+LOCATION_TABLE.update(SHOP_PROGRESS_LOCATION_TABLE)
 LOCATION_TABLE.update({
     data["location_name"]: data["location_id"]
     for data in SHOP_STAGE_LOGIC_DATA.values()
 })
+
+
+def shop_item_location_entries(
+    purchase_count, run_length, victories_are_locations, total_count
+):
+    """Return one stable, non-overlapping Shop shuffled-location sequence."""
+    entries = list(SHOP_PURCHASE_LOCATION_TABLE.items())[:purchase_count]
+    if victories_are_locations:
+        entries.extend(
+            list(SHOP_STAGE_LOCATION_TABLE.items())[:run_length]
+        )
+    remaining = int(total_count) - len(entries)
+    if remaining < 0 or remaining > len(SHOP_PROGRESS_LOCATION_TABLE):
+        raise ValueError("Shop item-location count is out of range.")
+    entries.extend(list(SHOP_PROGRESS_LOCATION_TABLE.items())[:remaining])
+    return tuple(entries)
 LOCATION_SLOTS = defaultdict(lambda: defaultdict(list))
 for _entry in _SNAPSHOT["locations"]:
     LOCATION_SLOTS[_entry["mission"]][_entry["check"]].append(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+from hashlib import sha256
 import json
 
 from randomizer.config.player import (
@@ -10,6 +12,41 @@ from randomizer.config.player import (
 
 
 GAME_NAME = "Mental Omega"
+RANDOM_SEED_MARKER = "random"
+
+
+def _canonical_json(value):
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def reusable_manifest_template(manifest):
+    """Remove exported-run identity and duplicated settings from Player YAML."""
+    template = deepcopy(manifest)
+    template["randomizer_seed"] = RANDOM_SEED_MARKER
+    snapshot = template.get("state_snapshot")
+    if isinstance(snapshot, dict):
+        snapshot["seed"] = RANDOM_SEED_MARKER
+    frozen = template.get("frozen_settings")
+    launcher = frozen.get("launcher") if isinstance(frozen, dict) else None
+    launcher = deepcopy(launcher) if isinstance(launcher, dict) else {}
+    launcher.pop("seed", None)
+    # Keep only an integrity fingerprint; full settings already appear once as
+    # launcher_settings. APWorld verifies and restores them for slot data.
+    template["frozen_settings"] = {
+        "launcher_checksum": sha256(
+            _canonical_json(launcher).encode("utf-8")
+        ).hexdigest(),
+    }
+    template.pop("manifest_checksum", None)
+    template["manifest_checksum"] = sha256(
+        _canonical_json(template).encode("utf-8")
+    ).hexdigest()
+    return template
 
 
 def _quote(value):
@@ -19,18 +56,21 @@ def _quote(value):
 def serialize_player_yaml(manifest, slot_name):
     if not isinstance(manifest, dict) or not manifest.get("manifest_checksum"):
         raise ValueError("A validated run manifest is required.")
-    formatted_manifest = json.dumps(
-        manifest,
-        ensure_ascii=False,
-        sort_keys=True,
-        indent=2,
-    )
     frozen = manifest.get("frozen_settings")
     launcher_settings = (
         frozen.get("launcher") if isinstance(frozen, dict) else None
     )
     if not isinstance(launcher_settings, dict) or not launcher_settings:
         raise ValueError("Run manifest has no readable launcher settings.")
+    launcher_settings = deepcopy(launcher_settings)
+    launcher_settings.pop("seed", None)
+    template = reusable_manifest_template(manifest)
+    formatted_manifest = json.dumps(
+        template,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=2,
+    )
     output = (
         f"name: {_quote(str(slot_name).strip() or 'Commander')}\n"
         f"game: {GAME_NAME}\n"
@@ -41,8 +81,8 @@ def serialize_player_yaml(manifest, slot_name):
     )
     output += (
         "\n"
-        "  # Exact Settings-page values used to generate this AP run.\n"
-        "  # Change settings in the launcher, then save a new Player YAML.\n"
+        "  # Reusable Settings-page values. Archipelago chooses a fresh\n"
+        "  # Randomizer seed whenever it generates a new room.\n"
         "  launcher_settings:\n"
     )
     settings_lines = json.dumps(
@@ -51,9 +91,9 @@ def serialize_player_yaml(manifest, slot_name):
     output = output.removesuffix("  launcher_settings:\n")
     output += "  launcher_settings: " + settings_lines[0] + "\n"
     output += "\n".join("    " + line for line in settings_lines[1:])
-    # Archipelago options are mappings and scalars, not embedded document
-    # fragments.  Keep required generated world input as one normal mapping
-    # option.  JSON flow syntax is valid YAML and remains dependency-free.
+    # Seed-independent generated shape needed by this APWorld. It is a normal
+    # mapping option; AP generation restores settings, assigns a fresh seed,
+    # then signs the room-specific manifest sent to the launcher.
     manifest_lines = formatted_manifest.splitlines()
     output += "\n\n  generated_world: " + manifest_lines[0] + "\n"
     output += "\n".join(

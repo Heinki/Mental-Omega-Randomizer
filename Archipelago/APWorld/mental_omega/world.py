@@ -21,8 +21,10 @@ from .data import (
     SHOP_STAGE_LOGIC_ITEM_TABLE,
     VICTORY_EVENT,
     location_entries,
+    shop_item_location_entries,
 )
 from .manifest import (
+    instantiate_manifest,
     parse_manifest,
     progression_for_manifest,
     validate_launcher_settings,
@@ -80,16 +82,21 @@ class MentalOmegaWorld(World):
 
     def generate_early(self) -> None:
         generated_world = self.options.generated_world.value
-        self.run_manifest = parse_manifest(
+        template = parse_manifest(
             generated_world
             if generated_world
             else self.options.run_manifest.value
         )
-        self.progression = progression_for_manifest(self.run_manifest)
-        validate_launcher_settings(
+        launcher_settings = validate_launcher_settings(
             self.options.launcher_settings.value,
-            self.run_manifest,
+            template,
         )
+        self.run_manifest = instantiate_manifest(
+            template,
+            launcher_settings,
+            f"MO-{self.random.randrange(0x10000000):08X}",
+        )
+        self.progression = progression_for_manifest(self.run_manifest)
 
     def create_item(self, name: str) -> MentalOmegaItem:
         if name in LOCAL_VICTORY_ITEM_TABLE or name in SHOP_STAGE_LOGIC_ITEM_TABLE:
@@ -213,16 +220,13 @@ class MentalOmegaWorld(World):
 
     def _create_shop_regions(self, menu, victory, regions):
         shop = self.run_manifest["shop"]
-        purchase_names = list(SHOP_PURCHASE_LOCATION_TABLE)[
-            :shop["purchase_location_count"]
-        ]
-        menu.add_locations(
-            {
-                name: SHOP_PURCHASE_LOCATION_TABLE[name]
-                for name in purchase_names
-            },
-            MentalOmegaLocation,
+        item_entries = shop_item_location_entries(
+            shop["purchase_location_count"],
+            shop["run_length"],
+            shop["mission_victories_are_locations"],
+            shop["item_location_count"],
         )
+        menu.add_locations(dict(item_entries), MentalOmegaLocation)
         previous_marker = None
         for stage in range(1, shop["run_length"] + 1):
             region = Region(
@@ -236,12 +240,6 @@ class MentalOmegaWorld(World):
                     rule=lambda state, name=previous_marker: state.has(
                         name, self.player
                     ),
-                )
-            if shop["mission_victories_are_locations"]:
-                name = f"Shop Run Mission {stage} Victory"
-                region.add_locations(
-                    {name: SHOP_STAGE_LOCATION_TABLE[name]},
-                    MentalOmegaLocation,
                 )
             logic = SHOP_STAGE_LOGIC_DATA[stage]
             logic_location = MentalOmegaLocation(
@@ -309,8 +307,17 @@ class MentalOmegaWorld(World):
         shop = self.run_manifest.get("shop")
         shop_slot_data = None
         if shop is not None:
+            item_entries = shop_item_location_entries(
+                shop["purchase_location_count"],
+                shop["run_length"],
+                shop["mission_victories_are_locations"],
+                shop["item_location_count"],
+            )
             shop_slot_data = {
                 **shop,
+                "item_locations": [
+                    location_id for _name, location_id in item_entries
+                ],
                 "purchase_locations": list(
                     SHOP_PURCHASE_LOCATION_TABLE.values()
                 )[:shop["purchase_location_count"]],
@@ -333,7 +340,7 @@ class MentalOmegaWorld(World):
                 ],
             }
         return {
-            "slot_data_version": 6 if shop is not None else 5,
+            "slot_data_version": 7 if shop is not None else 5,
             "randomizer_version": self.run_manifest["randomizer_version"],
             "randomizer_seed": self.run_manifest["randomizer_seed"],
             "catalogue_checksum": CATALOGUE_CHECKSUM,

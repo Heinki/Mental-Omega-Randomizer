@@ -8,6 +8,8 @@ from ._dependencies import (
 
 from randomizer.shop.archipelago import (
     ARCHIPELAGO_RECEIVED_UNIT_LOADOUT_MANUAL,
+    ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+    ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
     archipelago_shop_identity,
     shop_reward_ids_from_ap_ledger,
 )
@@ -136,6 +138,11 @@ class ShopArchipelagoController:
                 self.shop_config.max_selected_permanent_units
             ),
         }
+        if 'item_location_count' in shop:
+            expected.update({
+                'item_location_count': ARCHIPELAGO_SHOP_ITEM_LOCATION_COUNT,
+                'items_per_victory': ARCHIPELAGO_SHOP_ITEMS_PER_VICTORY,
+            })
         mismatches = [
             key for key, value in expected.items() if shop.get(key) != value
         ]
@@ -170,6 +177,8 @@ class ShopArchipelagoController:
                 location = int(entry['location'])
                 groups[('__SHOP__', f'stage_{stage}_reward')] = (location,)
                 allowed.add(location)
+        for location in shop.get('item_locations', ()):
+            allowed.add(int(location))
         self._archipelago_location_groups = groups
         self._archipelago_allowed_locations = frozenset(allowed)
 
@@ -224,9 +233,59 @@ class ShopArchipelagoController:
         group = self._archipelago_shop_stage_group(stage)
         return self._report_archipelago_location_groups((group,)) if group else ()
 
+    def _shop_known_archipelago_locations(self):
+        known = set(getattr(
+            self, '_archipelago_server_checked_locations', ()
+        ))
+        ap_state = self._active_archipelago_state()
+        checkpoint = (
+            ap_state.get('checkpoint', {})
+            if isinstance(ap_state, dict) else {}
+        )
+        checkpoint = checkpoint if isinstance(checkpoint, dict) else {}
+        for key in ('completed_locations', 'pending_locations'):
+            known.update(int(value) for value in checkpoint.get(key, ()))
+        return known
+
+    def _shop_item_stream_group(self, locations, event_stem):
+        return self._shop_location_group(
+            'item_stream', locations, event_stem
+        )
+
     def record_archipelago_shop_victory(self, completed_stage, transition):
-        self.report_archipelago_shop_stage_victory(completed_stage)
+        shop = self.archipelago_shop_slot_settings()
+        if not shop or not shop.get('item_locations'):
+            self.report_archipelago_shop_stage_victory(completed_stage)
+            if transition.run.status is RunStatus.COMPLETED:
+                self.report_archipelago_goal_if_complete()
+            return
+        item_locations = tuple(int(value) for value in shop['item_locations'])
+        item_location_set = set(item_locations)
+        stage_added = set(
+            self.report_archipelago_shop_stage_victory(completed_stage)
+        ) & item_location_set
+        quota = max(0, int(shop['items_per_victory']) - len(stage_added))
+        known = self._shop_known_archipelago_locations()
+        reserved = {int(value) for value in shop['purchase_locations']}
+        reserved.update(
+            int(entry['location'])
+            for entry in shop['stage_victories']
+            if entry.get('location') is not None
+        )
+        batch = tuple(
+            location for location in item_locations
+            if location not in known and location not in reserved
+        )[:quota]
+        if batch:
+            self._report_archipelago_location_groups((
+                self._shop_item_stream_group(batch, 'shop_item_stream'),
+            ))
         if transition.run.status is RunStatus.COMPLETED:
+            self._report_archipelago_location_groups((
+                self._shop_item_stream_group(
+                    item_locations, 'shop_item_stream_completion'
+                ),
+            ))
             self.report_archipelago_goal_if_complete()
 
     def _archipelago_shop_purchase_group(self, location_id):
@@ -358,7 +417,10 @@ class ShopArchipelagoController:
                 tree.selection_set(iid)
         self.shop_ap_purchase_status_var.set(
             'Each purchase sends its generated Archipelago item to the '
-            'shown player/world. Placement remains server-assigned.'
+            'shown player/world. Each mission victory also releases up to '
+            f'{shop.get("items_per_victory", 1)} unchecked Shop items; '
+            'finishing the run releases every remaining item. Placement '
+            'remains server-assigned.'
         )
         self.refresh_archipelago_purchase_button()
 
@@ -380,6 +442,7 @@ class ShopArchipelagoController:
         self.shop_service.reconcile_archipelago_purchases(identity, checked)
         groups = []
         run = self.shop_repository.load_run()
+        shop = self.archipelago_shop_slot_settings()
         if run is not None and run.ap_identity == identity:
             for key in run.rewarded_victories:
                 parts = key.split(':')
@@ -387,6 +450,12 @@ class ShopArchipelagoController:
                     group = self._archipelago_shop_stage_group(int(parts[1]))
                     if group:
                         groups.append(group)
+            if run.status is RunStatus.COMPLETED and shop:
+                item_locations = shop.get('item_locations', ())
+                if item_locations:
+                    groups.append(self._shop_item_stream_group(
+                        item_locations, 'shop_item_stream_completion'
+                    ))
         for location_id in self.shop_service.pending_archipelago_purchase_ids(
             identity
         ):
