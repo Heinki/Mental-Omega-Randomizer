@@ -1516,11 +1516,12 @@ class ShopPolishController(ShopArchipelagoController):
         definition = self.shop_config.permanent_upgrades.get(upgrade_id)
         if definition is None:
             return ''
-        effects = ', '.join(
-            f'{key.replace("_", " ")}: {value}'
-            for key, value in definition.effects.items()
+        level = self.shop_profile.upgrade_level(upgrade_id)
+        return (
+            f'{definition.display_name}\n'
+            f'Current level: {level} / {definition.max_level}\n'
+            f'{self._shop_upgrade_effect_text(upgrade_id, definition)}'
         )
-        return f'{definition.display_name}\n{effects}'
 
     def _refresh_shop_history(self):
         tree = self.shop_history_tree
