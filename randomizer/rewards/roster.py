@@ -27,6 +27,13 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Gear Change is an independent action-granted reward. Older packaged
+    # Industrial Plant templates must not restore its native building link.
+    'NAINDP': {
+        'SuperWeapon': None,
+        'SuperWeapon2': None,
+        'SuperWeapons': None,
+    },
     # Installed Drakuv is a delayed nontrainable aid payload. Both production
     # access and DrakuvSpecial use one player clone with normal build timing.
     'RAVA': {
@@ -1038,6 +1045,14 @@ def validate_special_roster_contracts():
     if str(theater_gate or '').strip().lower() not in {'', 'none', '<none>'}:
         errors.append(f'CBRIS retains theater gate {theater_gate!r}')
 
+    industrial_plant = templates.get('NAINDP', {})
+    industrial_plant_power_detached = not any(
+        _case_insensitive_item(industrial_plant, key)[1]
+        for key in ('SuperWeapon', 'SuperWeapon2', 'SuperWeapons')
+    )
+    if not industrial_plant_power_detached:
+        errors.append('NAINDP still supplies a building-bound superpower')
+
     paradox = templates.get('STARDUSTB', {})
     paradox_required = {
         'Image': 'STARDUST',
@@ -1193,6 +1208,7 @@ def validate_special_roster_contracts():
         'access_counts': access_counts,
         'space_commando_theater_gate_removed': True,
         'boomer_brute_excluded': boomer_excluded,
+        'industrial_plant_power_detached': industrial_plant_power_detached,
         'paradox_source_id': 'STARDUSTB',
         'paradox_ai_alias_excluded': True,
         'paradox_cameo': cameo,

@@ -34,6 +34,7 @@ from randomizer.rewards.enemy_scaling import ENEMY_BUFF_DEFINITIONS
 from randomizer.rewards.rules import unlocked_reward_tech_ids
 from randomizer.rewards.definitions import linked_buff_variant_ids
 from randomizer.shop.mission_modifiers import MISSION_MODIFIERS
+from randomizer.ui.cameos import installed_rules_registry
 
 
 class _Value:
@@ -99,6 +100,7 @@ class _AuditLauncher(LaunchController):
             'GI Access',
             'GI Firepower I',
             'GI Armor Plating I',
+            'Gear Change Power',
             'Industrial Plant Access',
             'Rhino Heavy Tank Access',
             "Stalin's Fist Access",
@@ -289,6 +291,9 @@ def _assert_hook_restart_race():
 
 
 def _assert_targeted_contracts(generated_paths):
+    installed_superweapons, _installed_sections = installed_rules_registry(
+        synchronous=True
+    )
     independent_prototypes = (
         'JACKAL', 'JACKALP',
         'DIVER', 'DIVERP',
@@ -415,19 +420,62 @@ def _assert_targeted_contracts(generated_paths):
         )
         gear_change = section_value_map_preserve(lines, 'MORGearChange')
         gear_spawner = section_value_map_preserve(lines, 'MORGearSpawner')
-        if industrial_plant.get('SuperWeapon') != 'MORGearChange':
+        gear_warhead = section_value_map_preserve(lines, 'MORGearWH')
+        if any(
+            industrial_plant.get(key)
+            for key in ('SuperWeapon', 'SuperWeapon2', 'SuperWeapons')
+        ):
             raise AssertionError(
-                f'{mission_code} registered Industrial Plant lacks private '
-                'Gear Change'
+                f'{mission_code} Industrial Plant still grants Gear Change'
             )
-        if gear_change.get('HunterSeeker.Type') != 'MORGearSpawner':
+        if (
+            gear_change.get('HunterSeeker.Type') != 'MORGearSpawner'
+            or gear_change.get('HunterSeeker.Buildings') != 'MORGearProvider'
+            or gear_change.get('SW.AuxBuildings')
+        ):
             raise AssertionError(
-                f'{mission_code} private Gear Change lacks its spawner'
+                f'{mission_code} private Gear Change lacks portable providers'
             )
-        player_country = 'PsiCorps' if mission_code == 'ESHIP' else 'Latin'
-        if player_country not in str(gear_spawner.get('Owner') or '').split(','):
+        required_factions = {'UnitedStates', 'USSR', 'PsiCorps', 'Guild1'}
+        if not required_factions.issubset(
+            str(gear_spawner.get('Owner') or '').split(',')
+        ):
             raise AssertionError(
-                f'{mission_code} Gear Change spawner rejects {player_country} owner'
+                f'{mission_code} Gear Change spawner rejects a faction'
+            )
+        if (
+            gear_warhead.get('Versus.fact') != '3%'
+            or str(gear_warhead.get('AffectsOwner')).lower() != 'yes'
+        ):
+            raise AssertionError(
+                f'{mission_code} Gear Change no longer disables owned War Factories'
+            )
+        runtime_superweapons = []
+        seen_superweapons = set()
+        for power_id in (
+            *installed_superweapons,
+            *section_value_map_preserve(lines, 'SuperWeaponTypes').values(),
+        ):
+            normalized = str(power_id).lower()
+            if normalized not in seen_superweapons:
+                seen_superweapons.add(normalized)
+                runtime_superweapons.append(str(power_id))
+        gear_index = next(
+            (
+                index for index, power_id in enumerate(runtime_superweapons)
+                if power_id.lower() == 'morgearchange'
+            ),
+            None,
+        )
+        gear_granted = any(
+            group[0] == '34' and group[2] == str(gear_index)
+            for action in section_value_map_preserve(lines, 'Actions').values()
+            for _count, groups in (parse_action_groups(action),)
+            for group in groups
+        )
+        if gear_index is None or not gear_granted:
+            raise AssertionError(
+                f'{mission_code} Gear Change lacks an action-34 grant'
             )
         if mission_code in {'SHBD', 'SEXIST'} and 'MORPNAFIST' not in (
             _mission_prerequisites(

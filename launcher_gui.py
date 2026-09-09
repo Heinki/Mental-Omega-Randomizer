@@ -324,7 +324,6 @@ def run_self_check():
         )
         from randomizer.maps.base import (
             randomizer_clone_type_id,
-            resolved_primary_power_building_rules,
         )
         from randomizer.maps.clone_builder import player_clone_selection_group
         from randomizer.config.player import DEFAULT_CONFIG
@@ -818,42 +817,24 @@ def run_self_check():
             reward for reward in REWARD_POOL
             if reward.get('name') == 'Gear Change Power'
         )
-        building_bound_gear = building_bound_power_launch_rewards(
+        industrial_plant_launch_rewards = building_bound_power_launch_rewards(
             [industrial_plant_reward],
             {'NAINDP': 'MORPNAINDP'},
         )
-        explicit_building_bound_gear = building_bound_power_launch_rewards(
+        separate_gear_launch_rewards = building_bound_power_launch_rewards(
             [industrial_plant_reward, gear_change_reward],
             {'NAINDP': 'MORPNAINDP'},
         )
-        collision_safe_gear_binding = resolved_primary_power_building_rules(
-            {'MORPNAINDP': {'SuperWeapon': 'MORGearChange'}},
-            {'NAINDP': {'clone_id': 'MORPNAINDP3DD2FF1BE0'}},
-            {'NAINDP': 'MORPNAINDP'},
-        )
-        building_bound_power_valid = bool(
-            industrial_plant_reward.get('building_superweapon')
-            == 'GearChangeSpecial'
-            and len(building_bound_gear) == 2
-            and any(
-                reward.get('superweapon') == 'GearChangeSpecial'
-                and reward.get('superweapon_primary_buildings')
-                == ['MORPNAINDP']
-                and not reward.get('superweapon_grant_action')
-                for reward in building_bound_gear
-            )
-            and any(
-                reward.get('superweapon') == 'GearChangeSpecial'
-                and reward.get('superweapon_primary_buildings')
-                == ['MORPNAINDP']
-                and reward.get('superweapon_grant_action') is True
-                for reward in explicit_building_bound_gear
-            )
-            and collision_safe_gear_binding == {
-                'MORPNAINDP3DD2FF1BE0': {
-                    'SuperWeapon': 'MORGearChange',
-                },
-            }
+        standalone_gear_change_valid = bool(
+            not industrial_plant_reward.get('building_superweapon')
+            and len(industrial_plant_launch_rewards) == 1
+            and len(separate_gear_launch_rewards) == 2
+            and gear_change_reward.get(
+                'superweapon_ignore_foreign_tech_gate'
+            ) is True
+            and not gear_change_reward.get('superweapon_primary_buildings')
+            and not gear_change_reward.get('superweapon_grant_buildings')
+            and not gear_change_reward.get('superweapon_grant_action')
         )
         payload_power_visibility_valid = bool(
             payload_buff_power_ids_for_unit('YABALL')
@@ -1186,6 +1167,7 @@ def run_self_check():
                 and special_roster['boomer_brute_excluded']
                 and special_roster['paradox_source_id'] == 'STARDUSTB'
                 and special_roster['paradox_ai_alias_excluded']
+                and special_roster['industrial_plant_power_detached']
                 and all(
                     count == 1
                     for count in special_roster['access_counts'].values()
@@ -1235,7 +1217,7 @@ def run_self_check():
             'tier_one_exclusion_backfill_valid': (
                 tier_one_exclusion_backfill_valid
             ),
-            'building_bound_power_valid': building_bound_power_valid,
+            'standalone_gear_change_valid': standalone_gear_change_valid,
             'payload_power_visibility_valid': payload_power_visibility_valid,
             'stalins_fist_deploy_factory_valid': (
                 stalins_fist_deploy_factory_valid
@@ -1347,7 +1329,7 @@ def run_self_check():
                 'tier_one_naval_roles_valid',
                 'tier_one_starter_count_contract_valid',
                 'tier_one_exclusion_backfill_valid',
-                'building_bound_power_valid',
+                'standalone_gear_change_valid',
                 'payload_power_visibility_valid',
                 'stalins_fist_deploy_factory_valid',
                 'deploy_clone_links_valid',

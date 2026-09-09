@@ -1372,7 +1372,7 @@
       },
       {
         "name": "Gear Change Power",
-        "description": "Disables owned factories briefly and grants funds without requiring an Industrial Plant.",
+        "description": "Disables owned Allied, Soviet, Epsilon, and Foehn War Factories briefly and grants funds without requiring an Industrial Plant.",
         "faction": "Soviets",
         "superweapon": "GearChangeSpecial",
         "index": 73
@@ -3843,6 +3843,7 @@
       },
       {
         "superweapon": "GearChangeSpecial",
+        "ignore_foreign_tech_gate": true,
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
           "IsPowered": "false",

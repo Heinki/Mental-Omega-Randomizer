@@ -71,10 +71,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `rewards/special_buildings.json`: editable faction economy/special-building
   access rewards, including labels, native Construction Yards, tech levels,
   build limits, sidebar build category/priority, and whether repeatable +1
-  capacity rewards are generated. Optional `granted_superweapon` names the
-  power supplied by that structure; launch creates one private power copy and
-  binds it to the isolated player building clone. Chaos translates these
-  buildings to every faction Construction Yard.
+  capacity rewards are generated. Chaos translates these buildings to every
+  faction Construction Yard. Superpowers remain separate rewards.
 - `rewards/buff_exceptions.json`: reviewed per-buff TechnoType exclusions.
 - `rewards/power_buffs.json`: reviewed power-specific recharge, cost, area,
   damage, duration, delivered-payload, and reconnaissance-plane vision buff
