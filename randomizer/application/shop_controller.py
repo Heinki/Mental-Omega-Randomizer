@@ -21,7 +21,9 @@ from ._dependencies import (
 )
 
 from randomizer.rewards.definitions import unit_display_label
-from randomizer.rewards.display import buff_effect_lines, reward_display_name
+from randomizer.rewards.display import (
+    buff_effect_lines, reward_display_name, unit_buff_counts, inherited_unit_buff_rewards,
+)
 from randomizer.shop.active import (
     active_shop_rewards,
     active_shop_starter_defense_ids,
@@ -1816,6 +1818,20 @@ class ShopController(ShopPolishController):
             if source == 'AP Received':
                 record['archipelago_item'] = True
 
+        display_rewards = active_shop_rewards(run)
+        for record in records.values():
+            if record['is_power']:
+                continue
+            inherited = Counter(
+                reward['name'] for reward in inherited_unit_buff_rewards(
+                    display_rewards, record['target_id'],
+                )
+            )
+            record['buffs'].extend(
+                ('Army-wide', reward_id, stacks)
+                for reward_id, stacks in inherited.items()
+            )
+
         rows = sorted(
             records.values(),
             key=lambda item: (
@@ -1827,16 +1843,19 @@ class ShopController(ShopPolishController):
         visible = []
         for record in rows:
             buff_lines = []
+            combined = {}
             for source, reward_id, stacks in record['buffs']:
+                item = combined.setdefault(reward_id, {'stacks': 0, 'sources': []})
+                item['stacks'] += stacks
+                item['sources'].append(f'{source} ×{stacks}')
+            counts = unit_buff_counts(active_shop_rewards(run), record['target_id'])
+            for reward_id, item in combined.items():
+                reward = canonical_reward_for_id(reward_id)
                 effects = buff_effect_lines(
-                    canonical_reward_for_id(reward_id), count=stacks
+                    reward, count=item['stacks'], buff_counts=counts,
                 )
-                effect = '; '.join(effects) or reward_display_name(
-                    canonical_reward_for_id(reward_id)
-                )
-                buff_lines.append(
-                    f'{source}: {effect} ×{stacks}'
-                )
+                effect = '; '.join(effects) or reward_display_name(reward)
+                buff_lines.append(f'{" + ".join(item["sources"])}: {effect}')
             record['buff_lines'] = buff_lines
             haystack = ' '.join((
                 *record['sources'],
@@ -2257,7 +2276,15 @@ class ShopController(ShopPolishController):
                 'tags': (row_tag,),
                 'values': (
                     self._shop_catalogue_display_name(
-                        entry, effect_state, stacks
+                        entry, effect_state, stacks,
+                        buff_counts=unit_buff_counts(
+                            (
+                                canonical_reward_for_id(item.reward_id)
+                                for item in self.shop_profile.permanent_buffs
+                                for _ in range(item.stacks)
+                            ),
+                            entry.target_id,
+                        ),
                     ),
                     f'{stacks} / {maximum}',
                     state,

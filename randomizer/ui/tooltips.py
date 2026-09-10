@@ -174,6 +174,7 @@ class TreeTooltip:
         self.text_callback = text_callback
         self.tip = None
         self.current_row = None
+        self.current_text = None
         tree.bind('<Motion>', self.on_motion, add='+')
         tree.bind('<Leave>', self.hide, add='+')
         tree.bind('<Unmap>', self.hide, add='+')
@@ -192,9 +193,10 @@ class TreeTooltip:
 
         pointer_x = self.tree.winfo_rootx() + event.x
         pointer_y = self.tree.winfo_rooty() + event.y
-        if row != self.current_row:
+        if row != self.current_row or text != self.current_text:
             self.hide()
             self.current_row = row
+            self.current_text = text
             _activate_tooltip(self)
             self.tip = tk.Toplevel(self.tree)
             self.tip.wm_overrideredirect(True)
@@ -259,6 +261,7 @@ class TreeTooltip:
 
     def hide(self, _event=None):
         self.current_row = None
+        self.current_text = None
         if self.tip is not None:
             try:
                 self.tip.destroy()

@@ -4,7 +4,9 @@ from collections import Counter
 from tkinter import ttk
 
 from randomizer.rewards.definitions import unit_display_label
-from randomizer.rewards.display import buff_effect_lines, reward_display_name
+from randomizer.rewards.display import (
+    buff_effect_lines, reward_display_name, unit_buff_counts,
+)
 from randomizer.shop.active import (
     active_shop_power_ids,
     active_shop_rewards,
@@ -697,19 +699,10 @@ class ShopPolishController(ShopArchipelagoController):
         self, entry, run, active_tech, active_powers
     ):
         price = self._entry_price(entry)
-        stacks = 0
-        if run is not None:
-            stacks = next((
-                item.stacks for item in run.run_buffs
-                if item.reward_id == entry.reward_id
-            ), 0) + next((
-                item.stacks for item in run.permanent_buffs_snapshot
-                if item.reward_id == entry.reward_id
-            ), 0)
-            stacks += next((
-                item.stacks for item in run.starting_draft_buffs
-                if item.reward_id == entry.reward_id
-            ), 0)
+        stacks = sum(
+            1 for reward in active_shop_rewards(run)
+            if reward.get('name') == entry.reward_id
+        )
         locked = (
             entry.reward_type is ShopRewardType.UNIT_BUFF
             and entry.target_id not in active_tech
@@ -748,18 +741,21 @@ class ShopPolishController(ShopArchipelagoController):
         return state, price, locked, stacks
 
     @staticmethod
-    def _shop_catalogue_display_name(entry, state, stacks):
+    def _shop_catalogue_display_name(entry, state, stacks, *, buff_counts=None):
         if entry.reward_type not in {
             ShopRewardType.UNIT_BUFF,
             ShopRewardType.POWER_BUFF,
         }:
             return entry.reward_id
-        count = max(1, stacks if state == 'MAX' else stacks + 1)
+        reward = canonical_reward_for_id(entry.reward_id)
+        active_stacks = (buff_counts or {}).get(reward.get('buff_type'), stacks)
+        count = max(1, active_stacks if state == 'MAX' else active_stacks + 1)
         effects = buff_effect_lines(
             canonical_reward_for_id(entry.reward_id),
             count=count,
             include_label=False,
             include_stack=False,
+            buff_counts=buff_counts,
         )
         effect = '; '.join(effects) or reward_display_name(
             canonical_reward_for_id(entry.reward_id)
@@ -790,6 +786,7 @@ class ShopPolishController(ShopArchipelagoController):
         term = self.shop_search_var.get().strip().casefold()
         run = self.shop_run
         modifier_values = modifier_effects(run.modifiers) if run else None
+        display_rewards = active_shop_rewards(run)
         active_tech = set(active_shop_tech_ids(run))
         active_powers = set(active_shop_power_ids(run))
         visible = []
@@ -1068,7 +1065,10 @@ class ShopPolishController(ShopArchipelagoController):
                 'iid': iid,
                 'tags': (row_tag,),
                 'values': (
-                self._shop_catalogue_display_name(entry, state, stacks),
+                self._shop_catalogue_display_name(
+                    entry, state, stacks,
+                    buff_counts=unit_buff_counts(display_rewards, entry.target_id),
+                ),
                 (
                     'Power'
                     if entry.reward_type is ShopRewardType.POWER_ACCESS
@@ -1115,7 +1115,10 @@ class ShopPolishController(ShopArchipelagoController):
                 f'State: {reason}'
                 + (
                     '\nEffect: '
-                    + self._shop_catalogue_display_name(entry, state, stacks)
+                    + self._shop_catalogue_display_name(
+                    entry, state, stacks,
+                    buff_counts=unit_buff_counts(display_rewards, entry.target_id),
+                )
                     if buff_category else ''
                 )
                 + (f'\nCurrent stacks: {stacks}' if stacks else '')
