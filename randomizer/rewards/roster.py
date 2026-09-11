@@ -967,6 +967,7 @@ def validate_special_roster_contracts():
     registrations = {}
     expected_lists = {
         'CBRIS': 'InfantryTypes',
+        'CLNT': 'InfantryTypes',
         'STARDUSTB': 'VehicleTypes',
         'YURIX2': 'InfantryTypes',
     }
@@ -1052,6 +1053,38 @@ def validate_special_roster_contracts():
     )
     if not industrial_plant_power_detached:
         errors.append('NAINDP still supplies a building-bound superpower')
+
+    flint = templates.get('CLNT', {})
+    flint_required = {
+        'Image': 'CLNT',
+        'Name': 'Flint Westwood',
+        'Primary': 'FlintPistola',
+        'ElitePrimary': 'FlintPistolaE',
+        'BuildLimit': '1',
+        'BuildTimeMultiplier': '2',
+    }
+    for key, expected in flint_required.items():
+        _actual_key, actual = _case_insensitive_item(flint, key)
+        if str(actual or '').lower() != expected.lower():
+            errors.append(f'CLNT.{key}={actual!r}')
+    flint_target = BUFF_TARGETS.get('CLNT', {})
+    if (
+        flint_target.get('category') != 'infantry'
+        or flint_target.get('factions') != ['Allies']
+        or not flint_target.get('special_reward')
+        or flint_target.get('build_limit') != 1
+        or set(flint_target.get('weapons', {}))
+        != {'FlintPistola', 'FlintPistolaE'}
+    ):
+        errors.append(f'CLNT target metadata={flint_target!r}')
+    flint_cameo = UNIT_SIDEBAR_IMAGES.get('CLNT', {})
+    if flint_cameo != {
+        'image': 'flint_westwood.png',
+        'pcx': 'morflinticon.pcx',
+    }:
+        errors.append(f'CLNT cameo mapping={flint_cameo!r}')
+    if not (SOURCE_DIR / 'assets' / 'flint_westwood.png').is_file():
+        errors.append('Flint Westwood cameo asset is missing')
 
     paradox = templates.get('STARDUSTB', {})
     paradox_required = {
@@ -1209,6 +1242,7 @@ def validate_special_roster_contracts():
         'space_commando_theater_gate_removed': True,
         'boomer_brute_excluded': boomer_excluded,
         'industrial_plant_power_detached': industrial_plant_power_detached,
+        'flint_cameo': flint_cameo,
         'paradox_source_id': 'STARDUSTB',
         'paradox_ai_alias_excluded': True,
         'paradox_cameo': cameo,

@@ -19,6 +19,7 @@ from .model import (
     RunStatus,
     ShopModeConfig,
     ShopProfile,
+    ShopRewardType,
     ShopRun,
 )
 from .state import normalize_shop_run
@@ -83,8 +84,10 @@ def start_new_run(
     starting_unit_ids=(),
     starting_defense_ids=(),
     selected_reward_ids=(),
+    permanent_power_reward_ids=(),
     permanent_buffs=(),
     permanent_entitlement_ids=(),
+    permanent_power_entitlement_ids=(),
     ap_entitlement_ids=(),
     ap_identity=None,
     modifiers=(),
@@ -116,6 +119,28 @@ def start_new_run(
         raise ShopTransitionError(
             f'Invalid Shop starting loadout: {loadout.result.value}'
         )
+    power_entitlements = {
+        str(reward_id) for reward_id in permanent_power_entitlement_ids
+        if str(reward_id)
+    }
+    permanent_powers = tuple(dict.fromkeys(
+        str(reward_id) for reward_id in permanent_power_reward_ids
+        if str(reward_id)
+    ))
+    invalid_powers = []
+    for reward_id in permanent_powers:
+        entry = catalogue_entry(canonical_reward_for_id(reward_id))
+        if (
+            reward_id not in power_entitlements
+            or entry is None
+            or entry.reward_type is not ShopRewardType.POWER_ACCESS
+        ):
+            invalid_powers.append(reward_id)
+    if invalid_powers:
+        raise ShopTransitionError(
+            'Invalid permanent Shop power loadout: '
+            + ', '.join(invalid_powers)
+        )
     reward_settings = dict(reward_settings or {})
     faction_filter = str(
         reward_settings.get('shop_faction_filter') or campaign_filter
@@ -129,6 +154,15 @@ def start_new_run(
             strict_faction=bool(reward_settings.get('shop_faction_filter')),
         )
     ]
+    unavailable_loadout.extend(
+        reward_id for reward_id in permanent_powers
+        if not shop_entry_available(
+            catalogue_entry(canonical_reward_for_id(reward_id)),
+            campaign_filter=faction_filter,
+            reward_mode=reward_mode,
+            strict_faction=bool(reward_settings.get('shop_faction_filter')),
+        )
+    )
     if unavailable_loadout:
         raise ShopTransitionError(
             'Shop starting loadout is unavailable for current campaign: '
@@ -181,6 +215,7 @@ def start_new_run(
             if str(unit_id)
         )),
         selected_permanent_units=loadout.selected_reward_ids,
+        permanent_power_unlocks_snapshot=permanent_powers,
         permanent_buffs_snapshot=tuple(permanent_buffs),
         starting_draft_buffs=tuple(starting_draft_buffs),
         ap_identity=str(ap_identity or '') or None,

@@ -56,28 +56,77 @@ def purchase_permanent_unit(profile, reward, *, price, shop_eligible=True):
     return ProfilePurchaseOutcome(updated, validation)
 
 
+def purchase_permanent_power(profile, reward, *, price, shop_eligible=True):
+    reward_id = canonical_reward_id(reward)
+    entry = catalogue_entry(reward) if shop_eligible else None
+    if entry is None or entry.reward_type is not ShopRewardType.POWER_ACCESS:
+        validation = PurchaseValidation(
+            PurchaseResult.NOT_SHOP_ELIGIBLE, reward_id, int(price)
+        )
+        return ProfilePurchaseOutcome(profile, validation)
+    owned = {
+        canonical_reward_id(item) for item in profile.permanent_power_unlocks
+    }
+    if reward_id in owned:
+        validation = PurchaseValidation(
+            PurchaseResult.ALREADY_OWNED, reward_id, int(price)
+        )
+        return ProfilePurchaseOutcome(profile, validation)
+    if profile.meta_coins < int(price):
+        validation = PurchaseValidation(
+            PurchaseResult.INSUFFICIENT_CURRENCY, reward_id, int(price)
+        )
+        return ProfilePurchaseOutcome(profile, validation)
+    validation = PurchaseValidation(PurchaseResult.OK, reward_id, int(price))
+    updated = replace(
+        profile,
+        meta_coins=profile.meta_coins - int(price),
+        permanent_power_unlocks=(
+            profile.permanent_power_unlocks + (reward_id,)
+        ),
+    )
+    return ProfilePurchaseOutcome(updated, validation)
+
+
 def purchase_permanent_buff(profile, reward, *, price, shop_eligible=True):
     reward_id = canonical_reward_id(reward)
     entry = catalogue_entry(reward) if shop_eligible else None
-    if entry is None or entry.reward_type is not ShopRewardType.UNIT_BUFF:
+    if entry is None or entry.reward_type not in {
+        ShopRewardType.UNIT_BUFF,
+        ShopRewardType.POWER_BUFF,
+    }:
         return ProfilePurchaseOutcome(
             profile,
             PurchaseValidation(
                 PurchaseResult.NOT_SHOP_ELIGIBLE, reward_id, int(price)
             ),
         )
+    access_type = (
+        ShopRewardType.UNIT_ACCESS
+        if entry.reward_type is ShopRewardType.UNIT_BUFF
+        else ShopRewardType.POWER_ACCESS
+    )
+    owned_ids = (
+        profile.permanent_unit_unlocks
+        if access_type is ShopRewardType.UNIT_ACCESS
+        else profile.permanent_power_unlocks
+    )
     owned_targets = {
         owned_entry.target_id
-        for owned_id in profile.permanent_unit_unlocks
+        for owned_id in owned_ids
         for owned_entry in [catalogue_entry(canonical_reward_for_id(owned_id))]
-        if owned_entry is not None
-        and owned_entry.reward_type is ShopRewardType.UNIT_ACCESS
+        if owned_entry is not None and owned_entry.reward_type is access_type
     }
     if entry.target_id not in owned_targets:
+        result = (
+            PurchaseResult.REQUIRES_UNIT_ACCESS
+            if entry.reward_type is ShopRewardType.UNIT_BUFF
+            else PurchaseResult.REQUIRES_POWER_ACCESS
+        )
         return ProfilePurchaseOutcome(
             profile,
             PurchaseValidation(
-                PurchaseResult.REQUIRES_UNIT_ACCESS, reward_id, int(price)
+                result, reward_id, int(price)
             ),
         )
     current = next((

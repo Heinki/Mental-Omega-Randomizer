@@ -241,6 +241,16 @@ def permanent_buff_price(target_id, *, config: ShopModeConfig = SHOP_CONFIG):
     return _unit_target_price(config, target_id, 'permanent_buff')
 
 
+def permanent_power_price(target_id, *, config: ShopModeConfig = SHOP_CONFIG):
+    return _power_target_price(config, target_id, 'permanent_access')
+
+
+def permanent_power_buff_price(
+    target_id, *, config: ShopModeConfig = SHOP_CONFIG
+):
+    return _power_target_price(config, target_id, 'permanent_buff')
+
+
 def permanent_upgrade_price(
     upgrade_id,
     next_level,

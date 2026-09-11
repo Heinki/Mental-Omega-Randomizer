@@ -848,6 +848,79 @@ def _assert_taciturn_tier_three_weapon_clone(missions):
         root_map.unlink()
 
 
+def _assert_reality_engineering_team_clone(missions):
+    mission = next(
+        mission for mission in missions if mission['code'] == 'EREALITY'
+    )
+    launcher = _AuditLauncher(
+        reward_mode='Standard',
+        progression_mode='Shop Mode',
+    )
+    launcher.player_rewards = [
+        canonical_reward(reward)
+        for reward in REWARD_POOL
+        if reward.get('name') == 'Engineering Team Power'
+    ]
+    if len(launcher.player_rewards) != 1:
+        raise AssertionError('Engineering Team reward is not unique')
+    allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+    extra_rules = launcher.map_rules_for_launch(
+        allowed_unlocked_tech_ids=allowed
+    )
+    for section, values in launcher.mission_required_launch_rules(
+        mission
+    ).items():
+        extra_rules.setdefault(section, {}).update(values)
+    hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+    if hook is None:
+        raise AssertionError('No EREALITY map for Engineering Team audit')
+    generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+    lines = generated_path.read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    sections = all_section_value_maps_preserve(lines)
+    powers = [
+        values for values in sections.values()
+        if values.get('Name') == 'Engineering Team'
+        and values.get('ParaDrop.Types')
+    ]
+    if len(powers) != 1:
+        raise AssertionError(
+            f'EREALITY generated {len(powers)} Engineering Team powers'
+        )
+    payload_id = str(powers[0]['ParaDrop.Types']).upper()
+    if payload_id == 'SENGINEER':
+        raise AssertionError('EREALITY Engineering Team uses invisible SENGINEER')
+    infantry_ids = {
+        str(value).upper()
+        for value in section_value_map_preserve(
+            lines, 'InfantryTypes'
+        ).values()
+    }
+    payload = section_value_map_preserve(lines, payload_id)
+    if payload_id not in infantry_ids or not payload:
+        raise AssertionError(
+            f'EREALITY Engineering Team clone {payload_id} is unregistered'
+        )
+    if (
+        str(payload.get('Image', '')).upper() != 'ENGINEER'
+        or str(payload.get('Selectable', 'yes')).lower() == 'no'
+        or str(payload.get('Insignificant', 'no')).lower() == 'yes'
+    ):
+        raise AssertionError(
+            f'EREALITY Engineering Team clone {payload_id} is not selectable'
+        )
+    native = section_value_map_preserve(lines, 'SENGINEER')
+    if (
+        str(native.get('Image', '')).lower() != 'dummy'
+        or str(native.get('Selectable', '')).lower() != 'no'
+    ):
+        raise AssertionError('EREALITY native scripted SENGINEER was rewritten')
+    root_map = Path(hook['root_map'])
+    if root_map.is_file() and is_generated_hooked_map(root_map):
+        root_map.unlink()
+
+
 def main():
     _assert_hook_restart_race()
     missions = parse_missions(BATTLE_CLIENT_INI)
@@ -897,6 +970,7 @@ def main():
         _assert_golden_gate_transport_factories(missions)
         _assert_mode_switch_buff_clones(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
+        _assert_reality_engineering_team_clone(missions)
         if not any(
             'Applied composed Shop run clone modifiers:' in message
             for _error, message in launcher.logs
@@ -909,7 +983,7 @@ def main():
                 root_map.unlink()
     print(
         'All 97 campaign maps passed Shop modifier/boon/Yuri/AI audit; '
-        'Mermaid, Remnant, Parasomnia, Golden Gate, and Taciturn focused checks passed.'
+        'Mermaid, Remnant, Parasomnia, Golden Gate, Taciturn, and Reality focused checks passed.'
     )
 
 

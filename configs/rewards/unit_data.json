@@ -22,6 +22,7 @@
           "SIEG": "Siegfried",
           "ARMR": "Norio",
           "ARND": "Arnie Frankfurter",
+          "CLNT": "Flint Westwood",
           "STLN": "Sammy Stallion"
         },
         "units": {
@@ -359,6 +360,7 @@
       "TERROR",
       "CYCOM",
       "ARND",
+      "CLNT",
       "STLN",
       "SCAV",
       "BRUTM",
@@ -432,6 +434,10 @@
       "ARND": {
         "image": "arni_frankfurter.png",
         "pcx": "morarnieicon.pcx"
+      },
+      "CLNT": {
+        "image": "flint_westwood.png",
+        "pcx": "morflinticon.pcx"
       },
       "STLN": {
         "image": "sammy_stallion.png",
@@ -1982,6 +1988,7 @@
       "TERROR": [100, 9, 150, 6, 6, null],
       "CYCOM": [2500, 7, 2500, 12, 12, null],
       "ARND": [1000, 6, 100, 9, 9, null],
+      "CLNT": [1000, 6, 100, 9, 9, null],
       "STLN": [1000, 6, 100, 9, 9, null],
       "SCAV": [1400, 7, 410, 6, 6, 18],
       "BRUTM": [1, 7, 8000, 10, 10, 1],
@@ -3822,6 +3829,12 @@
           "CyborgGrenadeE": {"damage": 120, "rof": 100, "range": 6.5}
         }
       },
+      "CLNT": {
+        "weapons": {
+          "FlintPistola": {"damage": 100, "rof": 10, "range": 6},
+          "FlintPistolaE": {"damage": 100, "rof": 10, "range": 6}
+        }
+      },
       "STLN": {
         "weapons": {
           "SammyGun": {"damage": 65, "rof": 8, "range": 6.5},
@@ -5491,6 +5504,7 @@
       "YURIX2": 1,
       "CYCOM": 1,
       "ARND": 1,
+      "CLNT": 1,
       "STLN": 1,
       "BRUTM": 1,
       "BRUTS": 1,

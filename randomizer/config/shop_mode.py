@@ -120,6 +120,12 @@ def validate_shop_mode_config(sections, path, invalid):
             path,
         )
 
+    price_fields = {
+        'run_access',
+        'run_buff',
+        'permanent_access',
+        'permanent_buff',
+    }
     power_prices = sections['power_target_prices']
     if not power_prices:
         invalid('Shop Mode power_target_prices cannot be empty', path)
@@ -128,7 +134,7 @@ def validate_shop_mode_config(sections, path, invalid):
             not _is_nonempty_string(target_id)
             or target_id != target_id.upper()
             or not isinstance(prices, dict)
-            or set(prices) != {'run_access', 'run_buff'}
+            or set(prices) != price_fields
             or any(
                 value is not None and (
                     not isinstance(value, int)
@@ -137,18 +143,16 @@ def validate_shop_mode_config(sections, path, invalid):
                 )
                 for value in prices.values()
             )
+            or (prices.get('run_access') is None)
+            != (prices.get('permanent_access') is None)
+            or (prices.get('run_buff') is None)
+            != (prices.get('permanent_buff') is None)
             or all(value is None for value in prices.values())
         ):
             invalid(
                 f'Invalid Shop Mode power_target_prices.{target_id}', path
             )
 
-    price_fields = {
-        'run_access',
-        'run_buff',
-        'permanent_access',
-        'permanent_buff',
-    }
     target_prices = sections['unit_target_prices']
     if not target_prices:
         invalid('Shop Mode unit_target_prices cannot be empty', path)

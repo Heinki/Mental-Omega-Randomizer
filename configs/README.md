@@ -187,8 +187,11 @@ never determines a unit or targeted-buff price.
 
 `power_target_prices` is the complete target-specific table for aid powers and
 superweapons. Every Shop power target must appear exactly once with positive
-`run_access` and `run_buff` prices. `null` remains reserved for a future target
-that lacks that offer kind. Powers have no permanent Shop offers.
+`run_access`, `run_buff`, `permanent_access`, and `permanent_buff` prices.
+The run and permanent fields for each offer kind must have matching
+availability. `null` remains reserved for a target that lacks that offer kind.
+Permanent powers activate automatically in future Shop runs without consuming
+unit loadout slots; their permanent buffs apply whenever the power is active.
 Discounted prices use integer percentages, round down, then clamp to
 `minimum_shop_price`.
 

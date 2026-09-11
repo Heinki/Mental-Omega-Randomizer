@@ -31,6 +31,7 @@ class PurchaseResult(str, Enum):
     INSUFFICIENT_CURRENCY = 'insufficient_currency'
     ALREADY_OWNED = 'already_owned'
     REQUIRES_UNIT_ACCESS = 'requires_unit_access'
+    REQUIRES_POWER_ACCESS = 'requires_power_access'
     MAX_STACKS = 'max_stacks'
     NOT_SHOP_ELIGIBLE = 'not_shop_eligible'
     RUN_NOT_ACTIVE = 'run_not_active'
@@ -107,6 +108,8 @@ class ShopTargetPriceDefinition:
 class ShopPowerPriceDefinition:
     run_access: int | None
     run_buff: int | None
+    permanent_access: int | None
+    permanent_buff: int | None
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,7 @@ class ShopProfile:
     lifetime_runs_completed: int = 0
     lifetime_missions_completed: int = 0
     permanent_unit_unlocks: tuple[str, ...] = ()
+    permanent_power_unlocks: tuple[str, ...] = ()
     permanent_buffs: tuple[BuffPurchase, ...] = ()
     permanent_upgrades: Mapping[str, int] = field(default_factory=dict)
     salvaged_run_coins: int = 0
@@ -188,6 +192,7 @@ class ShopProfile:
             'lifetime_runs_completed': self.lifetime_runs_completed,
             'lifetime_missions_completed': self.lifetime_missions_completed,
             'permanent_unit_unlocks': list(self.permanent_unit_unlocks),
+            'permanent_power_unlocks': list(self.permanent_power_unlocks),
             'permanent_buffs': [item.to_dict() for item in self.permanent_buffs],
             'permanent_upgrades': dict(self.permanent_upgrades),
             'salvaged_run_coins': self.salvaged_run_coins,
@@ -214,6 +219,7 @@ class ShopRun:
     starting_unit_ids: tuple[str, ...] = ()
     starting_defense_ids: tuple[str, ...] = ()
     selected_permanent_units: tuple[str, ...] = ()
+    permanent_power_unlocks_snapshot: tuple[str, ...] = ()
     permanent_buffs_snapshot: tuple[BuffPurchase, ...] = ()
     ap_identity: str | None = None
     ap_entitlements_snapshot: tuple[str, ...] = ()
@@ -253,6 +259,9 @@ class ShopRun:
             'starting_unit_ids': list(self.starting_unit_ids),
             'starting_defense_ids': list(self.starting_defense_ids),
             'selected_permanent_units': list(self.selected_permanent_units),
+            'permanent_power_unlocks_snapshot': list(
+                self.permanent_power_unlocks_snapshot
+            ),
             'permanent_buffs_snapshot': [
                 item.to_dict() for item in self.permanent_buffs_snapshot
             ],

@@ -155,6 +155,9 @@ def normalize_shop_profile(document=None, *, config=SHOP_CONFIG):
     unlocks = _unique_strings(
         document.get('permanent_unit_unlocks'), 'permanent_unit_unlocks'
     )
+    power_unlocks = _unique_strings(
+        document.get('permanent_power_unlocks'), 'permanent_power_unlocks'
+    )
     raw_upgrades = document.get('permanent_upgrades')
     raw_upgrades = {} if raw_upgrades is None else _object(
         raw_upgrades, 'permanent_upgrades'
@@ -207,6 +210,7 @@ def normalize_shop_profile(document=None, *, config=SHOP_CONFIG):
             'lifetime_missions_completed',
         ),
         permanent_unit_unlocks=unlocks,
+        permanent_power_unlocks=power_unlocks,
         permanent_buffs=permanent_buffs,
         permanent_upgrades=upgrades,
         salvaged_run_coins=_nonnegative_int(
@@ -403,6 +407,10 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         ),
         selected_permanent_units=_unique_strings(
             document.get('selected_permanent_units'), 'selected_permanent_units'
+        ),
+        permanent_power_unlocks_snapshot=_unique_strings(
+            document.get('permanent_power_unlocks_snapshot'),
+            'permanent_power_unlocks_snapshot',
         ),
         permanent_buffs_snapshot=_purchase_records(
             document.get('permanent_buffs_snapshot'),

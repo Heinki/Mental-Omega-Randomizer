@@ -684,6 +684,10 @@ def build_player_clone_sections(
             and (
                 unit_id in buildable_ids
                 or initial_payload_clone
+                # Power-delivery clones must coexist with authored story
+                # teams. Keep those TaskForces native while the power points
+                # at this separate complete, selectable player identity.
+                or unit_id in forced_clone_ids
             )
         )
         if (

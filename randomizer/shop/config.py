@@ -93,6 +93,8 @@ def load_shop_mode_config() -> ShopModeConfig:
             str(target_id): ShopPowerPriceDefinition(
                 run_access=definition['run_access'],
                 run_buff=definition['run_buff'],
+                permanent_access=definition['permanent_access'],
+                permanent_buff=definition['permanent_buff'],
             )
             for target_id, definition
             in sections['power_target_prices'].items()

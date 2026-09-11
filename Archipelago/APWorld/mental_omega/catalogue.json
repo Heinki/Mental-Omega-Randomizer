@@ -9328,6 +9328,104 @@
       "id": 81067870
     },
     {
+      "name": "Flint Westwood Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81068053
+    },
+    {
+      "name": "Flint Westwood Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068054
+    },
+    {
+      "name": "Flint Westwood Command Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068055
+    },
+    {
+      "name": "Flint Westwood Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068056
+    },
+    {
+      "name": "Flint Westwood Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068057
+    },
+    {
+      "name": "Flint Westwood Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068058
+    },
+    {
+      "name": "Flint Westwood Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068059
+    },
+    {
+      "name": "Flint Westwood Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068060
+    },
+    {
+      "name": "Flint Westwood Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068061
+    },
+    {
+      "name": "Flint Westwood Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068062
+    },
+    {
+      "name": "Flint Westwood Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068063
+    },
+    {
+      "name": "Flint Westwood Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068064
+    },
+    {
+      "name": "Flint Westwood Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068065
+    },
+    {
+      "name": "Flint Westwood Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068066
+    },
+    {
       "name": "Foehn Blast Trench Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -31453,7 +31551,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "55a06e7f20f1b98b4da3f3cf30081f5ec7e8aa65048a79c0d60e46365c0bf150",
+  "catalogue_checksum": "8d997872f75639fa975261cf1bdf7c2557b1282f024c73a4c8446395ab8c095f",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

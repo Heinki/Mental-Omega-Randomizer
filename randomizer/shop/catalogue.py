@@ -171,10 +171,27 @@ def _validate_power_target_prices(entries):
         in SHOP_CONFIG.power_target_prices.items()
         if (definition.run_buff is not None) != (target_id in buff_targets)
     )
-    if invalid_access or invalid_buffs:
+    invalid_permanent_access = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.power_target_prices.items()
+        if (definition.permanent_access is not None)
+        != (target_id in access_targets)
+    )
+    invalid_permanent_buffs = sorted(
+        target_id for target_id, definition
+        in SHOP_CONFIG.power_target_prices.items()
+        if (definition.permanent_buff is not None)
+        != (target_id in buff_targets)
+    )
+    if (
+        invalid_access or invalid_buffs
+        or invalid_permanent_access or invalid_permanent_buffs
+    ):
         raise StaticConfigError(
             'Shop Mode power_target_prices availability does not match shop '
-            f'catalogue; access={invalid_access}, buffs={invalid_buffs} '
+            f'catalogue; access={invalid_access}, buffs={invalid_buffs}, '
+            f'permanent_access={invalid_permanent_access}, '
+            f'permanent_buffs={invalid_permanent_buffs} '
             'in shop_mode.json'
         )
 

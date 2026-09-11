@@ -826,6 +826,18 @@ def deploy_generated_unit_art(
     rules_cache_path=None,
 ):
     """Deploy art aliases and any required early mutation registrations."""
+    if art_cache_path is None or rules_cache_path is None:
+        # Fresh packaged installs may reach mission launch before the UI's
+        # background cameo scan has extracted ARTMO.INI. Nanofiber mutations
+        # need both registries synchronously: without their ArtType metadata,
+        # the source infantry dies but its evolved replacement never spawns.
+        from randomizer.ui.cameos import extract_mix_files_sync
+        requests = []
+        if art_cache_path is None:
+            requests.append(('ARTMO.INI', CAMEO_CACHE_DIR / 'artmo.ini'))
+        if rules_cache_path is None:
+            requests.append(('RULESMO.INI', CAMEO_CACHE_DIR / 'rulesmo.ini'))
+        extract_mix_files_sync(requests)
     runtime_target = Path(target_path or (GAME_ROOT / 'artmo.ini'))
     staged = target_path is None
     target = (

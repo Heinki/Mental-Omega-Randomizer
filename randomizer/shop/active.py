@@ -137,6 +137,7 @@ def active_shop_reward_ids(run):
         return ()
     reward_ids = [
         *run.selected_permanent_units,
+        *run.permanent_power_unlocks_snapshot,
         *ap_automatic_reward_ids(run.ap_entitlements_snapshot),
         *(buff.reward_id for buff in run.permanent_buffs_snapshot),
         *(purchase.reward_id for purchase in run.run_purchases),
@@ -150,17 +151,23 @@ def active_shop_rewards(run):
     """Return canonical launch rewards, preserving purchased stack counts."""
     if run is None:
         return ()
-    reward_ids = list(run.selected_permanent_units)
-    active_unit_access = set(run.selected_permanent_units)
+    reward_ids = [
+        *run.selected_permanent_units,
+        *run.permanent_power_unlocks_snapshot,
+    ]
+    active_access = set(reward_ids)
     for reward_id in ap_automatic_reward_ids(run.ap_entitlements_snapshot):
         entry = catalogue_entry(canonical_reward_for_id(reward_id))
         if (
             entry is not None
-            and entry.reward_type is ShopRewardType.UNIT_ACCESS
+            and entry.reward_type in {
+                ShopRewardType.UNIT_ACCESS,
+                ShopRewardType.POWER_ACCESS,
+            }
         ):
-            if entry.reward_id in active_unit_access:
+            if entry.reward_id in active_access:
                 continue
-            active_unit_access.add(entry.reward_id)
+            active_access.add(entry.reward_id)
         reward_ids.append(reward_id)
     for buff in run.permanent_buffs_snapshot:
         reward_ids.extend([buff.reward_id] * buff.stacks)
@@ -171,6 +178,47 @@ def active_shop_rewards(run):
     for buff in run.starting_draft_buffs:
         reward_ids.extend([buff.reward_id] * buff.stacks)
     return tuple(canonical_reward_for_id(reward_id) for reward_id in reward_ids)
+
+
+def permanent_buff_snapshot(
+    profile,
+    *,
+    selected_unit_reward_ids=(),
+    permanent_power_reward_ids=(),
+    starter_tech_ids=(),
+):
+    """Keep permanent buffs whose purchased access is active next run."""
+    active_tech_ids = {
+        str(tech_id).upper() for tech_id in starter_tech_ids if str(tech_id)
+    }
+    active_tech_ids.update(tech_ids_for_rewards(
+        canonical_reward_for_id(reward_id)
+        for reward_id in selected_unit_reward_ids
+    ))
+    active_power_ids = {
+        entry.target_id
+        for reward_id in permanent_power_reward_ids
+        for entry in [catalogue_entry(canonical_reward_for_id(reward_id))]
+        if entry is not None
+        and entry.reward_type is ShopRewardType.POWER_ACCESS
+    }
+    return tuple(
+        item for item in profile.permanent_buffs
+        if (
+            (entry := catalogue_entry(canonical_reward_for_id(item.reward_id)))
+            is not None
+            and (
+                (
+                    entry.reward_type is ShopRewardType.UNIT_BUFF
+                    and entry.target_id in active_tech_ids
+                )
+                or (
+                    entry.reward_type is ShopRewardType.POWER_BUFF
+                    and entry.target_id in active_power_ids
+                )
+            )
+        )
+    )
 
 
 def active_shop_tech_ids(run):

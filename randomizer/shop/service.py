@@ -22,11 +22,14 @@ from .catalogue import (
 from .config import SHOP_CONFIG
 from .economy import (
     permanent_buff_price,
+    permanent_power_buff_price,
+    permanent_power_price,
     permanent_unit_price,
     run_reward_price,
 )
 from .meta import (
     purchase_permanent_unit as apply_permanent_unit_purchase,
+    purchase_permanent_power as apply_permanent_power_purchase,
     purchase_permanent_buff as apply_permanent_buff_purchase,
     purchase_permanent_upgrade as apply_permanent_upgrade_purchase,
 )
@@ -338,7 +341,7 @@ class ShopProgressionService:
             self.repository.save_profile(outcome.profile)
         return outcome
 
-    def purchase_permanent_buff(self, reward_id):
+    def purchase_permanent_power(self, reward_id):
         profile, run = self.repository.load()
         if run is not None and run.status is RunStatus.ACTIVE:
             raise ShopTransitionError(
@@ -348,9 +351,34 @@ class ShopProgressionService:
         entry = catalogue_entry(reward)
         shop_eligible = bool(
             entry is not None
-            and entry.reward_type is ShopRewardType.UNIT_BUFF
+            and entry.reward_type is ShopRewardType.POWER_ACCESS
         )
-        price = permanent_buff_price(entry.target_id) if shop_eligible else 0
+        price = permanent_power_price(entry.target_id) if shop_eligible else 0
+        outcome = apply_permanent_power_purchase(
+            profile, reward, price=price, shop_eligible=shop_eligible
+        )
+        if outcome.validation.allowed:
+            self.repository.save_profile(outcome.profile)
+        return outcome
+
+    def purchase_permanent_buff(self, reward_id):
+        profile, run = self.repository.load()
+        if run is not None and run.status is RunStatus.ACTIVE:
+            raise ShopTransitionError(
+                'Permanent purchases are locked during an active Shop run'
+            )
+        reward = canonical_reward_for_id(reward_id)
+        entry = catalogue_entry(reward)
+        shop_eligible = bool(entry is not None and entry.reward_type in {
+            ShopRewardType.UNIT_BUFF,
+            ShopRewardType.POWER_BUFF,
+        })
+        if not shop_eligible:
+            price = 0
+        elif entry.reward_type is ShopRewardType.POWER_BUFF:
+            price = permanent_power_buff_price(entry.target_id)
+        else:
+            price = permanent_buff_price(entry.target_id)
         outcome = apply_permanent_buff_purchase(
             profile, reward, price=price, shop_eligible=shop_eligible
         )

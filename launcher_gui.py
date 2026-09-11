@@ -94,6 +94,7 @@ def run_self_check():
         from Archipelago.shop_self_check import validate_shop_slot_contract
         from Archipelago.yaml_config import (
             parse_player_yaml,
+            reusable_manifest_template,
             serialize_player_yaml,
         )
         archipelago_catalogue_checksum = runtime_catalogue_checksum()
@@ -250,7 +251,7 @@ def run_self_check():
             and archipelago_player_document['name']
             == "Self Checker's Slot"
             and archipelago_player_document['run_manifest']
-            == archipelago_manifest
+            == reusable_manifest_template(archipelago_manifest)
             and 'generated_world:' in archipelago_player_yaml
             and 'run_manifest:' not in archipelago_player_yaml
             and 'Generated run data.' not in archipelago_player_yaml
@@ -1168,6 +1169,7 @@ def run_self_check():
                 and special_roster['paradox_source_id'] == 'STARDUSTB'
                 and special_roster['paradox_ai_alias_excluded']
                 and special_roster['industrial_plant_power_detached']
+                and special_roster['clone_ids'].get('CLNT') == 'MORPCLNT'
                 and all(
                     count == 1
                     for count in special_roster['access_counts'].values()

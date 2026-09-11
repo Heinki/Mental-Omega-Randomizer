@@ -384,7 +384,9 @@ def build_shop_tab(self, workspace_tabs):
     permanent_search = ttk.Frame(permanent)
     permanent_search.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     permanent_search.columnconfigure(1, weight=1)
-    ttk.Label(permanent_search, text='Search units, buffs, upgrades:').grid(
+    ttk.Label(
+        permanent_search, text='Search units, powers, buffs, upgrades:'
+    ).grid(
         row=0, column=0, sticky='w', padx=(0, 6)
     )
     ttk.Entry(
@@ -459,6 +461,68 @@ def build_shop_tab(self, workspace_tabs):
         state='disabled',
     )
     self.shop_permanent_unit_button.pack(side='right')
+
+    permanent_powers = ttk.Frame(permanent_tabs, padding=8)
+    self.shop_permanent_powers_panel = permanent_powers
+    permanent_tabs.add(permanent_powers, text='Powers')
+    permanent_powers.columnconfigure(0, weight=1)
+    permanent_powers.rowconfigure(1, weight=1)
+    permanent_power_filter = ttk.Frame(permanent_powers)
+    permanent_power_filter.grid(row=0, column=0, sticky='w', pady=(0, 6))
+    ttk.Label(permanent_power_filter, text='Show powers:').pack(side='left')
+    for label in ('All', 'Not Owned', 'Owned'):
+        ttk.Radiobutton(
+            permanent_power_filter,
+            text=label,
+            value=label,
+            variable=self.shop_permanent_power_filter_var,
+            command=self._refresh_permanent_shop,
+        ).pack(side='left', padx=(8, 0))
+    power_frame = ttk.Frame(permanent_powers)
+    power_frame.grid(row=1, column=0, sticky='nsew')
+    self.shop_permanent_power_tree = _tree(
+        power_frame,
+        ('name', 'type', 'state', 'price'),
+        (
+            ('name', 'Superweapon / Power', 300),
+            ('type', 'Type', 100),
+            ('state', 'State', 160),
+            ('price', 'Price', 90),
+        ),
+        height=10,
+        cameos=True,
+    )
+    self.shop_permanent_power_tree.bind(
+        '<<TreeviewSelect>>', self.refresh_permanent_power_button
+    )
+    self.shop_permanent_power_tooltip_view = TreeTooltip(
+        self.shop_permanent_power_tree, self.shop_permanent_power_tooltip
+    )
+    self.shop_permanent_power_info_var = tk.StringVar(
+        value='Select a superweapon or support power.'
+    )
+    ttk.Label(
+        permanent_powers,
+        textvariable=self.shop_permanent_power_info_var,
+        wraplength=620,
+        justify='left',
+    ).grid(row=2, column=0, sticky='w', pady=(7, 4))
+    permanent_power_actions = ttk.Frame(permanent_powers)
+    permanent_power_actions.grid(row=3, column=0, sticky='ew')
+    self.shop_permanent_power_buffs_button = ttk.Button(
+        permanent_power_actions,
+        text='View Buffs for Owned Power',
+        command=self.open_selected_permanent_power_buffs,
+        state='disabled',
+    )
+    self.shop_permanent_power_buffs_button.pack(side='left')
+    self.shop_permanent_power_button = ttk.Button(
+        permanent_power_actions,
+        text='Select a Power',
+        command=self.buy_selected_permanent_power,
+        state='disabled',
+    )
+    self.shop_permanent_power_button.pack(side='right')
 
     permanent_upgrades = ttk.Frame(permanent_tabs, padding=8)
     self.shop_permanent_upgrades_panel = permanent_upgrades
@@ -562,6 +626,75 @@ def build_shop_tab(self, workspace_tabs):
         state='disabled',
     )
     self.shop_permanent_buff_button.grid(row=4, column=0, sticky='e')
+
+    permanent_power_buffs = ttk.Frame(permanent_tabs, padding=8)
+    self.shop_permanent_power_buffs_panel = permanent_power_buffs
+    permanent_tabs.add(permanent_power_buffs, text='Permanent Power Buffs')
+    permanent_power_buffs.columnconfigure(0, weight=1)
+    permanent_power_buffs.rowconfigure(2, weight=1)
+    ttk.Label(
+        permanent_power_buffs,
+        text=(
+            '1. Buy a power on Powers. 2. Select it below. 3. Buy lasting '
+            'buff stacks with Gems. Buffs apply whenever that power is '
+            'active in a future run. Purchases are available only between runs.'
+        ),
+        style='Shop.Help.TLabel',
+        wraplength=620,
+    ).grid(row=0, column=0, sticky='w', pady=(0, 6))
+    permanent_power_buff_filter = ttk.Frame(permanent_power_buffs)
+    permanent_power_buff_filter.grid(
+        row=1, column=0, sticky='ew', pady=(0, 6)
+    )
+    ttk.Label(
+        permanent_power_buff_filter, text='Selected power:'
+    ).pack(side='left')
+    self.shop_permanent_power_buff_target_label = ttk.Label(
+        permanent_power_buff_filter,
+        textvariable=self.shop_permanent_power_buff_target_var,
+        style='Shop.Help.TLabel',
+    )
+    self.shop_permanent_power_buff_target_label.pack(
+        side='left', padx=(6, 12)
+    )
+    ttk.Button(
+        permanent_power_buff_filter,
+        text='Choose from Powers',
+        command=self.show_shop_permanent_powers,
+    ).pack(side='left')
+    permanent_power_buff_tree_frame = ttk.Frame(permanent_power_buffs)
+    permanent_power_buff_tree_frame.grid(row=2, column=0, sticky='nsew')
+    self.shop_permanent_power_buff_tree = _tree(
+        permanent_power_buff_tree_frame,
+        ('effect', 'stacks', 'state', 'price'),
+        (
+            ('effect', 'Permanent Effect', 380),
+            ('stacks', 'Stacks', 90),
+            ('state', 'State', 160),
+            ('price', 'Next Price', 100),
+        ),
+        height=10,
+        cameos=True,
+    )
+    self.shop_permanent_power_buff_tree.bind(
+        '<<TreeviewSelect>>', self.refresh_permanent_power_buff_button
+    )
+    self.shop_permanent_power_buff_info_var = tk.StringVar(
+        value='Select a permanently unlocked power, then choose a buff.'
+    )
+    ttk.Label(
+        permanent_power_buffs,
+        textvariable=self.shop_permanent_power_buff_info_var,
+        wraplength=620,
+        justify='left',
+    ).grid(row=3, column=0, sticky='w', pady=(7, 4))
+    self.shop_permanent_power_buff_button = ttk.Button(
+        permanent_power_buffs,
+        text='Select a Permanent Power Buff',
+        command=self.buy_selected_permanent_power_buff,
+        state='disabled',
+    )
+    self.shop_permanent_power_buff_button.grid(row=4, column=0, sticky='e')
 
     ap_purchases = ttk.Frame(panels, padding=8)
     self.shop_ap_panel = ap_purchases
