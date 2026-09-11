@@ -94,7 +94,6 @@ def run_self_check():
         from Archipelago.shop_self_check import validate_shop_slot_contract
         from Archipelago.yaml_config import (
             parse_player_yaml,
-            reusable_manifest_template,
             serialize_player_yaml,
         )
         archipelago_catalogue_checksum = runtime_catalogue_checksum()
@@ -250,9 +249,15 @@ def run_self_check():
             }
             and archipelago_player_document['name']
             == "Self Checker's Slot"
-            and archipelago_player_document['run_manifest']
-            == reusable_manifest_template(archipelago_manifest)
-            and 'generated_world:' in archipelago_player_yaml
+            and archipelago_player_document['run_manifest'] is None
+            and archipelago_player_document['launcher_settings'] == {
+                key: value
+                for key, value in archipelago_manifest['frozen_settings'][
+                    'launcher'
+                ].items()
+                if key != 'seed'
+            }
+            and 'generated_world:' not in archipelago_player_yaml
             and 'run_manifest:' not in archipelago_player_yaml
             and 'Generated run data.' not in archipelago_player_yaml
             and 'progression_balancing:' not in archipelago_player_yaml

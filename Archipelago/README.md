@@ -52,10 +52,9 @@ player file. There is no YAML import step in the launcher. Reuse that file for
 additional rooms with the same settings; every Archipelago generation assigns
 a fresh Randomizer seed. Re-export only after changing launcher settings.
 
-`generated_world` is a checksum-protected, seed-independent template containing
-mission order, Grid, reward slots, and compatibility data. Archipelago restores
-the settings, assigns the room-specific seed, then signs data sent to the
-launcher. Do not edit generated template data.
+The YAML contains only reusable `launcher_settings`. Archipelago assigns the
+room-specific seed, generates mission order, Grid, starters and rewards, then
+signs the complete run data sent to the launcher.
 
 ## Mission progression and spheres
 

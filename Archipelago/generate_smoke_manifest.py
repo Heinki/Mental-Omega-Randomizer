@@ -1,4 +1,4 @@
-"""Export a generated run state as an Archipelago generation smoke YAML."""
+"""Export reusable settings from a generated run as an AP smoke YAML."""
 
 from pathlib import Path
 import argparse
@@ -26,8 +26,8 @@ def main():
         newline="\n",
     )
     print(
-        f"{output}: {sum(manifest['item_pool'].values())} locations/items, "
-        f"{len(manifest['starting_items'])} starting item types"
+        f"{output}: settings only; Archipelago will generate the run "
+        f"({sum(manifest['item_pool'].values())} source locations validated)"
     )
 
 

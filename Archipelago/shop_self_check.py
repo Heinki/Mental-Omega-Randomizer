@@ -13,7 +13,7 @@ from randomizer.shop.archipelago import (
 from .catalogue_contract import runtime_catalogue_checksum
 from .client.handshake import validate_slot_data
 from .client.session import _scout_location_ids
-from .yaml_config import serialize_player_yaml
+from .yaml_config import parse_player_yaml, serialize_player_yaml
 
 
 def validate_shop_slot_contract():
@@ -77,6 +77,7 @@ def validate_shop_slot_contract():
         separators=(',', ':'),
     ).encode('utf-8')).hexdigest()
     player_yaml = serialize_player_yaml(manifest, 'Shop Contract Test')
+    player_document = parse_player_yaml(player_yaml)
     purchase_locations = [
         0x4DFE000 + index for index in range(purchase_count)
     ]
@@ -150,7 +151,9 @@ def validate_shop_slot_contract():
     legacy_normalized = validate_slot_data(legacy_slot_data)
     return bool(
         normalized['slot_data_version'] == 7
-        and '"received_unit_loadout": "all"' in player_yaml
+        and player_document['run_manifest'] is None
+        and player_document['launcher_settings']['progression_mode'] == 'Shop Mode'
+        and 'generated_world:' not in player_yaml
         and normalized['shop']['received_unit_loadout'] == 'all'
         and normalized['shop']['purchase_locations'] == purchase_locations
         and set(purchase_locations).issubset(

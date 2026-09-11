@@ -3,7 +3,7 @@
 from copy import deepcopy
 from pathlib import Path
 
-from ._dependencies import filedialog, log_event, save_config, time
+from ._dependencies import filedialog, log_event, time
 
 
 class ArchipelagoYamlController:
@@ -13,7 +13,7 @@ class ArchipelagoYamlController:
 
     @staticmethod
     def _archipelago_manifest_identity(manifest):
-        """Persist only identity; full generated data lives in YAML/server."""
+        """Persist only identity; full generated data comes from the server."""
         keys = (
             'schema_version', 'randomizer_version', 'randomizer_seed',
             'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
@@ -135,51 +135,11 @@ class ArchipelagoYamlController:
         standalone_state.pop('archipelago', None)
         return standalone_state
 
-    def _stage_archipelago_manifest(
-        self, manifest, slot_name, yaml_text, generated_state
-    ):
-        """Remember exported identity; server state remains authoritative."""
-        standalone_state = self._current_standalone_state_snapshot()
-        standalone_config = deepcopy(self.config)
-        if not self.state:
-            self.state = deepcopy(generated_state)
-        self.state['archipelago'] = {
-            'activation': 'staged',
-            'enabled': False,
-            'manifest_checksum': manifest['manifest_checksum'],
-            'run_manifest': self._archipelago_manifest_identity(manifest),
-            'slot_name': slot_name,
-            'standalone_state': standalone_state,
-            'standalone_config': standalone_config,
-        }
-        self._archipelago_standalone_state = deepcopy(standalone_state)
-        self._archipelago_standalone_config = deepcopy(standalone_config)
-        self.archipelago_slot_var.set(slot_name)
-        ap_config = self.config.setdefault('archipelago', {})
-        ap_config['enabled'] = False
-        ap_config['slot_name'] = slot_name
-        self._archipelago_yaml_text = yaml_text
-        self.save_state()
-        save_config(self.config)
-        self.refresh_archipelago_yaml_status()
-        log_event(
-            'archipelago_player_yaml_staged',
-            randomizer_seed=manifest.get('randomizer_seed', ''),
-            progression_mode=manifest.get('progression_mode', ''),
-            manifest_checksum=manifest.get('manifest_checksum', ''),
-            missions=len(manifest.get('mission_order', ())),
-            yaml_bytes=len(yaml_text.encode('utf-8')),
-        )
-
     def save_archipelago_yaml(self):
         """Export one AP player file from the exact visible launcher controls."""
         if self.gameplay_settings_locked():
             return
         slot_name = self.archipelago_slot_var.get().strip() or 'Commander'
-        options = self.seed_generation_options_from_settings()
-        if options is None:
-            return
-
         self.config.setdefault('archipelago', {})['slot_name'] = slot_name
         self.save_current_launcher_config()
         launcher_config = deepcopy(self.config)
@@ -194,42 +154,20 @@ class ArchipelagoYamlController:
             ),
         )
         if not path:
-            self.clear_seed_generation_overrides()
             return
 
-        self.run_in_background(
-            'Saving Archipelago Player YAML...',
-            'Building the AP run from the current launcher settings.',
-            lambda: self.build_seed_generation(options),
-            lambda result: self._finish_archipelago_yaml_save(
-                result, Path(path), slot_name, launcher_config
-            ),
-            self._handle_archipelago_yaml_save_error,
-        )
-
-    def _finish_archipelago_yaml_save(
-        self, result, path, slot_name, launcher_config
-    ):
         try:
-            from Archipelago.run_manifest import build_run_manifest
-            from Archipelago.yaml_config import (
-                parse_player_yaml,
-                serialize_player_yaml,
-            )
+            from Archipelago.yaml_config import serialize_player_yaml
             from randomizer.core.storage import atomic_write_text
 
-            manifest = build_run_manifest(result['state'], launcher_config)
-            yaml_text = serialize_player_yaml(manifest, slot_name)
-            atomic_write_text(path, yaml_text)
-            template = parse_player_yaml(yaml_text)['run_manifest']
-            self._stage_archipelago_manifest(
-                template, slot_name, yaml_text, result['state']
+            yaml_text = serialize_player_yaml(launcher_config, slot_name)
+            atomic_write_text(Path(path), yaml_text)
+            self._archipelago_yaml_text = yaml_text
+            self.archipelago_yaml_status_var.set(
+                f'Player YAML saved: {slot_name}. '
+                'Archipelago generates a fresh run for every new seed.'
             )
-        finally:
-            self.clear_seed_generation_overrides()
-        self.append_archipelago_history(f'Saved Player YAML: {path}')
-
-    def _handle_archipelago_yaml_save_error(self, exc, detail):
-        self.clear_seed_generation_overrides()
-        self.append_archipelago_history(f'Player YAML save failed: {exc}')
-        self.handle_seed_generation_error(exc, detail)
+            self.append_archipelago_history(f'Saved Player YAML: {path}')
+        except Exception as exc:
+            self.append_archipelago_history(f'Player YAML save failed: {exc}')
+            self.handle_seed_generation_error(exc, str(exc))

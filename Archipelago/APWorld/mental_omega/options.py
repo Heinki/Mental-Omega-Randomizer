@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass
 
-from Options import FreeText, OptionDict, PerGameCommonOptions
+from Options import FreeText, OptionDict, PerGameCommonOptions, Visibility
 
 
 class LauncherSettings(OptionDict):
-    """Readable launcher options mirrored by the signed run manifest."""
+    """Reusable settings. Archipelago generates a fresh run from these options."""
 
     display_name = "Launcher Settings"
     default = {}
@@ -15,13 +15,15 @@ class LauncherSettings(OptionDict):
 class RunManifest(FreeText):
     """Legacy launcher-exported deterministic run manifest as JSON."""
 
+    visibility = Visibility.none
     display_name = "Run Manifest"
     default = ""
 
 
 class GeneratedWorld(OptionDict):
-    """Launcher-generated world input required by this APWorld."""
+    """Legacy world template; new player files need only launcher_settings."""
 
+    visibility = Visibility.none
     display_name = "Generated World"
     default = {}
 

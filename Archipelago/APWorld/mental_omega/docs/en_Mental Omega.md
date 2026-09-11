@@ -4,8 +4,8 @@ Mental Omega Randomizer launches campaign missions, detects objective and
 victory checks through its existing debug-log hooks, and applies received
 technology and buff rewards to later generated mission maps.
 
-This APWorld uses a checksum-protected run manifest exported by Mental Omega
-Randomizer 1.35. It supports the full 97-mission reward catalogue plus stable
+This APWorld generates a checksum-protected run manifest from reusable settings
+exported by Mental Omega Randomizer 1.35. It supports the full 97-mission reward catalogue plus stable
 Shop purchase, stage-reward, and private stage-logic IDs. Each seed activates
 only the locations and item counts described by its manifest.
 

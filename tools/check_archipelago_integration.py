@@ -39,7 +39,7 @@ from Fill import distribute_items_restrictive
 from worlds.AutoWorld import World
 import yaml
 from Archipelago.catalogue_contract import build_catalogue_projection
-from Archipelago.run_manifest import build_run_manifest
+from Archipelago.run_manifest import gameplay_config_snapshot
 from Archipelago.yaml_config import parse_player_yaml, serialize_player_yaml
 from Archipelago.client.handshake import ArchipelagoProtocolError, validate_slot_data
 from Archipelago.client.session import _scout_location_ids
@@ -47,13 +47,10 @@ from randomizer.application.archipelago_controller import ArchipelagoController
 from randomizer.application.shop_archipelago_controller import ShopArchipelagoController
 from randomizer.application.shop_controller import ShopController
 from randomizer.shop.model import RunStatus
-from randomizer.rewards.catalogue import REWARD_POOL
 
 WorldType = next(value for value in vars(world_module).values()
                  if isinstance(value, type) and issubclass(value, World)
                  and value is not World)
-MISSIONS = build_catalogue_projection()['missions']
-REWARD = next(r for r in REWARD_POOL if r.get('kind') == 'buff')
 
 
 def signed(manifest):
@@ -62,37 +59,18 @@ def signed(manifest):
 
 
 def fixture(mode):
-    missions = MISSIONS[:16] if mode == 'Grid Mode' else MISSIONS
-    codes = [m['code'] for m in missions]
-    state = {
-        'seed': 'AP-REGRESSION', 'campaign_filter': 'All Campaigns',
-        'progression_mode': mode, 'mission_order': codes,
-        'mission_goal': len(codes), 'starting_unlocked_missions': 3,
-        'reward_mode': 'Standard',
-        'mission_checks': {m['code']: [
-            {'id': check['id'], 'rewards': [REWARD]}
-            for check in m['checks']
-        ] for m in missions},
-    }
-    if mode == 'Grid Mode':
-        state['grid'] = {
-            'nodes': {code: {'x': i % 4, 'y': i // 4}
-                      for i, code in enumerate(codes)},
-            'final_mission': codes[-1], 'two_start_positions': False,
-        }
-    return build_run_manifest(state)
+    return {'progression_mode': mode}
 
 
-def make_world(manifest, ap_seed=12345):
-    text = serialize_player_yaml(manifest, "Regression's Slot")
+def make_world(settings, ap_seed=12345):
+    text = serialize_player_yaml(settings, "Regression's Slot")
     parsed = parse_player_yaml(text)
-    assert parsed['run_manifest']['randomizer_seed'] == 'random'
-    assert 'launcher' not in parsed['run_manifest']['frozen_settings']
-    assert parsed['run_manifest']['frozen_settings']['launcher_checksum']
+    assert parsed['run_manifest'] is None
     document = yaml.safe_load(text)[WorldType.game]
-    expected_settings = deepcopy(manifest['frozen_settings']['launcher'])
+    expected_settings = gameplay_config_snapshot(settings)
     expected_settings.pop('seed', None)
     assert document['launcher_settings'] == expected_settings
+    assert set(document) == {'launcher_settings'}
     mw = MultiWorld(1)
     mw.set_seed(ap_seed)
     mw.player_name = {1: 'Regression'}
@@ -156,29 +134,27 @@ class IntegrationTests(unittest.TestCase):
                                      slot['shop']['run_length'])
 
     def test_yaml_preserves_types(self):
-        manifest = fixture('Shop Mode')
         values = {'seed': '2026-09-07', 'progression_mode': 'Shop Mode',
                   'generation': {'off': 'Off', 'on': 'on', 'number': '00123',
                                  'null': None, 'float': 1.25, 'empty': {},
                                  'list': ['a,b', 'null', True, 3, 1.5]}}
-        manifest['frozen_settings']['launcher'] = values
-        signed(manifest)
-        text = serialize_player_yaml(manifest, 'Type Test')
-        expected = deepcopy(values)
+        text = serialize_player_yaml(values, 'Type Test')
+        expected = gameplay_config_snapshot(values)
         expected.pop('seed')
         parsed = parse_player_yaml(text)
         self.assertEqual(parsed['launcher_settings'], expected)
-        self.assertEqual(parsed['run_manifest']['randomizer_seed'], 'random')
-        self.assertNotIn('launcher', parsed['run_manifest']['frozen_settings'])
+        self.assertIsNone(parsed['run_manifest'])
         self.assertEqual(yaml.safe_load(text)[WorldType.game]['launcher_settings'], expected)
-        make_world(manifest)
+        make_world(values)
 
     def test_player_yaml_is_reusable_across_archipelago_seeds(self):
-        manifest = fixture('Grid Mode')
-        first = make_world(manifest, ap_seed=12345).run_manifest
-        second = make_world(manifest, ap_seed=54321).run_manifest
-        self.assertNotEqual(first['randomizer_seed'], manifest['randomizer_seed'])
+        settings = fixture('Grid Mode')
+        first = make_world(settings, ap_seed=12345).run_manifest
+        repeat = make_world(settings, ap_seed=12345).run_manifest
+        second = make_world(settings, ap_seed=54321).run_manifest
+        self.assertEqual(first, repeat)
         self.assertNotEqual(first['randomizer_seed'], second['randomizer_seed'])
+        self.assertNotEqual(first['grid'], second['grid'])
         for generated in (first, second):
             self.assertEqual(
                 generated['state_snapshot']['seed'],
@@ -195,10 +171,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_release_labels_do_not_break_contract(self):
         for mode in ('Mission List', 'Shop Mode'):
-            manifest = fixture(mode)
-            manifest['randomizer_version'] = '0.0-compatible-release'
-            signed(manifest)
-            validate_slot_data(make_world(manifest).fill_slot_data())
+            validate_slot_data(make_world(fixture(mode)).fill_slot_data())
 
     def test_catalogue_release_metadata_and_legacy_checksums(self):
         from Archipelago.catalogue_contract import (
@@ -209,17 +182,17 @@ class IntegrationTests(unittest.TestCase):
             changed = {**projection, 'world_version': '99.0',
                        'randomizer_version': '99.0'}
             self.assertEqual(projection_checksum(projection), projection_checksum(changed))
+        manifest = make_world(fixture('Shop Mode')).run_manifest
         for checksum in getattr(data, 'COMPATIBLE_CATALOGUE_CHECKSUMS', ()):
-            manifest = fixture('Shop Mode')
+            manifest = deepcopy(manifest)
             manifest['catalogue_checksum'] = checksum
             signed(manifest)
-            slot = validate_slot_data(make_world(manifest).fill_slot_data())
-            self.assertEqual(slot['catalogue_checksum'], checksum)
+            self.assertEqual(contract.parse_manifest(manifest)['catalogue_checksum'], checksum)
             self.assertTrue(runtime_catalogue_is_compatible(checksum))
 
     def test_legacy_defaults_preserve_checksum(self):
         for mode in ('Mission List', 'Shop Mode'):
-            manifest = fixture(mode)
+            manifest = make_world(fixture(mode)).run_manifest
             manifest.pop('progression', None)
             manifest.pop('starting_items', None)
             manifest.pop('local_placements', None)
@@ -229,20 +202,14 @@ class IntegrationTests(unittest.TestCase):
                 manifest.pop('shop', None)
             signed(manifest)
             original = deepcopy(manifest)
-            world = make_world(manifest)
-            self.assertNotEqual(
-                world.run_manifest['randomizer_seed'],
-                original['randomizer_seed'],
-            )
-            slot = validate_slot_data(world.fill_slot_data())
+            parsed = contract.parse_manifest(manifest)
             if mode == 'Shop Mode':
-                self.assertEqual(slot['shop']['received_unit_loadout'], 'manual')
+                self.assertEqual(parsed['shop'].get('received_unit_loadout', 'manual'), 'manual')
+            world = make_world(fixture(mode))
             legacy_options = world.options
             legacy_options.generated_world.value = {}
             legacy_options.run_manifest.value = json.dumps(manifest)
-            legacy_options.launcher_settings.value = deepcopy(
-                manifest['frozen_settings']['launcher']
-            )
+            legacy_options.launcher_settings.value = {}
             world.generate_early()
             self.assertNotEqual(
                 world.run_manifest['randomizer_seed'],
@@ -250,7 +217,7 @@ class IntegrationTests(unittest.TestCase):
             )
 
     def test_corruption_and_incompatibility_still_rejected(self):
-        manifest = fixture('Shop Mode')
+        manifest = make_world(fixture('Shop Mode')).run_manifest
         for field, value, resign in (
             ('randomizer_seed', 'tampered', False),
             ('schema_version', 999, True),
@@ -264,14 +231,14 @@ class IntegrationTests(unittest.TestCase):
                     signed(changed)
                 with self.assertRaises(contract.ManifestError):
                     contract.parse_manifest(changed)
-        slot = make_world(manifest).fill_slot_data()
+        slot = make_world(fixture('Shop Mode')).fill_slot_data()
         slot['run_manifest'] = deepcopy(slot['run_manifest'])
         slot['run_manifest']['schema_version'] = 999
         signed(slot['run_manifest'])
         slot['manifest_checksum'] = slot['run_manifest']['manifest_checksum']
         with self.assertRaises(ArchipelagoProtocolError):
             validate_slot_data(slot)
-        slot = make_world(manifest).fill_slot_data()
+        slot = make_world(fixture('Shop Mode')).fill_slot_data()
         slot['run_manifest'] = deepcopy(slot['run_manifest'])
         slot['run_manifest']['randomizer_seed'] = 'tampered'
         with self.assertRaises(ArchipelagoProtocolError):

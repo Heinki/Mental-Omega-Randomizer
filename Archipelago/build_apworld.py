@@ -27,7 +27,10 @@ def archive_info(name: str) -> ZipInfo:
 def build(output_directory: Path) -> Path:
     sys.path.insert(0, str(PROJECT_ROOT))
     from Archipelago.generate_catalogue import main as generate_catalogue
+    from Archipelago.bundle_generation import generation_files
+    from randomizer.core.paths import BATTLE_CLIENT_INI
     from randomizer.core.version import APP_VERSION
+    from randomizer.missions.catalogue import parse_missions
 
     manifest_path = SOURCE_DIR / 'archipelago.json'
     contract_path = SOURCE_DIR / 'manifest.py'
@@ -51,6 +54,10 @@ def build(output_directory: Path) -> Path:
         )
 
     generate_catalogue()
+    bundled_files = generation_files()
+    missions_data = json.dumps(
+        parse_missions(BATTLE_CLIENT_INI), sort_keys=True,
+    ).encode('utf-8')
     output_directory = output_directory.resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
     output_path = output_directory / f'{MODULE_NAME}.apworld'
@@ -81,6 +88,12 @@ def build(output_directory: Path) -> Path:
                 archive_info(f'{MODULE_NAME}/{relative}'),
                 source.read_bytes(),
             )
+        for name, data in bundled_files:
+            archive.writestr(archive_info(name), data)
+        archive.writestr(
+            archive_info(f'{MODULE_NAME}/generation_missions.json'),
+            missions_data,
+        )
         archive.writestr(
             archive_info(f'{MODULE_NAME}/archipelago.json'),
             manifest_data,

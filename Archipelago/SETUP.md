@@ -16,8 +16,7 @@
 4. Start the launcher and choose the desired values on **Settings** and
    **Advanced**. A separate local seed is not required.
 5. Open the **Archipelago** tab, enter the intended slot name, then choose
-   **Save Player YAML**. This generates the AP run from the visible controls
-   and saves it in one operation.
+   **Save Player YAML**. This saves the visible controls as reusable settings.
 6. Put that YAML in Archipelago's `Players` folder. Generate and host the room
    normally with Archipelago 0.6.7.
 7. In the Randomizer's Archipelago tab, keep **Server** as
@@ -32,9 +31,8 @@ the authenticated slot name; Archipelago does not permit a separate chat alias.
 
 The player YAML contains a readable `launcher_settings` mapping copied from
 the current launcher controls. To change it, change the launcher settings and
-choose **Save Player YAML** again. `generated_world` is checksum-protected
-APWorld input. Archipelago generation rejects readable settings that no longer
-match it, preventing silent configuration drift.
+choose **Save Player YAML** again. Archipelago creates the mission order, Grid,
+starters, rewards, and signed run manifest while generating the room.
 
 The launcher refuses incompatible server state or reward/mission catalogues.
 Saving YAML only stages AP setup, so the existing standalone reward plan and
@@ -57,9 +55,9 @@ installed APWorld is outdated.
 
 Launcher release labels no longer reject an otherwise compatible run. Schema,
 mission/reward catalogue, and manifest integrity checks still reject incompatible
-or damaged input. The APWorld preserves the exported manifest unchanged,
-including legacy optional fields. Player YAML uses JSON-compatible YAML mappings
-to preserve setting types exactly. Re-export through **Save Player YAML** when
+or damaged input. The APWorld generates and signs a complete run from the
+exported settings. Legacy manifest YAMLs are accepted and regenerated. Player
+YAML uses JSON-compatible mappings to preserve setting types exactly. Re-export through **Save Player YAML** when
 changing settings or replacing an incompatible catalogue.
 
 For an AP Shop run, select **Shop Mode**, save the Player YAML, generate and host

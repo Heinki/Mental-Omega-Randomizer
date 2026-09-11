@@ -522,7 +522,7 @@ def _shop_item_pool(rewards_by_code, mission_order, count):
     return Counter(names[index % len(names)] for index in range(count))
 
 
-def build_run_manifest(state, launcher_config=None):
+def build_run_manifest(state, launcher_config=None, *, catalogue_checksum=None):
     """Freeze one generated run without reimplementing its generation logic."""
     if not isinstance(state, dict):
         raise ValueError("Randomizer state must be an object.")
@@ -581,7 +581,7 @@ def build_run_manifest(state, launcher_config=None):
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "randomizer_version": APP_VERSION,
         "randomizer_seed": str(state.get("seed") or ""),
-        "catalogue_checksum": runtime_catalogue_checksum(),
+        "catalogue_checksum": catalogue_checksum or runtime_catalogue_checksum(),
         "campaign_filter": str(state.get("campaign_filter") or ""),
         "progression_mode": progression_mode,
         "mission_goal": (
