@@ -73,6 +73,12 @@ def load_shop_mode_config() -> ShopModeConfig:
         ),
         starting_run_coins=int(settings['starting_run_coins']),
         maximum_starting_ore=int(settings['maximum_starting_ore']),
+        run_completion_meta_coins=int(
+            settings['run_completion_meta_coins']
+        ),
+        run_completion_modifier_meta_coins=int(
+            settings['run_completion_modifier_meta_coins']
+        ),
         minimum_shop_price=int(settings['minimum_shop_price']),
         reroll_policy=str(settings['reroll_policy']),
         archipelago_purchase_locations=int(

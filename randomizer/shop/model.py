@@ -61,6 +61,7 @@ class CurrencyReward:
     challenge_hunter_run_coins: int = 0
     challenge_hunter_meta_coins: int = 0
     gem_dividend_meta_coins: int = 0
+    run_completion_meta_coins: int = 0
 
 
 @dataclass(frozen=True)
@@ -121,6 +122,8 @@ class ShopModeConfig:
     max_selected_permanent_units: int
     starting_run_coins: int
     maximum_starting_ore: int
+    run_completion_meta_coins: int
+    run_completion_modifier_meta_coins: int
     minimum_shop_price: int
     reroll_policy: str
     archipelago_purchase_locations: int

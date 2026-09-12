@@ -34,7 +34,11 @@ from .meta import (
     purchase_permanent_upgrade as apply_permanent_upgrade_purchase,
 )
 from .model import RunStatus, ShopProfile, ShopRewardType
-from .modifiers import modifier_effects
+from .modifiers import (
+    modifier_allows_shop_offer,
+    modifier_effects,
+    modifier_shop_faction,
+)
 from .persistence import ShopRepository
 from .purchases import apply_validated_run_purchase, validate_run_purchase
 from .transitions import (
@@ -164,7 +168,7 @@ class ShopProgressionService:
         if run is None:
             raise ShopTransitionError('No Shop run exists')
         if modifier_effects(run.modifiers)['disable_rerolls']:
-            raise ShopTransitionError('No Safety Net disables mission rerolls')
+            raise ShopTransitionError('Run modifiers disable mission rerolls')
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_reroll']
         maximum = (
             profile.upgrade_level('mission_reroll')
@@ -185,7 +189,7 @@ class ShopProgressionService:
             raise ShopTransitionError('No Shop run exists')
         if modifier_effects(run.modifiers)['disable_assists']:
             raise ShopTransitionError(
-                'No Safety Net disables difficulty assists'
+                'Run modifiers disable difficulty assists'
             )
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_difficulty_assist']
         maximum = (
@@ -262,6 +266,34 @@ class ShopProgressionService:
             ),
             0,
         )
+        effects = modifier_effects(run.modifiers)
+        stock_faction = str(
+            run.reward_settings.get('shop_faction_filter')
+            or run.campaign_filter
+        )
+        if entry.reward_type in {
+            ShopRewardType.UNIT_ACCESS,
+            ShopRewardType.POWER_ACCESS,
+        }:
+            stock_faction = modifier_shop_faction(
+                run.modifiers, run.stage, stock_faction
+            )
+        elif effects['rotate_shop_faction']:
+            stock_faction = 'All Campaigns'
+        if (
+            effects['cross_faction_power_offers']
+            and entry.reward_type is ShopRewardType.POWER_ACCESS
+        ):
+            stock_faction = 'All Campaigns'
+        shop_eligible = (
+            modifier_allows_shop_offer(entry, reward, run.modifiers)
+            and shop_entry_available(
+                entry,
+                campaign_filter=stock_faction,
+                reward_mode=run.reward_mode,
+                strict_faction=True,
+            )
+        )
         validation = validate_run_purchase(
             reward,
             price=price,
@@ -272,15 +304,7 @@ class ShopProgressionService:
             active_tech_ids=active_shop_tech_ids(run),
             active_power_ids=active_shop_power_ids(run),
             current_stacks=stacks,
-            shop_eligible=shop_entry_available(
-                entry,
-                campaign_filter=str(
-                    run.reward_settings.get('shop_faction_filter')
-                    or run.campaign_filter
-                ),
-                reward_mode=run.reward_mode,
-                strict_faction=True,
-            ),
+            shop_eligible=shop_eligible,
         )
         if validation.allowed:
             updated = apply_validated_run_purchase(

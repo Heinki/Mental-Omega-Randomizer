@@ -11,7 +11,11 @@ from .catalogue import (
 )
 from .economy import mission_reward, starting_run_coins
 from .mission_modifiers import mission_modifier_for_run_offer
-from .modifiers import modifier_effects
+from .modifiers import (
+    modifier_allows_faction_pool,
+    modifier_allows_loadout_entry,
+    modifier_effects,
+)
 from .meta import validate_starting_loadout
 from .model import (
     CurrencyReward,
@@ -107,6 +111,17 @@ def start_new_run(
     ap_entitlements = tuple(
         str(reward_id) for reward_id in ap_entitlement_ids if str(reward_id)
     )
+    modifier_ids = tuple(dict.fromkeys(
+        str(modifier_id) for modifier_id in modifiers if str(modifier_id)
+    ))
+    unknown_modifiers = [
+        modifier_id for modifier_id in modifier_ids
+        if modifier_id not in config.modifiers
+    ]
+    if unknown_modifiers:
+        raise ShopTransitionError(
+            f'Unknown Shop run modifier IDs: {unknown_modifiers}'
+        )
     entitlements = tuple(permanent_entitlement_ids) + ap_entitlements
     loadout = validate_starting_loadout(
         starter_tech_ids=starter_tech_ids,
@@ -118,6 +133,20 @@ def start_new_run(
     if not loadout.allowed:
         raise ShopTransitionError(
             f'Invalid Shop starting loadout: {loadout.result.value}'
+        )
+    restricted_loadout = [
+        reward_id for reward_id in loadout.selected_reward_ids
+        for reward in [canonical_reward_for_id(reward_id)]
+        for entry in [catalogue_entry(reward)]
+        if not modifier_allows_loadout_entry(
+            entry, reward, modifier_ids
+        )
+    ]
+    if restricted_loadout:
+        raise ShopTransitionError(
+            'Low-Tech War does not allow Tier 3 units in the permanent '
+            'starting loadout: '
+            + ', '.join(restricted_loadout)
         )
     power_entitlements = {
         str(reward_id) for reward_id in permanent_power_entitlement_ids
@@ -145,6 +174,10 @@ def start_new_run(
     faction_filter = str(
         reward_settings.get('shop_faction_filter') or campaign_filter
     )
+    if not modifier_allows_faction_pool(modifier_ids, faction_filter):
+        raise ShopTransitionError(
+            'Faction Roulette requires the All Factions Shop pool'
+        )
     unavailable_loadout = [
         reward_id for reward_id in loadout.selected_reward_ids
         if not shop_entry_available(
@@ -167,17 +200,6 @@ def start_new_run(
         raise ShopTransitionError(
             'Shop starting loadout is unavailable for current campaign: '
             + ', '.join(unavailable_loadout)
-        )
-    modifier_ids = tuple(dict.fromkeys(
-        str(modifier_id) for modifier_id in modifiers if str(modifier_id)
-    ))
-    unknown_modifiers = [
-        modifier_id for modifier_id in modifier_ids
-        if modifier_id not in config.modifiers
-    ]
-    if unknown_modifiers:
-        raise ShopTransitionError(
-            f'Unknown Shop run modifier IDs: {unknown_modifiers}'
         )
     updated_profile = replace(
         profile,
@@ -446,6 +468,17 @@ def apply_mission_victory(
         remaining_run_coins=run.run_coins,
         config=config,
     )
+    if final_victory:
+        completion_bonus = (
+            config.run_completion_meta_coins
+            + len(tuple(dict.fromkeys(run.modifiers)))
+            * config.run_completion_modifier_meta_coins
+        )
+        reward = replace(
+            reward,
+            meta_coins=reward.meta_coins + completion_bonus,
+            run_completion_meta_coins=completion_bonus,
+        )
     key = victory_key(run.run_id, run.stage, mission_code)
     updated_profile = replace(
         profile,

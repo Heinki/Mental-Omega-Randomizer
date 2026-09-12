@@ -7,6 +7,51 @@ from .modifiers import modifier_difficulty
 from .text import gem_text
 
 
+def run_modifier_reward_delta(
+    mission_class,
+    *,
+    victory_coin_bonus_level=0,
+    modifiers=(),
+    mission_modifier=None,
+    challenge_hunter_level=0,
+    gem_dividend_level=0,
+    remaining_run_coins=0,
+    config=SHOP_CONFIG,
+):
+    """Return exact Ore/Gem change caused by selected run modifiers."""
+    modified = mission_reward(
+        mission_class,
+        victory_coin_bonus_level=victory_coin_bonus_level,
+        modifiers=modifiers,
+        mission_modifier=mission_modifier,
+        challenge_hunter_level=challenge_hunter_level,
+        gem_dividend_level=gem_dividend_level,
+        remaining_run_coins=remaining_run_coins,
+        config=config,
+    )
+    unmodified = mission_reward(
+        mission_class,
+        victory_coin_bonus_level=victory_coin_bonus_level,
+        modifiers=(),
+        mission_modifier=mission_modifier,
+        challenge_hunter_level=challenge_hunter_level,
+        gem_dividend_level=gem_dividend_level,
+        remaining_run_coins=remaining_run_coins,
+        config=config,
+    )
+    return (
+        modified.run_coins - unmodified.run_coins,
+        modified.meta_coins - unmodified.meta_coins,
+    )
+
+
+def run_modifier_bonus_text(run_coins, meta_coins):
+    return (
+        f'Run modifier bonus: {run_coins:+d} Ore / '
+        f'{meta_coins:+d} {"Gem" if abs(meta_coins) == 1 else "Gems"}'
+    )
+
+
 def reward_breakdown_lines(
     mission_class,
     *,
@@ -33,18 +78,20 @@ def reward_breakdown_lines(
         f'{definition.display_name} base: +{definition.run_coins} Ore, '
         f'+{gem_text(definition.meta_coins)}',
     ]
-    if reward.base_run_coins != definition.run_coins:
-        lines.append(
-            f'Modified mission Ore: +{reward.base_run_coins}'
+    if modifiers:
+        modifier_run_coins, modifier_meta_coins = run_modifier_reward_delta(
+            mission_class,
+            victory_coin_bonus_level=victory_coin_bonus_level,
+            modifiers=modifiers,
+            mission_modifier=mission_modifier,
+            challenge_hunter_level=challenge_hunter_level,
+            gem_dividend_level=gem_dividend_level,
+            remaining_run_coins=remaining_run_coins,
+            config=config,
         )
-    modified_meta = (
-        reward.meta_coins
-        - reward.mission_bonus_meta_coins
-        - reward.challenge_hunter_meta_coins
-        - reward.gem_dividend_meta_coins
-    )
-    if modified_meta != definition.meta_coins:
-        lines.append(f'Modified Gems: +{gem_text(modified_meta)}')
+        lines.append(run_modifier_bonus_text(
+            modifier_run_coins, modifier_meta_coins
+        ))
     if reward.victory_bonus_run_coins:
         lines.append(
             'Permanent Victory Bonus: '

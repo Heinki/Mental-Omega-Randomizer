@@ -10,6 +10,8 @@
       "max_selected_permanent_units": 5,
       "starting_run_coins": 5,
       "maximum_starting_ore": 50,
+      "run_completion_meta_coins": 20,
+      "run_completion_modifier_meta_coins": 2,
       "minimum_shop_price": 1,
       "reroll_policy": "per_run",
       "archipelago_purchase_locations": 5,
@@ -825,18 +827,18 @@
     "modifiers": {
       "greedy": {
         "display_name": "Greedy",
-        "description": "Each victory gives 25% more Gems than normal. You start with 2 less Ore.",
+        "description": "Each victory gives 1 extra Gem. You start with 2 less Ore.",
         "effects": {
-          "meta_reward_percent": 125,
+          "meta_reward_flat": 1,
           "starting_run_coins_flat": -2
         }
       },
       "veteran_economy": {
         "display_name": "Veteran Economy",
-        "description": "Each successfully completed mission gives +2 Ore. Each run-shop price costs 20% more.",
+        "description": "Start each mission with 2,000 extra Credits, but each victory gives 1 less Ore.",
         "effects": {
-          "shop_price_percent": 120,
-          "run_reward_flat": 2
+          "mission_starting_credits_flat": 2000,
+          "run_reward_flat": -1
         }
       },
       "poor_logistics": {
@@ -849,10 +851,10 @@
       },
       "generous_command": {
         "display_name": "Generous Command",
-        "description": "You start with 5 extra Ore, but each victory gives 20% fewer Gems than normal. Saved Gems are never removed.",
+        "description": "You start with 5 extra Ore, but each victory gives 1 less Gem. Saved Gems are never removed.",
         "effects": {
           "starting_run_coins_flat": 5,
-          "meta_reward_percent": 80
+          "meta_reward_flat": -1
         }
       },
       "blind_choice": {
@@ -881,11 +883,11 @@
       },
       "black_market": {
         "display_name": "Black Market",
-        "description": "Each stage has 4 extra Shop offers, but run-shop prices are 25% higher.",
+        "description": "Each stage has 4 extra Shop offers, but each run-shop price costs 2 extra Ore.",
         "effects": {
           "unit_inventory_flat": 2,
           "power_inventory_flat": 2,
-          "shop_price_percent": 125
+          "shop_price_flat": 2
         }
       },
       "elite_force": {
@@ -932,18 +934,54 @@
       },
       "liquid_assets": {
         "display_name": "Liquid Assets",
-        "description": "Run-shop prices are 20% lower, but unused Ore disappears after each stage.",
+        "description": "Each run-shop price costs 2 less Ore, but unused Ore disappears after each stage.",
         "effects": {
-          "shop_price_percent": 80,
+          "shop_price_flat": -2,
           "liquidate_ore_after_victory": 1
         }
       },
       "treasure_hunter": {
         "display_name": "Treasure Hunter",
-        "description": "Challenge missions give double base Gems, but normal missions give 25% less Ore.",
+        "description": "Challenge missions give double base Gems, but normal missions give 2 less Ore.",
         "effects": {
           "challenge_meta_reward_percent": 200,
-          "normal_run_reward_percent": 75
+          "normal_run_reward_flat": -2
+        }
+      },
+      "low_tech_war": {
+        "display_name": "Low-Tech War",
+        "description": "Tier 3 units, Special units, and powers are not offered. Tier 3 units are also blocked from the permanent starting loadout. Each victory gives 2 extra Ore.",
+        "effects": {
+          "run_reward_flat": 2,
+          "exclude_tier_3_offers": 1,
+          "exclude_special_offers": 1,
+          "exclude_power_offers": 1
+        }
+      },
+      "superweapon_arms_race": {
+        "display_name": "Superweapon Arms Race",
+        "description": "Each stage offers up to 2 additional cross-faction powers, but hostile AI Tier 1 units gain Armor I.",
+        "effects": {
+          "power_inventory_flat": 2,
+          "cross_faction_power_offers": 1,
+          "enemy_armor_stacks": 1
+        }
+      },
+      "hardcore": {
+        "display_name": "Hardcore",
+        "description": "Every mission uses Mental difficulty and an enemy bonus modifier. Difficulty assists are disabled.",
+        "effects": {
+          "force_hardest_difficulty": 1,
+          "force_enemy_challenge": 1,
+          "disable_assists": 1
+        }
+      },
+      "faction_roulette": {
+        "display_name": "Faction Roulette",
+        "description": "All Factions only. Shop stock rotates through Allies, Soviets, Epsilon, and Foehn each stage. Mission rerolls are disabled.",
+        "effects": {
+          "rotate_shop_faction": 1,
+          "disable_rerolls": 1
         }
       }
     }

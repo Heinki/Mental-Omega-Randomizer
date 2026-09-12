@@ -8,6 +8,7 @@ from randomizer.config.static import load_static_config
 from .active import active_shop_reward_ids
 from .text import gem_text
 from .model import MissionEconomyClass
+from .modifiers import modifier_effects
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,15 @@ def mission_modifier_for_offer(run_seed, stage, offer, *, owned_reward_ids=()):
 def _raw_run_offer_modifier(
     run, offer, offer_index, *, challenge_slots, owned_reward_ids
 ):
+    if modifier_effects(run.modifiers)['force_enemy_challenge']:
+        stream = (
+            f'shop_hardcore_challenge\0{run.seed}\0{run.stage}\0'
+            f'{offer_index}\0{offer.mission_code}'
+        ).encode('utf-8')
+        digest = sha256(stream).digest()
+        return CHALLENGE_MODIFIERS[
+            int.from_bytes(digest[:2], 'big') % len(CHALLENGE_MODIFIERS)
+        ]
     if 0 <= offer_index < max(0, int(challenge_slots)):
         stream = (
             f'shop_permanent_challenge\0{run.seed}\0{run.stage}\0'

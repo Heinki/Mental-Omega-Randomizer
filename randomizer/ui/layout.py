@@ -685,19 +685,32 @@ def _build_right_panel(self, main_frame):
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
     self.shop_modifier_difficulty_var = tk.StringVar(value='Difficulty +0')
+    self.shop_modifier_victory_bonus_var = tk.StringVar(value=(
+        'Run victory reward: '
+        f'+{self.shop_config.run_completion_meta_coins} base Gems, plus '
+        f'+{self.shop_config.run_completion_modifier_meta_coins} Gems per '
+        'enabled modifier. Enabled run modifiers stay active for the full run.'
+    ))
+    ttk.Label(
+        modifier_frame,
+        textvariable=self.shop_modifier_victory_bonus_var,
+        style='Shop.Reward.TLabel',
+        wraplength=720,
+    ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 6))
     ttk.Label(
         modifier_frame,
         textvariable=self.shop_modifier_status_var,
         style='Shop.Help.TLabel',
         wraplength=720,
-    ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 6))
+    ).grid(row=1, column=0, columnspan=2, sticky='w', pady=(0, 6))
     ttk.Label(
         modifier_frame,
         textvariable=self.shop_modifier_difficulty_var,
         font=('Segoe UI', 10, 'bold'),
         style='Shop.Reward.TLabel',
-    ).grid(row=0, column=1, sticky='e', pady=(0, 6))
+    ).grid(row=1, column=1, sticky='e', pady=(0, 6))
     self.shop_modifier_buttons = []
+    self.shop_modifier_button_by_id = {}
     for column in range(2):
         modifier_frame.columnconfigure(column, weight=1)
     for index, (modifier_id, variable) in enumerate(
@@ -706,7 +719,7 @@ def _build_right_panel(self, main_frame):
         definition = self.shop_config.modifiers[modifier_id]
         modifier_card = ttk.Frame(modifier_frame, padding=(0, 2))
         modifier_card.grid(
-            row=1 + index // 2,
+            row=2 + index // 2,
             column=index % 2,
             sticky='ew',
             padx=(0, 12),
@@ -715,6 +728,9 @@ def _build_right_panel(self, main_frame):
             modifier_card,
             text=f'Enable {definition.display_name}',
             variable=variable,
+            command=lambda modifier_id=modifier_id: (
+                self._shop_modifier_toggled(modifier_id)
+            ),
         )
         checkbutton.grid(row=0, column=0, sticky='w')
         ttk.Label(
@@ -725,6 +741,7 @@ def _build_right_panel(self, main_frame):
         ).grid(row=1, column=0, sticky='w', padx=(24, 0))
         WidgetTooltip(checkbutton, definition.description)
         self.shop_modifier_buttons.append(checkbutton)
+        self.shop_modifier_button_by_id[modifier_id] = checkbutton
 
     self.shop_setup_start_button = ttk.Button(
         shop_settings_frame,

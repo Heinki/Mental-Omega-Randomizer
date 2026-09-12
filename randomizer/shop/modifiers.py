@@ -40,6 +40,15 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
         'liquidate_ore_after_victory': 0,
         'challenge_meta_reward_percent': Fraction(1, 1),
         'normal_run_reward_percent': Fraction(1, 1),
+        'normal_run_reward_flat': 0,
+        'exclude_tier_3_offers': 0,
+        'exclude_special_offers': 0,
+        'exclude_power_offers': 0,
+        'cross_faction_power_offers': 0,
+        'enemy_armor_stacks': 0,
+        'force_hardest_difficulty': 0,
+        'force_enemy_challenge': 0,
+        'rotate_shop_faction': 0,
     }
     seen = set()
     for modifier_id in modifier_ids or ():
@@ -61,6 +70,57 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
 def modifier_difficulty(modifier_ids):
     """Return one visible difficulty point per distinct modifier."""
     return len(tuple(dict.fromkeys(str(item) for item in modifier_ids or ())))
+
+
+SHOP_FACTION_ROTATION = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
+
+
+def modifier_shop_faction(modifier_ids, stage, default='All Campaigns'):
+    """Return stage-local stock faction for Faction Roulette."""
+    effects = modifier_effects(modifier_ids)
+    if not effects['rotate_shop_faction']:
+        return str(default or 'All Campaigns')
+    return SHOP_FACTION_ROTATION[
+        (max(1, int(stage)) - 1) % len(SHOP_FACTION_ROTATION)
+    ]
+
+
+def modifier_allows_faction_pool(modifier_ids, faction_filter):
+    """Faction Roulette requires the unrestricted four-faction pool."""
+    return not (
+        modifier_effects(modifier_ids)['rotate_shop_faction']
+        and str(faction_filter) != 'All Campaigns'
+    )
+
+
+def modifier_allows_shop_offer(entry, reward, modifier_ids):
+    """Apply run-wide access-offer exclusions."""
+    effects = modifier_effects(modifier_ids)
+    reward_type = getattr(entry.reward_type, 'value', entry.reward_type)
+    if reward_type == 'power_access':
+        return not effects['exclude_power_offers']
+    if reward_type != 'unit_access':
+        return True
+    if effects['exclude_tier_3_offers'] and entry.tier == 'tier_3':
+        return False
+    if effects['exclude_special_offers'] and reward.get('special_reward'):
+        return False
+    return True
+
+
+def modifier_allows_loadout_entry(entry, reward, modifier_ids):
+    """Apply access restrictions to permanent starting-loadout entries."""
+    effects = modifier_effects(modifier_ids)
+    reward_type = getattr(entry.reward_type, 'value', entry.reward_type)
+    return not (
+        reward_type == 'unit_access'
+        and effects['exclude_tier_3_offers']
+        and entry.tier == 'tier_3'
+    )
+
+
+def modifier_forces_hardest_difficulty(modifier_ids):
+    return bool(modifier_effects(modifier_ids)['force_hardest_difficulty'])
 
 
 def modifier_mission_offer_count(

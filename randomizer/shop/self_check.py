@@ -82,9 +82,14 @@ from .mission_modifiers import (
 )
 from .modifiers import (
     hidden_offer_codes,
+    modifier_allows_faction_pool,
+    modifier_allows_loadout_entry,
+    modifier_allows_shop_offer,
     modifier_difficulty,
     modifier_effects,
+    modifier_forces_hardest_difficulty,
     modifier_mission_offer_count,
+    modifier_shop_faction,
 )
 from .model import (
     SHOP_ACCESS_REWARD_MODE,
@@ -109,6 +114,7 @@ from .service import ShopProgressionService
 from .state import ShopStateError, normalize_shop_profile, normalize_shop_run
 from .summary import reward_breakdown_lines, run_summary_lines
 from .transitions import (
+    ShopTransitionError,
     abandon_run,
     apply_mission_difficulty_assist,
     apply_mission_failure,
@@ -137,7 +143,8 @@ def _requested_upgrade_modifier_checks():
         'glass_cannon', 'overclocked_factories', 'black_market',
         'elite_force', 'no_safety_net', 'support_doctrine',
         'war_economy', 'narrow_intelligence', 'liquid_assets',
-        'treasure_hunter',
+        'treasure_hunter', 'low_tech_war', 'superweapon_arms_race',
+        'hardcore', 'faction_roulette',
     }
     all_modifier_ids = tuple(SHOP_CONFIG.modifiers)
     effects = modifier_effects(all_modifier_ids)
@@ -233,6 +240,61 @@ def _requested_upgrade_modifier_checks():
         modifiers=('treasure_hunter',),
     )
     base_reward = SHOP_CONFIG.mission_rewards[MissionEconomyClass.ACT_1]
+    catalogue = shop_catalogue()
+    unit_access = tuple(
+        entry for entry in catalogue
+        if entry.reward_type is ShopRewardType.UNIT_ACCESS
+    )
+    power_access = tuple(
+        entry for entry in catalogue
+        if entry.reward_type is ShopRewardType.POWER_ACCESS
+    )
+    low_tech_tier_3 = next(
+        entry for entry in unit_access if entry.tier == 'tier_3'
+    )
+    low_tech_special = next(
+        entry for entry in unit_access
+        if entry.tier != 'tier_3'
+        if canonical_reward_for_id(entry.reward_id).get('special_reward')
+    )
+    low_tech_access = tuple(
+        entry for entry in (*unit_access, *power_access)
+        if modifier_allows_shop_offer(
+            entry,
+            canonical_reward_for_id(entry.reward_id),
+            ('low_tech_war',),
+        )
+    )
+    try:
+        start_new_run(
+            ShopProfile(),
+            run_id='mo-shop-low-tech-loadout-self-check',
+            seed='MO-SHOP-LOW-TECH-LOADOUT',
+            mission_offers=(final_offer,),
+            selected_reward_ids=(low_tech_tier_3.reward_id,),
+            permanent_entitlement_ids=(low_tech_tier_3.reward_id,),
+            modifiers=('low_tech_war',),
+        )
+    except ShopTransitionError as exc:
+        low_tech_loadout_rejected = 'Low-Tech War' in str(exc)
+    else:
+        low_tech_loadout_rejected = False
+    completion_run = replace(
+        final_run,
+        run_id='completion-bonus',
+        modifiers=('greedy', 'elite_force'),
+    )
+    completion = apply_mission_victory(
+        ShopProfile(), completion_run, 'FINALE'
+    )
+    hardcore_run = replace(
+        final_run,
+        run_id='hardcore',
+        modifiers=('hardcore',),
+    )
+    hardcore_modifier = mission_modifier_for_run_offer(
+        hardcore_run, final_offer
+    )
 
     return {
         'requested_permanent_upgrades_valid': required_upgrades.issubset(
@@ -268,8 +330,76 @@ def _requested_upgrade_modifier_checks():
         ),
         'treasure_hunter_valid': bool(
             challenge_reward.meta_coins == base_reward.meta_coins * 2
-            and normal_reward.base_run_coins
-            == int(base_reward.run_coins * 0.75)
+            and normal_reward.base_run_coins == base_reward.run_coins - 2
+        ),
+        'flat_modifier_currency_valid': bool(
+            mission_reward(
+                MissionEconomyClass.ACT_1, modifiers=('greedy',)
+            ).meta_coins == base_reward.meta_coins + 1
+            and mission_reward(
+                MissionEconomyClass.ACT_1,
+                modifiers=('generous_command',),
+            ).meta_coins == max(0, base_reward.meta_coins - 1)
+            and discounted_shop_price(
+                4, modifiers=('black_market',)
+            ) == 6
+            and discounted_shop_price(
+                4, modifiers=('liquid_assets',)
+            ) == 2
+            and modifier_effects(
+                ('veteran_economy',)
+            )['mission_starting_credits_flat'] == 2000
+            and mission_reward(
+                MissionEconomyClass.ACT_1,
+                modifiers=('veteran_economy',),
+            ).run_coins == base_reward.run_coins - 1
+        ),
+        'new_run_modifiers_valid': bool(
+            low_tech_access
+            and all(
+                entry.reward_type is ShopRewardType.UNIT_ACCESS
+                and entry.tier != 'tier_3'
+                and not canonical_reward_for_id(
+                    entry.reward_id
+                ).get('special_reward')
+                for entry in low_tech_access
+            )
+            and not modifier_allows_loadout_entry(
+                low_tech_tier_3,
+                canonical_reward_for_id(low_tech_tier_3.reward_id),
+                ('low_tech_war',),
+            )
+            and modifier_allows_loadout_entry(
+                low_tech_special,
+                canonical_reward_for_id(low_tech_special.reward_id),
+                ('low_tech_war',),
+            )
+            and low_tech_loadout_rejected
+            and modifier_effects(
+                ('superweapon_arms_race',)
+            )['enemy_armor_stacks'] == 1
+            and modifier_forces_hardest_difficulty(('hardcore',))
+            and hardcore_modifier is not None
+            and hardcore_modifier.challenge
+            and tuple(
+                modifier_shop_faction(('faction_roulette',), stage)
+                for stage in range(1, 9)
+            ) == (
+                'Allies', 'Soviets', 'Epsilon', 'Foehn',
+                'Allies', 'Soviets', 'Epsilon', 'Foehn',
+            )
+            and modifier_allows_faction_pool(
+                ('faction_roulette',), 'All Campaigns'
+            )
+            and not modifier_allows_faction_pool(
+                ('faction_roulette',), 'Allies'
+            )
+        ),
+        'run_completion_modifier_bonus_valid': bool(
+            SHOP_CONFIG.run_completion_meta_coins == 20
+            and SHOP_CONFIG.run_completion_modifier_meta_coins == 2
+            and completion.reward.run_completion_meta_coins == 24
+            and completion.run.status is RunStatus.COMPLETED
         ),
         'shop_clone_modifiers_valid': bool(
             rules['CLONE']['Strength'] == '80'
@@ -1178,7 +1308,7 @@ def _phase_seven_checks():
             len(hidden) == 1
             and hidden == hidden_offer_codes(run)
             and hidden[0] in {offer.mission_code for offer in offers}
-            and adjusted.run_coins == 13
+            and adjusted.run_coins == 10
             and adjusted.meta_coins == 5
             and poor_logistics_reward.run_coins == 7
             and starting_run_coins(modifiers=('poor_logistics',)) == 5
@@ -1186,11 +1316,12 @@ def _phase_seven_checks():
                 5, modifiers=('poor_logistics',)
             ) == 7
             and generous_reward.meta_coins == 2
-            and 'meta_reward_flat' not in SHOP_CONFIG.modifiers[
+            and SHOP_CONFIG.modifiers[
                 'generous_command'
-            ].effects
+            ].effects['meta_reward_flat'] == -1
             and any('Permanent Victory Bonus: +2' in line for line in breakdown)
-            and any('Total: +15 Ore' in line for line in breakdown)
+            and any('Run modifier bonus: +0 Ore / +1 Gem' in line for line in breakdown)
+            and any('Total: +12 Ore' in line for line in breakdown)
             and 'Persistent Gems: 42' in completion_summary
             and restored == run
         ),
@@ -1270,8 +1401,8 @@ def validate_shop_domain():
         pass
     mixed_modifier_config = load_static_config('shop_mode.json')
     mixed_modifier_config['modifiers']['greedy']['effects'][
-        'meta_reward_flat'
-    ] = 1
+        'meta_reward_percent'
+    ] = 125
     try:
         validate_sections(
             'shop_mode.json', mixed_modifier_config, 'shop-self-check'
