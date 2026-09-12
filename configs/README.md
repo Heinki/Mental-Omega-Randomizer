@@ -53,7 +53,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   GenericPrerequisite aliases. `ground_roles` and `naval_roles` identify the
   separately faction-shuffled Chaos/Shop role groups; every naval-role entry
   must use production category `naval`.
-- `shop_mode.json`: Shop Mode run length, mission offers and class rewards,
+- `shop_mode.json`: Shop Mode run length, mission choices and class rewards,
   stage difficulty weights, Ore/Gem unit prices, permanent upgrade
   definitions, reward exclusions, and launcher-only mission effects.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
@@ -128,34 +128,40 @@ behavior. This policy never changes Shop currency or mission-credit values.
 `excluded_reward_ids` removes canonical rewards from Shop stock without
 retiring them from normal Randomizer progression or old save receipts.
 
+Legacy code and saved-state identifiers retain `MissionOffer`,
+`mission_offers`, and `mission_offer_count` for compatibility. Player-facing
+text calls every map presented at a stage a **mission choice**.
+
 `mission_rewards` must contain exactly `act_1`, `act_2`, `operation`, and
 `finale`. Each class has a display label, unique positive difficulty rank, and
 non-negative Ore (`run_coins`) and Gem (`meta_coins`) rewards.
-Gem rewards must increase strictly with difficulty. Offer generation samples
-only its named Shop RNG stream. Stages 1–2 offer only Act 1 and include a
+Gem rewards must increase strictly with difficulty. Mission-choice generation
+samples only its named Shop RNG stream. Stages 1–2 offer only Act 1 and include a
 fixed-unit or hero mission when the eligible pool provides one. From stage 3,
 every remaining eligible mission has equal selection probability, regardless
-of class or run length. All three offers can be finales. Completed missions
-and duplicate offers are excluded; mission-pool inclusion settings still apply.
+of class or run length. All three mission choices can be finales. Completed
+missions and duplicate choices are excluded; mission-pool inclusion settings
+still apply.
 The former `stage_class_weights` section is no longer used; older configuration
 files containing it remain loadable.
 `stage_difficulty_weights` independently controls actual in-game Casual,
-Normal, and Mental difficulty for each visible mission offer. Profiles use the
-same ascending percentage boundaries. The offer's difficulty is derived from
+Normal, and Mental difficulty for each visible mission choice. Profiles use the
+same ascending percentage boundaries. Each choice's difficulty is derived from
 run seed, stage, and mission code without consuming mission-selection RNG.
 Stages 1–3 are Casual-heavy, stages 4–5 are Normal-heavy, stages 6–7 introduce
 Mental, and stages 8–10 give Normal and Mental equal weight. Difficulty Assist
-reduces only the chosen offer by one step.
-`unit_inventory_size` controls the deterministic run-shop unit stock. Unit
+reduces only the chosen mission by one step.
+`unit_inventory_size` controls deterministic Current Run Shop unit stock. Unit
 stock remains stable during a stage and rotates after each mission victory;
 eligible buffs remain available for every currently owned unit. Access entries
 whose target is already active are removed before display and receive stable
-replacement offers, covering starters, permanent/AP access, and run purchases.
+replacement stock entries, covering starters, permanent/AP access, and run
+purchases.
 `power_inventory_size` controls the power stock shown beside unit/building
-offers in the same Run Shop list and uses the same owned-access exclusion.
+stock in the same Current Run Shop list and uses the same owned-access exclusion.
 `discount_specialization` retains its stable save ID but applies its configured
-`ore_per_level` discount to all run-shop access and buff entries. Old saved
-category fields remain readable and are ignored.
+`ore_per_level` discount to all Current Run Shop access and buff entries. Old
+saved category fields remain readable and are ignored.
 
 `mission_effects` defines deterministic one-mission player boons and hostile
 challenges. Each entry contains display text, non-negative Ore/Gem bonuses,

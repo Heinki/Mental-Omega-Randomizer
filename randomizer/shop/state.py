@@ -264,7 +264,7 @@ def _mission_offers(value):
             required=True,
         ).upper()
         if code in seen:
-            raise ShopStateError(f'Duplicate Shop mission offer {code!r}')
+            raise ShopStateError(f'Duplicate Shop mission choice {code!r}')
         try:
             economy_class = MissionEconomyClass(offer.get('class'))
         except ValueError as exc:
@@ -292,12 +292,12 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
     stage = _positive_int(document.get('stage'), 'stage', 1)
     if stage > run_length:
         raise ShopStateError(
-            f'Shop run stage {stage} exceeds run length {run_length}'
+            f'Shop stage {stage} exceeds run length {run_length}'
         )
     offers = _mission_offers(document.get('mission_offers'))
     if len(offers) > config.mission_offer_count:
         raise ShopStateError(
-            f'Shop run has {len(offers)} mission offers; maximum is '
+            f'Shop run has {len(offers)} mission choices; maximum is '
             f'{config.mission_offer_count}'
         )
     selected_mission = _string(
@@ -307,7 +307,7 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
     offer_codes = {offer.mission_code for offer in offers}
     if selected_mission and selected_mission not in offer_codes:
         raise ShopStateError(
-            f'Selected Shop mission {selected_mission!r} is not in current offer'
+            f'Selected Shop mission {selected_mission!r} is not a current choice'
         )
     assisted_mission = _string(
         document.get('assisted_mission_code'), 'assisted_mission_code'
@@ -315,7 +315,7 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
     assisted_mission = assisted_mission.upper() if assisted_mission else None
     if assisted_mission and assisted_mission not in offer_codes:
         raise ShopStateError(
-            f'Assisted Shop mission {assisted_mission!r} is not in current offer'
+            f'Assisted Shop mission {assisted_mission!r} is not a current choice'
         )
     mission_committed = document.get('mission_committed', False)
     if not isinstance(mission_committed, bool):

@@ -107,12 +107,14 @@ class ShopController(ShopPolishController):
         self.shop_repository = ShopRepository()
         self.shop_service = ShopProgressionService(self.shop_repository)
         self.shop_profile, self.shop_run = self.shop_repository.load()
-        self.shop_stage_var = tk.StringVar(value='Run — / 10')
-        self.shop_status_var = tk.StringVar(value='Status: No Run')
-        self.shop_run_coins_var = tk.StringVar(value='Ore: 0')
-        self.shop_meta_coins_var = tk.StringVar(value='Gems: 0')
-        self.shop_rerolls_var = tk.StringVar(value='Rerolls: 0 / 0')
-        self.shop_difficulty_var = tk.StringVar(value='Difficulty: +0')
+        self.shop_stage_var = tk.StringVar(value='Stage — / 10')
+        self.shop_status_var = tk.StringVar(value='Run Status: Not Started')
+        self.shop_run_coins_var = tk.StringVar(value='Run Ore: 0')
+        self.shop_meta_coins_var = tk.StringVar(value='Permanent Gems: 0')
+        self.shop_rerolls_var = tk.StringVar(
+            value='Mission Rerolls Left: 0'
+        )
+        self.shop_difficulty_var = tk.StringVar(value='Run Difficulty: +0')
         self.shop_message_var = tk.StringVar(value='')
         self.shop_ap_purchase_status_var = tk.StringVar(value='')
         saved_faction_pool = self.config.get('shop_faction_pool')
@@ -814,13 +816,19 @@ class ShopController(ShopPolishController):
             )
         run = self.shop_run
         if run is None:
-            self.shop_stage_var.set(f'Run — / {self.shop_config.run_length}')
-            self.shop_status_var.set('Status: No Run')
-            self.shop_run_coins_var.set('Ore: 0')
+            self.shop_stage_var.set(
+                f'Stage — / {self.shop_config.run_length}'
+            )
+            self.shop_status_var.set('Run Status: Not Started')
+            self.shop_run_coins_var.set('Run Ore: 0')
         else:
-            self.shop_stage_var.set(f'Run {run.stage} / {run.run_length}')
-            self.shop_status_var.set(f'Status: {run.status.value.title()}')
-            self.shop_run_coins_var.set(f'Ore: {run.run_coins}')
+            self.shop_stage_var.set(
+                f'Stage {run.stage} / {run.run_length}'
+            )
+            self.shop_status_var.set(
+                f'Run Status: {run.status.value.title()}'
+            )
+            self.shop_run_coins_var.set(f'Run Ore: {run.run_coins}')
         if hasattr(self, 'shop_status_label'):
             status_style = (
                 'Shop.Status.TLabel'
@@ -831,11 +839,20 @@ class ShopController(ShopPolishController):
             )
             self.shop_status_label.configure(style=status_style)
         self.shop_meta_coins_var.set(
-            f'Gems: {self.shop_profile.meta_coins}'
+            f'Permanent Gems: {self.shop_profile.meta_coins}'
         )
         capacity = self._shop_reroll_capacity()
         used = run.rerolls_used if run is not None else 0
-        self.shop_rerolls_var.set(f'Rerolls: {used} / {capacity}')
+        self.shop_rerolls_var.set(
+            f'Mission Rerolls Left: {max(0, capacity - used)}'
+        )
+        if hasattr(self, 'shop_choices_frame'):
+            self.shop_choices_frame.configure(
+                text=(
+                    f'Mission Choices — Stage {run.stage} / {run.run_length}'
+                    if run is not None else 'Mission Choices'
+                )
+            )
         self._refresh_shop_missions()
         self.refresh_shop_catalogue()
         self._refresh_shop_loadout()
@@ -851,7 +868,7 @@ class ShopController(ShopPolishController):
         self.refresh_progress_view()
 
     def refresh_shop_debug_completion_choices(self):
-        """Populate the hidden developer picker from current Shop offers."""
+        """Populate hidden developer picker from current mission choices."""
         if not hasattr(self, 'shop_debug_mission_combo'):
             return
         run = self.shop_repository.load_run()
@@ -1076,7 +1093,7 @@ class ShopController(ShopPolishController):
             'Give Up Shop Run?',
             'End this run now?\n\n'
             'Run Ore and run purchases will be abandoned. '
-            'Gems and permanent unlocks are kept.',
+            'Permanent Gems and permanent unlocks are kept.',
             parent=self,
         ):
             return
@@ -1201,7 +1218,7 @@ class ShopController(ShopPolishController):
         )
         self.shop_repository.save_run(repaired)
         self._set_shop_message(
-            f'Updated stage {run.stage} Shop mission offers.'
+            f'Updated mission choices for Shop stage {run.stage}.'
         )
         return repaired
 
@@ -1288,7 +1305,8 @@ class ShopController(ShopPolishController):
             if run.mission_committed:
                 if run.selected_mission_code != code:
                     raise ShopTransitionError(
-                        f'Shop stage is committed to {run.selected_mission_code}'
+                        'Current Shop stage is committed to mission '
+                        f'{run.selected_mission_code}'
                     )
             else:
                 self.shop_service.select_mission(code)
@@ -1328,7 +1346,8 @@ class ShopController(ShopPolishController):
                 )
             if run.mission_committed and run.selected_mission_code != code:
                 raise ShopTransitionError(
-                    f'Shop stage is committed to {run.selected_mission_code}'
+                    'Current Shop stage is committed to mission '
+                    f'{run.selected_mission_code}'
                 )
             mission = self._shop_mission(code)
             if not mission or not mission.get('scenario'):
@@ -1668,10 +1687,13 @@ class ShopController(ShopPolishController):
         if not self.config.get('shop_mode_rules_acknowledged', False):
             if not messagebox.askokcancel(
                 'Shop Mode Rules',
-                'Shop Mode is a one-attempt run.\n\n'
-                'Do not save, load, or restart a mission. Any of these actions, '
-                'a defeat, or closing the game before victory counts as a failed '
-                'mission and can end the run.\n\n'
+                f'One Shop run contains {self.shop_config.run_length} stages. '
+                'At each stage, choose one mission. That selected mission gets '
+                'one attempt.\n\nDo not save, load, or restart a mission. Any '
+                'of these actions, a defeat, or closing the game before victory '
+                'counts as a failed mission and can end the run. An Emergency '
+                'Revival keeps the run alive by repeating the same stage with '
+                'new mission choices.\n\n'
                 'Select OK only when you are ready to begin.',
                 icon='warning',
                 parent=self,
@@ -2259,10 +2281,10 @@ class ShopController(ShopPolishController):
             )
         )
         score = modifier_difficulty(modifiers)
-        self.shop_difficulty_var.set(f'Difficulty: +{score}')
+        self.shop_difficulty_var.set(f'Run Difficulty: +{score}')
         if hasattr(self, 'shop_modifier_difficulty_var'):
             self.shop_modifier_difficulty_var.set(
-                f'Run difficulty +{score}'
+                f'Run Difficulty +{score}'
             )
         if hasattr(self, 'shop_modifier_victory_bonus_var'):
             modifier_gems_each = (

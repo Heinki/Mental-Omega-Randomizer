@@ -17,7 +17,7 @@ Start here when changing code. Player settings belong in
   reward data.
 - `randomizer/rewards/display.py`: canonicalization, stacking, and display.
 - `randomizer/rewards/catalogue.py`: stable public reward facade.
-- `randomizer/shop/`: pure Shop Mode models, economy, mission offers,
+- `randomizer/shop/`: pure Shop Mode models, economy, mission choices,
   purchases, lifecycle transitions, and persisted-state normalization.
 - `randomizer/shop/persistence.py`: atomic permanent profile/current-run files
   plus write-ahead recovery for transitions that update both documents.
@@ -28,9 +28,9 @@ Start here when changing code. Player settings belong in
 - `randomizer/shop/archipelago.py`: stable AP room/team/slot identity plus the
   idempotent received-item projection used by Shop loadouts. AP inventory stays
   authoritative in the existing received-item ledger, never in Shop profile
-  permanent purchases. New signed AP Shop seeds use its isolated deterministic
-  run-number stream to roll received unit access into unused loadout slots;
-  received buffs and powers remain automatic.
+  permanent purchases. Legacy random-loadout compatibility uses an isolated
+  deterministic stream keyed by Shop run ordinal. New signed AP Shop seeds
+  activate all received units; received buffs and powers remain automatic.
 - `randomizer/shop/archipelago_purchases.py`: durable per-slot generated-check
   debits. A pending transaction is saved before location reporting and becomes
   checked only from authoritative server location state.
@@ -117,10 +117,11 @@ when an older external `ui.json` has no profiles.
 6. Pipeline reads fresh extracted source, discovers ownership, applies
    access/clones/buffs/powers, injects progress markers, writes one loose map.
 7. Debug-log watcher unlocks stored checks exactly once. In Shop Mode, victory
-   atomically grants both currencies and creates next-stage offers; detected
-   failure ends the run. AP Shop victories additionally report their locked
-   stage marker and optional shuffled reward location, while generated Mental
-   Coin purchases persist a pending debit before reporting their location.
+   atomically grants both currencies and creates next-stage mission choices;
+   detected failure ends the run. AP Shop victories additionally report their
+   locked stage-victory marker and optional shuffled reward location, while
+   generated Mental Coin purchases persist a pending debit before reporting
+   their location.
 
 No pure module imports `randomizer/application/`. Tk variables stay on UI thread.
 Workers receive frozen plain Python data.

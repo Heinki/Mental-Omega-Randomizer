@@ -519,9 +519,11 @@ def _build_right_panel(self, main_frame):
     ttk.Label(
         shop_settings_frame,
         text=(
-            'Shop Mode manages mission count, mission pool, difficulty curve, '
-            'starter access, rewards, and failure rules. Only settings used by '
-            'Shop Mode are shown here.'
+            f'Shop run = complete {self.shop_config.run_length}-stage session. '
+            'Stage = numbered step '
+            f'(Stage 1 / {self.shop_config.run_length}). Mission = map chosen '
+            'for that stage. Each selected mission gets one attempt. An '
+            'Emergency Revival repeats a failed stage with new mission choices.'
         ),
         style='Muted.TLabel',
         justify='left',
@@ -684,7 +686,7 @@ def _build_right_panel(self, main_frame):
         row=15, column=0, columnspan=2, sticky='ew', pady=(10, 0)
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
-    self.shop_modifier_difficulty_var = tk.StringVar(value='Difficulty +0')
+    self.shop_modifier_difficulty_var = tk.StringVar(value='Run Difficulty +0')
     self.shop_modifier_victory_bonus_var = tk.StringVar(value=(
         'Run victory reward: '
         f'+{self.shop_config.run_completion_meta_coins} base Gems, plus '

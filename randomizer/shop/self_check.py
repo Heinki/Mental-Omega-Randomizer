@@ -1322,7 +1322,7 @@ def _phase_seven_checks():
             and any('Permanent Victory Bonus: +2' in line for line in breakdown)
             and any('Run modifier bonus: +0 Ore / +1 Gem' in line for line in breakdown)
             and any('Total: +12 Ore' in line for line in breakdown)
-            and 'Persistent Gems: 42' in completion_summary
+            and 'Permanent Gems: 42' in completion_summary
             and restored == run
         ),
         'power_shop_purchase_valid': bool(
@@ -1335,7 +1335,7 @@ def _phase_seven_checks():
         ),
         'run_summary_valid': bool(
             completion_summary[0] == 'RUN VICTORY'
-            and 'Missions won: 10 / 10' in completion_summary
+            and 'Missions Won: 10 / 10' in completion_summary
             and failure_summary[0] == 'RUN OVER'
             and any('Failed at stage 4' in line for line in failure_summary)
         ),

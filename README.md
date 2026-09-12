@@ -192,8 +192,8 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
-Shop Gems, permanent unit/power unlocks, and their buffs live in
-`shop_profile.json`; the current run's Ore, purchases, and mission state live
+Permanent Gems, permanent unit/power unlocks, and their buffs live in
+`shop_profile.json`; Run Ore, purchases, and mission state live
 in `shop_run.json`. Permanent powers activate automatically in future Shop
 runs and do not consume unit loadout slots. Releases replace
 neither file. Both use atomic writes and forward-compatible normalization, so

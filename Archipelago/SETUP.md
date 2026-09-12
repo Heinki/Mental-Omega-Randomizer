@@ -64,8 +64,8 @@ For an AP Shop run, select **Shop Mode**, save the Player YAML, generate and hos
 the room, then connect the launcher. **Start Shop Mode** remains available after
 connection validation and after a failed or completed run. Generation settings
 remain locked while connected. AP purchases are scouted; stage victories are
-sent as checks, and stage-marker receipts are acknowledged without becoming
-ordinary Shop rewards. Only a completed run belonging to the current AP slot
+sent as checks, and stage-victory marker receipts are acknowledged without
+becoming ordinary Shop rewards. Only a completed run belonging to the current AP slot
 can report its goal.
 
 Run `tools/check_archipelago_integration.py --archipelago-root /path/to/Archipelago`

@@ -221,7 +221,7 @@ def build_shop_tab(self, workspace_tabs):
     panels.grid(row=3, column=0, sticky='nsew')
 
     run_shop = ttk.Frame(panels, padding=8)
-    panels.add(run_shop, text='Run Shop')
+    panels.add(run_shop, text='Current Run Shop')
     run_shop.columnconfigure(0, weight=1)
     run_shop.rowconfigure(2, weight=1)
     filters = ttk.Frame(run_shop)

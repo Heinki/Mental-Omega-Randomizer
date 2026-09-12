@@ -282,7 +282,7 @@ def run_reward_price(
     coupon_discount_ore=0,
     config: ShopModeConfig = SHOP_CONFIG,
 ):
-    """Return one run-shop price, including all permanent discounts."""
+    """Return one current-run Shop price, including permanent discounts."""
     # ``specialization`` remains accepted for old callers and saved runs. Its
     # former category value is intentionally ignored: every level now applies
     # to units, buffs, and powers.

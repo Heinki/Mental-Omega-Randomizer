@@ -843,7 +843,7 @@
       },
       "poor_logistics": {
         "display_name": "Poor Logistics",
-        "description": "Each victory gives 4 extra Ore, but each run-shop price costs 2 extra Ore.",
+        "description": "Each victory gives 4 extra Ore, but each current-run Shop price costs 2 extra Ore.",
         "effects": {
           "run_reward_flat": 4,
           "shop_price_flat": 2
@@ -859,7 +859,7 @@
       },
       "blind_choice": {
         "display_name": "Blind Choice",
-        "description": "+1 Ore per victory, but one mission offer hides its exact reward until launched.",
+        "description": "+1 Ore per victory, but one mission choice hides its exact reward until launched.",
         "effects": {
           "run_reward_flat": 1,
           "hidden_offer_count": 1
@@ -883,7 +883,7 @@
       },
       "black_market": {
         "display_name": "Black Market",
-        "description": "Each stage has 4 extra Shop offers, but each run-shop price costs 2 extra Ore.",
+        "description": "Each stage has 4 extra mission choices, but each current-run Shop price costs 2 extra Ore.",
         "effects": {
           "unit_inventory_flat": 2,
           "power_inventory_flat": 2,
@@ -900,7 +900,7 @@
       },
       "no_safety_net": {
         "display_name": "No Safety Net",
-        "description": "Each victory gives 1 extra Gem, but rerolls, difficulty assists, and Emergency Revival are disabled.",
+        "description": "Each victory gives 1 extra Gem, but Mission Rerolls, Mission Difficulty Assists, and Emergency Revivals are disabled.",
         "effects": {
           "meta_reward_flat": 1,
           "disable_rerolls": 1,
@@ -926,7 +926,7 @@
       },
       "narrow_intelligence": {
         "display_name": "Narrow Intelligence",
-        "description": "Each successfully completed mission gives +2 Ore, but each stage offers only 2 missions.",
+        "description": "Each victory gives +2 Ore, but each stage offers only 2 mission choices.",
         "effects": {
           "run_reward_flat": 2,
           "mission_offer_count_flat": -1
@@ -934,7 +934,7 @@
       },
       "liquid_assets": {
         "display_name": "Liquid Assets",
-        "description": "Each run-shop price costs 2 less Ore, but unused Ore disappears after each stage.",
+        "description": "Each current-run Shop price costs 2 less Ore, but unused Ore disappears after each stage.",
         "effects": {
           "shop_price_flat": -2,
           "liquidate_ore_after_victory": 1
@@ -969,7 +969,7 @@
       },
       "hardcore": {
         "display_name": "Hardcore",
-        "description": "Every mission uses Mental difficulty and an enemy bonus modifier. Difficulty assists are disabled.",
+        "description": "Every mission uses Mental difficulty and an enemy bonus modifier. Mission Difficulty Assists are disabled.",
         "effects": {
           "force_hardest_difficulty": 1,
           "force_enemy_challenge": 1,
@@ -978,7 +978,7 @@
       },
       "faction_roulette": {
         "display_name": "Faction Roulette",
-        "description": "All Factions only. Shop stock rotates through Allies, Soviets, Epsilon, and Foehn each stage. Mission rerolls are disabled.",
+        "description": "All Factions only. Shop stock rotates through Allies, Soviets, Epsilon, and Foehn each stage. Mission Rerolls are disabled.",
         "effects": {
           "rotate_shop_faction": 1,
           "disable_rerolls": 1

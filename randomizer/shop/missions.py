@@ -51,7 +51,7 @@ def classify_mission(mission):
 def mission_classes_for_stage(
     stage, run_length=None, config: ShopModeConfig = SHOP_CONFIG
 ):
-    """Protect the first two missions, regardless of the configured run length."""
+    """Protect first two Shop stages, regardless of configured run length."""
     if int(stage) <= SHOP_OPENING_STAGES:
         return frozenset((MissionEconomyClass.ACT_1,))
     return frozenset(_CLASS_ORDER)

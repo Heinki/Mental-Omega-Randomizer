@@ -132,16 +132,16 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
     lines = [
         status_heading,
         f'Seed: {run.seed}',
-        f'Missions won: {len(run.completed_missions)} / {run.run_length}',
-        f'Ore remaining: {run.run_coins}',
-        f'Persistent Gems: {profile.meta_coins}',
+        f'Missions Won: {len(run.completed_missions)} / {run.run_length}',
+        f'Run Ore remaining: {run.run_coins}',
+        f'Permanent Gems: {profile.meta_coins}',
         f'Run purchases: {sum(item.quantity for item in run.run_purchases)}',
         f'Buff stacks purchased: {sum(item.stacks for item in run.run_buffs)}',
         f'Free starting draft buffs: '
         f'{sum(item.stacks for item in run.starting_draft_buffs)}',
         f'Free Buff Tokens used: {run.free_buff_tokens_used}',
         f'Emergency Revivals used: {run.emergency_revivals_used}',
-        f'Run difficulty: +{modifier_difficulty(run.modifiers)}',
+        f'Run Difficulty: +{modifier_difficulty(run.modifiers)}',
         'Modifiers: ' + (
             ', '.join(
                 config.modifiers[item].display_name for item in run.modifiers

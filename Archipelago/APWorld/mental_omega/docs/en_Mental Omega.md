@@ -17,10 +17,10 @@ shuffling mission-unlock items or changing launcher mission availability.
 
 Shop Mode uses a signed eligible mission pool and a ten-stage marker chain.
 Each local victory advances one stage, can release a shuffled
-`Shop Run Mission N Victory` location, and completion of the full run satisfies
-the goal. The launcher can also spend persistent Gems on generated
+`Shop Stage N Victory` location, and completion of the full run satisfies
+the goal. The launcher can also spend Permanent Gems on generated
 `Roguelike Shop Purchase N` locations. Those purchases never request an item;
 Archipelago fill decides the recipient and item normally. Every received AP
 unit unlock is active in every run without consuming permanent extra-unit
 slots; received buffs and powers are also reapplied. This signed restart policy
-never changes mission credits, Ore, or Gems.
+never changes mission credits, Run Ore, or Permanent Gems.

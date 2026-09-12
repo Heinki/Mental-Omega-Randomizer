@@ -168,7 +168,7 @@ class ShopProgressionService:
         if run is None:
             raise ShopTransitionError('No Shop run exists')
         if modifier_effects(run.modifiers)['disable_rerolls']:
-            raise ShopTransitionError('Run modifiers disable mission rerolls')
+            raise ShopTransitionError('Run modifiers disable Mission Rerolls')
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_reroll']
         maximum = (
             profile.upgrade_level('mission_reroll')
@@ -189,7 +189,7 @@ class ShopProgressionService:
             raise ShopTransitionError('No Shop run exists')
         if modifier_effects(run.modifiers)['disable_assists']:
             raise ShopTransitionError(
-                'Run modifiers disable difficulty assists'
+                'Run modifiers disable Mission Difficulty Assists'
             )
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_difficulty_assist']
         maximum = (

@@ -77,16 +77,16 @@ SHOP_PURCHASE_LOCATION_TABLE = {
     for index in range(1, MAXIMUM_SHOP_PURCHASE_LOCATIONS + 1)
 }
 SHOP_STAGE_LOCATION_TABLE = {
-    f"Shop Run Mission {index} Victory": (
+    f"Shop Stage {index} Victory": (
         SHOP_STAGE_LOCATION_ID_BASE + index - 1
     )
     for index in range(1, MAXIMUM_SHOP_RUN_LENGTH + 1)
 }
 SHOP_STAGE_LOGIC_DATA = {
     index: {
-        "item_name": f"Mental Omega Shop Stage Victory: {index}",
+        "item_name": f"Mental Omega Shop Stage {index} Victory",
         "item_id": SHOP_STAGE_LOGIC_ID_BASE + index - 1,
-        "location_name": f"Shop Run Stage {index} - Local Victory",
+        "location_name": f"Shop Stage {index} - Local Victory",
         "location_id": SHOP_STAGE_LOGIC_ID_BASE + index - 1,
     }
     for index in range(1, MAXIMUM_SHOP_RUN_LENGTH + 1)
