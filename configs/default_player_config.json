@@ -11,6 +11,7 @@
       "seed": "",
       "campaign_filter": "All Campaigns",
       "shop_faction_pool": "All Factions",
+      "shop_mode_rules_acknowledged": false,
       "mission_goal": 15,
       "progression_mode": "Mission List",
       "grid_two_start_positions": false,

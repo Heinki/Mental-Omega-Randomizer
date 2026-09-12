@@ -18,6 +18,7 @@ from ._dependencies import (
     custom_sidebar_preview,
     ensure_superweapon_cameos,
     ensure_unit_cameos,
+    save_config,
 )
 
 from randomizer.rewards.definitions import unit_display_label
@@ -1573,17 +1574,20 @@ class ShopController(ShopPolishController):
                 parent=self,
             )
             return
-        if not messagebox.askokcancel(
-            'Shop Mode Rules',
-            'Shop Mode is a one-attempt run.\n\n'
-            'Do not save, load, or restart a mission. Any of these actions, '
-            'a defeat, or closing the game before victory counts as a failed '
-            'mission and can end the run.\n\n'
-            'Select OK only when you are ready to begin.',
-            icon='warning',
-            parent=self,
-        ):
-            return
+        if not self.config.get('shop_mode_rules_acknowledged', False):
+            if not messagebox.askokcancel(
+                'Shop Mode Rules',
+                'Shop Mode is a one-attempt run.\n\n'
+                'Do not save, load, or restart a mission. Any of these actions, '
+                'a defeat, or closing the game before victory counts as a failed '
+                'mission and can end the run.\n\n'
+                'Select OK only when you are ready to begin.',
+                icon='warning',
+                parent=self,
+            ):
+                return
+            self.config['shop_mode_rules_acknowledged'] = True
+            save_config(self.config)
         requested_seed = self.seed_var.get().strip()
         seed = requested_seed or uuid.uuid4().hex[:16].upper()
         salvaged_ore = self.shop_profile.salvaged_run_coins
