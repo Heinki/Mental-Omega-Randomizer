@@ -6,6 +6,13 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 
+try:
+    from ._generated_version import RANDOMIZER_VERSION
+except ModuleNotFoundError:
+    # Source-tree execution. Packaged APWorlds receive the generated module
+    # from randomizer.core.version during the build.
+    from randomizer.core.version import APP_VERSION as RANDOMIZER_VERSION
+
 from .data import (
     CATALOGUE_CHECKSUM,
     ITEM_DATA,
@@ -18,7 +25,6 @@ from .data import (
 
 
 MANIFEST_SCHEMA_VERSION = 1
-RANDOMIZER_VERSION = "1.36"
 
 
 class ManifestError(ValueError):

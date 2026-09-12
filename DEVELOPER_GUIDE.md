@@ -101,6 +101,9 @@ when an older external `ui.json` has no profiles.
 - `randomizer/progression/state.py`: pure normalization for persisted mission checks,
   failure stacks, and assistance units.
 - `randomizer/core/paths.py`: source/frozen path resolution.
+- `randomizer/core/version.py`: only editable source for launcher, APWorld,
+  supported Archipelago, and APWorld-container release versions. Builders
+  inject these values into packaged metadata and APWorld runtime code.
 
 ## Runtime flow
 

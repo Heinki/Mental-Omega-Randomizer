@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import re
 import sys
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
@@ -29,29 +28,13 @@ def build(output_directory: Path) -> Path:
     from Archipelago.generate_catalogue import main as generate_catalogue
     from Archipelago.bundle_generation import generation_files
     from randomizer.core.paths import BATTLE_CLIENT_INI
-    from randomizer.core.version import APP_VERSION
+    from randomizer.core.version import release_versions
     from randomizer.missions.catalogue import parse_missions
 
     manifest_path = SOURCE_DIR / 'archipelago.json'
-    contract_path = SOURCE_DIR / 'manifest.py'
     if not manifest_path.is_file():
         raise FileNotFoundError(f'APWorld manifest not found: {manifest_path}')
-    if not contract_path.is_file():
-        raise FileNotFoundError(f'APWorld contract not found: {contract_path}')
-
-    contract_match = re.search(
-        r'^RANDOMIZER_VERSION\s*=\s*[\'\"]([^\'\"]+)[\'\"]',
-        contract_path.read_text(encoding='utf-8'),
-        re.MULTILINE,
-    )
-    if not contract_match:
-        raise ValueError(f'APWorld compatibility version is missing: {contract_path}')
-    contract_version = contract_match.group(1)
-    if contract_version != APP_VERSION:
-        raise ValueError(
-            'APWorld launcher compatibility does not match: '
-            f'launcher={APP_VERSION}, APWorld={contract_version}.'
-        )
+    versions = release_versions()
 
     generate_catalogue()
     bundled_files = generation_files()
@@ -64,9 +47,11 @@ def build(output_directory: Path) -> Path:
 
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     manifest.update({
-        'compatible_version': 8,
-        'version': 8,
-        'maximum_ap_version': '0.6.7',
+        'minimum_ap_version': versions['archipelago_version'],
+        'world_version': versions['apworld_version'],
+        'compatible_version': versions['apworld_container_version'],
+        'version': versions['apworld_container_version'],
+        'maximum_ap_version': versions['archipelago_version'],
     })
     manifest_data = json.dumps(
         manifest,
@@ -78,9 +63,14 @@ def build(output_directory: Path) -> Path:
         path for path in SOURCE_DIR.rglob('*')
         if path.is_file()
         and path != manifest_path
+        and path.name != '_generated_version.py'
         and path.suffix != '.pyc'
         and '__pycache__' not in path.parts
     )
+    generated_version_data = (
+        '"""Generated from randomizer.core.version; do not edit."""\n\n'
+        f'RANDOMIZER_VERSION = {versions["app_version"]!r}\n'
+    ).encode('utf-8')
     with ZipFile(output_path, 'w') as archive:
         for source in files:
             relative = source.relative_to(SOURCE_DIR).as_posix()
@@ -97,6 +87,10 @@ def build(output_directory: Path) -> Path:
         archive.writestr(
             archive_info(f'{MODULE_NAME}/archipelago.json'),
             manifest_data,
+        )
+        archive.writestr(
+            archive_info(f'{MODULE_NAME}/_generated_version.py'),
+            generated_version_data,
         )
 
     print(output_path)

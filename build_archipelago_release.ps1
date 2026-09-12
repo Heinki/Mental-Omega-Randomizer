@@ -25,12 +25,10 @@ Copy-Item -LiteralPath (
     Join-Path $PSScriptRoot "Archipelago\SETUP.md"
 ) -Destination $setupPath -Force
 
-$launcherVersion = (& python -c (
-    "from randomizer.core.version import APP_VERSION; print(APP_VERSION)"
-)).Trim()
-$worldSourceManifest = Get-Content -LiteralPath (
-    Join-Path $PSScriptRoot "Archipelago\APWorld\mental_omega\archipelago.json"
-) -Raw | ConvertFrom-Json
+$versions = (& python -c (
+    "import json; from randomizer.core.version import release_versions; " +
+    "print(json.dumps(release_versions()))"
+)).Trim() | ConvertFrom-Json
 
 $payloadFiles = @(
     "MentalOmegaRandomizer.exe",
@@ -46,10 +44,10 @@ foreach ($name in $payloadFiles) {
 
 $releaseManifest = [ordered]@{
     format = 1
-    launcher_version = $launcherVersion
-    archipelago_version = "0.6.7"
-    apworld_game = $worldSourceManifest.game
-    apworld_version = $worldSourceManifest.world_version
+    launcher_version = $versions.app_version
+    archipelago_version = $versions.archipelago_version
+    apworld_game = "Mental Omega"
+    apworld_version = $versions.apworld_version
     files = $payloadHashes
 } | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText(
