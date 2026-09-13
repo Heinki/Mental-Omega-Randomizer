@@ -57,7 +57,11 @@ from randomizer.shop.missions import (
     mission_difficulty,
     mission_classes_for_stage,
 )
-from randomizer.shop.mission_modifiers import active_mission_modifier
+from randomizer.shop.mission_modifiers import (
+    active_mission_modifier,
+    mission_blocks_shop_enemy_buffs,
+    shop_enemy_scaling_entries,
+)
 from randomizer.shop.modifiers import (
     modifier_allows_faction_pool,
     modifier_allows_loadout_entry,
@@ -356,6 +360,16 @@ class ShopController(ShopPolishController):
         self.shop_faction_pool_combo.configure(
             state='disabled' if locked else 'readonly'
         )
+        for name in (
+            'shop_include_no_build_missions_check',
+            'shop_include_no_build_production_missions_check',
+            'shop_buff_allied_helpers_check',
+        ):
+            check = getattr(self, name, None)
+            if check is not None:
+                check.configure(
+                    state='disabled' if locked or active else 'normal'
+                )
 
     def on_progression_mode_changed(self, event=None):
         self.sync_shop_workspace()
@@ -551,28 +565,27 @@ class ShopController(ShopPolishController):
             return rewards
         return super().active_launch_rewards()
 
+    def _shop_mission_blocks_enemy_buffs(self, mission_code):
+        return mission_blocks_shop_enemy_buffs(
+            self._shop_mission(mission_code)
+        )
+
+    def _shop_enemy_scaling_entries_for_offer(self, run, offer):
+        return shop_enemy_scaling_entries(
+            run,
+            offer,
+            self._shop_mission(offer.mission_code) if offer is not None else {},
+            challenge_slots=self._shop_challenge_slots(),
+        )
+
     def active_enemy_scaling_entries(self):
-        if self.shop_launch_active():
-            entries = []
-            effects = modifier_effects(self._shop_launch_run.modifiers)
-            for _index in range(max(0, effects['enemy_armor_stacks'])):
-                entries.append({
-                    'reward': canonical_reward_for_id('AI T1 Unit Armor'),
-                    'source': 'Shop run modifier',
-                    'earned_from': 'Superweapon Arms Race',
-                })
-            mission_modifier = self._active_shop_mission_modifier(
-                self._shop_launch_run
-            )
-            if mission_modifier is not None and mission_modifier.enemy_reward_id:
-                entries.append({
-                    'reward': canonical_reward_for_id(
-                        mission_modifier.enemy_reward_id
-                    ),
-                    'source': 'Shop mission challenge',
-                    'earned_from': mission_modifier.title,
-                })
-            return entries
+        run = self._shop_context_run()
+        if run is not None:
+            offer = next((
+                item for item in run.mission_offers
+                if item.mission_code == run.selected_mission_code
+            ), None)
+            return self._shop_enemy_scaling_entries_for_offer(run, offer)
         return super().active_enemy_scaling_entries()
 
     def launch_rewards_for_mission(self, code):
@@ -597,6 +610,7 @@ class ShopController(ShopPolishController):
         if run is not None:
             reward_ids = [
                 *ap_automatic_reward_ids(run.ap_entitlements_snapshot),
+                *run.random_starting_unit_unlocks,
                 *(
                     item.reward_id
                     for item in run.permanent_buffs_snapshot
@@ -677,12 +691,33 @@ class ShopController(ShopPolishController):
         return super().cache_mission_assistance_units(code, unit_ids)
 
     def enemy_scaling_dashboard_rows(self):
-        if self._shop_mode_context_selected():
-            return []
         return super().enemy_scaling_dashboard_rows()
+
+    def enemy_reward_application_records(self):
+        run = self._shop_context_run()
+        if run is not None:
+            return run.enemy_reward_applications
+        if self._shop_mode_context_selected():
+            return {}
+        return super().enemy_reward_application_records()
 
     def record_enemy_reward_applications(self, code, applications):
         if self.shop_launch_active():
+            normalized = self.normalize_enemy_reward_applications(
+                code, applications
+            )
+            records = dict(self._shop_launch_run.enemy_reward_applications)
+            if records.get(code) == normalized:
+                return
+            records[code] = normalized
+            run = replace(
+                self._shop_launch_run,
+                enemy_reward_applications=records,
+            )
+            self.shop_repository.save_run(run)
+            self._shop_launch_run = run
+            self.shop_run = run
+            self._enemy_buffs_view_dirty = True
             return
         return super().record_enemy_reward_applications(code, applications)
 
@@ -1643,7 +1678,7 @@ class ShopController(ShopPolishController):
             'include_special_rewards': True,
             'unlimited_hero_units': False,
             'share_chaos_role_buffs': False,
-            'buff_allied_helpers': False,
+            'buff_allied_helpers': bool(self.buff_allied_helpers_var.get()),
             'failure_assistance': False,
             'include_buff_rewards': True,
             'include_superweapon_rewards': True,
@@ -1928,6 +1963,10 @@ class ShopController(ShopPolishController):
             else:
                 source = 'Permanent Selected'
             add_access(source, reward_id, archipelago=reward_id in ap_units)
+        for reward_id in run.random_starting_unit_unlocks:
+            entry = self._shop_entry_by_reward_id.get(reward_id)
+            tier = str(getattr(entry, 'tier', '') or '').replace('_', ' ').title()
+            add_access(f'Random {tier} Unlock', reward_id)
         for reward_id in run.permanent_power_unlocks_snapshot:
             add_access('Permanent Power', reward_id)
         ap_rewards = tuple(ap_automatic_reward_ids(

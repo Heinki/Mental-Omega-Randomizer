@@ -611,6 +611,14 @@ def _build_right_panel(self, main_frame):
     self.shop_include_no_build_production_missions_check.grid(
         row=1, column=0, sticky='w', pady=(4, 0)
     )
+    self.shop_buff_allied_helpers_check = ttk.Checkbutton(
+        shop_mission_filters,
+        text='Share purchased buffs with allied helpers',
+        variable=self.buff_allied_helpers_var,
+    )
+    self.shop_buff_allied_helpers_check.grid(
+        row=2, column=0, sticky='w', pady=(4, 0)
+    )
     WidgetTooltip(
         self.shop_include_no_build_missions_check,
         'Include true no-build missions using fixed or scripted units.',
@@ -618,6 +626,12 @@ def _build_right_panel(self, main_frame):
     WidgetTooltip(
         self.shop_include_no_build_production_missions_check,
         'Include missions without normal base building but with limited production.',
+    )
+    WidgetTooltip(
+        self.shop_buff_allied_helpers_check,
+        'Applies purchased unit buffs to reviewed allied helper forces when '
+        'they can be isolated safely. Shared or hostile native unit types '
+        'remain unchanged. This choice is exported to Archipelago.',
     )
     ttk.Label(
         shop_settings_frame,

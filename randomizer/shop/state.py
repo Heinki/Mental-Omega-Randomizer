@@ -408,6 +408,10 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         selected_permanent_units=_unique_strings(
             document.get('selected_permanent_units'), 'selected_permanent_units'
         ),
+        random_starting_unit_unlocks=_unique_strings(
+            document.get('random_starting_unit_unlocks'),
+            'random_starting_unit_unlocks',
+        ),
         permanent_power_unlocks_snapshot=_unique_strings(
             document.get('permanent_power_unlocks_snapshot'),
             'permanent_power_unlocks_snapshot',
@@ -457,6 +461,10 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         rewarded_victories=_unique_strings(
             document.get('rewarded_victories'), 'rewarded_victories'
         ),
+        enemy_reward_applications=deepcopy(_object(
+            document.get('enemy_reward_applications', {}),
+            'enemy_reward_applications',
+        )),
         modifiers=modifiers,
         coupon_used_stage=coupon_used_stage,
         stock_lock_reward_id=stock_lock_reward_id,

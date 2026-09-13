@@ -137,6 +137,7 @@ def active_shop_reward_ids(run):
         return ()
     reward_ids = [
         *run.selected_permanent_units,
+        *run.random_starting_unit_unlocks,
         *run.permanent_power_unlocks_snapshot,
         *ap_automatic_reward_ids(run.ap_entitlements_snapshot),
         *(buff.reward_id for buff in run.permanent_buffs_snapshot),
@@ -153,6 +154,7 @@ def active_shop_rewards(run):
         return ()
     reward_ids = [
         *run.selected_permanent_units,
+        *run.random_starting_unit_unlocks,
         *run.permanent_power_unlocks_snapshot,
     ]
     active_access = set(reward_ids)

@@ -82,8 +82,10 @@ from .missions import (
 )
 from .mission_modifiers import (
     MISSION_MODIFIERS,
+    mission_blocks_shop_enemy_buffs,
     mission_modifier_for_offer,
     mission_modifier_for_run_offer,
+    shop_enemy_scaling_entries,
 )
 from .modifiers import (
     hidden_offer_codes,
@@ -139,10 +141,97 @@ def _reward(reward_id):
     return reward
 
 
+def _shop_balance_port_checks():
+    catalogue = shop_catalogue()
+    access_entries = tuple(
+        entry for entry in catalogue
+        if entry.reward_type is ShopRewardType.UNIT_ACCESS
+    )
+    buff_entries = tuple(
+        entry for entry in catalogue
+        if entry.reward_type is ShopRewardType.UNIT_BUFF
+    )
+    tier_buff_entries = {
+        tier: next(entry for entry in buff_entries if entry.tier == tier)
+        for tier in ('tier_1', 'tier_2', 'tier_3')
+    }
+    tier_price_deltas = {
+        tier: tuple(
+            run_reward_price(entry, current_stacks=stacks)
+            - run_reward_price(entry)
+            for stacks in (1, 2, 3)
+        )
+        for tier, entry in tier_buff_entries.items()
+    }
+
+    profile = ShopProfile(permanent_upgrades={
+        'random_tier_1_unlock': 3,
+        'random_tier_2_unlock': 3,
+        'random_tier_3_unlock': 3,
+    })
+    offer = MissionOffer('SHOP_BALANCE_TEST', MissionEconomyClass.ACT_1)
+    options = {
+        'run_id': 'shop-balance-port-self-check',
+        'seed': 'SHOP-BALANCE-PORT',
+        'mission_offers': (offer,),
+        'reward_mode': 'Chaos',
+    }
+    random_run = start_new_run(profile, **options).run
+    random_entries = tuple(
+        next(entry for entry in access_entries if entry.reward_id == reward_id)
+        for reward_id in random_run.random_starting_unit_unlocks
+    )
+
+    stage_counts = []
+    for stage in (1, 4, 5, SHOP_CONFIG.run_length):
+        staged_run = replace(
+            random_run,
+            stage=stage,
+            mission_offers=(offer,),
+            selected_mission_code=offer.mission_code,
+        )
+        entries = shop_enemy_scaling_entries(
+            staged_run,
+            offer,
+            {'build_classification': 'base_build'},
+        )
+        stage_counts.append(sum(
+            entry['source'] == 'Shop stage scaling' for entry in entries
+        ))
+
+    return {
+        'shop_repeat_buff_pricing_valid': tier_price_deltas == {
+            'tier_1': (1, 2, 3),
+            'tier_2': (0, 1, 1),
+            'tier_3': (0, 0, 1),
+        },
+        'shop_random_tier_unlocks_valid': bool(
+            len(random_entries) == 9
+            and {
+                tier: sum(entry.tier == tier for entry in random_entries)
+                for tier in ('tier_1', 'tier_2', 'tier_3')
+            } == {'tier_1': 3, 'tier_2': 3, 'tier_3': 3}
+            and len({entry.target_id for entry in random_entries}) == 9
+            and random_run.random_starting_unit_unlocks
+            == start_new_run(profile, **options).run.random_starting_unit_unlocks
+        ),
+        'shop_enemy_scaling_curve_valid': stage_counts == [0, 0, 1, 9],
+        'shop_no_build_enemy_protection_valid': bool(
+            mission_blocks_shop_enemy_buffs({'no_build': True})
+            and not shop_enemy_scaling_entries(
+                replace(random_run, stage=SHOP_CONFIG.run_length),
+                offer,
+                {'build_classification': 'no_build_production'},
+            )
+        ),
+    }
+
+
 def _requested_upgrade_modifier_checks():
     required_upgrades = {
         'coupon_book', 'stock_lock', 'veteran_academy',
-        'gem_dividend', 'premium_supplier',
+        'gem_dividend', 'premium_supplier', 'random_tier_1_unlock',
+        'random_tier_2_unlock', 'random_tier_3_unlock',
     }
     required_modifiers = {
         'glass_cannon', 'overclocked_factories', 'black_market',
@@ -2177,6 +2266,7 @@ def validate_shop_domain():
     details.update(_phase_seven_checks())
     details.update(_permanent_feature_checks(mission_pool))
     details.update(_requested_upgrade_modifier_checks())
+    details.update(_shop_balance_port_checks())
     details['valid'] = all(
         value for key, value in details.items()
         if key.endswith('_valid')

@@ -135,6 +135,8 @@ def run_summary_lines(profile, run, mission_titles=None, config=SHOP_CONFIG):
         f'Missions Won: {len(run.completed_missions)} / {run.run_length}',
         f'Run Ore remaining: {run.run_coins}',
         f'Permanent Gems: {profile.meta_coins}',
+        f'Random starting unit unlocks: '
+        f'{len(run.random_starting_unit_unlocks)}',
         f'Run purchases: {sum(item.quantity for item in run.run_purchases)}',
         f'Buff stacks purchased: {sum(item.stacks for item in run.run_buffs)}',
         f'Free starting draft buffs: '

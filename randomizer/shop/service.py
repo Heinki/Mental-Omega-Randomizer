@@ -6,6 +6,7 @@ from uuid import uuid4
 from .active import (
     active_shop_power_ids,
     active_shop_reward_ids,
+    active_shop_rewards,
     active_shop_tech_ids,
 )
 from .archipelago_purchases import (
@@ -231,6 +232,10 @@ class ShopProgressionService:
         use_free_token = bool(
             buff_purchase and run.free_buff_tokens_used < token_capacity
         )
+        stacks = sum(
+            1 for active_reward in active_shop_rewards(run)
+            if active_reward.get('name') == entry.reward_id
+        )
         coupon_definition = SHOP_CONFIG.permanent_upgrades['coupon_book']
         coupon_discount = (
             profile.upgrade_level('coupon_book')
@@ -239,6 +244,7 @@ class ShopProgressionService:
         )
         price = 0 if use_free_token else run_reward_price(
             entry,
+            current_stacks=stacks,
             shop_discount_level=profile.upgrade_level('shop_discount'),
             modifiers=run.modifiers,
             specialization_level=profile.upgrade_level(
@@ -247,25 +253,6 @@ class ShopProgressionService:
             coupon_discount_ore=coupon_discount,
         )
         owned = active_shop_reward_ids(run)
-        stacks = next(
-            (
-                item.stacks for item in run.run_buffs
-                if item.reward_id == entry.reward_id
-            ),
-            0,
-        ) + next(
-            (
-                item.stacks for item in run.permanent_buffs_snapshot
-                if item.reward_id == entry.reward_id
-            ),
-            0,
-        ) + next(
-            (
-                item.stacks for item in run.starting_draft_buffs
-                if item.reward_id == entry.reward_id
-            ),
-            0,
-        )
         effects = modifier_effects(run.modifiers)
         stock_faction = str(
             run.reward_settings.get('shop_faction_filter')

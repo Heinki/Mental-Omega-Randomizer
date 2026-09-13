@@ -230,10 +230,8 @@ class EnemyScalingController:
     def active_enemy_scaling_rewards(self):
         return [entry['reward'] for entry in self.active_enemy_scaling_entries()]
 
-    def record_enemy_reward_applications(self, code, applications):
-        """Persist exact receipts only after generated map mutations succeed."""
-        if not self.state or not code:
-            return
+    def normalize_enemy_reward_applications(self, code, applications):
+        """Validate exact receipts produced by successful map mutations."""
         normalized = []
         for item in applications or ():
             if not isinstance(item, dict):
@@ -293,6 +291,18 @@ class EnemyScalingController:
             item['effect_id'], item['house'].casefold(), item['target'].casefold(),
             item['current_stacks'], item['source'], item['earned_from'],
         ))
+        return normalized
+
+    def enemy_reward_application_records(self):
+        return (self.state or {}).get('enemy_reward_applications', {})
+
+    def record_enemy_reward_applications(self, code, applications):
+        """Persist exact receipts only after generated map mutations succeed."""
+        if not self.state or not code:
+            return
+        normalized = self.normalize_enemy_reward_applications(
+            code, applications
+        )
         records = self.state.setdefault('enemy_reward_applications', {})
         if records.get(code) == normalized:
             return
@@ -302,9 +312,9 @@ class EnemyScalingController:
 
     def enemy_scaling_dashboard_rows(self):
         rows = []
-        for mission, applications in self.state.get(
-            'enemy_reward_applications', {}
-        ).items():
+        for mission, applications in (
+            self.enemy_reward_application_records().items()
+        ):
             for item in applications or ():
                 if not isinstance(item, dict):
                     continue
@@ -343,8 +353,6 @@ class EnemyScalingController:
 
     def enemy_buff_catalogue_entries(self):
         """Show only enemy bonuses actually received by this player."""
-        if not self.state:
-            return []
         earned = {}
         for entry in self.active_enemy_scaling_entries():
             reward = entry.get('reward') if isinstance(entry, dict) else None
@@ -352,9 +360,7 @@ class EnemyScalingController:
             if effect_id in ENEMY_BUFF_BY_ID and isinstance(reward, dict):
                 earned.setdefault(effect_id, []).append(entry)
         applications = {}
-        for mission, records in (
-            (self.state or {}).get('enemy_reward_applications', {}).items()
-        ):
+        for mission, records in self.enemy_reward_application_records().items():
             for record in records or ():
                 if not isinstance(record, dict):
                     continue

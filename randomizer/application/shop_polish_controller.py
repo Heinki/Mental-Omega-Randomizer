@@ -504,13 +504,20 @@ class ShopPolishController(ShopArchipelagoController):
             reward_hidden = offer.mission_code in hidden and not selected
             title = mission.get('title') or offer.mission_code
             faction = mission.get('side') or 'Unknown faction'
+            enemy_buff_count = len(
+                self._shop_enemy_scaling_entries_for_offer(run, offer)
+            )
+            enemy_buff_text = f'Enemy buff stacks assigned: {enemy_buff_count}'
+            if self._shop_mission_blocks_enemy_buffs(offer.mission_code):
+                enemy_buff_text += ' (no-build protection)'
             card['code'] = offer.mission_code
             card['name'].set(f'{title} ({offer.mission_code})')
             card['detail'].set(
                 f'Faction: {faction}\n'
                 f'Mission class: {definition.display_name}\n'
                 f'Reward tier: {definition.difficulty}\n'
-                f'Run Difficulty: +{modifier_difficulty(run.modifiers)}'
+                f'Run Difficulty: +{modifier_difficulty(run.modifiers)}\n'
+                f'{enemy_buff_text}'
             )
             effective_difficulty = (
                 eased_difficulty if assisted else normal_difficulty
@@ -544,6 +551,15 @@ class ShopPolishController(ShopArchipelagoController):
                     f'{"Challenge" if mission_modifier.challenge else "Bonus"}: '
                     f'{mission_modifier.title} — {mission_modifier.description} '
                     f'Reward bonus: {mission_modifier.reward_text}.'
+                    + (
+                        ' Enemy buff disabled for this no-build mission.'
+                        if (
+                            mission_modifier.challenge
+                            and self._shop_mission_blocks_enemy_buffs(
+                                offer.mission_code
+                            )
+                        ) else ''
+                    )
                 )
                 if mission_modifier is not None else ''
             )
@@ -648,7 +664,7 @@ class ShopPolishController(ShopArchipelagoController):
             state='normal' if can_give_up else 'disabled'
         )
 
-    def _entry_price(self, entry):
+    def _entry_price(self, entry, *, current_stacks=0):
         run = self.shop_run
         if run is None:
             return None
@@ -670,6 +686,7 @@ class ShopPolishController(ShopArchipelagoController):
         )
         return run_reward_price(
             entry,
+            current_stacks=current_stacks,
             shop_discount_level=self.shop_profile.upgrade_level('shop_discount'),
             modifiers=run.modifiers,
             specialization_level=self.shop_profile.upgrade_level(
@@ -739,11 +756,11 @@ class ShopPolishController(ShopArchipelagoController):
     def _shop_catalogue_entry_state(
         self, entry, run, active_tech, active_powers
     ):
-        price = self._entry_price(entry)
         stacks = sum(
             1 for reward in active_shop_rewards(run)
             if reward.get('name') == entry.reward_id
         )
+        price = self._entry_price(entry, current_stacks=stacks)
         locked = (
             entry.reward_type is ShopRewardType.UNIT_BUFF
             and entry.target_id not in active_tech
@@ -1501,6 +1518,22 @@ class ShopPolishController(ShopArchipelagoController):
             'premium_supplier': (
                 f'From stage {effects.get("minimum_stage", 0)}, guarantee '
                 'one higher-tier access offer in each stock rotation.'
+            ),
+            'random_tier_1_unlock': (
+                'Each level grants one deterministic random Tier 1 unit '
+                'unlock at run start. Permanent-loadout, mandatory starter, '
+                'excluded, and received Archipelago units cannot be selected.'
+            ),
+            'random_tier_2_unlock': (
+                'Each level grants one deterministic random Tier 2 unit '
+                'unlock at run start. Permanent-loadout, excluded, and '
+                'received Archipelago units cannot be selected.'
+            ),
+            'random_tier_3_unlock': (
+                'Each level grants one deterministic random Tier 3 unit '
+                'unlock at run start. Permanent-loadout, excluded, and '
+                'received Archipelago units cannot be selected. Low-Tech War '
+                'blocks these Tier 3 unlocks.'
             ),
         }
         return templates.get(

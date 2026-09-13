@@ -205,6 +205,9 @@ def validate_shop_mode_config(sections, path, invalid):
         'veteran_academy': ('veteran_loadout',),
         'gem_dividend': ('ore_per_gem', 'maximum_gems_per_level'),
         'premium_supplier': ('minimum_stage', 'guaranteed_offers'),
+        'random_tier_1_unlock': ('unlocks_per_level', 'tier'),
+        'random_tier_2_unlock': ('unlocks_per_level', 'tier'),
+        'random_tier_3_unlock': ('unlocks_per_level', 'tier'),
     }
     upgrades = sections['permanent_upgrades']
     if not set(required_upgrades).issubset(upgrades):
@@ -243,6 +246,17 @@ def validate_shop_mode_config(sections, path, invalid):
                     f'{upgrade_id}.{effect_key}',
                     path,
                 )
+    for tier in (1, 2, 3):
+        upgrade_id = f'random_tier_{tier}_unlock'
+        definition = upgrades[upgrade_id]
+        if (
+            definition['max_level'] != 3
+            or definition['effects'].get('tier') != tier
+            or definition['effects'].get('unlocks_per_level') != 1
+        ):
+            invalid(
+                f'Invalid random starting unlock upgrade {upgrade_id}', path
+            )
 
     mission_effects = sections['mission_effects']
     if not mission_effects:

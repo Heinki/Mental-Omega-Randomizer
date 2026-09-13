@@ -637,6 +637,33 @@
           "minimum_stage": 3,
           "guaranteed_offers": 1
         }
+      },
+      "random_tier_1_unlock": {
+        "display_name": "Random Tier 1 Unlock",
+        "max_level": 3,
+        "prices": [20, 40, 70],
+        "effects": {
+          "unlocks_per_level": 1,
+          "tier": 1
+        }
+      },
+      "random_tier_2_unlock": {
+        "display_name": "Random Tier 2 Unlock",
+        "max_level": 3,
+        "prices": [30, 60, 100],
+        "effects": {
+          "unlocks_per_level": 1,
+          "tier": 2
+        }
+      },
+      "random_tier_3_unlock": {
+        "display_name": "Random Tier 3 Unlock",
+        "max_level": 3,
+        "prices": [45, 90, 150],
+        "effects": {
+          "unlocks_per_level": 1,
+          "tier": 3
+        }
       }
     },
     "mission_effects": {

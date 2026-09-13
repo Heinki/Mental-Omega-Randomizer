@@ -1,11 +1,13 @@
 """Deterministic one-mission boons and high-risk challenge effects."""
 
+from collections import Counter
 from dataclasses import dataclass
 from hashlib import sha256
 
 from randomizer.config.static import load_static_config
 
 from .active import active_shop_reward_ids
+from .catalogue import canonical_reward_for_id
 from .text import gem_text
 from .model import MissionEconomyClass
 from .modifiers import modifier_effects
@@ -198,3 +200,108 @@ def active_mission_modifier(run, *, challenge_slots=0):
     return mission_modifier_for_run_offer(
         run, offer, challenge_slots=challenge_slots
     )
+
+
+def mission_blocks_shop_enemy_buffs(mission):
+    """Protect missions where player-force buffs cannot be applied safely."""
+    mission = mission if isinstance(mission, dict) else {}
+    return bool(
+        mission.get('no_build')
+        or mission.get('true_no_build')
+        or mission.get('build_classification') in {
+            'true_no_build', 'no_build_production',
+        }
+    )
+
+
+def shop_enemy_scaling_entries(
+    run, offer, mission, *, challenge_slots=0
+):
+    """Build capped, deterministic Shop enemy buffs for one mission offer."""
+    if run is None or offer is None or mission_blocks_shop_enemy_buffs(mission):
+        return []
+
+    candidates = []
+    effects = modifier_effects(run.modifiers)
+    for _index in range(max(0, effects['enemy_armor_stacks'])):
+        candidates.append((
+            'AI T1 Unit Armor', 'Shop run modifier',
+            'Superweapon Arms Race',
+        ))
+
+    mission_modifier = mission_modifier_for_run_offer(
+        run, offer, challenge_slots=challenge_slots
+    )
+    if mission_modifier is not None and mission_modifier.enemy_reward_id:
+        candidates.append((
+            mission_modifier.enemy_reward_id,
+            'Shop mission challenge',
+            mission_modifier.title,
+        ))
+
+    first_scaling_stage = 5
+    maximum_progress_buffs = 9
+    scaling_stage = int(run.stage) - first_scaling_stage
+    scaling_span = max(1, int(run.run_length) - first_scaling_stage)
+    progress_buffs = (
+        0
+        if scaling_stage < 0
+        else 1 + scaling_stage * (maximum_progress_buffs - 1) // scaling_span
+    )
+    reward_ids = [
+        'AI Infantry Armor',
+        'AI Vehicle Armor',
+        'AI Aircraft Armor',
+        'AI Defense Armor',
+        'AI Infantry Production',
+        'AI Vehicle Production',
+        'AI Aircraft Production',
+        'AI Defense Production',
+        'AI T1 Unit Health',
+        'AI T1 Unit Armor',
+        'AI T1 Unit Firepower',
+        'AI T1 Unit Fire Rate',
+        'AI T1 Unit Mobility',
+    ]
+    if int(run.stage) >= 8:
+        reward_ids.extend((
+            'AI T2 Unit Health',
+            'AI T2 Unit Armor',
+            'AI T2 Unit Firepower',
+            'AI T2 Unit Fire Rate',
+        ))
+    if int(run.stage) >= int(run.run_length):
+        reward_ids.extend((
+            'AI T3 Unit Health',
+            'AI T3 Unit Armor',
+            'AI T3 Unit Firepower',
+            'AI T3 Unit Fire Rate',
+        ))
+    reward_ids = tuple(reward_ids)
+    stream = (
+        f'shop_enemy_scaling\0{run.seed}\0{int(run.stage)}\0'
+        f'{offer.mission_code}'
+    ).encode('utf-8')
+    first = sha256(stream).digest()[0] % len(reward_ids)
+    for index in range(progress_buffs):
+        candidates.append((
+            reward_ids[(first + index) % len(reward_ids)],
+            'Shop stage scaling',
+            f'Stage {run.stage}/{run.run_length}',
+        ))
+
+    entries = []
+    counts = Counter()
+    for reward_id, source, earned_from in candidates:
+        reward = canonical_reward_for_id(reward_id)
+        effect_id = str(reward.get('enemy_effect_id') or '')
+        maximum = max(0, int(reward.get('enemy_maximum', 0)))
+        if not effect_id or counts[effect_id] >= maximum:
+            continue
+        counts[effect_id] += 1
+        entries.append({
+            'reward': reward,
+            'source': source,
+            'earned_from': earned_from,
+        })
+    return entries

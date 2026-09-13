@@ -222,6 +222,7 @@ class ShopRun:
     starting_unit_ids: tuple[str, ...] = ()
     starting_defense_ids: tuple[str, ...] = ()
     selected_permanent_units: tuple[str, ...] = ()
+    random_starting_unit_unlocks: tuple[str, ...] = ()
     permanent_power_unlocks_snapshot: tuple[str, ...] = ()
     permanent_buffs_snapshot: tuple[BuffPurchase, ...] = ()
     ap_identity: str | None = None
@@ -236,6 +237,7 @@ class ShopRun:
     mission_committed: bool = False
     completed_missions: tuple[str, ...] = ()
     rewarded_victories: tuple[str, ...] = ()
+    enemy_reward_applications: Mapping[str, Any] = field(default_factory=dict)
     modifiers: tuple[str, ...] = ()
     coupon_used_stage: int | None = None
     stock_lock_reward_id: str | None = None
@@ -262,6 +264,9 @@ class ShopRun:
             'starting_unit_ids': list(self.starting_unit_ids),
             'starting_defense_ids': list(self.starting_defense_ids),
             'selected_permanent_units': list(self.selected_permanent_units),
+            'random_starting_unit_unlocks': list(
+                self.random_starting_unit_unlocks
+            ),
             'permanent_power_unlocks_snapshot': list(
                 self.permanent_power_unlocks_snapshot
             ),
@@ -282,6 +287,9 @@ class ShopRun:
             'mission_committed': self.mission_committed,
             'completed_missions': list(self.completed_missions),
             'rewarded_victories': list(self.rewarded_victories),
+            'enemy_reward_applications': deepcopy(
+                dict(self.enemy_reward_applications)
+            ),
             'modifiers': list(self.modifiers),
             'coupon_used_stage': self.coupon_used_stage,
             'stock_lock_reward_id': self.stock_lock_reward_id,

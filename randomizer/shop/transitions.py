@@ -2,11 +2,14 @@
 
 from dataclasses import dataclass, replace
 from collections import Counter
+from hashlib import sha256
 
+from .archipelago import ap_automatic_reward_ids
 from .config import SHOP_CONFIG
 from .catalogue import (
     canonical_reward_for_id,
     catalogue_entry,
+    shop_catalogue,
     shop_entry_available,
 )
 from .economy import mission_reward, starting_run_coins
@@ -14,6 +17,7 @@ from .mission_modifiers import mission_modifier_for_run_offer
 from .modifiers import (
     modifier_allows_faction_pool,
     modifier_allows_loadout_entry,
+    modifier_allows_shop_offer,
     modifier_effects,
 )
 from .meta import validate_starting_loadout
@@ -72,6 +76,83 @@ def _victory_already_rewarded(run, mission_code):
         key.startswith(prefix) and key.endswith(suffix)
         for key in run.rewarded_victories
     )
+
+
+def _random_starting_unit_unlocks(
+    profile,
+    *,
+    seed,
+    faction_filter,
+    reward_mode,
+    reward_settings,
+    modifier_ids,
+    selected_reward_ids,
+    starter_tech_ids,
+    ap_entitlement_ids,
+    config,
+):
+    """Choose deterministic extra unit access without duplicate starters."""
+    selected_reward_ids = {str(item) for item in selected_reward_ids}
+    excluded_targets = {
+        str(item).upper() for item in starter_tech_ids if str(item)
+    }
+    excluded_targets.update(
+        str(item).upper()
+        for item in reward_settings.get('excluded_unit_access_ids', ())
+        if str(item)
+    )
+    already_active = set(selected_reward_ids)
+    for reward_id in ap_automatic_reward_ids(ap_entitlement_ids):
+        entry = catalogue_entry(canonical_reward_for_id(reward_id))
+        if entry is not None and entry.reward_type is ShopRewardType.UNIT_ACCESS:
+            already_active.add(entry.reward_id)
+            excluded_targets.add(entry.target_id)
+    for reward_id in selected_reward_ids:
+        entry = catalogue_entry(canonical_reward_for_id(reward_id))
+        if entry is not None:
+            excluded_targets.add(entry.target_id)
+
+    selected = []
+    for tier_number in (1, 2, 3):
+        upgrade_id = f'random_tier_{tier_number}_unlock'
+        definition = config.permanent_upgrades[upgrade_id]
+        count = (
+            profile.upgrade_level(upgrade_id)
+            * int(definition.effects['unlocks_per_level'])
+        )
+        tier = f'tier_{tier_number}'
+        candidates = []
+        for entry in shop_catalogue():
+            if (
+                entry.reward_type is not ShopRewardType.UNIT_ACCESS
+                or entry.tier != tier
+                or entry.reward_id in already_active
+                or entry.target_id in excluded_targets
+            ):
+                continue
+            reward = canonical_reward_for_id(entry.reward_id)
+            if not shop_entry_available(
+                entry,
+                campaign_filter=faction_filter,
+                reward_mode=reward_mode,
+                strict_faction=bool(
+                    reward_settings.get('shop_faction_filter')
+                ),
+            ) or not modifier_allows_shop_offer(
+                entry, reward, modifier_ids
+            ):
+                continue
+            candidates.append(entry)
+        candidates.sort(key=lambda entry: sha256(
+            f'{seed}:random-starting-unlock:{tier}:{entry.reward_id}'.encode(
+                'utf-8'
+            )
+        ).digest())
+        for entry in candidates[:count]:
+            selected.append(entry.reward_id)
+            already_active.add(entry.reward_id)
+            excluded_targets.add(entry.target_id)
+    return tuple(selected)
 
 
 def start_new_run(
@@ -201,6 +282,18 @@ def start_new_run(
             'Shop starting loadout is unavailable for current campaign: '
             + ', '.join(unavailable_loadout)
         )
+    random_unlocks = _random_starting_unit_unlocks(
+        profile,
+        seed=seed,
+        faction_filter=faction_filter,
+        reward_mode=reward_mode,
+        reward_settings=reward_settings,
+        modifier_ids=modifier_ids,
+        selected_reward_ids=loadout.selected_reward_ids,
+        starter_tech_ids=starter_tech_ids,
+        ap_entitlement_ids=ap_entitlements,
+        config=config,
+    )
     updated_profile = replace(
         profile,
         lifetime_runs_started=profile.lifetime_runs_started + 1,
@@ -237,6 +330,7 @@ def start_new_run(
             if str(unit_id)
         )),
         selected_permanent_units=loadout.selected_reward_ids,
+        random_starting_unit_unlocks=random_unlocks,
         permanent_power_unlocks_snapshot=permanent_powers,
         permanent_buffs_snapshot=tuple(permanent_buffs),
         starting_draft_buffs=tuple(starting_draft_buffs),
