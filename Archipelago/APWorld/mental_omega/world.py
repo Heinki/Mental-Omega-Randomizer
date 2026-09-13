@@ -27,7 +27,11 @@ from .manifest import (
     parse_manifest,
     progression_for_manifest,
 )
-from .options import MentalOmegaOptions
+from .options import (
+    MENTAL_OMEGA_OPTION_GROUPS,
+    MentalOmegaOptions,
+    launcher_settings_from_options,
+)
 
 
 class MentalOmegaItem(Item):
@@ -40,6 +44,7 @@ class MentalOmegaLocation(Location):
 
 class MentalOmegaWebWorld(WebWorld):
     theme = "partyTime"
+    option_groups = MENTAL_OMEGA_OPTION_GROUPS
     tutorials = [
         Tutorial(
             "Mental Omega Multiworld Setup Guide",
@@ -88,6 +93,8 @@ class MentalOmegaWorld(World):
             settings = template.get("frozen_settings", {}).get("launcher")
             if not settings:
                 raise ValueError("Legacy YAML has no launcher_settings; export it again.")
+        if not settings:
+            settings = launcher_settings_from_options(self.options)
         self.run_manifest = generate_manifest(
             settings, f"MO-{self.random.getrandbits(64):016X}"
         )

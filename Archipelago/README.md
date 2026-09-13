@@ -47,12 +47,18 @@ currently visible on the Randomizer's **Settings** and **Advanced** pages.
 6. Give the YAML to the room host, or place it in Archipelago's `Players`
    folder if you are generating the room yourself.
 
+You can also create the YAML without opening the Randomizer. Install the
+matching APWorld, open Archipelago's **Options Creator**, select **Mental
+Omega**, configure the grouped Randomizer options, enter the slot name, and
+select **Export Options**.
+
 **Save Player YAML** saves current Archipelago settings and exports a reusable
 player file. There is no YAML import step in the launcher. Reuse that file for
 additional rooms with the same settings; every Archipelago generation assigns
 a fresh Randomizer seed. Re-export only after changing launcher settings.
 
-The YAML contains only reusable `launcher_settings`. Archipelago assigns the
+Launcher-exported YAML contains reusable `launcher_settings`; Options Creator
+YAML contains equivalent individual game options. Archipelago assigns the
 room-specific seed, generates mission order, Grid, starters and rewards, then
 signs the complete run data sent to the launcher.
 

@@ -90,6 +90,22 @@ def make_world(settings, ap_seed=12345):
     return world
 
 
+def make_option_world(values, ap_seed=54321):
+    mw = MultiWorld(1)
+    mw.set_seed(ap_seed)
+    mw.player_name = {1: 'Regression'}
+    mw.game[1] = WorldType.game
+    world = WorldType(mw, 1)
+    mw.worlds[1] = world
+    options_type = WorldType.options_dataclass
+    world.options = options_type(**{
+        name: option.from_any(values.get(name, option.default))
+        for name, option in options_type.type_hints.items()
+    })
+    world.generate_early()
+    return world
+
+
 class Widget:
     def __init__(self, children=()):
         self.children = list(children)
@@ -109,6 +125,36 @@ class Widget:
 
 
 class IntegrationTests(unittest.TestCase):
+    def test_option_creator_fields_generate_a_run(self):
+        from Options import (
+            Choice, FreeText, NamedRange, OptionCounter, OptionList, OptionSet,
+            Range, TextChoice, Toggle, Visibility,
+        )
+
+        supported = (
+            NamedRange, Range, Toggle, TextChoice, Choice, FreeText,
+            OptionSet, OptionList, OptionCounter,
+        )
+        visible = {
+            name: option for name, option in WorldType.options_dataclass.type_hints.items()
+            if option.visibility & (Visibility.simple_ui | Visibility.complex_ui)
+        }
+        self.assertTrue(visible)
+        self.assertTrue(all(issubclass(option, supported) for option in visible.values()))
+        world = make_option_world({
+            'campaign': 'allies',
+            'mission_goal': 5,
+            'progression_mode': 'grid_mode',
+            'difficulty': 'mental',
+            'start_with_tier_one_units': True,
+        })
+        settings = world.run_manifest['frozen_settings']['launcher']
+        self.assertEqual(settings['campaign_filter'], 'Allies')
+        self.assertEqual(settings['mission_goal'], 5)
+        self.assertEqual(settings['progression_mode'], 'Grid Mode')
+        self.assertEqual(settings['difficulty'], 'Mental')
+        self.assertTrue(settings['generation']['start_with_tier_one_units'])
+
     def test_generation_and_handshake(self):
         for mode in ('Classic', 'Mission List', 'Grid Mode', 'Shop Mode'):
             with self.subTest(mode=mode):

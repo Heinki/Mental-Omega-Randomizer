@@ -25,13 +25,18 @@
    URL is not the game-server address. The launcher automatically uses secure
    WebSocket (`wss://`) for hosted `archipelago.gg` rooms.
 
+Instead of steps 4-5, you can install the APWorld and use Archipelago's
+**Options Creator**. Select **Mental Omega**, configure the grouped Randomizer
+options, enter the slot name, and select **Export Options**. This does not
+require opening the Randomizer executable.
+
 After connection validation, use the chat field below the synchronization log
 for normal chat or server commands such as `!hint` and `!release`. Messages use
 the authenticated slot name; Archipelago does not permit a separate chat alias.
 
-The player YAML contains a readable `launcher_settings` mapping copied from
-the current launcher controls. To change it, change the launcher settings and
-choose **Save Player YAML** again. Archipelago creates the mission order, Grid,
+Launcher-exported YAML contains a readable `launcher_settings` mapping copied
+from the current launcher controls. Options Creator YAML contains equivalent
+individual game options. Archipelago creates the mission order, Grid,
 starters, rewards, and signed run manifest while generating the room.
 
 The launcher refuses incompatible server state or reward/mission catalogues.

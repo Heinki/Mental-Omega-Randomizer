@@ -12,8 +12,12 @@
    game-server port shown on the room page, enter the matching slot name and
    optional password, then connect. Do not paste the browser room URL.
 
-`launcher_settings` records the exact visible launcher controls. To customize
-it, change those controls and choose **Save Player YAML** again. Archipelago
+Alternatively, open Archipelago's **Options Creator**, select **Mental Omega**,
+configure the grouped Randomizer options, enter the slot name, and select
+**Export Options**. This creates the Player YAML without opening the Randomizer.
+
+Launcher-exported `launcher_settings` records the exact visible launcher
+controls. Options Creator YAML stores equivalent individual options. Archipelago
 generates the full run from these settings for each room. After connection, AP seed, Grid,
 mission availability, checked objectives, completion, progression, and unlocks
 come from server state. Objective and victory checks synchronize automatically;
