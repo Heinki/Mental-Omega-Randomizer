@@ -23,7 +23,12 @@ from randomizer.ui.cameos import (
     ensure_unit_cameos,
 )
 
-from .catalogue import canonical_reward_for_id, shop_catalogue
+from .catalogue import (
+    _validate_power_target_prices,
+    _validate_unit_target_prices,
+    canonical_reward_for_id,
+    shop_catalogue,
+)
 from .active import (
     active_shop_power_ids,
     active_shop_rewards,
@@ -1523,6 +1528,46 @@ def validate_shop_domain():
     )
 
     catalogue = shop_catalogue()
+    preserved_config_compatibility_valid = True
+    try:
+        _validate_unit_target_prices(tuple(
+            entry for entry in catalogue if entry.target_id != 'CLNT'
+        ))
+        _validate_power_target_prices(tuple(
+            entry for entry in catalogue
+            if entry.target_id != 'LIGHTNINGSTORMSPECIAL'
+        ))
+    except StaticConfigError:
+        preserved_config_compatibility_valid = False
+    for validator, unpriced_entry in (
+        (
+            _validate_unit_target_prices,
+            ShopCatalogueEntry(
+                'Unpriced Unit Self Check',
+                ShopRewardType.UNIT_ACCESS,
+                'UNPRICED_UNIT_SELF_CHECK',
+                'tier_1',
+                None,
+                (),
+            ),
+        ),
+        (
+            _validate_power_target_prices,
+            ShopCatalogueEntry(
+                'Unpriced Power Self Check',
+                ShopRewardType.POWER_ACCESS,
+                'UNPRICED_POWER_SELF_CHECK',
+                None,
+                None,
+                (),
+            ),
+        ),
+    ):
+        try:
+            validator((*catalogue, unpriced_entry))
+            preserved_config_compatibility_valid = False
+        except StaticConfigError:
+            pass
     access_entries = [
         entry for entry in catalogue
         if entry.reward_type is ShopRewardType.UNIT_ACCESS
@@ -2071,6 +2116,9 @@ def validate_shop_domain():
         'economy_valid': economy_valid,
         'stage_game_difficulty_valid': stage_game_difficulty_valid,
         'catalogue_valid': len(catalogue) > 100,
+        'preserved_config_compatibility_valid': (
+            preserved_config_compatibility_valid
+        ),
         'archipelago_cameo_asset_valid': bool(
             ARCHIPELAGO_CAMEO_PATH.is_file()
             and ARCHIPELAGO_CAMEO_PATH.read_bytes().startswith(

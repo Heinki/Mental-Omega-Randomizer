@@ -173,9 +173,11 @@ power still receives a useful mission-only upgrade. The three visible mission
 cards resolve duplicate effects to other entries of the same boon/challenge
 kind without consuming gameplay RNG.
 
-`unit_target_prices` is the complete Shop price table for units, aircraft,
-naval units, defenses, and special buildings. Every Shop target ID must appear
-exactly once. Each entry has `run_access`, `run_buff`, `permanent_access`, and
+`unit_target_prices` is the Shop price table for units, aircraft, naval units,
+defenses, and special buildings. Every active Shop target ID must appear
+exactly once. Dormant rows are allowed so preserved customized reward
+catalogues remain compatible when a launcher update adds a target. Each entry
+has `run_access`, `run_buff`, `permanent_access`, and
 `permanent_buff`. Prices are positive integers; use `null` only when that
 target has no corresponding access or buff offer. Run and permanent fields for
 the same offer kind must either both be priced or both be `null`. This table is
@@ -191,9 +193,10 @@ never determines a unit or targeted-buff price.
 }
 ```
 
-`power_target_prices` is the complete target-specific table for aid powers and
-superweapons. Every Shop power target must appear exactly once with positive
-`run_access`, `run_buff`, `permanent_access`, and `permanent_buff` prices.
+`power_target_prices` is the target-specific table for aid powers and
+superweapons. Every active Shop power target must appear exactly once with
+positive `run_access`, `run_buff`, `permanent_access`, and `permanent_buff`
+prices.
 The run and permanent fields for each offer kind must have matching
 availability. `null` remains reserved for a target that lacks that offer kind.
 Permanent powers activate automatically in future Shop runs without consuming

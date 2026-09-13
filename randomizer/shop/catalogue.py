@@ -119,20 +119,24 @@ def _validate_unit_target_prices(entries):
     expected_targets = access_targets | buff_targets
     configured_targets = set(SHOP_CONFIG.unit_target_prices)
     missing = sorted(expected_targets - configured_targets)
-    unknown = sorted(configured_targets - expected_targets)
-    if missing or unknown:
+    if missing:
         raise StaticConfigError(
-            'Shop Mode unit_target_prices must exactly cover shop unit '
-            f'targets; missing={missing}, unknown={unknown} in shop_mode.json'
+            'Shop Mode unit_target_prices must cover every shop unit '
+            f'target; missing={missing} in shop_mode.json'
         )
+    # A preserved packaged unit catalogue can intentionally omit targets added
+    # by a newer launcher. Extra price rows are dormant and harmless; accepting
+    # them keeps that customized catalogue usable across launcher upgrades.
     invalid_access = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.unit_target_prices.items()
+        if target_id in expected_targets
         if (definition.run_access is not None) != (target_id in access_targets)
     )
     invalid_buffs = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.unit_target_prices.items()
+        if target_id in expected_targets
         if (definition.run_buff is not None) != (target_id in buff_targets)
     )
     if invalid_access or invalid_buffs:
@@ -155,31 +159,34 @@ def _validate_power_target_prices(entries):
     expected_targets = access_targets | buff_targets
     configured_targets = set(SHOP_CONFIG.power_target_prices)
     missing = sorted(expected_targets - configured_targets)
-    unknown = sorted(configured_targets - expected_targets)
-    if missing or unknown:
+    if missing:
         raise StaticConfigError(
-            'Shop Mode power_target_prices must exactly cover shop power '
-            f'targets; missing={missing}, unknown={unknown} in shop_mode.json'
+            'Shop Mode power_target_prices must cover every shop power '
+            f'target; missing={missing} in shop_mode.json'
         )
     invalid_access = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.power_target_prices.items()
+        if target_id in expected_targets
         if (definition.run_access is not None) != (target_id in access_targets)
     )
     invalid_buffs = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.power_target_prices.items()
+        if target_id in expected_targets
         if (definition.run_buff is not None) != (target_id in buff_targets)
     )
     invalid_permanent_access = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.power_target_prices.items()
+        if target_id in expected_targets
         if (definition.permanent_access is not None)
         != (target_id in access_targets)
     )
     invalid_permanent_buffs = sorted(
         target_id for target_id, definition
         in SHOP_CONFIG.power_target_prices.items()
+        if target_id in expected_targets
         if (definition.permanent_buff is not None)
         != (target_id in buff_targets)
     )

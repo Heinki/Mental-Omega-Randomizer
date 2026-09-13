@@ -22,7 +22,6 @@ from ._dependencies import (
 )
 
 from randomizer.rewards.definitions import unit_display_label
-from randomizer.rewards.rules import tech_ids_for_rewards
 from randomizer.rewards.display import (
     buff_effect_lines, reward_display_name, unit_buff_counts, inherited_unit_buff_rewards,
 )
@@ -1773,14 +1772,6 @@ class ShopController(ShopPolishController):
             *selected,
             *ap_unit_entitlement_ids(ap_reward_ids),
         )
-        permanent_buff_targets = set(starter_tech_ids)
-        permanent_buff_targets.update(tech_ids_for_rewards(
-            canonical_reward_for_id(reward_id)
-            for reward_id in active_unit_rewards
-        ))
-        starting_draft_buffs = self._starting_buff_draft(
-            seed, permanent_buff_targets
-        )
         permanent_buffs = permanent_buff_snapshot(
             self.shop_profile,
             selected_unit_reward_ids=active_unit_rewards,
@@ -1829,7 +1820,6 @@ class ShopController(ShopPolishController):
                     self.shop_profile.permanent_power_unlocks
                 ),
                 permanent_buffs=permanent_buffs,
-                starting_draft_buffs=starting_draft_buffs,
                 maximum_extra_units=maximum_extra_units,
                 ap_entitlement_ids=ap_reward_ids,
                 ap_identity=ap_identity,

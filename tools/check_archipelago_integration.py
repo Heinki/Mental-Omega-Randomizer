@@ -252,7 +252,6 @@ class IntegrationTests(unittest.TestCase):
         controller.shop_run = None
         for name in ('shop_progression_mode_combo', 'shop_seed_entry',
                      'shop_setup_start_button', 'shop_faction_pool_combo',
-                     'shop_starting_buff_draft_combo',
                      'shop_discount_specialization_combo', 'shop_difficulty_combo'):
             setattr(controller, name, Widget())
         controller.appearance_frame = Widget()

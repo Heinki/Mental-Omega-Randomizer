@@ -1038,6 +1038,7 @@ def run_self_check():
             advanced_settings as advanced_settings_module,
             app as application_module,
             reward_controller as reward_controller_module,
+            shop_controller as shop_controller_module,
             starting_unlocks as starting_unlocks_module,
             state_controller as state_controller_module,
         )
@@ -1083,6 +1084,12 @@ def run_self_check():
             for name in names
             if not hasattr(module, name)
         ]
+        shop_run_start_names = (
+            shop_controller_module.ShopController.start_shop_run.__code__.co_names
+        )
+        shop_run_start_contract_valid = (
+            '_starting_buff_draft' not in shop_run_start_names
+        )
         starting_unlock_controller = (
             starting_unlocks_module.StartingUnlocksController()
         )
@@ -1284,6 +1291,7 @@ def run_self_check():
             'original_refinery_contract': player_refineries,
             'static_config_paths': [str(path) for path in static_config_paths],
             'application_imported': True,
+            'shop_run_start_contract_valid': shop_run_start_contract_valid,
             'starting_unlock_catalogue_valid': starting_unlock_catalogue_valid,
             'reward_weight_connections_valid': (
                 reward_weight_connections_valid
@@ -1347,6 +1355,7 @@ def run_self_check():
                 'ore_purifier_miner_docks_valid',
                 'original_refinery_contract_valid',
                 'application_imported',
+                'shop_run_start_contract_valid',
                 'starting_unlock_catalogue_valid',
                 'reward_weight_connections_valid',
                 'randomizer_arsenal_contract_valid',
