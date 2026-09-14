@@ -11,8 +11,9 @@ from randomizer.application.shop_polish_controller import ShopPolishController
 from randomizer.application.unlock_data import UnlockDataController
 from randomizer.rewards.catalogue import BUFF_TARGETS, REWARD_POOL
 from randomizer.rewards.display import (
-    buff_effect_lines, unit_buff_counts, inherited_unit_buff_rewards,
-    house_wide_buff_scope, buff_stack_limit, canonical_rewards,
+    buff_effect_comparison_lines, buff_effect_lines, unit_buff_counts,
+    inherited_unit_buff_rewards, house_wide_buff_scope, buff_stack_limit,
+    canonical_rewards,
 )
 from randomizer.config.tuning import stacked_weapon_damage
 from randomizer.shop.catalogue import canonical_reward_for_id, shop_catalogue
@@ -36,9 +37,12 @@ class InlineEffectChecks(unittest.TestCase):
         text = ShopPolishController._shop_catalogue_display_name(self.damage, '', 0)
         stats = next(s for s in BUFF_TARGETS[self.damage.target_id]['weapons'].values() if s.get('damage', 0) > 0)
         base = stats['damage']
-        self.assertIn(f'{stacked_weapon_damage(base, 1)} [{base:g}]', text)
+        self.assertIn(f'{base:g}', text)
+        self.assertIn(str(stacked_weapon_damage(base, 1)), text)
+        self.assertIn(' -> ', text)
+        self.assertNotIn('[', text)
         self.assertNotIn('% higher', text)
-        self.assertNotIn('\n', text)
+        self.assertIn('\n', text)
 
     def test_unit_dashboard_current_effects_contain_values(self):
         entry = dict(
@@ -55,7 +59,10 @@ class InlineEffectChecks(unittest.TestCase):
 
     def test_next_stack_and_maximum(self):
         preview = ShopPolishController._shop_catalogue_display_name(self.damage, 'Stacks 2', 2)
-        self.assertIn(buff_effect_lines(self.reward, count=3, include_label=False, include_stack=False)[0], preview)
+        self.assertEqual(preview, buff_effect_comparison_lines(self.reward, 2)[0])
+        self.assertIn(' -> ', preview)
+        self.assertNotIn('Next stack:', preview)
+        self.assertNotIn('[', preview)
         maximum = self.damage.stack_limit
         self.assertEqual(
             buff_effect_lines(self.reward, count=maximum),
@@ -64,6 +71,107 @@ class InlineEffectChecks(unittest.TestCase):
         maxed = ShopPolishController._shop_catalogue_display_name(self.damage, 'MAX', maximum)
         self.assertIn('(MAX)', maxed)
         self.assertNotIn('Next stack:', maxed)
+
+    def test_armor_shop_effect_shows_armor_and_durability_change(self):
+        armor_entry = next(
+            entry for entry in self.entries
+            if entry.reward_type is ShopRewardType.UNIT_BUFF
+            and canonical_reward_for_id(entry.reward_id).get('buff_type') == 'armor'
+        )
+        text = ShopPolishController._shop_catalogue_display_name(
+            armor_entry, '', 0
+        )
+        self.assertIn('Armor 0 -> ', text)
+        self.assertIn('effective HP', text)
+        self.assertIn(' HP', text)
+        self.assertIn('\n', text)
+        self.assertNotIn('[', text)
+
+    def test_one_time_upgrade_has_no_comparison_arrow(self):
+        entry = next(
+            entry for entry in self.entries
+            if entry.reward_type is ShopRewardType.UNIT_BUFF
+            and entry.stack_limit == 1
+        )
+        text = ShopPolishController._shop_catalogue_display_name(entry, '', 0)
+        self.assertNotIn(' -> ', text)
+
+    def test_self_healing_label_is_not_repeated(self):
+        entry = next(
+            entry for entry in self.entries
+            if entry.reward_type is ShopRewardType.UNIT_BUFF
+            and canonical_reward_for_id(entry.reward_id).get('buff_type')
+            == 'self_healing'
+            and (entry.stack_limit or 1) > 1
+        )
+        text = ShopPolishController._shop_catalogue_display_name(entry, '', 0)
+        self.assertEqual(text.casefold().count('self-healing'), 1)
+
+    def test_loadout_upgrade_stays_in_loadout_tab(self):
+        class Notebook:
+            def __init__(self):
+                self.selected = 'loadout'
+                self.labels_changed = False
+
+            def select(self, panel=None):
+                if panel is not None:
+                    self.selected = panel
+                return self.selected
+
+            def tab(self, panel, **options):
+                self.labels_changed = True
+
+        opened = []
+        controller = SimpleNamespace(
+            shop_panels=Notebook(),
+            shop_run_panel='run',
+            shop_loadout_panel='loadout',
+            _show_shop_loadout_upgrades=lambda target, power=False: (
+                opened.append((target, power))
+            ),
+        )
+        ShopPolishController._show_shop_buffs_for_target(
+            controller, 'TEST_UNIT'
+        )
+        self.assertEqual(controller.shop_panels.selected, 'loadout')
+        self.assertEqual(opened, [('TEST_UNIT', False)])
+        self.assertFalse(controller.shop_panels.labels_changed)
+
+    def test_loadout_upgrade_refresh_restores_normal_shop(self):
+        class Variable:
+            def __init__(self, value):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, value):
+                self.value = value
+
+        calls = []
+        category = Variable('Offers')
+        search = Variable('normal shop search')
+        controller = SimpleNamespace(
+            _shop_loadout_upgrade_target=('TEST_UNIT', False),
+            shop_loadout_upgrade_tree=object(),
+            shop_category_var=category,
+            shop_search_var=search,
+            shop_catalogue_tree=SimpleNamespace(selection=lambda: ()),
+            _shop_catalogue_rows={},
+            shop_buff_target_var=Variable('Test Unit [TEST_UNIT]'),
+            shop_catalogue_help_var=Variable('Upgrade help'),
+            shop_loadout_upgrade_target_var=Variable(''),
+            shop_loadout_upgrade_help_var=Variable(''),
+            _copy_shop_catalogue_to_loadout_upgrades=lambda: None,
+            refresh_shop_catalogue=lambda: calls.append(
+                (category.get(), search.get())
+            ),
+        )
+        ShopPolishController._refresh_shop_loadout_upgrade_view(controller)
+        self.assertEqual(calls[0], ('Unit Buffs', ''))
+        self.assertEqual(calls[-1], ('Offers', 'normal shop search'))
+        self.assertEqual(category.get(), 'Offers')
+        self.assertEqual(search.get(), 'normal shop search')
 
     def test_sources_combine_before_display(self):
         counts = unit_buff_counts([self.reward] * 3, self.damage.target_id)

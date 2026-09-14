@@ -1,5 +1,6 @@
 """Reward canonicalization, stacking, and human-readable display."""
 
+import re
 from math import ceil
 
 from .definitions import (
@@ -444,7 +445,8 @@ def unit_buff_counts(rewards, unit_id):
 
 
 def buff_effect_lines(
-    reward, count=1, include_label=True, include_stack=True, *, buff_counts=None, multiline=False,
+    reward, count=1, include_label=True, include_stack=True, *,
+    buff_counts=None, multiline=False, show_base_values=True,
 ):
     reward = canonical_reward(reward)
     if reward.get('kind') != 'buff':
@@ -495,7 +497,7 @@ def buff_effect_lines(
 
     def value_text(label, current, base, unit=''):
         text = f'{prefix}{label} {number(current)}'
-        if count:
+        if count and show_base_values:
             text += f' [{number(base)}]'
         return [stacked(text + unit)]
 
@@ -512,7 +514,7 @@ def buff_effect_lines(
         parts = []
         for (current, base), weapons in pairs.items():
             detail = number(current)
-            if count and show_base:
+            if count and show_base and show_base_values:
                 detail += f' [{number(base)}]'
             detail += unit
             if len(pairs) > 1:
@@ -551,15 +553,20 @@ def buff_effect_lines(
         if safe_ceiling is not None:
             base_speed = int(round(float(target.get('speed', 1))))
             speed = capped_movement_speed(target, count)
-            return [stacked(
-                f'{prefix}Speed {speed} [{base_speed}]'
-            )]
+            base_text = f' [{base_speed}]' if show_base_values else ''
+            return [stacked(f'{prefix}Speed {speed}{base_text}')]
         multiplier = stacking_multiplier('speed', count)
         faster = int(round((multiplier - 1.0) * 100))
         return [stacked(f'{prefix}Speed {faster}% faster')]
     if buff_type == 'armor':
         base, strength = durability()
-        return value_text('Armor durability', strength, base, ' HP')
+        armor = stacking_multiplier('armor', count)
+        stronger = int(round(((1.0 / armor) - 1.0) * 100))
+        base_text = f' [{number(base)} base]' if show_base_values else ''
+        return [stacked(
+            f'{prefix}Armor {stronger}% stronger; '
+            f'effective HP {number(strength)}{base_text}'
+        )]
 
     if buff_type == 'health':
         base, strength = durability()
@@ -606,20 +613,22 @@ def buff_effect_lines(
     if buff_type == 'storage':
         increase = int(stacking_amount('storage', count))
         base_storage = int(target.get('storage', 0))
+        base_text = f' [{base_storage:,}]' if show_base_values else ''
         return [stacked(
-            f'{prefix}Ore storage {base_storage + increase:,} [{base_storage:,}]'
+            f'{prefix}Ore storage {base_storage + increase:,}{base_text}'
         )]
     if buff_type == 'income':
         increase = int(stacking_amount('income', count))
         base_income = int(target.get('produce_cash_amount', 0))
+        base_text = f' [{base_income:,}]' if show_base_values else ''
         return [stacked(
-            f'{prefix}Income {base_income + increase:,} [{base_income:,}] credits'
+            f'{prefix}Income {base_income + increase:,}{base_text} credits'
         )]
     if buff_type == 'passenger_capacity':
         base_passengers = int(target.get('passengers', 0))
+        base_text = f' [{base_passengers}]' if show_base_values else ''
         return [stacked(
-            f'{prefix}Passenger capacity {base_passengers + count} '
-            f'[{base_passengers}]'
+            f'{prefix}Passenger capacity {base_passengers + count}{base_text}'
         )]
     if buff_type == 'open_topped':
         return [stacked(f'{prefix}Passengers can fire from transport')]
@@ -637,6 +646,56 @@ def buff_effect_lines(
         ))
         return [stacked(f'{prefix}Sensors {sensor_range} cells')]
     return []
+
+
+def buff_effect_comparison_lines(reward, current_count, *, buff_counts=None):
+    """Describe current and post-purchase effects without ambiguous base values."""
+    reward = canonical_reward(reward)
+    current_count = max(0, int(current_count))
+    options = dict(
+        include_label=False,
+        include_stack=False,
+        buff_counts=buff_counts,
+        show_base_values=False,
+    )
+    next_lines = buff_effect_lines(reward, count=current_count + 1, **options)
+    if not next_lines:
+        return []
+    if buff_stack_limit(reward) == 1:
+        return next_lines
+    current_lines = buff_effect_lines(reward, count=current_count, **options)
+    if len(current_lines) != len(next_lines):
+        return next_lines
+
+    def compare(current, following):
+        if current == following:
+            return following
+        current_parts = current.split('; ')
+        following_parts = following.split('; ')
+        if len(current_parts) != len(following_parts):
+            return f'{current} -> {following}'
+        compared = []
+        pattern = re.compile(r'([-+]?\d[\d,.]*)')
+        for current_part, following_part in zip(
+            current_parts, following_parts
+        ):
+            old = pattern.split(current_part)
+            new = pattern.split(following_part)
+            if len(old) == len(new) and old[::2] == new[::2]:
+                compared.append(''.join(
+                    old[index]
+                    if index % 2 == 0 or old[index] == new[index]
+                    else f'{old[index]} -> {new[index]}'
+                    for index in range(len(old))
+                ))
+            else:
+                compared.append(f'{current_part} -> {following_part}')
+        return '\n'.join(compared)
+
+    return [
+        compare(current_line, next_line)
+        for current_line, next_line in zip(current_lines, next_lines)
+    ]
 
 
 def reward_rule_summary(reward):

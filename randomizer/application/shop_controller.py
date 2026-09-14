@@ -170,6 +170,9 @@ class ShopController(ShopPolishController):
         self._shop_catalogue_rows = {}
         self._shop_catalogue_buyable = {}
         self._shop_catalogue_upgrade_targets = {}
+        self._shop_loadout_upgrade_rows = {}
+        self._shop_loadout_upgrade_buyable = {}
+        self._shop_loadout_upgrade_details = {}
         self._shop_permanent_rows = {}
         self._shop_permanent_buyable = {}
         self._shop_permanent_power_rows = {}
@@ -890,6 +893,8 @@ class ShopController(ShopPolishController):
         self._refresh_shop_missions()
         self.refresh_shop_catalogue()
         self._refresh_shop_loadout()
+        if self.__dict__.get('_shop_loadout_upgrade_target'):
+            self._refresh_shop_loadout_upgrade_view()
         self._refresh_shop_setup()
         self._refresh_permanent_shop()
         if hasattr(self, 'header_summary_var'):
@@ -1878,14 +1883,17 @@ class ShopController(ShopPolishController):
         self.refresh_shop_mode()
 
     def buy_selected_shop_reward(self, _event=None):
-        if self.shop_launch_active():
-            self._set_shop_message('Wait for current mission process to close.')
-            return
         selected = self.shop_catalogue_tree.selection()
         if not selected:
             return
         reward_id = self._shop_catalogue_rows.get(selected[0])
         if not reward_id:
+            return
+        self._buy_shop_reward(reward_id)
+
+    def _buy_shop_reward(self, reward_id):
+        if self.shop_launch_active():
+            self._set_shop_message('Wait for current mission process to close.')
             return
         try:
             validation = self.shop_service.purchase_run_reward(reward_id)

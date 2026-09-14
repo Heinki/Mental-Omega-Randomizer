@@ -38,6 +38,72 @@ def _tree(
     return tree
 
 
+def _build_loadout_upgrade_view(self, parent):
+    frame = ttk.Frame(parent, padding=8)
+    self.shop_loadout_upgrades_frame = frame
+    frame.columnconfigure(0, weight=1)
+    frame.rowconfigure(2, weight=1)
+
+    header = ttk.Frame(frame)
+    header.grid(row=0, column=0, sticky='ew', pady=(0, 6))
+    self.shop_loadout_upgrade_back_button = ttk.Button(
+        header,
+        text='Back to Current Loadout',
+        command=self.show_shop_loadout,
+    )
+    self.shop_loadout_upgrade_back_button.pack(side='left', padx=(0, 10))
+    ttk.Label(header, text='Upgrade:').pack(side='left')
+    self.shop_loadout_upgrade_target_var = tk.StringVar(value='')
+    ttk.Label(
+        header,
+        textvariable=self.shop_loadout_upgrade_target_var,
+        style='Shop.Help.TLabel',
+    ).pack(side='left', padx=(5, 0))
+
+    self.shop_loadout_upgrade_help_var = tk.StringVar(value='')
+    ttk.Label(
+        frame,
+        textvariable=self.shop_loadout_upgrade_help_var,
+        style='Shop.Help.TLabel',
+        wraplength=850,
+    ).grid(row=1, column=0, sticky='w', pady=(0, 6))
+
+    tree_frame = ttk.Frame(frame)
+    tree_frame.grid(row=2, column=0, sticky='nsew')
+    self.shop_loadout_upgrade_tree = _tree(
+        tree_frame,
+        ('name', 'tier', 'state', 'price'),
+        (
+            ('name', 'Effect', 480),
+            ('tier', 'Type / Tier', 100),
+            ('state', 'State', 155),
+            ('price', 'Price', 85),
+        ),
+        cameos=True,
+    )
+    self.shop_loadout_upgrade_tree.bind(
+        '<<TreeviewSelect>>', self.refresh_loadout_upgrade_purchase_button
+    )
+    self.shop_loadout_upgrade_tree.bind(
+        '<Double-1>', self.buy_selected_loadout_upgrade
+    )
+    self.shop_loadout_upgrade_tooltip_view = TreeTooltip(
+        self.shop_loadout_upgrade_tree,
+        self.shop_loadout_upgrade_tooltip,
+    )
+    self.shop_loadout_upgrade_purchase_button = ttk.Button(
+        frame,
+        text='Purchase Selected',
+        command=self.buy_selected_loadout_upgrade,
+        state='disabled',
+    )
+    self.shop_loadout_upgrade_purchase_button.grid(
+        row=3, column=0, sticky='e', pady=(7, 0)
+    )
+    frame.grid(row=0, column=0, sticky='nsew')
+    frame.grid_remove()
+
+
 def build_shop_tab(self, workspace_tabs):
     tab = ttk.Frame(workspace_tabs)
     self.shop_tab = tab
@@ -221,6 +287,7 @@ def build_shop_tab(self, workspace_tabs):
     panels.grid(row=3, column=0, sticky='nsew')
 
     run_shop = ttk.Frame(panels, padding=8)
+    self.shop_run_panel = run_shop
     panels.add(run_shop, text='Current Run Shop')
     run_shop.columnconfigure(0, weight=1)
     run_shop.rowconfigure(2, weight=1)
@@ -323,10 +390,16 @@ def build_shop_tab(self, workspace_tabs):
     self.shop_purchase_button.pack(side='left')
 
     loadout = ttk.Frame(panels, padding=8)
+    self.shop_loadout_panel = loadout
     panels.add(loadout, text='Current Loadout')
-    loadout.rowconfigure(1, weight=1)
+    loadout.rowconfigure(0, weight=1)
     loadout.columnconfigure(0, weight=1)
-    loadout_help = ttk.Frame(loadout)
+    loadout_overview = ttk.Frame(loadout)
+    self.shop_loadout_overview_frame = loadout_overview
+    loadout_overview.grid(row=0, column=0, sticky='nsew')
+    loadout_overview.rowconfigure(1, weight=1)
+    loadout_overview.columnconfigure(0, weight=1)
+    loadout_help = ttk.Frame(loadout_overview)
     loadout_help.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     loadout_help.columnconfigure(0, weight=1)
     ttk.Label(
@@ -352,7 +425,7 @@ def build_shop_tab(self, workspace_tabs):
     ttk.Entry(
         loadout_search, textvariable=self.shop_loadout_search_var
     ).pack(side='left', fill='x', expand=True, padx=(6, 0))
-    loadout_tree_frame = ttk.Frame(loadout)
+    loadout_tree_frame = ttk.Frame(loadout_overview)
     loadout_tree_frame.grid(row=1, column=0, sticky='nsew')
     self.shop_loadout_tree = _tree(
         loadout_tree_frame,
@@ -375,6 +448,7 @@ def build_shop_tab(self, workspace_tabs):
     self.shop_loadout_tree.bind(
         '<Double-1>', self.view_selected_loadout_buffs
     )
+    _build_loadout_upgrade_view(self, loadout)
 
     permanent = ttk.Frame(panels, padding=8)
     self.shop_permanent_panel = permanent
