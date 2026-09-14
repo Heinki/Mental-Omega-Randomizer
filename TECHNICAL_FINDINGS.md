@@ -938,8 +938,12 @@ Art deployment now also stages a complete copy of the installed `rulesmo.ini`,
 adding only the private animation registrations before art initialization.
 The map still supplies all unit definitions, buffs, and `AnimToInfantry` slots.
 The runtime asset manifest removes both temporary INIs after play. Custom loose
-rules are not overwritten, and required mutation-asset deployment failures stop
-launch instead of continuing with lethal, incomplete mutations. An isolated
+rules are not overwritten. The private chain is generated only when the player
+has Nanofiber Sync or plays Foehn; linked clones created solely for enemy scaling
+no longer make unrelated missions depend on mutation assets. If required assets
+still cannot be staged, the launcher disables the private chain for that mission
+and retries ordinary cameo deployment. The affected player infantry stays alive,
+though Nanofiber evolution is unavailable for that launch. An isolated
 engine launch of the player's Allied 02 map confirmed all seven private
 AnimTypes now have loaded sprites and `MakeInfantry` values 8 through 14 in the
 new autosave. Existing saves retain the broken serialized definitions; restart

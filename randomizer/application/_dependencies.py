@@ -95,6 +95,7 @@ from randomizer.maps.assets import (
     deploy_generated_unit_art,
     remove_generated_unit_art,
 )
+from randomizer.maps.nanofiber import suppress_nanofiber_clone_mutations
 from randomizer.core.version import APP_VERSION
 from randomizer.progression.grid import (
     COMPLETED as GRID_COMPLETED,

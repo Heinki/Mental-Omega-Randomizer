@@ -3,13 +3,15 @@
 import io
 import json
 import os
-from pathlib import PureWindowsPath
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
 from randomizer.application import launch_controller as launch
+from randomizer.maps.nanofiber import player_can_use_nanofiber
 
 
 FLAGS = ['-SPAWN', '-CD', '-SPEEDCONTROL', '-LOG']
@@ -138,6 +140,55 @@ class LaunchCommandTests(unittest.TestCase):
         ):
             with self.subTest(argument=argument):
                 self.assertEqual(launch.quote_windows_argument(argument), expected)
+
+    def test_nanofiber_asset_failure_degrades_without_blocking_launch(self):
+        controller = self.controller()
+        controller.mission_required_launch_rules = Mock(return_value={})
+        controller.write_spawn_ini = Mock()
+        controller.write_launch_options = Mock()
+        with tempfile.TemporaryDirectory() as temporary:
+            map_path = Path(temporary) / 'TEST.MAP'
+            map_path.write_text(
+                '[MORNanofiberAnimations]\n'
+                'MORNano1A=NANODEATH1\n\n'
+                '[Nanofiber7P]\n'
+                'Airburst=yes\n'
+                'AirburstWeapon=MORNano1W\n',
+                encoding='utf-8',
+            )
+            controller.prepare_hooked_map = Mock(return_value={
+                'root_map': map_path,
+                'markers': {},
+            })
+            with (
+                patch.object(launch, 'claim_runtime_asset_lease'),
+                patch.object(
+                    launch,
+                    'deploy_generated_unit_art',
+                    side_effect=[OSError('asset denied'), (map_path, {})],
+                ) as deploy,
+                patch.object(launch, 'log_event'),
+            ):
+                hook = controller.prepare_mission_launch_files(
+                    {'code': 'TEST', 'scenario': 'TEST.MAP'}, {}, 1, 3,
+                )
+
+            self.assertEqual(hook['root_map'], map_path)
+            self.assertIn('Airburst=no', map_path.read_text(encoding='utf-8'))
+            self.assertEqual(deploy.call_count, 2)
+            self.assertEqual(
+                deploy.call_args_list[1].kwargs,
+                {'include_nanofiber': False},
+            )
+            controller.write_spawn_ini.assert_called_once()
+            controller.write_launch_options.assert_called_once()
+
+    def test_nanofiber_assets_only_required_when_power_is_usable(self):
+        self.assertFalse(player_can_use_nanofiber((), 'Allies'))
+        self.assertTrue(player_can_use_nanofiber((), 'Foehn'))
+        self.assertTrue(player_can_use_nanofiber(
+            ('NANOFIBERSYNCSPECIAL',), 'Soviets'
+        ))
 
     @unittest.skipUnless(sys.platform == 'win32' and not getattr(sys, 'frozen', False),
                          'Requires a Windows Python interpreter')

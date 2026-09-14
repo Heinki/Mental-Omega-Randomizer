@@ -68,6 +68,7 @@ from ._dependencies import (
     starting_tier_one_defense_rules,
     starting_tier_one_rules,
     subprocess,
+    suppress_nanofiber_clone_mutations,
     summarize_basic_unit_rules,
     sys,
     tech_ids_for_rewards,
@@ -1151,16 +1152,55 @@ class LaunchController:
                     if '[mornanofiberanimations]' in read_text(
                         hook['root_map']
                     ).lower():
-                        raise RuntimeError(
-                            'Required Nanofiber mutation assets could not be '
-                            'prepared; launch stopped to prevent infantry loss.'
-                        ) from exc
-                    self.append_log(
-                        'Could not prepare temporary unit cameo art; '
-                        'existing custom art was left untouched.',
-                        error=True,
-                    )
-                    self.append_log(traceback.format_exc(), error=True)
+                        failure = traceback.format_exc()
+                        suppress_nanofiber_clone_mutations(hook['root_map'])
+                        self.append_log(
+                            'Could not prepare required Nanofiber mutation '
+                            'assets. Nanofiber evolution is disabled for this '
+                            'mission; affected infantry remains alive.',
+                            error=True,
+                        )
+                        self.append_log(failure, error=True)
+                        log_event(
+                            'nanofiber_mutation_assets_unavailable',
+                            level=logging.ERROR,
+                            code=mission.get('code'),
+                            scenario=scenario,
+                            error_type=exc.__class__.__name__,
+                            error=str(exc),
+                        )
+                        # Asset deployment may have failed after partially
+                        # staging the mutation rules. Clear only launcher-owned
+                        # files, then retry ordinary cameo deployment without
+                        # the private animation aliases.
+                        self.disable_generated_rules_for_client()
+                        claim_runtime_asset_lease()
+                        try:
+                            art_path, art_aliases = deploy_generated_unit_art(
+                                hook['root_map'], include_nanofiber=False
+                            )
+                            if art_path:
+                                self.append_log(
+                                    'Prepared temporary unit cameo art for: '
+                                    + ', '.join(sorted(art_aliases))
+                                    + '.'
+                                )
+                        except Exception:
+                            self.append_log(
+                                'Could not prepare temporary unit cameo art; '
+                                'existing custom art was left untouched.',
+                                error=True,
+                            )
+                            self.append_log(
+                                traceback.format_exc(), error=True
+                            )
+                    else:
+                        self.append_log(
+                            'Could not prepare temporary unit cameo art; '
+                            'existing custom art was left untouched.',
+                            error=True,
+                        )
+                        self.append_log(traceback.format_exc(), error=True)
             self.write_spawn_ini(scenario, difficulty_value, game_speed_value)
             self.write_launch_options(difficulty_value, game_speed_value)
         except Exception:

@@ -685,7 +685,7 @@ def _merge_art_section_values(text, section_values):
     return '\n'.join(output) + '\n'
 
 
-def generated_unit_art_aliases(map_path, art_text):
+def generated_unit_art_aliases(map_path, art_text, include_nanofiber=True):
     """Return art-only cameo aliases required by generated TechnoType IDs."""
     map_sections = all_section_value_maps(
         Path(map_path).read_text(
@@ -759,7 +759,7 @@ def generated_unit_art_aliases(map_path, art_text):
                 'AltCameoPCX': alt_cameo or cameo,
             }
     from randomizer.maps.nanofiber import nanofiber_art_aliases
-    if 'MORNANOFIBERANIMATIONS' in map_by_upper:
+    if include_nanofiber and 'MORNANOFIBERANIMATIONS' in map_by_upper:
         mutation_art = _art_cameo_sections(art_text, preserve_keys=True)
         aliases.update(nanofiber_art_aliases(map_by_upper, mutation_art))
     # PERUN's installed art section supplies the complete voxel but omits its
@@ -824,9 +824,12 @@ def deploy_generated_unit_art(
     target_path=None,
     art_cache_path=None,
     rules_cache_path=None,
+    include_nanofiber=True,
 ):
     """Deploy art aliases and any required early mutation registrations."""
-    if art_cache_path is None or rules_cache_path is None:
+    if art_cache_path is None or (
+        include_nanofiber and rules_cache_path is None
+    ):
         # Fresh packaged installs may reach mission launch before the UI's
         # background cameo scan has extracted ARTMO.INI. Nanofiber mutations
         # need both registries synchronously: without their ArtType metadata,
@@ -835,7 +838,7 @@ def deploy_generated_unit_art(
         requests = []
         if art_cache_path is None:
             requests.append(('ARTMO.INI', CAMEO_CACHE_DIR / 'artmo.ini'))
-        if rules_cache_path is None:
+        if include_nanofiber and rules_cache_path is None:
             requests.append(('RULESMO.INI', CAMEO_CACHE_DIR / 'rulesmo.ini'))
         extract_mix_files_sync(requests)
     runtime_target = Path(target_path or (GAME_ROOT / 'artmo.ini'))
@@ -858,7 +861,9 @@ def deploy_generated_unit_art(
                 f'Will not replace existing custom art file: {runtime_target}'
             )
     art_text = art_cache.read_text(encoding='utf-8', errors='ignore')
-    aliases = generated_unit_art_aliases(map_path, art_text)
+    aliases = generated_unit_art_aliases(
+        map_path, art_text, include_nanofiber=include_nanofiber
+    )
     if not aliases:
         if staged:
             _activate_runtime_assets(_requested_runtime_asset_paths())

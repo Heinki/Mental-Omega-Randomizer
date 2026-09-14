@@ -1,9 +1,21 @@
 """Keep Nanofiber mutations on isolated, buffed player identities."""
 
+from pathlib import Path
+
 from randomizer.rewards.definitions import LINKED_BUFF_VARIANTS
 from .base import _collision_safe_type_id, _value_case_insensitive
 from .buff_values import _register_map_type
-from .ini import all_section_value_maps_preserve
+from .ini import all_section_value_maps_preserve, read_text, set_ini_value_lines
+
+
+def player_can_use_nanofiber(active_power_ids, player_faction):
+    """Return whether this launch can expose native or rewarded Nanofiber."""
+    return (
+        str(player_faction).casefold() == 'foehn'
+        or 'NANOFIBERSYNCSPECIAL' in {
+            str(power_id).upper() for power_id in (active_power_ids or ())
+        }
+    )
 
 
 def nanofiber_clone_rules(lines, installed_sections, clone_handled):
@@ -143,3 +155,20 @@ def nanofiber_art_aliases(map_sections, art_sections):
             'MakeInfantry': metadata['makeinfantry'],
         }
     return aliases
+
+
+def suppress_nanofiber_clone_mutations(map_path):
+    """Stop the private mutation tail when its early assets cannot be staged.
+
+    Native Nanofiber warheads are already made harmless to the private armor
+    aliases by ``nanofiber_clone_rules``. Disabling the final native
+    projectile's airburst therefore leaves player clones alive while keeping
+    native campaign mutations unchanged.
+    """
+    path = Path(map_path)
+    text = read_text(path)
+    if '[mornanofiberanimations]' not in text.lower():
+        return False
+    text = set_ini_value_lines(text, 'Nanofiber7P', 'Airburst', 'no')
+    path.write_bytes(text.encode('utf-8'))
+    return True

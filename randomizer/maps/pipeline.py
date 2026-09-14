@@ -1674,6 +1674,7 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 error=True,
             )
 
+    nanofiber_available = False
     if launch_active:
         guarded_rewards = list(earned_rewards)
         guarded_rewards.extend(assistance_direct_rewards)
@@ -1694,6 +1695,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         }.get(
             current_player_family,
             normalize_faction(mission.get('side', '')),
+        )
+        from randomizer.maps.nanofiber import player_can_use_nanofiber
+        nanofiber_available = player_can_use_nanofiber(
+            active_power_ids, player_faction_label
         )
         guarded_rewards = equivalent_payload_unit_buff_rewards(
             guarded_rewards,
@@ -3030,10 +3035,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             f'Removed {removed_after_patching} additional native tech unlock action(s) after hook patching.'
         )
 
+    # Private mutation animations are needed only when the player can fire
+    # Nanofiber Sync. Merely cloning a linked pair (for example through enemy
+    # scaling) must not make every mission depend on temporary mutation assets.
     from randomizer.maps.nanofiber import nanofiber_clone_rules
     mutation_rules = nanofiber_clone_rules(
         lines, installed_rule_sections, clone_handled
-    ) if launch_active else {}
+    ) if launch_active and nanofiber_available else {}
     if mutation_rules:
         merge_ini_section_values(lines, mutation_rules)
         self.append_log('Linked Nanofiber mutations to buffed player clones.')
