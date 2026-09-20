@@ -138,9 +138,10 @@ for _name, _data in ITEM_DATA.items():
 ITEM_NAME_GROUPS = dict(ITEM_NAME_GROUPS)
 
 # Tables above retain the shared strings/integers they need. Drop the decoded
-# 35,876-entry source list so generation does not keep every location object
-# twice.
-del _SNAPSHOT, _entry, _name, _data
+# source catalogue so generation does not keep every location object twice.
+# Loop variables may not exist when a catalogue collection is empty, so do not
+# include them in the mandatory cleanup.
+del _SNAPSHOT
 
 
 def location_entries(code, check_id, count):

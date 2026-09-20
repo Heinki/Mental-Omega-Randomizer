@@ -4,6 +4,11 @@
 it wasnt even found i got them just now
 - Presetting T1 combat units to be available does not give them to you if you're playing a different faction and acquire a barracks or WF of a different faction
 examples included building Allied things in Shipwrecked/Scrapyard not allowing me to build the unlocked basic units - Standard all campaigns mode
+- This modifier has been removing the same slots every time, it's taking away the AA infantry and the AA vehicle
+I don't know if it's intended to be random or consistent but it's a problem removing both AA options - Enable Elite Force
+- Add MCV as an unlock
+- Shop mode: Split Seconds mission
+- MCV not deploying in designated deployment zone
 
 ## INFO
 
