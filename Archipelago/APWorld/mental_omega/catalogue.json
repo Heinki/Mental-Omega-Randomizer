@@ -1390,6 +1390,13 @@
       "id": 81064095
     },
     {
+      "name": "Allied MCV Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81068067
+    },
+    {
       "name": "Allied Patriot Missiles Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -8488,6 +8495,13 @@
       "id": 81065039
     },
     {
+      "name": "Epsilon MCV Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81068068
+    },
+    {
       "name": "Epsilon Mind Reader Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -9438,6 +9452,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065151
+    },
+    {
+      "name": "Foehn MCV Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81068069
     },
     {
       "name": "Foehn Nanocoat Regulator Access",
@@ -23853,6 +23874,13 @@
       "id": 81067067
     },
     {
+      "name": "Soviet MCV Access",
+      "classification": "progression",
+      "category": "unit_unlocks",
+      "repeatable": false,
+      "id": 81068070
+    },
+    {
       "name": "Soviet Repair Crane Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -31551,7 +31579,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "8d997872f75639fa975261cf1bdf7c2557b1282f024c73a4c8446395ab8c095f",
+  "catalogue_checksum": "93d8ad236a6b9330077a94a4d2b3742418dc348cccfc2379807b050b20c3fa07",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

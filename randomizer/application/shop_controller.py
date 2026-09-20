@@ -30,6 +30,7 @@ from randomizer.shop.active import (
     active_shop_starter_defense_ids,
     active_shop_starter_unit_ids,
     active_shop_tech_ids,
+    elite_force_starter_unit_ids,
     permanent_buff_snapshot,
     shop_starter_defense_ids,
     shop_starter_unit_ids,
@@ -1782,11 +1783,10 @@ class ShopController(ShopPolishController):
             faction_filter=faction_filter,
             excluded_unit_ids=settings.get('excluded_unit_access_ids', ()),
         )
-        if effects['starter_unit_count_flat'] == -2 and len(starting_units) >= 5:
-            # Remove one infantry and one vehicle while preserving aircraft
-            # and naval safety roles.
-            starting_units = (
-                starting_units[0], starting_units[2], *starting_units[4:]
+        if effects['starter_unit_count_flat'] == -2:
+            starting_units = elite_force_starter_unit_ids(
+                seed=seed,
+                starting_unit_ids=starting_units,
             )
         starting_defenses = shop_starter_defense_ids(
             seed=seed,

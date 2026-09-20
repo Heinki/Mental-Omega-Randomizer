@@ -301,6 +301,7 @@ def run_self_check():
         from randomizer.rewards.catalogue import (
             AID_POWER_MAP_CONFIGS,
             AID_POWER_UNLOCK_REWARDS,
+            ALWAYS_AVAILABLE_UNIT_IDS,
             BUFF_TARGETS,
             DEFAULT_REWARDS_PER_CHECK,
             POWER_BUFF_REWARDS,
@@ -698,6 +699,7 @@ def run_self_check():
             expanded_tier_one_unit_ids,
             random_chaos_tier_one_unit_ids,
             select_tier_one_unit_variants,
+            starting_tier_one_rules,
             standard_tier_one_defense_markers,
             standard_tier_one_unit_markers,
             tier_one_defense_ids,
@@ -722,6 +724,26 @@ def run_self_check():
             and (
                 indexed_tier_one_defense_ids | indexed_tier_one_unit_ids
             ).issubset(indexed_access_ids)
+        )
+        mcv_prerequisites = {
+            'AMCV': 'GAWEAP',
+            'SMCV': 'NAWEAP',
+            'PCV': 'YAWEAP',
+            'FMCV': 'FAWEAP',
+        }
+        mcv_access_rewards_valid = bool(
+            not set(mcv_prerequisites).intersection(ALWAYS_AVAILABLE_UNIT_IDS)
+            and all(
+                len(matches := [
+                    reward for reward in REWARD_POOL
+                    if reward.get('kind') not in {'buff', 'superweapon'}
+                    and unit_id in reward.get('rules', {})
+                ]) == 1
+                and matches[0]['rules'][unit_id].get('TechLevel') == '1'
+                and matches[0]['rules'][unit_id].get('Prerequisite')
+                == prerequisite
+                for unit_id, prerequisite in mcv_prerequisites.items()
+            )
         )
         standard_families = ('allies', 'soviets', 'epsilon')
         standard_unit_markers = tier_one_unit_ids(standard_families)
@@ -813,6 +835,43 @@ def run_self_check():
             len(soviet_only_chaos_tier_one_units) == 7
             and set(soviet_only_chaos_tier_one_units).issubset(
                 soviet_tier_one_ids
+            )
+        )
+        captured_factory_lines = '''
+[Basic]
+Player=PsiCorps House
+[Houses]
+0=PsiCorps House
+1=Allied House
+[PsiCorps House]
+Country=PsiCorps
+PlayerControl=yes
+Allies=PsiCorps House
+[Allied House]
+Country=UnitedStates
+[Structures]
+0=Allied House,GAPILE,256,1,1,0,None,1,0,0,0,0,0,0,0,0,0
+1=Allied House,GAWEAP,256,2,2,0,None,1,0,0,0,0,0,0,0,0,0
+'''.splitlines()
+        captured_factory_starter_rules = starting_tier_one_rules(
+            captured_factory_lines,
+            standard_unit_markers,
+            standard_families=standard_families,
+            include_capturable_production=True,
+        )
+        tier_one_captured_factory_valid = bool(
+            {'E1', 'GGI', 'ETNK', 'FV'}.issubset(
+                captured_factory_starter_rules
+            )
+            and captured_factory_starter_rules['E1'].get('Prerequisite')
+            == 'GAPILE'
+            and captured_factory_starter_rules['ETNK'].get('Prerequisite')
+            == 'GAWEAP'
+            and 'UnitedStates' in captured_factory_starter_rules['E1'].get(
+                'Owner', ''
+            ).split(',')
+            and not {'INIT', 'HARP', 'LTNK', 'YTNK'}.intersection(
+                captured_factory_starter_rules
             )
         )
         industrial_plant_reward = next(
@@ -1222,6 +1281,7 @@ def run_self_check():
             ),
             'shin_allied_tech_valid': shin_allied_tech_valid,
             'access_catalog_valid': access_catalog_valid,
+            'mcv_access_rewards_valid': mcv_access_rewards_valid,
             'access_catalog_entries': len(runtime_access_catalog),
             'tier_one_standard_roles_valid': tier_one_standard_roles_valid,
             'tier_one_naval_roles_valid': tier_one_naval_roles_valid,
@@ -1230,6 +1290,9 @@ def run_self_check():
             ),
             'tier_one_exclusion_backfill_valid': (
                 tier_one_exclusion_backfill_valid
+            ),
+            'tier_one_captured_factory_valid': (
+                tier_one_captured_factory_valid
             ),
             'standalone_gear_change_valid': standalone_gear_change_valid,
             'payload_power_visibility_valid': payload_power_visibility_valid,
@@ -1340,10 +1403,12 @@ def run_self_check():
                 'equivalent_buff_access_isolation_valid',
                 'shin_allied_tech_valid',
                 'access_catalog_valid',
+                'mcv_access_rewards_valid',
                 'tier_one_standard_roles_valid',
                 'tier_one_naval_roles_valid',
                 'tier_one_starter_count_contract_valid',
                 'tier_one_exclusion_backfill_valid',
+                'tier_one_captured_factory_valid',
                 'standalone_gear_change_valid',
                 'payload_power_visibility_valid',
                 'stalins_fist_deploy_factory_valid',

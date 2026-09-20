@@ -405,7 +405,7 @@ class LaunchController:
                 allow_player_family_fallback=(
                     mission_code not in NO_BUILD_MISSION_CODES
                 ),
-                include_capturable_production=False,
+                include_capturable_production=True,
             )
         for section, values in starter_rules.items():
             rules.setdefault(section, {}).update(values)

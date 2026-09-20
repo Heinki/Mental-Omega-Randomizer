@@ -7,6 +7,8 @@ from randomizer.missions.tier_one import (
     TIER_ONE_GROUND_ROLES,
     TIER_ONE_NAVAL_ROLES,
     TIER_ONE_ROLE_MARKERS,
+    TIER_ONE_ROLE_UNITS,
+    TIER_ONE_SUBFACTION_UNITS,
     select_tier_one_defense_variants,
     select_tier_one_unit_variants,
 )
@@ -95,6 +97,53 @@ def shop_starter_defense_ids(
         families=_starter_families(faction_filter),
         excluded_unit_ids=excluded_unit_ids,
     )
+
+
+def elite_force_starter_unit_ids(*, seed, starting_unit_ids):
+    """Remove one infantry and one vehicle without removing both AA roles."""
+    units = tuple(dict.fromkeys(
+        str(unit_id).upper()
+        for unit_id in starting_unit_ids or ()
+        if str(unit_id)
+    ))
+    role_ids = {
+        role: {
+            *(entry[0] for entry in TIER_ONE_ROLE_UNITS.get(role, {}).values()),
+            *(
+                entry[0]
+                for entry in TIER_ONE_SUBFACTION_UNITS.get(role, {}).values()
+            ),
+        }
+        for role in TIER_ONE_GROUND_ROLES
+    }
+    infantry = tuple(
+        unit_id for unit_id in units
+        if unit_id in role_ids['ground_infantry']
+        or unit_id in role_ids['anti_air_infantry']
+    )
+    vehicles = tuple(
+        unit_id for unit_id in units
+        if unit_id in role_ids['ground_vehicle']
+        or unit_id in role_ids['anti_air_vehicle']
+    )
+    anti_air_units = set(units).intersection(
+        role_ids['anti_air_infantry'] | role_ids['anti_air_vehicle']
+    )
+    pairs = [
+        (infantry_id, vehicle_id)
+        for infantry_id in infantry
+        for vehicle_id in vehicles
+        if (
+            not anti_air_units
+            or not anti_air_units.issubset({infantry_id, vehicle_id})
+        )
+    ]
+    if not pairs:
+        return units
+    removed = set(random.Random(
+        f'{seed}:shop-elite-force-starters'
+    ).choice(pairs))
+    return tuple(unit_id for unit_id in units if unit_id not in removed)
 
 
 def active_shop_starter_unit_ids(run):

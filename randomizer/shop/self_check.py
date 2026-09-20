@@ -35,6 +35,7 @@ from .active import (
     active_shop_starter_defense_ids,
     active_shop_starter_unit_ids,
     active_shop_tech_ids,
+    elite_force_starter_unit_ids,
     permanent_buff_snapshot,
 )
 from .archipelago import (
@@ -1544,7 +1545,7 @@ def validate_shop_domain():
         and operation.meta_coins == 3
         and operation.victory_bonus_run_coins == 3
         and capped_bonus.victory_bonus_run_coins == 5
-        and len(SHOP_CONFIG.unit_target_prices) == 311
+        and len(SHOP_CONFIG.unit_target_prices) == 315
         and len(SHOP_CONFIG.power_target_prices) == 93
         and all(
             SHOP_CONFIG.power_target_prices[target_id].run_access == 12
@@ -1558,6 +1559,7 @@ def validate_shop_domain():
         )
         and run_unit_price('E1') == 2
         and run_unit_price('AHMV') == 4
+        and run_unit_price('AMCV') == 9
         and run_unit_price('STARDUSTB') == 12
         and run_buff_price('SPY') == 2
         and run_buff_price('STARDUSTB') == 6
@@ -1565,6 +1567,7 @@ def validate_shop_domain():
         and meta_rewards_by_difficulty == [1, 2, 3, 4]
         and discounted_shop_price(0, shop_discount_level=999) == 1
         and permanent_unit_price('SPY') == 10
+        and permanent_unit_price('AMCV') == 38
         and permanent_unit_price('STARDUSTB') == 60
         and permanent_buff_price('SPY') == 5
         and permanent_buff_price('STARDUSTB') == 12
@@ -2136,6 +2139,35 @@ def validate_shop_domain():
             for family in ('allies', 'soviets', 'epsilon')
         )
     )
+    elite_force_source = ('E1', 'GGI', 'ETNK', 'FV', 'STORM', 'DEST', 'AEGIS')
+    elite_force_samples = tuple(
+        elite_force_starter_unit_ids(
+            seed=f'ELITE-FORCE-{index}',
+            starting_unit_ids=elite_force_source,
+        )
+        for index in range(32)
+    )
+    elite_force_single_aa = elite_force_starter_unit_ids(
+        seed='ELITE-FORCE-SINGLE-AA',
+        starting_unit_ids=('E1', 'ETNK', 'FV', 'STORM', 'DEST', 'AEGIS'),
+    )
+    elite_force_starters_valid = bool(
+        len(set(elite_force_samples)) > 1
+        and all(len(sample) == 5 for sample in elite_force_samples)
+        and all(
+            len({'E1', 'GGI'}.difference(sample)) == 1
+            and len({'ETNK', 'FV'}.difference(sample)) == 1
+            and {'STORM', 'DEST', 'AEGIS'}.issubset(sample)
+            and not {'GGI', 'FV'}.isdisjoint(sample)
+            and sample == elite_force_starter_unit_ids(
+                seed=f'ELITE-FORCE-{index}',
+                starting_unit_ids=elite_force_source,
+            )
+            for index, sample in enumerate(elite_force_samples)
+        )
+        and 'FV' in elite_force_single_aa
+        and len(elite_force_single_aa) == 4
+    )
 
     run = ShopRun(
         run_id='shop-self-check-run',
@@ -2238,6 +2270,7 @@ def validate_shop_domain():
         ),
         'shop_exact_access_mode_valid': SHOP_ACCESS_REWARD_MODE == 'Chaos',
         'shop_single_airfield_valid': shop_single_airfield_valid,
+        'elite_force_starters_valid': elite_force_starters_valid,
         'purchase_rules_valid': purchase_rules_valid,
         'permanent_purchase_valid': permanent_purchase_valid,
         'permanent_rewards_all_modes_valid': permanent_rewards_all_modes_valid,

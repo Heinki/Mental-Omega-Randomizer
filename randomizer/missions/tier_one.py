@@ -728,18 +728,16 @@ def starting_tier_one_rules(
                 (family, 'air'),
                 (family, 'naval'),
             })
-    starter_family = _preferred_standard_starter_family(
-        lines,
-        records,
-        production_categories,
-        allowed_families,
-    )
-    allowed_families = {starter_family} if starter_family else set()
-    production_categories = {
-        (family, category)
-        for family, category in production_categories
-        if family == starter_family
+    # Standard starters are abstract roles, not one fixed faction roster.
+    # Prepare every family whose production can become player-controlled;
+    # exact factory prerequisites keep each equivalent hidden until that
+    # faction's Barracks, War Factory, airfield, or shipyard is acquired.
+    available_families = {
+        family
+        for family, _category in production_categories
+        if family in allowed_families
     }
+    allowed_families.intersection_update(available_families)
     base_families = {
         family for family, category in production_categories
         if category == 'base'
@@ -754,19 +752,24 @@ def starting_tier_one_rules(
             available_categories.add((family, 'vehicles'))
             available_categories.add((family, 'air'))
             available_categories.add((family, 'naval'))
-    if starter_family:
-        # One known family is enough to prepare every starter role. Exact
-        # production prerequisites keep missing categories dormant until the
-        # mission script creates or transfers the matching factory.
-        available_categories.add((starter_family, 'infantry'))
-        available_categories.add((starter_family, 'vehicles'))
-        available_categories.add((starter_family, 'air'))
-        available_categories.add((starter_family, 'naval'))
+    for family in allowed_families:
+        # One known production category is enough to prepare every starter
+        # role for that family. Exact prerequisites keep missing factories
+        # dormant until campaign scripts create, transfer, or expose them.
+        available_categories.add((family, 'infantry'))
+        available_categories.add((family, 'vehicles'))
+        available_categories.add((family, 'air'))
+        available_categories.add((family, 'naval'))
 
     marker_roles = {
         TIER_ONE_ROLE_BY_MARKER[unit_id]
         for unit_id in selected_ids
         if unit_id in TIER_ONE_ROLE_BY_MARKER
+    }
+    catalog_by_identity = {
+        (tech_id, family, category): (tech_level, native_owners)
+        for tech_id, tech_level, family, category, _prerequisite, native_owners
+        in access_catalog()
     }
     selected_aircraft_families = set()
     for role in TIER_ONE_ROLE_UNITS:
@@ -795,14 +798,17 @@ def starting_tier_one_rules(
             if category == 'air':
                 selected_aircraft_families.add(family)
             prerequisite = CHAOS_PRIMARY_PRODUCTION[family][category]
-            values = {
-                'TechLevel': '1',
-                'Owner': owners,
-                'RequiredHouses': required_houses,
-                'ForbiddenHouses': 'none',
-            }
-            values.update(_alternative_prerequisite_rules((prerequisite,)))
-            rules[tech_id] = values
+            _tech_level, native_owners = catalog_by_identity.get(
+                (tech_id, family, category), ('1', '')
+            )
+            rules[tech_id] = _build_access_rule(
+                lines,
+                sections,
+                player_countries,
+                '1',
+                native_owners,
+                prerequisite_alternatives=(prerequisite,),
+            )
     rules.update(_tier_one_airfield_rules(
         base_families.intersection(allowed_families),
         selected_aircraft_families,
