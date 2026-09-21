@@ -108,43 +108,11 @@ def build_shop_tab(self, workspace_tabs):
     tab = ttk.Frame(workspace_tabs)
     self.shop_tab = tab
     tab.columnconfigure(0, weight=1)
-    tab.rowconfigure(0, weight=1)
+    tab.rowconfigure(1, weight=1)
 
-    canvas = tk.Canvas(
-        tab,
-        borderwidth=0,
-        highlightthickness=0,
-        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
-    )
-    self.shop_canvas = canvas
-    vertical_scrollbar = ttk.Scrollbar(
-        tab, orient='vertical', command=canvas.yview
-    )
-    horizontal_scrollbar = ttk.Scrollbar(
-        tab, orient='horizontal', command=canvas.xview
-    )
-    canvas.configure(
-        xscrollcommand=horizontal_scrollbar.set,
-        yscrollcommand=vertical_scrollbar.set,
-    )
-    canvas.grid(row=0, column=0, sticky='nsew')
-    vertical_scrollbar.grid(row=0, column=1, sticky='ns')
-    horizontal_scrollbar.grid(row=1, column=0, sticky='ew')
-
-    content = ttk.Frame(canvas, padding=8)
-    self.shop_content_frame = content
-    content.columnconfigure(0, weight=1)
-    content.rowconfigure(3, weight=1)
-    self.shop_canvas_window = canvas.create_window(
-        (0, 0), window=content, anchor='nw'
-    )
-    content.bind('<Configure>', self.on_shop_content_configure, add='+')
-    canvas.bind('<Configure>', self.on_shop_canvas_configure, add='+')
-    self.bind_all('<MouseWheel>', self.on_shop_mousewheel, add='+')
-
-    header = ttk.Frame(content)
+    header = ttk.Frame(tab, padding=(8, 8, 8, 0))
     self.shop_header_frame = header
-    header.grid(row=0, column=0, sticky='ew', pady=(0, 8))
+    header.grid(row=0, column=0, sticky='ew')
     for column in range(6):
         header.columnconfigure(column, weight=1)
     header_items = (
@@ -166,6 +134,70 @@ def build_shop_tab(self, workspace_tabs):
         label.grid(row=0, column=column, sticky='w', padx=(0, 10))
         self.shop_header_labels.append(label)
     self.shop_status_label = self.shop_header_labels[1]
+
+    canvas = tk.Canvas(
+        tab,
+        borderwidth=0,
+        highlightthickness=0,
+        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+    )
+    self.shop_canvas = canvas
+    vertical_scrollbar = ttk.Scrollbar(
+        tab, orient='vertical', command=canvas.yview
+    )
+    horizontal_scrollbar = ttk.Scrollbar(
+        tab, orient='horizontal', command=canvas.xview
+    )
+    canvas.configure(
+        xscrollcommand=horizontal_scrollbar.set,
+        yscrollcommand=vertical_scrollbar.set,
+    )
+    canvas.grid(row=1, column=0, sticky='nsew')
+    vertical_scrollbar.grid(row=1, column=1, sticky='ns')
+    horizontal_scrollbar.grid(row=2, column=0, sticky='ew')
+
+    content = ttk.Frame(canvas, padding=8)
+    self.shop_content_frame = content
+    content.columnconfigure(0, weight=1)
+    content.rowconfigure(3, weight=1)
+    self.shop_canvas_window = canvas.create_window(
+        (0, 0), window=content, anchor='nw'
+    )
+    content.bind('<Configure>', self.on_shop_content_configure, add='+')
+    canvas.bind('<Configure>', self.on_shop_canvas_configure, add='+')
+    self.bind_all('<MouseWheel>', self.on_shop_mousewheel, add='+')
+    self.bind_all('<Button-4>', self.on_shop_mousewheel, add='+')
+    self.bind_all('<Button-5>', self.on_shop_mousewheel, add='+')
+
+    run_ended = ttk.Frame(content, padding=(18, 24))
+    self.shop_run_ended_frame = run_ended
+    run_ended.columnconfigure(0, weight=1)
+    self.shop_run_ended_title_var = tk.StringVar(value='RUN ENDED')
+    self.shop_run_ended_title_label = ttk.Label(
+        run_ended,
+        textvariable=self.shop_run_ended_title_var,
+        font=('Segoe UI', 18, 'bold'),
+        style='Error.TLabel',
+        anchor='center',
+    )
+    self.shop_run_ended_title_label.grid(row=0, column=0, sticky='ew')
+    self.shop_run_ended_detail_var = tk.StringVar(value='')
+    ttk.Label(
+        run_ended,
+        textvariable=self.shop_run_ended_detail_var,
+        font=('Segoe UI', 11, 'bold'),
+        justify='center',
+        anchor='center',
+    ).grid(row=1, column=0, sticky='ew', pady=(8, 16))
+    self.shop_start_new_run_button = ttk.Button(
+        run_ended,
+        text='Start New Run',
+        command=self.start_shop_run,
+        style='Shop.StartNewRun.TButton',
+    )
+    self.shop_start_new_run_button.grid(row=2, column=0)
+    run_ended.grid(row=1, column=0, sticky='ew')
+    run_ended.grid_remove()
 
     choices = ttk.LabelFrame(content, text='Mission Choices', padding=8)
     self.shop_choices_frame = choices
@@ -266,6 +298,7 @@ def build_shop_tab(self, workspace_tabs):
         })
 
     actions = ttk.Frame(content)
+    self.shop_actions_frame = actions
     actions.grid(row=2, column=0, sticky='ew', pady=8)
     self.shop_give_up_button = ttk.Button(
         actions,
@@ -275,6 +308,13 @@ def build_shop_tab(self, workspace_tabs):
         command=self.give_up_shop_run,
     )
     self.shop_give_up_button.pack(side='left')
+    self.shop_reset_profile_button = ttk.Button(
+        actions,
+        text='Reset Profile…',
+        command=self.reset_shop_profile,
+        style='Danger.TButton',
+    )
+    self.shop_reset_profile_button.pack(side='right')
     self.shop_message_label = ttk.Label(
         actions,
         textvariable=self.shop_message_var,
@@ -466,12 +506,6 @@ def build_shop_tab(self, workspace_tabs):
     ttk.Entry(
         permanent_search, textvariable=self.shop_permanent_search_var
     ).grid(row=0, column=1, sticky='ew')
-    ttk.Button(
-        permanent_search,
-        text='Reset Profile…',
-        command=self.reset_shop_profile,
-        style='Danger.TButton',
-    ).grid(row=0, column=2, sticky='e', padx=(8, 0))
     permanent_tabs = ttk.Notebook(permanent, style='Unlocks.TNotebook')
     self.shop_permanent_tabs = permanent_tabs
     permanent_tabs.grid(row=1, column=0, sticky='nsew')
@@ -607,37 +641,29 @@ def build_shop_tab(self, workspace_tabs):
     upgrade_frame.grid(row=0, column=0, sticky='nsew')
     self.shop_upgrade_tree = _tree(
         upgrade_frame,
-        ('name', 'level', 'state', 'price'),
+        ('name', 'decrease', 'level', 'increase', 'state', 'price'),
         (
-            ('name', 'Upgrade', 230), ('level', 'Level', 80),
+            ('name', 'Upgrade', 230),
+            ('decrease', '', 38),
+            ('level', 'Level', 80),
+            ('increase', '', 38),
             ('state', 'State', 130),
             ('price', 'Next Price', 90),
         ),
         height=10,
     )
+    self.shop_upgrade_tree.column('decrease', stretch=False, anchor='center')
+    self.shop_upgrade_tree.column('level', stretch=False, anchor='center')
+    self.shop_upgrade_tree.column('increase', stretch=False, anchor='center')
     self.shop_upgrade_tree.bind(
-        '<<TreeviewSelect>>', self.refresh_permanent_purchase_buttons
+        '<Button-1>', self.on_shop_upgrade_tree_click
+    )
+    self.shop_upgrade_tree.bind(
+        '<Double-1>', self.on_shop_upgrade_tree_double_click
     )
     self.shop_upgrade_tooltip_view = TreeTooltip(
         self.shop_upgrade_tree, self.shop_upgrade_tooltip
     )
-    self.shop_permanent_upgrade_info_var = tk.StringVar(
-        value='Select an upgrade to see its effect, level, and next price.'
-    )
-    ttk.Label(
-        permanent_upgrades,
-        textvariable=self.shop_permanent_upgrade_info_var,
-        wraplength=620,
-        justify='left',
-    ).grid(row=1, column=0, sticky='w', pady=(7, 4))
-    self.shop_permanent_upgrade_button = ttk.Button(
-        permanent_upgrades,
-        text='Select an Upgrade',
-        command=self.buy_selected_permanent_upgrade,
-        state='disabled',
-    )
-    self.shop_permanent_upgrade_button.grid(row=2, column=0, sticky='e')
-
     permanent_buffs = ttk.Frame(permanent_tabs, padding=8)
     self.shop_permanent_buffs_panel = permanent_buffs
     permanent_tabs.add(permanent_buffs, text='Permanent Unit Buffs')

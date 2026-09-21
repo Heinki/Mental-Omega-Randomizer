@@ -824,9 +824,12 @@ GLOBAL_BUFF_REWARDS = _REWARD_CATALOGUE_CONFIG['global_buff_rewards']
 def build_buff_rewards():
     rewards = []
     for unit_id, target in BUFF_TARGETS.items():
-        # Runtime-only payload targets consume another unit's earned buffs.
-        # They need clone metadata, not separately rollable reward cards.
-        if target.get('inherits_equivalent_payload_buffs'):
+        # Runtime-only payload and linked targets consume another unit's
+        # earned buffs. They need clone metadata, not separate reward cards.
+        if (
+            target.get('inherits_equivalent_payload_buffs')
+            or target.get('linked_buff_source')
+        ):
             continue
         for buff_type in BUFF_TYPES:
             buff_type_id = buff_type['id']
@@ -861,6 +864,7 @@ def build_buff_rewards():
             if (
                 unit_id in NONCOMBAT_WEAPON_TARGET_IDS
                 and buff_type_id in {'damage', 'reload', 'range'}
+                and not target.get('linked_combat_weapons')
             ):
                 continue
             if buff_type.get('requires_stat') and buff_type.get('requires_stat') not in target:
@@ -897,8 +901,6 @@ def build_buff_rewards():
     return rewards
 
 
-UNIT_BUFF_REWARDS = build_buff_rewards()
-
 # Linked land/water identities share one visible access item and one set of
 # rewards. Their separate map clones still need variant-specific weapons so a
 # Robot Tank buff affects both the War Factory and Naval Yard forms safely.
@@ -924,6 +926,27 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
         )
         BUFF_TARGETS[variant_id] = variant_target
         UNIT_LABELS.setdefault(variant_id, variant_target['label'])
+        variant_weapons = variant_target.get('weapons', {})
+        if variant_weapons:
+            # Visible rewards belong to the root identity, so their eligibility,
+            # stack limits, and tooltip details must include weapons available
+            # only after a mode switch or deployment. This is also what allows
+            # a normally unarmed Sweeper to offer attack upgrades for FASWPR.
+            source_target['linked_combat_weapons'] = True
+            source_weapons = source_target.setdefault('weapons', {})
+            for weapon_id in list(source_weapons):
+                if str(weapon_id).upper().startswith('NOTA'):
+                    source_weapons.pop(weapon_id, None)
+            source_weapon_ids = {
+                str(weapon_id).upper() for weapon_id in source_weapons
+            }
+            for weapon_id, stats in variant_weapons.items():
+                if str(weapon_id).upper() not in source_weapon_ids:
+                    source_weapons[weapon_id] = dict(stats)
+                    source_weapon_ids.add(str(weapon_id).upper())
+
+
+UNIT_BUFF_REWARDS = build_buff_rewards()
 
 SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['superweapon_unlock_rewards']
 

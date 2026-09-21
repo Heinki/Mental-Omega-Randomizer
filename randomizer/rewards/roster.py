@@ -797,9 +797,13 @@ def validate_unit_buff_application_contracts():
                 ):
                     peer_target = BUFF_TARGETS.get(peer_id, target)
                     direct_ids = direct_weapon_ids(templates.get(peer_id, {}))
-                    if peer_target.get('power_payload_only'):
-                        # Installed payload-only identities are cloned from
-                        # live rules, not bundled production templates.
+                    if (
+                        peer_target.get('power_payload_only')
+                        or peer_target.get('runtime_transform')
+                    ):
+                        # Installed payload-only and runtime transform
+                        # identities are cloned from live rules, not bundled
+                        # production templates.
                         direct_ids.update(
                             str(weapon_id).upper()
                             for weapon_id in peer_target.get('weapons', {})

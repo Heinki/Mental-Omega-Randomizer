@@ -924,7 +924,9 @@ appends private clone IDs to the mutation list, preserving all native slots.
 Private armor aliases prevent native mutation warheads from consuming player
 clones. An appended seven-stage weapon chain targets those aliases and uses
 private animations deployed through the temporary art overlay. Mutation damage
-uses final clone health so health and armor stacks do not prevent conversion.
+uses Ares relative current-health damage through only the matching private
+armor alias. This avoids fixed-damage overflow while remaining lethal through
+large health and armor stacks.
 Native infantry, evolved forms, and their mutation animation slots remain intact.
 
 The first implementation registered private animations only in the map. The

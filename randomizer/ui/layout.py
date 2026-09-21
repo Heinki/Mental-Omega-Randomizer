@@ -29,6 +29,11 @@ def _build_window_shell(self):
     self.style.configure('Unlocks.TNotebook', tabposition='n')
     self.style.configure('Unlocks.TNotebook.Tab', padding=(7, 7), font=('Segoe UI', 9, 'bold'))
     self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
+    self.style.configure(
+        'Shop.StartNewRun.TButton',
+        font=('Segoe UI', 14, 'bold'),
+        padding=(24, 12),
+    )
 
     header = ttk.Label(
         main_frame,

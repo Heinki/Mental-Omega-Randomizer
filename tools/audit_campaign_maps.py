@@ -727,8 +727,7 @@ def _assert_golden_gate_transport_factories(missions):
             root_map.unlink()
 
 
-def _assert_mode_switch_buff_clones(missions):
-    mission = next(mission for mission in missions if mission['code'] == 'SHBD')
+def _assert_mode_switch_buff_clones(missions, reward_mode='Chaos'):
     linked_modes = {
         'ETNK': 'ETNK2',
         'AERO': 'AERO2',
@@ -745,20 +744,48 @@ def _assert_mode_switch_buff_clones(missions):
         'ROADR': 'ROADR2',
         'ARCH': 'ARCH2',
     }
+    deployed_modes = {
+        'SWPR': 'FASWPR',
+    }
     reward_by_name = {
         reward.get('name'): reward
         for reward in REWARD_POOL
         if reward.get('name')
     }
     from randomizer.rewards.catalogue import BUFF_TARGETS
+    _installed_superweapons, installed_sections = installed_rules_registry(
+        synchronous=True
+    )
+    installed_by_upper = {
+        str(section_id).upper(): values
+        for section_id, values in installed_sections.items()
+    }
+    discovered_modes = {}
+    for source_id, target in BUFF_TARGETS.items():
+        if target.get('linked_buff_source'):
+            continue
+        installed_values = installed_by_upper.get(source_id.upper(), {})
+        mode_id = next((
+            str(value).strip().upper()
+            for key, value in installed_values.items()
+            if str(key).lower() == 'convert.deploy'
+        ), '')
+        if mode_id and mode_id not in {'NONE', '<NONE>'}:
+            discovered_modes[source_id.upper()] = mode_id
+    if discovered_modes != linked_modes:
+        raise AssertionError(
+            'Mode-switch audit list differs from installed reward units: '
+            f'configured={linked_modes}, installed={discovered_modes}'
+        )
     reward_names = []
-    for source_id in linked_modes:
+    for source_id in (*linked_modes, *deployed_modes):
         label = BUFF_TARGETS[source_id]['label']
-        reward_names.extend((
-            f'{label} Access',
-            f'{label} Reinforced Frames I',
-        ))
-    launcher = _AuditLauncher()
+        reward_names.append(f'{label} Access')
+        for suffix in ('Firepower I', 'Weapon Tuning I', 'Optics I'):
+            reward_name = f'{label} {suffix}'
+            if reward_name in reward_by_name:
+                reward_names.append(reward_name)
+    launcher = _AuditLauncher(reward_mode=reward_mode)
     launcher.player_rewards = [
         canonical_reward(reward_by_name[name]) for name in reward_names
     ]
@@ -766,11 +793,11 @@ def _assert_mode_switch_buff_clones(missions):
     extra_rules = launcher.map_rules_for_launch(
         allowed_unlocked_tech_ids=allowed
     )
+    mission = next(mission for mission in missions if mission['code'] == 'SHBD')
     hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
     if hook is None:
         raise AssertionError('No SHBD map for mode-switch buff audit')
-    generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
-    lines = generated_path.read_text(
+    lines = (GENERATED_MAP_DIR / mission['scenario'].upper()).read_text(
         encoding='utf-8', errors='ignore'
     ).splitlines()
     registered = {
@@ -797,11 +824,154 @@ def _assert_mode_switch_buff_clones(missions):
                 f'SHBD mode switch escapes buffed clones for '
                 f'{source_id}/{mode_id}'
             )
+        for unit_id, values in (
+            (source_id, source_values),
+            (mode_id, mode_values),
+        ):
+            native_weapons = {
+                str(weapon_id).upper()
+                for weapon_id in BUFF_TARGETS[unit_id].get('weapons', {})
+            }
+            cloned_weapon_ids = {
+                str(value).upper()
+                for key, value in values.items()
+                if (
+                    str(key).lower() in {
+                        'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+                    }
+                    or (
+                        str(key).lower().startswith('weapon')
+                        and str(key).lower().removeprefix('weapon').isdigit()
+                    )
+                    or (
+                        str(key).lower().startswith('eliteweapon')
+                        and str(key).lower().removeprefix('eliteweapon').isdigit()
+                    )
+                )
+            }
+            leaked_weapons = native_weapons.intersection(cloned_weapon_ids)
+            if leaked_weapons:
+                raise AssertionError(
+                    f'SHBD {unit_id} mode retained unbuffed weapon(s): '
+                    + ', '.join(sorted(leaked_weapons))
+                )
+
+    building_registered = {
+        str(type_id).upper()
+        for type_id in section_value_map_preserve(
+            lines, 'BuildingTypes'
+        ).values()
+    }
+    for source_id, mode_id in deployed_modes.items():
+        source_clone = f'MORP{source_id}'
+        mode_clone = f'MORP{mode_id}'
+        if source_clone.upper() not in registered:
+            raise AssertionError(f'SHBD lacks registered {source_clone}')
+        if mode_clone.upper() not in building_registered:
+            raise AssertionError(f'SHBD lacks registered {mode_clone}')
+        source_values = section_value_map_preserve(lines, source_clone)
+        mode_values = section_value_map_preserve(lines, mode_clone)
+        if (
+            source_values.get('DeploysInto') != mode_clone
+            or mode_values.get('UndeploysInto') != source_clone
+        ):
+            raise AssertionError(
+                f'SHBD deploy switch escapes buffed clones for '
+                f'{source_id}/{mode_id}'
+            )
+        for key in ('Primary', 'ElitePrimary'):
+            weapon_id = str(mode_values.get(key) or '')
+            if not weapon_id.upper().startswith('MORW'):
+                raise AssertionError(
+                    f'SHBD {mode_id} {key} retained unbuffed {weapon_id!r}'
+                )
+            weapon_values = section_value_map_preserve(lines, weapon_id)
+            if not {'Damage', 'Range', 'ROF'}.issubset(weapon_values):
+                raise AssertionError(
+                    f'SHBD {mode_id} {key} lacks all three weapon buffs'
+                )
+
+    root_map = Path(hook['root_map'])
+    if root_map.is_file() and is_generated_hooked_map(root_map):
+        root_map.unlink()
+
+    # SHAND disables both native Colossus mode links. The separately earned
+    # clones must restore the installed two-way graph, including the runtime
+    # secondary form which has no committed MORP template of its own.
+    mission = next(mission for mission in missions if mission['code'] == 'SHAND')
+    hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+    if hook is None:
+        raise AssertionError('No SHAND map for disabled mode-switch audit')
+    lines = (GENERATED_MAP_DIR / mission['scenario'].upper()).read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    source_values = section_value_map_preserve(lines, 'MORPDEVO')
+    mode_values = section_value_map_preserve(lines, 'MORPDEVOD')
+    if (
+        source_values.get('Convert.Deploy') != 'MORPDEVOD'
+        or mode_values.get('Convert.Deploy') != 'MORPDEVO'
+    ):
+        raise AssertionError('SHAND Colossus clone mode switch is not reversible')
     root_map = Path(hook['root_map'])
     if root_map.is_file() and is_generated_hooked_map(root_map):
         root_map.unlink()
 
 
+def _assert_nanofiber_mutation_damage(missions):
+    """Ensure every mutation stage survives extreme health/armor stacks."""
+    from randomizer.rewards.catalogue import BUFF_TARGETS
+
+    source_ids = ('KNIGHT', 'BANE', 'CLAIR', 'ZORB', 'COVE', 'HUNTR', 'SYNC')
+    reward_by_name = {
+        reward.get('name'): reward
+        for reward in REWARD_POOL
+        if reward.get('name')
+    }
+    reward_names = ['Nanofiber Sync Power']
+    for source_id in source_ids:
+        label = BUFF_TARGETS[source_id]['label']
+        reward_names.append(f'{label} Access')
+        reward_names.extend([f'{label} Reinforced Frames I'] * 30)
+        reward_names.extend([f'{label} Armor Plating I'] * 30)
+
+    launcher = _AuditLauncher(reward_mode='Chaos')
+    launcher.player_rewards = [
+        canonical_reward(reward_by_name[name]) for name in reward_names
+    ]
+    allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+    extra_rules = launcher.map_rules_for_launch(
+        allowed_unlocked_tech_ids=allowed
+    )
+    mission = next(
+        mission for mission in missions if mission['code'] == 'AEAGLESFLY'
+    )
+    for section, values in launcher.mission_required_launch_rules(
+        mission
+    ).items():
+        extra_rules.setdefault(section, {}).update(values)
+    hook = launcher.prepare_hooked_map(mission, extra_rules=extra_rules)
+    if hook is None:
+        raise AssertionError('No AEAGLESFLY map for Nanofiber audit')
+    lines = (GENERATED_MAP_DIR / mission['scenario'].upper()).read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    for stage in range(1, 8):
+        weapon = section_value_map_preserve(lines, f'MORNano{stage}W')
+        warhead = section_value_map_preserve(lines, f'MORNano{stage}WH')
+        expected = {
+            'RelativeDamage': 'yes',
+            'RelativeDamage.Infantry': '-100',
+            f'Versus.MORNanoArmor{stage}': '200%',
+        }
+        if weapon.get('Damage') != '1' or any(
+            warhead.get(key) != value for key, value in expected.items()
+        ):
+            raise AssertionError(
+                f'AEAGLESFLY Nanofiber stage {stage} lacks scalable damage'
+            )
+    root_map = Path(hook['root_map'])
+    if root_map.is_file() and is_generated_hooked_map(root_map):
+        root_map.unlink()
 
 
 def _assert_taciturn_tier_three_weapon_clone(missions):
@@ -968,7 +1138,9 @@ def main():
         _assert_mermaid_mode_matrix(missions)
         _assert_reported_mission_mode_matrix(missions)
         _assert_golden_gate_transport_factories(missions)
-        _assert_mode_switch_buff_clones(missions)
+        _assert_mode_switch_buff_clones(missions, reward_mode='Chaos')
+        _assert_mode_switch_buff_clones(missions, reward_mode='Standard')
+        _assert_nanofiber_mutation_damage(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
         _assert_reality_engineering_team_clone(missions)
         if not any(
@@ -983,7 +1155,8 @@ def main():
                 root_map.unlink()
     print(
         'All 97 campaign maps passed Shop modifier/boon/Yuri/AI audit; '
-        'Mermaid, Remnant, Parasomnia, Golden Gate, Taciturn, and Reality focused checks passed.'
+        'Mermaid, Remnant, Parasomnia, Golden Gate, Nanofiber, Taciturn, '
+        'and Reality focused checks passed.'
     )
 
 

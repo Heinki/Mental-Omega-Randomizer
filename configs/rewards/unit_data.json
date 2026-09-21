@@ -3132,7 +3132,13 @@
       "SWPR": {
         "FASWPR": {
           "category": "defenses",
-          "weapons": {}
+          "weapons": {
+            "SweeperMissile": {
+              "damage": 100,
+              "rof": 240,
+              "range": 8.5
+            }
+          }
         }
       },
       "AHVYBOT2": {

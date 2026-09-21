@@ -125,11 +125,30 @@ class WindowController:
         if not hasattr(self, 'workspace_tabs'):
             return
         selected = self.workspace_tabs.select()
-        if (
-            hasattr(self, 'shop_tab')
-            and selected != str(self.shop_tab)
-        ):
-            self._shop_details_auto_collapsed = False
+        shop_tab_selected = (
+            hasattr(self, 'shop_tab') and selected == str(self.shop_tab)
+        )
+        shop_mode_selected = (
+            hasattr(self, 'progression_mode_var')
+            and self.progression_mode_var.get() == 'Shop Mode'
+        )
+        if shop_mode_selected:
+            self.right_frame.grid_remove()
+            self.workspace_tabs.grid_configure(columnspan=2, padx=0)
+            self.settings_toggle_button.grid_remove()
+            self.compact_action_row.grid_remove()
+        else:
+            self.settings_toggle_button.grid()
+            if self.settings_panel_visible:
+                self.right_frame.grid()
+                self.workspace_tabs.grid_configure(
+                    columnspan=1, padx=(0, 12)
+                )
+                self.compact_action_row.grid_remove()
+            else:
+                self.right_frame.grid_remove()
+                self.workspace_tabs.grid_configure(columnspan=2, padx=0)
+                self.compact_action_row.grid()
         if hasattr(self, 'settings_tab') and selected == str(self.settings_tab):
             self.after_idle(
                 lambda: self.layout_settings_sections(
@@ -138,8 +157,7 @@ class WindowController:
             )
         elif hasattr(self, 'advanced_tab') and selected == str(self.advanced_tab):
             self.on_advanced_notebook_tab_changed()
-        elif hasattr(self, 'shop_tab') and selected == str(self.shop_tab):
-            self.collapse_shop_details_if_narrow()
+        elif shop_tab_selected:
             self.after_idle(self.refresh_shop_mode)
         elif (
             hasattr(self, 'mission_view_frame')
@@ -601,12 +619,6 @@ class WindowController:
         """Fit Shop content to its viewport without crushing narrow controls."""
         if not hasattr(self, 'shop_canvas_window'):
             return
-        if (
-            not getattr(self, '_shop_details_auto_collapsed', False)
-            and not getattr(self, '_shop_detail_collapse_pending', False)
-        ):
-            self._shop_detail_collapse_pending = True
-            self.after_idle(self.collapse_shop_details_if_narrow)
         content_width = max(680, event.width)
         self.shop_canvas.itemconfigure(
             self.shop_canvas_window, width=content_width
@@ -706,13 +718,17 @@ class WindowController:
         bottom = top + self.shop_canvas.winfo_height()
         if not (left <= pointer_x <= right and top <= pointer_y <= bottom):
             return None
+        direction = -1 if (
+            getattr(event, 'num', 0) == 4
+            or getattr(event, 'delta', 0) > 0
+        ) else 1
         if event.state & 0x0001:
             self.shop_canvas.xview_scroll(
-                -1 if event.delta > 0 else 1, 'units'
+                direction, 'units'
             )
         else:
             self.shop_canvas.yview_scroll(
-                -1 if event.delta > 0 else 1, 'units'
+                direction, 'units'
             )
         return 'break'
 

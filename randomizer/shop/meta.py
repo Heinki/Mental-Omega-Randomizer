@@ -194,6 +194,42 @@ def purchase_permanent_upgrade(
     )
 
 
+def refund_permanent_upgrade(
+    profile,
+    upgrade_id,
+    *,
+    config: ShopModeConfig = SHOP_CONFIG,
+):
+    """Remove one upgrade level and fully refund that level's Gem price."""
+    definition = config.permanent_upgrades.get(str(upgrade_id))
+    if definition is None or not definition.purchasable:
+        validation = PurchaseValidation(PurchaseResult.NOT_SHOP_ELIGIBLE)
+        return ProfilePurchaseOutcome(profile, validation)
+    current_level = profile.upgrade_level(definition.id)
+    if current_level <= 0:
+        validation = PurchaseValidation(
+            PurchaseResult.NOT_ENTITLED, definition.id
+        )
+        return ProfilePurchaseOutcome(profile, validation)
+    refund = permanent_upgrade_price(
+        definition.id, current_level, config=config
+    )
+    levels = dict(profile.permanent_upgrades)
+    if current_level == 1:
+        levels.pop(definition.id, None)
+    else:
+        levels[definition.id] = current_level - 1
+    validation = PurchaseValidation(PurchaseResult.OK, definition.id, refund)
+    return ProfilePurchaseOutcome(
+        replace(
+            profile,
+            meta_coins=profile.meta_coins + refund,
+            permanent_upgrades=levels,
+        ),
+        validation,
+    )
+
+
 def validate_starting_loadout(
     *,
     starter_tech_ids,

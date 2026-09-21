@@ -866,14 +866,6 @@ def build_player_clone_sections(
                 _remove_case_insensitive(clone_source_values, key)
                 if value is not None:
                     clone_source_values[key] = value
-            # Mission-authored variants may disable a deploy/conversion link
-            # on their native story identity. The separately earned owned
-            # clone must retain the complete installed/static reward identity.
-            for key, value in (owned_template or {}).items():
-                if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
-                    continue
-                _remove_case_insensitive(clone_source_values, key)
-                clone_source_values[key] = value
             if (
                 unit_id in buildable_ids
                 and owned_clone_rule_overlays.get(unit_id)
@@ -899,6 +891,24 @@ def build_player_clone_sections(
                         ))
                     ) and lowered not in explicit_production_keys:
                         clone_source_values.pop(key, None)
+        # Campaigns can disable a native story unit's mode switch locally
+        # (SHAND sets both DEVO forms' Convert.Deploy to none). Player reward
+        # clones are separate identities and must retain the installed/static
+        # transform graph. Runtime-only linked forms have no owned template,
+        # so using only owned_template here left those forms unable to switch
+        # back and could strand the unit in its secondary mode.
+        linked_identity_values = (
+            owned_template
+            or (
+                installed_sections.get(installed_unit, {})
+                if installed_unit else {}
+            )
+        )
+        for key, value in linked_identity_values.items():
+            if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
+                continue
+            _remove_case_insensitive(clone_source_values, key)
+            clone_source_values[key] = value
         if target_unit_id in ENGINEER_UNIT_IDS:
             # Mission-only Engineer variants (Space Engineer, cached Chrono
             # Engineer, one-hit objective actors) must remain on their native

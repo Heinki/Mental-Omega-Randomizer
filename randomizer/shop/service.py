@@ -33,6 +33,7 @@ from .meta import (
     purchase_permanent_power as apply_permanent_power_purchase,
     purchase_permanent_buff as apply_permanent_buff_purchase,
     purchase_permanent_upgrade as apply_permanent_upgrade_purchase,
+    refund_permanent_upgrade as apply_permanent_upgrade_refund,
 )
 from .model import RunStatus, ShopProfile, ShopRewardType
 from .modifiers import (
@@ -263,7 +264,10 @@ class ShopProgressionService:
             ShopRewardType.POWER_ACCESS,
         }:
             stock_faction = modifier_shop_faction(
-                run.modifiers, run.stage, stock_faction
+                run.modifiers,
+                run.stage,
+                stock_faction,
+                run_key=f'{run.seed}:{run.run_id}',
             )
         elif effects['rotate_shop_faction']:
             stock_faction = 'All Campaigns'
@@ -404,6 +408,17 @@ class ShopProgressionService:
                 'Permanent purchases are locked during an active Shop run'
             )
         outcome = apply_permanent_upgrade_purchase(profile, upgrade_id)
+        if outcome.validation.allowed:
+            self.repository.save_profile(outcome.profile)
+        return outcome
+
+    def refund_permanent_upgrade(self, upgrade_id):
+        profile, run = self.repository.load()
+        if run is not None and run.status is RunStatus.ACTIVE:
+            raise ShopTransitionError(
+                'Permanent upgrade respec is locked during an active Shop run'
+            )
+        outcome = apply_permanent_upgrade_refund(profile, upgrade_id)
         if outcome.validation.allowed:
             self.repository.save_profile(outcome.profile)
         return outcome

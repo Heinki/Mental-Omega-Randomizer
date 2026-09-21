@@ -606,6 +606,14 @@ def apply_mission_victory(
         status=RunStatus.COMPLETED if final_victory else RunStatus.ACTIVE,
         stage=run.stage if final_victory else run.stage + 1,
         run_coins=carried_ore + reward.run_coins,
+        run_purchases=(
+            () if effects['reset_run_purchases_after_victory']
+            else run.run_purchases
+        ),
+        run_buffs=(
+            () if effects['reset_run_purchases_after_victory']
+            else run.run_buffs
+        ),
         mission_offers=() if final_victory else next_offers,
         selected_mission_code=None,
         mission_committed=False,

@@ -97,18 +97,22 @@ def nanofiber_clone_rules(lines, installed_sections, clone_handled):
                 warhead[key] = '0%'
         warhead.update({
             'Verses': ','.join(['0%'] * 11),
-            f'Versus.{armor}': '100%',
+            # Fixed damage overflows the engine's practical damage range once
+            # large health/armor stacks raise clone Strength into five digits.
+            # Deal twice current health instead: this remains lethal after
+            # normal veterancy/armor modifiers and cannot overflow with stacks.
+            'RelativeDamage': 'yes',
+            'RelativeDamage.Infantry': '-100',
+            f'Versus.{armor}': '200%',
             'InfDeathAnim': ids['A'],
         })
         rules[ids['WH']] = warhead
         weapon = values(f'Nanofiber{stage}Weapon')
-        # Health/armor/shop stacks must not prevent the lethal mutation hit.
-        strength = max(int(_value_case_insensitive(
-            values(clone), 'Strength', 1
-        )) for clone in source_clones)
         weapon.update({
             'Warhead': ids['WH'], 'Projectile': ids['P'],
-            'Damage': str(min(1_000_000_000, max(2000, strength * 16))),
+            # Ares RelativeDamage still requires positive dummy damage for
+            # targeting, but ignores its value when applying damage.
+            'Damage': '1',
         })
         rules[ids['W']] = weapon
         if target_clone not in mutation_types:

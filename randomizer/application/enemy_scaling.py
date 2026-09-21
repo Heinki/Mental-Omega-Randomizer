@@ -144,14 +144,25 @@ class EnemyScalingController:
             self.state.get('reward_settings', {}).get('enemy_scaling')
         )
 
-        def active_reward(value):
+        def active_reward(value, *, archipelago=False):
             reward = canonical_reward(value)
+            if archipelago and reward.get('enemy_reward'):
+                definition = ENEMY_BUFF_BY_ID.get(
+                    str(reward.get('enemy_effect_id') or ''), reward
+                )
+                reward = dict(reward)
+                reward['enemy_maximum'] = max(
+                    1, int(definition.get('maximum_stacks', 1))
+                )
+                reward['_runtime_canonical'] = True
+                return reward
             return configured_enemy_reward(reward, enemy_settings) or {}
 
         entries = []
-        if self.archipelago_run_active():
+        archipelago_active = self.archipelago_run_active()
+        if archipelago_active:
             for source, reward in self.archipelago_reward_source_items() or ():
-                reward = active_reward(reward)
+                reward = active_reward(reward, archipelago=True)
                 if reward.get('enemy_reward'):
                     entries.append({
                         'reward': reward,
@@ -189,7 +200,11 @@ class EnemyScalingController:
                         f'{title} - {check.get("name", check_id)}'
                     ),
                 })
-        maximum_total = enemy_settings['maximum_total_buffs']
+        maximum_total = (
+            len(entries)
+            if archipelago_active
+            else enemy_settings['maximum_total_buffs']
+        )
         capped = []
         counts = {}
         for entry in entries:

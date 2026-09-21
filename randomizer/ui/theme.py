@@ -92,6 +92,12 @@ def apply_color_mode(self):
         ],
         foreground=[('disabled', palette['muted'])],
     )
+    style.configure(
+        'Shop.StartNewRun.TButton',
+        background=selected,
+        foreground=selected_foreground,
+        bordercolor=border,
+    )
     style.map(
         'TButton',
         background=[

@@ -11,7 +11,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 from randomizer.application import launch_controller as launch
-from randomizer.maps.nanofiber import player_can_use_nanofiber
+from randomizer.maps.nanofiber import (
+    nanofiber_clone_rules,
+    player_can_use_nanofiber,
+)
 
 
 FLAGS = ['-SPAWN', '-CD', '-SPEEDCONTROL', '-LOG']
@@ -189,6 +192,48 @@ class LaunchCommandTests(unittest.TestCase):
         self.assertTrue(player_can_use_nanofiber(
             ('NANOFIBERSYNCSPECIAL',), 'Soviets'
         ))
+
+    def test_nanofiber_mutation_damage_scales_past_fixed_damage_limit(self):
+        lines = [
+            '[General]', 'AnimToInfantry=BRUTE,KINGS', '',
+            '[MORPKNIGHT]', 'Armor=n_knight', 'Strength=999999', '',
+            '[MORPKINGS]', 'Armor=n_plate', 'Strength=100', '',
+            '[WeaponTypes]', '0=Nanofiber1Weapon', '',
+            '[Projectiles]', '0=Nanofiber7P', '',
+            '[Warheads]', '0=Nanofiber1WH', '',
+            '[Animations]', '0=NANODEATH1',
+        ]
+        installed = {
+            'General': {'AnimToInfantry': 'BRUTE,KINGS'},
+            'Nanofiber7P': {'Image': 'none', 'Inviso': 'yes'},
+            'Nanofiber1Weapon': {
+                'Damage': '2000',
+                'Warhead': 'Nanofiber1WH',
+                'Projectile': 'Nanofiber7P',
+            },
+            'Nanofiber1WH': {
+                'Verses': ','.join(['0%'] * 11),
+                'Versus.n_knight': '200%',
+                'InfDeathAnim': 'NANODEATH1',
+            },
+            'ArmorTypes': {'0': 'none'},
+            'WeaponTypes': {'0': 'Nanofiber1Weapon'},
+            'Projectiles': {'0': 'Nanofiber7P'},
+            'Warheads': {'0': 'Nanofiber1WH'},
+            'Animations': {'0': 'NANODEATH1'},
+        }
+        rules = nanofiber_clone_rules(lines, installed, {
+            'KNIGHT': {'clone_id': 'MORPKNIGHT'},
+            'KINGS': {'clone_id': 'MORPKINGS'},
+        })
+        self.assertEqual(rules['MORNano1W']['Damage'], '1')
+        self.assertEqual(rules['MORNano1WH']['RelativeDamage'], 'yes')
+        self.assertEqual(
+            rules['MORNano1WH']['RelativeDamage.Infantry'], '-100'
+        )
+        self.assertEqual(
+            rules['MORNano1WH']['Versus.MORNanoArmor1'], '200%'
+        )
 
     @unittest.skipUnless(sys.platform == 'win32' and not getattr(sys, 'frozen', False),
                          'Requires a Windows Python interpreter')

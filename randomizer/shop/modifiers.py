@@ -38,6 +38,7 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
         'mission_starting_credits_flat': 0,
         'mission_offer_count_flat': 0,
         'liquidate_ore_after_victory': 0,
+        'reset_run_purchases_after_victory': 0,
         'challenge_meta_reward_percent': Fraction(1, 1),
         'normal_run_reward_percent': Fraction(1, 1),
         'normal_run_reward_flat': 0,
@@ -75,13 +76,29 @@ def modifier_difficulty(modifier_ids):
 SHOP_FACTION_ROTATION = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
 
 
-def modifier_shop_faction(modifier_ids, stage, default='All Campaigns'):
+def shop_faction_rotation(run_key):
+    """Return one deterministic random faction order for a Shop run."""
+    run_key = str(run_key or '')
+    if not run_key:
+        return SHOP_FACTION_ROTATION
+    return tuple(sorted(
+        SHOP_FACTION_ROTATION,
+        key=lambda faction: sha256(
+            f'{run_key}:faction-roulette:{faction}'.encode('utf-8')
+        ).digest(),
+    ))
+
+
+def modifier_shop_faction(
+    modifier_ids, stage, default='All Campaigns', run_key=''
+):
     """Return stage-local stock faction for Faction Roulette."""
     effects = modifier_effects(modifier_ids)
     if not effects['rotate_shop_faction']:
         return str(default or 'All Campaigns')
-    return SHOP_FACTION_ROTATION[
-        (max(1, int(stage)) - 1) % len(SHOP_FACTION_ROTATION)
+    rotation = shop_faction_rotation(run_key)
+    return rotation[
+        (max(1, int(stage)) - 1) % len(rotation)
     ]
 
 

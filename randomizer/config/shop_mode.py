@@ -325,6 +325,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'mission_starting_credits_flat',
         'mission_offer_count_flat',
         'liquidate_ore_after_victory',
+        'reset_run_purchases_after_victory',
         'challenge_meta_reward_percent',
         'normal_run_reward_percent',
         'normal_run_reward_flat',
@@ -382,6 +383,7 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('mission_starting_credits_flat', 0) < 0
             or effects.get('mission_offer_count_flat', 0) < 0
             or effects.get('liquidate_ore_after_victory', 0) > 0
+            or effects.get('reset_run_purchases_after_victory', 0) > 0
             or effects.get('normal_run_reward_percent', 100) < 100
             or effects.get('normal_run_reward_flat', 0) < 0
             or effects.get('exclude_tier_3_offers', 0) > 0
