@@ -5191,6 +5191,13 @@
       "id": 81064618
     },
     {
+      "name": "Clairvoyant Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068071
+    },
+    {
       "name": "Clairvoyant Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25239,6 +25246,13 @@
       "id": 81067260
     },
     {
+      "name": "Sweeper Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068072
+    },
+    {
       "name": "Sweeper Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25251,6 +25265,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067262
+    },
+    {
+      "name": "Sweeper Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068073
     },
     {
       "name": "Sweeper Recon Package I",
@@ -25293,6 +25314,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067268
+    },
+    {
+      "name": "Sweeper Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068074
     },
     {
       "name": "Swordfish Access",
@@ -31579,7 +31607,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "93d8ad236a6b9330077a94a4d2b3742418dc348cccfc2379807b050b20c3fa07",
+  "catalogue_checksum": "c9c3a041db4144b27dcec0e6c7ba20d63b18c029e358ab5e3b963a4f2b7129d6",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",
