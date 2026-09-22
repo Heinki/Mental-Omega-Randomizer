@@ -798,6 +798,19 @@ def build_player_clone_sections(
             # unlimited before its earned building-limit stacks were added.
             clone_build_limit = str(target['build_limit'])
         clone_source_values = dict(owned_template or effective_unit_values)
+        private_buildable_transform_clone = bool(
+            linked_excluded_reference_clone
+            and identity_target.get('runtime_transform')
+            and installed_unit
+            and linked_peer_ids.intersection(buildable_ids)
+        )
+        if private_buildable_transform_clone:
+            # A reward MCV's private Construction Yard must be a normal,
+            # functional production building. Story maps can deliberately
+            # disable their native Yard identity (EREALITY sets GACNST's
+            # Factory=<none> and ConstructionYard=no); those overrides belong
+            # only to the untouched native object, never to its reward clone.
+            clone_source_values = dict(installed_sections[installed_unit])
         mission_player_override = bool(
             owned_template is not None
             and not build_only_clone
@@ -1451,9 +1464,12 @@ def build_player_clone_sections(
                         'Prerequisite.StolenTechs',
                     )
 
-        if linked_excluded_reference_clone:
+        if linked_excluded_reference_clone and not excluded_build_only_clone:
             # This identity exists only as the other half of a cloned deploy
-            # pair. It must never become a second factory/sidebar entry.
+            # pair. It must never become a second factory/sidebar entry. An
+            # explicitly buildable build-only root remains unlocked; MCV
+            # rewards use this path so their deployed Construction Yard can
+            # stay linked without locking the production MCV clone.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
 
         _register_map_type(
@@ -1483,6 +1499,11 @@ def build_player_clone_sections(
         safe_direct_rewrite = (
             unit_id in direct_friendly_ids
             and not excluded_build_only_clone
+            # A linked clone prepared only as a private transform target
+            # (notably MORP Construction Yards for reward MCVs) must never
+            # replace a native map placement. The native identity may be an
+            # objective, capture target, or exact loss-condition subject.
+            and not linked_excluded_reference_clone
             and not preserve_native_engineer_references
             and unit_id not in ambiguous_mission_event_ids
             and (

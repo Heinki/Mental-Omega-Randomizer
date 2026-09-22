@@ -342,6 +342,12 @@ class LaunchController:
             # must not narrow Chaos back to one faction's production. Reapply
             # every Chaos access family after those overrides. Standard never
             # enters this path and retains exact captured-faction gates.
+            authored_mcv_ids = {
+                str(unit_id).upper()
+                for unit_id in MISSION_ORIGINAL_MCV_ACCESS_IDS.get(
+                    mission_code, ()
+                )
+            }
             for chaos_rules in (
                 chaos_access_rules,
                 transport_rules,
@@ -350,6 +356,11 @@ class LaunchController:
                 starter_defense_rules,
             ):
                 for section, values in chaos_rules.items():
+                    # Final-mission Action 106 timing remains authoritative.
+                    # Its reviewed native MCV access must not be replaced by
+                    # an already-owned Chaos reward at mission start.
+                    if str(section).upper() in authored_mcv_ids:
+                        continue
                     rules.setdefault(section, {}).update(values)
             return rules
         # Earned access is identity-exact. An unlocked peer must never expose

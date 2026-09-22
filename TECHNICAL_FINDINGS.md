@@ -908,6 +908,24 @@ prerequisites and mission identities remain intact. Standard may register a
 linked Construction Yard buff counterpart, but it stays locked and receives
 no MCV unlock action, so only the native MCV becomes buildable.
 
+MCV access rewards use build-only `MORPAMCV`, `MORPSMCV`, `MORPPCV`, or
+`MORPFMCV` clones. Every native MCV and every native `GACNST`/`NACNST`/
+`YACNST`/`FACNST` section and reference remains unchanged, whether or not its
+matching MCV is physically present in that mission. This covers placements,
+TaskForces, Events, Actions, capture targets, deployment rules, and authored
+late-mission unlocks. Shipwrecked's alternate Objective 1 loss Event
+`01000175` must keep watching native `GACNST`. Memory Dealer proved that
+following only physically present MCVs was insufficient: Event `01000297`
+watches native `YACNST` even though the opening TaskForce contains `SMCV`;
+rewriting that event to `MORPYACNST` caused an immediate defeat.
+
+Each earned MCV clone instead deploys into its own locked `MORP*CNST` clone,
+which undeploys into the same MCV clone and remains a functional
+`Factory=BuildingType`, `ConstructionYard=yes` producer. That private Yard is
+built from installed rules rather than map-native overrides. Reality's native
+`GACNST` deliberately has `Factory=<none>` and `ConstructionYard=no`; those
+story rules now remain native while `MORPGACNST` still builds structures.
+
 ## Foehn Nanofiber mutations and weapon buffs
 
 Nanofiber Sync does not use a TechnoType conversion field. Its seven warheads

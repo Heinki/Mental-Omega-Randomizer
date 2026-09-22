@@ -142,6 +142,7 @@ from randomizer.missions.overrides import (
 )
 from randomizer.missions.safety import safe_build_countries
 from randomizer.missions.access import (
+    CONYARD_BY_MCV,
     PRODUCTION_BUILDINGS,
     merged_production_owners,
 )
@@ -152,6 +153,7 @@ from randomizer.rewards.catalogue import (
     AMPHIBIOUS_TRANSPORT_UNIT_IDS,
     BUFF_TARGETS,
     ENGINEER_UNIT_IDS,
+    MCV_UNIT_IDS,
     canonical_rewards,
     reward_display_name,
     starting_credit_bonus,
@@ -194,6 +196,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     code = mission.get('code')
     if not scenario or not code:
         return None
+    source_path = self.extract_campaign_map(scenario)
+    lines = IniLines(read_text(source_path).splitlines())
+    native_mcv_conyard_ids = {
+        str(conyard_id).upper()
+        for conyard_id in CONYARD_BY_MCV.values()
+    }
+    native_mcv_chain_ids = set(MCV_UNIT_IDS) | native_mcv_conyard_ids
     delayed_native_unlock_ids = {
         str(unit_id).upper()
         for unit_id in MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ())
@@ -221,6 +230,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     native_techno_exclusions = frozenset(
         set(MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(code, ()))
+        # MCV rewards always use production-only MORP clones and private
+        # MORP Construction Yards. Every native MCV/Yard is a possible story
+        # object: TaskForces, placements, loss checks, capture logic, and
+        # authored late-campaign unlocks must retain exact identity/rules.
+        | native_mcv_chain_ids
         | original_mcv_access_ids
     )
     native_required_access_ids = {
@@ -244,9 +258,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             f'country buffs clone-only for {code}; native scripted '
             'reinforcements retain mission-authored stats.'
         )
-
-    source_path = self.extract_campaign_map(scenario)
-    lines = IniLines(read_text(source_path).splitlines())
     color_rules = mission_house_color_rules(
         lines,
         player_color=self.player_color_var.get(),
@@ -480,11 +491,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     for section in list(rule_sections):
         section_upper = str(section).upper()
         if (
-            section_upper in owned_clone_ids
-            and (
-                section_upper not in native_techno_exclusions
-                or section_upper in native_build_only_clone_ids
+            (
+                section_upper in owned_clone_ids
+                and (
+                    section_upper not in native_techno_exclusions
+                    or section_upper in native_build_only_clone_ids
+                )
             )
+            # Construction Yard counterparts are allocated dynamically from
+            # earned MCVs. Move every generated sidebar/access value onto the
+            # linked clone. Native Yards remain wholly mission-authored even
+            # when no matching native MCV appears in this map.
+            or section_upper in native_mcv_conyard_ids
         ):
             owned_clone_rule_overlays.setdefault(section_upper, {}).update(
                 rule_sections.pop(section)
@@ -1857,6 +1875,10 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             }
         ) - (
             set(MISSION_NATIVE_PRODUCTION_GATE_EXCLUSIONS.get(code, ()))
+            # Native MCV/Yard identities are never production-gated or
+            # rewritten. Base rules keep native MCVs unavailable in normal
+            # missions; earned MORP clones are the new buildable identities.
+            | native_mcv_chain_ids
             # Reviewed native MCV access has no player clone. The generic
             # randomized-ID gate would forbid it even after Action 106.
             | original_mcv_access_ids
@@ -2960,7 +2982,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     # impossible. Normal launches rewrite Action 106 to the registered clone;
     # delayed clones remain locked until that authored action fires.
     unlocked_tech_ids.update(MISSION_NATIVE_TECH_UNLOCK_IDS.get(code, ()))
-    randomized_tech_ids = self.randomized_tech_ids() | suppressed_power_buildings
+    randomized_tech_ids = (
+        self.randomized_tech_ids() - set(MCV_UNIT_IDS)
+    ) | suppressed_power_buildings
     unlocked_tech_ids.difference_update(suppressed_power_buildings)
     removed_techlevel_actions = remove_locked_techlevel_actions(
         lines,

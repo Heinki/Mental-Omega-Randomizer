@@ -240,6 +240,10 @@ AMPHIBIOUS_TRANSPORT_UNIT_IDS = frozenset(
     values[0] for values in _FACTION_CONFIG['amphibious_transports'].values()
 )
 ENGINEER_UNIT_IDS = frozenset(_FACTION_CONFIG['engineer_by_family'].values())
+MCV_UNIT_IDS = frozenset(
+    str(unit_id).upper()
+    for unit_id in _FACTION_CONFIG['conyard_by_mcv']
+)
 # Engineer "weapons" are engine controls for repair/capture/vehicle entry.
 # Old saves and externally supplied stacks must never clone or tune them.
 for _buff_type in ('damage', 'reload', 'range'):

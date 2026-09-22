@@ -24,9 +24,16 @@ from randomizer.maps._shared import (
     section_value_map_preserve,
 )
 from randomizer.maps.base import is_generated_hooked_map
+from randomizer.maps.rules import resolved_map_section_rules
 from randomizer.maps.ini import parse_action_groups
+from randomizer.missions.access import CONYARD_BY_MCV
 from randomizer.missions.catalogue import parse_missions
+from randomizer.missions.overrides import (
+    MISSION_MAP_SECTION_RULES,
+    MISSION_ORIGINAL_MCV_ACCESS_IDS,
+)
 from randomizer.rewards.catalogue import (
+    MCV_UNIT_IDS,
     REWARD_POOL,
     canonical_reward,
 )
@@ -102,6 +109,10 @@ class _AuditLauncher(LaunchController):
             'GI Armor Plating I',
             'Gear Change Power',
             'Industrial Plant Access',
+            'Allied MCV Access',
+            'Soviet MCV Access',
+            'Epsilon MCV Access',
+            'Foehn MCV Access',
             'Rhino Heavy Tank Access',
             "Stalin's Fist Access",
             "Stalin's Fist Drill I",
@@ -678,6 +689,138 @@ def _assert_reported_mission_mode_matrix(missions):
                     root_map.unlink()
 
 
+def _assert_native_mcvs_untouched(source_path, generated_path, context):
+    """MCV rewards add a private deploy chain; every native chain stays exact."""
+    source_lines = source_path.read_text(encoding='utf-8-sig').splitlines()
+    source = all_section_value_maps_preserve(source_lines)
+    generated = all_section_value_maps_preserve(
+        generated_path.read_text(encoding='utf-8-sig').splitlines()
+    )
+    reviewed_overrides = resolved_map_section_rules(
+        source_lines, MISSION_MAP_SECTION_RULES.get(context, {})
+    )
+    reviewed_native_access = set(
+        MISSION_ORIGINAL_MCV_ACCESS_IDS.get(context, ())
+    )
+    native_conyard_ids = {
+        str(conyard_id).upper()
+        for conyard_id in CONYARD_BY_MCV.values()
+    }
+    native_chain_ids = set(MCV_UNIT_IDS) | native_conyard_ids
+    registered_vehicles = set(generated.get('VehicleTypes', {}).values())
+    for techno_id in sorted(native_chain_ids):
+        if techno_id in reviewed_native_access:
+            continue
+        expected = dict(source.get(techno_id, {}))
+        expected.update(reviewed_overrides.get(techno_id, {}))
+        if generated.get(techno_id, {}) != expected:
+            raise AssertionError(
+                f'{context} changed native MCV-chain {techno_id} rules'
+            )
+
+    for unit_id in sorted(MCV_UNIT_IDS):
+        if unit_id in reviewed_native_access:
+            continue
+        clone_id = 'MORP' + unit_id
+        if clone_id not in registered_vehicles:
+            continue
+        clone_values = generated.get(clone_id, {})
+        if clone_values.get('TechLevel') != '1':
+            raise AssertionError(f'{context} locked earned MCV clone {clone_id}')
+        deploy_target = str(clone_values.get('DeploysInto') or '').upper()
+        target_values = generated.get(deploy_target, {})
+        if (
+            not deploy_target
+            or deploy_target in native_conyard_ids
+            or str(target_values.get('UndeploysInto') or '').upper() != clone_id
+            or str(target_values.get('Factory') or '').lower() != 'buildingtype'
+            or str(target_values.get('ConstructionYard') or '').lower() != 'yes'
+        ):
+            raise AssertionError(
+                f'{context} MCV clone {clone_id} lacks a private functional Yard'
+            )
+        if not any(
+            deploy_target in {
+                token.strip().upper()
+                for key, value in values.items()
+                if (
+                    str(key).lower() == 'prerequisite'
+                    or str(key).lower().startswith('prerequisite.list')
+                )
+                for token in str(value).split(',')
+            }
+            for values in generated.values()
+        ):
+            raise AssertionError(
+                f'{context} private Yard {deploy_target} unlocks no structures'
+            )
+
+    # Any existing map reference to a native MCV or Construction Yard is
+    # story data. Preserve it in every section, not merely known trigger and
+    # placement sections: an exact-ID condition can appear almost anywhere.
+    for section, source_values in source.items():
+        generated_values = generated.get(section, {})
+        for key, value in source_values.items():
+            source_tokens = str(value).split(',')
+            mcv_positions = {
+                index: token.strip().upper()
+                for index, token in enumerate(source_tokens)
+                if token.strip().upper() in native_chain_ids
+            }
+            if not mcv_positions:
+                continue
+            generated_tokens = str(generated_values.get(key, '')).split(',')
+            if any(
+                index >= len(generated_tokens)
+                or generated_tokens[index].strip().upper() != unit_id
+                for index, unit_id in mcv_positions.items()
+            ):
+                raise AssertionError(
+                    f'{context} changed native MCV reference '
+                    f'{section}/{key}'
+                )
+
+
+def _assert_all_mission_mcv_mode(
+    missions,
+    *,
+    reward_mode,
+    progression_mode,
+):
+    """Exercise MCV rewards across every mission in another rules mode."""
+    launcher = _AuditLauncher(
+        reward_mode=reward_mode,
+        progression_mode=progression_mode,
+    )
+    allowed = unlocked_reward_tech_ids(launcher.player_rewards)
+    extra_rules = launcher.map_rules_for_launch(
+        allowed_unlocked_tech_ids=allowed
+    )
+    for mission in missions:
+        launch_rules = deepcopy(extra_rules)
+        for section, values in launcher.mission_required_launch_rules(
+            mission
+        ).items():
+            launch_rules.setdefault(section, {}).update(values)
+        hook = launcher.prepare_hooked_map(
+            mission, extra_rules=launch_rules
+        )
+        if hook is None:
+            raise AssertionError(
+                f'No generated {reward_mode}/{progression_mode} map for '
+                f'{mission["code"]}'
+            )
+        generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+        _assert_native_mcvs_untouched(
+            launcher.extract_campaign_map(mission['scenario']),
+            generated_path,
+            mission['code'],
+        )
+        root_map = Path(hook['root_map'])
+        if root_map.is_file() and is_generated_hooked_map(root_map):
+            root_map.unlink()
+
+
 def _mission_prerequisites(values):
     prerequisites = [str(values.get('Prerequisite') or '').upper()]
     try:
@@ -1118,6 +1261,11 @@ def main():
             generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
             if not generated_path.is_file():
                 raise AssertionError(f'Missing generated map {generated_path}')
+            _assert_native_mcvs_untouched(
+                launcher.extract_campaign_map(mission['scenario']),
+                generated_path,
+                mission['code'],
+            )
             generated.append(generated_path)
             root_map = Path(hook['root_map'])
             if root_map.is_file() and is_generated_hooked_map(root_map):
@@ -1135,6 +1283,11 @@ def main():
             raise AssertionError(
                 'AWITHER AI-scaling safety exception was not reported'
             )
+        _assert_all_mission_mcv_mode(
+            missions,
+            reward_mode='Standard',
+            progression_mode='Mission List',
+        )
         _assert_mermaid_mode_matrix(missions)
         _assert_reported_mission_mode_matrix(missions)
         _assert_golden_gate_transport_factories(missions)
@@ -1154,7 +1307,8 @@ def main():
             if root_map.is_file() and is_generated_hooked_map(root_map):
                 root_map.unlink()
     print(
-        'All 97 campaign maps passed Shop modifier/boon/Yuri/AI audit; '
+        'All 97 campaign maps passed Chaos/Shop and Standard/Mission List '
+        'MCV-chain audits plus Shop modifier/boon/Yuri/AI audit; '
         'Mermaid, Remnant, Parasomnia, Golden Gate, Nanofiber, Taciturn, '
         'and Reality focused checks passed.'
     )
