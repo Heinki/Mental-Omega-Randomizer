@@ -198,6 +198,7 @@
       "BSUB": {"run_access": 11, "run_buff": 6, "permanent_access": 50, "permanent_buff": 12},
       "BURA": {"run_access": 8, "run_buff": 4, "permanent_access": 32, "permanent_buff": 8},
       "BUZZ": {"run_access": 7, "run_buff": 4, "permanent_access": 27, "permanent_buff": 8},
+      "CAPU": {"run_access": 4, "run_buff": 2, "permanent_access": 14, "permanent_buff": 5},
       "CAOS": {"run_access": 4, "run_buff": 2, "permanent_access": 14, "permanent_buff": 5},
       "CARRIER": {"run_access": 10, "run_buff": 5, "permanent_access": 44, "permanent_buff": 10},
       "CBRIS": {"run_access": 10, "run_buff": 5, "permanent_access": 44, "permanent_buff": 10},

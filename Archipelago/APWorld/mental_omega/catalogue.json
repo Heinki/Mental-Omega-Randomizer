@@ -10889,6 +10889,13 @@
       "id": 81067890
     },
     {
+      "name": "Gene Boss Brute Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068075
+    },
+    {
       "name": "Gene Boss Brute Mobility I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12364,6 +12371,104 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065520
+    },
+    {
+      "name": "Heavy Trooper Access",
+      "classification": "progression",
+      "category": "special_unlocks",
+      "repeatable": false,
+      "id": 81068076
+    },
+    {
+      "name": "Heavy Trooper Armor Plating I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068077
+    },
+    {
+      "name": "Heavy Trooper Drill I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068078
+    },
+    {
+      "name": "Heavy Trooper Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068079
+    },
+    {
+      "name": "Heavy Trooper Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068080
+    },
+    {
+      "name": "Heavy Trooper Mobility I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068081
+    },
+    {
+      "name": "Heavy Trooper Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068082
+    },
+    {
+      "name": "Heavy Trooper Recon Package I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068083
+    },
+    {
+      "name": "Heavy Trooper Reinforced Frames I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068084
+    },
+    {
+      "name": "Heavy Trooper Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068085
+    },
+    {
+      "name": "Heavy Trooper Sensor Suite I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068086
+    },
+    {
+      "name": "Heavy Trooper Stealth Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068087
+    },
+    {
+      "name": "Heavy Trooper Veteran Training I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068088
+    },
+    {
+      "name": "Heavy Trooper Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068089
     },
     {
       "name": "Hijacker Access",
@@ -19231,6 +19336,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067977
+    },
+    {
+      "name": "Psychic Boss Brute Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068090
     },
     {
       "name": "Psychic Boss Brute Mobility I",
@@ -27353,6 +27465,13 @@
       "id": 81068043
     },
     {
+      "name": "Virus Boss Brute Logistics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068091
+    },
+    {
       "name": "Virus Boss Brute Mobility I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -31607,7 +31726,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "c9c3a041db4144b27dcec0e6c7ba20d63b18c029e358ab5e3b963a4f2b7129d6",
+  "catalogue_checksum": "01bd85c792d1c2be74c6ca6f9ecd6aecc00f9ceb76c39b52de44355c645361aa",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

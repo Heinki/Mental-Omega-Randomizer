@@ -1,6 +1,4 @@
 ## BUGS AND IMPROVEMENTS
-- Heavy Trooper unit is not added in MO randomizer, also got a cameoe
-- Special brutes cost only 1 ore
 
 ## INFO
 

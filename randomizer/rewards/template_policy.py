@@ -36,6 +36,8 @@ SPECIAL_TEMPLATE_SOURCES = {
     'LUNRE': 'LUNR',
     'MAMUP': 'MAMU',
     'YAHCRE': 'YAHCR',
+    # Heavy Trooper is a bonus-art variant of the installed Knightframe.
+    'CAPU': 'KNIGHT',
 }
 TEMPLATE_VALUE_OVERRIDES = {
     'RAVA': {
@@ -93,14 +95,38 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     # Give each boss Brute a distinct ArtType so its manually colored cameo
     # does not overwrite the shared [BRUT] art section used by every variant.
+    # Their mission-only Cost=1 is a scripted placeholder, not a production
+    # price; portable player copies use the top special-unit price tier.
     'BRUTM': {
         'Image': 'BRUTM',
+        'Cost': '5000',
     },
     'BRUTS': {
         'Image': 'BRUTS',
+        'Cost': '5000',
     },
     'BRUTV': {
         'Image': 'BRUTV',
+        'Cost': '5000',
+    },
+    'CAPU': {
+        'Name': 'Heavy Trooper',
+        'UIName': 'NAME:CAPU',
+        'Image': 'CAPU',
+        'Armor': 'plate',
+        'Strength': '175',
+        'Sight': '5',
+        'Speed': '5',
+        'Occupier': 'no',
+        'Secondary': 'none',
+        'EliteSecondary': 'none',
+        'CanBeReversed': 'no',
+        'VoiceSelect': 'ConscriptSelect',
+        'VoiceMove': 'ConscriptMove',
+        'VoiceAttack': 'ConscriptAttackCommand',
+        'VoiceFeedback': 'ConscriptFear',
+        'VoiceSpecialAttack': 'ConscriptMove',
+        'DieSound': 'ConscriptDie',
     },
     # Iron Guard is an auto-firing EMPulse cannon. Cloaking the building can
     # prevent its self-targeted field weapon from firing reliably.

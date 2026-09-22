@@ -1560,7 +1560,7 @@ def validate_shop_domain():
         and operation.meta_coins == 3
         and operation.victory_bonus_run_coins == 3
         and capped_bonus.victory_bonus_run_coins == 5
-        and len(SHOP_CONFIG.unit_target_prices) == 315
+        and len(SHOP_CONFIG.unit_target_prices) == 316
         and len(SHOP_CONFIG.power_target_prices) == 93
         and all(
             SHOP_CONFIG.power_target_prices[target_id].run_access == 12

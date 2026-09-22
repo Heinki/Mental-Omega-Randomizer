@@ -64,14 +64,9 @@ STABLE_APPEND_ORDER = (
     'ARTY', 'RANGER', 'LONGBO', 'GRAV', 'STARDUSTB', 'MECHA', 'YURIX2',
     'GRND', 'CAOS', 'MAMUP', 'YAHCRE',
     'BIKE', 'TERROR', 'CYCOM', 'ARND', 'CLNT', 'STLN', 'SCAV',
-    'BRUTM', 'BRUTS', 'BRUTV',
+    'BRUTM', 'BRUTS', 'BRUTV', 'CAPU',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
-UNFINISHED_ASSET_IDS = frozenset({
-    # Bonus MIX supplies only Heavy Trooper art/cameos. No installed or
-    # campaign TechnoType rules exist; do not synthesize gameplay from KNIGHT.
-    'CAPU',
-})
 EXCLUDED_REVIEWED_INFANTRY_IDS = frozenset({
     # Cosmetic Brute variant; no distinct gameplay identity/reward value.
     'BRUTE2',
@@ -249,10 +244,7 @@ def main():
 
     # Preserve mapper-reviewed extra infantry for later catalogue expansion.
     for source_id in reviewed_infantry:
-        if (
-            source_id in UNFINISHED_ASSET_IDS
-            or source_id in EXCLUDED_REVIEWED_INFANTRY_IDS
-        ):
+        if source_id in EXCLUDED_REVIEWED_INFANTRY_IDS:
             continue
         # A reviewed infantry file may be the previously generated heroes
         # file. Do not let an old registry placement override the catalogue's
