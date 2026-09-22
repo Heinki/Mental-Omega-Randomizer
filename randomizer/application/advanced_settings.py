@@ -40,6 +40,7 @@ class AdvancedSettingsController:
         'powers',
         'unit_buffs',
         'power_buffs',
+        'negative_buffs',
         'starting_unlocks',
     )
 
@@ -66,6 +67,8 @@ class AdvancedSettingsController:
         key = self.active_advanced_view_key()
         if key == 'starting_unlocks':
             self.refresh_starting_unlocks_view()
+        elif key == 'negative_buffs':
+            self.refresh_advanced_enemy_buff_controls()
         elif key:
             self.refresh_advanced_pool_views(key)
 
@@ -1322,6 +1325,11 @@ class AdvancedSettingsController:
             self, 'enemy_buff_group_controls', []
         ):
             check.configure(state='normal')
+        for check, cap in getattr(
+            self, 'advanced_enemy_buff_controls', []
+        ):
+            check.configure(state='normal')
+            cap.configure(state='normal')
         self.refresh_enemy_reward_setting_help()
         self.prioritize_no_build_missions_check.configure(
             state=(

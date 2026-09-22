@@ -102,6 +102,7 @@ class EnemyScalingController:
             ).get(group['id'])
             if tooltip is not None:
                 tooltip.text = self.enemy_buff_group_help_text(group)
+        self.refresh_advanced_enemy_buff_controls()
         self._enemy_buffs_view_dirty = True
         if self.enemy_buffs_view_visible():
             self.after_idle(self.refresh_enemy_buffs_view)
@@ -128,6 +129,49 @@ class EnemyScalingController:
                 self.enemy_buff_enabled_vars[effect_id].get()
                 for effect_id in group['effect_ids']
             ))
+
+    def refresh_advanced_enemy_buff_controls(self):
+        if not hasattr(self, 'advanced_enemy_buff_status_var'):
+            return
+        enabled = 0
+        for definition in ENEMY_BUFF_DEFINITIONS:
+            effect_id = definition['id']
+            try:
+                cap = max(0, int(self.enemy_buff_cap_vars[effect_id].get()))
+            except (tk.TclError, TypeError, ValueError):
+                cap = 0
+            active = bool(
+                self.enemy_buff_enabled_vars[effect_id].get() and cap > 0
+            )
+            enabled += active
+            state_var = self.advanced_enemy_buff_state_vars.get(effect_id)
+            if state_var is not None:
+                state_var.set('Active' if active else 'Disabled')
+        self.advanced_enemy_buff_status_var.set(
+            f'{enabled}/{len(ENEMY_BUFF_DEFINITIONS)} active'
+        )
+
+    def on_advanced_enemy_buff_changed(self, _effect_id=None):
+        if _effect_id in self.enemy_buff_cap_vars:
+            definition = ENEMY_BUFF_BY_ID.get(_effect_id, {})
+            maximum = max(0, int(definition.get('maximum_stacks', 1)))
+            try:
+                cap = int(self.enemy_buff_cap_vars[_effect_id].get())
+            except (tk.TclError, TypeError, ValueError):
+                cap = 0
+            self.enemy_buff_cap_vars[_effect_id].set(
+                max(0, min(maximum, cap))
+            )
+        self.sync_enemy_buff_group_vars()
+        self.refresh_advanced_enemy_buff_controls()
+        self.refresh_setting_states()
+
+    def set_advanced_enemy_buffs(self, enabled):
+        if self.gameplay_settings_locked():
+            return
+        for definition in ENEMY_BUFF_DEFINITIONS:
+            self.enemy_buff_enabled_vars[definition['id']].set(bool(enabled))
+        self.on_advanced_enemy_buff_changed()
 
     def enemy_buffs_view_visible(self):
         return bool(

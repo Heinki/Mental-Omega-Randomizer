@@ -141,6 +141,19 @@ def parse_long_description_objectives(text):
     return objectives
 
 
+def normalize_long_description(text):
+    """Turn client INI paragraph markers into readable tooltip text."""
+    if not text:
+        return ''
+    paragraphs = []
+    for paragraph in re.split(r'@{2,}|\n\s*\n', str(text)):
+        value = re.sub(r'\s*@\s*', ' ', paragraph)
+        value = re.sub(r'[ \t]+', ' ', value).strip()
+        if value:
+            paragraphs.append(value)
+    return '\n\n'.join(paragraphs)
+
+
 def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
     """Read the ordered campaign catalogue from ``BattleClient.ini``."""
     if not path.exists():
@@ -180,12 +193,14 @@ def parse_missions(path, fallback_objective_count=FALLBACK_OBJECTIVE_COUNT):
         if not scenario:
             continue
         objectives = parse_long_description_objectives(section.get('LongDescription', ''))
+        briefing = normalize_long_description(section.get('LongDescription', ''))
         missions.append({
             'index': position,
             'code': code,
             'scenario': scenario,
             'title': section.get('Description') or section.get('description') or code,
             'side': section.get('SideName') or section.get('Side') or '',
+            'briefing': briefing,
             'objectives': objectives,
             'objective_count': len(objectives) or fallback_objective_count,
             'build_classification': MISSION_BUILD_CLASSIFICATIONS.get(code, BASE_BUILD),

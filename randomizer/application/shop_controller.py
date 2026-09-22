@@ -2907,6 +2907,9 @@ class ShopController(ShopPolishController):
         reward_id = self._shop_permanent_rows.get(selected[0])
         if not reward_id:
             return
+        if reward_id in self.shop_profile.permanent_unit_unlocks:
+            self.open_selected_permanent_unit_buffs()
+            return
         try:
             outcome = self.shop_service.purchase_permanent_unit(reward_id)
         except ShopTransitionError as exc:

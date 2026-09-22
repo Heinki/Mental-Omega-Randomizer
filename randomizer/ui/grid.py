@@ -3,6 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+from randomizer.ui.tooltips import WidgetTooltip
+
 
 def redraw_grid(self):
     """Rebuild the mission grid only when its topology changes."""
@@ -154,6 +156,7 @@ def redraw_grid(self):
                 '<Button-1>',
                 lambda event, index=mission_index: self.select_grid_mission(index),
             )
+            widget.mission_tooltip = WidgetTooltip(widget, '')
         tile.grid(
             row=node['y'],
             column=node['x'],

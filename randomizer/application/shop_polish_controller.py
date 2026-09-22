@@ -589,15 +589,21 @@ class ShopPolishController(ShopArchipelagoController):
                 ),
                 remaining_run_coins=run.run_coins,
             )
-            card['tooltip'].text = (
-                'Blind Choice hides this reward until mission launch.'
-                if reward_hidden else '\n'.join(breakdown)
-                + (
+            mission_context = self.mission_description_tooltip(mission)
+            if reward_hidden:
+                card['tooltip'].text = (
+                    'Blind Choice hides mission details and rewards until '
+                    'mission launch.'
+                )
+            else:
+                reward_context = '\n'.join(breakdown) + (
                     f'\n\n{mission_modifier.title}: '
                     f'{mission_modifier.description}'
                     if mission_modifier is not None else ''
                 )
-            )
+                card['tooltip'].text = (
+                    mission_context + '\n\nRewards:\n' + reward_context
+                )
             card['frame'].configure(
                 text=(
                     f'Choice {index + 1}'

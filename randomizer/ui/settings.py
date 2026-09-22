@@ -3,6 +3,7 @@
 from .starting_unlocks import build_starting_unlocks_tab
 from .enemy_scaling import build_enemy_scaling_settings
 from .general_settings import build_general_settings
+from .negative_buffs import build_negative_buffs_tab
 
 from ._builder_dependencies import (
     ARSENAL_FACTIONS,
@@ -699,6 +700,7 @@ def _build_advanced_tab(self, workspace_tabs):
         )
     self.advanced_pool_canvases['power_buffs'] = power_buff_canvas
     self.advanced_pool_frames['power_buffs'] = power_buff_content
+    build_negative_buffs_tab(self, advanced_notebook)
     build_starting_unlocks_tab(self, advanced_notebook)
 
 def _build_gameplay_settings(self, settings_frame):
