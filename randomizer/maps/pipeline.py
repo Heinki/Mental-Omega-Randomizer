@@ -230,10 +230,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     )
     native_techno_exclusions = frozenset(
         set(MISSION_NATIVE_TECHNO_CLONE_EXCLUSIONS.get(code, ()))
-        # MCV rewards always use production-only MORP clones and private
-        # MORP Construction Yards. Every native MCV/Yard is a possible story
-        # object: TaskForces, placements, loss checks, capture logic, and
-        # authored late-campaign unlocks must retain exact identity/rules.
+        # MCV rewards always use production-only MORP clones, but deploy into
+        # native Construction Yards so the complete build sidebar is present.
+        # Every native MCV/Yard is a possible story object: TaskForces,
+        # placements, loss checks, capture logic, and authored late-campaign
+        # unlocks must retain exact identity/rules.
         | native_mcv_chain_ids
         | original_mcv_access_ids
     )

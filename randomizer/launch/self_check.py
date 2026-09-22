@@ -193,7 +193,7 @@ class LaunchCommandTests(unittest.TestCase):
             ('NANOFIBERSYNCSPECIAL',), 'Soviets'
         ))
 
-    def test_nanofiber_mutation_damage_scales_past_fixed_damage_limit(self):
+    def test_nanofiber_mutation_uses_fixed_lethal_damage(self):
         lines = [
             '[General]', 'AnimToInfantry=BRUTE,KINGS', '',
             '[MORPKNIGHT]', 'Armor=n_knight', 'Strength=999999', '',
@@ -226,14 +226,15 @@ class LaunchCommandTests(unittest.TestCase):
             'KNIGHT': {'clone_id': 'MORPKNIGHT'},
             'KINGS': {'clone_id': 'MORPKINGS'},
         })
-        self.assertEqual(rules['MORNano1W']['Damage'], '1')
-        self.assertEqual(rules['MORNano1WH']['RelativeDamage'], 'yes')
+        self.assertEqual(rules['MORNano1W']['Damage'], '15999984')
+        self.assertNotIn('RelativeDamage', rules['MORNano1WH'])
+        self.assertNotIn('RelativeDamage.Infantry', rules['MORNano1WH'])
         self.assertEqual(
-            rules['MORNano1WH']['RelativeDamage.Infantry'], '-100'
+            rules['MORNano1WH']['Versus.MORNanoArmor1'], '100%'
         )
-        self.assertEqual(
-            rules['MORNano1WH']['Versus.MORNanoArmor1'], '200%'
-        )
+        self.assertEqual(rules['MORNano1WH']['AffectsAllies'], 'yes')
+        self.assertEqual(rules['MORNano1WH']['AffectsEnemies'], 'yes')
+        self.assertEqual(rules['MORNano1WH']['AffectsOwner'], 'yes')
 
     @unittest.skipUnless(sys.platform == 'win32' and not getattr(sys, 'frozen', False),
                          'Requires a Windows Python interpreter')

@@ -1750,6 +1750,12 @@
       }
     },
     "map_section_rules": {
+      "ARELE": {
+        "WeaponTypes": {
+          "0": null,
+          "1": null
+        }
+      },
       "SFATAL": {
         "YTUNNEL": {
           "Passengers.Allowed": {

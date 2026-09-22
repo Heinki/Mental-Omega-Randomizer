@@ -10,6 +10,7 @@ from ._shared import (
     ENGINEER_UNIT_IDS,
     LIMITED_HERO_UNIT_IDS,
     LOCKED_TECH_LEVEL,
+    MCV_UNIT_IDS,
     NONTRAINABLE_UNIT_IDS,
     STANDALONE_WEAPON_TEMPLATES,
     STANDALONE_UNIT_RULE_TEMPLATES,
@@ -1631,10 +1632,18 @@ def build_player_clone_sections(
         stable_clone_id = owned_clone_ids.get(source_id)
         if stable_clone_id:
             linked_clone_replacements[stable_clone_id.upper()] = clone_id
-    for clone_id in clone_id_by_source.values():
+    for source_id, clone_id in clone_id_by_source.items():
         clone_values = section_rules.get(clone_id, {})
         for key, value in list(clone_values.items()):
             if str(key).lower() not in LINKED_CLONE_REFERENCE_KEYS:
+                continue
+            # Reward MCVs stay isolated player clones, but must deploy into
+            # the installed faction Construction Yard. Private Yard clones do
+            # not inherit the engine's complete construction sidebar.
+            if (
+                source_id in MCV_UNIT_IDS
+                and str(key).lower() == 'deploysinto'
+            ):
                 continue
             clone_values[key] = ','.join(
                 linked_clone_replacements.get(item.upper(), item)

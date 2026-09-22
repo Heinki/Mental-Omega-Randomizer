@@ -95,24 +95,30 @@ def nanofiber_clone_rules(lines, installed_sections, clone_handled):
         for key in list(warhead):
             if str(key).lower().startswith('versus.'):
                 warhead[key] = '0%'
+            elif str(key).lower().startswith('relativedamage'):
+                warhead.pop(key)
         warhead.update({
             'Verses': ','.join(['0%'] * 11),
-            # Fixed damage overflows the engine's practical damage range once
-            # large health/armor stacks raise clone Strength into five digits.
-            # Deal twice current health instead: this remains lethal after
-            # normal veterancy/armor modifiers and cannot overflow with stacks.
-            'RelativeDamage': 'yes',
-            'RelativeDamage.Infantry': '-100',
-            f'Versus.{armor}': '200%',
+            f'Versus.{armor}': '100%',
             'InfDeathAnim': ids['A'],
+            # Private armor already limits this warhead to the matching
+            # player clone. Do not let house/disguise classification exclude
+            # Agent infantry such as Clairvoyant from its mutation hit.
+            'AffectsAllies': 'yes',
+            'AffectsEnemies': 'yes',
+            'AffectsOwner': 'yes',
         })
         rules[ids['WH']] = warhead
         weapon = values(f'Nanofiber{stage}Weapon')
+        # Health/armor/shop stacks must not prevent the lethal mutation hit.
+        # Fixed damage works for every Nanofiber stage; RelativeDamage causes
+        # several private-armored clone types to survive without mutating.
+        strength = max(int(_value_case_insensitive(
+            values(clone), 'Strength', 1
+        )) for clone in source_clones)
         weapon.update({
             'Warhead': ids['WH'], 'Projectile': ids['P'],
-            # Ares RelativeDamage still requires positive dummy damage for
-            # targeting, but ignores its value when applying damage.
-            'Damage': '1',
+            'Damage': str(min(1_000_000_000, max(2000, strength * 16))),
         })
         rules[ids['W']] = weapon
         if target_clone not in mutation_types:

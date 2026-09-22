@@ -334,6 +334,27 @@ def _assert_targeted_contracts(generated_paths):
     )
     _assert_mermaid_tanya(mermaid, 'Shop Mode/Chaos')
 
+    rele = next(
+        path for path in generated_paths if path.name.upper() == 'ARELE.MAP'
+    )
+    rele_lines = rele.read_text(
+        encoding='utf-8', errors='ignore'
+    ).splitlines()
+    rele_weapons = {
+        str(value).upper()
+        for value in section_value_map_preserve(
+            rele_lines, 'WeaponTypes'
+        ).values()
+    }
+    orphaned_rele_weapons = {
+        'CRUISERCANNONA2', 'CRUISERCANNONBE2'
+    } & rele_weapons
+    if orphaned_rele_weapons:
+        raise AssertionError(
+            'ARELE retains undefined WeaponTypes: '
+            + ', '.join(sorted(orphaned_rele_weapons))
+        )
+
     scrapyard = next(
         path for path in generated_paths if path.name.upper() == 'ESCRAP.MAP'
     )
@@ -690,7 +711,7 @@ def _assert_reported_mission_mode_matrix(missions):
 
 
 def _assert_native_mcvs_untouched(source_path, generated_path, context):
-    """MCV rewards add a private deploy chain; every native chain stays exact."""
+    """MCV rewards stay cloned but deploy into unchanged native Yards."""
     source_lines = source_path.read_text(encoding='utf-8-sig').splitlines()
     source = all_section_value_maps_preserve(source_lines)
     generated = all_section_value_maps_preserve(
@@ -728,16 +749,11 @@ def _assert_native_mcvs_untouched(source_path, generated_path, context):
         if clone_values.get('TechLevel') != '1':
             raise AssertionError(f'{context} locked earned MCV clone {clone_id}')
         deploy_target = str(clone_values.get('DeploysInto') or '').upper()
-        target_values = generated.get(deploy_target, {})
-        if (
-            not deploy_target
-            or deploy_target in native_conyard_ids
-            or str(target_values.get('UndeploysInto') or '').upper() != clone_id
-            or str(target_values.get('Factory') or '').lower() != 'buildingtype'
-            or str(target_values.get('ConstructionYard') or '').lower() != 'yes'
-        ):
+        expected_target = str(CONYARD_BY_MCV[unit_id]).upper()
+        if deploy_target != expected_target:
             raise AssertionError(
-                f'{context} MCV clone {clone_id} lacks a private functional Yard'
+                f'{context} MCV clone {clone_id} does not deploy into '
+                f'native Yard {expected_target}'
             )
         if not any(
             deploy_target in {
@@ -752,7 +768,7 @@ def _assert_native_mcvs_untouched(source_path, generated_path, context):
             for values in generated.values()
         ):
             raise AssertionError(
-                f'{context} private Yard {deploy_target} unlocks no structures'
+                f'{context} native Yard {deploy_target} unlocks no structures'
             )
 
     # Any existing map reference to a native MCV or Construction Yard is
@@ -1102,15 +1118,21 @@ def _assert_nanofiber_mutation_damage(missions):
         weapon = section_value_map_preserve(lines, f'MORNano{stage}W')
         warhead = section_value_map_preserve(lines, f'MORNano{stage}WH')
         expected = {
-            'RelativeDamage': 'yes',
-            'RelativeDamage.Infantry': '-100',
-            f'Versus.MORNanoArmor{stage}': '200%',
+            f'Versus.MORNanoArmor{stage}': '100%',
+            'AffectsAllies': 'yes',
+            'AffectsEnemies': 'yes',
+            'AffectsOwner': 'yes',
         }
-        if weapon.get('Damage') != '1' or any(
-            warhead.get(key) != value for key, value in expected.items()
+        if (
+            int(weapon.get('Damage', '0')) < 2000
+            or 'RelativeDamage' in warhead
+            or 'RelativeDamage.Infantry' in warhead
+            or any(
+                warhead.get(key) != value for key, value in expected.items()
+            )
         ):
             raise AssertionError(
-                f'AEAGLESFLY Nanofiber stage {stage} lacks scalable damage'
+                f'AEAGLESFLY Nanofiber stage {stage} lacks fixed lethal damage'
             )
     root_map = Path(hook['root_map'])
     if root_map.is_file() and is_generated_hooked_map(root_map):
