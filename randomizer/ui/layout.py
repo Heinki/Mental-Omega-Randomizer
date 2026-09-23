@@ -698,6 +698,20 @@ def _build_right_panel(self, main_frame):
         '<ButtonRelease-1>', self.toggle_shop_setup_unit
     )
 
+    self.shop_permanent_units_without_buffs_check = ttk.Checkbutton(
+        shop_loadout_frame,
+        text='Use permanent units without permanent buffs this run',
+        variable=self.shop_permanent_units_without_buffs_var,
+    )
+    self.shop_permanent_units_without_buffs_check.grid(
+        row=2, column=0, columnspan=2, sticky='w', pady=(6, 0)
+    )
+    WidgetTooltip(
+        self.shop_permanent_units_without_buffs_check,
+        'Permanent units stay unlocked. Their purchased unit buffs are '
+        'skipped for this run, so unit buffs can be bought again with Ore.',
+    )
+
     modifier_frame = ttk.LabelFrame(
         shop_settings_frame, text='Optional Run Modifiers', padding=8
     )

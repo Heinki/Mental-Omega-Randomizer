@@ -32,6 +32,7 @@ from .meta import (
     purchase_permanent_unit as apply_permanent_unit_purchase,
     purchase_permanent_power as apply_permanent_power_purchase,
     purchase_permanent_buff as apply_permanent_buff_purchase,
+    refund_permanent_unit_buff as apply_permanent_unit_buff_refund,
     purchase_permanent_upgrade as apply_permanent_upgrade_purchase,
     refund_permanent_upgrade as apply_permanent_upgrade_refund,
 )
@@ -351,6 +352,26 @@ class ShopProgressionService:
         price = permanent_unit_price(entry.target_id) if shop_eligible else 0
         outcome = apply_permanent_unit_purchase(
             profile, reward, price=price, shop_eligible=shop_eligible
+        )
+        if outcome.validation.allowed:
+            self.repository.save_profile(outcome.profile)
+        return outcome
+
+    def refund_permanent_unit_buff(self, reward_id):
+        profile, run = self.repository.load()
+        if run is not None and run.status is RunStatus.ACTIVE:
+            raise ShopTransitionError(
+                'Permanent buff respec is locked during an active Shop run'
+            )
+        reward = canonical_reward_for_id(reward_id)
+        entry = catalogue_entry(reward)
+        eligible = bool(
+            entry is not None
+            and entry.reward_type is ShopRewardType.UNIT_BUFF
+        )
+        price = permanent_buff_price(entry.target_id) if eligible else 0
+        outcome = apply_permanent_unit_buff_refund(
+            profile, reward, price=price, shop_eligible=eligible
         )
         if outcome.validation.allowed:
             self.repository.save_profile(outcome.profile)

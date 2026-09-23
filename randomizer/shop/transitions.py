@@ -195,6 +195,8 @@ def start_new_run(
     modifier_ids = tuple(dict.fromkeys(
         str(modifier_id) for modifier_id in modifiers if str(modifier_id)
     ))
+    if 'black_market' in modifier_ids:
+        raise ShopTransitionError('Black Market is no longer available')
     unknown_modifiers = [
         modifier_id for modifier_id in modifier_ids
         if modifier_id not in config.modifiers

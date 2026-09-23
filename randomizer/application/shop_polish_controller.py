@@ -692,20 +692,10 @@ class ShopPolishController(ShopArchipelagoController):
             state='normal' if can_give_up else 'disabled'
         )
 
-    def _entry_price(self, entry, *, current_stacks=0):
+    def _entry_ore_price(self, entry, *, current_stacks=0):
         run = self.shop_run
         if run is None:
             return None
-        if entry.reward_type in {
-            ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF
-        }:
-            definition = self.shop_config.permanent_upgrades['free_buff_token']
-            capacity = (
-                self.shop_profile.upgrade_level('free_buff_token')
-                * int(definition.effects['tokens_per_level'])
-            )
-            if run.free_buff_tokens_used < capacity:
-                return 0
         coupon_definition = self.shop_config.permanent_upgrades['coupon_book']
         coupon_discount = (
             self.shop_profile.upgrade_level('coupon_book')
@@ -722,6 +712,31 @@ class ShopPolishController(ShopArchipelagoController):
             ),
             coupon_discount_ore=coupon_discount,
         )
+
+    def _free_buff_token_available(self, entry):
+        run = self.shop_run
+        if run is None or entry.reward_type not in {
+            ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF
+        }:
+            return False
+        definition = self.shop_config.permanent_upgrades['free_buff_token']
+        capacity = (
+            self.shop_profile.upgrade_level('free_buff_token')
+            * int(definition.effects['tokens_per_level'])
+        )
+        return run.free_buff_tokens_used < capacity
+
+    def _entry_price(self, entry, *, current_stacks=0):
+        price = self._entry_ore_price(entry, current_stacks=current_stacks)
+        return 0 if self._free_buff_token_available(entry) else price
+
+    def _entry_price_text(self, entry, price, stacks):
+        if price is None:
+            return '—'
+        if self._free_buff_token_available(entry):
+            ore_price = self._entry_ore_price(entry, current_stacks=stacks)
+            return f'FREE TOKEN ({ore_price} Ore)'
+        return f'{price} Ore'
 
     def _selected_shop_catalogue_entries(self):
         return {
@@ -1220,13 +1235,7 @@ class ShopPolishController(ShopArchipelagoController):
                     and entry.reward_id == run.stock_lock_reward_id
                     else state
                 ),
-                (
-                    'FREE TOKEN'
-                    if price == 0 and entry.reward_type in {
-                        ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF
-                    }
-                    else f'{price} Ore' if price is not None else '—'
-                ),
+                self._entry_price_text(entry, price, stacks),
                 upgrade_action,
                 ),
             }
@@ -1251,7 +1260,7 @@ class ShopPolishController(ShopArchipelagoController):
                 f'{entry.reward_id}\nType: '
                 f'{entry.reward_type.value.replace("_", " ").title()}\n'
                 f'Target: {entry.target_id or "—"}\n'
-                f'Price: {"FREE TOKEN" if price == 0 else str(price) + " Ore" if price is not None else "—"}\n'
+                f'Price: {self._entry_price_text(entry, price, stacks)}\n'
                 f'State: {reason}'
                 + (
                     '\nEffect: '

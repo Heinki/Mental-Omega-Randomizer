@@ -159,6 +159,40 @@ def purchase_permanent_buff(profile, reward, *, price, shop_eligible=True):
     )
 
 
+def refund_permanent_unit_buff(profile, reward, *, price, shop_eligible=True):
+    """Remove one permanent unit buff stack and refund its full Gem price."""
+    reward_id = canonical_reward_id(reward)
+    entry = catalogue_entry(reward) if shop_eligible else None
+    if entry is None or entry.reward_type is not ShopRewardType.UNIT_BUFF:
+        return ProfilePurchaseOutcome(
+            profile,
+            PurchaseValidation(PurchaseResult.NOT_SHOP_ELIGIBLE, reward_id),
+        )
+    current = next((
+        item.stacks for item in profile.permanent_buffs
+        if item.reward_id == reward_id
+    ), 0)
+    if current <= 0:
+        return ProfilePurchaseOutcome(
+            profile,
+            PurchaseValidation(PurchaseResult.NOT_ENTITLED, reward_id),
+        )
+    buffs = [
+        item for item in profile.permanent_buffs if item.reward_id != reward_id
+    ]
+    if current > 1:
+        buffs.append(BuffPurchase(reward_id, current - 1))
+    refund = int(price)
+    return ProfilePurchaseOutcome(
+        replace(
+            profile,
+            meta_coins=profile.meta_coins + refund,
+            permanent_buffs=tuple(buffs),
+        ),
+        PurchaseValidation(PurchaseResult.OK, reward_id, refund),
+    )
+
+
 def purchase_permanent_upgrade(
     profile,
     upgrade_id,
