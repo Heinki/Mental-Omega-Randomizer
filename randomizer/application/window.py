@@ -28,6 +28,7 @@ class WindowController:
             self._close_after_game = True
             self.withdraw()
             return
+        self.disconnect_coop()
         self.shutdown_archipelago()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
@@ -45,6 +46,13 @@ class WindowController:
 
     def create_widgets(self):
         build_launcher_widgets(self)
+        self.refresh_coop_controls()
+        if self.coop_mode_var.get():
+            self.progression_mode_combo.configure(
+                values=('Classic', 'Mission List', 'Grid Mode')
+            )
+            if self.progression_mode_var.get() == 'Shop Mode':
+                self.progression_mode_var.set('Grid Mode')
 
     def update_header_summary(self, *_args):
         """Show the core selected run settings beneath the launcher title."""
@@ -56,6 +64,8 @@ class WindowController:
             self.difficulty_var.get(),
             self.game_speed_var.get(),
         ]
+        if self.coop_mode_var.get():
+            parts.append('Co-op')
         if seed:
             parts.insert(0, f'Seed: {seed}')
         if self.archipelago_run_active():
@@ -94,6 +104,13 @@ class WindowController:
                 self.debug_complete_button.grid_remove()
             else:
                 self.debug_complete_button.grid()
+            self.debug_complete_button.configure(
+                state='disabled' if self.coop_guest_connected() else 'normal'
+            )
+        if hasattr(self, 'compact_complete_button'):
+            self.compact_complete_button.configure(
+                state='disabled' if self.coop_guest_connected() else 'normal'
+            )
         if not hasattr(self, 'shop_debug_complete_button'):
             return
         if shop_selected and self.log_visible_var.get():

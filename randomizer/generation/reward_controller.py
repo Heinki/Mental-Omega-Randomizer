@@ -18,6 +18,8 @@ class RewardGeneration:
 
     def objective_templates_for_code(self, code):
         mission = self.mission_lookup().get(code, {})
+        if mission.get('coop_name'):
+            return [('victory', 'Mission Victory', 'Win the co-op mission.')]
         objectives = mission.get('objectives') or []
 
         if objectives:
@@ -844,4 +846,3 @@ class RewardGeneration:
                 else self.active_reward_settings().get('access_limits')
             ),
         )
-

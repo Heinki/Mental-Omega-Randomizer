@@ -157,6 +157,7 @@ class SeedGeneration:
             'version': 1,
             'seed': seed,
             'created_at': now_stamp(),
+            'coop_mode': bool(options.get('coop_mode', False)),
             'campaign_filter': options['campaign_filter'],
             'reward_mode': options['reward_mode'],
             'progression_mode': progression_mode,
@@ -225,4 +226,3 @@ class SeedGeneration:
             'reward_settings': reward_settings,
             'mission_codes': mission_codes,
         }
-

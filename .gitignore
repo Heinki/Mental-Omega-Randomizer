@@ -5,6 +5,7 @@ __pycache__/
 backups/
 extracted_maps/
 generated_maps/
+generated_coop/
 cameo_cache/
 randomizer_state.json
 shop_profile.json

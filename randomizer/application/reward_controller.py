@@ -41,6 +41,8 @@ from ._dependencies import (
 )
 
 from randomizer.generation.reward_controller import RewardGeneration
+from randomizer.coop.catalogue import discover_coop_missions
+from randomizer.core.paths import GAME_ROOT
 
 class RewardController(RewardGeneration):
 
@@ -404,12 +406,12 @@ class RewardController(RewardGeneration):
 
     def refresh_missions(self):
         self.append_log('Refreshing mission list...')
-        self.apply_missions(
-            parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
-        )
+        self.apply_missions(self.load_missions())
 
     def load_missions(self):
         """Read mission catalogue without touching Tk state."""
+        if self.coop_mode_var.get():
+            return discover_coop_missions(GAME_ROOT)
         return parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
 
     def apply_missions(self, missions):
@@ -420,7 +422,8 @@ class RewardController(RewardGeneration):
         if self.missions and self.mission_goal_var.get() > len(self.missions):
             self.mission_goal_var.set(len(self.missions))
         self.update_mission_goal_limit()
-        self.sync_state_mission_objectives()
+        if bool(self.state.get('coop_mode')) == bool(self.coop_mode_var.get()):
+            self.sync_state_mission_objectives()
         self.redraw_mission_tree()
         if (
             hasattr(self, 'workspace_tabs')

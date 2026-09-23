@@ -601,7 +601,7 @@ class AdvancedSettingsController:
 
     def draw_advanced_pool_card(self, parent, row, column, entry, pool_key, photo=None):
         excluded_sets = {
-            'missions': self.excluded_mission_codes,
+            'missions': self.active_mission_exclusions(),
             'units': self.excluded_unit_access_ids,
             'powers': self.excluded_superweapon_ids,
         }
@@ -883,7 +883,7 @@ class AdvancedSettingsController:
 
         included_missions = len(visible_missions) - len(
             {mission['code'].upper() for mission in visible_missions}
-            & self.excluded_mission_codes
+            & self.active_mission_exclusions()
         )
         visible_unit_ids = {entry['id'] for entry in unit_entries}
         included_units = len(visible_unit_ids - self.excluded_unit_access_ids)
@@ -903,7 +903,7 @@ class AdvancedSettingsController:
         if self.gameplay_settings_locked():
             return
         target = {
-            'missions': self.excluded_mission_codes,
+            'missions': self.active_mission_exclusions(),
             'units': self.excluded_unit_access_ids,
             'powers': self.excluded_superweapon_ids,
         }[pool_key]
@@ -953,7 +953,7 @@ class AdvancedSettingsController:
                     ),
                 )
             ]
-            return entries, self.excluded_mission_codes
+            return entries, self.active_mission_exclusions()
         if pool_key == 'units':
             entries = [
                 {
@@ -1403,7 +1403,10 @@ class AdvancedSettingsController:
         if not self.missions:
             return
         filtered_count = len(self.filtered_missions_for_seed())
-        self.campaign_label.configure(text=f'Campaign ({filtered_count})')
+        self.campaign_label.configure(text=(
+            f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
+            else f'Campaign ({filtered_count})'
+        ))
         self.mission_goal_spinbox.configure(to=max(1, filtered_count))
         if self.mission_goal_var.get() > filtered_count:
             self.mission_goal_var.set(max(1, filtered_count))

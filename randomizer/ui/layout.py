@@ -213,21 +213,30 @@ def _build_window_shell(self):
     self.compact_action_row = ttk.Frame(mission_view_frame)
     self.compact_action_row.columnconfigure(0, weight=1)
     self.compact_action_row.columnconfigure(1, weight=1)
-    ttk.Button(
+    self.compact_launch_button = ttk.Button(
         self.compact_action_row,
         text='Launch Selected Mission',
         command=self.on_launch_selected,
         style='Launch.TButton',
-    ).grid(row=0, column=0, sticky='ew', padx=(0, 4), pady=(6, 0))
+    )
+    self.compact_launch_button.grid(row=0, column=0, sticky='ew', padx=(0, 4), pady=(6, 0))
+    self.compact_coop_button = ttk.Button(
+        self.compact_action_row,
+        text='Co-op Connection…',
+        command=self.open_coop_dialog,
+    )
+    self.compact_coop_button.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(4, 0))
     compact_complete_button = ttk.Button(
         self.compact_action_row,
         text='Mark Mission Complete',
         command=self.on_debug_mark_complete,
     )
     compact_complete_button.grid(row=0, column=1, sticky='ew', padx=(4, 0), pady=(6, 0))
+    self.compact_complete_button = compact_complete_button
     WidgetTooltip(
         compact_complete_button,
-        'Recovery only: use when a completed mission was not detected.',
+        'Co-op host: record a won mission to unlock the next maps. '
+        'Single-player: recovery when automatic completion was not detected.',
     )
     self.compact_action_row.grid(row=2, column=0, columnspan=2, sticky='ew')
     self.compact_action_row.grid_remove()
@@ -308,6 +317,11 @@ def _build_right_panel(self, main_frame):
         command=self.on_new_seed,
     )
     self.seed_action_button.grid(row=0, column=1, sticky='ew')
+    self.coop_mode_check = ttk.Checkbutton(
+        seed_settings_frame, text='Co-op mode (2 players)',
+        variable=self.coop_mode_var, command=self.on_coop_mode_changed,
+    )
+    self.coop_mode_check.grid(row=0, column=1, sticky='e')
 
     options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
@@ -792,21 +806,29 @@ def _build_right_panel(self, main_frame):
     button_row = ttk.Frame(right_frame)
     button_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     button_row.columnconfigure(0, weight=1)
-    ttk.Button(
+    self.launch_selected_button = ttk.Button(
         button_row,
         text='Launch Selected Mission',
         command=self.on_launch_selected,
         style='Launch.TButton',
-    ).grid(row=0, column=0, sticky='ew', pady=(0, 4))
+    )
+    self.launch_selected_button.grid(row=0, column=0, sticky='ew', pady=(0, 4))
+    self.coop_connection_button = ttk.Button(
+        button_row,
+        text='Co-op Connection…',
+        command=self.open_coop_dialog,
+    )
+    self.coop_connection_button.grid(row=1, column=0, sticky='ew', pady=(0, 4))
     self.debug_complete_button = ttk.Button(
         button_row,
         text='Mark Mission Complete',
         command=self.on_debug_mark_complete,
     )
-    self.debug_complete_button.grid(row=1, column=0, sticky='ew', pady=(0, 3))
+    self.debug_complete_button.grid(row=2, column=0, sticky='ew', pady=(0, 3))
     WidgetTooltip(
         self.debug_complete_button,
-        'Recovery only: use when a completed mission was not detected.',
+        'Co-op host: record a won mission to unlock the next maps. '
+        'Single-player: recovery when automatic completion was not detected.',
     )
 
     return info_tabs, settings_tab, settings_frame

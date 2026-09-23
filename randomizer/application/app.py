@@ -53,6 +53,7 @@ from .unlock_data import UnlockDataController
 from .unlock_view import UnlockViewController
 from .enemy_scaling import EnemyScalingController
 from .archipelago_controller import ArchipelagoController
+from .coop_controller import CoopController
 
 
 class LauncherApp(
@@ -64,6 +65,7 @@ class LauncherApp(
     StartingUnlocksController,
     PowerBuffSettingsController,
     ProgressionController,
+    CoopController,
     SeedController,
     LaunchController,
     UnlockDataController,
@@ -271,6 +273,11 @@ class LauncherApp(
             for code in generation_config.get('excluded_mission_codes', [])
             if str(code).strip()
         }
+        self.excluded_coop_mission_codes = {
+            str(code).upper()
+            for code in generation_config.get('excluded_coop_mission_codes', [])
+            if str(code).strip()
+        }
         self.excluded_unit_access_ids = {
             str(unit_id).upper()
             for unit_id in generation_config.get('excluded_unit_access_ids', [])
@@ -323,12 +330,19 @@ class LauncherApp(
             if configured_progression_mode == 'Shop Mode'
             else self.state.get('progression_mode', configured_progression_mode)
         )
+        if self.config.get('coop_mode') and saved_progression_mode == 'Shop Mode':
+            saved_progression_mode = self.state.get('progression_mode', 'Grid Mode')
+            if saved_progression_mode == 'Shop Mode':
+                saved_progression_mode = 'Grid Mode'
         progression_mode_default = valid_choice(
             saved_progression_mode,
             PROGRESSION_MODES,
             DEFAULT_PROGRESSION_MODE,
         )
         self.progression_mode_var = tk.StringVar(value=progression_mode_default)
+        self.coop_mode_var = tk.BooleanVar(value=bool(
+            self.config.get('coop_mode', self.state.get('coop_mode', False))
+        ))
         grid_state = self.state.get('grid', {}) if isinstance(self.state.get('grid'), dict) else {}
         self.grid_two_starts_var = tk.BooleanVar(
             value=bool(grid_state.get(

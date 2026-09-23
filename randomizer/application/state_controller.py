@@ -1,6 +1,7 @@
 """Persistent state, player configuration, starters, and assistance."""
 
 from randomizer.config.tuning import mission_assistance_stack_count
+from randomizer.core.paths import COOP_STATE_PATH
 from .archipelago_state import normalize_archipelago_activation
 
 from ._dependencies import (
@@ -77,17 +78,18 @@ from randomizer.generation.state_controller import GenerationSettings
 
 class StateController(GenerationSettings):
     def load_state(self):
-        if not STATE_PATH.exists():
+        path = COOP_STATE_PATH if self.config.get('coop_mode') else STATE_PATH
+        if not path.exists():
             return {}
         try:
-            loaded = read_json_object(STATE_PATH)
+            loaded = read_json_object(path)
             restore = getattr(
                 self, 'restore_archipelago_context_on_startup', None
             )
             if callable(restore):
                 loaded, changed = restore(loaded)
                 if changed:
-                    atomic_write_json(STATE_PATH, loaded, indent=None)
+                    atomic_write_json(path, loaded, indent=None)
             return loaded
         except Exception:
             log_event('state_load_failed', level=logging.ERROR, traceback=traceback.format_exc())
@@ -324,12 +326,16 @@ class StateController(GenerationSettings):
             self.save_state()
 
     def save_state(self):
+        if self.coop_guest_connected():
+            return
         self.__dict__.pop('_active_reward_settings_cache', None)
         self.__dict__.pop('_canonical_earned_rewards_cache', None)
         self.__dict__.pop('_unlock_dashboard_sources_cache', None)
         self.__dict__.pop('_configured_reward_pool_cache', None)
         self._enemy_buffs_view_dirty = True
-        atomic_write_json(STATE_PATH, self.state, indent=None)
+        path = COOP_STATE_PATH if self.state.get('coop_mode') else STATE_PATH
+        atomic_write_json(path, self.state, indent=None)
+        self.coop_publish_state()
 
 
     def current_reward_settings(self):
@@ -588,6 +594,7 @@ class StateController(GenerationSettings):
         return bool(self.config.get('use_act_based_reward_multipliers', True))
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
+        self.config['coop_mode'] = bool(self.coop_mode_var.get())
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
         self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
         self.config['hide_locked_grid_missions'] = bool(
@@ -630,6 +637,9 @@ class StateController(GenerationSettings):
             self.prioritize_no_build_missions_var.get()
         )
         self.config['generation']['excluded_mission_codes'] = sorted(self.excluded_mission_codes)
+        self.config['generation']['excluded_coop_mission_codes'] = sorted(
+            self.excluded_coop_mission_codes
+        )
         self.config['generation']['excluded_unit_access_ids'] = sorted(
             self.excluded_unit_access_ids
         )
@@ -730,7 +740,7 @@ class StateController(GenerationSettings):
 
     def load_settings_file(self):
         """Import every launcher option while preserving run progress."""
-        if self.gameplay_settings_locked():
+        if self.gameplay_settings_locked() or getattr(self, '_coop_lobby', None):
             return
         path = filedialog.askopenfilename(
             parent=self,
@@ -768,7 +778,9 @@ class StateController(GenerationSettings):
 
     def apply_portable_settings(self, config):
         """Apply one validated portable config to every live setting control."""
+        previous_coop_mode = bool(self.coop_mode_var.get())
         self.config = config
+        self.coop_mode_var.set(bool(config.get('coop_mode', False)))
         generation = self.config.get('generation', {})
         if generation.get('reward_mode') == 'Chaos (Experimental)':
             generation['reward_mode'] = 'Chaos'
@@ -867,6 +879,11 @@ class StateController(GenerationSettings):
         self.excluded_mission_codes = {
             str(code).upper()
             for code in generation.get('excluded_mission_codes', [])
+            if str(code).strip()
+        }
+        self.excluded_coop_mission_codes = {
+            str(code).upper()
+            for code in generation.get('excluded_coop_mission_codes', [])
             if str(code).strip()
         }
         self.excluded_unit_access_ids = {
@@ -986,3 +1003,6 @@ class StateController(GenerationSettings):
         self.grid_render_signature = None
         self.unlock_dashboard_signature = None
         self.refresh_progress_view()
+        self.refresh_coop_controls()
+        if previous_coop_mode != bool(self.coop_mode_var.get()):
+            self.on_coop_mode_changed()

@@ -44,6 +44,9 @@ class SeedController(SeedGeneration):
     def on_new_seed(self):
         if self.gameplay_settings_locked():
             return
+        if self.coop_guest_connected():
+            messagebox.showinfo('Co-op', 'Only host can generate a shared seed.')
+            return
         if self.state and self.state.get('completed_missions'):
             confirmed = messagebox.askyesno(
                 'Start New Seed',
@@ -215,6 +218,7 @@ class SeedController(SeedGeneration):
             'starting_defense_ids': starting_defense_ids,
             'starting_unit_ids': starting_unit_ids,
             'progression_mode': self.progression_mode_var.get(),
+            'coop_mode': bool(self.coop_mode_var.get()),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
             'mission_pool_settings': {
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
@@ -569,6 +573,13 @@ class SeedController(SeedGeneration):
         return True
 
     def on_debug_mark_complete(self):
+        if self.coop_guest_connected():
+            messagebox.showinfo('Co-op', 'Only host can complete shared co-op missions.')
+            return
+        process = getattr(self, 'active_game_process', None)
+        if self.state.get('coop_mode') and process is not None and process.poll() is None:
+            messagebox.showinfo('Co-op', 'Close the co-op game before recording victory.')
+            return
         if not self.state:
             messagebox.showwarning('No Seed', 'Generate a seed before changing debug progress.')
             return
@@ -591,6 +602,12 @@ class SeedController(SeedGeneration):
             self.append_log(f'Debug completion failed; no victory check exists for {code}.', error=True)
             return
 
+        if self.state.get('coop_mode') and not messagebox.askyesno(
+            'Record Co-op Victory',
+            f'Did both players win {mission.get("title", code)}? This advances the shared run.',
+        ):
+            return
+
         log_event(
             'debug_mission_completion_requested',
             seed=self.state.get('seed', ''),
@@ -610,7 +627,7 @@ class SeedController(SeedGeneration):
         ]
         missions = [
             mission for mission in missions
-            if mission.get('code', '').upper() not in self.excluded_mission_codes
+            if mission.get('code', '').upper() not in self.active_mission_exclusions()
         ]
         return filter_missions_by_build_settings(
             missions,

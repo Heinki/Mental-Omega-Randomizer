@@ -300,6 +300,7 @@ class ProgressionController:
             )
         self.refresh_grid_tiles({previous_code, current_code})
         self.refresh_progress_view(refresh_unlocks=False)
+        self.coop_selection_changed()
         if self.active_reward_mode() == ARSENAL_MODE:
             self.schedule_selection_unlock_refresh()
 
@@ -375,6 +376,7 @@ class ProgressionController:
                     **self._archipelago_log_context(mission),
                 )
             self.refresh_progress_view(refresh_unlocks=False)
+            self.coop_selection_changed()
             if self.active_reward_mode() == ARSENAL_MODE:
                 self.schedule_selection_unlock_refresh()
 
@@ -611,6 +613,8 @@ class ProgressionController:
         return self.enemy_reward_text(reward)
 
     def on_launch_selected(self):
+        if self.coop_mode_var.get():
+            return self.request_coop_launch()
         mission = self.selected_mission()
         if mission is None:
             self.append_log('Cannot launch selected mission: no valid mission selected.', error=True)
