@@ -51,16 +51,24 @@ from .shop_archipelago_controller import ShopArchipelagoController
 
 
 class ShopPolishController(ShopArchipelagoController):
+    def _schedule_shop_tree_button_reflow(self, tree, button_attribute):
+        pending = self.__dict__.setdefault('_shop_tree_reflow_pending', set())
+        if button_attribute in pending:
+            return
+        pending.add(button_attribute)
+
+        def reflow():
+            pending.discard(button_attribute)
+            self._position_shop_tree_buttons(tree, button_attribute)
+
+        self.after_idle(reflow)
+
     def configure_shop_embedded_button_tree(self, tree, button_attribute):
         """Keep real buttons aligned with visible Treeview action cells."""
         scrollbar = getattr(tree, '_shop_vertical_scrollbar', None)
 
         def schedule_reflow(_event=None):
-            self.after_idle(
-                lambda: self._position_shop_tree_buttons(
-                    tree, button_attribute
-                )
-            )
+            self._schedule_shop_tree_button_reflow(tree, button_attribute)
 
         if scrollbar is not None:
             def update_scrollbar(first, last):
@@ -120,9 +128,7 @@ class ShopPolishController(ShopArchipelagoController):
             )
             buttons[iid] = button
         self.__dict__[attribute] = buttons
-        self.after_idle(lambda: self._position_shop_tree_buttons(
-            self.shop_catalogue_tree, attribute
-        ))
+        self._schedule_shop_tree_button_reflow(self.shop_catalogue_tree, attribute)
 
     def _open_shop_catalogue_upgrade_button(self, iid, target):
         self.shop_catalogue_tree.selection_set(iid)
@@ -144,9 +150,7 @@ class ShopPolishController(ShopArchipelagoController):
             )
             buttons[iid] = button
         self.__dict__[attribute] = buttons
-        self.after_idle(lambda: self._position_shop_tree_buttons(
-            self.shop_loadout_tree, attribute
-        ))
+        self._schedule_shop_tree_button_reflow(self.shop_loadout_tree, attribute)
 
     def _open_shop_loadout_upgrade_button(self, iid, target):
         self.shop_loadout_tree.selection_set(iid)
@@ -282,7 +286,10 @@ class ShopPolishController(ShopArchipelagoController):
     def refresh_unlocks_view(self):
         if not self._shop_mode_context_selected():
             return super().refresh_unlocks_view()
-        if not getattr(self, '_unlocks_view_dirty', False):
+        if (
+            not self.unlock_summary_visible()
+            or not getattr(self, '_unlocks_view_dirty', False)
+        ):
             return
         self._unlocks_view_dirty = False
         run = self._shop_context_run()
@@ -323,9 +330,9 @@ class ShopPolishController(ShopArchipelagoController):
                 lines.append('No purchased unlocks or buffs yet.')
         self.set_unlocks_text('\n'.join(lines), tech_ids)
 
-    def refresh_progress_view(self):
+    def refresh_progress_view(self, *, refresh_unlocks=True):
         if not self._shop_mode_context_selected():
-            return super().refresh_progress_view()
+            return super().refresh_progress_view(refresh_unlocks=refresh_unlocks)
         run = self._shop_context_run()
         if run is None:
             self.progress_label.config(
@@ -405,15 +412,18 @@ class ShopPolishController(ShopArchipelagoController):
             if not run.mission_offers:
                 lines.append('Run finished. See Run Summary and Run History.')
             self.set_rewards_text('\n'.join(lines))
-        self.__dict__.pop('_unlock_dashboard_sources_cache', None)
-        self.__dict__.pop('_canonical_earned_rewards_cache', None)
-        self.unlock_dashboard_signature = None
-        self._unlocks_view_dirty = True
-        self._enemy_buffs_view_dirty = True
-        if self.unlocks_view_visible():
-            self.refresh_unlocks_view()
-        if self.enemy_buffs_view_visible():
-            self.refresh_enemy_buffs_view()
+        if refresh_unlocks:
+            self.__dict__.pop('_unlock_dashboard_sources_cache', None)
+            self.__dict__.pop('_canonical_earned_rewards_cache', None)
+            self.unlock_dashboard_signature = None
+            self._unlocks_view_dirty = True
+            self._enemy_buffs_view_dirty = True
+            if self.unlock_summary_visible():
+                self.refresh_unlocks_view()
+            elif self.unlock_dashboard_visible():
+                self.refresh_unlock_dashboard()
+            if self.enemy_buffs_view_visible():
+                self.refresh_enemy_buffs_view()
 
     def _refresh_shop_missions(self):
         run = self.shop_run
@@ -836,6 +846,7 @@ class ShopPolishController(ShopArchipelagoController):
         return effect
 
     def refresh_shop_catalogue(self, *_args):
+        self.cancel_shop_search_refresh('catalogue')
         if not hasattr(self, 'shop_catalogue_tree'):
             return
         tree = self.shop_catalogue_tree

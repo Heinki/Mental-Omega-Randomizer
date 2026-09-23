@@ -1,6 +1,7 @@
 """Mission visibility, Grid state, selection, and launch validation."""
 
 from ._dependencies import (
+    ARSENAL_MODE,
     DEFAULT_PROGRESSION_MODE,
     FACTION_TILE_COLORS,
     GRID_COMPLETED,
@@ -162,6 +163,9 @@ class ProgressionController:
         lookup = self.mission_lookup()
         selected_code = self.selected_mission_code()
         search_codes = self.mission_search_codes()
+        canvas_color = self.ui_palette()['canvas']
+        hide_locked = self.hide_locked_grid_missions_var.get()
+        hover_codes = getattr(self, 'unlock_hover_grid_codes', set())
         codes = list(mission_codes) if mission_codes is not None else list(self.grid_tile_widgets)
         for code in codes:
             widgets = self.grid_tile_widgets.get(code)
@@ -169,7 +173,11 @@ class ProgressionController:
                 continue
             mission = lookup.get(code, {})
             state = states.get(code, GRID_LOCKED)
-            if self.hide_locked_grid_missions_var.get() and state == GRID_LOCKED:
+            if hide_locked and state == GRID_LOCKED:
+                signature = ('hidden', code in search_codes, canvas_color)
+                if self.grid_tile_signatures.get(code) == signature:
+                    continue
+                self.grid_tile_signatures[code] = signature
                 widgets['tile'].grid()
                 background, foreground = '#3f454b', '#d4d8dc'
                 for widget in widgets.values():
@@ -183,7 +191,7 @@ class ProgressionController:
                     highlightbackground=(
                         '#00eaff'
                         if code in search_codes
-                        else self.ui_palette()['canvas']
+                        else canvas_color
                     ),
                 )
                 widgets['selection'].configure(background=background)
@@ -195,15 +203,31 @@ class ProgressionController:
                     foreground=foreground,
                 )
                 continue
-            widgets['tile'].grid()
-            for widget in widgets.values():
-                widget.configure(cursor='hand2')
-                widget.mission_tooltip.text = self.mission_description_tooltip(
-                    mission
-                )
             faction = normalize_faction(mission.get('side', ''))
             faction_color = FACTION_TILE_COLORS.get(faction, '#315b82')
             started = self.is_mission_started(code)
+            counts = self.mission_check_counts(code) if started else None
+            assistance_stacks = (
+                self.mission_failure_stack(code)
+                if started and self.failure_assistance_enabled()
+                else 0
+            )
+            is_goal = code == grid.get('goal')
+            hover_highlight = code in hover_codes
+            signature = (
+                state, started, counts, assistance_stacks,
+                code == selected_code, code in search_codes,
+                is_goal, hover_highlight, canvas_color,
+                id(mission), mission.get('title'),
+            )
+            if self.grid_tile_signatures.get(code) == signature:
+                continue
+            self.grid_tile_signatures[code] = signature
+            widgets['tile'].grid()
+            tooltip = self.mission_description_tooltip(mission)
+            for widget in widgets.values():
+                widget.configure(cursor='hand2')
+                widget.mission_tooltip.text = tooltip
             if state == GRID_LOCKED:
                 background, foreground = '#3f454b', '#aeb5bc'
                 state_label = 'MISSION LOCKED'
@@ -214,13 +238,8 @@ class ProgressionController:
                 banner_color = '#23864b'
             elif started:
                 background, foreground = faction_color, '#ffffff'
-                done, total = self.mission_check_counts(code)
+                done, total = counts
                 state_label = f'IN PROGRESS  ·  {done}/{total}'
-                assistance_stacks = (
-                    self.mission_failure_stack(code)
-                    if self.failure_assistance_enabled()
-                    else 0
-                )
                 if assistance_stacks:
                     state_label += f'\nASSISTANCE  ·  {assistance_stacks}'
                 banner_color = '#b77913'
@@ -228,8 +247,6 @@ class ProgressionController:
                 background, foreground = faction_color, '#ffffff'
                 state_label = ''
                 banner_color = faction_color
-            is_goal = code == grid.get('goal')
-            hover_highlight = code in getattr(self, 'unlock_hover_grid_codes', set())
             widgets['tile'].configure(
                 background='#d6ad37' if is_goal else background,
                 highlightthickness=6 if code in search_codes else 3,
@@ -238,7 +255,7 @@ class ProgressionController:
                     if code in search_codes
                     else '#45ef7a'
                     if hover_highlight
-                    else self.ui_palette()['canvas']
+                    else canvas_color
                 ),
             )
             widgets['selection'].configure(
@@ -282,7 +299,9 @@ class ProgressionController:
                 ),
             )
         self.refresh_grid_tiles({previous_code, current_code})
-        self.refresh_progress_view()
+        self.refresh_progress_view(refresh_unlocks=False)
+        if self.active_reward_mode() == ARSENAL_MODE:
+            self.schedule_selection_unlock_refresh()
 
     def redraw_mission_tree(self):
         for item in self.missions_tree.get_children():
@@ -355,7 +374,9 @@ class ProgressionController:
                     'archipelago_list_mission_selected',
                     **self._archipelago_log_context(mission),
                 )
-            self.refresh_progress_view()
+            self.refresh_progress_view(refresh_unlocks=False)
+            if self.active_reward_mode() == ARSENAL_MODE:
+                self.schedule_selection_unlock_refresh()
 
     def selected_mission(self):
         if not self.missions:

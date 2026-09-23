@@ -22,6 +22,39 @@ from ._dependencies import (
 
 class UnlockViewController:
 
+    def details_view_visible(self):
+        return bool(
+            hasattr(self, 'info_tabs')
+            and hasattr(self, 'details_tab')
+            and self.info_tabs.select() == str(self.details_tab)
+        )
+
+    def refresh_progress_side_views(self):
+        self._unlocks_view_dirty = True
+        self._enemy_buffs_view_dirty = True
+        if self.unlock_summary_visible():
+            self.refresh_unlocks_view()
+        elif self.unlock_dashboard_visible():
+            self.refresh_unlock_dashboard()
+        if self.enemy_buffs_view_visible():
+            self.refresh_enemy_buffs_view()
+
+    def schedule_selection_unlock_refresh(self):
+        """Let Grid selection paint before Arsenal's mission-specific cards."""
+        pending = getattr(self, '_selection_unlock_refresh_after_id', None)
+        if pending is not None:
+            self.after_cancel(pending)
+
+        def refresh():
+            self._selection_unlock_refresh_after_id = None
+            self._unlocks_view_dirty = True
+            if self.unlock_summary_visible():
+                self.refresh_unlocks_view()
+            elif self.unlock_dashboard_visible():
+                self.refresh_unlock_dashboard()
+
+        self._selection_unlock_refresh_after_id = self.after(50, refresh)
+
     def unlocks_view_visible(self):
         return bool(
             hasattr(self, 'info_tabs')
@@ -29,8 +62,28 @@ class UnlockViewController:
             and self.info_tabs.select() == str(self.unlocks_tab)
         )
 
+    def unlock_summary_visible(self):
+        return bool(
+            self.unlocks_view_visible()
+            and hasattr(self, 'unlocks_notebook')
+            and hasattr(self, 'unlocks_summary_page')
+            and self.unlocks_notebook.select() == str(self.unlocks_summary_page)
+        )
+
+    def unlock_dashboard_visible(self):
+        return bool(
+            self.unlocks_view_visible()
+            and hasattr(self, 'unlocks_notebook')
+            and self.unlocks_notebook.select() != str(
+                getattr(self, 'unlocks_summary_page', None)
+            )
+        )
+
     def refresh_unlocks_view(self):
-        if not getattr(self, '_unlocks_view_dirty', False):
+        if (
+            not self.unlock_summary_visible()
+            or not getattr(self, '_unlocks_view_dirty', False)
+        ):
             return
         self._unlocks_view_dirty = False
         if not self.state:
@@ -42,13 +95,23 @@ class UnlockViewController:
         )
 
     def on_unlock_dashboard_tab_changed(self, _event=None):
-        if self.unlocks_view_visible():
+        if self.unlock_summary_visible():
+            self.after_idle(self.refresh_unlocks_view)
+        elif self.unlock_dashboard_visible():
             self.after_idle(self.refresh_unlock_dashboard)
 
     def on_unlock_dashboard_search_changed(self, *_args):
         self.unlock_dashboard_signature = None
-        if self.unlocks_view_visible():
-            self.refresh_unlock_dashboard()
+        pending = getattr(self, '_unlock_dashboard_search_after_id', None)
+        if pending is not None:
+            self.after_cancel(pending)
+
+        def refresh_search():
+            self._unlock_dashboard_search_after_id = None
+            if self.unlock_dashboard_visible():
+                self.refresh_unlock_dashboard()
+
+        self._unlock_dashboard_search_after_id = self.after(120, refresh_search)
 
     def unlock_dashboard_search_matches(self, entry):
         query = self.unlock_dashboard_search_var.get().strip().casefold()
@@ -69,7 +132,10 @@ class UnlockViewController:
         return all(term in haystack for term in query.split())
 
     def refresh_unlock_dashboard(self):
-        if not hasattr(self, 'unlock_icon_frames'):
+        if (
+            not self.unlock_dashboard_visible()
+            or not hasattr(self, 'unlock_icon_frames')
+        ):
             return
         entries = self.unlock_dashboard_entries()
         selected_tab = self.unlocks_notebook.select()
@@ -365,22 +431,25 @@ class UnlockViewController:
                 layout_sections.append((heading, cards))
             self.unlock_dashboard_sections[faction] = layout_sections
             self.layout_unlock_dashboard_faction(faction)
-            content.update_idletasks()
-            canvas.configure(background=field, scrollregion=canvas.bbox('all'))
+            canvas.configure(background=field)
 
         if entries and len(photos) < len(entries) and cameo_extraction_pending():
             self.schedule_cameo_refresh_retry()
         else:
             self.cameo_retry_count = 0
 
-    def refresh_progress_view(self):
+    def refresh_progress_view(self, *, refresh_unlocks=True):
+        if not self.details_view_visible():
+            self._details_view_dirty = True
+            if refresh_unlocks:
+                self.refresh_progress_side_views()
+            return
         if not self.state:
             self.progress_label.config(text='No randomizer seed generated. Vanilla mission launching is still available.')
             self.set_rewards_text('')
-            self._unlocks_view_dirty = True
-            self._enemy_buffs_view_dirty = True
-            if self.unlocks_view_visible():
-                self.refresh_unlocks_view()
+            self._details_view_dirty = False
+            if refresh_unlocks:
+                self.refresh_progress_side_views()
             return
 
         completed = len(self.state.get('completed_missions', []))
@@ -408,7 +477,6 @@ class UnlockViewController:
                 f'Completed: {completed}/{goal} | Open: {unlocked} | Rewards: {len(earned)} | {status}'
             )
         )
-
         lines = []
         detail_spans = []
         detail_tag_colors = {}
@@ -718,12 +786,9 @@ class UnlockViewController:
             spans=detail_spans,
             tag_colors=detail_tag_colors,
         )
-        self._unlocks_view_dirty = True
-        self._enemy_buffs_view_dirty = True
-        if self.unlocks_view_visible():
-            self.refresh_unlocks_view()
-        if self.enemy_buffs_view_visible():
-            self.refresh_enemy_buffs_view()
+        self._details_view_dirty = False
+        if refresh_unlocks:
+            self.refresh_progress_side_views()
 
     def set_rewards_text(self, text, spans=(), tag_colors=None):
         self.rewards_text.configure(state='normal')
@@ -941,4 +1006,5 @@ class UnlockViewController:
                 )
         self.unlocks_text.configure(state='disabled')
         self.refresh_unlock_search()
-        self.refresh_unlock_dashboard()
+        if self.unlock_dashboard_visible():
+            self.refresh_unlock_dashboard()

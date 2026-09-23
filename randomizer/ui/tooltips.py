@@ -11,7 +11,6 @@ _TOOLTIP_MARGIN = 4
 def _owner_bounds(widget):
     """Return client-area screen bounds for the window owning a widget."""
     owner = widget.winfo_toplevel()
-    owner.update_idletasks()
     left = owner.winfo_rootx()
     top = owner.winfo_rooty()
     return (
@@ -212,7 +211,7 @@ class TreeTooltip:
                     wraplength=620,
                 )
                 label.grid(row=0, column=0)
-        self.tip.update_idletasks()
+            self.tip.update_idletasks()
         x, y = _confined_tooltip_position(
             self.tree,
             self.tip.winfo_reqwidth(),

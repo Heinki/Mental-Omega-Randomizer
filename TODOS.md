@@ -1,6 +1,4 @@
 ## BUGS AND IMPROVEMENTS
-- Performance issue on gridmode and shopmode
-- 
 
 ## INFO
 

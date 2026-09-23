@@ -1032,7 +1032,21 @@ class LaunchController:
             mission
         )
 
-        def finish_launch(hook):
+        def prepare_launch():
+            hook = self.prepare_mission_launch_files(
+                mission,
+                extra_rules,
+                difficulty_value,
+                game_speed_value,
+            )
+            self.queue_busy_progress('Resolving game launcher…')
+            command = self.build_command()
+            self.queue_busy_progress('Starting game process…')
+            process, command_text = self.spawn_game_process(command)
+            return hook, process, command_text
+
+        def finish_launch(result):
+            hook, process, command_text = result
             try:
                 self.start_mission_process(
                     mission,
@@ -1040,6 +1054,8 @@ class LaunchController:
                     difficulty_value,
                     game_speed_value,
                     launch_note,
+                    launched_process=process,
+                    command_text=command_text,
                 )
             finally:
                 if ap_snapshot_active:
@@ -1055,12 +1071,7 @@ class LaunchController:
         self.run_in_background(
             'Starting game, please wait…',
             'Preparing the mission and applying earned rewards.',
-            lambda: self.prepare_mission_launch_files(
-                mission,
-                extra_rules,
-                difficulty_value,
-                game_speed_value,
-            ),
+            prepare_launch,
             finish_launch,
             fail_launch,
         )
@@ -1081,7 +1092,7 @@ class LaunchController:
                 else None
             ),
         )
-        messagebox.showerror('Launch Failed', 'Failed to write launch files. See log for details.')
+        messagebox.showerror('Launch Failed', 'Failed to prepare game launch. See log for details.')
         finish_context = getattr(
             self, 'finish_progression_launch_context', None
         )
@@ -1097,6 +1108,7 @@ class LaunchController:
     ):
         started = time.perf_counter()
         scenario = mission['scenario']
+        progress = getattr(self, 'queue_busy_progress', lambda _detail: None)
         log_event(
             'mission_launch_preparation_started',
             code=mission.get('code'),
@@ -1108,6 +1120,7 @@ class LaunchController:
             ),
         )
         try:
+            progress('Preparing mission rules and map…')
             # Remove stale runtime overlays before generating this mission.
             # Rewards remain map-local; animation preload rules, when needed,
             # contain complete installed rules plus early type registrations.
@@ -1149,6 +1162,7 @@ class LaunchController:
                 )
                 self.cleanup_generated_root_maps()
             if hook and hook.get('root_map'):
+                progress('Preparing mission artwork…')
                 try:
                     art_path, art_aliases = deploy_generated_unit_art(
                         hook['root_map']
@@ -1212,6 +1226,7 @@ class LaunchController:
                             error=True,
                         )
                         self.append_log(traceback.format_exc(), error=True)
+            progress('Writing game launch settings…')
             self.write_spawn_ini(scenario, difficulty_value, game_speed_value)
             self.write_launch_options(difficulty_value, game_speed_value)
         except Exception:
@@ -1233,6 +1248,38 @@ class LaunchController:
         )
         return hook
 
+    def spawn_game_process(self, command):
+        """Start Wine/Syringe without requiring any Tk calls on the worker."""
+        popen_options = {}
+        launch_target = command
+        if sys.platform == 'win32':
+            launch_target = windows_syringe_command_line(command)
+            popen_options['executable'] = command[0]
+            command_text = launch_target
+        else:
+            command_text = subprocess.list2cmdline(command)
+            environment = os.environ.copy()
+            overrides = environment.get('WINEDLLOVERRIDES', '')
+            if not any(
+                entry.strip().lower().startswith('ddraw=')
+                for entry in overrides.split(';')
+            ):
+                environment['WINEDLLOVERRIDES'] = ';'.join(
+                    value for value in (overrides, 'ddraw=n,b') if value
+                )
+            popen_options.update(
+                env=environment,
+                start_new_session=True,
+            )
+        self.append_log('Attempting game launch via: ' + command_text)
+        process = subprocess.Popen(
+            launch_target,
+            cwd=str(GAME_ROOT),
+            **popen_options,
+        )
+        self.append_log(f'Launched game process PID={process.pid}.')
+        return process, command_text
+
     def start_mission_process(
         self,
         mission,
@@ -1240,38 +1287,16 @@ class LaunchController:
         difficulty_value,
         game_speed_value,
         launch_note='',
+        launched_process=None,
+        command_text=None,
     ):
         scenario = mission['scenario']
         try:
-            cmd = self.build_command()
-            popen_options = {}
-            launch_target = cmd
-            if sys.platform == 'win32':
-                launch_target = windows_syringe_command_line(cmd)
-                popen_options['executable'] = cmd[0]
-                command_text = launch_target
-            else:
-                command_text = subprocess.list2cmdline(cmd)
-                environment = os.environ.copy()
-                overrides = environment.get('WINEDLLOVERRIDES', '')
-                if not any(
-                    entry.strip().lower().startswith('ddraw=')
-                    for entry in overrides.split(';')
-                ):
-                    environment['WINEDLLOVERRIDES'] = ';'.join(
-                        value for value in (overrides, 'ddraw=n,b') if value
-                    )
-                popen_options.update(
-                    env=environment,
-                    start_new_session=True,
+            process = launched_process
+            if process is None:
+                process, command_text = self.spawn_game_process(
+                    self.build_command()
                 )
-            self.append_log('Attempting game launch via: ' + command_text)
-            process = subprocess.Popen(
-                launch_target,
-                cwd=str(GAME_ROOT),
-                **popen_options,
-            )
-            self.append_log(f'Launched game process PID={process.pid}.')
             if (
                 self.state
                 and not getattr(self, 'shop_launch_active', lambda: False)()
@@ -1282,8 +1307,11 @@ class LaunchController:
                     if mission['code'] not in started_missions:
                         started_missions.append(mission['code'])
                         self.save_state()
-                        self.redraw_mission_tree()
-                        self.refresh_progress_view()
+                        if self.active_progression_mode() == 'Grid Mode':
+                            self.refresh_grid_tiles({mission['code']})
+                        else:
+                            self.redraw_mission_tree()
+                        self.refresh_progress_view(refresh_unlocks=False)
                 except Exception:
                     self.append_log('Could not persist the mission in-progress state.', error=True)
                     log_event(

@@ -181,6 +181,7 @@ class LauncherApp(
         self.mission_sort_reverse = False
         self.grid_render_signature = None
         self.grid_tile_widgets = {}
+        self.grid_tile_signatures = {}
         self.grid_configured_width = 0
         self.grid_configured_height = 0
         self.settings_panel_visible = True

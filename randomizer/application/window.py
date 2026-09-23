@@ -166,6 +166,12 @@ class WindowController:
             self.after_idle(self.resize_grid_canvas_window)
 
     def on_info_tab_changed(self, _event=None):
+        if self.details_view_visible():
+            if getattr(self, '_details_view_dirty', False):
+                self.after_idle(
+                    lambda: self.refresh_progress_view(refresh_unlocks=False)
+                )
+            return
         if (
             getattr(self, '_enemy_buffs_view_dirty', False)
             and hasattr(self, 'info_tabs')
@@ -174,14 +180,13 @@ class WindowController:
         ):
             self.after_idle(self.refresh_enemy_buffs_view)
             return
-        if (
-            not getattr(self, '_unlocks_view_dirty', False)
-            or not hasattr(self, 'info_tabs')
-            or not hasattr(self, 'unlocks_tab')
-            or self.info_tabs.select() != str(self.unlocks_tab)
-        ):
+        if not self.unlocks_view_visible():
             return
-        self.after_idle(self.refresh_unlocks_view)
+        if self.unlock_summary_visible():
+            if getattr(self, '_unlocks_view_dirty', False):
+                self.after_idle(self.refresh_unlocks_view)
+        else:
+            self.after_idle(self.refresh_unlock_dashboard)
 
     def ui_palette(self):
         return DARK_UI_PALETTE if self.dark_mode_var.get() else LIGHT_UI_PALETTE
@@ -308,10 +313,12 @@ class WindowController:
             self.update_busy_elapsed()
         self.busy_overlay.place(x=0, y=0, relwidth=1, relheight=1)
         self.busy_overlay.lift()
+        self.busy_progress.stop()
         self.busy_progress.configure(
             mode='indeterminate', maximum=100, value=0
         )
-        self.busy_progress.start(12)
+        if first_busy:
+            self.animate_busy()
         # Tk cursor names differ by windowing system: Windows provides
         # ``wait`` while X11 commonly provides ``watch``. Prefer the native
         # Windows cursor and fall back without making startup depend on either.
@@ -325,8 +332,15 @@ class WindowController:
             self.busy_overlay.grab_set()
         except tk.TclError:
             pass
-        # Paint immediately; elapsed text then proves Tk remains responsive.
-        self.update_idletasks()
+
+    def animate_busy(self):
+        """Advance the progress bar while Tk processes ordinary UI events."""
+        self._busy_animation_after_id = None
+        if not self.busy_depth:
+            return
+        if str(self.busy_progress['mode']) == 'indeterminate':
+            self.busy_progress.step(2)
+        self._busy_animation_after_id = self.after(40, self.animate_busy)
 
     def update_busy_elapsed(self):
         if not self.busy_depth:
@@ -345,6 +359,12 @@ class WindowController:
         if busy_after_id is not None:
             try:
                 self.after_cancel(busy_after_id)
+            except tk.TclError:
+                pass
+        animation_after_id = self.__dict__.pop('_busy_animation_after_id', None)
+        if animation_after_id is not None:
+            try:
+                self.after_cancel(animation_after_id)
             except tk.TclError:
                 pass
         self.busy_progress.stop()
@@ -373,7 +393,6 @@ class WindowController:
             )
         else:
             self.busy_progress.configure(mode='indeterminate')
-            self.busy_progress.start(12)
         elapsed = max(0, int(time.monotonic() - self.busy_started_at))
         self.busy_detail.configure(
             text=f'{self.busy_detail_text}\nElapsed: {elapsed}s',
@@ -620,10 +639,18 @@ class WindowController:
         if not hasattr(self, 'shop_canvas_window'):
             return
         content_width = max(680, event.width)
-        self.shop_canvas.itemconfigure(
-            self.shop_canvas_window, width=content_width
-        )
-        self.layout_shop_content(content_width)
+        if content_width != getattr(self, '_shop_content_width', None):
+            self._shop_content_width = content_width
+            self.shop_canvas.itemconfigure(
+                self.shop_canvas_window, width=content_width
+            )
+            self.layout_shop_content(content_width)
+        self.schedule_shop_canvas_resize()
+
+    def schedule_shop_canvas_resize(self):
+        if getattr(self, '_shop_canvas_resize_pending', False):
+            return
+        self._shop_canvas_resize_pending = True
         self.after_idle(self.resize_shop_canvas_window)
 
     def collapse_shop_details_if_narrow(self):
@@ -647,19 +674,24 @@ class WindowController:
     def on_shop_content_configure(self, _event=None):
         if not hasattr(self, 'shop_canvas'):
             return
-        self.shop_canvas.configure(scrollregion=self.shop_canvas.bbox('all'))
+        self.schedule_shop_canvas_resize()
 
     def resize_shop_canvas_window(self):
         """Fill tall viewports while retaining vertical overflow scrolling."""
+        self._shop_canvas_resize_pending = False
         if not hasattr(self, 'shop_canvas_window'):
             return
-        self.shop_content_frame.update_idletasks()
         height = max(
             self.shop_canvas.winfo_height(),
             self.shop_content_frame.winfo_reqheight(),
         )
-        self.shop_canvas.itemconfigure(self.shop_canvas_window, height=height)
-        self.shop_canvas.configure(scrollregion=self.shop_canvas.bbox('all'))
+        if height != getattr(self, '_shop_content_height', None):
+            self._shop_content_height = height
+            self.shop_canvas.itemconfigure(self.shop_canvas_window, height=height)
+        region = self.shop_canvas.bbox('all')
+        if region != getattr(self, '_shop_scrollregion', None):
+            self._shop_scrollregion = region
+            self.shop_canvas.configure(scrollregion=region)
 
     def layout_shop_content(self, width):
         """Stack mission cards and wrap their text when workspace is narrow."""
@@ -734,12 +766,18 @@ class WindowController:
 
     def on_grid_configure(self, _event=None):
         """Keep cached Grid content and canvas viewport dimensions aligned."""
-        self.resize_grid_canvas_window()
+        self.schedule_grid_canvas_resize()
+
+    def schedule_grid_canvas_resize(self):
+        if getattr(self, '_grid_canvas_resize_pending', False):
+            return
+        self._grid_canvas_resize_pending = True
+        self.after_idle(self.resize_grid_canvas_window)
 
     def resize_grid_canvas_window(self):
+        self._grid_canvas_resize_pending = False
         if not hasattr(self, 'grid_canvas_window'):
             return
-        self.grid_content_frame.update_idletasks()
         width = max(
             self.grid_canvas.winfo_width(),
             self.grid_content_frame.winfo_reqwidth(),
@@ -748,12 +786,15 @@ class WindowController:
             self.grid_canvas.winfo_height(),
             self.grid_content_frame.winfo_reqheight(),
         )
-        self.grid_canvas.itemconfigure(
-            self.grid_canvas_window,
-            width=width,
-            height=height,
-        )
-        self.grid_canvas.configure(scrollregion=(0, 0, width, height))
+        size = (width, height)
+        if size != getattr(self, '_grid_canvas_content_size', None):
+            self._grid_canvas_content_size = size
+            self.grid_canvas.itemconfigure(
+                self.grid_canvas_window,
+                width=width,
+                height=height,
+            )
+            self.grid_canvas.configure(scrollregion=(0, 0, width, height))
 
     def grid_canvas_contains_pointer(self):
         if (

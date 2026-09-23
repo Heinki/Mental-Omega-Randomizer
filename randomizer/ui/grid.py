@@ -25,6 +25,7 @@ def redraw_grid(self):
             self.grid_configured_width = 1
             self.grid_configured_height = 1
             self.grid_tile_widgets = {}
+            self.grid_tile_signatures = {}
             self.grid_render_signature = ('empty',)
             ttk.Label(
                 content_frame,
@@ -62,6 +63,7 @@ def redraw_grid(self):
     for child in content_frame.winfo_children():
         child.destroy()
     self.grid_tile_widgets = {}
+    self.grid_tile_signatures = {}
     self.grid_render_signature = signature
     for column in range(max(width, self.grid_configured_width)):
         content_frame.columnconfigure(column, weight=0, minsize=0, uniform='')

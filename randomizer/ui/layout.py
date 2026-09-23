@@ -799,6 +799,7 @@ def _build_right_panel(self, main_frame):
 
 def _build_info_tabs(self, info_tabs):
     progress_frame = ttk.Frame(info_tabs, padding=(8, 8, 8, 8))
+    self.details_tab = progress_frame
     progress_frame.columnconfigure(0, weight=1)
     progress_frame.rowconfigure(1, weight=1)
     info_tabs.add(progress_frame, text='Details')
@@ -899,6 +900,7 @@ def _build_info_tabs(self, info_tabs):
         self.unlock_icon_frames[faction] = content
 
     summary_page = ttk.Frame(unlocks_notebook)
+    self.unlocks_summary_page = summary_page
     summary_page.columnconfigure(0, weight=1)
     summary_page.rowconfigure(1, weight=1)
     unlocks_notebook.add(summary_page, text='Summary')

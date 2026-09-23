@@ -325,6 +325,7 @@ def build_shop_tab(self, workspace_tabs):
     panels = ttk.Notebook(content, style='Unlocks.TNotebook')
     self.shop_panels = panels
     panels.grid(row=3, column=0, sticky='nsew')
+    panels.bind('<<NotebookTabChanged>>', self.refresh_visible_shop_panel, add='+')
 
     run_shop = ttk.Frame(panels, padding=8)
     self.shop_run_panel = run_shop
@@ -848,6 +849,7 @@ def build_shop_tab(self, workspace_tabs):
     ).grid(row=0, column=0, sticky='nw')
 
     history = ttk.Frame(panels, padding=8)
+    self.shop_history_panel = history
     panels.add(history, text='Run History')
     history.columnconfigure(0, weight=1)
     history.rowconfigure(0, weight=1)
@@ -859,14 +861,16 @@ def build_shop_tab(self, workspace_tabs):
         (('stage', 'Stage', 80), ('mission', 'Completed Mission', 500)),
     )
 
-    self.shop_search_var.trace_add('write', self.refresh_shop_catalogue)
+    self.shop_search_var.trace_add(
+        'write', lambda *_args: self.schedule_shop_search_refresh('catalogue')
+    )
     self.shop_loadout_search_var.trace_add(
-        'write', lambda *_args: self._refresh_shop_loadout()
+        'write', lambda *_args: self.schedule_shop_search_refresh('loadout')
     )
     self.shop_setup_search_var.trace_add(
-        'write', lambda *_args: self._refresh_shop_setup()
+        'write', lambda *_args: self.schedule_shop_search_refresh('setup')
     )
     self.shop_permanent_search_var.trace_add(
-        'write', lambda *_args: self._refresh_permanent_shop()
+        'write', lambda *_args: self.schedule_shop_search_refresh('permanent')
     )
     self.sync_shop_workspace()
