@@ -40,9 +40,9 @@ from randomizer.shop.mission_modifiers import (
     mission_modifier_for_run_offer,
 )
 from randomizer.shop.summary import (
+    enemy_buff_summary_lines,
     reward_breakdown_lines,
-    run_modifier_bonus_text,
-    run_modifier_reward_delta,
+    run_modifier_reward_parts,
     run_summary_lines,
 )
 from randomizer.shop.transitions import ShopTransitionError
@@ -452,6 +452,7 @@ class ShopPolishController(ShopArchipelagoController):
                 )
                 card['reward'].set('')
                 card['effect'].set('')
+                card['enemy_buffs'].set('')
                 card['effect_label'].configure(style='Shop.Help.TLabel')
                 card['tooltip'].text = ''
                 card['launch_button'].configure(
@@ -488,22 +489,20 @@ class ShopPolishController(ShopArchipelagoController):
                 ),
                 remaining_run_coins=run.run_coins,
             )
-            modifier_run_coins, modifier_meta_coins = (
-                run_modifier_reward_delta(
-                    offer.economy_class,
-                    victory_coin_bonus_level=self.shop_profile.upgrade_level(
-                        'victory_run_coin_bonus'
-                    ),
-                    modifiers=run.modifiers,
-                    mission_modifier=mission_modifier,
-                    challenge_hunter_level=self.shop_profile.upgrade_level(
-                        'challenge_hunter'
-                    ),
-                    gem_dividend_level=self.shop_profile.upgrade_level(
-                        'gem_dividend'
-                    ),
-                    remaining_run_coins=run.run_coins,
-                )
+            modifier_reward_parts = run_modifier_reward_parts(
+                offer.economy_class,
+                victory_coin_bonus_level=self.shop_profile.upgrade_level(
+                    'victory_run_coin_bonus'
+                ),
+                modifiers=run.modifiers,
+                mission_modifier=mission_modifier,
+                challenge_hunter_level=self.shop_profile.upgrade_level(
+                    'challenge_hunter'
+                ),
+                gem_dividend_level=self.shop_profile.upgrade_level(
+                    'gem_dividend'
+                ),
+                remaining_run_coins=run.run_coins,
             )
             selected = bool(
                 run.mission_committed
@@ -516,21 +515,25 @@ class ShopPolishController(ShopArchipelagoController):
             reward_hidden = offer.mission_code in hidden and not selected
             title = mission.get('title') or offer.mission_code
             faction = mission.get('side') or 'Unknown faction'
-            enemy_buff_count = len(
-                self._shop_enemy_scaling_entries_for_offer(run, offer)
+            enemy_buff_entries = self._shop_enemy_scaling_entries_for_offer(
+                run, offer
             )
-            enemy_buff_text = f'Enemy buff stacks assigned: {enemy_buff_count}'
-            if self._shop_mission_blocks_enemy_buffs(offer.mission_code):
-                enemy_buff_text += ' (no-build protection)'
+            enemy_buff_lines = enemy_buff_summary_lines(enemy_buff_entries)
+            block_reason = self._shop_enemy_buff_block_reason(offer.mission_code)
+            enemy_buff_text = '\n'.join(enemy_buff_lines) + (
+                f'\nReason: {block_reason}.' if block_reason else ''
+            )
+            if card['code'] != offer.mission_code:
+                card['detail_canvas'].yview_moveto(0)
             card['code'] = offer.mission_code
             card['name'].set(f'{title} ({offer.mission_code})')
             card['detail'].set(
                 f'Faction: {faction}\n'
                 f'Mission class: {definition.display_name}\n'
                 f'Reward tier: {definition.difficulty}\n'
-                f'Run Difficulty: +{modifier_difficulty(run.modifiers)}\n'
-                f'{enemy_buff_text}'
+                f'Run Difficulty: +{modifier_difficulty(run.modifiers)}'
             )
+            card['enemy_buffs'].set(enemy_buff_text)
             effective_difficulty = (
                 eased_difficulty if assisted else normal_difficulty
             )
@@ -551,30 +554,36 @@ class ShopPolishController(ShopArchipelagoController):
                 f'+{gem_text(definition.meta_coins)}  •  '
                 f'Estimated +{reward.run_coins} / +{reward.meta_coins}'
                 + (
-                    '\n' + run_modifier_bonus_text(
-                        modifier_run_coins, modifier_meta_coins
+                    '\nRun modifier rewards:\n'
+                    + '\n'.join(
+                        f'• {name}: {ore:+d} Ore / {gems:+d} '
+                        f'{"Gem" if abs(gems) == 1 else "Gems"}'
+                        for name, ore, gems in modifier_reward_parts
                     )
-                    if run.modifiers else ''
+                    if modifier_reward_parts else ''
                 )
                 + ('  •  Full reward retained' if assisted else '')
             )
-            card['effect'].set(
-                (
-                    f'{"Challenge" if mission_modifier.challenge else "Bonus"}: '
-                    f'{mission_modifier.title} — {mission_modifier.description} '
-                    f'Reward bonus: {mission_modifier.reward_text}.'
+            if mission_modifier is None:
+                effect_text = ''
+            elif mission_modifier.challenge:
+                effect_text = (
+                    f'Challenge: {mission_modifier.title} — '
+                    f'+{reward.mission_bonus_run_coins} Ore / '
+                    f'+{gem_text(reward.mission_bonus_meta_coins)}.'
                     + (
-                        ' Enemy buff disabled for this no-build mission.'
-                        if (
-                            mission_modifier.challenge
-                            and self._shop_mission_blocks_enemy_buffs(
-                                offer.mission_code
-                            )
-                        ) else ''
+                        f' Enemy buff disabled ({block_reason}).'
+                        if block_reason else ''
                     )
                 )
-                if mission_modifier is not None else ''
-            )
+            else:
+                effect_text = (
+                    f'Bonus: {mission_modifier.title} — '
+                    f'{mission_modifier.description} '
+                    f'Reward: +{reward.mission_bonus_run_coins} Ore / '
+                    f'+{gem_text(reward.mission_bonus_meta_coins)}.'
+                )
+            card['effect'].set(effect_text)
             card['effect_label'].configure(
                 style=(
                     'Shop.EnemyBuff.TLabel'
@@ -613,6 +622,7 @@ class ShopPolishController(ShopArchipelagoController):
                 )
                 card['tooltip'].text = (
                     mission_context + '\n\nRewards:\n' + reward_context
+                    + '\n\n' + enemy_buff_text
                 )
             card['frame'].configure(
                 text=(

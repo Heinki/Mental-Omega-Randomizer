@@ -124,6 +124,8 @@ class ShopModeConfig:
     maximum_starting_ore: int
     run_completion_meta_coins: int
     run_completion_modifier_meta_coins: int
+    run_modifier_victory_run_coins: int
+    run_modifier_victory_meta_coins: int
     minimum_shop_price: int
     reroll_policy: str
     archipelago_purchase_locations: int

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 
 from randomizer.config.static import load_static_config
+from randomizer.missions.overrides import MISSIONS_WITH_ENEMY_SCALING_DISABLED
 
 from .active import active_shop_reward_ids
 from .catalogue import canonical_reward_for_id
@@ -214,11 +215,22 @@ def mission_blocks_shop_enemy_buffs(mission):
     )
 
 
+def shop_enemy_buff_block_reason(mission, mission_code=''):
+    """Return the launch safety exception shown alongside Shop buff previews."""
+    if str(mission_code) in MISSIONS_WITH_ENEMY_SCALING_DISABLED:
+        return 'scripted-opening protection'
+    if mission_blocks_shop_enemy_buffs(mission):
+        return 'no-build protection'
+    return ''
+
+
 def shop_enemy_scaling_entries(
     run, offer, mission, *, challenge_slots=0
 ):
     """Build capped, deterministic Shop enemy buffs for one mission offer."""
-    if run is None or offer is None or mission_blocks_shop_enemy_buffs(mission):
+    if run is None or offer is None:
+        return []
+    if shop_enemy_buff_block_reason(mission, offer.mission_code):
         return []
 
     candidates = []
@@ -289,6 +301,30 @@ def shop_enemy_scaling_entries(
             'Shop stage scaling',
             f'Stage {run.stage}/{run.run_length}',
         ))
+
+    if effects['force_enemy_challenge']:
+        # Keep Hardcore's extra buff separate from its forced mission challenge
+        # and the normal stage scaling. Each mission gets a stable draw.
+        used_effect_ids = {
+            canonical_reward_for_id(reward_id).get('enemy_effect_id')
+            for reward_id, _, _ in candidates
+        }
+        stream = (
+            f'shop_hardcore_extra_buff\0{run.seed}\0{int(run.stage)}\0'
+            f'{offer.mission_code}'
+        ).encode('utf-8')
+        start = (
+            int.from_bytes(sha256(stream).digest()[:2], 'big')
+            % len(reward_ids)
+        )
+        for offset in range(len(reward_ids)):
+            reward_id = reward_ids[(start + offset) % len(reward_ids)]
+            effect_id = canonical_reward_for_id(reward_id).get(
+                'enemy_effect_id'
+            )
+            if effect_id not in used_effect_ids:
+                candidates.append((reward_id, 'Shop Hardcore', 'Hardcore'))
+                break
 
     entries = []
     counts = Counter()

@@ -12,6 +12,8 @@
       "maximum_starting_ore": 50,
       "run_completion_meta_coins": 20,
       "run_completion_modifier_meta_coins": 2,
+      "run_modifier_victory_run_coins": 1,
+      "run_modifier_victory_meta_coins": 1,
       "minimum_shop_price": 1,
       "reroll_policy": "per_run",
       "archipelago_purchase_locations": 5,
@@ -1001,7 +1003,7 @@
       },
       "hardcore": {
         "display_name": "Hardcore",
-        "description": "Every mission uses Mental difficulty and an enemy bonus modifier. Mission Difficulty Assists are disabled.",
+        "description": "Every mission uses Mental difficulty. Eligible missions gain a forced enemy challenge and one extra AI buff; scripted-opening safeguards still apply. Mission Difficulty Assists are disabled.",
         "effects": {
           "force_hardest_difficulty": 1,
           "force_enemy_challenge": 1,

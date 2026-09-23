@@ -145,16 +145,9 @@ def build_shop_tab(self, workspace_tabs):
     vertical_scrollbar = ttk.Scrollbar(
         tab, orient='vertical', command=canvas.yview
     )
-    horizontal_scrollbar = ttk.Scrollbar(
-        tab, orient='horizontal', command=canvas.xview
-    )
-    canvas.configure(
-        xscrollcommand=horizontal_scrollbar.set,
-        yscrollcommand=vertical_scrollbar.set,
-    )
+    canvas.configure(yscrollcommand=vertical_scrollbar.set)
     canvas.grid(row=1, column=0, sticky='nsew')
     vertical_scrollbar.grid(row=1, column=1, sticky='ns')
-    horizontal_scrollbar.grid(row=2, column=0, sticky='ew')
 
     content = ttk.Frame(canvas, padding=8)
     self.shop_content_frame = content
@@ -208,47 +201,124 @@ def build_shop_tab(self, workspace_tabs):
     for index in range(3):
         card = ttk.LabelFrame(choices, text=f'Choice {index + 1}', padding=8)
         card.grid(row=0, column=index, sticky='nsew', padx=(0 if index == 0 else 4, 0))
+        detail_frame = ttk.Frame(card)
+        detail_frame.grid(row=0, column=0, sticky='nsew', pady=(0, 7))
+        detail_frame.columnconfigure(0, weight=1)
+        detail_frame.rowconfigure(0, weight=1)
+        detail_canvas = tk.Canvas(
+            detail_frame,
+            width=1,
+            height=290,
+            borderwidth=0,
+            highlightthickness=0,
+            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+        )
+        detail_scrollbar = ttk.Scrollbar(
+            detail_frame, orient='vertical', command=detail_canvas.yview
+        )
+        detail_canvas.configure(yscrollcommand=detail_scrollbar.set)
+        detail_canvas.grid(row=0, column=0, sticky='nsew')
+        detail_scrollbar.grid(row=0, column=1, sticky='ns')
+        detail_content = ttk.Frame(detail_canvas)
+        detail_content.columnconfigure(0, weight=1)
+        detail_window = detail_canvas.create_window(
+            (0, 0), window=detail_content, anchor='nw'
+        )
+        detail_content.bind(
+            '<Configure>',
+            lambda _event, canvas=detail_canvas: canvas.configure(
+                scrollregion=canvas.bbox('all')
+            ),
+            add='+',
+        )
+
+        def scroll_card(event, canvas=detail_canvas):
+            first, last = canvas.yview()
+            direction = (
+                -1 if getattr(event, 'num', None) == 4 else
+                1 if getattr(event, 'num', None) == 5 else
+                -1 if event.delta > 0 else 1
+            )
+            if first == 0.0 and last == 1.0:
+                return None
+            if direction < 0 and first == 0.0:
+                return None
+            if direction > 0 and last == 1.0:
+                return None
+            canvas.yview_scroll(direction * 3, 'units')
+            return 'break'
+
         name_var = tk.StringVar(value='No mission')
         detail_var = tk.StringVar(value='')
         difficulty_var = tk.StringVar(value='')
         reward_var = tk.StringVar(value='')
         effect_var = tk.StringVar(value='')
+        enemy_buffs_var = tk.StringVar(value='')
         name_label = ttk.Label(
-            card,
+            detail_content,
             textvariable=name_var,
             font=('Segoe UI', 10, 'bold'),
             justify='left',
         )
         name_label.grid(row=0, column=0, sticky='ew')
         detail_label = ttk.Label(
-            card,
+            detail_content,
             textvariable=detail_var,
             style='Muted.TLabel',
             justify='left',
         )
         detail_label.grid(row=1, column=0, sticky='ew', pady=(4, 0))
         difficulty_label = ttk.Label(
-            card,
+            detail_content,
             textvariable=difficulty_var,
             style='Shop.Difficulty.Casual.TLabel',
             font=('Segoe UI', 10, 'bold'),
         )
         difficulty_label.grid(row=2, column=0, sticky='w', pady=(5, 2))
         reward_label = ttk.Label(
-            card,
+            detail_content,
             textvariable=reward_var,
             style='Shop.Reward.TLabel',
             justify='left',
         )
         reward_label.grid(row=3, column=0, sticky='ew', pady=(3, 7))
         effect_label = ttk.Label(
-            card,
+            detail_content,
             textvariable=effect_var,
             style='Shop.Help.TLabel',
             wraplength=330,
             justify='left',
         )
         effect_label.grid(row=4, column=0, sticky='ew', pady=(0, 7))
+        enemy_buffs_label = ttk.Label(
+            detail_content,
+            textvariable=enemy_buffs_var,
+            style='Shop.EnemyBuff.TLabel',
+            wraplength=330,
+            justify='left',
+        )
+        enemy_buffs_label.grid(row=5, column=0, sticky='ew', pady=(0, 4))
+        detail_labels = (
+            name_label, detail_label, difficulty_label, reward_label,
+            effect_label, enemy_buffs_label,
+        )
+
+        def resize_card_details(
+            event, canvas=detail_canvas, window=detail_window,
+            labels=detail_labels,
+        ):
+            canvas.itemconfigure(window, width=event.width)
+            wraplength = max(1, event.width - 12)
+            for label in labels:
+                label.configure(wraplength=wraplength)
+
+        detail_canvas.bind('<Configure>', resize_card_details, add='+')
+        for widget in (
+            detail_canvas, detail_content, name_label, detail_label,
+            difficulty_label, reward_label, effect_label, enemy_buffs_label,
+        ):
+            for sequence in ('<MouseWheel>', '<Button-4>', '<Button-5>'):
+                widget.bind(sequence, scroll_card, add='+')
         launch_button = ttk.Button(
             card,
             text='Launch This Mission',
@@ -256,9 +326,9 @@ def build_shop_tab(self, workspace_tabs):
             state='disabled',
             style='Launch.TButton',
         )
-        launch_button.grid(row=5, column=0, sticky='ew')
+        launch_button.grid(row=1, column=0, sticky='ew')
         mission_actions = ttk.Frame(card)
-        mission_actions.grid(row=6, column=0, sticky='ew', pady=(5, 0))
+        mission_actions.grid(row=2, column=0, sticky='ew', pady=(5, 0))
         mission_actions.columnconfigure(0, weight=1)
         mission_actions.columnconfigure(1, weight=1)
         reroll_button = ttk.Button(
@@ -276,7 +346,7 @@ def build_shop_tab(self, workspace_tabs):
         )
         ease_button.grid(row=0, column=1, sticky='ew', padx=(3, 0))
         card.columnconfigure(0, weight=1)
-        card.rowconfigure(4, weight=1)
+        card.rowconfigure(0, weight=1)
         tooltip = WidgetTooltip(card, '')
         self.shop_mission_cards.append({
             'frame': card,
@@ -290,6 +360,9 @@ def build_shop_tab(self, workspace_tabs):
             'reward_label': reward_label,
             'effect': effect_var,
             'effect_label': effect_label,
+            'enemy_buffs': enemy_buffs_var,
+            'enemy_buffs_label': enemy_buffs_label,
+            'detail_canvas': detail_canvas,
             'launch_button': launch_button,
             'reroll_button': reroll_button,
             'ease_button': ease_button,

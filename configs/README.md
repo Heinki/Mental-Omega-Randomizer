@@ -116,6 +116,8 @@ policy. `settings` defines positive `run_length` and `mission_offer_count`, the
 non-negative `max_selected_permanent_units` and `starting_run_coins`, the
 positive `maximum_starting_ore` and `minimum_shop_price`, and the version-1
 `per_run` reroll policy.
+`run_modifier_victory_run_coins` and `run_modifier_victory_meta_coins` set the
+extra Ore and Gems paid per distinct enabled modifier on each victory.
 `archipelago_purchase_locations` is the generated purchase-check count from
 0 through 25, `archipelago_purchase_meta_coin_cost` is their positive shared
 Gem price, and `archipelago_mission_victories_are_locations` controls
@@ -225,8 +227,9 @@ Modifier effects support economy, stock size, mission-choice count, starter
 composition/veterancy, player clone damage/durability/cost/production,
 aid-power recharge, mission starting Credits, and feature-disable flags.
 Percentages multiply in persisted modifier order; flat effects add. Each
-distinct active ID contributes one visible difficulty point. `blind_choice`
-uses the hidden-offer count only for presentation and never consumes gameplay
+distinct active ID contributes one visible difficulty point and earns the
+configured victory currency bonus. `blind_choice` uses the hidden-offer count
+only for presentation and never consumes gameplay
 RNG. Combat changes are applied to isolated player clones; overlapping
 production modifiers multiply instead of overwriting each other.
 

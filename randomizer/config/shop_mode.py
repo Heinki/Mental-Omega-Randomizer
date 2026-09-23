@@ -18,6 +18,8 @@ def validate_shop_mode_config(sections, path, invalid):
         'maximum_starting_ore': (1, 1000000),
         'run_completion_meta_coins': (0, 1000000),
         'run_completion_modifier_meta_coins': (0, 1000000),
+        'run_modifier_victory_run_coins': (0, 1000000),
+        'run_modifier_victory_meta_coins': (0, 1000000),
         'minimum_shop_price': (1, 1000000),
         'archipelago_purchase_locations': (0, 25),
         'archipelago_purchase_meta_coin_cost': (1, 1000000),

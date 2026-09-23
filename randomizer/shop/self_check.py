@@ -124,7 +124,10 @@ from .persistence import (
 )
 from .service import ShopProgressionService
 from .state import ShopStateError, normalize_shop_profile, normalize_shop_run
-from .summary import reward_breakdown_lines, run_summary_lines
+from .summary import (
+    enemy_buff_summary_lines, reward_breakdown_lines,
+    run_modifier_reward_parts, run_summary_lines,
+)
 from .transitions import (
     ShopTransitionError,
     abandon_run,
@@ -421,6 +424,42 @@ def _requested_upgrade_modifier_checks():
     hardcore_modifier = mission_modifier_for_run_offer(
         hardcore_run, final_offer
     )
+    hardcore_entries = shop_enemy_scaling_entries(
+        hardcore_run, final_offer, {'build_classification': 'base_build'}
+    )
+    second_hardcore_offer = MissionOffer(
+        'FINALE_TWO', MissionEconomyClass.FINALE
+    )
+    second_hardcore_run = replace(
+        hardcore_run,
+        mission_offers=(final_offer, second_hardcore_offer),
+    )
+    second_hardcore_entries = shop_enemy_scaling_entries(
+        second_hardcore_run,
+        second_hardcore_offer,
+        {'build_classification': 'base_build'},
+    )
+    preview_entries = [
+        {
+            'reward': canonical_reward_for_id(reward_id),
+            'source': 'Shop stage scaling',
+            'earned_from': 'Stage 1/10',
+        }
+        for reward_id in (
+            'AI T1 Unit Armor', 'AI T1 Unit Armor',
+            'AI Infantry Production', 'AI T1 Unit Firepower',
+        )
+    ]
+    preview_lines = enemy_buff_summary_lines(preview_entries)
+    modifier_parts = run_modifier_reward_parts(
+        MissionEconomyClass.FINALE,
+        modifiers=('hardcore', 'blockbuster_special'),
+    )
+    treasure_parts = run_modifier_reward_parts(
+        MissionEconomyClass.ACT_1,
+        modifiers=('treasure_hunter',),
+        mission_modifier=hardcore_modifier,
+    )
     roulette_key = 'MO-SHOP-FACTION-ROULETTE:run-1'
     roulette_rotation = shop_faction_rotation(roulette_key)
 
@@ -457,17 +496,17 @@ def _requested_upgrade_modifier_checks():
             liquid.run.run_coins == liquid_reward.run_coins
         ),
         'treasure_hunter_valid': bool(
-            challenge_reward.meta_coins == base_reward.meta_coins * 2
-            and normal_reward.base_run_coins == base_reward.run_coins - 2
+            challenge_reward.meta_coins == base_reward.meta_coins * 2 + 1
+            and normal_reward.base_run_coins == base_reward.run_coins - 1
         ),
         'flat_modifier_currency_valid': bool(
             mission_reward(
                 MissionEconomyClass.ACT_1, modifiers=('greedy',)
-            ).meta_coins == base_reward.meta_coins + 1
+            ).meta_coins == base_reward.meta_coins + 2
             and mission_reward(
                 MissionEconomyClass.ACT_1,
                 modifiers=('generous_command',),
-            ).meta_coins == max(0, base_reward.meta_coins - 1)
+            ).meta_coins == base_reward.meta_coins
             and discounted_shop_price(
                 4, modifiers=('black_market',)
             ) == 6
@@ -480,7 +519,7 @@ def _requested_upgrade_modifier_checks():
             and mission_reward(
                 MissionEconomyClass.ACT_1,
                 modifiers=('veteran_economy',),
-            ).run_coins == base_reward.run_coins - 1
+            ).run_coins == base_reward.run_coins
         ),
         'new_run_modifiers_valid': bool(
             low_tech_access
@@ -509,6 +548,45 @@ def _requested_upgrade_modifier_checks():
             and modifier_forces_hardest_difficulty(('hardcore',))
             and hardcore_modifier is not None
             and hardcore_modifier.challenge
+            and len([
+                entry for entry in hardcore_entries
+                if entry['source'] == 'Shop Hardcore'
+            ]) == 1
+            and len([
+                entry for entry in second_hardcore_entries
+                if entry['source'] == 'Shop Hardcore'
+            ]) == 1
+            and hardcore_entries == shop_enemy_scaling_entries(
+                hardcore_run,
+                final_offer,
+                {'build_classification': 'base_build'},
+            )
+            and not shop_enemy_scaling_entries(
+                hardcore_run, final_offer, {'no_build': True}
+            )
+            and len({
+                entry['reward']['enemy_effect_id']
+                for entry in hardcore_entries
+            }) == len(hardcore_entries)
+            and mission_reward(
+                MissionEconomyClass.FINALE,
+                modifiers=('hardcore',),
+            ).run_coins == SHOP_CONFIG.mission_rewards[
+                MissionEconomyClass.FINALE
+            ].run_coins + 1
+            and mission_reward(
+                MissionEconomyClass.FINALE,
+                modifiers=('hardcore', 'superweapon_arms_race'),
+            ).meta_coins == SHOP_CONFIG.mission_rewards[
+                MissionEconomyClass.FINALE
+            ].meta_coins + 2
+            and mission_reward(
+                MissionEconomyClass.FINALE,
+                modifiers=('hardcore', 'hardcore'),
+            ) == mission_reward(
+                MissionEconomyClass.FINALE,
+                modifiers=('hardcore',),
+            )
             and modifier_effects(
                 ('blockbuster_special',)
             )['run_reward_flat'] == 10
@@ -533,6 +611,26 @@ def _requested_upgrade_modifier_checks():
             )
             and not modifier_allows_faction_pool(
                 ('faction_roulette',), 'Allies'
+            )
+        ),
+        'enemy_buff_preview_valid': bool(
+            preview_lines == (
+                'Enemy AI buffs:',
+                '• T1 Units Armor 24% stronger',
+                '• Infantry Production 10% faster',
+                '• T1 Units Weapon damage +15%',
+            )
+            and enemy_buff_summary_lines(())
+            == ('Enemy AI buffs: none.',)
+            and modifier_parts == (
+                ('Hardcore', 1, 1),
+                ('Blockbuster Special', 11, 1),
+            )
+            and treasure_parts == (('Treasure Hunter', 1, 2),)
+            and not shop_enemy_scaling_entries(
+                hardcore_run,
+                MissionOffer('AWITHER', MissionEconomyClass.ACT_1),
+                {'build_classification': 'base_build'},
             )
         ),
         'run_completion_modifier_bonus_valid': bool(
@@ -1470,20 +1568,23 @@ def _phase_seven_checks():
             len(hidden) == 1
             and hidden == hidden_offer_codes(run)
             and hidden[0] in {offer.mission_code for offer in offers}
-            and adjusted.run_coins == 10
-            and adjusted.meta_coins == 5
-            and poor_logistics_reward.run_coins == 7
+            and adjusted.run_coins == 13
+            and adjusted.meta_coins == 8
+            and poor_logistics_reward.run_coins == 8
             and starting_run_coins(modifiers=('poor_logistics',)) == 5
             and discounted_shop_price(
                 5, modifiers=('poor_logistics',)
             ) == 7
-            and generous_reward.meta_coins == 2
+            and generous_reward.meta_coins == 3
             and SHOP_CONFIG.modifiers[
                 'generous_command'
             ].effects['meta_reward_flat'] == -1
             and any('Permanent Victory Bonus: +2' in line for line in breakdown)
-            and any('Run modifier bonus: +0 Ore / +1 Gem' in line for line in breakdown)
-            and any('Total: +12 Ore' in line for line in breakdown)
+            and any(
+                'Run modifier bonus: +3 Ore / +4 Gems' in line
+                for line in breakdown
+            )
+            and any('Total: +15 Ore' in line for line in breakdown)
             and 'Permanent Gems: 42' in completion_summary
             and restored == run
         ),

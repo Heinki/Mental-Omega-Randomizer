@@ -635,10 +635,10 @@ class WindowController:
         return 'break'
 
     def on_shop_canvas_configure(self, event):
-        """Fit Shop content to its viewport without crushing narrow controls."""
+        """Fit Shop content to its viewport; overflow scrolls vertically."""
         if not hasattr(self, 'shop_canvas_window'):
             return
-        content_width = max(680, event.width)
+        content_width = max(1, event.width)
         if content_width != getattr(self, '_shop_content_width', None):
             self._shop_content_width = content_width
             self.shop_canvas.itemconfigure(
@@ -714,14 +714,7 @@ class WindowController:
                 padx=(0 if column == 0 else 4, 0),
                 pady=(0 if row == 0 else 4, 0),
             )
-        card_width = width - 36 if compact else (width - 52) // 3
-        wraplength = max(180, card_width - 22)
-        for card in self.shop_mission_cards:
-            for key in (
-                'name_label', 'detail_label', 'reward_label', 'effect_label'
-            ):
-                card[key].configure(wraplength=wraplength)
-        self.shop_message_label.configure(wraplength=max(220, width - 140))
+        self.shop_message_label.configure(wraplength=max(1, width - 140))
 
         header_columns = 3 if compact else 6
         for column in range(6):
@@ -754,14 +747,7 @@ class WindowController:
             getattr(event, 'num', 0) == 4
             or getattr(event, 'delta', 0) > 0
         ) else 1
-        if event.state & 0x0001:
-            self.shop_canvas.xview_scroll(
-                direction, 'units'
-            )
-        else:
-            self.shop_canvas.yview_scroll(
-                direction, 'units'
-            )
+        self.shop_canvas.yview_scroll(direction, 'units')
         return 'break'
 
     def on_grid_configure(self, _event=None):

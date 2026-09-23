@@ -60,7 +60,7 @@ from randomizer.shop.missions import (
 )
 from randomizer.shop.mission_modifiers import (
     active_mission_modifier,
-    mission_blocks_shop_enemy_buffs,
+    shop_enemy_buff_block_reason,
     shop_enemy_scaling_entries,
 )
 from randomizer.shop.modifiers import (
@@ -576,8 +576,11 @@ class ShopController(ShopPolishController):
         return super().active_launch_rewards()
 
     def _shop_mission_blocks_enemy_buffs(self, mission_code):
-        return mission_blocks_shop_enemy_buffs(
-            self._shop_mission(mission_code)
+        return bool(self._shop_enemy_buff_block_reason(mission_code))
+
+    def _shop_enemy_buff_block_reason(self, mission_code):
+        return shop_enemy_buff_block_reason(
+            self._shop_mission(mission_code), mission_code
         )
 
     def _shop_enemy_scaling_entries_for_offer(self, run, offer):

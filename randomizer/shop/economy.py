@@ -7,7 +7,7 @@ from .model import (
     ShopModeConfig,
     ShopRewardType,
 )
-from .modifiers import modifier_effects
+from .modifiers import modifier_difficulty, modifier_effects
 
 
 def _bounded_upgrade_level(config, upgrade_id, level):
@@ -41,7 +41,8 @@ def mission_reward(
             f'Unknown Shop Mode mission class: {mission_class!r}'
         ) from exc
     definition = config.mission_rewards[class_id]
-    effects = modifier_effects(modifiers, config)
+    modifier_ids = tuple(modifiers or ())
+    effects = modifier_effects(modifier_ids, config)
     base_run_coins = int(
         definition.run_coins * effects['run_reward_percent']
     )
@@ -57,6 +58,10 @@ def mission_reward(
         base_run_coins += effects['normal_run_reward_flat']
     base_run_coins = max(0, base_run_coins + effects['run_reward_flat'])
     meta_coins = max(0, meta_coins + effects['meta_reward_flat'])
+    # Every distinct selected run challenge pays an additional victory bonus.
+    challenge_count = modifier_difficulty(modifier_ids)
+    base_run_coins += challenge_count * config.run_modifier_victory_run_coins
+    meta_coins += challenge_count * config.run_modifier_victory_meta_coins
     level = _bounded_upgrade_level(
         config, 'victory_run_coin_bonus', victory_coin_bonus_level
     )

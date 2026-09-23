@@ -1,5 +1,7 @@
 """Pure player-facing Shop reward and run summaries."""
 
+from randomizer.rewards.enemy_scaling import enemy_effect_text
+
 from .config import SHOP_CONFIG
 from .economy import mission_reward
 from .model import RunStatus
@@ -50,6 +52,61 @@ def run_modifier_bonus_text(run_coins, meta_coins):
         f'Run modifier bonus: {run_coins:+d} Ore / '
         f'{meta_coins:+d} {"Gem" if abs(meta_coins) == 1 else "Gems"}'
     )
+
+
+def run_modifier_reward_parts(
+    mission_class, *, modifiers=(), mission_modifier=None,
+    victory_coin_bonus_level=0, challenge_hunter_level=0,
+    gem_dividend_level=0, remaining_run_coins=0, config=SHOP_CONFIG,
+):
+    """Return modifier currency changes excluding the shown mission bonus."""
+    modifier_ids = tuple(dict.fromkeys(str(item) for item in modifiers or ()))
+    reward_options = {
+        'mission_class': mission_class,
+        'mission_modifier': mission_modifier,
+        'victory_coin_bonus_level': victory_coin_bonus_level,
+        'challenge_hunter_level': challenge_hunter_level,
+        'gem_dividend_level': gem_dividend_level,
+        'remaining_run_coins': remaining_run_coins,
+        'config': config,
+    }
+    previous = mission_reward(modifiers=(), **reward_options)
+    parts = []
+    selected = []
+    for modifier_id in modifier_ids:
+        selected.append(modifier_id)
+        current = mission_reward(modifiers=selected, **reward_options)
+        parts.append((
+            config.modifiers[modifier_id].display_name,
+            current.run_coins - previous.run_coins
+            - current.mission_bonus_run_coins
+            + previous.mission_bonus_run_coins,
+            current.meta_coins - previous.meta_coins
+            - current.mission_bonus_meta_coins
+            + previous.mission_bonus_meta_coins,
+        ))
+        previous = current
+    return tuple(parts)
+
+
+def enemy_buff_summary_lines(entries):
+    """Show one final value per AI effect, with repeated buffs combined."""
+    grouped = {}
+    for entry in entries:
+        reward = entry['reward']
+        effect_id = str(reward.get('enemy_effect_id') or '')
+        if not effect_id:
+            continue
+        group = grouped.setdefault(effect_id, {'reward': reward, 'count': 0})
+        group['count'] += 1
+    if not grouped:
+        return ('Enemy AI buffs: none.',)
+    lines = ['Enemy AI buffs:']
+    for group in grouped.values():
+        reward = group['reward']
+        count = group['count']
+        lines.append(f'• {enemy_effect_text(reward, count)}')
+    return tuple(lines)
 
 
 def reward_breakdown_lines(

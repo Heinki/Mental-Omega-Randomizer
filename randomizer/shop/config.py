@@ -79,6 +79,12 @@ def load_shop_mode_config() -> ShopModeConfig:
         run_completion_modifier_meta_coins=int(
             settings['run_completion_modifier_meta_coins']
         ),
+        run_modifier_victory_run_coins=int(
+            settings['run_modifier_victory_run_coins']
+        ),
+        run_modifier_victory_meta_coins=int(
+            settings['run_modifier_victory_meta_coins']
+        ),
         minimum_shop_price=int(settings['minimum_shop_price']),
         reroll_policy=str(settings['reroll_policy']),
         archipelago_purchase_locations=int(
