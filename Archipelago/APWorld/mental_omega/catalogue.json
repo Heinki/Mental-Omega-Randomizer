@@ -459,6 +459,13 @@
       "id": 81063962
     },
     {
+      "name": "Aegis Cruiser Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068092
+    },
+    {
       "name": "Aegis Cruiser Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -471,6 +478,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81063964
+    },
+    {
+      "name": "Aegis Cruiser Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068093
     },
     {
       "name": "Aegis Cruiser Recon Package I",
@@ -513,6 +527,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81063970
+    },
+    {
+      "name": "Aegis Cruiser Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068094
     },
     {
       "name": "Aerial Fortress Irkalla Access",
@@ -5772,6 +5793,13 @@
       "id": 81064688
     },
     {
+      "name": "Cryocopter Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068095
+    },
+    {
       "name": "Cryocopter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -5798,6 +5826,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064692
+    },
+    {
+      "name": "Cryocopter Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068096
     },
     {
       "name": "Cryomine Field Power",
@@ -16055,13 +16090,6 @@
       "id": 81065990
     },
     {
-      "name": "Mastodon Ammo Reserves I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81065991
-    },
-    {
       "name": "Mastodon Armor Plating I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -16097,18 +16125,18 @@
       "id": 81065995
     },
     {
+      "name": "Mastodon Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068097
+    },
+    {
       "name": "Mastodon Prototype Access",
       "classification": "progression",
       "category": "special_unlocks",
       "repeatable": false,
       "id": 81065996
-    },
-    {
-      "name": "Mastodon Prototype Ammo Reserves I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81065997
     },
     {
       "name": "Mastodon Prototype Armor Plating I",
@@ -16228,6 +16256,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066014
+    },
+    {
+      "name": "Mastodon Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068098
     },
     {
       "name": "Megaarena Power",
@@ -19100,11 +19135,25 @@
       "id": 81066409
     },
     {
+      "name": "Plasmerizer Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068099
+    },
+    {
       "name": "Plasmerizer Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066410
+    },
+    {
+      "name": "Plasmerizer Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068100
     },
     {
       "name": "Plasmerizer Recon Package I",
@@ -19170,6 +19219,13 @@
       "id": 81066419
     },
     {
+      "name": "Prism Tank Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068101
+    },
+    {
       "name": "Prism Tank Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19182,6 +19238,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066421
+    },
+    {
+      "name": "Prism Tank Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068102
     },
     {
       "name": "Prism Tank Recon Package I",
@@ -19224,6 +19287,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066427
+    },
+    {
+      "name": "Prism Tank Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068103
     },
     {
       "name": "PsiCorps Psychic Tower Access",
@@ -31726,7 +31796,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "01bd85c792d1c2be74c6ca6f9ecd6aecc00f9ceb76c39b52de44355c645361aa",
+  "catalogue_checksum": "0fe406911a09b2a7cce3f509b717349c94247beed3d9f2f4134307a5afcc18ed",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

@@ -1312,6 +1312,11 @@ REWARD_ALIASES = {
     # magazine therefore delays the stronger weapon instead of providing a
     # positive reserve benefit. Preserve old earned stacks as real ROF buffs.
     'Rhino Heavy Tank Ammo Reserves I': 'Rhino Heavy Tank Weapon Tuning I',
+    # Mastodon's 110-tick reload completes during its 120-tick gattling
+    # cycle. Extra magazine capacity does not increase blast throughput.
+    # Keep existing earned ammo stacks useful as direct weapon ROF buffs.
+    'Mastodon Ammo Reserves I': 'Mastodon Weapon Tuning I',
+    'Mastodon Prototype Ammo Reserves I': 'Mastodon Prototype Weapon Tuning I',
     # Old M.A.D. Tank deploy-fire cadence is not a useful adjustable stat.
     # Keep serialized stacks useful without retaining any fire-rate UI/effect.
     'Old M.A.D. Tank Weapon Tuning I': 'Old M.A.D. Tank Reinforced Frames I',

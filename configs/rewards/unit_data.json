@@ -409,7 +409,7 @@
         "source_pcx": "tengu.pcx"
       },
       "YAHCR": {
-        "source_pcx": "antgehenna.pcx"
+        "source_pcx": "gehnicon.pcx"
       },
       "YAHCRE": {
         "source_pcx": "antgehenna.pcx",
@@ -3727,9 +3727,36 @@
           "rof": 1,
           "range": 14
         }
+      },
+      "FAAVAL": {
+        "AvalonCharge": {"range": 21},
+        "AvalonBlast": {"damage": 360, "range": 21},
+        "AvalonCharge2": {"range": 21}
       }
     },
     "buff_targets": {
+      "SREF": {
+        "weapons": {
+          "Comet": {"damage": 100, "rof": 110, "range": 13.5},
+          "SuperComet": {"damage": 100, "rof": 110, "range": 13.5}
+        }
+      },
+      "AEGIS": {
+        "weapons": {
+          "Medusa": {"damage": 54, "rof": 15, "range": 10},
+          "MedusaE": {"damage": 54, "rof": 15, "range": 10}
+        }
+      },
+      "CRYO": {
+        "weapons": {
+          "Cryobeam1": {"rof": 2, "range": 12.5},
+          "Cryobeam2": {"rof": 2, "range": 12.5},
+          "Cryobeam3": {"rof": 2, "range": 12.5},
+          "Cryobeam4": {"rof": 2, "range": 12.5},
+          "Cryobeam5": {"rof": 2, "range": 12.5},
+          "Cryobeam6": {"rof": 2, "range": 12.5}
+        }
+      },
       "STARDUSTB": {
         "weapons": {
           "ParadoxPrism": {
@@ -4501,7 +4528,9 @@
       },
       "PROME": {
         "weapons": {
-          "PrometheusBlast": {"damage": 150}
+          "PrometheusCharge": {"rof": 5, "range": 12},
+          "PrometheusBlast": {"damage": 150, "rof": 10, "range": 12},
+          "PrometheusCharge2": {"rof": 5, "range": 12}
         }
       },
       "PROMEP": {

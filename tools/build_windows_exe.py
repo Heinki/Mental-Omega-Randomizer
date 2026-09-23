@@ -105,7 +105,7 @@ def run_checked(command: list[str], **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(command, check=True, **kwargs)
 
 
-def build(output: Path) -> None:
+def build(output: Path, *, run_checks: bool = True) -> None:
     if os.name != 'nt':
         raise RuntimeError(
             'A Windows Python runtime is required. On Linux use build_exe_wine.sh.'
@@ -142,10 +142,11 @@ def build(output: Path) -> None:
     from randomizer.core.version import APP_VERSION
 
     validate_static_configs(REQUIRED_STATIC_CONFIGS)
-    run_checked(
-        [sys.executable, '-m', 'unittest', 'randomizer.launch.self_check', '-v'],
-        cwd=PROJECT_ROOT,
-    )
+    if run_checks:
+        run_checked(
+            [sys.executable, '-m', 'unittest', 'randomizer.launch.self_check', '-v'],
+            cwd=PROJECT_ROOT,
+        )
 
     python_root = Path(sys.base_prefix)
     icon = require_path(PROJECT_ROOT / 'mo-logo-puzzle-icon.ico', 'Launcher icon')
@@ -284,7 +285,8 @@ def build(output: Path) -> None:
                 + ', '.join(missing)
             )
         # Exercise the bundled launch controller before replacing the player EXE.
-        run_checked([str(built), '--launch-self-check'], cwd=dist, timeout=120)
+        if run_checks:
+            run_checked([str(built), '--launch-self-check'], cwd=dist, timeout=120)
         shutil.copy2(built, output)
 
     if old_runtime.exists():
@@ -304,8 +306,9 @@ def main() -> int:
         type=Path,
         default=PROJECT_ROOT.parent / 'MentalOmegaRandomizer.exe',
     )
+    parser.add_argument('--skip-checks', action='store_true')
     arguments = parser.parse_args()
-    build(arguments.output)
+    build(arguments.output, run_checks=not arguments.skip_checks)
     return 0
 
 
