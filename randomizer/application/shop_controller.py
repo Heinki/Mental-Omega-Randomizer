@@ -480,6 +480,9 @@ class ShopController(ShopPolishController):
                 'combat_production_time_percent',
                 'player_cost_percent',
                 'mission_starting_credits_flat',
+                'demolition_charges',
+                'melee_fighters',
+                'one_shot_one_kill',
             ):
                 value = effects[key]
                 settings[f'shop_{key}'] = (

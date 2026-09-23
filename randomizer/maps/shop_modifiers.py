@@ -5,6 +5,12 @@ from randomizer.rewards.catalogue import BUFF_TARGETS
 
 
 _COMBAT_CATEGORIES = frozenset({'infantry', 'units', 'aircraft'})
+_MOBILE_TYPE_LISTS = ('InfantryTypes', 'VehicleTypes', 'AircraftTypes')
+_TECHNO_TYPE_LISTS = (*_MOBILE_TYPE_LISTS, 'BuildingTypes')
+_WEAPON_REFERENCE_FIELDS = frozenset({
+    'primary', 'secondary', 'elite', 'eliteprimary', 'elitesecondary',
+    'deathweapon', 'explosion',
+})
 
 
 def _key(values, requested):
@@ -131,3 +137,108 @@ def apply_shop_clone_modifiers(rule_sections, handled_by_unit, settings):
                 )
                 counts['damage_weapons'] += 1
     return counts
+
+
+def _registered_ids(installed_sections, map_sections, rule_sections, list_name):
+    values = []
+    for source in (installed_sections, map_sections, rule_sections):
+        values.extend((source.get(list_name) or {}).values())
+    return tuple(dict.fromkeys(
+        str(value).strip() for value in values if str(value).strip()
+    ))
+
+
+def _effective_values(section_id, installed_sections, map_sections, rule_sections):
+    values = dict(installed_sections.get(section_id, {}))
+    values.update(map_sections.get(section_id, {}))
+    values.update(rule_sections.get(section_id, {}))
+    return values
+
+
+def apply_shop_global_modifiers(
+    rule_sections,
+    source_lines,
+    installed_sections,
+    settings,
+):
+    """Apply intentionally global Shop chaos modifiers to registered types."""
+    from randomizer.maps.ini import all_section_value_maps
+
+    demolition = bool(settings.get('shop_demolition_charges', 0))
+    melee = bool(settings.get('shop_melee_fighters', 0))
+    one_health = bool(settings.get('shop_one_shot_one_kill', 0))
+    if not any((demolition, melee, one_health)):
+        return {'technos': 0, 'weapons': 0}
+
+    map_sections = all_section_value_maps(source_lines)
+    touched_technos = set()
+    touched_weapons = set()
+    mobile_ids = {
+        type_id
+        for list_name in _MOBILE_TYPE_LISTS
+        for type_id in _registered_ids(
+            installed_sections, map_sections, rule_sections, list_name
+        )
+    }
+    techno_ids = {
+        type_id
+        for list_name in _TECHNO_TYPE_LISTS
+        for type_id in _registered_ids(
+            installed_sections, map_sections, rule_sections, list_name
+        )
+    }
+
+    if demolition:
+        for type_id in mobile_ids:
+            rule_sections.setdefault(type_id, {})['Explodes'] = 'yes'
+            touched_technos.add(type_id)
+    if one_health:
+        for type_id in techno_ids:
+            rule_sections.setdefault(type_id, {})['Strength'] = '1'
+            touched_technos.add(type_id)
+
+    if melee:
+        weapon_users = set(mobile_ids)
+        for building_id in _registered_ids(
+            installed_sections, map_sections, rule_sections, 'BuildingTypes'
+        ):
+            values = _effective_values(
+                building_id, installed_sections, map_sections, rule_sections
+            )
+            defense_key = _key(values, 'IsBaseDefense')
+            if str(values.get(defense_key, '')).casefold() in {
+                'yes', 'true', '1',
+            }:
+                weapon_users.add(building_id)
+        for type_id in weapon_users:
+            values = _effective_values(
+                type_id, installed_sections, map_sections, rule_sections
+            )
+            for key, value in values.items():
+                lowered = str(key).casefold()
+                if (
+                    lowered not in _WEAPON_REFERENCE_FIELDS
+                    and not lowered.startswith('weapon')
+                    and not lowered.startswith('eliteweapon')
+                ):
+                    continue
+                weapon_id = str(value).strip()
+                if (
+                    not weapon_id
+                    or _key(_effective_values(
+                        weapon_id,
+                        installed_sections,
+                        map_sections,
+                        rule_sections,
+                    ), 'Damage') is None
+                ):
+                    continue
+                weapon_values = rule_sections.setdefault(weapon_id, {})
+                weapon_values['Range'] = '2.35'
+                weapon_values['MinimumRange'] = '0'
+                touched_weapons.add(weapon_id)
+
+    return {
+        'technos': len(touched_technos),
+        'weapons': len(touched_weapons),
+    }

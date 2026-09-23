@@ -1023,6 +1023,27 @@
           "rotate_shop_faction": 1,
           "disable_rerolls": 1
         }
+      },
+      "demolition_charges": {
+        "display_name": "Demolition Charges",
+        "description": "All player and AI units explode when destroyed.",
+        "effects": {
+          "demolition_charges": 1
+        }
+      },
+      "melee_fighters": {
+        "display_name": "Melee Fighters",
+        "description": "All units and base defenses have 2.35-cell weapon range and no minimum range.",
+        "effects": {
+          "melee_fighters": 1
+        }
+      },
+      "one_shot_one_kill": {
+        "display_name": "One Shot, One Kill",
+        "description": "Every unit and building, friendly or hostile, has 1 health.",
+        "effects": {
+          "one_shot_one_kill": 1
+        }
       }
     }
   }

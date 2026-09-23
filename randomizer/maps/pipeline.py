@@ -94,7 +94,10 @@ from randomizer.maps.settings import (
     mission_eva_voice_rules,
     mission_house_color_rules,
 )
-from randomizer.maps.shop_modifiers import apply_shop_clone_modifiers
+from randomizer.maps.shop_modifiers import (
+    apply_shop_clone_modifiers,
+    apply_shop_global_modifiers,
+)
 from randomizer.maps.special_buildings import (
     DEFAULT_REFINERY_MINER_IDS,
     ore_purifier_miner_dock_rules,
@@ -3193,6 +3196,25 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 report_line,
                 error=report_line.startswith('WARNING:'),
             )
+
+    global_modifier_rules = {}
+    global_modifier_report = apply_shop_global_modifiers(
+        global_modifier_rules,
+        lines,
+        installed_rule_sections,
+        reward_settings,
+    )
+    if global_modifier_rules:
+        merge_ini_section_values(lines, global_modifier_rules)
+        self.append_log(
+            'Applied global Shop run modifiers: '
+            + ', '.join(
+                f'{key}={value}'
+                for key, value in global_modifier_report.items()
+                if value
+            )
+            + '.'
+        )
 
     packed_sections = {
         'PreviewPack', 'IsoMapPack5', 'OverlayPack', 'OverlayDataPack',

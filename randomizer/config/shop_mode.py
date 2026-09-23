@@ -337,6 +337,9 @@ def validate_shop_mode_config(sections, path, invalid):
         'force_hardest_difficulty',
         'force_enemy_challenge',
         'rotate_shop_faction',
+        'demolition_charges',
+        'melee_fighters',
+        'one_shot_one_kill',
     }
     percent_flat_pairs = {
         'run_reward_percent': 'run_reward_flat',
@@ -363,6 +366,9 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('challenge_meta_reward_percent', 100) > 100
             or effects.get('force_enemy_challenge', 0) > 0
             or effects.get('rotate_shop_faction', 0) > 0
+            or effects.get('demolition_charges', 0) > 0
+            or effects.get('melee_fighters', 0) > 0
+            or effects.get('one_shot_one_kill', 0) > 0
         ))
         has_penalty = bool(isinstance(effects, dict) and (
             effects.get('starting_run_coins_flat', 0) < 0
@@ -393,6 +399,9 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('force_hardest_difficulty', 0) > 0
             or effects.get('force_enemy_challenge', 0) > 0
             or effects.get('rotate_shop_faction', 0) > 0
+            or effects.get('demolition_charges', 0) > 0
+            or effects.get('melee_fighters', 0) > 0
+            or effects.get('one_shot_one_kill', 0) > 0
         ))
         mixes_percent_and_flat = bool(isinstance(effects, dict) and any(
             effects.get(percent_key, 100) != 100

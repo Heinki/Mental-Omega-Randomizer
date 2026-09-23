@@ -14,7 +14,10 @@ from randomizer.missions.tier_one import (
     tier_one_defense_ids,
     tier_one_unit_ids,
 )
-from randomizer.maps.shop_modifiers import apply_shop_clone_modifiers
+from randomizer.maps.shop_modifiers import (
+    apply_shop_clone_modifiers,
+    apply_shop_global_modifiers,
+)
 from randomizer.rewards.catalogue import REWARD_BY_NAME
 from randomizer.rewards.rules import tech_ids_for_rewards
 from randomizer.ui.cameos import (
@@ -241,6 +244,7 @@ def _requested_upgrade_modifier_checks():
         'war_economy', 'narrow_intelligence', 'liquid_assets',
         'treasure_hunter', 'low_tech_war', 'superweapon_arms_race',
         'hardcore', 'blockbuster_special', 'faction_roulette',
+        'demolition_charges', 'melee_fighters', 'one_shot_one_kill',
     }
     all_modifier_ids = tuple(SHOP_CONFIG.modifiers)
     effects = modifier_effects(all_modifier_ids)
@@ -319,6 +323,32 @@ def _requested_upgrade_modifier_checks():
             'shop_player_cost_percent': 1.2,
             'shop_modifier_armor_seed_stacks': {'E1': 0},
             'shop_modifier_damage_seed_stacks': {'E1': 0},
+        },
+    )
+    global_rules = {}
+    global_report = apply_shop_global_modifiers(
+        global_rules,
+        (),
+        {
+            'InfantryTypes': {'0': 'SOLDIER'},
+            'VehicleTypes': {'0': 'TANK'},
+            'AircraftTypes': {'0': 'JET'},
+            'BuildingTypes': {'0': 'TOWER', '1': 'FACTORY'},
+            'SOLDIER': {'Primary': 'RIFLE'},
+            'TANK': {'Primary': 'CANNON'},
+            'JET': {'Weapon1': 'MISSILE'},
+            'TOWER': {'IsBaseDefense': 'yes', 'Primary': 'TOWERGUN'},
+            'FACTORY': {'IsBaseDefense': 'no', 'Primary': 'FACTORYGUN'},
+            'RIFLE': {'Damage': '10', 'Range': '5'},
+            'CANNON': {'Damage': '20', 'Range': '6'},
+            'MISSILE': {'Damage': '30', 'Range': '7'},
+            'TOWERGUN': {'Damage': '40', 'Range': '8'},
+            'FACTORYGUN': {'Damage': '50', 'Range': '9'},
+        },
+        {
+            'shop_demolition_charges': 1,
+            'shop_melee_fighters': 1,
+            'shop_one_shot_one_kill': 1,
         },
     )
     challenge = SimpleNamespace(
@@ -517,6 +547,28 @@ def _requested_upgrade_modifier_checks():
             and rules['CLONE']['BuildTimeMultiplier'] == '0.9'
             and rules['WEAPON']['Damage'] == '125'
             and all(report.values())
+        ),
+        'shop_global_modifiers_valid': bool(
+            global_report == {'technos': 5, 'weapons': 4}
+            and all(
+                global_rules[type_id].get('Explodes') == 'yes'
+                for type_id in ('SOLDIER', 'TANK', 'JET')
+            )
+            and all(
+                global_rules[type_id].get('Strength') == '1'
+                for type_id in (
+                    'SOLDIER', 'TANK', 'JET', 'TOWER', 'FACTORY',
+                )
+            )
+            and all(
+                global_rules[weapon_id] == {
+                    'Range': '2.35', 'MinimumRange': '0',
+                }
+                for weapon_id in (
+                    'RIFLE', 'CANNON', 'MISSILE', 'TOWERGUN',
+                )
+            )
+            and 'FACTORYGUN' not in global_rules
         ),
     }
 

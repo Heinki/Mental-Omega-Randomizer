@@ -50,6 +50,9 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
         'force_hardest_difficulty': 0,
         'force_enemy_challenge': 0,
         'rotate_shop_faction': 0,
+        'demolition_charges': 0,
+        'melee_fighters': 0,
+        'one_shot_one_kill': 0,
     }
     seen = set()
     for modifier_id in modifier_ids or ():
