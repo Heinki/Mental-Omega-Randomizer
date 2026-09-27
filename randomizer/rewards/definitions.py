@@ -202,6 +202,9 @@ MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     # Keep this mandatory so retry assistance and externally supplied legacy
     # rewards cannot bypass the editable catalogue exclusion.
     'range': SUICIDE_RANGE_EXCLUDED_UNIT_IDS,
+    # Rejuvenator's requested benefit is stronger repair shots. Replace its
+    # former ammo reward and migrate earned stacks to healing output.
+    'ammo': frozenset({'REJU'}),
     # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
     # not as ordinary cargo. More seats or OpenTopped mixes incompatible
     # passenger logics, so both rewards are absent from every selection path.
@@ -853,7 +856,13 @@ def build_buff_rewards():
             allowed_types = target.get('allowed_buff_types')
             if allowed_types and buff_type_id not in allowed_types:
                 continue
-            if unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ()):
+            if (
+                unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ())
+                and not (
+                    buff_type_id == 'self_healing'
+                    and target.get('stackable_existing_self_healing')
+                )
+            ):
                 continue
             if buff_type_id == 'veteran' and not target.get('trainable', True):
                 continue
@@ -880,6 +889,11 @@ def build_buff_rewards():
                 required_weapon_min = buff_type.get('requires_weapon_min', 0)
                 has_weapon_stat = any(
                     stats.get(required_weapon_stat, 0) > required_weapon_min
+                    or (
+                        buff_type_id == 'damage'
+                        and target.get('healing_weapon_damage')
+                        and stats.get('damage', 0) < 0
+                    )
                     for stats in target.get('weapons', {}).values()
                 )
                 has_special_damage = (
@@ -888,8 +902,11 @@ def build_buff_rewards():
                 )
                 if not has_weapon_stat and not has_special_damage:
                     continue
+            buff_name = target.get('buff_names', {}).get(
+                buff_type_id, buff_type['name']
+            )
             rewards.append({
-                'name': f'{target["label"]} {buff_type["name"]} I',
+                'name': f'{target["label"]} {buff_name} I',
                 'description': target.get('buff_descriptions', {}).get(
                     buff_type['id'],
                     buff_type['description'].format(plural=target['plural']),
@@ -1342,6 +1359,7 @@ REWARD_ALIASES = {
     'Space Commando Repair Systems I': 'Space Commando Reinforced Frames I',
     'Robo Tengu Sensor Suite I': 'Robo Tengu Reinforced Frames I',
     'Paradox Engine Repair Systems I': 'Paradox Engine Reinforced Frames I',
+    'Rejuvenator Ammo Reserves I': 'Rejuvenator Healing Output I',
     'Spy Plane Power Reinforced Payload I': 'Spy Plane Power Expanded Recon I',
 }
 for unit_id, legacy_labels in {

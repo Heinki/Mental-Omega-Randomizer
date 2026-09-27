@@ -2,6 +2,8 @@
 
 from copy import deepcopy
 
+from randomizer.rewards.definitions import REWARD_ALIASES
+
 from .config import SHOP_CONFIG
 from .model import (
     SHOP_PROFILE_SCHEMA_VERSION,
@@ -237,6 +239,8 @@ def _purchase_records(value, field, quantity_field, record_type):
         reward_id = _string(
             record.get('reward_id'), f'{field}[{index}].reward_id', required=True
         )
+        if record_type is BuffPurchase:
+            reward_id = REWARD_ALIASES.get(reward_id, reward_id)
         quantity = _positive_int(
             record.get(quantity_field),
             f'{field}[{index}].{quantity_field}',

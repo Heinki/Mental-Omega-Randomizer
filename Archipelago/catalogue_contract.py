@@ -24,6 +24,13 @@ PROTOTYPE_ITEM_IDS = {
     "GI Access": ITEM_ID_BASE,
     "Soviet Conscript Access": ITEM_ID_BASE + 1,
 }
+# Keep published network identity when an obsolete reward becomes a useful
+# replacement. Launcher reward aliases translate old room item names.
+RENAMED_ITEM_IDS = {
+    "Rejuvenator Healing Output I": (
+        "Rejuvenator Ammo Reserves I", 81066605
+    ),
+}
 MAXIMUM_ENEMY_TRAP_ITEMS = sum(
     int(reward.get("enemy_maximum", 1))
     for reward in REWARD_POOL
@@ -158,7 +165,11 @@ def build_snapshot(existing=None):
     items = []
     for entry in projection["items"]:
         name = entry["name"]
-        item_id = PROTOTYPE_ITEM_IDS.get(name, old_item_ids.get(name))
+        if name in RENAMED_ITEM_IDS:
+            old_name, published_id = RENAMED_ITEM_IDS[name]
+            item_id = old_item_ids.get(old_name, published_id)
+        else:
+            item_id = PROTOTYPE_ITEM_IDS.get(name, old_item_ids.get(name))
         if item_id is None:
             while next_item_id in used_item_ids:
                 next_item_id += 1
