@@ -2105,15 +2105,20 @@
       },
       {
         "superweapon": "MegaarenaSpecial",
+        "ignore_foreign_tech_gate": true,
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
-          "IsPowered": "false"
+          "IsPowered": "false",
+          "SW.AuxBuildings": "",
+          "SW.RequiredHouses": "",
+          "SW.ForbiddenHouses": ""
         },
         "techno_clones": {
           "FAAREN": {
             "clone": "MORMegaarenaProjector",
             "list": "BuildingTypes",
             "values": {
+              "Prerequisite": null,
               "Secondary": "MORMegaarenaCast"
             }
           },
@@ -2140,7 +2145,11 @@
           },
           "MegaarenaRealWH": {
             "clone": "MORMegaarenaWH",
-            "list": "Warheads"
+            "list": "Warheads",
+            "values": {
+              "Verses": "100%,100%,100%,100%,100%,100%,0%,0%,0%,100%,100%",
+              "DamageAirThreshold": "-1"
+            }
           }
         }
       },
