@@ -67,10 +67,18 @@ def _unit_fields_are_effective(
             str(base_values.get(required[0].lower(), 'no')).strip().lower()
             == 'yes'
         )
-        return (
-            str(lowered[required[0].lower()]).strip().lower() == 'yes'
-            and (allow_existing or not base_enabled)
-        )
+        if str(lowered[required[0].lower()]).strip().lower() != 'yes':
+            return False
+        if buff_type == 'self_healing' and base_enabled:
+            base_amount = _numeric(base_values.get('selfhealing.amount', 1))
+            actual_amount = _numeric(lowered.get('selfhealing.amount'))
+            return (
+                bool(target.get('stackable_existing_self_healing'))
+                and base_amount is not None
+                and actual_amount is not None
+                and actual_amount > base_amount
+            )
+        return allow_existing or not base_enabled
     actual = _numeric(lowered[required[0].lower()])
     if actual is None:
         return False
@@ -90,6 +98,14 @@ def _unit_fields_are_effective(
     if buff_type == 'production':
         base = _numeric(base_values.get('buildtimemultiplier', 1))
         return base is not None and 0 < actual < base
+    if buff_type == 'speed' and 'jumpjetspeed' in base_values:
+        jumpjet_speed = _numeric(lowered.get('jumpjetspeed'))
+        base_jumpjet_speed = _numeric(base_values.get('jumpjetspeed'))
+        if (
+            jumpjet_speed is None or base_jumpjet_speed is None
+            or jumpjet_speed <= base_jumpjet_speed
+        ):
+            return False
     base_key = required[0].lower()
     base = _numeric(base_values.get(base_key))
     if base is None:
@@ -127,6 +143,8 @@ def _weapon_field_is_effective(
         if base is None or actual is None:
             continue
         if buff_type == 'reload' and actual < base:
+            return True
+        if buff_type == 'damage' and base < 0 and actual < base:
             return True
         if buff_type != 'reload' and actual > base:
             return True

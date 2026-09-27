@@ -4104,7 +4104,22 @@
           }
         }
       },
+      "PLAG": {
+        "weapons": {
+          "CatapultWeapon": {
+            "damage": 150,
+            "rof": 140,
+            "range": 14
+          },
+          "CatapultWeaponE": {
+            "damage": 150,
+            "rof": 140,
+            "range": 14
+          }
+        }
+      },
       "GOTTER": {
+        "stackable_existing_self_healing": true,
         "weapons": {
           "GotterLaser": {
             "damage": 15,
@@ -4424,6 +4439,13 @@
       "REJU": {
         "label": "Rejuvenator",
         "plural": "Rejuvenators",
+        "buff_names": {
+          "damage": "Healing Output"
+        },
+        "buff_descriptions": {
+          "damage": "Rejuvenators restore more health per shot in future launched missions."
+        },
+        "healing_weapon_damage": true,
         "category": "units",
         "factions": [
           "Neutral"
@@ -4438,6 +4460,7 @@
         "special_reward": true,
         "weapons": {
           "RejuvenationBullet": {
+            "damage": -5,
             "rof": 3,
             "range": 9
           }

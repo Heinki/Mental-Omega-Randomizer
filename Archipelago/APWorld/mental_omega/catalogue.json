@@ -606,6 +606,13 @@
       "id": 81063980
     },
     {
+      "name": "Aerial Fortress Irkalla Repair Systems I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068104
+    },
+    {
       "name": "Aerial Fortress Irkalla Sensor Suite I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19058,6 +19065,13 @@
       "id": 81066398
     },
     {
+      "name": "Plague Splatter Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068105
+    },
+    {
       "name": "Plague Splatter Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19070,6 +19084,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066400
+    },
+    {
+      "name": "Plague Splatter Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068106
     },
     {
       "name": "Plague Splatter Recon Package I",
@@ -19112,6 +19133,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066406
+    },
+    {
+      "name": "Plague Splatter Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068107
     },
     {
       "name": "Plasmerizer Access",
@@ -20633,13 +20661,6 @@
       "id": 81066604
     },
     {
-      "name": "Rejuvenator Ammo Reserves I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81066605
-    },
-    {
       "name": "Rejuvenator Armor Plating I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -20652,6 +20673,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066607
+    },
+    {
+      "name": "Rejuvenator Healing Output I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81066605
     },
     {
       "name": "Rejuvenator Logistics I",
@@ -31796,7 +31824,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "0fe406911a09b2a7cce3f509b717349c94247beed3d9f2f4134307a5afcc18ed",
+  "catalogue_checksum": "16a52f0fa8a573f32cfb97c602c06bd4b25bfd1671f03fd778a38d2090fbac09",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

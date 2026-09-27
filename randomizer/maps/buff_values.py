@@ -212,7 +212,16 @@ def apply_unit_buff_value(values, target, buff_type, count):
         base = parse_float(values.get(existing_key), 1.0)
         values[existing_key] = format_multiplier(base * multiplier)
     elif buff_type == 'speed':
-        values['Speed'] = str(capped_movement_speed(target, count))
+        speed = str(capped_movement_speed(target, count))
+        values['Speed'] = speed
+        # Jumpjet locomotion reads its own movement speed. Keep both fields
+        # aligned for hover aircraft such as Irkalla and Paradox Engine.
+        jumpjet_key = next(
+            (key for key in values if str(key).lower() == 'jumpjetspeed'),
+            None,
+        )
+        if jumpjet_key is not None:
+            values[jumpjet_key] = speed
     elif buff_type == 'armor':
         multiplier = stacking_multiplier('armor', count)
         current_strength = resolved_safe_strength(target, values)
@@ -222,9 +231,10 @@ def apply_unit_buff_value(values, target, buff_type, count):
     return True
 
 def apply_weapon_buff_value(values, base_stats, buff_type, count):
-    if buff_type == 'damage' and base_stats.get('damage', 0) > 0:
+    if buff_type == 'damage' and base_stats.get('damage', 0) != 0:
         base_damage = int(round(base_stats['damage']))
-        values['Damage'] = str(stacked_weapon_damage(base_damage, count))
+        sign = -1 if base_damage < 0 else 1
+        values['Damage'] = str(sign * stacked_weapon_damage(abs(base_damage), count))
     elif buff_type == 'range' and base_stats.get('range', 0) > 0:
         values['Range'] = format_multiplier(
             base_stats['range'] + stacking_amount('range', count)

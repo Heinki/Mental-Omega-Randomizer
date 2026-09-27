@@ -300,9 +300,16 @@ def _uncached_buff_stack_limit(reward):
         field = 'damage' if buff_type == 'damage' else 'rof'
         minimum = 0 if buff_type == 'damage' else 1
         values = [
-            int(round(float(stats[field])))
+            abs(int(round(float(stats[field]))))
             for stats in target.get('weapons', {}).values()
-            if float(stats.get(field, 0)) > minimum
+            if (
+                float(stats.get(field, 0)) > minimum
+                or (
+                    buff_type == 'damage'
+                    and target.get('healing_weapon_damage')
+                    and float(stats.get(field, 0)) < 0
+                )
+            )
         ]
         configured = stacking_stack_limit(buff_type)
         if not values:
@@ -587,6 +594,12 @@ def buff_effect_lines(
         )
         return value_text(subject, base_limit + count, base_limit)
     if buff_type == 'damage':
+        if target.get('healing_weapon_damage'):
+            return weapon_text(
+                'Healing per hit', 'damage',
+                lambda base: stacked_weapon_damage(abs(base), count),
+                minimum=float('-inf'), show_base=False,
+            )
         return weapon_text('Damage', 'damage', lambda base: stacked_weapon_damage(base, count))
 
     if buff_type == 'reload':
