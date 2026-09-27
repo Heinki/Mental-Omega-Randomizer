@@ -416,6 +416,23 @@ def _apply_targeting(reward, installed_sections):
     ].get(reward['superweapon'])
     if not field_spec:
         return
+    clone_key = field_spec.get('clone_key') or field_spec['source']
+    existing_clone = (reward.get('superweapon_techno_clones') or {}).get(
+        clone_key, {}
+    )
+    baseline_verses = str(
+        (existing_clone.get('values') or {}).get('Verses', '')
+    ).split(',')
+    if (
+        len(baseline_verses) == 11
+        and all(
+            baseline_verses[index].strip() == field_spec['verses']
+            for index in (3, 4, 5)
+        )
+    ):
+        # An older targeting reward may still exist in saved games. Its
+        # vehicle-only verses must not replace a newer all-unit baseline.
+        return
     source_values = installed_sections.get(field_spec['source'], {})
     rules = _vehicle_armor_rules(
         installed_sections, source_values, field_spec['verses']
@@ -423,7 +440,7 @@ def _apply_targeting(reward, installed_sections):
     if not rules:
         return
     spec = _ensure_techno_clone(
-        reward, field_spec.get('clone_key') or field_spec['source']
+        reward, clone_key
     )
     spec['values'].update(rules)
     if field_spec.get('clear_designators'):

@@ -811,9 +811,13 @@ def cloned_superweapon_plan(
                         type_keys, RANDOMIZER_TYPE_LIST_KEY_START
                     )
                     section_rules.setdefault(list_section, {})[type_key] = techno_clone
-                if 'Deliver.Types' in clone_values:
-                    clone_values['Deliver.Types'] = _replace_list_type(
-                        clone_values['Deliver.Types'],
+                delivery_key = next(
+                    (key for key in clone_values if key.lower() == 'deliver.types'),
+                    None,
+                )
+                if delivery_key is not None:
+                    clone_values[delivery_key] = _replace_list_type(
+                        clone_values[delivery_key],
                         template_source,
                         techno_clone,
                     )
