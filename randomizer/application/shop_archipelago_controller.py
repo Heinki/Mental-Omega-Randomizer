@@ -203,7 +203,8 @@ class ShopArchipelagoController:
             ),
         )
         if fresh and self.archipelago_shop_slot_settings() is None:
-            excluded = self.excluded_mission_codes
+            excluded = (self.excluded_coop_mission_codes
+                        if self.coop_mode_var.get() else self.excluded_mission_codes)
             missions = [
                 mission for mission in missions
                 if str(mission.get('code') or '').upper() not in excluded

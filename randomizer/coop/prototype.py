@@ -18,6 +18,7 @@ from randomizer.maps.ini import (
 )
 from randomizer.missions.access import CHAOS_PRIMARY_PRODUCTION
 from randomizer.coop.reward_map import apply_coop_rewards
+from randomizer.coop.victory import inject_victory_markers
 from randomizer.maps.buff_values import _active_direct_buff_counts
 from randomizer.rewards.arsenal import ARSENAL_MODE, arsenal_launch_rewards, arsenal_unit_type
 from randomizer.rewards.catalogue import BUFF_TARGETS, buff_stack_limit, canonical_reward, check_rewards
@@ -26,7 +27,8 @@ from randomizer.rewards.roster import randomizer_unit_roster
 from randomizer.ui.cameos import installed_rules_registry
 
 
-PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V4'
+PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V5'
+SHOP_MARKER = 'MOR_COOP_SHOP_V1'
 SUPPORTED_PROGRESSION = {'Classic', 'Grid Mode', 'Mission List'}
 SIDE_COUNTRIES = (
     'UnitedStates', 'Europeans', 'Pacific',
@@ -213,8 +215,23 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
     merge_ini_section_values(lines, {
         'Basic': {'Name': f"{basic.get('name', source.stem)} - Randomizer"},
     })
-    apply_coop_rewards(lines, manifest, family)
-    lines.insert(0, f'; {PROTOTYPE_MARKER} {source_key} {manifest["seed"]}')
+    if manifest['schema'] == 5:
+        for role, scope, country in (
+            ('host', 'H', manifest['player_country']),
+            ('guest', 'G', manifest['guest_country']),
+        ):
+            loadout = manifest['player_loadouts'][role]
+            apply_coop_rewards(
+                lines, manifest, family, country=country,
+                access_ids=loadout['access_ids'],
+                buff_counts=loadout['buff_counts'], clone_scope=scope,
+            )
+    else:
+        apply_coop_rewards(lines, manifest, family)
+    inject_victory_markers(
+        lines, source.stem, manifest['player_country'],
+    )
+    lines.insert(0, f'; {manifest["marker"]} {source_key} {manifest["seed"]}')
     return ('\r\n'.join(lines) + '\r\n').encode('latin-1')
 
 
@@ -247,7 +264,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     stem = f'morcp_{coop_name.removeprefix("coop_").lower()}_{identity}'
     map_key = f'MapsMO\\Cooperative\\{stem}'
     manifest = {
-        'schema': 3,
+        'schema': 4,
         'marker': PROTOTYPE_MARKER,
         'source_key': source_key,
         'source_sha256': source_hash,
@@ -271,8 +288,120 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     return manifest, map_data
 
 
+def shop_guest_country(metadata: dict, host_country: str) -> str:
+    """Pick an unused sibling country so each player can own private clones."""
+    host_index = SIDE_COUNTRIES.index(host_country)
+    family_start = (host_index // 3) * 3
+    enemies = {
+        int(value.split(',', 1)[0].strip())
+        for key, value in metadata.items() if key.startswith('enemyhouse')
+    }
+    candidates = [
+        index for index in range(family_start, family_start + 3)
+        if index != host_index and index not in enemies
+    ]
+    if not candidates:
+        raise ValueError('Co-op map has no free sibling country for guest Shop loadout.')
+    return SIDE_COUNTRIES[candidates[0]]
+
+
+def _validate_shop_loadout(source: Path, loadout: dict) -> dict:
+    if not isinstance(loadout, dict) or set(loadout) != {'access_ids', 'buff_counts'}:
+        raise ValueError('Shop loadout needs access_ids and buff_counts.')
+    access_ids = loadout['access_ids']
+    buff_counts = loadout['buff_counts']
+    if (not isinstance(access_ids, list) or not access_ids or len(access_ids) > 100
+            or any(not isinstance(item, str) or not re.fullmatch(r'[A-Z0-9_]{2,24}', item)
+                   for item in access_ids)
+            or access_ids != sorted(set(access_ids))
+            or not isinstance(buff_counts, dict)
+            or any(unit_id not in access_ids or not isinstance(counts, dict)
+                   for unit_id, counts in buff_counts.items())):
+        raise ValueError('Invalid co-op Shop unit access or buff loadout.')
+    for unit_id in access_ids:
+        _require_registered_type(source, unit_id)
+        if not arsenal_unit_type(unit_id, BUFF_TARGETS.get(unit_id)):
+            raise ValueError(f'Unsupported co-op Shop unit: {unit_id}')
+    for unit_id, counts in buff_counts.items():
+        if any(not isinstance(buff_type, str) or not isinstance(amount, int)
+               or isinstance(amount, bool) or not 1 <= amount <= 100
+               for buff_type, amount in counts.items()):
+            raise ValueError(f'Invalid co-op Shop buffs for {unit_id}.')
+    return {'access_ids': list(access_ids),
+            'buff_counts': {unit_id: dict(counts) for unit_id, counts in buff_counts.items()}}
+
+
+def shop_unit_loadout(run) -> dict:
+    """Project one player's purchased Shop units and unit buffs for the map."""
+    from randomizer.shop.active import active_shop_rewards, active_shop_starter_unit_ids
+
+    rewards = list(active_shop_rewards(run))
+    access_ids = {str(unit_id).upper() for unit_id in active_shop_starter_unit_ids(run)}
+    for reward in rewards:
+        if reward.get('kind') in {'buff', 'superweapon', 'message', 'retired'}:
+            continue
+        for unit_id in tech_ids_for_rewards([reward]):
+            if arsenal_unit_type(unit_id, BUFF_TARGETS.get(unit_id)):
+                access_ids.add(unit_id)
+    access_ids = sorted(access_ids)
+    if not access_ids:
+        raise ValueError('Co-op Shop player has no supported unit access.')
+    return {'access_ids': access_ids,
+            'buff_counts': _buff_counts(rewards, access_ids)}
+
+
+def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
+                        host_loadout: dict, guest_loadout: dict, *,
+                        stage: int = 1) -> tuple[dict, bytes]:
+    """Build one identical map with two country-gated purchased unit rosters."""
+    if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', str(seed)):
+        raise ValueError('Shop seed contains characters unsafe for a map marker.')
+    if not isinstance(stage, int) or isinstance(stage, bool) or not 1 <= stage <= 10000:
+        raise ValueError('Co-op Shop stage must be between 1 and 10000.')
+    coop_name = coop_name.lower()
+    source, source_key, metadata, country, family = _map_config(game_root, coop_name)
+    guest_country = shop_guest_country(metadata, country)
+    loadouts = {
+        'host': _validate_shop_loadout(source, host_loadout),
+        'guest': _validate_shop_loadout(source, guest_loadout),
+    }
+    source_hash = _digest(source.read_bytes())
+    identity = _digest(json.dumps(
+        [SHOP_MARKER, source_hash, str(seed), stage, country, guest_country, loadouts],
+        sort_keys=True, separators=(',', ':'),
+    ).encode('utf-8'))[:10]
+    stem = f'morcs_{coop_name.removeprefix("coop_")}_{identity}'
+    manifest = {
+        'schema': 5, 'marker': SHOP_MARKER,
+        'source_key': source_key, 'source_sha256': source_hash,
+        'seed': str(seed), 'shop_stage': stage, 'progression_mode': 'Shop Mode',
+        'player_country': country, 'guest_country': guest_country,
+        'player_loadouts': loadouts,
+        'map_key': f'MapsMO\\Cooperative\\{stem}',
+        'map_file': f'{stem}.map',
+        'description': metadata.get('description', source.stem) + ' - Randomizer Shop',
+    }
+    data = _map_bytes(source, source_key, manifest, family)
+    manifest['map_sha256'] = _digest(data)
+    return manifest, data
+
+
 def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
-    if manifest.get('schema') != 3 or manifest.get('marker') != PROTOTYPE_MARKER:
+    if manifest.get('schema') == 5:
+        source_key = str(manifest.get('source_key', ''))
+        coop_name = source_key.rsplit('\\', 1)[-1]
+        loadouts = manifest.get('player_loadouts')
+        if not isinstance(loadouts, dict):
+            raise ValueError('Co-op Shop manifest has no player loadouts.')
+        expected, data = build_shop_manifest(
+            game_root, manifest.get('seed', ''), coop_name,
+            loadouts.get('host'), loadouts.get('guest'),
+            stage=manifest.get('shop_stage'),
+        )
+        if manifest != expected:
+            raise ValueError('Co-op Shop manifest differs from installed map or loadouts.')
+        return data
+    if manifest.get('schema') != 4 or manifest.get('marker') != PROTOTYPE_MARKER:
         raise ValueError('Unsupported co-op prototype manifest.')
     source_key = str(manifest.get('source_key', ''))
     coop_name = source_key.rsplit('\\', 1)[-1]
@@ -335,7 +464,7 @@ def write_bundle(output_dir: Path, manifest: dict, map_data: bytes) -> tuple[Pat
 
 
 def _remove_catalogue_entry(lines: list[str], manifest: dict) -> list[str]:
-    marker = f'; {PROTOTYPE_MARKER} {manifest["map_key"]}'
+    marker = f'; {manifest["marker"]} {manifest["map_key"]}'
     output = list(lines)
     start, end = find_section_bounds(output, manifest['map_key'])
     if start is not None:
@@ -378,7 +507,7 @@ def _catalogue_bytes(game_root: Path, manifest: dict, *, add: bool) -> bytes:
             for line in lines[start + 1:end]
             if '=' in line and line.split('=', 1)[0].strip().isdigit()
         ]
-        marker = f'; {PROTOTYPE_MARKER} {manifest["map_key"]}'
+        marker = f'; {manifest["marker"]} {manifest["map_key"]}'
         lines[end:end] = [marker, f'{max(keys, default=-1) + 1}={manifest["map_key"]}']
         lines.extend(['', marker, f'[{manifest["map_key"]}]', *updated])
     result = newline.join(lines)
@@ -393,7 +522,7 @@ def install(game_root: Path, manifest: dict, map_data: bytes) -> Path:
         raise ValueError('Map data does not match local source and manifest.')
     if _digest(map_data) != manifest.get('map_sha256'):
         raise ValueError('Map data does not match manifest hash.')
-    if not map_data.startswith(f'; {PROTOTYPE_MARKER} '.encode('ascii')):
+    if not map_data.startswith(f'; {manifest["marker"]} '.encode('ascii')):
         raise ValueError('Map lacks prototype ownership marker.')
     destination = game_root / 'MapsMO' / 'Cooperative' / manifest['map_file']
     if destination.exists() and destination.read_bytes() != map_data:

@@ -11,10 +11,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from randomizer.coop.prototype import (
-    available_units, build_manifest, install, rebuild_from_manifest, remove,
-    write_bundle,
+    available_units, build_manifest, build_shop_manifest, install,
+    rebuild_from_manifest, remove, shop_unit_loadout, write_bundle,
 )
-from randomizer.core.paths import APP_DIR, GAME_ROOT, STATE_PATH
+from randomizer.core.paths import APP_DIR, GAME_ROOT, SHOP_RUN_PATH, STATE_PATH
+from randomizer.shop.model import RunStatus
+from randomizer.shop.state import normalize_shop_run
 
 
 def main(argv=None):
@@ -27,6 +29,10 @@ def main(argv=None):
     build.add_argument('--coop', required=True, help='Installed co-op map stem, e.g. coop_sthunder')
     build.add_argument('--source-mission', default='', help='Required for Randomizer Arsenal')
     build.add_argument('--unit', default='', help='Earned or arsenal unit ID; defaults to first supported')
+    shop = commands.add_parser('build-shop', help='Build private loadouts from two saved Shop runs')
+    shop.add_argument('--host-run', type=Path, default=SHOP_RUN_PATH)
+    shop.add_argument('--guest-run', type=Path, required=True)
+    shop.add_argument('--coop', required=True, help='Installed co-op map stem, e.g. coop_sthunder')
     listing = commands.add_parser('list-units', help='List saved access candidates')
     listing.add_argument('--state', type=Path, default=STATE_PATH)
     listing.add_argument('--source-mission', default='', help='Required for Randomizer Arsenal')
@@ -34,7 +40,21 @@ def main(argv=None):
         commands.add_parser(name).add_argument('manifest', type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command in {'build', 'list-units'}:
+        if args.command == 'build-shop':
+            host_run = normalize_shop_run(json.loads(args.host_run.read_text(encoding='utf-8-sig')))
+            guest_run = normalize_shop_run(json.loads(args.guest_run.read_text(encoding='utf-8-sig')))
+            if host_run is None or guest_run is None:
+                raise ValueError('Both Shop runs must exist.')
+            if host_run.status is not RunStatus.ACTIVE or guest_run.status is not RunStatus.ACTIVE:
+                raise ValueError('Both Shop runs must be active.')
+            if host_run.seed != guest_run.seed or host_run.stage != guest_run.stage:
+                raise ValueError('Shop runs need the same seed and stage.')
+            manifest, map_data = build_shop_manifest(
+                args.game_root, host_run.seed, args.coop,
+                shop_unit_loadout(host_run), shop_unit_loadout(guest_run),
+                stage=host_run.stage,
+            )
+        elif args.command in {'build', 'list-units'}:
             state = json.loads(args.state.read_text(encoding='utf-8-sig'))
             if args.command == 'list-units':
                 for unit_id, name in available_units(state, args.source_mission):
@@ -52,7 +72,7 @@ def main(argv=None):
                 print(f'Removed {manifest["map_key"]}')
                 return 0
             map_data = rebuild_from_manifest(args.game_root, manifest)
-        if args.command in {'build', 'rebuild'}:
+        if args.command in {'build', 'build-shop', 'rebuild'}:
             manifest_path, map_path = write_bundle(args.output_dir, manifest, map_data)
             print(f'Manifest: {manifest_path}')
             print(f'Map: {map_path}')
@@ -66,7 +86,7 @@ def main(argv=None):
             destination = install(args.game_root, manifest, map_data)
             print(f'Installed: {destination}')
             print(f'LAN lobby map: {manifest["description"]}')
-            print('Restart Mental Omega client. Select LAN, Co-Op, then this map.')
+            print('Use tools/coop_direct.py host/join to start this map without MentalOmegaClient.exe.')
         return 0
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         parser.exit(1, f'Co-op prototype: {exc}\n')

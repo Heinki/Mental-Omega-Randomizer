@@ -459,7 +459,7 @@ class ShopProgressionService:
             )
         return transition
 
-    def record_failure(self, mission_code, *, revival_offers=()):
+    def record_failure(self, mission_code, *, revival_offers=(), revival_override=None):
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
@@ -475,6 +475,8 @@ class ShopProgressionService:
             mission_code,
             profile=profile,
             maximum_emergency_revivals=(
+                run.emergency_revivals_used + 1 if revival_override is True else
+                0 if revival_override is False else
                 0 if effects['disable_revivals'] else
                 profile.upgrade_level('emergency_revival')
                 * int(revival_definition.effects['revivals_per_run'])

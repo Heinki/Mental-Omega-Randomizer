@@ -15,7 +15,9 @@ import secrets
 import socket
 import time
 
-from randomizer.coop.prototype import _map_config, rebuild_from_manifest
+from randomizer.coop.prototype import (
+    SIDE_COUNTRIES, _map_config, build_shop_manifest, rebuild_from_manifest,
+)
 from randomizer.maps.ini import all_section_value_maps_preserve, merge_ini_section_values
 
 
@@ -91,7 +93,7 @@ def _mode_map(game_root: Path, manifest: dict, difficulty: str) -> bytes:
     return ('\r\n'.join(lines) + '\r\n').encode('latin-1')
 
 
-def _catalogue_settings(game_root: Path, manifest: dict) -> tuple[int, list[int], list[tuple[int, int, int]]]:
+def _catalogue_settings(game_root: Path, manifest: dict) -> tuple[int, int, list[int], list[tuple[int, int, int]]]:
     coop_name = manifest['source_key'].rsplit('\\', 1)[-1]
     _, _, metadata, _, _ = _map_config(game_root, coop_name)
     denied_sides = {int(x) for x in re.findall(r'\d+', metadata.get('disallowedplayersides', ''))}
@@ -108,14 +110,26 @@ def _catalogue_settings(game_root: Path, manifest: dict) -> tuple[int, list[int]
         houses.append(tuple(int(part.strip()) for part in parts))
     if not houses:
         raise ValueError('Co-op map has no enemy houses.')
-    return sides[0], colors[:2], houses
+    guest_side = sides[0]
+    if manifest.get('schema') == 5:
+        guest_country = manifest['guest_country']
+        if guest_country not in SIDE_COUNTRIES:
+            raise ValueError('Invalid guest Shop country.')
+        guest_side = SIDE_COUNTRIES.index(guest_country)
+        if guest_side // 3 != sides[0] // 3 or guest_side == sides[0]:
+            raise ValueError('Guest Shop country must be another country of same faction.')
+        if guest_side in {enemy[0] for enemy in houses}:
+            raise ValueError('Guest Shop country is used by an enemy house.')
+    return sides[0], guest_side, colors[:2], houses
 
 
 def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
                 peer_name: str, peer_ip: str, local_port: int, peer_port: int,
                 game_id: int, difficulty: str, map_data: bytes) -> bytes:
-    side, colors, enemies = _catalogue_settings(game_root, manifest)
+    host_side, guest_side, colors, enemies = _catalogue_settings(game_root, manifest)
     host = role == 'host'
+    own_side, other_side = ((host_side, guest_side) if host
+                            else (guest_side, host_side))
     own_color, other_color = (colors if host else list(reversed(colors)))
     mode_name, handicap = MODES[difficulty]
     sections: dict[str, dict[str, str]] = {
@@ -124,7 +138,7 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
             'UIMapName': manifest['description'], 'PlayerCount': '2',
             'AIPlayers': str(len(enemies)), 'Seed': str(game_id),
             'GameID': str(game_id), 'Host': 'Yes' if host else 'No',
-            'IsSinglePlayer': 'No', 'Side': str(side), 'Color': str(own_color),
+            'IsSinglePlayer': 'No', 'Side': str(own_side), 'Color': str(own_color),
             'IsSpectator': 'No', 'Port': str(local_port), 'GameSpeed': '2',
             'ShortGame': 'No', 'AutoSurrender': 'No', 'BuildOffAlly': 'Yes',
             'FrameSendRate': '7', 'Protocol': '2', 'FogOfWar': 'No',
@@ -132,7 +146,7 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
             'MapSHA1': hashlib.sha1(map_data).hexdigest(),
         },
         'Other1': {
-            'Name': peer_name, 'Side': str(side), 'Color': str(other_color),
+            'Name': peer_name, 'Side': str(other_side), 'Color': str(other_color),
             'IsSpectator': 'No', 'Ip': peer_ip, 'Port': str(peer_port),
         },
         'SpawnLocations': {'Multi1': '0', 'Multi2': '1'},
@@ -184,18 +198,22 @@ def _version_hash(game_root: Path) -> str:
     return _digest((game_root / 'version').read_bytes())
 
 
-def host_session(game_root: Path, manifest: dict, *, name: str = 'CoopHost',
+def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHost',
                  bind: str = '0.0.0.0', control_port: int = CONTROL_PORT,
                  game_port: int = GAME_PORT, difficulty: str = 'normal',
-                 on_ready=None) -> dict:
+                 session_token: str = '', on_ready=None,
+                 shop_setup: dict | None = None) -> dict:
     """Wait for one guest, verify setup, then signal both launchers to start."""
     _name(name)
     _port(control_port)
     _port(game_port)
+    if (shop_setup is None) == (manifest is None):
+        raise ValueError('Provide either a fixed co-op manifest or host Shop setup.')
     with socket.create_server((bind, control_port), backlog=1) as server:
         # Open the port before expensive map generation. A guest can now join
         # immediately after the host presses Start, even with a large Grid run.
-        mode_hash = _digest(_mode_map(game_root, manifest, difficulty))
+        mode_hash = (_digest(_mode_map(game_root, manifest, difficulty))
+                     if manifest is not None else '')
         version_hash = _version_hash(game_root)
         game_id = secrets.randbelow(2**31 - 1) + 1
         server.settimeout(120)
@@ -208,6 +226,11 @@ def host_session(game_root: Path, manifest: dict, *, name: str = 'CoopHost',
                     raise ValueError('Incompatible co-op guest.')
                 guest_name = _name(hello.get('name', ''))
                 guest_port = _port(hello.get('game_port'))
+                if session_token and not secrets.compare_digest(
+                    str(hello.get('session_token', '')), session_token
+                ):
+                    _line(stream, {'type': 'reject', 'reason': 'Co-op game pairing token differs.'})
+                    raise ValueError('Co-op game pairing token differs.')
                 try:
                     _check_separate_install(
                         _installation(game_root), hello.get('installation'),
@@ -217,6 +240,24 @@ def host_session(game_root: Path, manifest: dict, *, name: str = 'CoopHost',
                     raise
                 if guest_name == name:
                     raise ValueError('Both players need distinct names.')
+                if shop_setup is not None:
+                    guest_shop = hello.get('shop')
+                    if (not isinstance(guest_shop, dict)
+                            or guest_shop.get('seed') != shop_setup.get('seed')
+                            or guest_shop.get('stage') != shop_setup.get('stage')):
+                        reason = 'Shop players need the same seed and stage.'
+                        _line(stream, {'type': 'reject', 'reason': reason})
+                        raise ValueError(reason)
+                    try:
+                        manifest, _ = build_shop_manifest(
+                            game_root, shop_setup['seed'], shop_setup['coop_name'],
+                            shop_setup['loadout'], guest_shop['loadout'],
+                            stage=shop_setup['stage'],
+                        )
+                        mode_hash = _digest(_mode_map(game_root, manifest, difficulty))
+                    except (KeyError, TypeError, ValueError) as exc:
+                        _line(stream, {'type': 'reject', 'reason': str(exc)})
+                        raise
                 _line(stream, {
                     'type': 'offer', 'protocol': PROTOCOL, 'manifest': manifest,
                     'name': name, 'game_port': game_port, 'game_id': game_id,
@@ -247,7 +288,8 @@ def host_session(game_root: Path, manifest: dict, *, name: str = 'CoopHost',
 
 def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
                  control_port: int = CONTROL_PORT, game_port: int = GAME_PORT,
-                 on_ready=None) -> dict:
+                 session_token: str = '', on_ready=None,
+                 shop_setup: dict | None = None) -> dict:
     _name(name)
     _port(control_port)
     _port(game_port)
@@ -264,9 +306,13 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
         connection.settimeout(180)
         host_ip = connection.getpeername()[0]
         with connection.makefile('rwb') as stream:
-            _line(stream, {'type': 'hello', 'protocol': PROTOCOL,
-                           'name': name, 'game_port': game_port,
-                           'installation': _installation(game_root)})
+            hello = {'type': 'hello', 'protocol': PROTOCOL,
+                     'name': name, 'game_port': game_port,
+                     'session_token': session_token,
+                     'installation': _installation(game_root)}
+            if shop_setup is not None:
+                hello['shop'] = shop_setup
+            _line(stream, hello)
             offer = _receive(stream)
             if offer.get('type') == 'reject':
                 raise ValueError(str(offer.get('reason') or 'Co-op host rejected the guest.'))
@@ -274,6 +320,13 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
                 raise ValueError('Incompatible co-op host.')
             _check_separate_install(_installation(game_root), offer.get('installation'))
             manifest = offer['manifest']
+            if shop_setup is not None and (
+                manifest.get('schema') != 5
+                or manifest.get('seed') != shop_setup.get('seed')
+                or manifest.get('shop_stage') != shop_setup.get('stage')
+                or manifest.get('player_loadouts', {}).get('guest') != shop_setup.get('loadout')
+            ):
+                raise ValueError('Host Shop map differs from guest seed, stage, or loadout.')
             difficulty = offer['difficulty']
             host_name = _name(offer['name'])
             host_port = _port(offer['game_port'])

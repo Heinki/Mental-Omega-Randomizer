@@ -330,10 +330,6 @@ class LauncherApp(
             if configured_progression_mode == 'Shop Mode'
             else self.state.get('progression_mode', configured_progression_mode)
         )
-        if self.config.get('coop_mode') and saved_progression_mode == 'Shop Mode':
-            saved_progression_mode = self.state.get('progression_mode', 'Grid Mode')
-            if saved_progression_mode == 'Shop Mode':
-                saved_progression_mode = 'Grid Mode'
         progression_mode_default = valid_choice(
             saved_progression_mode,
             PROGRESSION_MODES,

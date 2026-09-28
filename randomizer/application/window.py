@@ -47,12 +47,6 @@ class WindowController:
     def create_widgets(self):
         build_launcher_widgets(self)
         self.refresh_coop_controls()
-        if self.coop_mode_var.get():
-            self.progression_mode_combo.configure(
-                values=('Classic', 'Mission List', 'Grid Mode')
-            )
-            if self.progression_mode_var.get() == 'Shop Mode':
-                self.progression_mode_var.set('Grid Mode')
 
     def update_header_summary(self, *_args):
         """Show the core selected run settings beneath the launcher title."""
@@ -117,6 +111,9 @@ class WindowController:
             self.refresh_shop_debug_completion_choices()
             self.shop_debug_mission_combo.grid()
             self.shop_debug_complete_button.grid()
+            self.shop_debug_complete_button.configure(
+                state='disabled' if self.coop_guest_connected() else 'normal'
+            )
         else:
             self.shop_debug_mission_combo.grid_remove()
             self.shop_debug_complete_button.grid_remove()

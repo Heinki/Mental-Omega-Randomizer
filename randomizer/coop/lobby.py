@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import json
 import queue
+import re
+import secrets
 import socket
 import threading
 import time
@@ -14,7 +18,7 @@ from randomizer.coop.direct import _check_separate_install, _installation, _name
 
 
 LOBBY_PORT = 19420
-PROTOCOL = 1
+PROTOCOL = 2
 MAX_WIRE = 8 * 1024 * 1024
 MAX_STATE = 32 * 1024 * 1024
 
@@ -39,7 +43,8 @@ def decode_state(encoded: str) -> dict:
 
 
 class Lobby:
-    def __init__(self, game_root, role: str, name: str, *, address='', port=LOBBY_PORT):
+    def __init__(self, game_root, role: str, name: str, *, address='', port=LOBBY_PORT,
+                 pairing_code=''):
         if role not in ('host', 'guest'):
             raise ValueError('Invalid co-op role.')
         self.game_root = game_root
@@ -47,6 +52,7 @@ class Lobby:
         self.name = _name(name)
         self.address = address
         self.port = _port(port)
+        self.pairing_code = pairing_code
         self.events = queue.Queue()
         self._socket = None
         self._listener = None
@@ -110,8 +116,10 @@ class Lobby:
                     return
             self._socket.settimeout(30)
             stream = self._socket.makefile('rb')
+            local_nonce = secrets.token_hex(16)
             self._send_raw({'type': 'hello', 'protocol': PROTOCOL,
-                            'name': self.name, 'installation': _installation(self.game_root)})
+                            'name': self.name, 'installation': _installation(self.game_root),
+                            'nonce': local_nonce, 'paired': bool(self.pairing_code)})
             hello = self._receive(stream)
             if hello.get('type') != 'hello' or hello.get('protocol') != PROTOCOL:
                 raise ValueError('Incompatible co-op lobby peer.')
@@ -119,12 +127,34 @@ class Lobby:
             if self.peer == self.name:
                 raise ValueError('Both players need distinct names.')
             _check_separate_install(_installation(self.game_root), hello.get('installation'))
+            peer_nonce = hello.get('nonce')
+            if (not isinstance(peer_nonce, str) or not re.fullmatch(r'[0-9a-f]{32}', peer_nonce)
+                    or bool(self.pairing_code) != bool(hello.get('paired'))):
+                raise ValueError('Co-op pairing settings differ.')
+            host_nonce, guest_nonce = (
+                (local_nonce, peer_nonce) if self.role == 'host'
+                else (peer_nonce, local_nonce)
+            )
+            def proof(role):
+                payload = f'coop-lobby-v2:{role}:{host_nonce}:{guest_nonce}'.encode('ascii')
+                return hmac.new(self.pairing_code.encode('utf-8'), payload,
+                                hashlib.sha256).hexdigest()
+            self._send_raw({'type': 'proof', 'value': proof(self.role)})
+            peer_proof = self._receive(stream)
+            opposite = 'guest' if self.role == 'host' else 'host'
+            if (peer_proof.get('type') != 'proof'
+                    or not hmac.compare_digest(str(peer_proof.get('value', '')),
+                                               proof(opposite))):
+                raise ValueError('Co-op pairing code differs.')
             self.connected = True
             self.events.put(('connected', self.peer))
             self._socket.settimeout(None)
             while not self._closed.is_set():
                 message = self._receive(stream)
-                if message.get('type') not in {'state', 'select', 'suggest', 'launch'}:
+                if message.get('type') not in {
+                    'state', 'select', 'suggest', 'launch',
+                    'shop_stage', 'shop_ready', 'shop_victory', 'shop_failure',
+                }:
                     raise ValueError('Invalid co-op lobby message.')
                 self.events.put(('message', message))
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:

@@ -54,15 +54,22 @@ def _lookup(sections: dict, section: str) -> dict:
     return dict(sections[name]) if name is not None else {}
 
 
-def apply_coop_rewards(lines: list[str], manifest: dict, family: str) -> None:
-    """Give both human slots the same player-owned TechnoTypes.
+def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
+                       country: str | None = None, access_ids=None,
+                       buff_counts=None, clone_scope: str = '') -> None:
+    """Add shared Grid clones or one country's private Shop clones.
 
-    Both slots use the co-op map's sole allowed country. Native map objects and
-    AI TaskForces keep their original IDs. The production clones carry buffs.
+    Native map objects and AI TaskForces keep their original IDs. Shop uses
+    separate countries and clone IDs for the two human slots; Grid keeps the
+    original shared country and clone IDs.
     """
-    country = manifest['player_country']
-    access_ids = manifest.get('access_ids') or [manifest['unit_id']]
-    counts = manifest.get('buff_counts') or {}
+    if clone_scope not in ('', 'H', 'G'):
+        raise ValueError('Invalid co-op clone scope.')
+    country = country or manifest['player_country']
+    access_ids = (manifest.get('access_ids') or [manifest['unit_id']]
+                  if access_ids is None else access_ids)
+    counts = (manifest.get('buff_counts') or {}
+              if buff_counts is None else buff_counts)
     _, clone_ids, templates = randomizer_unit_roster()
     _, installed = installed_rules_registry(synchronous=True)
     templates, _ = installed_rules_template_overlay(templates, installed)
@@ -111,14 +118,15 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str) -> None:
         unit_type = arsenal_unit_type(source_id, target)
         if not target or unit_type not in _TYPE_LIST:
             raise ValueError(f'Unsupported co-op unit reward: {source_id}')
-        clone_id = clone_ids.get(source_id)
+        clone_id = (f'MOR{clone_scope}{source_id}' if clone_scope
+                    else clone_ids.get(source_id))
         template = templates.get(source_id)
         if not clone_id or not template:
             native = _lookup(installed, source_id)
             native.update(_lookup(map_sections, source_id))
             if not native:
                 raise ValueError(f'No source definition for co-op unit: {source_id}')
-            clone_id = f'MORP{source_id}'
+            clone_id = f'MOR{clone_scope or "P"}{source_id}'
             template = dict(native)
             template.setdefault('Image', source_id)
         factory = CHAOS_PRIMARY_PRODUCTION[family].get(_FACTORY_CATEGORY[unit_type])
@@ -204,10 +212,10 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str) -> None:
                             weapon_values, base_stats, buff_type, amount,
                         )
                     if changed:
-                        suffix = hashlib.sha1(
-                            f'{source_id}|{weapon_key}'.encode('ascii')
-                        ).hexdigest()[:12].upper()
-                        new_weapon = f'MORCW{suffix}'
+                        identity = (f'{clone_scope}|{source_id}|{weapon_key}'
+                                    if clone_scope else f'{source_id}|{weapon_key}')
+                        suffix = hashlib.sha1(identity.encode('ascii')).hexdigest()[:12].upper()
+                        new_weapon = f'MOR{clone_scope}CW{suffix}'
                         changes[new_weapon] = weapon_values
                         register('WeaponTypes', new_weapon)
                         seen_weapons[weapon_key] = new_weapon

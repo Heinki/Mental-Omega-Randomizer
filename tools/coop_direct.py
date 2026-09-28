@@ -16,7 +16,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from randomizer.coop.direct import CONTROL_PORT, GAME_PORT, host_session, join_session
-from randomizer.core.paths import GAME_ROOT
+from randomizer.coop.prototype import shop_unit_loadout
+from randomizer.core.paths import GAME_ROOT, SHOP_RUN_PATH
+from randomizer.shop.model import RunStatus
+from randomizer.shop.state import normalize_shop_run
 
 
 def launch_game(game_root: Path) -> int:
@@ -54,6 +57,14 @@ def launch_game(game_root: Path) -> int:
     return process.wait()
 
 
+def shop_setup(path: Path) -> dict:
+    run = normalize_shop_run(json.loads(path.read_text(encoding='utf-8-sig')))
+    if run is None or run.status is not RunStatus.ACTIVE:
+        raise ValueError('An active Shop run is required for each player.')
+    return {'seed': run.seed, 'stage': run.stage,
+            'loadout': shop_unit_loadout(run)}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--game-root', type=Path, default=GAME_ROOT)
@@ -67,22 +78,36 @@ def main(argv=None) -> int:
     host.add_argument('manifest', type=Path)
     host.add_argument('--bind', default='0.0.0.0')
     host.add_argument('--difficulty', choices=('easy', 'normal', 'hard'), default='normal')
+    shop_host = commands.add_parser('host-shop')
+    shop_host.add_argument('--host-run', type=Path, default=SHOP_RUN_PATH)
+    shop_host.add_argument('--coop', required=True, help='Installed co-op map stem')
+    shop_host.add_argument('--bind', default='0.0.0.0')
+    shop_host.add_argument('--difficulty', choices=('easy', 'normal', 'hard'), default='normal')
     join = commands.add_parser('join')
     join.add_argument('host_address')
+    join.add_argument('--shop-run', type=Path,
+                      help='Send only this player’s Shop unit loadout to host')
     args = parser.parse_args(argv)
     root = args.game_root.resolve()
     try:
-        if args.command == 'host':
-            manifest = json.loads(args.manifest.read_text(encoding='utf-8'))
+        if args.command in ('host', 'host-shop'):
+            manifest = (json.loads(args.manifest.read_text(encoding='utf-8'))
+                        if args.command == 'host' else None)
+            setup = shop_setup(args.host_run) if args.command == 'host-shop' else None
+            if setup is not None:
+                setup['coop_name'] = args.coop
             print(f'Waiting for guest on TCP {args.bind}:{args.control_port}', flush=True)
             result = host_session(root, manifest, name=args.name or 'CoopHost',
                                   bind=args.bind, control_port=args.control_port,
-                                  game_port=args.game_port, difficulty=args.difficulty)
+                                  game_port=args.game_port, difficulty=args.difficulty,
+                                  shop_setup=setup)
         else:
             result = join_session(root, args.host_address,
                                   name=args.name or 'CoopGuest',
                                   control_port=args.control_port,
-                                  game_port=args.game_port)
+                                  game_port=args.game_port,
+                                  shop_setup=(shop_setup(args.shop_run)
+                                              if args.shop_run else None))
         print(f'Paired with {result["peer"]}; game ID {result["game_id"]}; '
               f'map SHA-256 {result["map_sha256"]}', flush=True)
         if args.dry_run:

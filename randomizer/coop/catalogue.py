@@ -31,7 +31,9 @@ def discover_coop_missions(game_root: Path) -> list[dict]:
             'true_no_build': False,
             'no_build_production': False,
             'operation': False,
-            'reward_class': '',
+            # Co-op maps have no campaign stage metadata. Treat them as the
+            # Shop opening economy class until co-op reward tiers are tuned.
+            'reward_class': 'act_1',
             'reward_multiplier': 1,
         })
     return missions

@@ -51,6 +51,12 @@ from .shop_archipelago_controller import ShopArchipelagoController
 
 
 class ShopPolishController(ShopArchipelagoController):
+    def _shop_victory_dividend_level(self, run):
+        return (
+            self.shop_profile.upgrade_level('gem_dividend')
+            if run.endless or run.stage == run.run_length else 0
+        )
+
     def _schedule_shop_tree_button_reflow(self, tree, button_attribute):
         pending = self.__dict__.setdefault('_shop_tree_reflow_pending', set())
         if button_attribute in pending:
@@ -404,9 +410,7 @@ class ShopPolishController(ShopArchipelagoController):
                         challenge_hunter_level=(
                             self.shop_profile.upgrade_level('challenge_hunter')
                         ),
-                        gem_dividend_level=self.shop_profile.upgrade_level(
-                            'gem_dividend'
-                        ),
+                        gem_dividend_level=self._shop_victory_dividend_level(run),
                         remaining_run_coins=run.run_coins,
                     ))
             if not run.mission_offers:
@@ -484,9 +488,7 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
+                gem_dividend_level=self._shop_victory_dividend_level(run),
                 remaining_run_coins=run.run_coins,
             )
             modifier_reward_parts = run_modifier_reward_parts(
@@ -499,9 +501,7 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
+                gem_dividend_level=self._shop_victory_dividend_level(run),
                 remaining_run_coins=run.run_coins,
             )
             selected = bool(
@@ -603,9 +603,7 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
+                gem_dividend_level=self._shop_victory_dividend_level(run),
                 remaining_run_coins=run.run_coins,
             )
             mission_context = self.mission_description_tooltip(mission)
@@ -638,21 +636,38 @@ class ShopPolishController(ShopArchipelagoController):
             launchable = bool(
                 run.status is RunStatus.ACTIVE
                 and not self.shop_launch_active()
+                and not (self.coop_mode_var.get() and self.coop_guest_connected())
                 and (
                     not run.mission_committed
                     or run.selected_mission_code == offer.mission_code
                 )
             )
-            card['launch_button'].configure(
-                state='normal' if launchable else 'disabled',
-                text=(
+            co_op_shop = self.coop_mode_var.get() and self.shop_mode_selected()
+            if co_op_shop:
+                if run.mission_committed and selected:
+                    launch_text = 'Launch Co-op Mission'
+                elif run.selected_mission_code == offer.mission_code:
+                    launch_text = 'Commit This Mission'
+                else:
+                    launch_text = 'Select This Mission'
+                if (run.selected_mission_code == offer.mission_code
+                        and not getattr(self, '_coop_shop_ready', False)):
+                    launchable = False
+                    launch_text = 'Waiting for Guest…'
+            else:
+                launch_text = (
                     'Relaunch This Mission'
                     if run.mission_committed and selected
                     else 'Launch This Mission'
-                ),
+                )
+            card['launch_button'].configure(
+                state='normal' if launchable else 'disabled',
+                text=launch_text,
             )
             card['reroll_button'].configure(
-                state='normal' if enabled and rerolls_left else 'disabled',
+                state=('normal' if enabled and rerolls_left
+                       and not (co_op_shop and self.coop_guest_connected())
+                       else 'disabled'),
                 text=(
                     f'Reroll This Mission ({rerolls_left} left)'
                     if rerolls_left else 'No Mission Rerolls Left'
@@ -680,7 +695,9 @@ class ShopPolishController(ShopArchipelagoController):
             else:
                 assist_text = 'No Difficulty Assists Left'
             card['ease_button'].configure(
-                state='normal' if can_assist else 'disabled',
+                state=('normal' if can_assist
+                       and not (co_op_shop and self.coop_guest_connected())
+                       else 'disabled'),
                 text=assist_text,
             )
         can_give_up = bool(
@@ -1674,10 +1691,16 @@ class ShopPolishController(ShopArchipelagoController):
                 'missions as Veterans.'
             ),
             'gem_dividend': (
-                f'On each mission victory, gain 1 Gem per '
-                f'{effects.get("ore_per_gem", 0)} Ore held before victory, '
-                f'capped at {effects.get("maximum_gems_per_level", 0)} '
-                'Gems per level. Does not spend Ore.'
+                f'Each full {effects.get("ore_per_gem", 0)} Ore pays 1 Gem '
+                'per upgrade level. At level 3, each group pays 3 Gems. '
+                'No cap.\n'
+                'Normal run: paid once on final mission victory or a defeat '
+                'that ends the run. Victories count Ore held before the '
+                'mission reward; defeat counts Ore held when you lose.\n'
+                'Endless run: paid after every mission victory and on a '
+                'run-ending defeat.\n'
+                'Emergency Revival and Give Up pay nothing. Dividend does '
+                'not deduct Ore.'
             ),
             'premium_supplier': (
                 f'From stage {effects.get("minimum_stage", 0)}, guarantee '
@@ -1836,7 +1859,7 @@ class ShopPolishController(ShopArchipelagoController):
             challenge_hunter_level=self.shop_profile.upgrade_level(
                 'challenge_hunter'
             ),
-            gem_dividend_level=self.shop_profile.upgrade_level('gem_dividend'),
+            gem_dividend_level=self._shop_victory_dividend_level(previous_run),
             remaining_run_coins=previous_run.run_coins,
         )
         completion_bonus = transition.reward.run_completion_meta_coins
@@ -1872,6 +1895,11 @@ class ShopPolishController(ShopArchipelagoController):
         self._set_shop_message(
             f'{source}: {code} failed at stage '
             f'{transition.run.failed_stage}. Shop run ended.'
+            + (
+                f' Gem Dividend: +'
+                f'{gem_text(transition.gem_dividend_meta_coins)}.'
+                if transition.gem_dividend_meta_coins else ''
+            )
             + (
                 f' Recovery Salvage saved {transition.salvaged_run_coins} Ore '
                 'for the next run.'

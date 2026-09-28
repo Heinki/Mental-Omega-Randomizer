@@ -369,6 +369,10 @@ class ShopController(ShopPolishController):
             ) else 'normal',
             text='Run Active' if active else 'Start Shop Mode',
         )
+        self.shop_coop_mode_check.configure(
+            state='disabled' if locked or active or getattr(self, '_coop_lobby', None)
+            else 'normal'
+        )
         self.shop_faction_pool_combo.configure(
             state='disabled' if locked else 'readonly'
         )
@@ -1356,6 +1360,7 @@ class ShopController(ShopPolishController):
             or run.status is not RunStatus.ACTIVE
             or run.mission_committed
             or not self.missions
+            or (self.coop_mode_var.get() and self.coop_guest_connected())
         ):
             return run
         allowed = (
@@ -1398,6 +1403,9 @@ class ShopController(ShopPolishController):
         return repaired
 
     def reroll_shop_mission(self, index):
+        if self.coop_mode_var.get() and self.coop_guest_connected():
+            self._set_shop_message('Host controls co-op Shop mission rerolls.')
+            return
         if self.shop_launch_active():
             self._set_shop_message('Wait for current mission process to close.')
             return
@@ -1438,12 +1446,17 @@ class ShopController(ShopPolishController):
             self._set_shop_message(
                 f'Rerolled only {replaced.mission_code}; other choices kept.'
             )
+            if self.coop_mode_var.get():
+                self.coop_publish_shop_stage()
         self.refresh_shop_mode()
 
     def reroll_shop_missions(self):
         self._set_shop_message('Use Reroll This Mission under chosen card.')
 
     def ease_shop_mission(self, index):
+        if self.coop_mode_var.get() and self.coop_guest_connected():
+            self._set_shop_message('Host controls co-op Shop difficulty assists.')
+            return
         run = self.shop_run
         if run is None:
             return
@@ -1457,6 +1470,8 @@ class ShopController(ShopPolishController):
             self._set_shop_message(
                 f'{code} eased from {normal} to {eased}; reward unchanged.'
             )
+            if self.coop_mode_var.get():
+                self.coop_publish_shop_stage()
         self.refresh_shop_mode()
 
     def on_launch_selected(self):
@@ -1467,6 +1482,9 @@ class ShopController(ShopPolishController):
 
     def launch_shop_mission(self, index):
         """Select and launch one offer directly from its mission card."""
+        if self.coop_mode_var.get() and self.shop_mode_selected():
+            self._advance_coop_shop_mission(index)
+            return
         if self.shop_launch_active():
             self._set_shop_message('Another mission is already running.')
             return
@@ -1492,7 +1510,61 @@ class ShopController(ShopPolishController):
             return
         self.launch_selected_shop_mission()
 
+    def _advance_coop_shop_mission(self, index):
+        if self.coop_guest_connected():
+            self._set_shop_message('Host controls co-op Shop mission selection.')
+            return
+        self.shop_profile, run = self.shop_repository.load()
+        try:
+            if run is None or run.status is not RunStatus.ACTIVE:
+                raise ShopTransitionError('Start an active co-op Shop run first')
+            code = self.shop_mission_cards[int(index)]['code']
+            if code not in {offer.mission_code for offer in run.mission_offers}:
+                raise ShopTransitionError('Select a current co-op Shop offer')
+            if not run.mission_committed and run.selected_mission_code != code:
+                self.shop_run = self.shop_service.select_mission(code)
+                self.coop_publish_shop_stage()
+                self._set_shop_message(f'Selected {code}; click again to commit.')
+                self.refresh_shop_mode()
+                return
+            lobby = getattr(self, '_coop_lobby', None)
+            if not (lobby and lobby.connected and getattr(self, '_coop_shop_ready', False)):
+                raise ShopTransitionError('Connect a guest with the same Shop seed and stage first')
+            if not run.mission_committed:
+                self.shop_run = self.shop_service.commit_mission(code)
+                self.coop_publish_shop_stage()
+                self._set_shop_message(f'Committed {code}; wait for guest, then launch.')
+                self.refresh_shop_mode()
+                return
+            if run.selected_mission_code != code:
+                raise ShopTransitionError('Shop stage is committed to another mission')
+            if self.shop_launch_active() or getattr(self, '_coop_busy', False):
+                raise ShopTransitionError('Another co-op Shop game is running')
+            process = getattr(self, 'active_game_process', None)
+            if process is not None and process.poll() is None:
+                raise ShopTransitionError('Close the current game first')
+            mission = self._shop_mission(code)
+            if not mission.get('coop_name'):
+                raise ShopTransitionError('Selected offer is not a co-op map')
+            self._shop_launch_run = run
+            self._shop_launch_victory_key = None
+            self._shop_launch_mission_pool = tuple(self._shop_run_mission_pool(run))
+            self._start_coop_game('host', code)
+        except (IndexError, ValueError, ShopTransitionError) as exc:
+            self._set_shop_message(exc, error=True)
+
+
     def launch_selected_shop_mission(self):
+        if self.coop_mode_var.get() and self.shop_mode_selected():
+            run = self.shop_repository.load_run()
+            code = str(getattr(run, 'selected_mission_code', '') or '')
+            index = next((index for index, card in enumerate(self.shop_mission_cards)
+                          if card['code'] == code), None)
+            if index is None:
+                self._set_shop_message('Select a co-op Shop offer first.', error=True)
+                return
+            self._advance_coop_shop_mission(index)
+            return
         self.shop_profile, run = self.shop_repository.load()
         self.shop_run = run
         try:
@@ -1633,6 +1705,15 @@ class ShopController(ShopPolishController):
         self.shop_run = transition.run
         self.show_shop_victory_result(source, code, run, transition)
         self.record_archipelago_shop_victory(run.stage, transition)
+        lobby = getattr(self, '_coop_lobby', None)
+        if self.coop_mode_var.get() and lobby and lobby.connected and lobby.role == 'host':
+            try:
+                lobby.send({'type': 'shop_victory', 'seed': run.seed,
+                            'stage': run.stage, 'code': code})
+                if transition.run.status is RunStatus.ACTIVE:
+                    self.coop_publish_shop_stage()
+            except OSError as exc:
+                self._set_shop_message(f'Co-op Shop victory sync failed: {exc}', error=True)
         self.refresh_shop_mode()
         return True
 
@@ -1660,6 +1741,11 @@ class ShopController(ShopPolishController):
                 else self.shop_profile.upgrade_level('emergency_revival')
                 * int(revival_definition.effects['revivals_per_run'])
             )
+            revival_override = getattr(self, '_coop_host_revival', None)
+            if revival_override is not None:
+                revival_capacity = (
+                    run.emergency_revivals_used + 1 if revival_override else 0
+                )
             revival_offers = ()
             if run.emergency_revivals_used < revival_capacity:
                 revival_offers = generate_mission_offers(
@@ -1679,7 +1765,8 @@ class ShopController(ShopPolishController):
                     offer_count=modifier_mission_offer_count(run.modifiers),
                 )
             transition = self.shop_service.record_failure(
-                code, revival_offers=revival_offers
+                code, revival_offers=revival_offers,
+                revival_override=revival_override,
             )
         except ShopTransitionError as exc:
             self._set_shop_message(exc, error=True)
@@ -1687,8 +1774,21 @@ class ShopController(ShopPolishController):
         if not transition.changed:
             return False
         self._shop_launch_run = transition.run
+        if transition.profile is not None:
+            self.shop_profile = transition.profile
         self.shop_run = transition.run
         self.show_shop_failure_result(source, code, transition)
+        lobby = getattr(self, '_coop_lobby', None)
+        if self.coop_mode_var.get() and lobby and lobby.connected and lobby.role == 'host':
+            try:
+                lobby.send({'type': 'shop_failure', 'seed': run.seed,
+                            'stage': run.stage, 'code': code,
+                            'revived': transition.revived,
+                            'session_token': self._coop_active_game_token})
+                if transition.revived:
+                    self.coop_publish_shop_stage()
+            except OSError as exc:
+                self._set_shop_message(f'Co-op Shop failure sync failed: {exc}', error=True)
         self.refresh_shop_mode()
         return True
 
@@ -1704,6 +1804,11 @@ class ShopController(ShopPolishController):
     def on_debug_mark_complete(self):
         if not self.shop_mode_selected():
             return super().on_debug_mark_complete()
+        if self.coop_mode_var.get() and self.coop_guest_connected():
+            messagebox.showwarning(
+                'Co-op Shop', 'Only host can record a co-op Shop victory.', parent=self
+            )
+            return
         self.shop_profile, run = self.shop_repository.load()
         if run is None or run.status is not RunStatus.ACTIVE:
             messagebox.showwarning('Shop Mode', 'No active Shop run.', parent=self)
@@ -2013,7 +2118,8 @@ class ShopController(ShopPolishController):
                     'eligible missions under current filters'
                 )
             repeat_missions = bool(
-                self.excluded_mission_codes
+                (self.excluded_coop_mission_codes if self.coop_mode_var.get()
+                 else self.excluded_mission_codes)
                 and self.archipelago_shop_slot_settings() is None
             )
             offers = generate_mission_offers(
