@@ -1,0 +1,12 @@
+{
+    "search.followSymlinks": false,
+    "files.exclude": {
+        "**/RandomizerLauncherData": true
+    },
+    "search.exclude": {
+        "**/RandomizerLauncherData": true
+    },
+    "files.watcherExclude": {
+        "**/RandomizerLauncherData/**": true
+    }
+}

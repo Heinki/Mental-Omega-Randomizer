@@ -96,6 +96,7 @@ from randomizer.maps.settings import (
 )
 from randomizer.maps.shop_modifiers import (
     apply_shop_clone_modifiers,
+    apply_shop_clone_restrictions,
     apply_shop_global_modifiers,
 )
 from randomizer.maps.special_buildings import (
@@ -2116,6 +2117,15 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             clone_handled,
             self.active_reward_settings(),
         )
+        restricted_clones = apply_shop_clone_restrictions(
+            clone_rule_sections, clone_handled, installed_rule_sections,
+            self.active_reward_settings(),
+        )
+        if restricted_clones:
+            self.append_log(
+                f'Production roulette blocked {len(restricted_clones)} '
+                'player clone types.'
+            )
         if any(shop_modifier_report.values()):
             self.append_log(
                 'Applied composed Shop run clone modifiers: '

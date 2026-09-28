@@ -671,6 +671,14 @@
           "unlocks_per_level": 1,
           "tier": 3
         }
+      },
+      "global_production_speed": {
+        "display_name": "Faster Production (All)",
+        "max_level": 5,
+        "prices": [12, 18, 25, 35, 50],
+        "effects": {
+          "speed_percent_per_level": 10
+        }
       }
     },
     "mission_effects": {
@@ -999,6 +1007,14 @@
           "power_inventory_flat": 2,
           "cross_faction_power_offers": 1,
           "enemy_armor_stacks": 1
+        }
+      },
+      "you_shall_not_build": {
+        "display_name": "You Shall Not Build!",
+        "description": "Each stage forbids one production category: aircraft, vehicles, infantry, or naval. Hardcore forbids two. Each victory gives 2 extra Ore.",
+        "effects": {
+          "production_roulette": 1,
+          "run_reward_flat": 2
         }
       },
       "hardcore": {

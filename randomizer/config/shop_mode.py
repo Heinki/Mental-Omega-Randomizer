@@ -210,6 +210,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'random_tier_1_unlock': ('unlocks_per_level', 'tier'),
         'random_tier_2_unlock': ('unlocks_per_level', 'tier'),
         'random_tier_3_unlock': ('unlocks_per_level', 'tier'),
+        'global_production_speed': ('speed_percent_per_level',),
     }
     upgrades = sections['permanent_upgrades']
     if not set(required_upgrades).issubset(upgrades):
@@ -339,6 +340,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'force_hardest_difficulty',
         'force_enemy_challenge',
         'rotate_shop_faction',
+        'production_roulette',
         'demolition_charges',
         'melee_fighters',
         'one_shot_one_kill',
@@ -404,6 +406,7 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('demolition_charges', 0) > 0
             or effects.get('melee_fighters', 0) > 0
             or effects.get('one_shot_one_kill', 0) > 0
+            or effects.get('production_roulette', 0) > 0
         ))
         mixes_percent_and_flat = bool(isinstance(effects, dict) and any(
             effects.get(percent_key, 100) != 100
