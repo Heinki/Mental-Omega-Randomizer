@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 
 from randomizer.config.static import load_static_config
+from randomizer.rewards.catalogue import REWARD_POOL
 from randomizer.missions.overrides import MISSIONS_WITH_ENEMY_SCALING_DISABLED
 
 from .active import active_shop_reward_ids
@@ -326,12 +327,46 @@ def shop_enemy_scaling_entries(
                 candidates.append((reward_id, 'Shop Hardcore', 'Hardcore'))
                 break
 
+    if run.endless:
+        scaling_settings = run.reward_settings.get('enemy_scaling') or {}
+        caps = scaling_settings.get('caps') or {}
+        rewards = sorted(
+            (reward for reward in REWARD_POOL if reward.get('enemy_reward')),
+            key=lambda reward: str(reward.get('enemy_effect_id') or ''),
+        )
+        stack_counts = Counter(
+            str(canonical_reward_for_id(item[0]).get('enemy_effect_id') or '')
+            for item in candidates
+        )
+        for index in range(2 * max(0, int(run.stage) - 10)):
+            available = [
+                reward for reward in rewards
+                if True
+                and stack_counts[str(reward.get('enemy_effect_id') or '')] <
+                max(0, int(caps.get(
+                    str(reward.get('enemy_effect_id') or ''),
+                    reward.get('enemy_maximum', 0),
+                )))
+            ]
+            if not available:
+                break
+            digest = sha256(
+                f'{run.seed}:shop_endless_enemy:{index}'.encode('utf-8')
+            ).digest()
+            reward = available[int.from_bytes(digest[:4], 'big') % len(available)]
+            stack_counts[str(reward.get('enemy_effect_id') or '')] += 1
+            candidates.append((
+                str(reward['name']), 'Shop Endless Mode',
+                f'Endless stage {run.stage}',
+            ))
+
     entries = []
     counts = Counter()
     for reward_id, source, earned_from in candidates:
         reward = canonical_reward_for_id(reward_id)
         effect_id = str(reward.get('enemy_effect_id') or '')
-        maximum = max(0, int(reward.get('enemy_maximum', 0)))
+        maximum = max(0, int((run.reward_settings.get('enemy_scaling') or {})
+            .get('caps', {}).get(effect_id, reward.get('enemy_maximum', 0))))
         if not effect_id or counts[effect_id] >= maximum:
             continue
         counts[effect_id] += 1
