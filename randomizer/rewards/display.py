@@ -163,7 +163,7 @@ HOUSE_CATEGORY_SUFFIXES = {
 # CountryType Veteran* lists because the engine exposes no per-type equivalent.
 HOUSE_SCOPED_BUFF_TYPES = {'production', 'veteran'}
 HOUSE_WIDE_BUFF_TYPES = {'production'}
-WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload'}
+WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload', 'mind_control'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'storage', 'income',
     'passenger_capacity', 'open_topped',
@@ -352,6 +352,8 @@ def _uncached_buff_stack_limit(reward):
         return max(1, int(
             REWARD_PLANNING['buff_stack_limits'][buff_type]
         ))
+    if buff_type == 'mind_control':
+        return 20
     if buff_type == 'speed':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         safe_ceiling = movement_speed_ceiling(target)
@@ -623,6 +625,13 @@ def buff_effect_lines(
             reward.get('unit'), 'Ammo'
         )
         return value_text(ammo_label, total_ammo, base_ammo)
+    if buff_type == 'mind_control':
+        capacities = target.get('mind_control_weapons', {}).values()
+        base = max(capacities, default=1)
+        return value_text(
+            target.get('mind_control_label', 'Mind control capacity'),
+            base + count, base,
+        )
     if buff_type == 'storage':
         increase = int(stacking_amount('storage', count))
         base_storage = int(target.get('storage', 0))

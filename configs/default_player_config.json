@@ -86,7 +86,7 @@
         "include_secondary_superweapon_rewards": true,
         "include_aid_power_rewards": true,
         "include_power_buff_rewards": true,
-        "unit_buff_catalogue_version": 2,
+        "unit_buff_catalogue_version": 3,
         "power_buff_catalogue_version": 1,
         "enabled_buff_types": [
           "production",
@@ -99,6 +99,7 @@
           "reload",
           "range",
           "ammo",
+          "mind_control",
           "storage",
           "passenger_capacity",
           "open_topped",

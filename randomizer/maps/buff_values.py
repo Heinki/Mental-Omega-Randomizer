@@ -232,9 +232,17 @@ def apply_unit_buff_value(values, target, buff_type, count):
 
 def apply_weapon_buff_value(values, base_stats, buff_type, count):
     if buff_type == 'damage' and base_stats.get('damage', 0) != 0:
+        for key in list(values):
+            if str(key).lower() == 'damage' and key != 'Damage':
+                values.pop(key)
         base_damage = int(round(base_stats['damage']))
         sign = -1 if base_damage < 0 else 1
         values['Damage'] = str(sign * stacked_weapon_damage(abs(base_damage), count))
+    elif buff_type == 'mind_control' and base_stats.get('damage', 0) > 0:
+        for key in list(values):
+            if str(key).lower() == 'damage' and key != 'Damage':
+                values.pop(key)
+        values['Damage'] = str(int(base_stats['damage']) + int(count))
     elif buff_type == 'range' and base_stats.get('range', 0) > 0:
         values['Range'] = format_multiplier(
             base_stats['range'] + stacking_amount('range', count)

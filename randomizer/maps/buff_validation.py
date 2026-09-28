@@ -31,6 +31,7 @@ _UNIT_BUFF_FIELDS = {
 }
 _WEAPON_BUFF_FIELDS = {
     'damage': 'Damage',
+    'mind_control': 'Damage',
     'range': 'Range',
     'reload': 'ROF',
 }
@@ -133,7 +134,10 @@ def _weapon_field_is_effective(
         details.get('weapon_clone_ids', {}) or {}
     ).items():
         stats = target_names.get(str(source_weapon).upper(), {})
-        base_field = 'rof' if buff_type == 'reload' else buff_type
+        base_field = (
+            'rof' if buff_type == 'reload'
+            else 'damage' if buff_type == 'mind_control' else buff_type
+        )
         base = _numeric(stats.get(base_field))
         actual = _numeric(
             _lower_values(sections.get(str(clone_weapon), {})).get(

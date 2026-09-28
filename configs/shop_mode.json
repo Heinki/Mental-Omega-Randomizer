@@ -675,7 +675,7 @@
       "global_production_speed": {
         "display_name": "Faster Production (All)",
         "max_level": 5,
-        "prices": [12, 18, 25, 35, 50],
+        "prices": [50, 75, 105, 140, 180],
         "effects": {
           "speed_percent_per_level": 10
         }

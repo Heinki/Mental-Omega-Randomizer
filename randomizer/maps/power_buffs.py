@@ -258,6 +258,45 @@ def _apply_damage(reward, installed_sections, count):
     )
 
 
+def _apply_tempest_animations(reward, installed_sections, area_count, damage_count):
+    """Scale Great Tempest's repeated animation hits in private AnimTypes.
+
+    SW.Damage and SW.Warhead affect only the initial Dominator strike. Most
+    Tempest damage comes from FVORTEX/FVORTEX2 art Damage=20 with their own
+    warheads. The art overlay materializes these private animations at launch.
+    """
+    if reward['superweapon'].upper() != 'GREATTEMPESTSPECIAL':
+        return
+    if not (area_count or damage_count):
+        return
+    animations = {}
+    for source, warhead in (
+        ('FVORTEX', 'GreatTempestAnimWH'),
+        ('FVORTEX2', 'GreatTempestAnim2WH'),
+    ):
+        if warhead not in installed_sections:
+            raise ValueError(f'Installed Tempest warhead is missing: {warhead}')
+        if area_count:
+            baseline = _value(installed_sections[warhead], 'CellSpread')
+            if baseline is None:
+                raise ValueError(f'{warhead}.CellSpread is missing')
+            spec = _ensure_auxiliary_clone(reward, warhead)
+            spec['list'] = 'Warheads'
+            spec['values']['CellSpread'] = _expanded_range(
+                baseline, area_count
+            )
+        animations[source] = {
+            'warhead': warhead,
+            'damage': str(_scaled_integer(
+                20,
+                float(POWER_BUFF_CONFIG['damage']['factor_per_stack']),
+                damage_count,
+            )) if damage_count else '20',
+            'next': 'FVORTEX2' if source == 'FVORTEX' else '',
+        }
+    reward['superweapon_animation_clones'] = animations
+
+
 def _apply_health(reward, installed_sections, count):
     health = POWER_BUFF_CONFIG['health']
     field_spec = health['techno_fields'].get(reward['superweapon'])
@@ -613,6 +652,9 @@ def apply_power_buffs_to_unlock_rewards(rewards, installed_sections):
         damage_count = counts.get((power_id.upper(), 'damage'), 0)
         if damage_count:
             _apply_damage(reward, installed_sections, damage_count)
+        _apply_tempest_animations(
+            reward, installed_sections, area_count, damage_count
+        )
 
         health_count = counts.get((power_id.upper(), 'health'), 0)
         if health_count:

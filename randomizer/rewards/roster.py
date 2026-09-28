@@ -788,7 +788,7 @@ def validate_unit_buff_application_contracts():
             errors.append(f'{unit_id}/{buff_type} has no UI effect text')
             continue
 
-        if buff_type in {'damage', 'range', 'reload'}:
+        if buff_type in {'damage', 'range', 'reload', 'mind_control'}:
             previous = None
             for stack in range(1, count + 1):
                 current = []
@@ -813,6 +813,13 @@ def validate_unit_buff_application_contracts():
                     ):
                         if str(weapon_id).upper() not in direct_ids:
                             continue
+                        if (
+                            buff_type == 'mind_control'
+                            and weapon_id.upper() not in peer_target.get(
+                                'mind_control_weapons', {}
+                            )
+                        ):
+                            continue
                         changed = {}
                         if apply_weapon_buff_value(
                             changed,
@@ -822,7 +829,9 @@ def validate_unit_buff_application_contracts():
                         ):
                             changed_values = normalized(changed)
                             stat_field = (
-                                'rof' if buff_type == 'reload' else buff_type
+                                'rof' if buff_type == 'reload'
+                                else 'damage' if buff_type == 'mind_control'
+                                else buff_type
                             )
                             if changed_values.get(stat_field) == str(
                                 stats.get(stat_field)

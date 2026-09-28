@@ -263,8 +263,18 @@ def unit_weapon_buff_rules(
                     )
                     continue
                 weapon_values = {}
-                for buff_type in ('damage', 'range', 'reload'):
+                for buff_type in ('damage', 'range', 'reload', 'mind_control'):
                     if buff_type in weapon_buff_types:
+                        if (
+                            buff_type == 'damage'
+                            and weapon.upper() in target.get('mind_control_weapons', {})
+                        ):
+                            continue
+                        if (
+                            buff_type == 'mind_control'
+                            and weapon.upper() not in target.get('mind_control_weapons', {})
+                        ):
+                            continue
                         buff_applied = apply_weapon_buff_value(
                             weapon_values,
                             base_stats,
@@ -434,8 +444,18 @@ def native_variant_unit_buff_rules(
             ),
         }
         weapon_values = {}
-        for buff_type in ('damage', 'range', 'reload'):
+        for buff_type in ('damage', 'range', 'reload', 'mind_control'):
             if buff_type in weapon_buff_types:
+                if (
+                    buff_type == 'damage'
+                    and weapon_id.upper() in target.get('mind_control_weapons', {})
+                ):
+                    continue
+                if (
+                    buff_type == 'mind_control'
+                    and weapon_id.upper() not in target.get('mind_control_weapons', {})
+                ):
+                    continue
                 apply_weapon_buff_value(
                     weapon_values,
                     base_stats,

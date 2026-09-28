@@ -998,3 +998,9 @@ support beams. Cloak rewards remain enabled; live combat still needs confirmatio
 
 References: [Ares prism forwarding defaults and weapon fields](https://ares-developers.github.io/Ares-docs/new/buildings/prismforwarding.html),
 [Ares support tower selection](https://github.com/Ares-Developers/Ares/blob/master/src/Ext/Building/PrismForward.cpp).
+
+## Mind control capacity and Great Tempest shop buffs
+
+Mental Omega 3.3.6 stores simultaneous mind-control capacity in the controlling WeaponType's `Damage` field. The Epsilon Adept and Elite start at 1; Mastermind, Dybbuk-Seizer, and Psychic Tower start at 3. Shop Control Capacity stacks add one to private player weapon clones, including elite weapons. Mastermind has `InfiniteMindControl=yes`, so its increase delays overload rather than imposing a hard cap. Yuri's `SuperMindControl` uses permanent control and has no useful node cap to increase.
+
+Great Tempest's `SW.Damage=25` and `GreatTempestBlastWH.CellSpread=8` affect its initial Dominator strike. Repeated vortex damage comes from `FVORTEX` and `FVORTEX2` art animations (`Damage=20`) with separate `GreatTempestAnimWH` and `GreatTempestAnim2WH` warheads (`CellSpread=9`). Damage and area stacks now create private animation and warhead types, register the animations before art loads, and redirect only the rewarded superweapon's `Dominator.FirstAnim` chain. The temporary art overlay scales animation damage and its warhead spread; native and hostile Tempests keep their installed values.

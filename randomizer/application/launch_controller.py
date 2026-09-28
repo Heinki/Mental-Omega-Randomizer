@@ -1174,6 +1174,12 @@ class LaunchController:
                             + '.'
                         )
                 except Exception as exc:
+                    if '[mortempestanimations]' in read_text(
+                        hook['root_map']
+                    ).lower():
+                        raise RuntimeError(
+                            'Could not prepare required Great Tempest buff artwork.'
+                        ) from exc
                     if '[mornanofiberanimations]' in read_text(
                         hook['root_map']
                     ).lower():

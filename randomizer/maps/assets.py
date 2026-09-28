@@ -762,6 +762,25 @@ def generated_unit_art_aliases(map_path, art_text, include_nanofiber=True):
     if include_nanofiber and 'MORNANOFIBERANIMATIONS' in map_by_upper:
         mutation_art = _art_cameo_sections(art_text, preserve_keys=True)
         aliases.update(nanofiber_art_aliases(map_by_upper, mutation_art))
+    tempest_animations = map_by_upper.get('MORTEMPESTANIMATIONS', {})
+    tempest_art = (
+        _art_cameo_sections(art_text, preserve_keys=True)
+        if tempest_animations else {}
+    )
+    for animation, source in tempest_animations.items():
+        source_art = tempest_art.get(str(source).upper())
+        if not source_art:
+            raise CustomAssetError(
+                f'Installed Tempest animation {source} is missing'
+            )
+        metadata = map_by_upper.get(str(animation).upper(), {})
+        aliases[str(animation).upper()] = {
+            **source_art,
+            'Image': str(source).upper(),
+            'Damage': metadata['damage'],
+            'Warhead': metadata['warhead'],
+            **({'Next': metadata['next']} if 'next' in metadata else {}),
+        }
     # PERUN's installed art section supplies the complete voxel but omits its
     # hidden cameo because the campaign identity is normally never buildable.
     # Merge the custom cameo into the complete installed section. Appending a
@@ -780,15 +799,26 @@ def generated_unit_art_aliases(map_path, art_text, include_nanofiber=True):
     return aliases
 
 
-def _stage_mutation_preload_rules(aliases, target_dir, rules_cache_path=None):
-    """Register mutation animations before the engine loads animation art.
+def _stage_mutation_preload_rules(
+    aliases, target_dir, rules_cache_path=None, map_path=None,
+):
+    """Register private animations and warheads before art loads.
 
     Animations introduced only by the map remain default AnimTypes in Ares
     3.0: no SHP and MakeInfantry=-1, even with a matching art section. Keep a
     complete installed rules file and add only the early animation registry.
     Unit definitions, buffs, and AnimToInfantry still belong to the map.
     """
-    animations = [key for key, values in aliases.items() if 'MakeInfantry' in values]
+    animations = [
+        key for key, values in aliases.items()
+        if 'MakeInfantry' in values
+        or (
+            key.startswith('MOR')
+            and 'Damage' in values
+            and 'Warhead' in values
+            and 'Image' in values
+        )
+    ]
     if not animations:
         return []
     source = Path(rules_cache_path or (CAMEO_CACHE_DIR / 'rulesmo.ini'))
@@ -806,6 +836,45 @@ def _stage_mutation_preload_rules(aliases, target_dir, rules_cache_path=None):
             additions[str(next_key)] = animation
             registered.add(animation.upper())
             next_key += 1
+    preload = {'Animations': additions}
+    if map_path is not None:
+        map_sections = all_section_value_maps(
+            Path(map_path).read_text(encoding='utf-8', errors='ignore').splitlines()
+        )
+        map_by_upper = {
+            str(section).upper(): values
+            for section, values in map_sections.items()
+        }
+        warhead_registry = _art_cameo_sections(text).get('WARHEADS', {})
+        registered_warheads = {
+            str(value).upper() for value in warhead_registry.values()
+        }
+        map_warhead_keys = {
+            str(value).upper(): str(key)
+            for key, value in map_by_upper.get('WARHEADS', {}).items()
+        }
+        next_warhead_key = max(
+            (int(key) for key in warhead_registry if str(key).isdigit()),
+            default=-1,
+        ) + 1
+        for animation in animations:
+            warhead = str(aliases[animation].get('Warhead') or '').upper()
+            if not warhead.startswith('MOR'):
+                continue
+            values = map_by_upper.get(warhead)
+            if not values:
+                raise CustomAssetError(
+                    f'Private animation warhead {warhead} is missing'
+                )
+            preload[warhead] = values
+            if warhead not in registered_warheads:
+                type_key = map_warhead_keys.get(
+                    warhead, str(next_warhead_key)
+                )
+                preload.setdefault('Warheads', {})[type_key] = warhead
+                registered_warheads.add(warhead)
+                if type_key == str(next_warhead_key):
+                    next_warhead_key += 1
     target = Path(target_dir) / 'rulesmo.ini'
     if target.exists() and not target.read_text(
         encoding='utf-8', errors='ignore'
@@ -813,7 +882,7 @@ def _stage_mutation_preload_rules(aliases, target_dir, rules_cache_path=None):
         raise CustomAssetError(f'Will not replace existing custom rules file: {target}')
     target.write_text(
         GENERATED_MUTATION_RULES_MARKER + '\n'
-        + _merge_art_section_values(text, {'Animations': additions}),
+        + _merge_art_section_values(text, preload),
         encoding='utf-8',
     )
     return [target]
@@ -877,7 +946,7 @@ def deploy_generated_unit_art(
         art_text,
     )
     mutation_assets = _stage_mutation_preload_rules(
-        aliases, target.parent, rules_cache_path
+        aliases, target.parent, rules_cache_path, map_path
     )
     merged_art = _merge_art_section_values(art_text, aliases)
     target.write_text(
