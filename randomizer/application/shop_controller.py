@@ -205,6 +205,7 @@ class ShopController(ShopPolishController):
         self._shop_cameo_retry_count = 0
         self._shop_search_refresh_after_ids = {}
         self._shop_launch_run = None
+        self._shop_launch_victory_key = None
         self._shop_launch_mission_pool = ()
 
     def shop_mode_selected(self):
@@ -285,11 +286,8 @@ class ShopController(ShopPolishController):
             else:
                 self.workspace_tabs.tab(self.shop_tab, text='Shop Mode')
             tabs = set(self.workspace_tabs.tabs())
-            if advanced_tab and advanced_tab in tabs:
-                was_advanced = selected_tab == advanced_tab
-                self.workspace_tabs.forget(self.advanced_tab)
-                if was_advanced and hasattr(self, 'settings_tab'):
-                    self.workspace_tabs.select(self.settings_tab)
+            if advanced_tab and advanced_tab not in tabs:
+                self.workspace_tabs.add(self.advanced_tab, text='Advanced')
             if replace_selected_tab:
                 needs_setup = bool(
                     self.shop_run is None
@@ -881,6 +879,7 @@ class ShopController(ShopPolishController):
             self.shop_run_coins_var.set('Run Ore: 0')
         else:
             self.shop_stage_var.set(
+                f'Endless Stage {run.stage}' if run.endless else
                 f'Stage {run.stage} / {run.run_length}'
             )
             self.shop_status_var.set(
@@ -912,6 +911,12 @@ class ShopController(ShopPolishController):
                 )
             )
         if hasattr(self, 'shop_run_ended_frame'):
+            self.shop_start_endless_button.configure(
+                state='normal' if (run is not None and
+                    run.status is RunStatus.COMPLETED and
+                    not run.ap_identity and
+                    not self.archipelago_run_active()) else 'disabled'
+            )
             if run is not None and run.status is not RunStatus.ACTIVE:
                 self.shop_choices_frame.grid_remove()
                 self.shop_actions_frame.grid_remove()
@@ -1342,7 +1347,11 @@ class ShopController(ShopPolishController):
             or not self.missions
         ):
             return run
-        allowed = mission_classes_for_stage(run.stage, run.run_length)
+        allowed = (
+            {offer.economy_class for offer in run.mission_offers}
+            if run.allow_repeats else
+            mission_classes_for_stage(run.stage, run.run_length)
+        )
         offer_count = modifier_mission_offer_count(run.modifiers)
         offers_valid = bool(
             len(run.mission_offers) == offer_count
@@ -1359,6 +1368,8 @@ class ShopController(ShopPolishController):
             stage=run.stage,
             run_length=run.run_length,
             completed_codes=run.completed_missions,
+            repeat_completed=run.allow_repeats,
+            unrestricted=run.allow_repeats,
             reroll_count=run.rerolls_used,
             offer_count=offer_count,
         )
@@ -1397,7 +1408,8 @@ class ShopController(ShopPolishController):
                 run_seed=run.seed,
                 stage=run.stage,
                 run_length=run.run_length,
-                completed_codes=run.completed_missions + kept_codes,
+                completed_codes=kept_codes if run.allow_repeats else run.completed_missions + kept_codes,
+                unrestricted=run.allow_repeats,
                 reroll_count=run.rerolls_used + 1,
                 previous_offer_codes=(replaced.mission_code,),
                 offer_count=1,
@@ -1493,7 +1505,7 @@ class ShopController(ShopPolishController):
                 raise ShopTransitionError(
                     'Select one current Shop mission before launching'
                 )
-            if code in set(run.completed_missions):
+            if not run.allow_repeats and code in set(run.completed_missions):
                 raise ShopTransitionError(
                     f'Shop mission {code} is already completed'
                 )
@@ -1515,6 +1527,7 @@ class ShopController(ShopPolishController):
             return
 
         self._shop_launch_run = committed
+        self._shop_launch_victory_key = None
         self._shop_launch_mission_pool = tuple(
             self._shop_run_mission_pool(committed)
         )
@@ -1553,14 +1566,19 @@ class ShopController(ShopPolishController):
             'name': 'Mission Victory',
             'description': 'Win the committed Shop mission.',
             'rewards': [],
-            'unlocked': code in set(run.completed_missions),
+            'unlocked': self.is_mission_complete(code),
         }]
 
     def is_mission_complete(self, code):
         if not self.shop_launch_active():
             return super().is_mission_complete(code)
         run = self.shop_repository.load_run() or self._shop_launch_run
-        return str(code or '').upper() in set(run.completed_missions)
+        code = str(code or '').upper()
+        key = getattr(self, '_shop_launch_victory_key', None)
+        if key is not None:
+            return (key in run.rewarded_victories and
+                    key.endswith(f':{code}:victory'))
+        return f'{run.run_id}:{run.stage}:{code}:victory' in run.rewarded_victories
 
     def unlock_mission_check(self, code, check_id, source):
         if not self.shop_launch_active():
@@ -1579,13 +1597,15 @@ class ShopController(ShopPolishController):
             return False
         try:
             next_offers = ()
-            if run.stage < run.run_length:
+            if run.endless or run.stage < run.run_length:
                 next_offers = generate_mission_offers(
                     self._shop_launch_mission_pool,
                     run_seed=run.seed,
                     stage=run.stage + 1,
-                    run_length=run.run_length,
+                    run_length=run.run_length + (1 if run.endless else 0),
                     completed_codes=run.completed_missions + (code,),
+                    repeat_completed=run.allow_repeats,
+                    unrestricted=run.allow_repeats,
                     offer_count=modifier_mission_offer_count(run.modifiers),
                 )
             transition = self.shop_service.record_victory(
@@ -1597,6 +1617,7 @@ class ShopController(ShopPolishController):
         if not transition.changed:
             return False
         self._shop_launch_run = transition.run
+        self._shop_launch_victory_key = transition.victory_key
         self.shop_profile = transition.profile
         self.shop_run = transition.run
         self.show_shop_victory_result(source, code, run, transition)
@@ -1615,7 +1636,7 @@ class ShopController(ShopPolishController):
             or run.status is not RunStatus.ACTIVE
             or not run.mission_committed
             or run.selected_mission_code != code
-            or code in set(run.completed_missions)
+            or (not run.allow_repeats and code in set(run.completed_missions))
         ):
             return False
         try:
@@ -1636,6 +1657,8 @@ class ShopController(ShopPolishController):
                     stage=run.stage,
                     run_length=run.run_length,
                     completed_codes=run.completed_missions + (code,),
+                    repeat_completed=run.allow_repeats,
+                    unrestricted=run.allow_repeats,
                     reroll_count=(
                         run.rerolls_used + run.emergency_revivals_used + 101
                     ),
@@ -1662,6 +1685,7 @@ class ShopController(ShopPolishController):
         if not self.shop_launch_active():
             return
         self._shop_launch_run = None
+        self._shop_launch_victory_key = None
         self._shop_launch_mission_pool = ()
         if hasattr(self, 'shop_stage_var'):
             self.refresh_shop_mode()
@@ -1824,6 +1848,33 @@ class ShopController(ShopPolishController):
         settings['enemy_scaling'] = enemy_scaling
         return settings
 
+    def start_shop_endless(self):
+        run = self.shop_run
+        if (run is None or run.status is not RunStatus.COMPLETED or
+                run.ap_identity or self.archipelago_run_active() or
+                self.shop_launch_active()):
+            return
+        pool = self._shop_run_mission_pool(run)
+        offers = generate_mission_offers(
+            pool, run_seed=run.seed, stage=run.stage + 1,
+            run_length=run.run_length + 1, repeat_completed=True,
+            unrestricted=True,
+            offer_count=modifier_mission_offer_count(run.modifiers),
+        )
+        if len(offers) != modifier_mission_offer_count(run.modifiers):
+            messagebox.showerror('Endless Mode',
+                                 'At least three eligible missions are required.',
+                                 parent=self)
+            return
+        self.shop_run = replace(
+            run, status=RunStatus.ACTIVE, stage=run.stage + 1,
+            run_length=run.run_length + 1, endless=True,
+            allow_repeats=True, mission_offers=offers,
+            selected_mission_code=None, mission_committed=False,
+        )
+        self.shop_repository.save_run(self.shop_run)
+        self.refresh_shop_mode()
+
     def start_shop_run(self):
         if not self.missions:
             messagebox.showwarning(
@@ -1950,10 +2001,15 @@ class ShopController(ShopPolishController):
                     f'Shop Mode needs at least {self.shop_config.run_length} '
                     'eligible missions under current filters'
                 )
+            repeat_missions = bool(
+                self.excluded_mission_codes
+                and self.archipelago_shop_slot_settings() is None
+            )
             offers = generate_mission_offers(
                 mission_pool,
                 run_seed=seed,
                 stage=1,
+                unrestricted=repeat_missions,
                 offer_count=modifier_mission_offer_count(modifiers),
             )
             expected_offer_count = modifier_mission_offer_count(modifiers)
@@ -1973,6 +2029,7 @@ class ShopController(ShopPolishController):
                 eligible_mission_codes=(
                     mission.get('code') for mission in mission_pool
                 ),
+                allow_repeats=repeat_missions,
                 starter_tech_ids=starter_tech_ids,
                 starting_unit_ids=starting_units,
                 starting_defense_ids=starting_defenses,

@@ -70,10 +70,11 @@ def victory_key(run_id, stage, mission_code):
 
 
 def _victory_already_rewarded(run, mission_code):
-    prefix = f'{run.run_id}:'
-    suffix = f':{mission_code}:victory'
+    if run.mission_committed and run.selected_mission_code == mission_code:
+        return victory_key(run.run_id, run.stage, mission_code) in run.rewarded_victories
     return any(
-        key.startswith(prefix) and key.endswith(suffix)
+        key.startswith(f'{run.run_id}:')
+        and key.endswith(f':{mission_code}:victory')
         for key in run.rewarded_victories
     )
 
@@ -165,6 +166,7 @@ def start_new_run(
     reward_mode='Standard',
     reward_settings=None,
     eligible_mission_codes=(),
+    allow_repeats=False,
     starter_tech_ids=(),
     starting_unit_ids=(),
     starting_defense_ids=(),
@@ -318,6 +320,7 @@ def start_new_run(
         campaign_filter=str(campaign_filter or 'All Campaigns'),
         reward_mode=str(reward_mode or 'Standard'),
         reward_settings=reward_settings,
+        allow_repeats=bool(allow_repeats),
         eligible_mission_codes=tuple(dict.fromkeys(
             str(code).upper() for code in eligible_mission_codes if str(code)
         )),
@@ -488,7 +491,7 @@ def commit_selected_mission(run, mission_code):
         raise ShopTransitionError(
             f'Mission {mission_code!r} is not a current mission choice'
         )
-    if mission_code in set(run.completed_missions):
+    if not run.allow_repeats and mission_code in set(run.completed_missions):
         raise ShopTransitionError(
             f'Mission {mission_code!r} is already completed in this run'
         )
@@ -509,10 +512,14 @@ def apply_mission_victory(
 ):
     mission_code = str(mission_code or '').upper()
     if _victory_already_rewarded(run, mission_code):
-        existing_key = next(
-            key for key in run.rewarded_victories
-            if key.startswith(f'{run.run_id}:')
-            and key.endswith(f':{mission_code}:victory')
+        existing_key = (
+            victory_key(run.run_id, run.stage, mission_code)
+            if run.mission_committed and run.selected_mission_code == mission_code
+            else next(
+                key for key in reversed(run.rewarded_victories)
+                if key.startswith(f'{run.run_id}:')
+                and key.endswith(f':{mission_code}:victory')
+            )
         )
         return VictoryTransition(
             profile, run, CurrencyReward(), existing_key, False
@@ -534,7 +541,7 @@ def apply_mission_victory(
         raise ShopTransitionError(
             f'Committed mission {mission_code!r} is missing from mission choices'
         )
-    final_victory = run.stage == run.run_length
+    final_victory = run.stage == run.run_length and not run.endless
     next_offers = tuple(next_offers)
     if final_victory:
         if next_offers:
@@ -543,8 +550,7 @@ def apply_mission_victory(
         raise ShopTransitionError(
             'Next Shop stage requires valid mission choices'
         )
-    completed_codes = set(run.completed_missions)
-    completed_codes.add(mission_code)
+    completed_codes = set() if run.allow_repeats else set(run.completed_missions) | {mission_code}
     if any(
         not isinstance(next_offer, MissionOffer)
         or next_offer.mission_code in completed_codes
@@ -607,6 +613,7 @@ def apply_mission_victory(
         run,
         status=RunStatus.COMPLETED if final_victory else RunStatus.ACTIVE,
         stage=run.stage if final_victory else run.stage + 1,
+        run_length=(run.run_length + 1 if run.endless else run.run_length),
         run_coins=carried_ore + reward.run_coins,
         run_purchases=(
             () if effects['reset_run_purchases_after_victory']

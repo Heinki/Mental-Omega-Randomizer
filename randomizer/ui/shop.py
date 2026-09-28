@@ -182,13 +182,22 @@ def build_shop_tab(self, workspace_tabs):
         justify='center',
         anchor='center',
     ).grid(row=1, column=0, sticky='ew', pady=(8, 16))
+    run_ended_buttons = ttk.Frame(run_ended)
+    run_ended_buttons.grid(row=2, column=0)
     self.shop_start_new_run_button = ttk.Button(
-        run_ended,
+        run_ended_buttons,
         text='Start New Run',
         command=self.start_shop_run,
         style='Shop.StartNewRun.TButton',
     )
-    self.shop_start_new_run_button.grid(row=2, column=0)
+    self.shop_start_new_run_button.pack(side='left', padx=(0, 8))
+    self.shop_start_endless_button = ttk.Button(
+        run_ended_buttons,
+        text='Start Endless Mode',
+        command=self.start_shop_endless,
+        style='Shop.StartNewRun.TButton',
+    )
+    self.shop_start_endless_button.pack(side='left')
     run_ended.grid(row=1, column=0, sticky='ew')
     run_ended.grid_remove()
 

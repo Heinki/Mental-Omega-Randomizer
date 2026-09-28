@@ -125,6 +125,8 @@ def generate_mission_offers(
     stage,
     run_length=None,
     completed_codes=(),
+    repeat_completed=False,
+    unrestricted=False,
     reroll_count=0,
     previous_offer_codes=(),
     offer_count=None,
@@ -144,13 +146,16 @@ def generate_mission_offers(
     if reroll_count < 0 or offer_count < 1:
         raise ValueError('Shop Mode reroll count must be non-negative and offer count positive')
 
-    candidates = _unique_missions(missions, completed_codes)
+    candidates = _unique_missions(
+        missions, () if repeat_completed else completed_codes
+    )
     if not candidates:
         return ()
     rng = random.Random(
         f'{run_seed}:shop_mission_offers:{stage}:{reroll_count}'
     )
-    allowed = mission_classes_for_stage(stage, run_length, config)
+    allowed = (frozenset(_CLASS_ORDER) if unrestricted else
+               mission_classes_for_stage(stage, run_length, config))
     eligible_candidates = sorted(
         (mission for mission in candidates if classify_mission(mission) in allowed),
         key=lambda item: item['code'],
@@ -161,7 +166,7 @@ def generate_mission_offers(
     selected_codes = set()
     # Early fixed-unit/hero missions provide one approachable option without
     # allowing Act 2, operations, or finales into the protected opening.
-    if stage <= SHOP_OPENING_STAGES:
+    if stage <= SHOP_OPENING_STAGES and not unrestricted:
         hero_candidates = [
             mission for mission in eligible_candidates
             if (

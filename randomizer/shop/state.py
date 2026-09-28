@@ -80,6 +80,10 @@ def _strings(value, field):
     return tuple(value)
 
 
+def _mission_code_history(value, field):
+    return tuple(code.upper() for code in _strings(value, field))
+
+
 def _unique_mission_codes(value, field):
     return tuple(dict.fromkeys(
         code.upper() for code in _unique_strings(value, field)
@@ -395,6 +399,8 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         eligible_mission_codes=_unique_mission_codes(
             document.get('eligible_mission_codes'), 'eligible_mission_codes'
         ),
+        allow_repeats=bool(document.get('allow_repeats', False)),
+        endless=bool(document.get('endless', False)),
         rerolls_used=_nonnegative_int(
             document.get('rerolls_used'), 'rerolls_used'
         ),
@@ -459,7 +465,7 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         mission_offers=offers,
         selected_mission_code=selected_mission,
         mission_committed=mission_committed,
-        completed_missions=_unique_mission_codes(
+        completed_missions=_mission_code_history(
             document.get('completed_missions'), 'completed_missions'
         ),
         rewarded_victories=_unique_strings(

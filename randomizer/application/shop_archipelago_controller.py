@@ -58,13 +58,7 @@ class ShopArchipelagoController:
         variable = self.__dict__.get('progression_mode_var')
         if variable is None or variable.get() != 'Shop Mode':
             return super().filtered_missions_for_seed()
-        return filter_missions_by_build_settings(
-            self._shop_campaign_missions(CAMPAIGN_FILTERS[0]),
-            include_true_no_build=self.include_no_build_missions_var.get(),
-            include_no_build_production=(
-                self.include_no_build_production_missions_var.get()
-            ),
-        )
+        return self._shop_run_mission_pool()
 
     def archipelago_shop_context(self):
         """Return last validated AP identity and Shop-compatible rewards."""
@@ -184,6 +178,7 @@ class ShopArchipelagoController:
 
     def _shop_run_mission_pool(self, run=None):
         """Use fresh UI filters unless an existing run is supplied explicitly."""
+        fresh = run is None
         if run is not None and run.eligible_mission_codes:
             codes = run.eligible_mission_codes
         else:
@@ -200,13 +195,20 @@ class ShopArchipelagoController:
             if run is not None
             else CAMPAIGN_FILTERS[0]
         )
-        return filter_missions_by_build_settings(
+        missions = filter_missions_by_build_settings(
             self._shop_campaign_missions(campaign),
             include_true_no_build=self.include_no_build_missions_var.get(),
             include_no_build_production=(
                 self.include_no_build_production_missions_var.get()
             ),
         )
+        if fresh and self.archipelago_shop_slot_settings() is None:
+            excluded = self.excluded_mission_codes
+            missions = [
+                mission for mission in missions
+                if str(mission.get('code') or '').upper() not in excluded
+            ]
+        return missions
 
     @staticmethod
     def _shop_location_group(check_id, locations, event_stem):
