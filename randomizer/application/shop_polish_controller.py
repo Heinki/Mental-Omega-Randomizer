@@ -1585,6 +1585,10 @@ class ShopPolishController(ShopArchipelagoController):
     def _shop_upgrade_effect_text(self, upgrade_id, definition):
         effects = definition.effects
         templates = {
+            'global_production_speed': (
+                'Production speed: +10% per level, up to +50%. '
+                'Applies to player units and buildings in future Shop runs.'
+            ),
             'mission_reroll': (
                 f'Each level grants +{effects.get("rerolls_per_level", 0)} '
                 'Mission Reroll per Shop run.'
@@ -1778,10 +1782,17 @@ class ShopPolishController(ShopArchipelagoController):
         if definition is None:
             return ''
         level = self.shop_profile.upgrade_level(upgrade_id)
+        effect = self._shop_upgrade_effect_text(upgrade_id, definition)
+        if upgrade_id == 'global_production_speed':
+            next_value = (
+                f'+{(level + 1) * 10}%'
+                if level < definition.max_level else 'MAX'
+            )
+            effect = f'Current: +{level * 10}%. Next: {next_value}. {effect}'
         return (
             f'{definition.display_name}\n'
             f'Current level: {level} / {definition.max_level}\n'
-            f'{self._shop_upgrade_effect_text(upgrade_id, definition)}'
+            f'{effect}'
         )
 
     def _refresh_shop_history(self):

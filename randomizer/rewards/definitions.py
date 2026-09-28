@@ -205,6 +205,8 @@ MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     # Rejuvenator's requested benefit is stronger repair shots. Replace its
     # former ammo reward and migrate earned stacks to healing output.
     'ammo': frozenset({'REJU'}),
+    # Yuri's permanent control does not consume simultaneous-control nodes.
+    'mind_control': frozenset({'YURIX2'}),
     # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
     # not as ordinary cargo. More seats or OpenTopped mixes incompatible
     # passenger logics, so both rewards are absent from every selection path.
@@ -632,6 +634,43 @@ def add_complete_faction_buff_targets():
 
 add_complete_faction_buff_targets()
 
+# Mind-control WeaponType Damage is the simultaneous-control capacity, not
+# attack damage. Keep these weapons out of generic firepower scaling and give
+# each player clone its own capacity upgrade. Permanent mind control does not
+# consume control nodes, so Yuri's ControllerBuilding weapon is ineligible.
+MIND_CONTROL_WEAPONS_BY_UNIT = {
+    'YURI': {'MindControl': 1, 'MindControlE': 1},
+    'YURIPR': {'MindControl': 1, 'MindControlE': 1},
+    'MIND': {'MultipleMindControlTank': 3, 'MultipleMindControlTankE': 3},
+    'SEIZER': {'DybbukMindControl': 3},
+    'YAPSYT': {'MultipleMindControlTower': 3, 'MultipleMindControlTowE': 3},
+    'YURIX2': {'SuperMindControl': 1},
+}
+for _unit_id, _weapons in MIND_CONTROL_WEAPONS_BY_UNIT.items():
+    _target = BUFF_TARGETS.get(_unit_id)
+    if _target is None:
+        continue
+    _target['mind_control_weapons'] = {
+        weapon_id.upper(): capacity
+        for weapon_id, capacity in _weapons.items()
+    }
+    if _unit_id == 'MIND':
+        _target.setdefault('buff_descriptions', {})['mind_control'] = (
+            'Masterminds can safely control one additional target before '
+            'overloading per stack in future launched missions.'
+        )
+        _target['mind_control_label'] = 'Safe mind control capacity'
+    for _weapon_id, _capacity in _weapons.items():
+        _target_weapons = _target.setdefault('weapons', {})
+        _existing_id = next(
+            (key for key in _target_weapons if key.upper() == _weapon_id.upper()),
+            _weapon_id.upper(),
+        )
+        _target_weapons.setdefault(_existing_id, {})['damage'] = _capacity
+    _allowed = _target.get('allowed_buff_types')
+    if _allowed and 'mind_control' not in _allowed:
+        _allowed.append('mind_control')
+
 # Spawned missile AircraftTypes can have a shorter pursuit envelope than an
 # upgraded launcher. Keep this optional for compatibility with older editable
 # unit-data overrides; configured entries extend only the reviewed launchers.
@@ -894,7 +933,11 @@ def build_buff_rewards():
                         and target.get('healing_weapon_damage')
                         and stats.get('damage', 0) < 0
                     )
-                    for stats in target.get('weapons', {}).values()
+                    for weapon_id, stats in target.get('weapons', {}).items()
+                    if not (
+                        buff_type_id == 'damage'
+                        and weapon_id.upper() in target.get('mind_control_weapons', {})
+                    )
                 )
                 has_special_damage = (
                     required_weapon_stat == 'damage'

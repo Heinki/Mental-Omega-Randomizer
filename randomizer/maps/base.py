@@ -863,6 +863,7 @@ def cloned_superweapon_plan(
         # SuperWeaponTypes. Clone them as isolated sections and register them
         # in their configured engine list when the reference parser requires
         # it (notably SW.Warhead -> [Warheads]).
+        auxiliary_ids = {}
         auxiliary_clones = reward.get('superweapon_auxiliary_clones')
         if isinstance(auxiliary_clones, dict):
             for auxiliary_source, clone_spec in auxiliary_clones.items():
@@ -880,8 +881,12 @@ def cloned_superweapon_plan(
                     preferred_auxiliary_clone,
                     f'auxiliary:{auxiliary_source}',
                 )
+                auxiliary_ids[auxiliary_source.upper()] = auxiliary_clone
                 auxiliary_values = dict(auxiliary_source_values)
-                auxiliary_values.update(clone_spec.get('values') or {})
+                overrides = clone_spec.get('values') or {}
+                for field in overrides:
+                    _remove_case_insensitive(auxiliary_values, field)
+                auxiliary_values.update(overrides)
                 section_rules[auxiliary_clone] = auxiliary_values
                 list_section = str(clone_spec.get('list') or '').strip()
                 if list_section:
@@ -927,6 +932,33 @@ def cloned_superweapon_plan(
                         )[type_key] = auxiliary_clone
                 for reference_key in clone_spec.get('reference_keys') or ():
                     clone_values[str(reference_key)] = auxiliary_clone
+
+        animation_clones = reward.get('superweapon_animation_clones')
+        if isinstance(animation_clones, dict) and animation_clones:
+            animation_ids = {
+                source.upper(): allocate_type_id(
+                    randomizer_clone_type_id(source),
+                    f'animation:{source_type}:{source}',
+                )
+                for source in animation_clones
+            }
+            for source, spec in animation_clones.items():
+                animation_id = animation_ids[source.upper()]
+                warhead = str(spec['warhead'])
+                section_rules.setdefault('MORTempestAnimations', {})[
+                    animation_id
+                ] = source
+                section_rules[animation_id] = {
+                    'Image': source,
+                    'Damage': str(spec['damage']),
+                    'Warhead': auxiliary_ids.get(warhead.upper(), warhead),
+                }
+                next_source = str(spec.get('next') or '').upper()
+                if next_source:
+                    section_rules[animation_id]['Next'] = animation_ids[
+                        next_source
+                    ]
+            clone_values['Dominator.FirstAnim'] = animation_ids['FVORTEX']
 
         # Narrow map-local additions may safely extend a shared registry or
         # warhead when every new key targets a private generated type. Existing

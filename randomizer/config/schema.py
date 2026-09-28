@@ -1296,7 +1296,7 @@ def _validate_enemy_scaling(sections, path):
     template_ids = set()
     valid_unit_buff_types = {
         'health', 'armor', 'speed', 'sight', 'damage', 'reload', 'range',
-        'ammo', 'self_healing', 'cloak', 'sensors',
+        'ammo', 'mind_control', 'self_healing', 'cloak', 'sensors',
     }
     for index, template in enumerate(templates):
         required = {

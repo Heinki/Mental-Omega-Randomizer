@@ -135,7 +135,6 @@ class ShopController(ShopPolishController):
         self.shop_access_view_var = tk.StringVar(value='Available')
         self.shop_buff_target_var = tk.StringVar(value='')
         self.shop_permanent_buff_target_var = tk.StringVar(value='')
-        self.shop_global_production_var = tk.StringVar(value='All production: +0% speed')
         self.shop_permanent_power_buff_target_var = tk.StringVar(value='')
         self.shop_permanent_unit_filter_var = tk.StringVar(value='All')
         self.shop_permanent_power_filter_var = tk.StringVar(value='All')
@@ -2744,6 +2743,13 @@ class ShopController(ShopPolishController):
             else:
                 state, row_tag, buyable = 'Available', 'available', True
             next_price = 'Max' if maxed else gem_text(price)
+            level_text = f'{level} / {definition.max_level}'
+            if upgrade_id == 'global_production_speed':
+                current_percent = level * 10
+                level_text = (
+                    f'{current_percent}% MAX' if maxed else
+                    f'{current_percent}→{(level + 1) * 10}%'
+                )
             iid = f'upgrade-{index}'
             upgrade_tree.insert(
                 '', 'end', iid=iid,
@@ -2751,7 +2757,7 @@ class ShopController(ShopPolishController):
                 values=(
                     definition.display_name,
                     '◀' if level > 0 else '',
-                    f'{level} / {definition.max_level}',
+                    level_text,
                     '▶' if not maxed else '',
                     state,
                     next_price,
@@ -2769,28 +2775,6 @@ class ShopController(ShopPolishController):
         self.configure_shop_tree_tags()
 
     def _refresh_permanent_buffs(self, active_run):
-        upgrade_id = 'global_production_speed'
-        definition = self.shop_config.permanent_upgrades[upgrade_id]
-        level = self.shop_profile.upgrade_level(upgrade_id)
-        maximum = definition.max_level
-        price = (
-            permanent_upgrade_price(upgrade_id, level + 1)
-            if level < maximum else None
-        )
-        self.shop_global_production_var.set(
-            f'All production: +{level * 10}% speed '
-            f'({level}/{maximum}); next: '
-            + (gem_text(price) if price is not None else 'MAX')
-        )
-        self.shop_global_production_buy.configure(
-            state='normal' if (
-                not active_run and price is not None
-                and self.shop_profile.meta_coins >= price
-            ) else 'disabled'
-        )
-        self.shop_global_production_refund.configure(
-            state='normal' if level and not active_run else 'disabled'
-        )
         tree = self.shop_permanent_buff_tree
         previous_selection = tree.selection()
         selected_reward_id = self.__dict__.pop(
@@ -3176,32 +3160,6 @@ class ShopController(ShopPolishController):
             self._set_shop_message(exc, error=True)
         else:
             self._report_profile_purchase(outcome, upgrade_id)
-        self.refresh_shop_mode()
-
-    def buy_global_production_speed(self):
-        upgrade_id = 'global_production_speed'
-        try:
-            outcome = self.shop_service.purchase_permanent_upgrade(upgrade_id)
-        except ShopTransitionError as exc:
-            self._set_shop_message(exc, error=True)
-        else:
-            self._report_profile_purchase(outcome, upgrade_id)
-        self.refresh_shop_mode()
-
-    def refund_global_production_speed(self):
-        upgrade_id = 'global_production_speed'
-        try:
-            outcome = self.shop_service.refund_permanent_upgrade(upgrade_id)
-        except ShopTransitionError as exc:
-            self._set_shop_message(exc, error=True)
-        else:
-            if outcome.validation.allowed:
-                self._set_shop_message(
-                    f'Refunded one Faster Production level for '
-                    f'{gem_text(outcome.validation.cost)}.'
-                )
-            else:
-                self._report_profile_purchase(outcome, upgrade_id)
         self.refresh_shop_mode()
 
     def remove_selected_permanent_upgrade(self):

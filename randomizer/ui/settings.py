@@ -77,6 +77,8 @@ def buff_setting_amount_text(buff_type):
         return f'{buff_type["setting_label"]} (+{amount})'
     if buff_id == 'passenger_capacity':
         return 'Passenger capacity (+1)'
+    if buff_id == 'mind_control':
+        return 'Mind control capacity (+1)'
     if buff_id == 'range':
         amount = stacking_amount('range', 1)
         return f'{buff_type["setting_label"]} (+{amount:g})'

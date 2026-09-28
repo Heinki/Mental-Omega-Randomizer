@@ -167,6 +167,7 @@ offensive powers Houses receive them through runtime Action 34.
 | `reload` | Unit fire rate | 10% shorter weapon reload | Direct weapon type with unit and shared-weapon safety guards. |
 | `range` | Attack range | +0.5 weapon range, capped at +50 | Direct weapon type with unit and shared-weapon safety guards. |
 | `ammo` | Ammo | +1 ammo capacity | Direct unit type with the same safety guard. |
+| `mind_control` | Mind control capacity +1 | +1 controlled target per stack, up to 20 stacks | Private controlling weapons for Epsilon Adept, Epsilon Elite, Mastermind, Dybbuk-Seizer, and Psychic Tower. On Mastermind, this raises the safe threshold before overload. Permanent mind control is excluded. |
 | `passenger_capacity` | Passenger capacity +1 | +1 passenger slot | Repeatable direct transport-clone effect. Available for 20 reviewed cargo and capture-bay units. `Gunner=yes` IFV-family units and sealed internal-payload systems are excluded. `SizeLimit` remains unchanged. |
 | `open_topped` | Passenger firing | Enables passengers to fire from inside the transport | One effective direct transport-clone stack. `Gunner=yes` IFV-family units and the noncombat Stallion are excluded. Units already using `OpenTopped=yes` omit this reward while retaining native firing behavior and passenger-capacity rewards. |
 | `self_healing` | Self-healing | +1% maximum health per normal repair tick per stack, capped at 50% | Direct unit type. Every useful stack raises `SelfHealing.Amount`; the first also enables self-healing. |
@@ -184,8 +185,8 @@ seed planning reallocates later reward slots to other eligible buffs. Movement
 uses category safety ceilings, and special-building capacity retains its
 reviewed four-stack limit. Damage, reload, ammo, passenger capacity, and hero
 capacity remain repeatable without an additional Randomizer stat cap.
-Existing player configs enable newly introduced Passenger capacity and
-Passenger firing once; previously disabled older buff types stay disabled.
+Existing player configs enable newly introduced Mind control capacity;
+previously disabled older buff types stay disabled.
 Frozen seed reward settings never migrate.
 
 Direct unit, defense, and weapon definitions are global to the map. The launcher creates narrow standalone `MORP...` TechnoType and `MORW...` WeaponType copies when needed to isolate earned buffs from enemies. Buildable defense buffs always use a complete installed-identity clone: player and enabled-helper placements, exact helper base-plan entries, veterancy lists, and relevant trigger event/action type references use the clone, while enemy placements, plans, original defenses, and original weapons remain unchanged. Clone `Owner` includes each allowed country's parent chain so transferred factories recognize custom campaign countries; concrete `RequiredHouses` remains the isolation gate, preventing hostile descendants of the same parent from receiving the clone. This is distinct from unsafe global country-section buffs. With helper buffs disabled, helpers retain only originals. Mobile helper TaskForces use compatible buffed clones while native originals remain buildable dynamic-AI fallbacks. Mission-critical events/actions follow a clone whenever every actual map consumer of its source type is friendly, even if the trigger itself is owned by an unrelated story house. Every friendly scripted TaskForce follows the same clone, including locked map-only hero aliases, so escort and hero-loss checks cannot watch a different identity from the one the mission creates. Shared enemy types are retargeted only in player/helper-owned trigger lists. If a buildable shared type has an outside-owned destruction event that cannot be assigned safely, the launcher creates a buffed build-only player clone while leaving every native placement, team, action, and event untouched; non-buildable ambiguous types stay native and skip unsafe direct buffs. Helper veteran lists prioritize every clone actually produced before fallback IDs so the engine's 480-byte value limit cannot silently remove veterancy. Positive ownership prevents enemy buff leakage and duplicate player cameos. Installed positive mobile-unit limits remain capped normally unless the seed enables the isolated unlimited setting or earns repeatable `+1` cap stacks; enemy originals retain native limits in both cases. Launcher locks `0` and one-build-only `-1` are never treated as live caps. Effects that cannot be isolated safely remain skipped and logged. Saved Standard rewards are canonicalized and faction-filtered again at launch, so corrected catalogue entries cannot keep leaking foreign technology from an older seed.
@@ -322,7 +323,8 @@ policy from unit/building buffs. Every unlockable power can receive faster recha
 Paid powers can receive lower activation cost. Reviewed area powers grow
 their `SW.Range` or private warhead `CellSpread`; reviewed timed effects grow
 their direct or private-warhead duration. Direct-damage powers receive higher
-`SW.Damage`. Safe UnitDelivery and paradrop rewards gain exactly one
+`SW.Damage`. Great Tempest also scales its private vortex animation damage and
+warhead spread, which supply its repeated hits. Safe UnitDelivery and paradrop rewards gain exactly one
 additional payload object per stack. Spy Plane never gains redundant extra
 aircraft; its reviewed reconnaissance buff increases only its private plane's
 `Sight`. Unique source structures, beacons, and

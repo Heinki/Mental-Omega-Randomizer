@@ -746,6 +746,14 @@
         "requires_clone": true
       },
       {
+        "id": "mind_control",
+        "name": "Control Capacity",
+        "setting_label": "Mind control capacity +1",
+        "description": "{plural} can control one additional target per stack in future launched missions.",
+        "requires_stat": "mind_control_weapons",
+        "requires_clone": true
+      },
+      {
         "id": "storage",
         "name": "Expanded Ore Storage",
         "setting_label": "Harvester storage",
