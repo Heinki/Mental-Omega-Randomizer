@@ -390,6 +390,12 @@ def build_shop_tab(self, workspace_tabs):
         command=self.give_up_shop_run,
     )
     self.shop_give_up_button.pack(side='left')
+    self.shop_production_restriction_var = tk.StringVar(value='')
+    ttk.Label(
+        actions, textvariable=self.shop_production_restriction_var,
+        style='Shop.Help.TLabel',
+        wraplength=320, justify='left',
+    ).pack(side='left', padx=(12, 0))
     self.shop_reset_profile_button = ttk.Button(
         actions,
         text='Reset Profile…',
@@ -817,6 +823,19 @@ def build_shop_tab(self, workspace_tabs):
         state='disabled',
     )
     self.shop_permanent_buff_button.grid(row=4, column=0, sticky='e')
+    global_production = ttk.Frame(permanent_buffs)
+    global_production.grid(row=5, column=0, sticky='ew', pady=(8, 0))
+    ttk.Label(
+        global_production, textvariable=self.shop_global_production_var,
+    ).pack(side='left')
+    self.shop_global_production_buy = ttk.Button(
+        global_production, text='Buy', command=self.buy_global_production_speed,
+    )
+    self.shop_global_production_buy.pack(side='right')
+    self.shop_global_production_refund = ttk.Button(
+        global_production, text='Refund', command=self.refund_global_production_speed,
+    )
+    self.shop_global_production_refund.pack(side='right', padx=(0, 6))
 
     permanent_power_buffs = ttk.Frame(permanent_tabs, padding=8)
     self.shop_permanent_power_buffs_panel = permanent_power_buffs

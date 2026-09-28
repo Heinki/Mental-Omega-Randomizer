@@ -71,6 +71,8 @@ from randomizer.shop.modifiers import (
     modifier_forces_hardest_difficulty,
     modifier_mission_offer_count,
     modifier_shop_faction,
+    stage_production_restrictions,
+    PRODUCTION_RESTRICTION_LABELS,
 )
 from randomizer.shop.model import (
     SHOP_ACCESS_REWARD_MODE,
@@ -133,6 +135,7 @@ class ShopController(ShopPolishController):
         self.shop_access_view_var = tk.StringVar(value='Available')
         self.shop_buff_target_var = tk.StringVar(value='')
         self.shop_permanent_buff_target_var = tk.StringVar(value='')
+        self.shop_global_production_var = tk.StringVar(value='All production: +0% speed')
         self.shop_permanent_power_buff_target_var = tk.StringVar(value='')
         self.shop_permanent_unit_filter_var = tk.StringVar(value='All')
         self.shop_permanent_power_filter_var = tk.StringVar(value='All')
@@ -492,6 +495,15 @@ class ShopController(ShopPolishController):
                 settings[f'shop_{key}'] = (
                     float(value) if key.endswith('_percent') else int(value)
                 )
+            production_level = self.shop_profile.upgrade_level(
+                'global_production_speed'
+            )
+            settings['shop_production_time_percent'] /= (
+                1 + production_level / 10
+            )
+            settings['shop_production_restrictions'] = (
+                stage_production_restrictions(run)
+            )
             armor_seeds, damage_seeds = self._shop_modifier_clone_seed_plan(run)
             settings['shop_modifier_armor_seed_stacks'] = armor_seeds
             settings['shop_modifier_damage_seed_stacks'] = damage_seeds
@@ -2510,6 +2522,20 @@ class ShopController(ShopPolishController):
         )
         score = modifier_difficulty(modifiers)
         self.shop_difficulty_var.set(f'Run Difficulty: +{score}')
+        if hasattr(self, 'shop_production_restriction_var'):
+            run = self.shop_run
+            restrictions = stage_production_restrictions(run) if (
+                run is not None and run.status is RunStatus.ACTIVE
+            ) else ()
+            self.shop_production_restriction_var.set(
+                ' | '.join(
+                    PRODUCTION_RESTRICTION_LABELS[item]
+                    for item in restrictions
+                ) if restrictions else (
+                    'Production roulette: revealed when run starts'
+                    if 'you_shall_not_build' in modifiers else ''
+                )
+            )
         if hasattr(self, 'shop_modifier_difficulty_var'):
             self.shop_modifier_difficulty_var.set(
                 f'Run Difficulty +{score}'
@@ -2743,6 +2769,28 @@ class ShopController(ShopPolishController):
         self.configure_shop_tree_tags()
 
     def _refresh_permanent_buffs(self, active_run):
+        upgrade_id = 'global_production_speed'
+        definition = self.shop_config.permanent_upgrades[upgrade_id]
+        level = self.shop_profile.upgrade_level(upgrade_id)
+        maximum = definition.max_level
+        price = (
+            permanent_upgrade_price(upgrade_id, level + 1)
+            if level < maximum else None
+        )
+        self.shop_global_production_var.set(
+            f'All production: +{level * 10}% speed '
+            f'({level}/{maximum}); next: '
+            + (gem_text(price) if price is not None else 'MAX')
+        )
+        self.shop_global_production_buy.configure(
+            state='normal' if (
+                not active_run and price is not None
+                and self.shop_profile.meta_coins >= price
+            ) else 'disabled'
+        )
+        self.shop_global_production_refund.configure(
+            state='normal' if level and not active_run else 'disabled'
+        )
         tree = self.shop_permanent_buff_tree
         previous_selection = tree.selection()
         selected_reward_id = self.__dict__.pop(
@@ -3128,6 +3176,32 @@ class ShopController(ShopPolishController):
             self._set_shop_message(exc, error=True)
         else:
             self._report_profile_purchase(outcome, upgrade_id)
+        self.refresh_shop_mode()
+
+    def buy_global_production_speed(self):
+        upgrade_id = 'global_production_speed'
+        try:
+            outcome = self.shop_service.purchase_permanent_upgrade(upgrade_id)
+        except ShopTransitionError as exc:
+            self._set_shop_message(exc, error=True)
+        else:
+            self._report_profile_purchase(outcome, upgrade_id)
+        self.refresh_shop_mode()
+
+    def refund_global_production_speed(self):
+        upgrade_id = 'global_production_speed'
+        try:
+            outcome = self.shop_service.refund_permanent_upgrade(upgrade_id)
+        except ShopTransitionError as exc:
+            self._set_shop_message(exc, error=True)
+        else:
+            if outcome.validation.allowed:
+                self._set_shop_message(
+                    f'Refunded one Faster Production level for '
+                    f'{gem_text(outcome.validation.cost)}.'
+                )
+            else:
+                self._report_profile_purchase(outcome, upgrade_id)
         self.refresh_shop_mode()
 
     def remove_selected_permanent_upgrade(self):

@@ -1,7 +1,7 @@
 """Apply Shop run modifiers to isolated player clone sections."""
 
 from randomizer.config.tuning import stacking_multiplier
-from randomizer.rewards.catalogue import BUFF_TARGETS
+from randomizer.rewards.catalogue import BUFF_TARGETS, NAVAL_UNIT_IDS
 
 
 _COMBAT_CATEGORIES = frozenset({'infantry', 'units', 'aircraft'})
@@ -36,6 +36,56 @@ def _set_number(values, requested, value, *, integer=False):
     else:
         rendered = f'{float(value):.6f}'.rstrip('0').rstrip('.')
         values[key] = rendered or '0'
+
+
+def apply_shop_clone_restrictions(
+    rule_sections, handled_by_unit, installed_sections, settings,
+):
+    """Block only human production clones; preserve native AI/script types."""
+    blocked = set(settings.get('shop_production_restrictions') or ())
+    if not blocked:
+        return ()
+    touched = []
+    for source_id, details in handled_by_unit.items():
+        source_id = str(source_id).upper()
+        source_values = installed_sections.get(source_id, {})
+        clone_id = str((details or {}).get('clone_id') or '')
+        clone_values = rule_sections.get(clone_id, {})
+        values = dict(source_values)
+        values.update(clone_values)
+        get = lambda key: str(values.get(_key(values, key), '')).strip().lower()
+        category = str(BUFF_TARGETS.get(source_id, {}).get('category') or '')
+        naval = (
+            source_id in NAVAL_UNIT_IDS
+            or get('Naval') == 'yes'
+            or get('WaterBound') == 'yes'
+            or get('SpeedType') == 'hover'
+            or get('MovementZone') in {'amphibious', 'amphibiousdestroyer'}
+        )
+        factory = get('Factory')
+        denied = (
+            naval and 'naval' in blocked
+            or category == 'infantry' and 'infantry' in blocked
+            or category == 'aircraft' and 'aircraft' in blocked
+            or category == 'units' and (
+                'naval' in blocked if naval else 'vehicles' in blocked
+            )
+            or factory == 'infantrytype' and 'infantry' in blocked
+            or factory == 'aircrafttype' and 'aircraft' in blocked
+            or factory in {'unittype', 'vesseltype'} and (
+                'naval' in blocked if naval else 'vehicles' in blocked
+            )
+        )
+        if not denied:
+            continue
+        for candidate in dict.fromkeys(
+            (details or {}).get('clone_ids') or (clone_id,)
+        ):
+            candidate = str(candidate)
+            if candidate in rule_sections:
+                rule_sections[candidate]['TechLevel'] = '-1'
+                touched.append(candidate)
+    return tuple(touched)
 
 
 def apply_shop_clone_modifiers(rule_sections, handled_by_unit, settings):

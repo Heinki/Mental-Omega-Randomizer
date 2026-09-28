@@ -30,6 +30,7 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
         'support_recharge_percent': Fraction(1, 1),
         'unit_inventory_flat': 0,
         'power_inventory_flat': 0,
+        'production_roulette': 0,
         'starter_veteran': 0,
         'starter_unit_count_flat': 0,
         'disable_rerolls': 0,
@@ -77,6 +78,31 @@ def modifier_difficulty(modifier_ids):
 
 
 SHOP_FACTION_ROTATION = ('Allies', 'Soviets', 'Epsilon', 'Foehn')
+
+PRODUCTION_RESTRICTIONS = ('aircraft', 'vehicles', 'infantry', 'naval')
+PRODUCTION_RESTRICTION_LABELS = {
+    'aircraft': 'Grounded: no aircraft or airfields',
+    'vehicles': 'Out of Gas: no vehicles or war factories',
+    'infantry': 'Manpower Shortage: no infantry or barracks',
+    'naval': 'Aquaphobia: no boats, hovercraft, or shipyards',
+}
+
+
+def stage_production_restrictions(run):
+    """Choose stable stage restrictions; Hardcore blocks two categories."""
+    if run is None or 'you_shall_not_build' not in run.modifiers:
+        return ()
+    ranked = sorted(
+        PRODUCTION_RESTRICTIONS,
+        key=lambda category: sha256(
+            f'{run.seed}:production-roulette:{category}'.encode(
+                'utf-8'
+            )
+        ).digest(),
+    )
+    start = (max(1, int(run.stage)) - 1) % len(ranked)
+    count = 2 if 'hardcore' in run.modifiers else 1
+    return tuple(ranked[(start + index) % len(ranked)] for index in range(count))
 
 
 def shop_faction_rotation(run_key):
