@@ -594,7 +594,12 @@ class StateController(GenerationSettings):
         return bool(self.config.get('use_act_based_reward_multipliers', True))
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
-        self.config['coop_mode'] = bool(self.coop_mode_var.get())
+        self.config['coop_feature_enabled'] = bool(
+            self.coop_feature_enabled_var.get()
+        )
+        self.config['coop_mode'] = bool(
+            self.config['coop_feature_enabled'] and self.coop_mode_var.get()
+        )
         self.config['dark_mode'] = bool(self.dark_mode_var.get())
         self.config['hide_reward_details'] = bool(self.hide_reward_details_var.get())
         self.config['hide_locked_grid_missions'] = bool(
@@ -779,6 +784,11 @@ class StateController(GenerationSettings):
     def apply_portable_settings(self, config):
         """Apply one validated portable config to every live setting control."""
         previous_coop_mode = bool(self.coop_mode_var.get())
+        config['coop_feature_enabled'] = bool(
+            self.coop_feature_enabled_var.get()
+        )
+        if not config['coop_feature_enabled']:
+            config['coop_mode'] = False
         self.config = config
         self.coop_mode_var.set(bool(config.get('coop_mode', False)))
         generation = self.config.get('generation', {})

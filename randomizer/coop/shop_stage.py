@@ -44,6 +44,31 @@ def stage_digest(snapshot: dict) -> str:
     ).encode('utf-8')).hexdigest()
 
 
+def recovery_result_message(run):
+    """Rebuild the host's last durable Shop result after a lobby reconnect."""
+    if run is None or not run.coop_last_result:
+        return None
+    result = run.coop_last_result
+    stage = result['stage']
+    code = result['code']
+    if result['outcome'] == 'victory':
+        if (code not in run.completed_missions
+                or not (run.stage > stage or run.status is RunStatus.COMPLETED)):
+            raise ValueError('Stored co-op Shop victory differs from host run.')
+        return {'type': 'shop_victory', 'seed': run.seed,
+                'stage': stage, 'code': code}
+    if result['revived']:
+        if (run.status is not RunStatus.ACTIVE or run.stage != stage
+                or run.emergency_revivals_used < 1):
+            raise ValueError('Stored co-op Shop revival differs from host run.')
+    elif (run.status is not RunStatus.FAILED or run.failed_stage != stage
+          or run.failed_mission_code != code):
+        raise ValueError('Stored co-op Shop failure differs from host run.')
+    return {'type': 'shop_failure', 'seed': run.seed,
+            'stage': stage, 'code': code,
+            'revived': result['revived'], 'recovery': True}
+
+
 def apply_stage_snapshot(run, snapshot: dict, missions: dict):
     """Apply host mission decisions; preserve guest purchases, buffs, and Ore."""
     if run is None or run.status is not RunStatus.ACTIVE:

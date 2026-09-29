@@ -4,6 +4,9 @@ The randomizer hosts and joins directly. `MentalOmegaClient.exe` and the
 CnCNet service are not used. The launcher shares run state over TCP, prepares
 matching co-op maps on both computers, writes `spawn.ini` and `spawnmap.ini`,
 then starts the game through `Syringe.exe`. The game uses UDP between players.
+Co-op controls are hidden by default. In **Advanced**, check **Enable
+experimental co-op** on each launcher to expose them. Uncheck it to return to
+the normal mission pool; an active co-op Shop run or game must finish first.
 
 ## Start a co-op run
 
@@ -44,12 +47,13 @@ co-op win and resulting Grid update still need a player playtest. The host
 watcher handles debug-log truncation between games.
 
 Each player receives the same earned infantry, vehicle, aircraft, and naval
-access plus supported earned unit buffs. Randomizer Arsenal uses the selected
-co-op mission's arsenal. If no access is earned, a logged `FV` test grant lets
-the first map launch. The prototype does not yet transfer earned powers,
-building rewards, starting credits, enemy scaling, or every single-player
-production gate. Native co-op map technology remains available. Shop Mode is
-described separately below.
+access plus supported earned unit buffs and shared starting-credit bonuses.
+Randomizer Arsenal uses the selected co-op mission's arsenal. If no access is
+earned, a logged `FV` test grant lets the first map launch. The prototype does
+not yet transfer earned powers,
+building rewards, enemy scaling, or every single-player production gate.
+Private Shop starting-credit bonuses also remain work. Native co-op map
+technology remains available. Shop Mode is described separately below.
 
 ## Co-op Shop Mode work
 
@@ -80,7 +84,11 @@ the same stage and receive the host's new mission offers; each player's Ore,
 purchases, and profile stay private. Closing the guest game first waits for the
 host result. Failure messages are safe to receive twice. These paths have
 local checks, but a real completed or failed mission still needs a player
-playtest. A missed result after lobby disconnect cannot yet be recovered.
+playtest. The host saves its latest Shop result with the run transaction. After
+a lobby disconnect, reconnect both launchers: the host replays a missed
+victory, failure, or revival before syncing the current stage. The guest
+applies the result once to its private run. Local checks cover this path;
+two live games still need a full victory/failure/reconnect playtest.
 
 A separate Shop map prototype now takes a host unit loadout and a guest unit
 loadout. It creates distinct unit and weapon clones, gates each clone to one
@@ -129,7 +137,7 @@ commitment, matching seed/stage/completed missions, and reject changes after
 commitment. The direct host/join diagnostic above remains useful for map tests
 without changing either Shop run.
 
-The six remaining work packages are tracked in [TODOS.md](TODOS.md).
+The five remaining work packages are tracked in [TODOS.md](TODOS.md).
 
 ## Internet connection
 

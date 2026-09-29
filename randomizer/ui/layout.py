@@ -793,6 +793,7 @@ def _build_right_panel(self, main_frame):
         self.shop_modifier_button_by_id[modifier_id] = checkbutton
 
     shop_coop_row = ttk.Frame(shop_settings_frame)
+    self.shop_coop_row = shop_coop_row
     shop_coop_row.grid(row=16, column=0, columnspan=2, sticky='ew', pady=(12, 0))
     self.shop_coop_mode_check = ttk.Checkbutton(
         shop_coop_row, text='Co-op mode (2 players)',

@@ -104,6 +104,8 @@ class LauncherApp(
         self.missions = []
         self._mission_by_code = {}
         self.config = load_config()
+        if not self.config.get('coop_feature_enabled', False):
+            self.config['coop_mode'] = False
         archipelago_config = self.config.setdefault('archipelago', {})
         self.archipelago_client_uuid = str(
             archipelago_config.get('client_uuid') or uuid.uuid4()
@@ -336,6 +338,9 @@ class LauncherApp(
             DEFAULT_PROGRESSION_MODE,
         )
         self.progression_mode_var = tk.StringVar(value=progression_mode_default)
+        self.coop_feature_enabled_var = tk.BooleanVar(
+            value=bool(self.config.get('coop_feature_enabled', False))
+        )
         self.coop_mode_var = tk.BooleanVar(value=bool(
             self.config.get('coop_mode', self.state.get('coop_mode', False))
         ))

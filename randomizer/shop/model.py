@@ -248,6 +248,7 @@ class ShopRun:
     stock_lock_stage: int | None = None
     failed_mission_code: str | None = None
     failed_stage: int | None = None
+    coop_last_result: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -302,6 +303,7 @@ class ShopRun:
             'stock_lock_stage': self.stock_lock_stage,
             'failed_mission_code': self.failed_mission_code,
             'failed_stage': self.failed_stage,
+            'coop_last_result': deepcopy(dict(self.coop_last_result)),
         }
 
 

@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 from randomizer.coop.prototype import (
     _map_config, build_manifest, install, rebuild_from_manifest, remove,
 )
+from randomizer.coop.direct import _spawn_data
 from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import section_value_map
 from randomizer.rewards.catalogue import REWARD_POOL
@@ -43,6 +44,8 @@ def main():
                  if reward.get('unit') == 'FV' and reward.get('buff_type') == 'damage'),
             next(reward for reward in REWARD_POOL
                  if reward.get('unit') == 'HTNK' and reward.get('buff_type') == 'speed'),
+            next(reward for reward in REWARD_POOL
+                 if reward.get('buff_type') == 'starting_credits'),
         ],
         'mission_order': ['CHECK'],
         'mission_checks': {},
@@ -69,6 +72,17 @@ def main():
         manifest, data = build_manifest(
             GAME_ROOT, state, 'coop_sthunder', unit_id='FV', **kwargs
         )
+        assert manifest['starting_credit_bonus'] == 1000
+        for role in ('host', 'guest'):
+            spawn = _spawn_data(
+                GAME_ROOT, manifest, role=role, name=role,
+                peer_name='other', peer_ip='127.0.0.1',
+                local_port=1234, peer_port=1235, game_id=42,
+                difficulty='normal', map_data=data,
+            )
+            assert section_value_map(
+                spawn.decode('latin-1').splitlines(), 'Settings'
+            )['credits'] == '11000'
         with TemporaryDirectory() as first, TemporaryDirectory() as second:
             for temp in (first, second):
                 private = Path(temp)
@@ -99,6 +113,13 @@ def main():
                 pass
             else:
                 raise AssertionError('Manifest destination tampering was accepted.')
+            tampered = dict(manifest, starting_credit_bonus=20001)
+            try:
+                rebuild_from_manifest(Path(first), tampered)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError('Manifest credit tampering was accepted.')
     try:
         build_manifest(
             GAME_ROOT, {**base, 'progression_mode': 'Shop Mode'},

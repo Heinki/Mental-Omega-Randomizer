@@ -22,12 +22,13 @@ from randomizer.coop.victory import inject_victory_markers
 from randomizer.maps.buff_values import _active_direct_buff_counts
 from randomizer.rewards.arsenal import ARSENAL_MODE, arsenal_launch_rewards, arsenal_unit_type
 from randomizer.rewards.catalogue import BUFF_TARGETS, buff_stack_limit, canonical_reward, check_rewards
+from randomizer.rewards.display import starting_credit_bonus
 from randomizer.rewards.rules import tech_ids_for_rewards
 from randomizer.rewards.roster import randomizer_unit_roster
 from randomizer.ui.cameos import installed_rules_registry
 
 
-PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V5'
+PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V6'
 SHOP_MARKER = 'MOR_COOP_SHOP_V1'
 SUPPORTED_PROGRESSION = {'Classic', 'Grid Mode', 'Mission List'}
 SIDE_COUNTRIES = (
@@ -254,11 +255,14 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
                         | {selected_id})
     for candidate_id in access_ids:
         _require_registered_type(source, candidate_id)
-    buff_counts = _buff_counts(_launch_rewards(state, source_mission), access_ids)
+    launch_rewards = _launch_rewards(state, source_mission)
+    buff_counts = _buff_counts(launch_rewards, access_ids)
+    credit_bonus = starting_credit_bonus(launch_rewards)
     production_type = arsenal_unit_type(selected_id, BUFF_TARGETS.get(selected_id))
     source_hash = _digest(source.read_bytes())
     identity = _digest(json.dumps(
-        [PROTOTYPE_MARKER, source_hash, str(state['seed']), access_ids, buff_counts, country],
+        [PROTOTYPE_MARKER, source_hash, str(state['seed']), access_ids,
+         buff_counts, credit_bonus, country],
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     stem = f'morcp_{coop_name.removeprefix("coop_").lower()}_{identity}'
@@ -275,6 +279,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
         'unit_id': selected_id,
         'access_ids': access_ids,
         'buff_counts': buff_counts,
+        'starting_credit_bonus': credit_bonus,
         'test_override': test_override,
         'reward_name': reward.get('name', selected_id),
         'production_type': production_type,
@@ -419,6 +424,9 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
         raise ValueError('Manifest seed is invalid.')
     access_ids = manifest.get('access_ids')
     buff_counts = manifest.get('buff_counts')
+    credit_bonus = manifest.get('starting_credit_bonus')
+    if (type(credit_bonus) is not int or not 0 <= credit_bonus <= 20000):
+        raise ValueError('Invalid co-op starting credit bonus.')
     if (not isinstance(access_ids, list) or not access_ids or
             not all(isinstance(item, str) and re.fullmatch(r'[A-Z0-9_]{2,24}', item)
                     for item in access_ids) or
@@ -434,7 +442,8 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
                for value in counts.values()):
             raise ValueError('Invalid co-op buff count.')
     expected_identity = _digest(json.dumps(
-        [PROTOTYPE_MARKER, manifest['source_sha256'], seed, access_ids, buff_counts, country],
+        [PROTOTYPE_MARKER, manifest['source_sha256'], seed, access_ids,
+         buff_counts, credit_bonus, country],
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     expected_stem = f'morcp_{coop_name.removeprefix("coop_")}_{expected_identity}'

@@ -153,6 +153,12 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
         'Multi1_Alliances': {'HouseAllyOne': '1'},
         'Multi2_Alliances': {'HouseAllyOne': '0'},
     }
+    if manifest.get('schema') == 4 and manifest.get('starting_credit_bonus', 0):
+        # The CnCNet spawner reads Settings/Credits as real starting credits.
+        # Source: CnCNet/yr-patches src/spawner/load_spawn.c.
+        sections['Settings']['Credits'] = str(
+            10000 + manifest['starting_credit_bonus']
+        )
     for index, (enemy_side, enemy_color, location) in enumerate(enemies, 3):
         key = f'Multi{index}'
         sections.setdefault('HouseHandicaps', {})[key] = str(handicap)

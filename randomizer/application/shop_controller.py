@@ -1692,7 +1692,11 @@ class ShopController(ShopPolishController):
                     offer_count=modifier_mission_offer_count(run.modifiers),
                 )
             transition = self.shop_service.record_victory(
-                code, next_offers=next_offers
+                code, next_offers=next_offers,
+                record_coop_result=(
+                    self.coop_mode_var.get()
+                    and getattr(self, '_coop_active_game_role', '') == 'host'
+                ),
             )
         except (ShopTransitionError, ValueError) as exc:
             self._set_shop_message(exc, error=True)
@@ -1767,6 +1771,10 @@ class ShopController(ShopPolishController):
             transition = self.shop_service.record_failure(
                 code, revival_offers=revival_offers,
                 revival_override=revival_override,
+                record_coop_result=(
+                    self.coop_mode_var.get()
+                    and getattr(self, '_coop_active_game_role', '') == 'host'
+                ),
             )
         except ShopTransitionError as exc:
             self._set_shop_message(exc, error=True)

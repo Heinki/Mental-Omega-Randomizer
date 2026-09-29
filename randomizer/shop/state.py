@@ -345,6 +345,27 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         raise ShopStateError(
             'Only a failed Shop run may record failure fields'
         )
+    coop_last_result = deepcopy(_object(
+        document.get('coop_last_result', {}), 'coop_last_result'
+    ))
+    if coop_last_result:
+        if set(coop_last_result) != {'stage', 'code', 'outcome', 'revived'}:
+            raise ShopStateError('Invalid co-op Shop result fields')
+        result_stage = _positive_int(
+            coop_last_result['stage'], 'coop_last_result.stage', 1
+        )
+        result_code = _string(
+            coop_last_result['code'], 'coop_last_result.code', required=True
+        ).upper()
+        if (result_stage > run_length or not result_code.startswith('COOP_')
+                or not isinstance(coop_last_result['outcome'], str)
+                or coop_last_result['outcome'] not in {'victory', 'failure'}
+                or type(coop_last_result['revived']) is not bool
+                or (coop_last_result['outcome'] == 'victory'
+                    and coop_last_result['revived'])):
+            raise ShopStateError('Invalid co-op Shop result')
+        coop_last_result['stage'] = result_stage
+        coop_last_result['code'] = result_code
     modifiers = _unique_strings(document.get('modifiers'), 'modifiers')
     unknown_modifiers = [
         modifier_id for modifier_id in modifiers
@@ -481,4 +502,5 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         stock_lock_stage=stock_lock_stage,
         failed_mission_code=failed_mission,
         failed_stage=failed_stage,
+        coop_last_result=coop_last_result,
     )

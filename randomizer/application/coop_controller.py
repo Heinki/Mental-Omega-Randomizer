@@ -15,7 +15,7 @@ from randomizer.coop.direct import host_session, join_session
 from randomizer.coop.lobby import LOBBY_PORT, Lobby, decode_state, encode_state
 from randomizer.coop.prototype import available_units, build_manifest, shop_unit_loadout
 from randomizer.coop.shop_stage import (
-    apply_stage_snapshot, stage_digest, stage_snapshot,
+    apply_stage_snapshot, recovery_result_message, stage_digest, stage_snapshot,
 )
 from randomizer.coop.victory import victory_marker_name
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT
@@ -27,7 +27,14 @@ class CoopController:
     def refresh_coop_controls(self):
         if not hasattr(self, 'coop_connection_button'):
             return
-        enabled = self.coop_mode_var.get()
+        available = self.coop_feature_enabled_var.get()
+        for widget in (self.coop_mode_check, self.coop_connection_button,
+                       self.compact_coop_button, self.shop_coop_row):
+            if available:
+                widget.grid()
+            else:
+                widget.grid_remove()
+        enabled = available and self.coop_mode_var.get()
         guest = self.coop_guest_connected()
         self.campaign_combo.configure(values=(
             ('All Campaigns', 'Allies', 'Soviets', 'Epsilon') if enabled else
@@ -55,7 +62,25 @@ class CoopController:
         lobby = getattr(self, '_coop_lobby', None)
         return bool(lobby and lobby.connected and lobby.role == 'guest')
 
+    def on_coop_feature_enabled_changed(self):
+        enabled = bool(self.coop_feature_enabled_var.get())
+        if not enabled and self.coop_mode_var.get():
+            self.coop_mode_var.set(False)
+            self.on_coop_mode_changed()
+            if self.coop_mode_var.get():
+                self.coop_feature_enabled_var.set(True)
+                self.refresh_coop_controls()
+                return
+        self.config['coop_feature_enabled'] = enabled
+        save_config(self.config)
+        self.refresh_coop_controls()
+        self.refresh_shop_settings_controls()
+        self.update_header_summary()
+
     def on_coop_mode_changed(self):
+        if self.coop_mode_var.get() and not self.coop_feature_enabled_var.get():
+            self.coop_mode_var.set(False)
+            return
         process = getattr(self, 'active_game_process', None)
         if (self.gameplay_settings_locked() or getattr(self, '_coop_lobby', None)
                 or (process is not None and process.poll() is None)):
@@ -103,6 +128,9 @@ class CoopController:
         self.append_log('Co-op map pool selected.' if enabled else 'Campaign map pool selected.')
 
     def open_coop_dialog(self):
+        if not self.coop_feature_enabled_var.get():
+            messagebox.showinfo('Co-op', 'Enable experimental co-op in Advanced first.')
+            return
         if not self.coop_mode_var.get():
             messagebox.showinfo('Co-op', 'Check Co-op mode in Settings first.')
             return
@@ -197,6 +225,8 @@ class CoopController:
 
     def _connect_coop(self, role, name, address, port_text,
                       network_mode='local', pairing_code=''):
+        if not self.coop_feature_enabled_var.get():
+            return
         if getattr(self, '_coop_lobby', None):
             return
         if self.active_game_process is not None and self.active_game_process.poll() is None:
@@ -204,9 +234,20 @@ class CoopController:
             return
         if self.shop_mode_selected():
             run = self.shop_repository.load_run()
-            if run is None or run.status is not RunStatus.ACTIVE:
-                messagebox.showwarning('Co-op', 'Start an active Shop run first.')
+            if run is None:
+                messagebox.showwarning('Co-op', 'Start a Shop run first.')
                 return
+            if run.status is not RunStatus.ACTIVE:
+                try:
+                    recoverable = role == 'host' and recovery_result_message(run) is not None
+                except ValueError as exc:
+                    messagebox.showwarning('Co-op', str(exc))
+                    return
+                if not recoverable:
+                    messagebox.showwarning(
+                        'Co-op', 'A finished Shop run can reconnect only as host to sync its result.'
+                    )
+                    return
             if (not run.eligible_mission_codes or any(
                     not str(code).startswith('COOP_')
                     for code in run.eligible_mission_codes)):
@@ -305,7 +346,15 @@ class CoopController:
         if not (lobby and lobby.connected and lobby.role == 'host'):
             return
         if self.shop_mode_selected() and self.coop_mode_var.get():
-            self.coop_publish_shop_stage()
+            try:
+                run = self.shop_repository.load_run()
+                result = recovery_result_message(run)
+                if result:
+                    lobby.send(result)
+                if run is not None and run.status is RunStatus.ACTIVE:
+                    self.coop_publish_shop_stage()
+            except (OSError, ValueError) as exc:
+                self.append_log('Co-op Shop recovery sync failed: ' + str(exc), error=True)
             return
         if not self.state.get('coop_mode'):
             return
@@ -400,11 +449,15 @@ class CoopController:
                 code = message.get('code')
                 stage = message.get('stage')
                 token = message.get('session_token')
+                recovery = message.get('recovery') is True
                 if (type(stage) is not int or not isinstance(code, str)
                         or not code.startswith('COOP_')
                         or type(message.get('revived')) is not bool
-                        or not isinstance(token, str) or len(token) < 24
-                        or token != getattr(self, '_coop_active_game_token', None)):
+                        or message.get('recovery') not in (None, True)
+                        or (not recovery and (
+                            not isinstance(token, str) or len(token) < 24
+                            or token != getattr(self, '_coop_active_game_token', None)
+                        ))):
                     raise ValueError('Host Shop failure has invalid game identity.')
                 if (run is None or run.seed != message.get('seed')
                         or run.stage != stage):
@@ -502,6 +555,9 @@ class CoopController:
                     self._coop_status_var.set(f'{lobby.peer} suggests {mission["title"]}. Select it in Grid to play.')
 
     def request_coop_launch(self):
+        if not self.coop_feature_enabled_var.get():
+            messagebox.showwarning('Co-op', 'Enable experimental co-op in Advanced first.')
+            return
         lobby = getattr(self, '_coop_lobby', None)
         mission = self.selected_mission()
         if not self.state.get('coop_mode') or mission is None:
@@ -520,6 +576,8 @@ class CoopController:
             self._start_coop_game('host', mission['code'])
 
     def _start_coop_game(self, role, code, *, session_token=''):
+        if not self.coop_feature_enabled_var.get():
+            return
         lobby = getattr(self, '_coop_lobby', None)
         if getattr(self, '_coop_busy', False) or not lobby or not lobby.connected:
             return
@@ -531,6 +589,7 @@ class CoopController:
             session_token = secrets.token_urlsafe(24)
         self._coop_queue = queue.Queue()
         self._coop_active_game_code = code
+        self._coop_active_game_role = role
         self._coop_active_game_token = session_token
         mission = self.mission_lookup().get(code)
         state_snapshot = copy.deepcopy(self.state)
@@ -667,9 +726,8 @@ class CoopController:
         self.append_log('Co-op game process exited.')
         watch = getattr(self, '_coop_victory_watch', None)
         if watch and not watch['detected'] and not self.is_mission_complete(watch['code']):
-            lobby = getattr(self, '_coop_lobby', None)
             if (self.shop_mode_selected() and self.coop_mode_var.get()
-                    and lobby and lobby.role == 'host'
+                    and getattr(self, '_coop_active_game_role', '') == 'host'
                     and DEBUG_LOG.exists() and not watch.get('log_error')):
                 if self.record_failed_mission_attempt(
                         watch['code'], 'Co-op game closed without victory'):

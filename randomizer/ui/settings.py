@@ -200,7 +200,7 @@ def _build_advanced_tab(self, workspace_tabs):
     advanced_tab = ttk.Frame(workspace_tabs, padding=(8, 8, 8, 8))
     self.advanced_tab = advanced_tab
     advanced_tab.columnconfigure(0, weight=1)
-    advanced_tab.rowconfigure(2, weight=1)
+    advanced_tab.rowconfigure(3, weight=1)
     workspace_tabs.add(advanced_tab, text='Advanced')
     advanced_tab.bind('<Configure>', self.on_advanced_tab_configure, add='+')
     self.advanced_pool_intro_label = ttk.Label(
@@ -220,9 +220,15 @@ def _build_advanced_tab(self, workspace_tabs):
         advanced_tab, text='', style='Muted.TLabel', wraplength=340, justify='left'
     )
     self.advanced_pool_status_label.grid(row=1, column=0, sticky='ew', pady=(0, 6))
+    self.coop_feature_check = ttk.Checkbutton(
+        advanced_tab, text='Enable experimental co-op',
+        variable=self.coop_feature_enabled_var,
+        command=self.on_coop_feature_enabled_changed,
+    )
+    self.coop_feature_check.grid(row=2, column=0, sticky='w', pady=(0, 6))
     advanced_notebook = ttk.Notebook(advanced_tab, style='Unlocks.TNotebook')
     self.advanced_notebook = advanced_notebook
-    advanced_notebook.grid(row=2, column=0, sticky='nsew')
+    advanced_notebook.grid(row=3, column=0, sticky='nsew')
     advanced_notebook.bind(
         '<<NotebookTabChanged>>',
         self.on_advanced_notebook_tab_changed,

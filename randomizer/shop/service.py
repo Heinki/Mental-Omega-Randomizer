@@ -444,7 +444,7 @@ class ShopProgressionService:
             self.repository.save_profile(outcome.profile)
         return outcome
 
-    def record_victory(self, mission_code, *, next_offers=()):
+    def record_victory(self, mission_code, *, next_offers=(), record_coop_result=False):
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
@@ -452,6 +452,13 @@ class ShopProgressionService:
             profile, run, mission_code, next_offers=next_offers
         )
         if transition.changed:
+            if record_coop_result:
+                transition = replace(transition, run=replace(
+                    transition.run, coop_last_result={
+                        'stage': run.stage, 'code': str(mission_code).upper(),
+                        'outcome': 'victory', 'revived': False,
+                    },
+                ))
             self.repository.commit(
                 transition.profile,
                 transition.run,
@@ -459,7 +466,8 @@ class ShopProgressionService:
             )
         return transition
 
-    def record_failure(self, mission_code, *, revival_offers=(), revival_override=None):
+    def record_failure(self, mission_code, *, revival_offers=(),
+                       revival_override=None, record_coop_result=False):
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
@@ -491,6 +499,13 @@ class ShopProgressionService:
             ),
         )
         if transition.changed:
+            if record_coop_result:
+                transition = replace(transition, run=replace(
+                    transition.run, coop_last_result={
+                        'stage': run.stage, 'code': str(mission_code).upper(),
+                        'outcome': 'failure', 'revived': transition.revived,
+                    },
+                ))
             if transition.profile is not None:
                 self.repository.commit(
                     transition.profile,
