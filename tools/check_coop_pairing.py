@@ -1,18 +1,21 @@
 """Exercise paired lobby and game handshakes over local TCP sockets."""
 
 from pathlib import Path
+import hashlib
 import queue
 import socket
 import sys
 from tempfile import TemporaryDirectory
 import threading
 import time
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from randomizer.coop import direct
 from randomizer.coop.direct import host_session, join_session
 from randomizer.coop.lobby import Lobby
 from randomizer.coop.prototype import build_manifest, build_shop_manifest
@@ -83,7 +86,8 @@ def lobby_case(host_code, guest_code, expected):
             guest.close()
 
 
-def game_case(manifest, host_root, guest_root, host_token, guest_token, expected):
+def game_case(manifest, host_root, guest_root, host_token, guest_token, expected,
+              *, corrupt_guest_map=False):
     port = free_port()
     output = queue.Queue()
 
@@ -96,28 +100,51 @@ def game_case(manifest, host_root, guest_root, host_token, guest_token, expected
         except Exception as exc:
             output.put(('error', str(exc)))
 
-    thread = threading.Thread(target=run_host, daemon=True)
-    thread.start()
-    try:
-        guest_result = join_session(
-            guest_root, '127.0.0.1', name='Guest', control_port=port,
-            game_port=1235, session_token=guest_token,
-        )
-        guest_event = ('ready', guest_result)
-    except Exception as exc:
-        guest_event = ('error', str(exc))
-    host_event = output.get(timeout=30)
-    thread.join(timeout=1)
+    original_mode_map = direct._mode_map
+
+    def mode_map(root, chosen_manifest, difficulty):
+        data = original_mode_map(root, chosen_manifest, difficulty)
+        return data + b'\n; mismatched guest map\n' if root == guest_root else data
+
+    with patch.object(direct, '_mode_map', mode_map) if corrupt_guest_map else patch.object(
+        direct, '_mode_map', original_mode_map
+    ):
+        thread = threading.Thread(target=run_host, daemon=True)
+        thread.start()
+        try:
+            guest_result = join_session(
+                guest_root, '127.0.0.1', name='Guest', control_port=port,
+                game_port=1235, session_token=guest_token,
+            )
+            guest_event = ('ready', guest_result)
+        except Exception as exc:
+            guest_event = ('error', str(exc))
+        host_event = output.get(timeout=30)
+        thread.join(timeout=1)
     assert not thread.is_alive()
     assert host_event[0] == expected, host_event
     assert guest_event[0] == expected, guest_event
     if expected == 'error':
-        assert 'token' in host_event[1].lower()
-        assert 'token' in guest_event[1].lower()
+        if corrupt_guest_map:
+            assert 'maps differ' in guest_event[1].lower(), guest_event
+        else:
+            assert 'token' in host_event[1].lower()
+            assert 'token' in guest_event[1].lower()
     else:
         assert host_event[1]['map_sha256'] == guest_event[1]['map_sha256']
-        assert (host_root / 'spawnmap.ini').read_bytes() == (
-            guest_root / 'spawnmap.ini').read_bytes()
+        host_map = (host_root / 'spawnmap.ini').read_bytes()
+        guest_map = (guest_root / 'spawnmap.ini').read_bytes()
+        assert host_map == guest_map
+        assert hashlib.sha256(host_map).hexdigest() == host_event[1]['map_sha256']
+        host_settings = section_value_map_preserve(
+            (host_root / 'spawn.ini').read_text(encoding='latin-1').splitlines(), 'Settings'
+        )
+        guest_settings = section_value_map_preserve(
+            (guest_root / 'spawn.ini').read_text(encoding='latin-1').splitlines(), 'Settings'
+        )
+        assert host_settings['MapSHA1'] == guest_settings['MapSHA1'] == hashlib.sha1(host_map).hexdigest()
+        assert host_settings['GameID'] == guest_settings['GameID'] == str(host_event[1]['game_id'])
+        assert host_settings['Host'] == 'Yes' and guest_settings['Host'] == 'No'
 
 
 def shop_exchange_case(host_root, guest_root, *, guest_seed, guest_stage, expected,
@@ -171,6 +198,9 @@ def shop_exchange_case(host_root, guest_root, *, guest_seed, guest_stage, expect
         assert host_clone['RequiredHouses'] != guest_clone['RequiredHouses']
         assert not section_value_map_preserve(lines, 'MORGFV')
         assert not section_value_map_preserve(lines, 'MORHHTNK')
+        if guest_setup['loadout'].get('production_restrictions'):
+            assert guest_clone['TechLevel'] == '-1'
+            assert host_clone['TechLevel'] == '1'
 
 
 def main():
@@ -192,6 +222,9 @@ def main():
               'host-private-session-token', 'wrong-private-session-token', 'error')
     game_case(manifest, host_root, guest_root,
               'same-private-session-token', 'same-private-session-token', 'ready')
+    game_case(manifest, host_root, guest_root,
+              'same-private-session-token', 'same-private-session-token', 'error',
+              corrupt_guest_map=True)
     shop_manifest, _ = build_shop_manifest(
         GAME_ROOT, 'COOP-PAIR-SHOP', 'coop_sthunder',
         {'access_ids': ['FV'], 'buff_counts': {'FV': {'health': 1}}},
@@ -209,7 +242,15 @@ def main():
                        error_fragment='absent from installed')
     shop_exchange_case(host_root, guest_root,
                        guest_seed='COOP-PAIR-SHOP', guest_stage=2, expected='ready')
-    print('Paired lobby, wrong codes, Grid map, private Shop exchange: passed')
+    shop_exchange_case(
+        host_root, guest_root, guest_seed='COOP-PAIR-SHOP', guest_stage=2,
+        expected='ready',
+        guest_loadout={
+            'access_ids': ['HTNK'], 'buff_counts': {'HTNK': {'damage': 1}},
+            'production_restrictions': ['vehicles'],
+        },
+    )
+    print('Paired lobby, Grid/Shop map bytes, private restrictions, mismatch rejection: passed')
 
 
 if __name__ == '__main__':

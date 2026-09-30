@@ -12,7 +12,7 @@ from .catalogue import (
     shop_catalogue,
     shop_entry_available,
 )
-from .economy import gem_dividend_gems, mission_reward, starting_run_coins
+from .economy import mission_reward, starting_run_coins
 from .mission_modifiers import mission_modifier_for_run_offer
 from .modifiers import (
     modifier_allows_faction_pool,
@@ -60,7 +60,6 @@ class FailureTransition:
     profile: ShopProfile | None = None
     revived: bool = False
     salvaged_run_coins: int = 0
-    gem_dividend_meta_coins: int = 0
 
 
 def victory_key(run_id, stage, mission_code):
@@ -575,10 +574,7 @@ def apply_mission_victory(
             ),
         ),
         challenge_hunter_level=profile.upgrade_level('challenge_hunter'),
-        gem_dividend_level=(
-            profile.upgrade_level('gem_dividend')
-            if final_victory or run.endless else 0
-        ),
+        gem_dividend_level=profile.upgrade_level('gem_dividend'),
         remaining_run_coins=run.run_coins,
         config=config,
     )
@@ -653,7 +649,6 @@ def apply_mission_failure(
     revival_offers=(),
     salvage_run_coins=0,
     maximum_salvaged_run_coins=0,
-    config: ShopModeConfig = SHOP_CONFIG,
 ):
     mission_code = str(mission_code or '').upper()
     if run.status is RunStatus.FAILED:
@@ -694,26 +689,11 @@ def apply_mission_failure(
         run.run_coins,
         max(0, int(salvage_run_coins)),
     )
-    dividend = (
-        gem_dividend_gems(
-            profile.upgrade_level('gem_dividend'), run.run_coins, config
-        )
-        if profile is not None else 0
-    )
     updated_profile = (
-        replace(
-            profile,
-            salvaged_run_coins=salvage,
-            meta_coins=profile.meta_coins + dividend,
-            lifetime_meta_coins_earned=(
-                profile.lifetime_meta_coins_earned + dividend
-            ),
-        )
+        replace(profile, salvaged_run_coins=salvage)
         if profile is not None else None
     )
-    return FailureTransition(
-        failed, True, updated_profile, False, salvage, dividend
-    )
+    return FailureTransition(failed, True, updated_profile, False, salvage)
 
 
 def abandon_run(run):

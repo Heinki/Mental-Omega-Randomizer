@@ -279,7 +279,9 @@ def append_superweapon_grant_trigger(
     chunks by one second so every power is still granted exactly once.
     """
     actions = [list(group) for group in action_groups]
-    if not actions or any(len(group) != 8 for group in actions):
+    if (not actions and not startup_buildings) or any(
+        len(group) != 8 for group in actions
+    ):
         return ''
 
     if isinstance(houses, str):

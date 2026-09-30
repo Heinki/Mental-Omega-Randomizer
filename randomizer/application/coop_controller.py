@@ -11,6 +11,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from randomizer.config.player import save_config
+from randomizer.coop import feature
 from randomizer.coop.direct import host_session, join_session
 from randomizer.coop.lobby import LOBBY_PORT, Lobby, decode_state, encode_state
 from randomizer.coop.prototype import available_units, build_manifest, shop_unit_loadout
@@ -23,11 +24,16 @@ from randomizer.rewards.arsenal import ARSENAL_MODE
 from randomizer.shop.model import RunStatus
 
 
+def normalize_network_mode(value):
+    """Treat old ZeroTier selection as LAN; both use the same IP path."""
+    return 'direct' if value == 'direct' else 'local'
+
+
 class CoopController:
     def refresh_coop_controls(self):
         if not hasattr(self, 'coop_connection_button'):
             return
-        available = self.coop_feature_enabled_var.get()
+        available = feature.COOP_FEATURE_ENABLED
         for widget in (self.coop_mode_check, self.coop_connection_button,
                        self.compact_coop_button, self.shop_coop_row):
             if available:
@@ -62,23 +68,8 @@ class CoopController:
         lobby = getattr(self, '_coop_lobby', None)
         return bool(lobby and lobby.connected and lobby.role == 'guest')
 
-    def on_coop_feature_enabled_changed(self):
-        enabled = bool(self.coop_feature_enabled_var.get())
-        if not enabled and self.coop_mode_var.get():
-            self.coop_mode_var.set(False)
-            self.on_coop_mode_changed()
-            if self.coop_mode_var.get():
-                self.coop_feature_enabled_var.set(True)
-                self.refresh_coop_controls()
-                return
-        self.config['coop_feature_enabled'] = enabled
-        save_config(self.config)
-        self.refresh_coop_controls()
-        self.refresh_shop_settings_controls()
-        self.update_header_summary()
-
     def on_coop_mode_changed(self):
-        if self.coop_mode_var.get() and not self.coop_feature_enabled_var.get():
+        if self.coop_mode_var.get() and not feature.COOP_FEATURE_ENABLED:
             self.coop_mode_var.set(False)
             return
         process = getattr(self, 'active_game_process', None)
@@ -128,8 +119,8 @@ class CoopController:
         self.append_log('Co-op map pool selected.' if enabled else 'Campaign map pool selected.')
 
     def open_coop_dialog(self):
-        if not self.coop_feature_enabled_var.get():
-            messagebox.showinfo('Co-op', 'Enable experimental co-op in Advanced first.')
+        if not feature.COOP_FEATURE_ENABLED:
+            messagebox.showinfo('Co-op', 'Co-op is disabled in this build.')
             return
         if not self.coop_mode_var.get():
             messagebox.showinfo('Co-op', 'Check Co-op mode in Settings first.')
@@ -149,7 +140,9 @@ class CoopController:
         name = tk.StringVar(value='CoopHost')
         address = tk.StringVar(value=self.config.get('coop_last_host', '127.0.0.1'))
         port = tk.StringVar(value=str(LOBBY_PORT))
-        network_mode = tk.StringVar(value=self.config.get('coop_network_mode', 'local'))
+        network_mode = tk.StringVar(value=normalize_network_mode(
+            self.config.get('coop_network_mode', 'local')
+        ))
         pairing_code = tk.StringVar()
         status = tk.StringVar(value=(
             'Both players start Shop runs with the same seed and stage. Host controls missions.'
@@ -170,8 +163,8 @@ class CoopController:
                         command=lambda: choose_role('guest')).pack(side='left', padx=(12, 0))
         network = ttk.Frame(frame)
         network.grid(row=1, column=0, columnspan=2, sticky='w', pady=(8, 4))
-        for value, label in (('local', 'LAN / same PC'),
-                             ('zerotier', 'ZeroTier'), ('direct', 'Public IP')):
+        for value, label in (('local', 'LAN / ZeroTier / same PC'),
+                             ('direct', 'Public IP')):
             ttk.Radiobutton(network, text=label, variable=network_mode,
                             value=value).pack(side='left', padx=(0, 10))
         for row, label, variable in ((2, 'Player name', name),
@@ -191,11 +184,9 @@ class CoopController:
             if mode == 'direct' and role.get() == 'host' and not pairing_code.get():
                 pairing_code.set(secrets.token_urlsafe(18))
             guide.set({
-                'local': ('LAN: guest enters host LAN IPv4. Same PC: use 127.0.0.1 '
-                          'with separate game folders. Allow TCP lobby/next port and UDP 1234.'),
-                'zerotier': ('Join and authorize both devices on same ZeroTier network. '
-                             'Guest enters host managed IPv4. Allow TCP lobby/next port '
-                             'and UDP 1234 in both firewalls. No router forwarding needed.'),
+                'local': ('Guest enters host LAN or ZeroTier IPv4. Same PC: use 127.0.0.1 '
+                          'with separate game folders. Allow TCP lobby/next port and UDP 1234. '
+                          'ZeroTier needs both devices on the same authorized network.'),
                 'direct': ('Share pairing code privately. Guest enters host public IPv4. '
                            'Forward TCP lobby/next port to host; forward UDP 1234 to each '
                            'player on each router. Allow ports in firewalls. Needs public '
@@ -225,7 +216,7 @@ class CoopController:
 
     def _connect_coop(self, role, name, address, port_text,
                       network_mode='local', pairing_code=''):
-        if not self.coop_feature_enabled_var.get():
+        if not feature.COOP_FEATURE_ENABLED:
             return
         if getattr(self, '_coop_lobby', None):
             return
@@ -265,6 +256,7 @@ class CoopController:
                 raise ValueError('Enter host IP address.')
             if network_mode not in ('local', 'zerotier', 'direct'):
                 raise ValueError('Select a co-op connection method.')
+            network_mode = normalize_network_mode(network_mode)
             if network_mode == 'direct':
                 if len(pairing_code) < 16 or len(pairing_code) > 128:
                     raise ValueError('Public IP pairing code must be 16–128 characters.')
@@ -555,8 +547,8 @@ class CoopController:
                     self._coop_status_var.set(f'{lobby.peer} suggests {mission["title"]}. Select it in Grid to play.')
 
     def request_coop_launch(self):
-        if not self.coop_feature_enabled_var.get():
-            messagebox.showwarning('Co-op', 'Enable experimental co-op in Advanced first.')
+        if not feature.COOP_FEATURE_ENABLED:
+            messagebox.showwarning('Co-op', 'Co-op is disabled in this build.')
             return
         lobby = getattr(self, '_coop_lobby', None)
         mission = self.selected_mission()
@@ -576,7 +568,7 @@ class CoopController:
             self._start_coop_game('host', mission['code'])
 
     def _start_coop_game(self, role, code, *, session_token=''):
-        if not self.coop_feature_enabled_var.get():
+        if not feature.COOP_FEATURE_ENABLED:
             return
         lobby = getattr(self, '_coop_lobby', None)
         if getattr(self, '_coop_busy', False) or not lobby or not lobby.connected:
@@ -621,7 +613,7 @@ class CoopController:
                         shop_setup = {
                             'seed': shop_run.seed, 'stage': shop_run.stage,
                             'coop_name': mission['coop_name'],
-                            'loadout': shop_unit_loadout(shop_run),
+                            'loadout': shop_unit_loadout(shop_run, self.shop_profile),
                         }
                     else:
                         source_mission = code if state_snapshot.get('reward_mode') == ARSENAL_MODE else ''
@@ -645,7 +637,7 @@ class CoopController:
                     same_machine = lobby.address.lower() in ('127.0.0.1', 'localhost')
                     shop_setup = ({
                         'seed': shop_run.seed, 'stage': shop_run.stage,
-                        'loadout': shop_unit_loadout(shop_run),
+                        'loadout': shop_unit_loadout(shop_run, self.shop_profile),
                     } if shop_run is not None else None)
                     result = join_session(
                         GAME_ROOT, lobby.address, name=lobby.name,

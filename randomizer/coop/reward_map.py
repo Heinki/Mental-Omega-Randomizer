@@ -1,4 +1,4 @@
-"""Shared player production and unit buffs for a two-player co-op map."""
+"""Shared Grid units and private Shop unit rules for co-op maps."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import hashlib
 import re
 
 from randomizer.maps.buff_values import apply_unit_buff_value, apply_weapon_buff_value
+from randomizer.maps.base import cloned_superweapon_plan
+from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps._shared import (
     STANDALONE_UNIT_RULE_TEMPLATES, STANDALONE_WEAPON_TEMPLATES,
 )
@@ -15,9 +17,13 @@ from randomizer.maps.ini import (
     all_section_value_maps_preserve, merge_ini_section_values,
     section_value_map_preserve,
 )
+from randomizer.maps.shop_modifiers import apply_shop_clone_restrictions
+from randomizer.maps.powers import (
+    append_static_startup_buildings, append_superweapon_grant_trigger,
+)
 from randomizer.missions.access import CHAOS_PRIMARY_PRODUCTION
 from randomizer.rewards.arsenal import arsenal_unit_type
-from randomizer.rewards.catalogue import BUFF_TARGETS
+from randomizer.rewards.catalogue import BUFF_TARGETS, canonical_reward
 from randomizer.rewards.roster import (
     installed_rules_template_overlay, randomizer_unit_roster,
 )
@@ -56,12 +62,14 @@ def _lookup(sections: dict, section: str) -> dict:
 
 def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                        country: str | None = None, access_ids=None,
-                       buff_counts=None, clone_scope: str = '') -> None:
+                       buff_counts=None, clone_scope: str = '',
+                       production_restrictions=(), building_ids=()) -> None:
     """Add shared Grid clones or one country's private Shop clones.
 
     Native map objects and AI TaskForces keep their original IDs. Shop uses
     separate countries and clone IDs for the two human slots; Grid keeps the
-    original shared country and clone IDs.
+    original shared country and clone IDs. Shop production restrictions only
+    disable the affected player's unit clones.
     """
     if clone_scope not in ('', 'H', 'G'):
         raise ValueError('Invalid co-op clone scope.')
@@ -112,6 +120,8 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         next_key[type_list] += 1
 
     veteran = {'Infantry': [], 'Units': [], 'Aircraft': []}
+    handled = {}
+    source_rules = {}
     for source_id in access_ids:
         source_id = str(source_id).upper()
         target = BUFF_TARGETS.get(source_id)
@@ -229,8 +239,57 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
             }[unit_type]
             veteran[category].append(clone_id)
         changes[clone_id] = values
+        handled[source_id] = {'clone_id': clone_id}
+        source_rules[source_id] = source_values
         type_list = _TYPE_LIST[unit_type]
         register(type_list, clone_id)
+    if production_restrictions:
+        apply_shop_clone_restrictions(
+            changes, handled, source_rules,
+            {'shop_production_restrictions': production_restrictions},
+        )
+    for source_id in building_ids:
+        source_id = str(source_id).upper()
+        if BUFF_TARGETS.get(source_id, {}).get('category') not in {
+            'defenses', 'special_buildings',
+        }:
+            raise ValueError(f'Unsupported co-op building reward: {source_id}')
+        native = _lookup(installed, source_id)
+        native.update(_lookup(map_sections, source_id))
+        template = templates.get(source_id)
+        if not native and not template:
+            raise ValueError(f'No source definition for co-op building: {source_id}')
+        clone_id = f'MOR{clone_scope or "P"}{source_id}'
+        # Some reward buildings (for example NACLONS) exist only in the
+        # packaged player roster. Use that complete reviewed template when
+        # the installed rules have no native section.
+        values = dict(template or native)
+        values.update({
+            'Image': native.get('Image') or source_id,
+            'TechLevel': '1', 'Owner': country, 'RequiredHouses': country,
+            'ForbiddenHouses': 'none',
+            'Prerequisite': CHAOS_PRIMARY_PRODUCTION[family]['base'],
+            'PrerequisiteOverride': None, 'Prerequisite.List0': None,
+            'Prerequisite.Lists': None, 'Prerequisite.Negative': None,
+            'AllowedToStartInMultiplayer': 'no',
+        })
+        changes[clone_id] = values
+        register('BuildingTypes', clone_id)
+    factory_categories = {
+        'infantry': 'infantry', 'vehicles': 'vehicles',
+        'aircraft': 'air', 'naval': 'naval',
+    }
+    for category in production_restrictions:
+        factory = CHAOS_PRIMARY_PRODUCTION[family][factory_categories[category]]
+        current = _lookup(installed, factory)
+        current.update(_lookup(map_sections, factory))
+        blocked = [
+            item.strip() for item in str(current.get('ForbiddenHouses') or '').split(',')
+            if item.strip().lower() not in {'', 'none', '<none>'}
+        ]
+        if country not in blocked:
+            blocked.append(country)
+        changes.setdefault(factory, {})['ForbiddenHouses'] = ','.join(blocked)
     country_values = {}
     for category, ids in veteran.items():
         if ids:
@@ -240,3 +299,72 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
     if country_values:
         changes[country] = country_values
     merge_ini_section_values(lines, changes)
+
+
+def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
+                            amount: int) -> None:
+    """Grant one player's credit delta through a private map-start cash building."""
+    if not amount:
+        return
+    if scope not in {'H', 'G'}:
+        raise ValueError('Invalid co-op credit scope.')
+    _powers, installed = installed_rules_registry(synchronous=True)
+    source = _lookup(installed, 'CASHGIVE')
+    if not source:
+        raise ValueError('Installed cash grant building is missing.')
+    type_id = f'MOR{scope}CASH'
+    values = dict(source)
+    values.update({
+        'Image': 'CASHGIVE', 'TechLevel': '-1', 'Owner': country,
+        'RequiredHouses': country, 'ForbiddenHouses': 'none',
+        'ProduceCashStartup': str(amount), 'ProduceCashAmount': '0',
+        'ProduceCashDelay': '0', 'Capturable': 'no', 'Selectable': 'no',
+        'Insignificant': 'yes', 'InvisibleInGame': 'yes',
+        'IsPassable': 'yes', 'LegalTarget': 'no', 'Unsellable': 'yes',
+    })
+    registered = {
+        str(item).upper() for item in _lookup(installed, 'BuildingTypes').values()
+    } | {
+        str(item).upper() for item in section_value_map_preserve(
+            lines, 'BuildingTypes'
+        ).values()
+    }
+    changes = {type_id: values}
+    if type_id not in registered:
+        occupied = set(section_value_map_preserve(lines, 'BuildingTypes'))
+        key = 390000
+        while str(key) in occupied:
+            key += 1
+        changes['BuildingTypes'] = {str(key): type_id}
+    merge_ini_section_values(lines, changes)
+    if not append_superweapon_grant_trigger(
+        lines, [country], [], startup_buildings=[type_id],
+    ):
+        raise ValueError(f'Could not place private starting credits for {country}.')
+
+
+def apply_coop_power_rewards(lines: list[str], country: str,
+                             reward_ids: list[str]) -> None:
+    """Plan map-local earned powers and grant them to one human country."""
+    if not reward_ids:
+        return
+    rewards = [canonical_reward({'name': name}) for name in reward_ids]
+    installed_types, installed = installed_rules_registry(synchronous=True)
+    rewards = apply_power_buffs_to_unlock_rewards(rewards, installed)
+    rules, actions, _names, startup, static, missing = cloned_superweapon_plan(
+        lines, rewards, installed_types, installed,
+        superweapon_required_houses=[country], force_required_houses=True,
+    )
+    if missing:
+        raise ValueError('Co-op power source rules are missing: ' + ', '.join(missing))
+    if not rules:
+        raise ValueError('Co-op power rewards produced no map rules.')
+    merge_ini_section_values(lines, rules)
+    if static:
+        placed = append_static_startup_buildings(lines, [country], static)
+        if len(placed) != len(static):
+            raise ValueError(f'Could not place static power providers for {country}.')
+    if (actions or startup) and not append_superweapon_grant_trigger(
+        lines, [country], actions, startup_buildings=startup,
+    ):
+        raise ValueError(f'Could not grant earned powers to {country}.')

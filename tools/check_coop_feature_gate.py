@@ -1,4 +1,4 @@
-"""Check default-off co-op UI gate and saved mode switching."""
+"""Check code-only co-op gate and saved mode switching."""
 
 from pathlib import Path
 import sys
@@ -9,8 +9,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from randomizer.application import coop_controller
-from randomizer.application.coop_controller import CoopController
+from randomizer.application.coop_controller import CoopController, normalize_network_mode
 from randomizer.config.player import DEFAULT_CONFIG
+from randomizer.config.player import migrate_loaded_config
+from randomizer.coop import feature
 
 
 class Variable:
@@ -39,9 +41,8 @@ class Widget:
 
 class Gate(CoopController):
     def __init__(self):
-        self.config = {'coop_mode': False, 'coop_feature_enabled': False}
+        self.config = {'coop_mode': False}
         self.state = {}
-        self.coop_feature_enabled_var = Variable(False)
         self.coop_mode_var = Variable(False)
         self.campaign_var = Variable('All Campaigns')
         self.progression_mode_var = Variable('Grid Mode')
@@ -99,7 +100,14 @@ class Gate(CoopController):
 
 
 def main():
-    assert DEFAULT_CONFIG['coop_feature_enabled'] is False
+    assert feature.COOP_FEATURE_ENABLED is False
+    assert 'coop_feature_enabled' not in DEFAULT_CONFIG
+    old_config = {'coop_feature_enabled': True}
+    assert migrate_loaded_config(old_config)
+    assert 'coop_feature_enabled' not in old_config
+    assert normalize_network_mode('zerotier') == 'local'
+    assert normalize_network_mode('local') == 'local'
+    assert normalize_network_mode('direct') == 'direct'
     saves = []
     original = coop_controller.save_config
     coop_controller.save_config = lambda config: saves.append(dict(config))
@@ -110,25 +118,31 @@ def main():
         assert not app.coop_connection_button.visible
         assert not app.compact_coop_button.visible
         assert not app.shop_coop_row.visible
-        app.coop_feature_enabled_var.set(True)
-        app.on_coop_feature_enabled_changed()
+        app.coop_mode_var.set(True)
+        app.on_coop_mode_changed()
+        assert app.coop_mode_var.get() is False
+        assert not saves
+        feature.COOP_FEATURE_ENABLED = True
+        app.refresh_coop_controls()
         assert app.coop_mode_check.visible
         assert app.shop_coop_row.visible
         app.coop_mode_var.set(True)
         app.on_coop_mode_changed()
         assert app.config['coop_mode'] is True
-        app.coop_feature_enabled_var.set(False)
-        app.on_coop_feature_enabled_changed()
-        assert app.config['coop_feature_enabled'] is False
-        assert app.config['coop_mode'] is False
+        feature.COOP_FEATURE_ENABLED = False
+        app.coop_mode_var.set(False)
+        app.on_coop_mode_changed()
+        app.refresh_coop_controls()
         assert not app.coop_mode_check.visible
         app.coop_mode_var.set(True)
         app.on_coop_mode_changed()
         assert app.coop_mode_var.get() is False
-        assert saves[-1]['coop_feature_enabled'] is False
+        assert saves[-1]['coop_mode'] is False
+        assert 'coop_feature_enabled' not in saves[-1]
     finally:
         coop_controller.save_config = original
-    print('Default-off co-op gate, UI visibility, mode switching: passed')
+        feature.COOP_FEATURE_ENABLED = False
+    print('Code-only co-op gate, two network modes, mode switching: passed')
 
 
 if __name__ == '__main__':

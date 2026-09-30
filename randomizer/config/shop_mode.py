@@ -205,7 +205,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'coupon_book': ('ore_per_level',),
         'stock_lock': ('locks_per_stage',),
         'veteran_academy': ('veteran_loadout',),
-        'gem_dividend': ('ore_per_gem',),
+        'gem_dividend': ('ore_per_gem', 'maximum_gems_per_level'),
         'premium_supplier': ('minimum_stage', 'guaranteed_offers'),
         'random_tier_1_unlock': ('unlocks_per_level', 'tier'),
         'random_tier_2_unlock': ('unlocks_per_level', 'tier'),

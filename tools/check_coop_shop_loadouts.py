@@ -1,5 +1,6 @@
 """Check private Shop clones and unchanged shared Grid clones."""
 
+from dataclasses import replace
 from pathlib import Path
 import shutil
 import sys
@@ -19,6 +20,7 @@ from randomizer.coop.prototype import (
 from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import section_value_map_preserve
 from randomizer.rewards.catalogue import REWARD_POOL
+from randomizer.shop.modifiers import stage_production_restrictions
 from randomizer.shop.model import BuffPurchase, PurchaseRecord, RunStatus, ShopRun
 
 
@@ -51,6 +53,10 @@ def main():
     assert host == {'access_ids': ['FV'], 'buff_counts': {'FV': {'health': 2}}}
     assert guest['access_ids'] == ['FV', 'HTNK']
     assert guest['buff_counts'] == {'FV': {'damage': 1}}
+    restricted_run = replace(host_run, modifiers=('you_shall_not_build',))
+    assert shop_unit_loadout(restricted_run)['production_restrictions'] == sorted(
+        stage_production_restrictions(restricted_run)
+    )
 
     missions = discover_coop_missions(GAME_ROOT)
     assert len(missions) == 36
@@ -92,6 +98,33 @@ def main():
         assert section(host_spawn, 'Other1')['Side'] == str(guest_index)
         assert section(guest_spawn, 'Settings')['Side'] == str(guest_index)
         assert section(guest_spawn, 'Other1')['Side'] == str(host_index)
+
+    restricted_host = {**host, 'production_restrictions': ['vehicles']}
+    restricted_manifest, restricted_map = build_shop_manifest(
+        GAME_ROOT, 'COOP-SHOP-TEST', 'coop_sthunder', restricted_host, guest,
+    )
+    assert section(restricted_map, 'MORHFV')['TechLevel'] == '-1'
+    assert section(restricted_map, 'MORGFV')['TechLevel'] == '1'
+    assert restricted_manifest['player_loadouts']['host'] == restricted_host
+    assert rebuild_from_manifest(GAME_ROOT, restricted_manifest) == restricted_map
+    restricted_guest = {**guest, 'production_restrictions': ['vehicles']}
+    guest_manifest, guest_map = build_shop_manifest(
+        GAME_ROOT, 'COOP-SHOP-TEST', 'coop_sthunder', host, restricted_guest,
+    )
+    assert section(guest_map, 'MORHFV')['TechLevel'] == '1'
+    assert section(guest_map, 'MORGFV')['TechLevel'] == '-1'
+    assert section(guest_map, 'MORGHTNK')['TechLevel'] == '-1'
+    assert rebuild_from_manifest(GAME_ROOT, guest_manifest) == guest_map
+    for invalid in (['vehicles', 'vehicles'], ['unknown'], [42]):
+        try:
+            build_shop_manifest(
+                GAME_ROOT, 'COOP-SHOP-TEST', 'coop_sthunder',
+                {**host, 'production_restrictions': invalid}, guest,
+            )
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f'Invalid production restrictions accepted: {invalid}')
 
     shared = {
         'seed': 'COOP-SHARED-TEST', 'progression_mode': 'Grid Mode',

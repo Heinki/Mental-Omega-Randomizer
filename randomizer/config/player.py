@@ -59,6 +59,9 @@ def migrate_loaded_config(loaded):
     if not isinstance(loaded, dict):
         return False
     changed = False
+    if 'coop_feature_enabled' in loaded:
+        loaded.pop('coop_feature_enabled')
+        changed = True
     archipelago = loaded.get('archipelago')
     if isinstance(archipelago, dict):
         server = str(archipelago.get('server') or '').strip()
@@ -288,7 +291,9 @@ def load_config():
 
 
 def save_config(config):
-    write_simple_yaml(CONFIG_PATH, deep_merge(DEFAULT_CONFIG, config))
+    cleaned = deep_merge(DEFAULT_CONFIG, config)
+    cleaned.pop('coop_feature_enabled', None)
+    write_simple_yaml(CONFIG_PATH, cleaned)
 
 
 def migrate_legacy_config():

@@ -19,14 +19,6 @@ def _bounded_upgrade_level(config, upgrade_id, level):
     return max(0, min(definition.max_level, level))
 
 
-def gem_dividend_gems(level, held_ore, config: ShopModeConfig = SHOP_CONFIG):
-    level = _bounded_upgrade_level(config, 'gem_dividend', level)
-    ore_per_gem = int(
-        config.permanent_upgrades['gem_dividend'].effects['ore_per_gem']
-    )
-    return level * (max(0, int(held_ore)) // ore_per_gem)
-
-
 def mission_reward(
     mission_class,
     *,
@@ -100,9 +92,16 @@ def mission_reward(
         hunter_level // interval
         if getattr(mission_modifier, 'challenge', False) else 0
     )
+    dividend_level = _bounded_upgrade_level(
+        config, 'gem_dividend', gem_dividend_level
+    )
+    dividend_effects = config.permanent_upgrades['gem_dividend'].effects
     # Use the held balance before rewards or Liquid Assets are applied.
     # Victory Ore must not earn its own dividend, and no Ore is consumed.
-    dividend = gem_dividend_gems(gem_dividend_level, remaining_run_coins, config)
+    dividend = min(
+        dividend_level * int(dividend_effects['maximum_gems_per_level']),
+        max(0, int(remaining_run_coins)) // int(dividend_effects['ore_per_gem']),
+    )
     return CurrencyReward(
         run_coins=(
             base_run_coins + victory_bonus + mission_bonus_run

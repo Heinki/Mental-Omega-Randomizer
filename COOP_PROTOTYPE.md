@@ -4,9 +4,10 @@ The randomizer hosts and joins directly. `MentalOmegaClient.exe` and the
 CnCNet service are not used. The launcher shares run state over TCP, prepares
 matching co-op maps on both computers, writes `spawn.ini` and `spawnmap.ini`,
 then starts the game through `Syringe.exe`. The game uses UDP between players.
-Co-op controls are hidden by default. In **Advanced**, check **Enable
-experimental co-op** on each launcher to expose them. Uncheck it to return to
-the normal mission pool; an active co-op Shop run or game must finish first.
+Co-op controls are hidden in release builds. For developer test builds, set
+`COOP_FEATURE_ENABLED = True` in `randomizer/coop/feature.py` and rebuild the
+launcher on both computers. Release builds cannot expose co-op through the UI
+or saved settings. Keep the constant `False` for release builds.
 
 ## Start a co-op run
 
@@ -23,7 +24,8 @@ the normal mission pool; an active co-op Shop run or game must finish first.
    12 Allied, 12 Soviet, and 12 Epsilon. The existing campaign filter also
    narrows this pool. Configure the pool before generating the seed.
 4. On the guest, check **Co-op mode (2 players)**. Open **Co-op Connection…**
-   on both launchers. Select the same connection method. Host selects **Host**
+   on both launchers. Select **LAN / ZeroTier / same PC** or **Public IP**.
+   Host selects **Host**
    and **Connect**. Guest selects **Join**, enters host IP, and selects
    **Connect**. Use distinct player names. For **Public IP**, share the host's
    generated pairing code privately and enter it on the guest before connecting.
@@ -46,14 +48,14 @@ the actual host game log. This confirms the marker logging path; a normal
 co-op win and resulting Grid update still need a player playtest. The host
 watcher handles debug-log truncation between games.
 
-Each player receives the same earned infantry, vehicle, aircraft, and naval
-access plus supported earned unit buffs and shared starting-credit bonuses.
+Each player receives the same earned infantry, vehicle, aircraft, naval, and
+building access, earned powers, supported unit buffs, and shared
+starting-credit bonuses. Enemy country buffs and AI powers are map-local;
+enemy unit-tier buffs apply only to native types safe from player ownership.
 Randomizer Arsenal uses the selected co-op mission's arsenal. If no access is
 earned, a logged `FV` test grant lets the first map launch. The prototype does
-not yet transfer earned powers,
-building rewards, enemy scaling, or every single-player production gate.
-Private Shop starting-credit bonuses also remain work. Native co-op map
-technology remains available. Shop Mode is described separately below.
+not yet have a completed two-player playtest for these effects. Native co-op
+map technology remains available. Shop Mode is described separately below.
 
 ## Co-op Shop Mode work
 
@@ -74,8 +76,9 @@ map has Act 1 difficulty.
    are rejected.
 3. Host clicks a mission card to **Select**, clicks again to **Commit**, then
    waits for the guest acknowledgement and clicks **Launch Co-op Mission**.
-   Both games start directly through the randomizer. The guest sends only a
-   unit access and buff snapshot; the host builds one map with both loadouts.
+   Both games start directly through the randomizer. The guest sends a
+   validated private reward snapshot; the host builds one map with both
+   loadouts.
 
 The host's in-game victory marker records victory for both separate Shop runs.
 Closing the host game without a victory marker records a failure in both
@@ -93,14 +96,16 @@ two live games still need a full victory/failure/reconnect playtest.
 A separate Shop map prototype now takes a host unit loadout and a guest unit
 loadout. It creates distinct unit and weapon clones, gates each clone to one
 player country, and assigns the guest an unused country from the same faction.
-The launcher derives unit access and unit buff stacks from each Shop run.
+The launcher derives unit access, starting defenses, earned buildings and
+powers, private starting credits, enemy scaling, production restrictions, and
+unit buff stacks from each Shop run.
 Both game copies generated identical Shop maps and reached gameplay in a local
 direct launch. Grid Mode still uses its original shared country and clones.
-The in-game sidebar gates and a full Shop co-op victory need player tests. The
+The in-game sidebar gates, credit grants, AI buffs, and a full Shop co-op
+victory need player tests. The
 guest's different country may also change native subfaction tech or map
-scripts, so each mission needs a playtest. Only unit access and unit buffs are
-currently applied to private Shop loadouts. Powers, buildings, starting
-credits, and some permanent profile and mission modifier effects remain work.
+scripts, so each mission needs a playtest. Some unrelated Shop modifier effects
+still follow the single-player map pipeline and need separate co-op work.
 
 For a private diagnostic, save one active `shop_run.json` per player with the
 same seed and stage. Start the host from its own game folder:
@@ -120,8 +125,8 @@ python RandomizerLauncher/tools/coop_direct.py \
 ```
 
 Use UDP 1234 on both computers; port 1235 is for two games on one PC. Use
-separate Wine prefixes there. The guest sends only its current unit access and
-unit buff counts, plus seed and stage. The host rejects mismatched seed or
+separate Wine prefixes there. The guest sends its private reward snapshot,
+plus seed and stage. The host rejects mismatched seed or
 stage, builds one map containing both private loadouts, and sends that map
 manifest to the guest. The guest checks its loadout before starting. Add
 `--dry-run` before `host-shop` or `join` on both commands to verify pairing
@@ -137,17 +142,30 @@ commitment, matching seed/stage/completed missions, and reject changes after
 commitment. The direct host/join diagnostic above remains useful for map tests
 without changing either Shop run.
 
-The five remaining work packages are tracked in [TODOS.md](TODOS.md).
+The remaining live checks are tracked in [TODOS.md](TODOS.md).
 
 ## Internet connection
 
-**ZeroTier** remains the recommended first remote test. Create one private
+**LAN / ZeroTier / same PC** uses one connection path. For ZeroTier, create one private
 ZeroTier network, join and authorize both computers, then enter the host's
 ZeroTier managed IPv4 in the guest launcher. Allow incoming TCP `19420`
 (lobby) and TCP `19421` (game preparation) on host, plus UDP `1234` on both
 computers' system firewalls over the ZeroTier interface. With a custom lobby
 port, use that TCP port and the next. Router forwarding is usually unnecessary
 for ZeroTier.
+
+For physical LAN, enter the host's LAN IPv4. For two launchers on the same
+computer, enter `127.0.0.1` and use separate game folders and Wine prefixes.
+An older saved `ZeroTier` selection is treated as `LAN / ZeroTier / same PC`.
+
+The pairing diagnostic compares the exact `spawnmap.ini` bytes on both game
+copies, verifies their SHA-256 against the launch handshake, and checks the
+matching game ID and map SHA-1 in each `spawn.ini`. It also rejects a changed
+guest map before launch. Run `python tools/check_coop_pairing.py` after creating
+the two private copies with `tools/coop_local_test.py`.
+Shop's stage production restrictions travel in each player's private loadout.
+The generated map disables affected unit clones and factories for that player
+only. Live sidebar validation remains.
 
 **Public IP** uses the same launcher and game protocol without ZeroTier. Host
 needs a reachable public IPv4 and must forward TCP `19420` and `19421` to the
