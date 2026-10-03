@@ -311,6 +311,10 @@ def enemy_native_unit_buff_rules(
     }
     if not enemy_houses or not unit_effects:
         return {}, [], [], []
+    player_unit_limits = any(
+        definition.get('enemy_player_unit_limits')
+        for definition, _count in unit_effects.values()
+    )
 
     sections = all_section_value_maps(lines)
     sections_by_lower = {
@@ -382,13 +386,38 @@ def enemy_native_unit_buff_rules(
         str(unit_id).upper() for unit_id in (excluded_unit_ids or ())
     }
 
-    for unit_id, target in sorted(BUFF_TARGETS.items()):
+    targets = {
+        str(unit_id).upper(): (target, str(unit_id).upper())
+        for unit_id, target in BUFF_TARGETS.items()
+    }
+    if player_unit_limits:
+        # Installed AI counterparts reuse a playable unit's Image. Keep their
+        # authored weapons and ownership; use that unit's buff eligibility.
+        for category, list_section in (
+            ('infantry', 'InfantryTypes'), ('units', 'VehicleTypes'),
+            ('aircraft', 'AircraftTypes'),
+        ):
+            for unit_id in installed_sections.get(list_section, {}).values():
+                unit_id = str(unit_id).upper()
+                if unit_id in targets:
+                    continue
+                if not (unit_id.startswith('AI') or unit_id.endswith('_AI')):
+                    continue
+                values = installed_by_lower.get(unit_id.lower(), {})
+                source_id = str(_value_case_insensitive(
+                    values, 'Image', ''
+                )).upper()
+                source = BUFF_TARGETS.get(source_id)
+                if source and source.get('category') == category:
+                    targets[unit_id] = (source, source_id)
+
+    for unit_id, (target, buff_source_id) in sorted(targets.items()):
         unit_id = str(unit_id).upper()
         if (
             unit_id in excluded_unit_ids
             or target.get('category') not in candidate_categories
             or target.get('special_reward')
-            or not target.get('trainable', True)
+            or (not player_unit_limits and not target.get('trainable', True))
         ):
             continue
         authored_values = _standalone_clone_values_from_maps(
@@ -396,6 +425,13 @@ def enemy_native_unit_buff_rules(
             authored_by_lower.get(unit_id.lower(), {}),
         )
         tier = _authored_tech_tier(authored_values)
+        if not tier and buff_source_id != unit_id:
+            # Script-only AI counterparts often have TechLevel=-1. Their
+            # playable counterpart supplies the same technology tier.
+            tier = _authored_tech_tier(_standalone_clone_values_from_maps(
+                installed_by_lower.get(buff_source_id.lower(), {}),
+                authored_by_lower.get(buff_source_id.lower(), {}),
+            ))
         if not tier or not any(key[0] == tier for key in unit_effects):
             continue
         current_values = _standalone_clone_values_from_maps(
@@ -449,7 +485,7 @@ def enemy_native_unit_buff_rules(
         unit_applied = False
         for buff_type in unit_buff_order:
             effect_entry = unit_effects.get((tier, buff_type))
-            if not effect_entry or (unit_id, buff_type) not in player_buff_pairs:
+            if not effect_entry or (buff_source_id, buff_type) not in player_buff_pairs:
                 continue
             definition, count = effect_entry
             before_values = {**current_values, **unit_updates}
@@ -507,7 +543,7 @@ def enemy_native_unit_buff_rules(
                 (buff_type, unit_effects[(tier, buff_type)])
                 for buff_type in weapon_buff_order
                 if (tier, buff_type) in unit_effects
-                and (unit_id, buff_type) in player_buff_pairs
+                and (buff_source_id, buff_type) in player_buff_pairs
             ]
             if not active_weapon_effects:
                 continue

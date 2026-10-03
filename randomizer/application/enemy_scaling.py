@@ -86,10 +86,10 @@ class EnemyScalingController:
             self.enemy_maximum_total_buffs_label.configure(
                 text=f'Maximum total AI bonus stacks [0-{possible}]'
             )
-        if maximum_total > possible:
-            maximum_total = possible
-            self.enemy_maximum_total_buffs_var.set(possible)
-            capacity = possible
+        # Filtering changes effective capacity, not the user's stack budget.
+        # Restoring a checkbox must restore its eligibility without a second
+        # edit to the global AI stack setting.
+        capacity = min(maximum_total, possible)
         self.enemy_reward_capacity_label.configure(text=(
             f'Base Randomizer can grant up to {capacity} additional AI bonus '
             'stack(s) beside normal rewards. Archipelago exports them as Trap '
@@ -122,6 +122,7 @@ class EnemyScalingController:
         for effect_id in group['effect_ids']:
             self.enemy_buff_enabled_vars[effect_id].set(enabled)
         self.refresh_setting_states()
+        self.save_current_launcher_config()
 
     def sync_enemy_buff_group_vars(self):
         for group in ENEMY_BUFF_GROUP_DEFINITIONS:
@@ -165,6 +166,7 @@ class EnemyScalingController:
         self.sync_enemy_buff_group_vars()
         self.refresh_advanced_enemy_buff_controls()
         self.refresh_setting_states()
+        self.save_current_launcher_config()
 
     def set_advanced_enemy_buffs(self, enabled):
         if self.gameplay_settings_locked():

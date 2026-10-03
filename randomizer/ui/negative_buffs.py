@@ -19,7 +19,9 @@ def build_negative_buffs_tab(self, advanced_notebook):
         page,
         text=(
             'Choose exact hostile-AI buffs allowed in generated reward pools. '
-            'Checked entries are active; maximum stacks limits each buff.'
+            'Checked entries are active; maximum stacks limits each buff. '
+            'Changes apply to the next seed or Shop run. Endless unit stats '
+            'can grow to player limits; zero disables a buff.'
         ),
         style='Muted.TLabel',
         wraplength=820,

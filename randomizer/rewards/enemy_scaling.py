@@ -172,7 +172,6 @@ def normalize_enemy_scaling_settings(value):
             hard_maximum,
         )
         caps[buff_id] = configured
-    capacity = sum(caps[buff_id] for buff_id in allowed)
     return {
         'stack_model_version': ENEMY_STACK_MODEL_VERSION,
         'maximum_total_buffs': _bounded_int(
@@ -181,7 +180,9 @@ def normalize_enemy_scaling_settings(value):
                 ENEMY_SCALING_DEFAULTS['maximum_total_buffs'],
             ),
             0,
-            min(MAX_ENEMY_TOTAL_BUFFS, capacity),
+            # Keep the requested budget through disabled-effect save/load.
+            # Reward planning still stops at the enabled per-effect caps.
+            MAX_ENEMY_TOTAL_BUFFS,
             ENEMY_SCALING_DEFAULTS['maximum_total_buffs'],
         ),
         'allowed_buff_ids': allowed,

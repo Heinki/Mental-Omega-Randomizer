@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 
 from randomizer.config.static import load_static_config
-from randomizer.rewards.catalogue import REWARD_POOL
+from randomizer.config.tuning import BUFF_EFFECTS, stacking_stack_limit
+from randomizer.rewards.catalogue import REWARD_POOL, buff_stack_limit
 from randomizer.missions.overrides import MISSIONS_WITH_ENEMY_SCALING_DISABLED
 
 from .active import active_shop_reward_ids
@@ -225,6 +226,34 @@ def shop_enemy_buff_block_reason(mission, mission_code=''):
     return ''
 
 
+def _shop_enemy_maximum(run, reward):
+    """Use player stat ceilings for enabled Endless native-unit bonuses."""
+    effect_id = str(reward.get('enemy_effect_id') or '')
+    settings = run.reward_settings.get('enemy_scaling') or {}
+    allowed = settings.get('allowed_buff_ids')
+    if allowed is not None and '*' not in allowed and effect_id not in allowed:
+        return 0
+    caps = settings.get('caps', {})
+    maximum = max(0, int(caps.get(effect_id, reward.get('enemy_maximum', 0))))
+    if run.endless and maximum > 0 and reward.get('enemy_effect') == 'unit':
+        buff_type = reward['unit_buff_type']
+        player_maximum = (
+            stacking_stack_limit(buff_type) if buff_type in BUFF_EFFECTS else None
+        )
+        if player_maximum is None:
+            # Movement caps depend on the native unit's speed and category.
+            # Enough existing player stacks reach every supported unit's cap.
+            player_maximum = max((
+                buff_stack_limit(candidate) or 0
+                for candidate in REWARD_POOL
+                if not candidate.get('enemy_reward')
+                and candidate.get('buff_type') == buff_type
+            ), default=0)
+        if player_maximum:
+            return player_maximum
+    return maximum
+
+
 def shop_enemy_scaling_entries(
     run, offer, mission, *, challenge_slots=0
 ):
@@ -328,8 +357,6 @@ def shop_enemy_scaling_entries(
                 break
 
     if run.endless:
-        scaling_settings = run.reward_settings.get('enemy_scaling') or {}
-        caps = scaling_settings.get('caps') or {}
         rewards = sorted(
             (reward for reward in REWARD_POOL if reward.get('enemy_reward')),
             key=lambda reward: str(reward.get('enemy_effect_id') or ''),
@@ -343,10 +370,7 @@ def shop_enemy_scaling_entries(
                 reward for reward in rewards
                 if True
                 and stack_counts[str(reward.get('enemy_effect_id') or '')] <
-                max(0, int(caps.get(
-                    str(reward.get('enemy_effect_id') or ''),
-                    reward.get('enemy_maximum', 0),
-                )))
+                _shop_enemy_maximum(run, reward)
             ]
             if not available:
                 break
@@ -365,11 +389,17 @@ def shop_enemy_scaling_entries(
     for reward_id, source, earned_from in candidates:
         reward = canonical_reward_for_id(reward_id)
         effect_id = str(reward.get('enemy_effect_id') or '')
-        maximum = max(0, int((run.reward_settings.get('enemy_scaling') or {})
-            .get('caps', {}).get(effect_id, reward.get('enemy_maximum', 0))))
+        maximum = _shop_enemy_maximum(run, reward)
         if not effect_id or counts[effect_id] >= maximum:
             continue
         counts[effect_id] += 1
+        if run.endless and reward.get('enemy_effect') == 'unit':
+            reward = {
+                **reward,
+                'enemy_maximum': maximum,
+                'enemy_player_unit_limits': True,
+                '_runtime_canonical': True,
+            }
         entries.append({
             'reward': reward,
             'source': source,
