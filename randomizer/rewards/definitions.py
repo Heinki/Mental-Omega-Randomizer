@@ -601,6 +601,10 @@ def add_complete_faction_buff_targets():
                 transport_stats = TRANSPORT_BASE_STATS.get(unit_id)
                 if transport_stats:
                     target['passengers'] = int(transport_stats['passengers'])
+                    if transport_stats.get('initial_passenger_types'):
+                        target['initial_passenger_types'] = list(
+                            transport_stats['initial_passenger_types']
+                        )
 
     defense_buff_types = [
         'production', 'cost', 'armor', 'health', 'sight',

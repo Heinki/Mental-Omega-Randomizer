@@ -9,6 +9,7 @@ from pathlib import Path
 from statistics import median
 
 from randomizer.core.paths import APP_DIR, FROZEN, SOURCE_DIR
+from randomizer.rewards.template_policy import TEMPLATE_VALUE_OVERRIDES
 
 
 ROSTER_FILENAMES = (
@@ -27,6 +28,8 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Keep sealed Opus payload behavior on preserved pre-upgrade rosters too.
+    'STNK': dict(TEMPLATE_VALUE_OVERRIDES['STNK']),
     # Gear Change is an independent action-granted reward. Older packaged
     # Industrial Plant templates must not restore its native building link.
     'NAINDP': {

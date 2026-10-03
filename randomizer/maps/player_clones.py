@@ -23,6 +23,7 @@ from .clone_builder import PlayerCloneContext, build_player_clone_sections
 from .buff_values import (
     _active_direct_buff_counts,
     _allowed_buff_house_names,
+    apply_unit_buff_value,
 )
 from .helper_ai import _registered_techno_categories
 from .clone_references import (
@@ -352,13 +353,20 @@ def player_unit_clone_rules(
     }
     initial_payload_source_ids = set()
     for carrier_id in buildable_ids:
+        payload_values = dict(owned_clone_templates.get(carrier_id, {}))
+        passenger_count = counts_by_unit.get(carrier_id, {}).get('initial_passenger', 0)
+        if passenger_count:
+            apply_unit_buff_value(
+                payload_values, BUFF_TARGETS.get(carrier_id, {}),
+                'initial_passenger', passenger_count,
+            )
         payload_types = comma_items(_value_case_insensitive(
-            owned_clone_templates.get(carrier_id, {}),
+            payload_values,
             'InitialPayload.Types',
             '',
         ))
         raw_payload_counts = comma_items(_value_case_insensitive(
-            owned_clone_templates.get(carrier_id, {}),
+            payload_values,
             'InitialPayload.Nums',
             '',
         ))
@@ -714,6 +722,7 @@ def player_unit_clone_rules(
         ),
         native_trigger_reference_ids=native_trigger_reference_ids,
         direct_replacements=direct_replacements,
+        scripted_player_buff_taskforces=scripted_player_buff_taskforces,
     )
     for section, values in reference_rules.items():
         section_rules.setdefault(section, {}).update(values)

@@ -6,6 +6,7 @@ from randomizer.maps.assets import deploy_superweapon_sidebar_assets
 from randomizer.maps.ini import (
     IniLines,
     all_section_value_maps,
+    all_section_value_maps_preserve,
     merge_ini_section_values,
     read_text,
     section_value_map_preserve,
@@ -2332,13 +2333,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             )
         native_designator_clone_rules = resolved_native_designator_clone_rules(
             installed_rule_sections,
-            native_map_sections,
+            all_section_value_maps_preserve(lines),
             clone_handled,
         )
         if native_designator_clone_rules:
             merge_ini_section_values(lines, native_designator_clone_rules)
             self.append_log(
-                'Extended native power designators to current player clone IDs.'
+                'Extended power designators/inhibitors to current player clone IDs.'
             )
         if clone_warnings:
             self.append_log(

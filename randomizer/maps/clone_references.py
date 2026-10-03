@@ -106,6 +106,7 @@ def _clone_reference_rules(
     structure_plan_allowed_houses_by_unit=None,
     native_trigger_reference_ids=(),
     direct_replacements=None,
+    scripted_player_buff_taskforces=(),
 ):
     """Rewrite friendly placements, base plans, and TaskForce consumers."""
     section_rules = {}
@@ -233,6 +234,10 @@ def _clone_reference_rules(
     ai_team_houses = ai_trigger_team_usage_houses(lines)
     directly_created = directly_created_team_ids(lines)
     placeholder_houses = {'neutral', 'neutral house', '<none>', 'none'}
+    reviewed_taskforces = {
+        str(taskforce_id).lower()
+        for taskforce_id in scripted_player_buff_taskforces
+    }
     for taskforce_id, owners in taskforce_owners.items():
         owner_names = {owner.lower() for owner in owners if owner}
         taskforce_values = section_value_map_preserve(lines, taskforce_id)
@@ -250,7 +255,11 @@ def _clone_reference_rules(
             replaced_values += 1
         if not replaced_values:
             continue
-        if not owner_names or not owner_names.issubset(taskforce_allowed_houses):
+        # Reviewed transfer/start teams already have an explicit player policy.
+        # They must not depend on the optional helper-buff house set.
+        if taskforce_id.lower() not in reviewed_taskforces and (
+            not owner_names or not owner_names.issubset(taskforce_allowed_houses)
+        ):
             if not owner_names.intersection(taskforce_allowed_houses):
                 continue
 

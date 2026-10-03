@@ -175,6 +175,18 @@ def apply_unit_buff_value(values, target, buff_type, count):
         if int(target.get('passengers', 0)) < 1:
             return False
         values['Passengers'] = str(int(target['passengers']) + int(count))
+    elif buff_type == 'initial_passenger':
+        tiers = target.get('initial_passenger_types', ())
+        if not tiers:
+            return False
+        # The default passenger is tier one; earned stacks replace that one
+        # seat, rather than concatenating payloads or increasing capacity.
+        index = max(0, min(int(count), len(tiers) - 1))
+        for key in list(values):
+            if str(key).lower() in {'initialpayload.types', 'initialpayload.nums'}:
+                values.pop(key)
+        values['InitialPayload.Types'] = str(tiers[index])
+        values['InitialPayload.Nums'] = '1'
     elif buff_type == 'open_topped':
         if int(target.get('passengers', 0)) < 1:
             return False

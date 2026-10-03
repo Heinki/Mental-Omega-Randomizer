@@ -19,6 +19,7 @@ _UNIT_BUFF_FIELDS = {
     'storage': ('Storage',),
     'income': ('ProduceCashAmount',),
     'passenger_capacity': ('Passengers',),
+    'initial_passenger': ('InitialPayload.Types', 'InitialPayload.Nums'),
     'open_topped': ('OpenTopped',),
     'self_healing': ('SelfHealing', 'SelfHealing.Amount'),
     'cloak': ('Cloakable', 'Cloakable.Stages', 'CloakingSpeed'),
@@ -63,6 +64,16 @@ def _unit_fields_are_effective(
     required = _UNIT_BUFF_FIELDS.get(buff_type, ())
     if not required or any(key.lower() not in lowered for key in required):
         return False
+    if buff_type == 'initial_passenger':
+        types = str(lowered['initialpayload.types']).upper().split(',')
+        tiers = target.get('initial_passenger_types', ())
+        # Map generation resolves the chosen native payload to its private
+        # clone ID. The contract audit separately checks the exact tier.
+        return bool(tiers) and len(types) == 1 and (
+            str(lowered['initialpayload.nums']) == '1'
+            and str(lowered.get('passengers', '')) == '1'
+            and lowered['initialpayload.types'] != base_values.get('initialpayload.types')
+        )
     if buff_type in {'open_topped', 'self_healing', 'cloak', 'sensors'}:
         base_enabled = (
             str(base_values.get(required[0].lower(), 'no')).strip().lower()

@@ -1,5 +1,6 @@
 ## BUGS AND IMPROVEMENTS
 
+
 ### Co-op mode: live playtest remaining
 
 Local host and guest games start. The shared Grid, co-op map pool, direct-IP

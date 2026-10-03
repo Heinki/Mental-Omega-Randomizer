@@ -2512,7 +2512,7 @@
       "SEAT": {"passengers": 12, "open_topped": false},
       "SHAD": {"passengers": 6, "open_topped": false, "open_topped_blocked": true},
       "STING": {"passengers": 1, "open_topped": false},
-      "STNK": {"passengers": 1, "open_topped": false},
+      "STNK": {"passengers": 1, "open_topped": false, "initial_passenger_types": ["INIT", "BRUTE", "YURI"]},
       "TRACTOR": {"passengers": 12, "open_topped": false},
       "TENGU": {"passengers": 1, "open_topped": false},
       "YHVR": {"passengers": 12, "open_topped": false}

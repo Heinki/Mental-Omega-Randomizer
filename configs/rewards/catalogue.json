@@ -770,6 +770,14 @@
         "requires_clone": true
       },
       {
+        "id": "initial_passenger",
+        "name": "Initial Passenger",
+        "setting_label": "Initial passenger tier",
+        "description": "Replaces the single initial passenger in {plural}: Initiate (default), Brute, then Yuri. Does not add passengers.",
+        "requires_stat": "initial_passenger_types",
+        "requires_clone": true
+      },
+      {
         "id": "open_topped",
         "name": "Firing Ports",
         "setting_label": "Passenger firing",

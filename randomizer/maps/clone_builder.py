@@ -25,6 +25,7 @@ from ._shared import (
     section_value_map_preserve,
     script_referenced_taskforce_unit_ids,
     techno_type_possible_houses,
+    taskforce_usage_houses,
     unique_in_order,
     unit_usage_houses,
 )
@@ -285,7 +286,9 @@ def build_player_clone_sections(
         str(section).lower(): values
         for section, values in map_sections.items()
     }
-    for taskforce_id in scripted_player_buff_taskforces:
+    reviewed_taskforce_owners = taskforce_usage_houses(lines, sections=map_sections)
+    scripted_owner_ids_by_unit = {}
+    for taskforce_id in sorted(scripted_player_buff_taskforces):
         for value in sections_by_lower.get(taskforce_id, {}).values():
             tokens = [token.strip() for token in str(value).split(',')]
             if (
@@ -295,6 +298,14 @@ def build_player_clone_sections(
                 and tokens[1].lower() not in {'none', '<none>'}
             ):
                 scripted_player_clone_unit_ids.add(tokens[1].upper())
+                for house in sorted(reviewed_taskforce_owners.get(taskforce_id, ())):
+                    country = (
+                        records.get(house, {}).get('country')
+                        or str(house).removesuffix(' House')
+                    )
+                    scripted_owner_ids_by_unit.setdefault(
+                        tokens[1].upper(), []
+                    ).append(country)
     scripted_team_unit_ids.difference_update(scripted_player_clone_unit_ids)
     reviewed_scripted_objective_clone_ids = (
         scripted_player_clone_unit_ids & objective_clone_source_ids
@@ -659,6 +670,9 @@ def build_player_clone_sections(
             and unit_id in buildable_ids
         )
         initial_payload_clone = unit_id in initial_payload_source_ids
+        scripted_owner_ids = unique_in_order(
+            scripted_owner_ids_by_unit.get(unit_id, ())
+        )
         hero_build_only_clone = (
             mission_hero_cloak
             and unit_id in buildable_ids
@@ -1173,7 +1187,7 @@ def build_player_clone_sections(
                 section_rules[section_id] = dict(values)
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'storage', 'income',
-            'passenger_capacity',
+            'passenger_capacity', 'initial_passenger',
             'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
             'cost', 'speed',
         ):
@@ -1310,7 +1324,9 @@ def build_player_clone_sections(
                         ).lower() in helper_country_names
                     ]
                 )
-            clone_owner_ids = unique_in_order(owner_ids + helper_owner_ids)
+            clone_owner_ids = unique_in_order(
+                owner_ids + helper_owner_ids + scripted_owner_ids
+            )
             if clone_owner_ids:
                 # Factories evaluate Owner through the active country's
                 # ParentCountry. Campaigns such as SRAVEN use a concrete
@@ -1368,7 +1384,7 @@ def build_player_clone_sections(
                 # list containing a helper's ParentCountry can make Ares reject
                 # the clone even when its concrete campaign country is allowed.
                 _remove_case_insensitive(clone_values, 'ForbiddenHouses')
-            if helper_owner_ids:
+            if helper_owner_ids or scripted_owner_ids:
                 # Unit ownership restrictions apply to AI factories too. The
                 # helper's cloned TeamType already supplies exact ownership;
                 # leaving source-faction FactoryOwners here can make its team
@@ -1417,23 +1433,25 @@ def build_player_clone_sections(
             # inherited their native TechLevel and leaked into the sidebar;
             # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
-            if unit_id in initial_payload_source_ids:
-                # InitialPayload creation must not inherit native faction or
-                # prerequisite gates. Keep support types locked and owned by
-                # the carrier's player. Preserve the source's Selectable rule:
+            if unit_id in initial_payload_source_ids or scripted_owner_ids:
+                # InitialPayload and reviewed scripted-team creation must not
+                # inherit native faction/prerequisite gates. Keep reference
+                # types locked and owned by their resolved runtime countries.
+                # Preserve the source's Selectable rule:
                 # normal payload infantry (for example Guardian GIs carried
                 # by Super Thor) can also be placed or paradropped and must
                 # remain controllable, while implementation helpers such as
                 # SALA_1/SALA_2 already inherit Selectable=no.
-                if owner_ids:
+                payload_owner_ids = unique_in_order(owner_ids + scripted_owner_ids)
+                if payload_owner_ids:
                     clone_values['Owner'] = ','.join(
                         production_owner_countries(
                             lines,
-                            owner_ids,
+                            payload_owner_ids,
                             sections=map_sections,
                         )
                     )
-                    clone_values['RequiredHouses'] = ','.join(owner_ids)
+                    clone_values['RequiredHouses'] = ','.join(payload_owner_ids)
                 _remove_case_insensitive(
                     clone_values,
                     'ForbiddenHouses',
@@ -1510,6 +1528,10 @@ def build_player_clone_sections(
         safe_direct_rewrite = (
             unit_id in direct_friendly_ids
             and not excluded_build_only_clone
+            # Build-only clones have no matching trigger/TaskForce rewrite.
+            # Keep exact story identities native; ordinary selectable starting
+            # units (including initial-payload infantry) can still use clones.
+            and not (build_only_clone and unit_id in exact_reference_ids)
             # A linked clone prepared only as a private transform target
             # (notably MORP Construction Yards for reward MCVs) must never
             # replace a native map placement. The native identity may be an

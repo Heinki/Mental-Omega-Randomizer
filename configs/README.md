@@ -268,7 +268,9 @@ Use it when authored Action-created teams must receive player buffs or when
 native production-isolation fields would stop Ares from assembling the team.
 Noise Severe lists its Rhino, Tesla Cruiser, Tigr/Shock/Flak, and paradrop
 TaskForces; their scripted waves therefore form before the FriendlyTank handoff
-and remain available to the player. Optional
+and remain available to the player. This explicit policy applies even when
+helper buffs are disabled. Clone ownership includes the reviewed team's runtime
+country without enabling buffs for unrelated helper teams. Optional
 `scripted_player_buff_taskforce_access_requirements` entries limit a rewrite to
 launches that already own every listed source TechnoType.
 

@@ -10,7 +10,11 @@ from randomizer.maps.buff_values import (
     apply_unit_buff_value,
     apply_weapon_buff_value,
 )
+from randomizer.maps.base import resolved_native_designator_clone_rules
 from randomizer.rewards.catalogue import BUFF_TARGETS, REWARD_BY_BUFF_KEY
+from randomizer.rewards.catalogue import (
+    buff_stack_limit, buff_effect_lines, buff_effect_comparison_lines,
+)
 from randomizer.rewards.roster import randomizer_unit_template_values
 from randomizer.shop.catalogue import shop_catalogue
 from randomizer.shop.model import ShopProfile
@@ -18,6 +22,73 @@ from randomizer.shop.state import normalize_shop_profile
 
 
 class ReportedUpgradeTests(unittest.TestCase):
+    def test_native_power_lists_keep_originals_and_current_clone_forms(self):
+        clones = {
+            'COON': {'clone_id': 'MORPCOON', 'reference_clone_id': 'MORRCOON'},
+            'RACC': {'clone_id': 'MORC01'},
+            'FAINHI': {'clone_id': 'MORPFAINHI'},
+        }
+        installed = {
+            'NukeSpecial': {'SW.Inhibitors': 'RACC,COON', 'SW.Designators': 'FAINHI'},
+            'Cleared': {'SW.Inhibitors': 'COON'},
+        }
+        updates = resolved_native_designator_clone_rules(
+            installed,
+            {'NukeSpecial': {'RechargeTime': '1'}, 'Cleared': {'sw.inhibitors': ''}},
+            clones,
+        )
+        self.assertEqual(
+            updates['NukeSpecial']['SW.Inhibitors'],
+            'RACC,COON,MORC01,MORPCOON,MORRCOON',
+        )
+        self.assertEqual(updates['NukeSpecial']['SW.Designators'], 'FAINHI,MORPFAINHI')
+        self.assertNotIn('Cleared', updates)
+        thread = resolved_native_designator_clone_rules(
+            installed, {'NukeSpecial': {'SW.Inhibitors': 'RACC'}}, clones,
+        )
+        self.assertEqual(thread['NukeSpecial']['SW.Inhibitors'], 'RACC,MORC01')
+
+    def test_opus_numbered_weapons_use_normal_weapon_rewards(self):
+        target = BUFF_TARGETS['STNK']
+        self.assertEqual(set(target['weapons']), {
+            'OPUSGUN', 'OPUSGUNE', 'OPUSGUNX', 'OPUSGUNXE',
+            'OPUSGUNY', 'OPUSGUNYE', 'OPUSGUNZ', 'OPUSGUNZE',
+        })
+        shop_ids = {entry.reward_id for entry in shop_catalogue()}
+        for buff_type, field in (('damage', 'Damage'), ('range', 'Range'), ('reload', 'ROF')):
+            reward = REWARD_BY_BUFF_KEY[('STNK', buff_type)]
+            self.assertIn(reward['name'], shop_ids)
+            for stats in target['weapons'].values():
+                values = {}
+                self.assertTrue(apply_weapon_buff_value(values, stats, buff_type, 1))
+                base = stats['rof' if buff_type == 'reload' else buff_type]
+                actual = float(values[field])
+                self.assertTrue(actual < base if buff_type == 'reload' else actual > base)
+        # Their Damage=1/ROF=1 controls must not become ordinary gun upgrades.
+        for unit_id in ('COON', 'RACC'):
+            self.assertNotIn((unit_id, 'damage'), REWARD_BY_BUFF_KEY)
+            self.assertNotIn((unit_id, 'reload'), REWARD_BY_BUFF_KEY)
+
+    def test_opus_passenger_stacks_replace_one_sealed_payload(self):
+        reward = REWARD_BY_BUFF_KEY[('STNK', 'initial_passenger')]
+        self.assertEqual(buff_stack_limit(reward), 2)
+        target = BUFF_TARGETS['STNK']
+        values = dict(randomizer_unit_template_values()['STNK'])
+        for count, passenger in enumerate(('INIT', 'BRUTE', 'YURI')):
+            self.assertTrue(apply_unit_buff_value(values, target, 'initial_passenger', count))
+            self.assertEqual(values['InitialPayload.Types'], passenger)
+            self.assertEqual(values['InitialPayload.Nums'], '1')
+            self.assertEqual(values['Passengers'], '1')
+            self.assertIn('one passenger', buff_effect_lines(reward, count=count)[0])
+        self.assertEqual(values['NoManualEnter'], 'yes')
+        self.assertEqual(values['NoManualUnload'], 'yes')
+        for rank in ('Rookie', 'Veteran', 'Elite'):
+            self.assertEqual(values[f'Survivor.{rank}PassengerChance'], '0%')
+        for count in (0, 1):
+            comparison = buff_effect_comparison_lines(reward, count)[0]
+            self.assertNotIn('\n', comparison)
+            self.assertEqual(comparison.count('one passenger)'), 2)
+
     def test_shop_and_grid_share_real_plasmerizer_drill(self):
         reward = REWARD_BY_BUFF_KEY[('FAAVAL', 'production')]
         self.assertTrue(any(

@@ -86,7 +86,7 @@
         "include_secondary_superweapon_rewards": true,
         "include_aid_power_rewards": true,
         "include_power_buff_rewards": true,
-        "unit_buff_catalogue_version": 3,
+        "unit_buff_catalogue_version": 4,
         "power_buff_catalogue_version": 1,
         "enabled_buff_types": [
           "production",
@@ -102,6 +102,7 @@
           "mind_control",
           "storage",
           "passenger_capacity",
+          "initial_passenger",
           "open_topped",
           "self_healing",
           "cloak",

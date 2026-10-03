@@ -40,6 +40,17 @@ SPECIAL_TEMPLATE_SOURCES = {
     'CAPU': 'KNIGHT',
 }
 TEMPLATE_VALUE_OVERRIDES = {
+    'STNK': {
+        # The portable Opus uses a sealed single gunner seat. Passenger
+        # upgrades change the gunner identity, never its count.
+        'InitialPayload.Types': 'INIT',
+        'InitialPayload.Nums': '1',
+        'Survivor.RookiePassengerChance': '0%',
+        'Survivor.VeteranPassengerChance': '0%',
+        'Survivor.ElitePassengerChance': '0%',
+        'NoManualUnload': 'yes',
+        'NoManualEnter': 'yes',
+    },
     'RAVA': {
         # Installed RAVA is delayed as a campaign/power payload. Player
         # production uses normal vehicle timing and normal veterancy behavior.

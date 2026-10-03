@@ -166,7 +166,7 @@ HOUSE_WIDE_BUFF_TYPES = {'production'}
 WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload', 'mind_control'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'storage', 'income',
-    'passenger_capacity', 'open_topped',
+    'passenger_capacity', 'open_topped', 'initial_passenger',
     'self_healing', 'cloak', 'sensors',
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
@@ -348,6 +348,9 @@ def _uncached_buff_stack_limit(reward):
     if buff_type == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         return max(1, int(target.get('capacity_stack_limit', 4)))
+    if buff_type == 'initial_passenger':
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        return max(1, len(target.get('initial_passenger_types', ())) - 1)
     if buff_type in {'passenger_capacity', 'build_limit'}:
         return max(1, int(
             REWARD_PLANNING['buff_stack_limits'][buff_type]
@@ -651,6 +654,15 @@ def buff_effect_lines(
         base_text = f' [{base_passengers}]' if show_base_values else ''
         return [stacked(
             f'{prefix}Passenger capacity {base_passengers + count}{base_text}'
+        )]
+    if buff_type == 'initial_passenger':
+        tiers = target.get('initial_passenger_types', ())
+        if not tiers:
+            return []
+        index = max(0, min(int(count), len(tiers) - 1))
+        return [stacked(
+            f'{prefix}Initial passenger: {unit_display_label(tiers[index])} '
+            f'(tier {index + 1}/{len(tiers)}, one passenger)'
         )]
     if buff_type == 'open_topped':
         return [stacked(f'{prefix}Passengers can fire from transport')]

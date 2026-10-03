@@ -11,11 +11,12 @@ LEGACY_CONFIG_PATH = LEGACY_CONFIG_DIR / CONFIG_PATH.name
 DEFAULT_CONFIG = static_config_section(
     'default_player_config.json', 'defaults', dict
 )
-UNIT_BUFF_CATALOGUE_VERSION = 3
+UNIT_BUFF_CATALOGUE_VERSION = 4
 UNIT_BUFF_TYPES_INTRODUCED = {
     1: ('passenger_capacity', 'open_topped'),
     2: ('storage', 'income'),
     3: ('mind_control',),
+    4: ('initial_passenger',),
 }
 POWER_BUFF_CATALOGUE_VERSION = 1
 POWER_BUFF_TYPES_INTRODUCED = {

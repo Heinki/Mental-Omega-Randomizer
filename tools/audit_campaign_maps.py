@@ -1318,6 +1318,10 @@ def main():
         _assert_nanofiber_mutation_damage(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
         _assert_reality_engineering_team_clone(missions)
+        from tools.check_reported_regressions import check_noise, check_units
+        mission_by_code = {mission['code']: mission for mission in missions}
+        check_noise(mission_by_code, _AuditLauncher)
+        check_units(mission_by_code, _AuditLauncher)
         if not any(
             'Applied composed Shop run clone modifiers:' in message
             for _error, message in launcher.logs

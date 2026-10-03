@@ -257,12 +257,13 @@ def resolved_native_designator_clone_rules(
     map_sections,
     clone_handled,
 ):
-    """Allow native designator-gated powers to use player clone identities.
+    """Keep native power designator/inhibitor lists aware of player clones.
 
     Deployable units can turn into a player-only clone BuildingType while the
     installed SuperWeaponType still names the native BuildingType in
-    ``SW.Designators``. Preserve the native designator for mission/AI users and
-    append every runtime player clone form.
+    ``SW.Designators`` or ``SW.Inhibitors``. Preserve native identities for
+    mission/AI users and append every runtime player clone form. Explicit map
+    exclusions and empty lists remain authoritative.
     """
     runtime_clones = {}
     for source, details in (clone_handled or {}).items():
@@ -295,18 +296,18 @@ def resolved_native_designator_clone_rules(
 
     updates = {}
     for entry in effective_sections.values():
-        designator = entry['values'].get('sw.designators')
-        if designator is None:
-            continue
-        key, value = designator
-        designators = comma_items(value)
-        expanded = list(designators)
-        for designator_id in designators:
-            expanded.extend(runtime_clones.get(designator_id.upper(), ()))
-        expanded = unique_in_order(expanded)
-        resolved_value = ','.join(expanded)
-        if resolved_value != str(value):
-            updates.setdefault(entry['name'], {})[key] = resolved_value
+        for field in ('sw.designators', 'sw.inhibitors'):
+            restriction = entry['values'].get(field)
+            if restriction is None:
+                continue
+            key, value = restriction
+            identities = comma_items(value)
+            expanded = list(identities)
+            for source_id in identities:
+                expanded.extend(runtime_clones.get(source_id.upper(), ()))
+            resolved_value = ','.join(unique_in_order(expanded))
+            if resolved_value != str(value):
+                updates.setdefault(entry['name'], {})[key] = resolved_value
     return updates
 
 

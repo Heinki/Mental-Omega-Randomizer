@@ -549,7 +549,7 @@ def _validate_unit_data(sections, path):
         _invalid('Invalid transport base stats', path)
     for unit_id, stats in transport_base_stats.items():
         required_keys = {'passengers', 'open_topped'}
-        allowed_keys = required_keys | {'open_topped_blocked'}
+        allowed_keys = required_keys | {'open_topped_blocked', 'initial_passenger_types'}
         if (
             not _is_nonempty_string(unit_id)
             or unit_id not in sections['unit_base_stats']
@@ -563,6 +563,14 @@ def _validate_unit_data(sections, path):
             or not isinstance(stats.get('open_topped_blocked', False), bool)
         ):
             _invalid(f'Invalid transport base stats for {unit_id!r}', path)
+        tiers = stats.get('initial_passenger_types')
+        if tiers is not None and (
+            not isinstance(tiers, list) or len(tiers) < 2
+            or stats['passengers'] != 1
+            or any(not isinstance(unit, str) or unit not in sections['unit_base_stats'] for unit in tiers)
+            or len(set(tiers)) != len(tiers)
+        ):
+            _invalid(f'Invalid initial passenger tiers for {unit_id!r}', path)
 
     seen_equivalence_ids = set()
     known_equivalence_ids = {

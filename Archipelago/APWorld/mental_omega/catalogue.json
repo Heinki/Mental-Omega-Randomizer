@@ -7564,18 +7564,18 @@
       "id": 81064899
     },
     {
+      "name": "Dybbuk-Seizer Control Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068108
+    },
+    {
       "name": "Dybbuk-Seizer Drill I",
       "classification": "useful",
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064900
-    },
-    {
-      "name": "Dybbuk-Seizer Firepower I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81064901
     },
     {
       "name": "Dybbuk-Seizer Logistics I",
@@ -7877,6 +7877,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064944
+    },
+    {
+      "name": "Epsilon Adept Control Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068109
     },
     {
       "name": "Epsilon Adept Drill I",
@@ -8213,6 +8220,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064992
+    },
+    {
+      "name": "Epsilon Elite Control Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068110
     },
     {
       "name": "Epsilon Elite Drill I",
@@ -16020,6 +16034,13 @@
       "id": 81065979
     },
     {
+      "name": "Mastermind Control Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068111
+    },
+    {
       "name": "Mastermind Drill I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18260,6 +18281,20 @@
       "id": 81066285
     },
     {
+      "name": "Opus Custom Tank Firepower I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068112
+    },
+    {
+      "name": "Opus Custom Tank Initial Passenger I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068113
+    },
+    {
       "name": "Opus Custom Tank Logistics I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18272,6 +18307,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066287
+    },
+    {
+      "name": "Opus Custom Tank Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068114
     },
     {
       "name": "Opus Custom Tank Recon Package I",
@@ -18314,6 +18356,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066293
+    },
+    {
+      "name": "Opus Custom Tank Weapon Tuning I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068115
     },
     {
       "name": "Orcinus Waveshaper Access",
@@ -19336,6 +19385,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066429
+    },
+    {
+      "name": "PsiCorps Psychic Tower Control Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068116
     },
     {
       "name": "PsiCorps Psychic Tower Drill I",
@@ -31824,7 +31880,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "16a52f0fa8a573f32cfb97c602c06bd4b25bfd1671f03fd778a38d2090fbac09",
+  "catalogue_checksum": "29fd0f82be96264b9ba09823a89b8bb83352a29e28e9f84f498a728376d762e3",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",
