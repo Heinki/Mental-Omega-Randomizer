@@ -5,6 +5,7 @@ from functools import lru_cache
 from randomizer.config.schema import StaticConfigError
 from randomizer.rewards.arsenal import arsenal_tier_for_tech_level
 from randomizer.rewards.catalogue import (
+    ALWAYS_AVAILABLE_TECH_IDS,
     BUFF_TARGETS,
     REWARD_POOL,
     buff_stack_limit,
@@ -249,4 +250,23 @@ def shop_entry_available(
         allowed is None
         or not entry.factions
         or allowed.intersection(entry.factions)
+    )
+
+
+@lru_cache(maxsize=1)
+def shop_always_available_unit_ids():
+    """Return core mobile buff targets that need no purchased access."""
+    entries = shop_catalogue()
+    access_targets = {
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.UNIT_ACCESS
+    }
+    return frozenset(
+        entry.target_id for entry in entries
+        if entry.reward_type is ShopRewardType.UNIT_BUFF
+        and entry.target_id in ALWAYS_AVAILABLE_TECH_IDS
+        and entry.target_id not in access_targets
+        and BUFF_TARGETS[entry.target_id].get('category') in {
+            'infantry', 'units', 'aircraft',
+        }
     )

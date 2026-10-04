@@ -1745,8 +1745,11 @@ class ShopPolishController(ShopArchipelagoController):
         )
         owned_unit_selected = bool(
             unit_selection
-            and self._shop_permanent_rows.get(unit_selection[0], '')
-            in self.shop_profile.permanent_unit_unlocks
+            and (
+                unit_selection[0] in self._shop_permanent_always_available_rows
+                or self._shop_permanent_rows.get(unit_selection[0], '')
+                in self.shop_profile.permanent_unit_unlocks
+            )
         )
         self.shop_permanent_unit_buffs_button.configure(
             state='normal' if owned_unit_selected else 'disabled'
@@ -1756,9 +1759,14 @@ class ShopPolishController(ShopArchipelagoController):
                 unit_selection[0], 'values'
             )
             reward_id = self._shop_permanent_rows.get(unit_selection[0], '')
+            help_text = (
+                'Always available in Shop runs. Open Buffs for permanent upgrades.'
+                if unit_selection[0] in self._shop_permanent_always_available_rows
+                else 'Permanent access can be selected in future starting loadouts.'
+            )
             self.shop_permanent_unit_info_var.set(
                 f'{values[0]} • {values[1]} • {values[2]} • {values[3]}. '
-                'Permanent access can be selected in future starting loadouts.'
+                + help_text
             )
             self.shop_permanent_unit_button.configure(
                 text=(
@@ -1778,6 +1786,12 @@ class ShopPolishController(ShopArchipelagoController):
         return getattr(self, '_shop_loadout_details', {}).get(row_id, '')
 
     def shop_permanent_tooltip(self, row_id):
+        core_label = self._shop_permanent_always_available_rows.get(row_id)
+        if core_label:
+            return (
+                f'{core_label}\nAlways available in Shop runs. '
+                'Open Buffs to buy permanent upgrades between runs.'
+            )
         reward_id = self._shop_permanent_rows.get(row_id)
         if not reward_id:
             return ''

@@ -8,6 +8,7 @@ from .catalogue import (
     canonical_reward_for_id,
     canonical_reward_id,
     catalogue_entry,
+    shop_always_available_unit_ids,
 )
 from .config import SHOP_CONFIG
 from .economy import permanent_upgrade_price
@@ -117,7 +118,13 @@ def purchase_permanent_buff(profile, reward, *, price, shop_eligible=True):
         for owned_entry in [catalogue_entry(canonical_reward_for_id(owned_id))]
         if owned_entry is not None and owned_entry.reward_type is access_type
     }
-    if entry.target_id not in owned_targets:
+    if (
+        entry.target_id not in owned_targets
+        and not (
+            entry.reward_type is ShopRewardType.UNIT_BUFF
+            and entry.target_id in shop_always_available_unit_ids()
+        )
+    ):
         result = (
             PurchaseResult.REQUIRES_UNIT_ACCESS
             if entry.reward_type is ShopRewardType.UNIT_BUFF

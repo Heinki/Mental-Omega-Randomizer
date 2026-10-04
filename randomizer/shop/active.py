@@ -14,7 +14,11 @@ from randomizer.missions.tier_one import (
 )
 from randomizer.rewards.rules import tech_ids_for_rewards
 
-from .catalogue import canonical_reward_for_id, catalogue_entry
+from .catalogue import (
+    canonical_reward_for_id,
+    catalogue_entry,
+    shop_always_available_unit_ids,
+)
 from .archipelago import ap_automatic_reward_ids
 from .model import ShopRewardType
 
@@ -238,10 +242,11 @@ def permanent_buff_snapshot(
     permanent_power_reward_ids=(),
     starter_tech_ids=(),
 ):
-    """Keep permanent buffs whose purchased access is active next run."""
+    """Keep permanent buffs for core units and access selected next run."""
     active_tech_ids = {
         str(tech_id).upper() for tech_id in starter_tech_ids if str(tech_id)
     }
+    active_tech_ids.update(shop_always_available_unit_ids())
     active_tech_ids.update(tech_ids_for_rewards(
         canonical_reward_for_id(reward_id)
         for reward_id in selected_unit_reward_ids
@@ -277,6 +282,7 @@ def active_shop_tech_ids(run):
         return ()
     tech_ids = set(active_shop_starter_unit_ids(run))
     tech_ids.update(active_shop_starter_defense_ids(run))
+    tech_ids.update(shop_always_available_unit_ids())
     rewards = [
         canonical_reward_for_id(reward_id)
         for reward_id in active_shop_reward_ids(run)
