@@ -6,8 +6,8 @@ create a player YAML, connect to a room, and continue an existing game.
 ## What you need
 
 - Mental Omega 3.3.6 in a separate, unmodified game installation
-- Mental Omega Randomizer Launcher 1.40
-- Archipelago 0.6.7
+- Mental Omega Randomizer Launcher 1.41
+- Archipelago 0.6.8
 - `mental_omega.apworld` from the same Randomizer release as the launcher
 
 Use matching launcher and APWorld releases. A YAML created by another
@@ -100,7 +100,7 @@ change Archipelago generation or fill behavior.
 
 ## Generate and host the room
 
-Generate the multiworld normally with Archipelago 0.6.7 after every player's
+Generate the multiworld normally with Archipelago 0.6.8 after every player's
 YAML is in the `Players` folder. Upload or host the generated output using your
 normal Archipelago workflow.
 

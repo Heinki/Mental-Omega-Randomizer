@@ -2,9 +2,9 @@
 
 ## Required versions
 
-- Mental Omega Randomizer Launcher 1.40
+- Mental Omega Randomizer Launcher 1.41
 - Mental Omega 3.3.6 in a separate, unmodified installation
-- Archipelago 0.6.7
+- Archipelago 0.6.8
 - `mental_omega.apworld` from the same Randomizer release as the launcher
 
 ## Install
@@ -18,7 +18,7 @@
 5. Open the **Archipelago** tab, enter the intended slot name, then choose
    **Save Player YAML**. This saves the visible controls as reusable settings.
 6. Put that YAML in Archipelago's `Players` folder. Generate and host the room
-   normally with Archipelago 0.6.7.
+   normally with Archipelago 0.6.8.
 7. In the Randomizer's Archipelago tab, keep **Server** as
    `archipelago.gg`, copy the room page's game-server port, enter the matching
    slot name and optional password, then choose **Connect**. The browser room
@@ -74,6 +74,6 @@ becoming ordinary Shop rewards. Only a completed run belonging to the current AP
 can report its goal.
 
 Run `tools/check_archipelago_integration.py --archipelago-root /path/to/Archipelago`
-with Archipelago 0.6.7's Python environment to verify YAML, generation, item fill,
+with Archipelago 0.6.8's Python environment to verify YAML, generation, item fill,
 beatability, handshake, and Shop controls. Add `--apworld /path/to/game.apworld`
 to test the packaged world.

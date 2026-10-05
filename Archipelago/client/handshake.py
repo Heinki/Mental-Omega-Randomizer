@@ -1,4 +1,4 @@
-"""Bounded Archipelago 0.6.7 handshake used by client smoke and UI layers."""
+"""Bounded Archipelago 0.6.8 handshake used by client smoke and UI layers."""
 
 from dataclasses import dataclass, field
 from hashlib import sha256
@@ -11,13 +11,13 @@ from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import getproxies
 
-from randomizer.core.version import APP_VERSION
+from randomizer.core.version import APP_VERSION, ARCHIPELAGO_VERSION
 
 
 GAME_NAME = 'Mental Omega'
 SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6, 7})
 SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
-CLIENT_VERSION = (0, 6, 7)
+CLIENT_VERSION = tuple(int(part) for part in ARCHIPELAGO_VERSION.split('.'))
 ITEMS_HANDLING_ALL = 0b111
 DEFAULT_PORT = 38281
 

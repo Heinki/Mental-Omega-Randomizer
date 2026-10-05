@@ -1,8 +1,8 @@
 """Single source of truth for launcher and APWorld release versions."""
 
-APP_VERSION = '1.40'
-APWORLD_VERSION = '0.6.5'
-ARCHIPELAGO_VERSION = '0.6.7'
+APP_VERSION = '1.41'
+APWORLD_VERSION = '0.6.6'
+ARCHIPELAGO_VERSION = '0.6.8'
 APWORLD_CONTAINER_VERSION = 8
 
 

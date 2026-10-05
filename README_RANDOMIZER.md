@@ -2,7 +2,7 @@
 
 This is the authoritative player-facing guide for seed settings and reward behavior. Installation, building, and source layout are maintained in [README.md](README.md); implementation details are maintained in [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md).
 
-The launcher supports standalone play and Archipelago 0.6.7 multiworld play.
+The launcher supports standalone play and Archipelago 0.6.8 multiworld play.
 The same settings generate both modes. Archipelago player YAML exposes a
 readable copy of the normal nested launcher settings and freezes the generated
 run in a separate protected manifest.

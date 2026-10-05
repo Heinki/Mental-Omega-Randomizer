@@ -7,7 +7,7 @@
 [![Security checks](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml/badge.svg)](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml)
 
 A Windows campaign randomizer for Mental Omega with standalone and Archipelago
-0.6.7 play. It generates deterministic mission and reward plans, launches
+0.6.8 play. It generates deterministic mission and reward plans, launches
 campaign maps directly, tracks objective and victory checks, locks unearned
 technology, and applies earned access and buffs through generated mission
 copies.
