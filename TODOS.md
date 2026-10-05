@@ -1,5 +1,6 @@
 ## BUGS AND IMPROVEMENTS
 
+- Performance of UI bad in Shopmode, userreport: "It does seem the performance of the new update is rather bad. Upgrading a unit in shopmode seem to take longer again."
 
 ### Co-op mode: live playtest remaining
 

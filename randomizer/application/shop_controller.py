@@ -980,7 +980,9 @@ class ShopController(ShopPolishController):
                 self.shop_actions_frame.grid()
         if self.shop_mode_selected():
             self._refresh_shop_missions()
-            self._refresh_shop_setup()
+            self._shop_setup_dirty = True
+            self.refresh_visible_shop_setup()
+            self._refresh_shop_modifier_difficulty()
         if hasattr(self, 'header_summary_var'):
             self.update_header_summary()
         self.sync_shop_ap_panel()
@@ -1001,15 +1003,25 @@ class ShopController(ShopPolishController):
         if panel == str(self.shop_run_panel):
             self.refresh_shop_catalogue()
         elif panel == str(self.shop_loadout_panel):
-            self._refresh_shop_loadout()
             if self.__dict__.get('_shop_loadout_upgrade_target'):
                 self._refresh_shop_loadout_upgrade_view()
+            else:
+                self._refresh_shop_loadout()
         elif panel == str(self.shop_permanent_panel):
             self._refresh_permanent_shop()
         elif panel == str(self.shop_ap_panel):
             self._refresh_archipelago_shop_purchases()
         elif panel in (str(self.shop_summary_panel), str(self.shop_history_panel)):
             self._refresh_shop_history()
+
+    def refresh_visible_shop_setup(self):
+        """Defer the setup table until its workspace tab is visible."""
+        if (
+            self.__dict__.get('_shop_setup_dirty', True)
+            and hasattr(self, 'settings_tab')
+            and self.workspace_tabs.select() == str(self.settings_tab)
+        ):
+            self._refresh_shop_setup()
 
     def schedule_shop_search_refresh(self, view):
         """Coalesce typing into one table rebuild after a short pause."""
@@ -2212,7 +2224,13 @@ class ShopController(ShopPolishController):
             self._set_shop_message(exc, error=True)
         else:
             if validation.allowed:
-                self._shop_focus_reward_id = reward_id
+                focus_key = (
+                    '_shop_loadout_upgrade_focus_reward_id'
+                    if self.__dict__.get('_shop_loadout_upgrade_target')
+                    and self.shop_panels.select() == str(self.shop_loadout_panel)
+                    else '_shop_focus_reward_id'
+                )
+                self.__dict__[focus_key] = reward_id
                 self._set_shop_message(
                     f'Purchased {reward_id} with a Free Buff Token.'
                     if validation.cost == 0 else
@@ -2228,12 +2246,12 @@ class ShopController(ShopPolishController):
     def _refresh_shop_loadout(self):
         self.cancel_shop_search_refresh('loadout')
         tree = self.shop_loadout_tree
-        self._clear_shop_tree_buttons('_shop_loadout_upgrade_buttons')
-        tree.delete(*tree.get_children())
+        tree_rows = []
         self._shop_current_loadout_targets = {}
         self._shop_loadout_details = {}
         run = self.shop_run
         if run is None:
+            self._sync_shop_tree_rows(tree, tree_rows)
             self._rebuild_shop_loadout_upgrade_buttons()
             self.shop_loadout_upgrade_button.configure(state='disabled')
             return
@@ -2341,12 +2359,13 @@ class ShopController(ShopPolishController):
                 record['archipelago_item'] = True
 
         display_rewards = active_shop_rewards(run)
+        rewards_by_unit, global_rewards = self._shop_rewards_by_unit(display_rewards)
         for record in records.values():
             if record['is_power']:
                 continue
             inherited = Counter(
                 reward['name'] for reward in inherited_unit_buff_rewards(
-                    display_rewards, record['target_id'],
+                    global_rewards, record['target_id'],
                 )
             )
             record['buffs'].extend(
@@ -2370,7 +2389,10 @@ class ShopController(ShopPolishController):
                 item = combined.setdefault(reward_id, {'stacks': 0, 'sources': []})
                 item['stacks'] += stacks
                 item['sources'].append(f'{source} ×{stacks}')
-            counts = unit_buff_counts(active_shop_rewards(run), record['target_id'])
+            counts = unit_buff_counts(
+                (*rewards_by_unit.get(record['target_id'], ()), *global_rewards),
+                record['target_id'],
+            )
             for reward_id, item in combined.items():
                 reward = canonical_reward_for_id(reward_id)
                 effects = buff_effect_lines(
@@ -2395,8 +2417,8 @@ class ShopController(ShopPolishController):
         power_buff_targets = {
             entry.target_id for entry in self._shop_power_buff_entries
         }
-        for index, record in enumerate(visible):
-            iid = f'current-loadout-{index}'
+        for record in visible:
+            iid = f'current-loadout-{int(record["is_power"])}-{record["target_id"]}'
             target_id = record['target_id']
             is_power = record['is_power']
             has_upgrades = target_id in (
@@ -2420,7 +2442,6 @@ class ShopController(ShopPolishController):
                 if record['buffs'] else 'No buffs'
             )
             options = {
-                'iid': iid,
                 'values': (
                     ' + '.join(record['sources']),
                     item_label,
@@ -2435,7 +2456,7 @@ class ShopController(ShopPolishController):
             )
             if cameo is not None:
                 options['image'] = cameo
-            tree.insert('', 'end', **options)
+            tree_rows.append((iid, options))
             details = [
                 item_label,
                 'Source: ' + ' + '.join(record['sources']),
@@ -2445,6 +2466,7 @@ class ShopController(ShopPolishController):
             ]
             details.extend(record['buff_lines'] or ('None',))
             self._shop_loadout_details[iid] = '\n'.join(details)
+        self._sync_shop_tree_rows(tree, tree_rows)
         self._rebuild_shop_loadout_upgrade_buttons()
         unit_upgrade_count = len({
             target for target, is_power
@@ -2625,6 +2647,7 @@ class ShopController(ShopPolishController):
                 if modifiers_locked or unavailable else 'normal'
             )
         self._refresh_shop_modifier_difficulty()
+        self._shop_setup_dirty = False
 
     def _refresh_shop_modifier_difficulty(self, *_args):
         if not hasattr(self, 'shop_difficulty_var'):

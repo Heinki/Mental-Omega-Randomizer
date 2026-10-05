@@ -164,6 +164,8 @@ class WindowController:
                 self.workspace_tabs.grid_configure(columnspan=2, padx=0)
                 self.compact_action_row.grid()
         if hasattr(self, 'settings_tab') and selected == str(self.settings_tab):
+            if shop_mode_selected:
+                self.after_idle(self.refresh_visible_shop_setup)
             self.after_idle(
                 lambda: self.layout_settings_sections(
                     self.settings_canvas.winfo_width()

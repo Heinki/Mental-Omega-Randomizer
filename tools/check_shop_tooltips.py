@@ -137,7 +137,7 @@ class InlineEffectChecks(unittest.TestCase):
         self.assertEqual(opened, [('TEST_UNIT', False)])
         self.assertFalse(controller.shop_panels.labels_changed)
 
-    def test_loadout_upgrade_refresh_restores_normal_shop(self):
+    def test_loadout_upgrade_refresh_preserves_normal_shop(self):
         class Variable:
             def __init__(self, value):
                 self.value = value
@@ -162,14 +162,10 @@ class InlineEffectChecks(unittest.TestCase):
             shop_catalogue_help_var=Variable('Upgrade help'),
             shop_loadout_upgrade_target_var=Variable(''),
             shop_loadout_upgrade_help_var=Variable(''),
-            _copy_shop_catalogue_to_loadout_upgrades=lambda: None,
-            refresh_shop_catalogue=lambda: calls.append(
-                (category.get(), search.get())
-            ),
+            refresh_shop_catalogue=lambda **options: calls.append(options),
         )
         ShopPolishController._refresh_shop_loadout_upgrade_view(controller)
-        self.assertEqual(calls[0], ('Unit Buffs', ''))
-        self.assertEqual(calls[-1], ('Offers', 'normal shop search'))
+        self.assertEqual(calls, [{'upgrade_target': ('TEST_UNIT', False)}])
         self.assertEqual(category.get(), 'Offers')
         self.assertEqual(search.get(), 'normal shop search')
 
