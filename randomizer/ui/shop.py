@@ -220,7 +220,7 @@ def build_shop_tab(self, workspace_tabs):
             height=290,
             borderwidth=0,
             highlightthickness=0,
-            background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+            background=self.ui_palette()['background'],
         )
         detail_scrollbar = ttk.Scrollbar(
             detail_frame, orient='vertical', command=detail_canvas.yview

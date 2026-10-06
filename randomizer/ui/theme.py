@@ -290,6 +290,8 @@ def apply_color_mode(self):
         canvas = getattr(self, canvas_name, None)
         if canvas is not None:
             canvas.configure(background=palette['canvas'])
+    for card in getattr(self, 'shop_mission_cards', ()):
+        card['detail_canvas'].configure(background=background)
     for canvas in getattr(self, 'advanced_pool_canvases', {}).values():
         canvas.configure(background=palette['canvas'])
     for slider in getattr(self, 'reward_weight_slider_controls', ()):
