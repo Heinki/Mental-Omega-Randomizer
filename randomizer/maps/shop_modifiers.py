@@ -55,11 +55,13 @@ def apply_shop_clone_restrictions(
         values.update(clone_values)
         get = lambda key: str(values.get(_key(values, key), '')).strip().lower()
         category = str(BUFF_TARGETS.get(source_id, {}).get('category') or '')
+        flying = get('MovementZone') == 'fly' or get('JumpJet') == 'yes'
         naval = (
             source_id in NAVAL_UNIT_IDS
             or get('Naval') == 'yes'
             or get('WaterBound') == 'yes'
-            or get('SpeedType') == 'hover'
+            # Flying jumpjet units such as Buzzard also use Hover speed.
+            or (get('SpeedType') == 'hover' and not flying)
             or get('MovementZone') in {'amphibious', 'amphibiousdestroyer'}
         )
         factory = get('Factory')

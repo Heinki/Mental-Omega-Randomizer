@@ -1,8 +1,62 @@
-"""Regression coverage for Demolition Charges death-weapon fallback."""
+"""Regression coverage for Shop production restrictions and global modifiers."""
 
 import unittest
 
-from randomizer.maps.shop_modifiers import apply_shop_global_modifiers
+from randomizer.maps.shop_modifiers import (
+    apply_shop_clone_restrictions,
+    apply_shop_global_modifiers,
+)
+
+
+class ShopCloneRestrictionTests(unittest.TestCase):
+    def setUp(self):
+        # Production and flight fields from the reported SSIDE.map Buzzard.
+        self.rules = {'MORPBUZZ': {
+            'TechLevel': '1', 'SpeedType': 'Hover',
+            'MovementZone': 'Fly', 'JumpJet': 'yes',
+            'ConsideredAircraft': 'yes',
+        }}
+        self.handled = {'BUZZ': {'clone_id': 'MORPBUZZ'}}
+
+    def restrict(self, blocked=('naval', 'infantry'), installed=None):
+        return apply_shop_clone_restrictions(
+            self.rules, self.handled, installed or {},
+            {'shop_production_restrictions': blocked},
+        )
+
+    def test_buzzard_remains_buildable_with_naval_and_infantry_blocked(self):
+        self.assertEqual(self.restrict(), ())
+        self.assertEqual(self.rules['MORPBUZZ']['TechLevel'], '1')
+
+    def test_each_flight_marker_excludes_hover_aircraft(self):
+        for marker in ({'movementzone': 'fLy'}, {'jumpjet': 'YES'}):
+            with self.subTest(marker=marker):
+                self.rules['MORPBUZZ'] = {'TechLevel': '1'}
+                installed = {'BUZZ': {'speedtype': 'hOvEr', **marker}}
+                self.assertEqual(self.restrict(installed=installed), ())
+                self.assertEqual(self.rules['MORPBUZZ']['TechLevel'], '1')
+
+    def test_surface_hovercraft_remains_blocked(self):
+        # An unlisted type exercises hover detection without the naval ID list.
+        self.handled = {'HOVERCRAFT': {'clone_id': 'MORPBUZZ'}}
+        self.rules['MORPBUZZ'] = {
+            'TechLevel': '1', 'SpeedType': 'Hover', 'MovementZone': 'Normal',
+        }
+        self.assertEqual(self.restrict(), ('MORPBUZZ',))
+        self.assertEqual(self.rules['MORPBUZZ']['TechLevel'], '-1')
+
+    def test_explicit_naval_types_remain_blocked(self):
+        for marker in ({'Naval': 'yes'}, {'WaterBound': 'yes'}):
+            with self.subTest(marker=marker):
+                self.rules['MORPBUZZ']['TechLevel'] = '1'
+                self.assertEqual(
+                    self.restrict(installed={'BUZZ': marker}), ('MORPBUZZ',),
+                )
+                self.assertEqual(self.rules['MORPBUZZ']['TechLevel'], '-1')
+
+    def test_buzzard_still_obeys_vehicle_production_restriction(self):
+        self.assertEqual(self.restrict(('vehicles',)), ('MORPBUZZ',))
+        self.assertEqual(self.rules['MORPBUZZ']['TechLevel'], '-1')
 
 
 class ShopGlobalModifierTests(unittest.TestCase):
