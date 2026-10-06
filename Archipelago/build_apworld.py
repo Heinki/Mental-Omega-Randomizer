@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 import sys
@@ -27,9 +28,8 @@ def build(output_directory: Path) -> Path:
     sys.path.insert(0, str(PROJECT_ROOT))
     from Archipelago.generate_catalogue import main as generate_catalogue
     from Archipelago.bundle_generation import generation_files
-    from randomizer.core.paths import BATTLE_CLIENT_INI
+    from Archipelago.mission_catalogue import generation_missions
     from randomizer.core.version import release_versions
-    from randomizer.missions.catalogue import parse_missions
 
     manifest_path = SOURCE_DIR / 'archipelago.json'
     if not manifest_path.is_file():
@@ -37,9 +37,23 @@ def build(output_directory: Path) -> Path:
     versions = release_versions()
 
     generate_catalogue()
+    catalogue = json.loads((SOURCE_DIR / 'catalogue.json').read_text(encoding='utf-8'))
+    options_tree = ast.parse((SOURCE_DIR / 'options.py').read_text(encoding='utf-8'))
+    mission_goal = next(
+        node for node in options_tree.body
+        if isinstance(node, ast.ClassDef) and node.name == 'MissionGoal'
+    )
+    maximum_missions = next(
+        ast.literal_eval(node.value) for node in mission_goal.body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == 'range_end'
+                for target in node.targets)
+    )
+    if not catalogue['missions'] or maximum_missions != len(catalogue['missions']):
+        raise ValueError('MissionGoal.range_end must match the nonempty mission catalogue.')
     bundled_files = generation_files()
     missions_data = json.dumps(
-        parse_missions(BATTLE_CLIENT_INI), sort_keys=True,
+        generation_missions(), sort_keys=True,
     ).encode('utf-8')
     output_directory = output_directory.resolve()
     output_directory.mkdir(parents=True, exist_ok=True)

@@ -79,7 +79,9 @@ class MissionGoal(Range):
 
     display_name = "Missions to Finish"
     range_start = 1
-    range_end = len(MISSION_DATA)
+    # Keep UI bounds independent of catalogue loading. The package builder
+    # checks this literal against the bundled mission catalogue.
+    range_end = 97
     default = 15
 
 

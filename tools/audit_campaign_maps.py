@@ -1293,6 +1293,7 @@ def main():
             if root_map.is_file() and is_generated_hooked_map(root_map):
                 root_map.unlink()
             print(f'[{index:02d}/97] {mission["code"]}', flush=True)
+        _assert_demolition_death_weapons(generated)
         _assert_targeted_contracts(generated)
         if launcher.enemy_applications.get('AWITHER') != []:
             raise AssertionError(
@@ -1318,10 +1319,11 @@ def main():
         _assert_nanofiber_mutation_damage(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
         _assert_reality_engineering_team_clone(missions)
-        from tools.check_reported_regressions import check_noise, check_units
+        from tools.check_reported_regressions import check_bottleneck, check_noise, check_units
         mission_by_code = {mission['code']: mission for mission in missions}
         check_noise(mission_by_code, _AuditLauncher)
         check_units(mission_by_code, _AuditLauncher)
+        check_bottleneck(mission_by_code, _AuditLauncher)
         if not any(
             'Applied composed Shop run clone modifiers:' in message
             for _error, message in launcher.logs
@@ -1338,6 +1340,28 @@ def main():
         'Mermaid, Remnant, Parasomnia, Golden Gate, Nanofiber, Taciturn, '
         'and Reality focused checks passed.'
     )
+
+
+def _assert_demolition_death_weapons(paths):
+    from randomizer.maps.shop_modifiers import apply_shop_global_modifiers
+
+    _names, installed = installed_rules_registry()
+    for path in paths:
+        rules = {}
+        apply_shop_global_modifiers(rules, path.read_text().splitlines(), installed, {
+            'shop_demolition_charges': 1,
+            'shop_melee_fighters': 1,
+            'shop_one_shot_one_kill': 1,
+        })
+        for unit, values in rules.items():
+            death = values.get('DeathWeapon')
+            if not death:
+                continue
+            weapon = installed[death]
+            warhead = installed[weapon['Warhead']]
+            assert warhead.get('Temporal', 'no') != 'yes', (path.name, unit, death)
+            assert weapon.get('Spawner', 'no') != 'yes', (path.name, unit, death)
+    print('All 97 generated maps: safe Demolition Charges death-weapon fallback', flush=True)
 
 
 if __name__ == '__main__':

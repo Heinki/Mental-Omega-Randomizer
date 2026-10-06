@@ -198,6 +198,7 @@ try {
         --add-data "$staticConfigPath\rewards;configs\rewards" `
         --add-data "$configManifestPath;configs" `
         --add-data "$assetPath;assets" `
+        --add-data "$scriptDir\Archipelago\generation_missions.json;Archipelago" `
         --add-binary "$tkinterBinary;." `
         --add-data "$tkinterPackage;tkinter" `
         --add-binary "$tclBinary;." `

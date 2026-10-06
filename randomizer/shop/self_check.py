@@ -653,6 +653,14 @@ def _requested_upgrade_modifier_checks():
                 for type_id in ('SOLDIER', 'TANK', 'JET')
             )
             and all(
+                global_rules[type_id].get('DeathWeapon') == death_weapon
+                for type_id, death_weapon in (
+                    ('SOLDIER', 'InfantryDeathWeapon'),
+                    ('TANK', 'UnitDeathWeapon'),
+                    ('JET', 'AircraftDeathWeapon'),
+                )
+            )
+            and all(
                 global_rules[type_id].get('Strength') == '1'
                 for type_id in (
                     'SOLDIER', 'TANK', 'JET', 'TOWER', 'FACTORY',

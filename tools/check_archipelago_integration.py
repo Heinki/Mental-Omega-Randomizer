@@ -125,6 +125,26 @@ class Widget:
 
 
 class IntegrationTests(unittest.TestCase):
+    def test_clean_build_mission_snapshot(self):
+        from Archipelago.mission_catalogue import generation_missions
+
+        missions = generation_missions(ROOT / 'missing-game' / 'INI' / 'BattleClient.ini')
+        self.assertEqual({mission['code'] for mission in missions}, set(data.MISSION_DATA))
+        self.assertEqual(len(missions), 97)
+
+    def test_mission_goal_bounds_and_maximum_run(self):
+        option = WorldType.options_dataclass.type_hints['mission_goal']
+        self.assertEqual(option.range_start, 1)
+        self.assertEqual(option.range_end, len(data.MISSION_DATA))
+        self.assertEqual(option.from_any(15).value, 15)
+        self.assertEqual(option.from_any(97).value, 97)
+        with self.assertRaises(Exception):
+            option.from_any(0)
+        with self.assertRaises(Exception):
+            option.from_any(98)
+        world = make_option_world({'mission_goal': 97})
+        self.assertEqual(len(world.run_manifest['mission_order']), 97)
+
     def test_option_creator_fields_generate_a_run(self):
         from Options import (
             Choice, FreeText, NamedRange, OptionCounter, OptionList, OptionSet,
@@ -298,7 +318,8 @@ class IntegrationTests(unittest.TestCase):
         controller.shop_run = None
         for name in ('shop_progression_mode_combo', 'shop_seed_entry',
                      'shop_setup_start_button', 'shop_faction_pool_combo',
-                     'shop_discount_specialization_combo', 'shop_difficulty_combo'):
+                     'shop_discount_specialization_combo', 'shop_difficulty_combo',
+                     'shop_coop_mode_check'):
             setattr(controller, name, Widget())
         controller.appearance_frame = Widget()
         controller.settings_frame = Widget([controller.shop_setup_start_button,

@@ -199,6 +199,11 @@ python3 Archipelago/build_apworld.py
 Changes affecting the catalogue or APWorld require matching launcher and
 APWorld builds through `build_all.ps1` or `build_all_linux.sh`.
 
+Release builds use the checked-in `Archipelago/generation_missions.json`
+snapshot when no Mental Omega installation is available. Installed-game
+catalogue regeneration refreshes it. Packaging rejects empty catalogues and
+mission counts that disagree with the Missions to Finish option (1–97).
+
 Ownership, clone, AI, power, Action, or mission-map changes require all 97
 extracted maps. Determinism refactors require exact old/new plan parity, not
 distribution-only checks.

@@ -513,7 +513,9 @@ def run_self_check():
                 for value in production_values
             ] == [10, 20, 30, 40, 50]
             and enemy_buff_capacity(armor_only_settings) == 5
-            and armor_only_settings['maximum_total_buffs'] == 5
+            # Per-kind caps bound the draws without changing the chosen
+            # total limit; the following count verifies that cap separately.
+            and armor_only_settings['maximum_total_buffs'] == 999
             and len(armor_only_traps) == 5
             and len(capped_total_traps) == 3
             and len(enemy_paratroopers) == 1

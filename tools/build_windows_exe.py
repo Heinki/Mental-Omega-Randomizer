@@ -217,6 +217,8 @@ def build(output: Path, *, run_checks: bool = True) -> None:
             add_data(manifest, 'configs'),
             '--add-data',
             add_data(assets, 'assets'),
+            '--add-data',
+            add_data(PROJECT_ROOT / 'Archipelago' / 'generation_missions.json', 'Archipelago'),
             '--add-binary',
             add_data(tkinter_binary, '.'),
             '--add-data',

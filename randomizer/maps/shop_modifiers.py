@@ -239,6 +239,28 @@ def apply_shop_global_modifiers(
     }
 
     if demolition:
+        death_weapons = {
+            'InfantryTypes': 'InfantryDeathWeapon',
+            'VehicleTypes': 'UnitDeathWeapon',
+            'AircraftTypes': 'AircraftDeathWeapon',
+        }
+        for list_name, death_weapon in death_weapons.items():
+            for type_id in _registered_ids(
+                installed_sections, map_sections, rule_sections, list_name
+            ):
+                values = _effective_values(
+                    type_id, installed_sections, map_sections, rule_sections
+                )
+                death_key = _key(values, 'DeathWeapon')
+                if str(values.get(death_key, '')).strip().casefold() in {
+                    '', 'none', '<none>',
+                }:
+                    # Explodes falls back to the current primary weapon.
+                    # Temporal/spawner/control weapons cannot safely fire
+                    # from a dying unit (ABOTTLE: TemporalClass::Fire).
+                    rule_sections.setdefault(type_id, {})[
+                        death_key or 'DeathWeapon'
+                    ] = death_weapon
         for type_id in mobile_ids:
             rule_sections.setdefault(type_id, {})['Explodes'] = 'yes'
             touched_technos.add(type_id)

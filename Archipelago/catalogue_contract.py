@@ -10,8 +10,7 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 
-from randomizer.core.paths import BATTLE_CLIENT_INI
-from randomizer.missions.catalogue import parse_missions
+from Archipelago.mission_catalogue import generation_missions
 from randomizer.rewards.catalogue import MAX_REWARDS_PER_CHECK, REWARD_POOL
 from randomizer.rewards.weights import main_reward_weight_type
 
@@ -88,7 +87,7 @@ def build_catalogue_projection():
         })
 
     missions = []
-    for mission in parse_missions(BATTLE_CLIENT_INI):
+    for mission in generation_missions():
         objectives = list(mission.get("objectives") or ())
         checks = [
             {

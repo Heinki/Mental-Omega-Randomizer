@@ -152,6 +152,29 @@ def check_units(missions, launcher_type):
     assert 'RACC' in inhibitors and 'MORPRACC' in inhibitors
 
 
+def check_bottleneck(missions, launcher_type):
+    class DemolitionLauncher(launcher_type):
+        def active_reward_settings(self):
+            settings = super().active_reward_settings()
+            settings.update({
+                'shop_demolition_charges': 1,
+                'shop_melee_fighters': 1,
+                'shop_one_shot_one_kill': 1,
+            })
+            return settings
+
+    launcher = DemolitionLauncher(enemy_effect_ids=[])
+    sections = generate(launcher, missions['ABOTTLE'])
+    for unit in ('CLEG', 'AICLEG'):
+        assert sections[unit]['Explodes'] == 'yes'
+        assert sections[unit]['DeathWeapon'] == 'InfantryDeathWeapon'
+        assert sections[unit]['Strength'] == '1'
+    # Preserve the authored opening EMP discharge, not a generic explosion.
+    assert sections['NCHF']['DeathWeapon'] == 'TemporalShield'
+    assert sections['NeutronRifle']['Range'] == '2.35'
+    print('Bottleneck: Chaos Shop, all global combat modifiers, safe death weapons', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -159,6 +182,7 @@ def main():
     missions = {mission['code']: mission for mission in parse_missions(BATTLE_CLIENT_INI)}
     check_noise(missions, _AuditLauncher)
     check_units(missions, _AuditLauncher)
+    check_bottleneck(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 
