@@ -41,8 +41,8 @@ from randomizer.shop.mission_modifiers import shop_enemy_scaling_entries
 from randomizer.ui.cameos import installed_rules_registry
 
 
-PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V6'
-SHOP_MARKER = 'MOR_COOP_SHOP_V1'
+PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V8'
+SHOP_MARKER = 'MOR_COOP_SHOP_V2'
 SUPPORTED_PROGRESSION = {'Classic', 'Grid Mode', 'Mission List'}
 SIDE_COUNTRIES = (
     'UnitedStates', 'Europeans', 'Pacific',
@@ -301,6 +301,13 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
         raise ValueError('Source map is not multiplayer-only.')
     merge_ini_section_values(lines, {
         'Basic': {'Name': f"{basic.get('name', source.stem)} - Randomizer"},
+        # DrawBehind creates a BEHIND animation according to local visibility.
+        # A hidden reward provider produced an extra animation on the guest
+        # in the paired Panzer Ace SYNC logs (frame 259). That shifted subsequent
+        # object IDs and caused different CRCs despite identical rules and RNG.
+        # The native renderer supports a null Behind type without creating an
+        # animation object. Disable this cosmetic marker for co-op maps only.
+        'General': {'Behind': 'none'},
     })
     if manifest['schema'] == 5:
         for role, scope, country in (
@@ -328,6 +335,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
         )
         apply_coop_power_rewards(
             lines, manifest['player_country'], manifest.get('power_reward_ids', []),
+            shared_grid=True,
         )
     player_countries = {manifest['player_country']}
     if manifest['schema'] == 5:

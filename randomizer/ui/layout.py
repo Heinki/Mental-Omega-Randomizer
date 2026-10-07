@@ -15,6 +15,7 @@ from ._builder_dependencies import (
     ttk,
 )
 from .shop import _tree
+from .coop import build_coop_controls
 
 def _build_window_shell(self):
     main_frame = ttk.Frame(self, padding=(12, 12, 12, 12))
@@ -220,12 +221,6 @@ def _build_window_shell(self):
         style='Launch.TButton',
     )
     self.compact_launch_button.grid(row=0, column=0, sticky='ew', padx=(0, 4), pady=(6, 0))
-    self.compact_coop_button = ttk.Button(
-        self.compact_action_row,
-        text='Co-op Connection…',
-        command=self.open_coop_dialog,
-    )
-    self.compact_coop_button.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(4, 0))
     compact_complete_button = ttk.Button(
         self.compact_action_row,
         text='Mark Mission Complete',
@@ -317,12 +312,6 @@ def _build_right_panel(self, main_frame):
         command=self.on_new_seed,
     )
     self.seed_action_button.grid(row=0, column=1, sticky='ew')
-    self.coop_mode_check = ttk.Checkbutton(
-        seed_settings_frame, text='Co-op mode (2 players)',
-        variable=self.coop_mode_var, command=self.on_coop_mode_changed,
-    )
-    self.coop_mode_check.grid(row=0, column=1, sticky='e')
-
     options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
     options_row.columnconfigure(1, weight=1)
@@ -792,18 +781,7 @@ def _build_right_panel(self, main_frame):
         self.shop_modifier_buttons.append(checkbutton)
         self.shop_modifier_button_by_id[modifier_id] = checkbutton
 
-    shop_coop_row = ttk.Frame(shop_settings_frame)
-    self.shop_coop_row = shop_coop_row
-    shop_coop_row.grid(row=16, column=0, columnspan=2, sticky='ew', pady=(12, 0))
-    self.shop_coop_mode_check = ttk.Checkbutton(
-        shop_coop_row, text='Co-op mode (2 players)',
-        variable=self.coop_mode_var, command=self.on_coop_mode_changed,
-    )
-    self.shop_coop_mode_check.pack(side='left')
-    self.shop_coop_connection_button = ttk.Button(
-        shop_coop_row, text='Co-op Connection…', command=self.open_coop_dialog,
-    )
-    self.shop_coop_connection_button.pack(side='left', padx=(16, 0))
+    build_coop_controls(self, shop_settings_frame, 16, shop=True)
 
     self.shop_setup_start_button = ttk.Button(
         shop_settings_frame,
@@ -826,18 +804,12 @@ def _build_right_panel(self, main_frame):
         style='Launch.TButton',
     )
     self.launch_selected_button.grid(row=0, column=0, sticky='ew', pady=(0, 4))
-    self.coop_connection_button = ttk.Button(
-        button_row,
-        text='Co-op Connection…',
-        command=self.open_coop_dialog,
-    )
-    self.coop_connection_button.grid(row=1, column=0, sticky='ew', pady=(0, 4))
     self.debug_complete_button = ttk.Button(
         button_row,
         text='Mark Mission Complete',
         command=self.on_debug_mark_complete,
     )
-    self.debug_complete_button.grid(row=2, column=0, sticky='ew', pady=(0, 3))
+    self.debug_complete_button.grid(row=1, column=0, sticky='ew', pady=(0, 3))
     WidgetTooltip(
         self.debug_complete_button,
         'Co-op host: record a won mission to unlock the next maps. '

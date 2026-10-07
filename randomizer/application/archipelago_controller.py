@@ -255,6 +255,9 @@ class ArchipelagoController(ArchipelagoYamlController):
         excluded.add(self.appearance_frame)
         # Starting a Shop run is gameplay, not a mutable generation setting.
         excluded.add(getattr(self, 'shop_setup_start_button', None))
+        # Opening connection setup does not change gameplay settings.
+        excluded.add(getattr(self, 'coop_connection_button', None))
+        excluded.add(getattr(self, 'shop_coop_connection_button', None))
         candidates = [
             *self._widget_descendants(self.settings_frame),
             *self._widget_descendants(self.advanced_tab),

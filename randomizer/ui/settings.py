@@ -3,6 +3,7 @@
 from .starting_unlocks import build_starting_unlocks_tab
 from .enemy_scaling import build_enemy_scaling_settings
 from .general_settings import build_general_settings
+from .coop import build_coop_controls
 from .negative_buffs import build_negative_buffs_tab
 
 from ._builder_dependencies import (
@@ -752,8 +753,9 @@ def _build_gameplay_settings(self, settings_frame):
         'Assigns deterministic random colors to non-neutral allied and enemy AI houses. '
         'Civilian, neutral, and script-only neutral houses keep their authored colors.',
     )
+    build_coop_controls(self, map_colors_frame, 2)
     ttk.Label(map_colors_frame, text='EVA voice').grid(
-        row=2, column=0, sticky='w', padx=(0, 8), pady=(5, 0)
+        row=3, column=0, sticky='w', padx=(0, 8), pady=(5, 0)
     )
     self.eva_voice_combo = ttk.Combobox(
         map_colors_frame,
@@ -762,7 +764,7 @@ def _build_gameplay_settings(self, settings_frame):
         values=EVA_VOICE_CHOICES,
         width=15,
     )
-    self.eva_voice_combo.grid(row=2, column=1, sticky='ew', pady=(5, 0))
+    self.eva_voice_combo.grid(row=3, column=1, sticky='ew', pady=(5, 0))
     self.eva_voice_combo.bind(
         '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
     )

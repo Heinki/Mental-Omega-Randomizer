@@ -1,4 +1,4 @@
-"""ZeroTier connection dialog, private fields, and connection diagnostics."""
+"""ZeroTier connection dialog, private fields, and diagnostics."""
 
 import time
 import secrets
@@ -12,7 +12,7 @@ from randomizer.core.paths import LAUNCHER_LOG
 
 class CoopConnectionController:
     def open_coop_dialog(self):
-        if not feature.COOP_FEATURE_ENABLED or not self.coop_mode_var.get():
+        if not feature.COOP_FEATURE_ENABLED:
             return
         old = getattr(self, '_coop_dialog', None)
         if old and old.winfo_exists():
@@ -25,13 +25,13 @@ class CoopConnectionController:
         frame = ttk.Frame(dialog, padding=12)
         frame.pack(fill='both', expand=True)
         if not hasattr(self, '_coop_role'):
-            self._coop_role = tk.StringVar(value='Host')
-            self._coop_name = tk.StringVar(value='CoopHost')
-            self._coop_address = tk.StringVar(value=self.config.get('coop_last_host', ''))
-            self._coop_host_pairing = tk.StringVar(value=secrets.token_hex(12))
-            self._coop_pairing = tk.StringVar(value='')
-            self._coop_status_var = tk.StringVar(value='Disconnected')
-        self._coop_show_details = tk.BooleanVar(value=False)
+            self._coop_role = tk.StringVar(master=self, value='Host')
+            self._coop_name = tk.StringVar(master=self, value='CoopHost')
+            self._coop_address = tk.StringVar(master=self, value=self.config.get('coop_last_host', ''))
+            self._coop_host_pairing = tk.StringVar(master=self, value=secrets.token_hex(12))
+            self._coop_pairing = tk.StringVar(master=self, value='')
+            self._coop_status_var = tk.StringVar(master=self, value='Disconnected')
+        self._coop_show_details = tk.BooleanVar(master=self, value=False)
         self._coop_private_entries = []
         self._coop_connection_entries = []
         frame.columnconfigure(1, weight=1)
@@ -58,13 +58,15 @@ class CoopConnectionController:
         ttk.Button(frame, text='Copy pairing code', command=self._copy_coop_pairing).grid(row=5, column=0, sticky='w', pady=5)
         self._coop_start_button = ttk.Button(frame, text='Connect', command=self._connect_coop_from_dialog)
         self._coop_start_button.grid(row=6, column=0, pady=8)
-        ttk.Button(frame, text='Disconnect', command=self.disconnect_coop).grid(row=6, column=1)
+        self._coop_disconnect_button = ttk.Button(frame, text='Disconnect', command=self.disconnect_coop)
+        self._coop_disconnect_button.grid(row=6, column=1)
         ttk.Label(frame, textvariable=self._coop_status_var, wraplength=430).grid(row=7, column=0, columnspan=2)
         ttk.Button(frame, text='Show connection log', command=self._show_coop_log).grid(
             row=8, column=0, columnspan=2, sticky='w', pady=(8, 0))
         dialog.protocol('WM_DELETE_WINDOW', self._close_coop_dialog)
         ttk.Label(frame, text=(
-            'Use the same authorized private ZeroTier network. Guest enters the host’s '
+            'Enable co-op mode in Settings before connecting. Use the same authorized '
+            'private ZeroTier network. Guest enters the host’s '
             'Managed IPv4 and pairing code. Host generates the Grid first; Shop players '
             'start separate runs with the same seed and stage. Ports are automatic.'
         ), wraplength=430, justify='left').grid(row=9, column=0, columnspan=2, pady=(8, 0))
@@ -166,7 +168,13 @@ class CoopConnectionController:
                 widget.configure(state='disabled' if connected else 'readonly' if isinstance(widget, ttk.Combobox) else 'normal')
         button = getattr(self, '_coop_start_button', None)
         if button and button.winfo_exists():
-            button.configure(state='disabled' if connected else 'normal')
+            enabled = feature.COOP_FEATURE_ENABLED and self.coop_mode_var.get()
+            button.configure(
+                state='normal' if enabled and not connected else 'disabled',
+            )
+        button = getattr(self, '_coop_disconnect_button', None)
+        if button and button.winfo_exists():
+            button.configure(state='normal' if connected else 'disabled')
 
     def _coop_safe_message(self, value):
         private = [getattr(self, name).get() for name in
@@ -177,6 +185,8 @@ class CoopConnectionController:
         return redact_connection_details(value, *private)
 
     def _connect_coop_from_dialog(self):
+        if not feature.COOP_FEATURE_ENABLED or not self.coop_mode_var.get():
+            return
         self._connect_coop(
             'host' if self._coop_role.get() == 'Host' else 'guest',
             self._coop_name.get(), self._coop_address.get(),

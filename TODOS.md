@@ -35,6 +35,18 @@ reconnect; local victory, failure, revival, and duplicate checks pass.
       shared. Offline parity checks cover both map copies and all 36 maps.
       Confirm actual game effects in the two-player playtest; unit-tier buffs
       are conservatively skipped where native types may belong to a player.
+- [x] Grant shared Grid powers to both native player slots. Country-owned
+      triggers resolved to the first house when both players used the same
+      country. Separate tagged hidden providers now transfer to Player @ A
+      and Player @ B. Checks cover earned Chronolift and Time Freeze on all
+      36 maps, all 93 power unlocks, AI exclusion, and identical rebuilt maps.
+      Verify both live sidebars after updating both launchers.
+- [x] Suppress the cosmetic BEHIND animation in generated co-op maps. Paired
+      Windows/Linux Panzer Ace synchronization logs match rules, art, AI and
+      random state, but the guest creates one additional BEHIND animation on
+      its Mercury provider. Subsequent object IDs and CRCs diverge. Grid and
+      Shop map checks cover all 36 maps and all three difficulty overlays;
+      verify sustained Windows/Linux gameplay after updating both launchers.
 - [x] Sync one host-controlled Shop stage: co-op mission offers, selection,
       commitment, rerolls, difficulty assist, and launch. Validated lobby
       snapshots, guest acknowledgement, separate run files, and UI flow exist.
@@ -55,6 +67,14 @@ reconnect; local victory, failure, revival, and duplicate checks pass.
       constant controls test builds; saved player settings cannot enable it.
 - [x] Adapt DTA connection fixes: ZeroTier-only UI, automatic ports, separate
       Host/Join pairing codes, guest masking, copy controls and connection logs.
+- [x] Match DTA's compact settings controls below Rainbowizer: experimental
+      co-op checkbox, Players count, connection button and help text. Host/Join,
+      status and disconnect remain in a separate connection dialog.
+- [x] Retry individual lobby TCP timeouts within the existing 30-second
+      connection window; retain cancellation and runtime/pairing validation.
+- [x] Explain Shop-host setup when a guest joins from Grid Mode or has no
+      active Shop run. Open Shop Setup, prefill the host seed when no active
+      local run exists, and preserve existing profiles, purchases, and runs.
 - [x] Normalize text compatibility hashes and resolve co-op filenames without
       case sensitivity; retain exact binary and generated-map validation.
       Refresh guest settings/views and restore local selection on disconnect.

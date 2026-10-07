@@ -376,6 +376,10 @@ class ShopController(ShopPolishController):
             state='disabled' if locked or active or getattr(self, '_coop_lobby', None)
             else 'normal'
         )
+        self.shop_coop_player_count_combo.configure(
+            state='disabled' if locked or active or getattr(self, '_coop_lobby', None)
+            else 'readonly'
+        )
         self.shop_faction_pool_combo.configure(
             state='disabled' if locked else 'readonly'
         )

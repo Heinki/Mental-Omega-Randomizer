@@ -10,6 +10,7 @@ from randomizer.maps.base import cloned_superweapon_plan
 from randomizer.maps.power_buffs import apply_power_buffs_to_unlock_rewards
 from randomizer.maps._shared import (
     STANDALONE_UNIT_RULE_TEMPLATES, STANDALONE_WEAPON_TEMPLATES,
+    append_section_entry, next_numeric_section_index, unique_section_key,
 )
 from randomizer.maps.clone_references import _target_with_effective_unit_stats
 from randomizer.maps.base import parse_float
@@ -343,9 +344,99 @@ def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
         raise ValueError(f'Could not place private starting credits for {country}.')
 
 
+def _append_grid_power_providers(lines, country, actions, buildings,
+                                 installed_types, installed):
+    """Give both human slots providers using native Player @ A/B transfers.
+
+    Trigger owners resolve a country to its first house. Both Grid players
+    use the same country, so action 34 and country-owned static providers only
+    grant powers to one player. Neutral hidden buildings with separate tags
+    use action 14's explicit multiplayer house indices, as authored co-op
+    maps do when assigning their starting units and cash buildings.
+    """
+    runtime_types = list(installed_types)
+    known = {type_id.lower() for type_id in runtime_types}
+    for type_id in section_value_map_preserve(lines, 'SuperWeaponTypes').values():
+        if type_id.lower() not in known:
+            known.add(type_id.lower())
+            runtime_types.append(type_id)
+    dummy = _lookup(installed, 'DUMMYDUMMY')
+    if not dummy and actions:
+        raise ValueError('Installed Grid power provider building is missing.')
+    reserved = {name.upper() for name in installed}
+    reserved.update(name.upper() for name in all_section_value_maps_preserve(lines))
+    providers = list(buildings)
+    provided_powers = {
+        power.strip().lower()
+        for building in providers
+        for key, value in section_value_map_preserve(lines, building).items()
+        if key.lower() in {'superweapon', 'superweapon2', 'superweapons'}
+        for power in str(value).split(',') if power.strip()
+    }
+    rules = {}
+    type_keys = set(_lookup(installed, 'BuildingTypes'))
+    type_keys.update(section_value_map_preserve(lines, 'BuildingTypes'))
+    next_type_key = max(390000, next_numeric_section_index(lines, 'BuildingTypes'))
+    for action in actions:
+        if action[0] != '34':
+            raise ValueError('Unsupported shared Grid power grant action.')
+        power_id = runtime_types[int(action[2])]
+        if power_id.lower() in provided_powers:
+            continue
+        provided_powers.add(power_id.lower())
+        provider = f'MORGridPower{action[2]}'
+        suffix = 1
+        while provider.upper() in reserved:
+            provider = f'MORGridPower{action[2]}_{suffix}'
+            suffix += 1
+        reserved.add(provider.upper())
+        values = dict(dummy)
+        values.update({
+            'Name': 'Randomizer shared Grid power provider', 'Image': 'DUMMYDUMMY',
+            'SuperWeapon': power_id, 'SuperWeapon2': None, 'SuperWeapons': None,
+            'TechLevel': '-1', 'BuildLimit': '0', 'Owner': country,
+            'RequiredHouses': country, 'ForbiddenHouses': 'none',
+            'Power': '0', 'Powered': 'false', 'AIBuildThis': 'no',
+            'Capturable': 'no', 'Selectable': 'no', 'Unsellable': 'yes',
+            'Insignificant': 'yes', 'InvisibleInGame': 'yes', 'IsPassable': 'yes',
+            'LegalTarget': 'no', 'KeepAlive': 'no', 'DontScore': 'yes',
+            'ImmuneToEMP': 'yes', 'BaseNormal': 'no', 'AIBaseNormal': 'no',
+            'IsBaseDefense': 'no', 'Firestorm.Wall': 'no', 'Sight': '0',
+        })
+        rules[provider] = values
+        while str(next_type_key) in type_keys:
+            next_type_key += 1
+        rules.setdefault('BuildingTypes', {})[str(next_type_key)] = provider
+        type_keys.add(str(next_type_key))
+        next_type_key += 1
+        providers.append(provider)
+    merge_ini_section_values(lines, rules)
+    if not providers:
+        return
+    for slot, house_index in enumerate((4475, 4476), 1):
+        trigger = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGGP')
+        tag = unique_section_key(lines, ('Tags',), 'RNGGT')
+        name = f'MOR Shared Grid Powers P{slot}'
+        append_section_entry(lines, 'Events', trigger, '1,13,0,1')
+        append_section_entry(lines, 'Actions', trigger, f'1,14,0,{house_index},0,0,0,0,A')
+        append_section_entry(lines, 'Triggers', trigger, f'Neutral,<none>,{name},0,1,1,1,0')
+        append_section_entry(lines, 'Tags', tag, f'0,{name},{trigger}')
+        previous = set(section_value_map_preserve(lines, 'Structures'))
+        placed = append_static_startup_buildings(lines, ['Neutral'], providers)
+        if len(placed) != len(providers):
+            raise ValueError(f'Could not place shared Grid powers for player {slot}.')
+        changes = {}
+        for key, value in section_value_map_preserve(lines, 'Structures').items():
+            if key not in previous:
+                tokens = value.split(',')
+                tokens[6] = tag
+                changes[key] = ','.join(tokens)
+        merge_ini_section_values(lines, {'Structures': changes})
+
+
 def apply_coop_power_rewards(lines: list[str], country: str,
-                             reward_ids: list[str]) -> None:
-    """Plan map-local earned powers and grant them to one human country."""
+                             reward_ids: list[str], *, shared_grid=False) -> None:
+    """Grant earned powers to a private Shop country or both shared Grid slots."""
     if not reward_ids:
         return
     rewards = [canonical_reward({'name': name}) for name in reward_ids]
@@ -360,6 +451,11 @@ def apply_coop_power_rewards(lines: list[str], country: str,
     if not rules:
         raise ValueError('Co-op power rewards produced no map rules.')
     merge_ini_section_values(lines, rules)
+    if shared_grid:
+        _append_grid_power_providers(
+            lines, country, actions, [*startup, *static], installed_types, installed,
+        )
+        return
     if static:
         placed = append_static_startup_buildings(lines, [country], static)
         if len(placed) != len(static):

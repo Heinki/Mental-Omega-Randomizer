@@ -96,6 +96,21 @@ class Lobby:
         with self._send_lock:
             self._socket.sendall(data)
 
+    def _connect_to_host(self):
+        """Retry transient refusal or timeout within one cancellable 30-second window."""
+        deadline = time.monotonic() + 30
+        while not self._closed.is_set():
+            try:
+                self._socket = socket.create_connection(
+                    (self.address, self.port),
+                    timeout=min(5, max(0.001, deadline - time.monotonic())),
+                )
+                break
+            except (ConnectionRefusedError, TimeoutError):
+                if time.monotonic() >= deadline:
+                    raise
+                self._closed.wait(min(0.25, deadline - time.monotonic()))
+
     def _run(self):
         phase = 'reading the local Mental Omega runtime'
         stream = None
@@ -120,17 +135,7 @@ class Lobby:
             else:
                 phase = f'connecting to the host over ZeroTier (TCP {self.port})'
                 self.events.put(('status', f'Connecting to host (TCP {self.port})…'))
-                deadline = time.monotonic() + 30
-                while not self._closed.is_set():
-                    try:
-                        self._socket = socket.create_connection(
-                            (self.address, self.port), timeout=5
-                        )
-                        break
-                    except ConnectionRefusedError:
-                        if time.monotonic() >= deadline:
-                            raise
-                        self._closed.wait(0.25)
+                self._connect_to_host()
                 if self._closed.is_set():
                     return
             self._socket.settimeout(30)

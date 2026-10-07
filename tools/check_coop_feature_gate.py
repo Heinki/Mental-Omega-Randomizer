@@ -29,14 +29,17 @@ class Variable:
 class Widget:
     visible = True
 
+    def __init__(self):
+        self.options = {}
+
     def grid(self):
         self.visible = True
 
     def grid_remove(self):
         self.visible = False
 
-    def configure(self, **_options):
-        pass
+    def configure(self, **options):
+        self.options.update(options)
 
 
 class Gate(CoopController):
@@ -51,7 +54,9 @@ class Gate(CoopController):
         self._coop_lobby = None
         for name in (
             'coop_mode_check', 'coop_connection_button',
-            'compact_coop_button', 'shop_coop_row',
+            'coop_controls_frame', 'shop_coop_row',
+            'shop_coop_mode_check', 'coop_player_count_combo',
+            'shop_coop_player_count_combo',
             'shop_coop_connection_button', 'campaign_combo',
             'rewards_per_check_label', 'launch_selected_button',
             'compact_launch_button', 'debug_complete_button',
@@ -100,7 +105,6 @@ class Gate(CoopController):
 
 
 def main():
-    assert feature.COOP_FEATURE_ENABLED is False
     assert 'coop_feature_enabled' not in DEFAULT_CONFIG
     old_config = {'coop_feature_enabled': True}
     assert migrate_loaded_config(old_config)
@@ -110,13 +114,13 @@ def main():
     assert normalize_network_mode('direct') == 'zerotier'
     saves = []
     original = coop_controller.save_config
+    original_feature = feature.COOP_FEATURE_ENABLED
     coop_controller.save_config = lambda config: saves.append(dict(config))
     try:
+        feature.COOP_FEATURE_ENABLED = False
         app = Gate()
         app.refresh_coop_controls()
-        assert not app.coop_mode_check.visible
-        assert not app.coop_connection_button.visible
-        assert not app.compact_coop_button.visible
+        assert not app.coop_controls_frame.visible
         assert not app.shop_coop_row.visible
         app.coop_mode_var.set(True)
         app.on_coop_mode_changed()
@@ -124,8 +128,10 @@ def main():
         assert not saves
         feature.COOP_FEATURE_ENABLED = True
         app.refresh_coop_controls()
-        assert app.coop_mode_check.visible
+        assert app.coop_controls_frame.visible
         assert app.shop_coop_row.visible
+        assert app.coop_connection_button.options['state'] == 'normal'
+        assert app.shop_coop_connection_button.options['state'] == 'normal'
         app.coop_mode_var.set(True)
         app.on_coop_mode_changed()
         assert app.config['coop_mode'] is True
@@ -133,7 +139,7 @@ def main():
         app.coop_mode_var.set(False)
         app.on_coop_mode_changed()
         app.refresh_coop_controls()
-        assert not app.coop_mode_check.visible
+        assert not app.coop_controls_frame.visible
         app.coop_mode_var.set(True)
         app.on_coop_mode_changed()
         assert app.coop_mode_var.get() is False
@@ -141,7 +147,7 @@ def main():
         assert 'coop_feature_enabled' not in saves[-1]
     finally:
         coop_controller.save_config = original
-        feature.COOP_FEATURE_ENABLED = False
+        feature.COOP_FEATURE_ENABLED = original_feature
     print('Code-only co-op gate, ZeroTier mode migration, mode switching: passed')
 
 

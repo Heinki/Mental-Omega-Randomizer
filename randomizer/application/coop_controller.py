@@ -30,17 +30,31 @@ def normalize_network_mode(value):
     return 'zerotier'
 
 
+class CoopShopSetupRequired(ValueError):
+    """A paired guest must prepare its own Shop run before stage sync."""
+
+    def __init__(self, snapshot):
+        seed = snapshot.get('seed') if isinstance(snapshot, dict) else None
+        stage = snapshot.get('stage') if isinstance(snapshot, dict) else None
+        if (not isinstance(seed, str) or not seed or len(seed) > 128
+                or type(stage) is not int or stage < 1):
+            raise ValueError('Invalid host Shop stage snapshot.')
+        self.seed = seed
+        super().__init__(
+            f'Host is playing Shop Mode. Host seed: {seed}; stage: {stage}.\n\n'
+            'Select Shop Mode, enable co-op, and start your own Shop run with '
+            'the same seed before joining. Both runs must have the same stage '
+            'and completed missions. Your profile and purchases stay separate.'
+        )
+
+
 class CoopController(CoopConnectionController):
     def refresh_coop_controls(self):
         if not hasattr(self, 'coop_connection_button'):
             return
         available = feature.COOP_FEATURE_ENABLED
-        for widget in (self.coop_mode_check, self.coop_connection_button,
-                       self.compact_coop_button, self.shop_coop_row):
-            if available:
-                widget.grid()
-            else:
-                widget.grid_remove()
+        for widget in (self.coop_controls_frame, self.shop_coop_row):
+            widget.grid() if available else widget.grid_remove()
         enabled = available and self.coop_mode_var.get()
         guest = self.coop_guest_connected()
         self.campaign_combo.configure(values=(
@@ -52,9 +66,20 @@ class CoopController(CoopConnectionController):
         self.rewards_per_check_label.configure(
             text='Rewards per mission' if enabled else 'Rewards per objective'
         )
-        for button in (self.coop_connection_button, self.compact_coop_button,
-                       self.shop_coop_connection_button):
-            button.configure(state='normal' if enabled else 'disabled')
+        for button in (self.coop_connection_button, self.shop_coop_connection_button):
+            button.configure(state='normal' if available else 'disabled')
+        process = getattr(self, 'active_game_process', None)
+        active_game = process is not None and process.poll() is None
+        run = getattr(self, 'shop_run', None)
+        active_shop = bool(self.shop_mode_selected() and run is not None
+                           and run.status is RunStatus.ACTIVE)
+        locked = (not available or bool(getattr(self, '_coop_lobby', None))
+                  or active_game or active_shop or self.gameplay_settings_locked())
+        for widget in (self.coop_mode_check, self.shop_coop_mode_check):
+            widget.configure(state='disabled' if locked else 'normal')
+        for widget in (self.coop_player_count_combo, self.shop_coop_player_count_combo):
+            widget.configure(state='disabled' if locked else 'readonly')
+        self._refresh_coop_connection_fields()
         for button in (self.launch_selected_button, self.compact_launch_button):
             button.configure(text='Suggest Mission' if guest else 'Launch Selected Mission')
         for button in (self.debug_complete_button, self.compact_complete_button):
@@ -208,10 +233,9 @@ class CoopController(CoopConnectionController):
                 self.state = self.load_state()
                 self.migrate_state()
             self._refresh_coop_state_views()
-        if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-            self._refresh_coop_connection_fields()
-            if not getattr(self, '_coop_connection_error', False):
-                self._set_coop_status('Disconnected.')
+        self._refresh_coop_connection_fields()
+        if not getattr(self, '_coop_connection_error', False):
+            self._set_coop_status('Disconnected.')
         self._record_coop_log('Co-op lobby disconnected.')
         self.refresh_coop_controls()
 
@@ -251,8 +275,7 @@ class CoopController(CoopConnectionController):
                 elif event[0] == 'connected':
                     self._record_coop_log(f'Co-op lobby connected to {event[1]}.')
                     self.refresh_coop_controls()
-                    if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-                        self._set_coop_status(f'Connected to {event[1]}. Host selects and launches.')
+                    self._set_coop_status(f'Connected to {event[1]}. Host selects and launches.')
                     if lobby.role == 'host':
                         self.coop_publish_state()
                 elif event[0] == 'message':
@@ -266,6 +289,22 @@ class CoopController(CoopConnectionController):
                     return
         except queue.Empty:
             pass
+        except CoopShopSetupRequired as exc:
+            self._record_coop_log('Co-op Shop setup required: ' + str(exc), error=True)
+            self._coop_connection_error = True
+            self.disconnect_coop()
+            # Disconnect restores the guest's previous settings first. Show the
+            # local Shop setup afterward, without replacing an existing run.
+            self.progression_mode_var.set('Shop Mode')
+            run = self.shop_repository.load_run()
+            if run is None or run.status is not RunStatus.ACTIVE:
+                self.seed_var.set(exc.seed)
+            self.sync_shop_workspace()
+            self.workspace_tabs.select(self.settings_tab)
+            self.refresh_setting_states()
+            self._set_coop_status('Shop setup required. Start a matching run, then reconnect.')
+            messagebox.showwarning('Co-op Shop Setup', str(exc), parent=self)
+            return
         except Exception as exc:
             self._record_coop_log('Co-op lobby message failed: ' + str(exc), error=True)
             self._coop_connection_error = True
@@ -339,10 +378,13 @@ class CoopController(CoopConnectionController):
         kind = message['type']
         if lobby.role == 'guest':
             if kind == 'shop_stage':
-                if not (self.coop_mode_var.get() and self.shop_mode_selected()):
-                    raise ValueError('Host Shop stage reached a non-Shop guest.')
+                if not self.coop_mode_var.get():
+                    raise ValueError('Enable co-op before joining a Shop host.')
                 run = self.shop_repository.load_run()
                 snapshot = message.get('data')
+                if (not self.shop_mode_selected() or run is None
+                        or run.status is not RunStatus.ACTIVE):
+                    raise CoopShopSetupRequired(snapshot)
                 updated = apply_stage_snapshot(run, snapshot, self.mission_lookup())
                 if updated != run:
                     self.shop_repository.save_run(updated)
@@ -485,8 +527,7 @@ class CoopController(CoopConnectionController):
             mission = self.mission_lookup().get(code)
             if mission and code in self.state.get('mission_order', []):
                 self._record_coop_log(f'{lobby.peer} suggests {mission["title"]} ({code}).')
-                if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-                    self._set_coop_status(f'{lobby.peer} suggests {mission["title"]}. Select it in Grid to play.')
+                self._set_coop_status(f'{lobby.peer} suggests {mission["title"]}. Select it in Grid to play.')
 
     def request_coop_launch(self):
         if not feature.COOP_FEATURE_ENABLED:
@@ -538,8 +579,7 @@ class CoopController(CoopConnectionController):
                 level = max(0, level - 1)
             difficulty = ('easy', 'normal', 'hard')[min(2, max(0, level))]
         self._record_coop_log(f'Preparing co-op map {code} as {role}.')
-        if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-            self._set_coop_status('Preparing map and connecting game…')
+        self._set_coop_status('Preparing map and connecting game…')
 
         def worker():
             try:
@@ -608,8 +648,7 @@ class CoopController(CoopConnectionController):
                 self.finish_progression_launch_context()
             self._record_coop_log('Co-op game failed: ' + event[1], error=True)
             self._record_coop_log(event[2], error=True)
-            if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-                self._set_coop_status('Game connection failed: ' + event[1])
+            self._set_coop_status('Game connection failed: ' + event[1])
             messagebox.showerror('Co-op', self._coop_safe_message(event[1]))
             return
         result = event[1]
@@ -645,8 +684,7 @@ class CoopController(CoopConnectionController):
         else:
             self._coop_victory_watch = None
         self._record_coop_log(f'Co-op game started as {result["role"]}.')
-        if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-            self._set_coop_status('Game running. Lobby stays connected.')
+        self._set_coop_status('Game running. Lobby stays connected.')
         self.after(1000, self._poll_coop_game)
 
     def _poll_coop_game(self):
@@ -671,12 +709,11 @@ class CoopController(CoopConnectionController):
         self._coop_victory_watch = None
         if self.shop_mode_selected() and self.coop_mode_var.get():
             self.finish_progression_launch_context()
-        if getattr(self, '_coop_dialog', None) and self._coop_dialog.winfo_exists():
-            lobby = getattr(self, '_coop_lobby', None)
-            self._set_coop_status(
-                'Game ended. Host may select another map.' if lobby and lobby.connected else
-                'Game ended. Lobby disconnected; click Disconnect before reconnecting.'
-            )
+        lobby = getattr(self, '_coop_lobby', None)
+        self._set_coop_status(
+            'Game ended. Host may select another map.' if lobby and lobby.connected else
+            'Game ended. Lobby disconnected; click Disconnect before reconnecting.'
+        )
         if getattr(self, '_close_after_game', False):
             self.disconnect_coop()
             self.shutdown_archipelago()

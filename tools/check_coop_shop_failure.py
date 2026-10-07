@@ -64,6 +64,9 @@ class Harness:
     _poll_coop_game = CoopController._poll_coop_game
     coop_publish_state = CoopController.coop_publish_state
 
+    def _set_coop_status(self, message):
+        self.connection_status = message
+
     def __init__(self, role, profile, run, mission_pool):
         self.shop_repository = Repository(profile, run)
         self.shop_service = ShopProgressionService(self.shop_repository)
@@ -166,6 +169,10 @@ def check_case(host_revivals, *, disconnected=False):
         finally:
             coop_controller.DEBUG_LOG = prior_log
     assert host.shop_repository.commits == 1
+    assert host.connection_status == (
+        'Game ended. Lobby disconnected; click Disconnect before reconnecting.'
+        if disconnected else 'Game ended. Host may select another map.'
+    )
     reloaded = normalize_shop_run(host.shop_repository.run.to_dict())
     assert reloaded.coop_last_result == host.shop_repository.run.coop_last_result
     if disconnected:

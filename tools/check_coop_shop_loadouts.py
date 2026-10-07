@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from randomizer.coop.catalogue import discover_coop_missions
-from randomizer.coop.direct import _spawn_data
+from randomizer.coop.direct import MODES, _mode_map, _spawn_data
 from randomizer.coop.prototype import (
     SIDE_COUNTRIES, build_manifest, build_shop_manifest, install,
     rebuild_from_manifest, remove, shop_unit_loadout,
@@ -65,8 +65,11 @@ def main():
             GAME_ROOT, 'COOP-SHOP-TEST', mission['coop_name'], host, guest,
         )
         assert manifest['schema'] == 5
+        assert section(data, 'General')['Behind'] == 'none'
         assert manifest['player_country'] != manifest['guest_country']
         assert rebuild_from_manifest(GAME_ROOT, manifest) == data
+        for difficulty in MODES:
+            assert section(_mode_map(GAME_ROOT, manifest, difficulty), 'General')['Behind'] == 'none'
         host_clone = section(data, 'MORHFV')
         guest_clone = section(data, 'MORGFV')
         guest_tank = section(data, 'MORGHTNK')
