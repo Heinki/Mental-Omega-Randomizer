@@ -119,3 +119,54 @@ table unchanged.
 Foehn Op: TIME CAPSULE remains a true no-build mission, but seed ordering treats
 it as a late Foehn mission because of its difficulty. Only Foehn 01 and 05 are
 allowed into protected opening positions while alternatives exist.
+
+
+## Cooperative missions
+
+The 36 installed two-player co-op maps use the same independent inclusion
+settings. Classifications live in `configs/missions.json` under
+`coop_build_classifications`, separately from campaign reward tiers.
+
+These entries follow the installed maps: scripted human MCVs and transferred
+Construction Yards count as base building; fixed or capturable production
+without a normal base phase counts as limited production. `DMCV` is a hidden
+mission actor and does not count as a playable Construction Yard.
+
+| Mission ID | Installed mission | Classification |
+|---|---|---|
+| `COOP_ABALANCE` | Allied Op: Balance of Power | `no_build_production` |
+| `COOP_ABLUT` | Allied Op: Blut Royale | `true_no_build` |
+| `COOP_ABUGGY` | Allied Op: Attack on Buggy | `no_build_production` |
+| `COOP_ADOWNFALL` | Allied Op: Downfall | `base_build` |
+| `COOP_AENFO` | Allied Op: Enforcers | `base_build` |
+| `COOP_AHYPO` | Allied Op: Hypothermia | `base_build` |
+| `COOP_ALA` | Allied Op: Low Rider | `base_build` |
+| `COOP_AMONSTER` | Allied Op: Mad Monster | `no_build_production` |
+| `COOP_APANZER` | Allied Op: Panzer Ace | `true_no_build` |
+| `COOP_APWAR` | Allied Op: Impersonal War | `base_build` |
+| `COOP_ASARIN` | Allied Op: Good Old Times | `true_no_build` |
+| `COOP_ATECH` | Allied Op: Technologic | `true_no_build` |
+| `COOP_ECARD` | Epsilon Op: The Cardinal | `base_build` |
+| `COOP_ECOR` | Epsilon Op: Metaphor | `base_build` |
+| `COOP_EJEAL` | Epsilon Op: Backbitten | `base_build` |
+| `COOP_ELIES` | Epsilon Op: Television Lies | `true_no_build` |
+| `COOP_EMIND` | Epsilon Op: Mind Over Matter | `base_build` |
+| `COOP_EMONO` | Epsilon Op: Monochromatic | `base_build` |
+| `COOP_ENECRO` | Epsilon Op: Neuromancers | `base_build` |
+| `COOP_EPAIN` | Epsilon Op: Brain Reset | `true_no_build` |
+| `COOP_ERAIN` | Epsilon Op: Rainmaker | `true_no_build` |
+| `COOP_ERETAL` | Epsilon Op: Retaliation | `base_build` |
+| `COOP_ERUSH` | Epsilon Op: Rush Tactics | `base_build` |
+| `COOP_ESTROKE` | Epsilon Op: Research Stroke | `base_build` |
+| `COOP_SBURNED` | Soviet Op: Burned Alive | `true_no_build` |
+| `COOP_SCOMB` | Soviet Op: Combustion | `base_build` |
+| `COOP_SCYBER` | Soviet Op: Cyberanatomy | `base_build` |
+| `COOP_SEGO` | Soviet Op: Ego Ergo Hax | `true_no_build` |
+| `COOP_SLIGHTS` | Soviet Op: Lights Out | `base_build` |
+| `COOP_SNEEDLE` | Soviet Op: Needlehead | `base_build` |
+| `COOP_SRAVAGE` | Soviet Op: Ravages of War | `base_build` |
+| `COOP_SREPEN` | Soviet Op: Repentance | `base_build` |
+| `COOP_SROLE` | Soviet Op: Role Reversal | `true_no_build` |
+| `COOP_SSOURCE` | Soviet Op: Money Source | `base_build` |
+| `COOP_STHUNDER` | Soviet Op: Thunder God | `base_build` |
+| `COOP_STOXIC` | Soviet Op: Intoxicated | `base_build` |

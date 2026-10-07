@@ -73,11 +73,12 @@ def main():
         host_clone = section(data, 'MORHFV')
         guest_clone = section(data, 'MORGFV')
         guest_tank = section(data, 'MORGHTNK')
-        assert host_clone['Owner'] == manifest['player_country']
+        assert manifest['player_country'] in host_clone['Owner'].split(',')
         assert host_clone['RequiredHouses'] == manifest['player_country']
-        assert guest_clone['Owner'] == manifest['guest_country']
+        assert manifest['guest_country'] in guest_clone['Owner'].split(',')
         assert guest_clone['RequiredHouses'] == manifest['guest_country']
-        assert guest_tank['Owner'] == manifest['guest_country']
+        assert manifest['guest_country'] in guest_tank['Owner'].split(',')
+        assert guest_tank['RequiredHouses'] == manifest['guest_country']
         assert int(host_clone['Strength']) > int(guest_clone['Strength'])
         assert host_clone['Primary'] != guest_clone['Primary']
         assert not section(data, 'MORHHTNK')
@@ -138,7 +139,7 @@ def main():
         GAME_ROOT, shared, 'coop_sthunder', unit_id='FV', allow_test_unit=True,
     )
     assert grid_manifest['schema'] == 4
-    assert section(grid_map, 'MORPFV')['Owner'] == grid_manifest['player_country']
+    assert grid_manifest['player_country'] in section(grid_map, 'MORPFV')['Owner'].split(',')
     assert not section(grid_map, 'MORHFV')
     assert not section(grid_map, 'MORGFV')
     with TemporaryDirectory() as temporary:

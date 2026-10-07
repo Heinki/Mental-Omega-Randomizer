@@ -49,7 +49,9 @@ def build(output_directory: Path) -> Path:
         and any(isinstance(target, ast.Name) and target.id == 'range_end'
                 for target in node.targets)
     )
-    if not catalogue['missions'] or maximum_missions != len(catalogue['missions']):
+    pool_sizes = [sum(mission['code'].startswith('COOP_') == coop
+                      for mission in catalogue['missions']) for coop in (False, True)]
+    if not all(pool_sizes) or maximum_missions != max(pool_sizes):
         raise ValueError('MissionGoal.range_end must match the nonempty mission catalogue.')
     bundled_files = generation_files()
     missions_data = json.dumps(
@@ -98,6 +100,10 @@ def build(output_directory: Path) -> Path:
         archive.writestr(
             archive_info(f'{MODULE_NAME}/generation_missions.json'),
             missions_data,
+        )
+        archive.writestr(
+            archive_info(f'{MODULE_NAME}/generation_coop_missions.json'),
+            json.dumps(generation_missions(coop=True), sort_keys=True).encode('utf-8'),
         )
         archive.writestr(
             archive_info(f'{MODULE_NAME}/archipelago.json'),

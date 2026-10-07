@@ -508,6 +508,9 @@ def parse_manifest(raw_value):
     state_snapshot = value.get("state_snapshot")
     if not isinstance(state_snapshot, dict):
         raise ManifestError("Manifest has no server state snapshot.")
+    coop = state_snapshot.get("coop_mode", False)
+    if type(coop) is not bool or any(code.startswith("COOP_") != coop for code in mission_order):
+        raise ManifestError("Manifest mission pool differs from its co-op setting.")
     if (
         state_snapshot.get("seed") != seed
         or state_snapshot.get("mission_order") != mission_order

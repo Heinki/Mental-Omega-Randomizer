@@ -19,6 +19,7 @@ from randomizer.maps.ini import (
     section_value_map_preserve,
 )
 from randomizer.maps.shop_modifiers import apply_shop_clone_restrictions
+from randomizer.coop.access import clone_production_owners, standard_coop_access_rules
 from randomizer.maps.powers import (
     append_static_startup_buildings, append_superweapon_grant_trigger,
 )
@@ -75,7 +76,7 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
     if clone_scope not in ('', 'H', 'G'):
         raise ValueError('Invalid co-op clone scope.')
     country = country or manifest['player_country']
-    access_ids = (manifest.get('access_ids') or [manifest['unit_id']]
+    access_ids = (manifest.get('access_ids', [manifest['unit_id']])
                   if access_ids is None else access_ids)
     counts = (manifest.get('buff_counts') or {}
               if buff_counts is None else buff_counts)
@@ -162,12 +163,15 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
             } or _weapon_key(key):
                 values[key] = value
         values.update({
-            'TechLevel': '1', 'Owner': country, 'RequiredHouses': country,
+            'TechLevel': '1', 'Owner': clone_production_owners(source_values, country),
+            'RequiredHouses': country,
             'ForbiddenHouses': 'none', 'Prerequisite': factory,
             'PrerequisiteOverride': None, 'Prerequisite.List0': None,
             'Prerequisite.Lists': None, 'Prerequisite.Negative': None,
             'AllowedToStartInMultiplayer': 'no',
         })
+        if manifest.get('reward_mode') == 'Standard':
+            values.update(standard_coop_access_rules(source_id))
         unit_counts = counts.get(source_id, {})
         effective_target = _target_with_effective_unit_stats(target, values)
         for buff_type in _BUFF_ORDER:
@@ -267,15 +271,22 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         values = dict(template or native)
         values.update({
             'Image': native.get('Image') or source_id,
-            'TechLevel': '1', 'Owner': country, 'RequiredHouses': country,
+            'TechLevel': '1', 'Owner': clone_production_owners(native, country),
+            'RequiredHouses': country,
             'ForbiddenHouses': 'none',
             'Prerequisite': CHAOS_PRIMARY_PRODUCTION[family]['base'],
             'PrerequisiteOverride': None, 'Prerequisite.List0': None,
             'Prerequisite.Lists': None, 'Prerequisite.Negative': None,
             'AllowedToStartInMultiplayer': 'no',
         })
+        if manifest.get('reward_mode') == 'Standard':
+            values.update(standard_coop_access_rules(source_id))
         changes[clone_id] = values
         register('BuildingTypes', clone_id)
+    _register_initial_payloads(
+        changes, templates, clone_ids, installed, map_sections,
+        country, clone_scope, register,
+    )
     factory_categories = {
         'infantry': 'infantry', 'vehicles': 'vehicles',
         'aircraft': 'air', 'naval': 'naval',
@@ -300,6 +311,79 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
     if country_values:
         changes[country] = country_values
     merge_ini_section_values(lines, changes)
+
+
+def _register_initial_payloads(changes, templates, clone_ids, installed,
+                               map_sections, country, scope, register):
+    """Give sealed carriers complete private payloads without production access.
+
+    A payload cannot reuse a buildable reward clone: its production restriction
+    or unearned prerequisite could prevent InitialPayload creation. Separate
+    locked identities also preserve Shop's private host/guest loadouts.
+    """
+    sources = {str(clone).upper(): source for source, clone in clone_ids.items()}
+    pending = list(changes)
+    payloads = {}
+    for carrier_id in pending:
+        values = changes[carrier_id]
+        payload_key = next((key for key in values
+                            if key.lower() == 'initialpayload.types'), None)
+        if payload_key is None or not values[payload_key]:
+            continue
+        replacements = {}
+        for payload in str(values[payload_key]).split(','):
+            payload = payload.strip()
+            source = sources.get(payload.upper(), payload.upper())
+            if source not in payloads:
+                native = _lookup(installed, source)
+                native.update(_lookup(map_sections, source))
+                definition = dict(templates.get(source) or native)
+                if not definition:
+                    raise ValueError(f'Missing co-op initial payload: {source}')
+                identity = f'{scope}|{source}'
+                suffix = hashlib.sha1(identity.encode('ascii')).hexdigest()[:12].upper()
+                clone = f'MOR{scope}CP{suffix}'
+                definition.setdefault('Image', source)
+                for key in list(definition):
+                    if (key.lower().startswith('prerequisite')
+                            or key.lower() in {'factoryowners', 'factoryowners.forbidden',
+                                               'buildlimit'}):
+                        definition[key] = None
+                definition.update({
+                    'TechLevel': '-1', 'Owner': clone_production_owners(native, country),
+                    'RequiredHouses': country, 'ForbiddenHouses': 'none',
+                    'AllowedToStartInMultiplayer': 'no',
+                })
+                target = BUFF_TARGETS.get(source)
+                unit_type = arsenal_unit_type(source, target)
+                type_list = _TYPE_LIST.get(unit_type)
+                if type_list is None:
+                    # Implementation-only payloads (e.g. SALA_1) need not be
+                    # reward targets. Resolve their reviewed installed registry.
+                    type_list = next((category for category in (
+                        'InfantryTypes', 'VehicleTypes', 'AircraftTypes',
+                    ) if source in {
+                        str(item).upper() for sections in (installed, map_sections)
+                        for item in _lookup(sections, category).values()
+                    }), None)
+                if type_list is None:
+                    raise ValueError(f'Unknown co-op initial payload category: {source}')
+                changes[clone] = definition
+                register(type_list, clone)
+                payloads[source] = clone
+                pending.append(clone)
+            replacements[payload.upper()] = payloads[source]
+        values[payload_key] = ','.join(
+            replacements[item.strip().upper()]
+            for item in str(values[payload_key]).split(',')
+        )
+        for key in values:
+            if key.lower() != 'passengers.allowed' or not values[key]:
+                continue
+            values[key] = ','.join(
+                replacements.get(item.strip().upper(), item.strip())
+                for item in str(values[key]).split(',')
+            )
 
 
 def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
@@ -345,7 +429,8 @@ def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
 
 
 def _append_grid_power_providers(lines, country, actions, buildings,
-                                 installed_types, installed):
+                                 installed_types, installed, *,
+                                 label='Shared Grid Powers'):
     """Give both human slots providers using native Player @ A/B transfers.
 
     Trigger owners resolve a country to its first house. Both Grid players
@@ -416,7 +501,7 @@ def _append_grid_power_providers(lines, country, actions, buildings,
     for slot, house_index in enumerate((4475, 4476), 1):
         trigger = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGGP')
         tag = unique_section_key(lines, ('Tags',), 'RNGGT')
-        name = f'MOR Shared Grid Powers P{slot}'
+        name = f'MOR {label} P{slot}'
         append_section_entry(lines, 'Events', trigger, '1,13,0,1')
         append_section_entry(lines, 'Actions', trigger, f'1,14,0,{house_index},0,0,0,0,A')
         append_section_entry(lines, 'Triggers', trigger, f'Neutral,<none>,{name},0,1,1,1,0')

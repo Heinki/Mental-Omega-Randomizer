@@ -24,6 +24,8 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         if 'generation' in settings and not isinstance(settings['generation'], dict):
             raise ValueError('launcher_settings.generation must be a mapping.')
         self.config = deep_merge(DEFAULT_CONFIG, settings)
+        if type(self.config.get('coop_mode', False)) is not bool:
+            raise ValueError('launcher_settings.coop_mode must be a boolean.')
         self.state = {}
         self.missions = deepcopy(missions)
         self._mission_by_code = {mission['code']: mission for mission in self.missions}
@@ -50,7 +52,9 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
                 'include_operation_missions', 'prioritize_no_build_missions',
             )
         }
-        excluded = {str(code).upper() for code in generation['excluded_mission_codes']}
+        exclusion_key = ('excluded_coop_mission_codes' if config.get('coop_mode')
+                         else 'excluded_mission_codes')
+        excluded = {str(code).upper() for code in generation.get(exclusion_key, ())}
         missions = [
             mission for mission in self.missions
             if mission['code'].upper() not in excluded
@@ -122,6 +126,7 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         self._starting_defense_ids_override = defenses
         options = {
             **self._seed_generation_context,
+            'coop_mode': bool(config.get('coop_mode', False)),
             'seed': seed,
             'seed_was_explicit': False,
             'seed_missions': missions,

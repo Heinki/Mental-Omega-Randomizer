@@ -74,13 +74,19 @@ class Campaign(Choice):
     default = 0
 
 
+class CoopMode(Toggle):
+    """Use cooperative missions. Both players share this slot through the host."""
+
+    display_name = "Co-op Missions"
+
+
 class MissionGoal(Range):
     """Number of missions in the generated run."""
 
     display_name = "Missions to Finish"
     range_start = 1
     # Keep UI bounds independent of catalogue loading. The package builder
-    # checks this literal against the bundled mission catalogue.
+    # checks this literal against the largest bundled mission pool.
     range_end = 97
     default = 15
 
@@ -505,6 +511,7 @@ class MentalOmegaOptions(PerGameCommonOptions):
     generated_world: GeneratedWorld
     run_manifest: RunManifest
     campaign: Campaign
+    coop_mode: CoopMode
     mission_goal: MissionGoal
     progression_mode: ProgressionMode
     grid_two_start_positions: GridTwoStartPositions
@@ -561,7 +568,7 @@ MENTAL_OMEGA_OPTION_GROUPS = [
         EvaVoice,
     ]),
     OptionGroup("Mission Pool", [
-        IncludeNoBuildMissions, IncludeNoBuildProductionMissions,
+        CoopMode, IncludeNoBuildMissions, IncludeNoBuildProductionMissions,
         IncludeOperationMissions, PrioritizeNoBuildMissions, ExcludedMissions,
     ]),
     OptionGroup("Reward Pool", [
@@ -613,6 +620,7 @@ def launcher_settings_from_options(options):
         "include_operation_missions": bool(options.include_operation_missions.value),
         "prioritize_no_build_missions": bool(options.prioritize_no_build_missions.value),
         "excluded_mission_codes": sorted(options.excluded_missions.value),
+        "excluded_coop_mission_codes": sorted(options.excluded_missions.value),
         "randomize_unit_access": bool(options.randomize_unit_access.value),
         "access_limits": {
             "enabled": bool(options.limit_unit_and_power_access.value),
@@ -667,4 +675,5 @@ def launcher_settings_from_options(options):
         "rainbowizer": bool(options.rainbowizer.value),
         "eva_voice": EVA_VOICES[options.eva_voice.value],
         "generation": generation,
+        "coop_mode": bool(options.coop_mode.value),
     }

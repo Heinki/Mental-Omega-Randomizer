@@ -7,14 +7,16 @@ from randomizer.core.paths import BATTLE_CLIENT_INI
 from randomizer.missions.catalogue import parse_missions
 
 
-def generation_missions(path=None):
+def generation_missions(path=None, *, coop=False):
     """Use installed missions when available, otherwise the reviewed snapshot."""
     path = BATTLE_CLIENT_INI if path is None else path
-    if path.is_file():
+    if path.is_file() and not coop:
         missions = parse_missions(path)
     else:
         missions = json.loads(
-            files(__package__).joinpath('generation_missions.json').read_text(
+            files(__package__).joinpath(
+                'generation_coop_missions.json' if coop else 'generation_missions.json'
+            ).read_text(
                 encoding='utf-8'
             )
         )

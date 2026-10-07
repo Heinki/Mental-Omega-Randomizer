@@ -587,6 +587,8 @@ class ArchipelagoController(ArchipelagoYamlController):
         if session is not None and session.running:
             return
         try:
+            if getattr(self, 'coop_guest_connected', lambda: False)():
+                raise ValueError('Host owns the shared co-op Archipelago connection.')
             if getattr(self, 'busy_depth', 0):
                 raise ValueError('Wait for the current launcher task to finish.')
             from Archipelago.client import ArchipelagoSession, SessionConfig
@@ -1840,7 +1842,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Persist and queue several completed checks as one AP batch."""
         groups = tuple(groups)
         ap_state = self._active_archipelago_state()
-        if ap_state is None or not groups:
+        if ap_state is None or ap_state.get('shared_coop') or not groups:
             return ()
         all_locations = sorted({
             location
@@ -1965,7 +1967,7 @@ class ArchipelagoController(ArchipelagoYamlController):
     def report_archipelago_goal_if_complete(self):
         """Persist and send CLIENT_GOAL when existing run logic is complete."""
         ap_state = self._active_archipelago_state()
-        if ap_state is None:
+        if ap_state is None or ap_state.get('shared_coop'):
             return False
         try:
             if not self.is_run_complete():

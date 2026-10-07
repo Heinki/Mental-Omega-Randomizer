@@ -22,6 +22,7 @@ REQUIRED_SECTIONS = {
         'catalogue': dict,
         'mission_reward_multipliers': dict,
         'build_classifications': dict,
+        'coop_build_classifications': dict,
         'house_config': dict,
         'helper_buff_excluded_houses': dict,
         'player_production_houses': dict,
@@ -234,7 +235,10 @@ def _validate_missions(sections, path):
     allowed = {'base_build', 'true_no_build', 'no_build_production'}
     invalid = {
         code: value
-        for code, value in sections['build_classifications'].items()
+        for code, value in (
+            list(sections['build_classifications'].items())
+            + list(sections['coop_build_classifications'].items())
+        )
         if value not in allowed
     }
     if invalid:

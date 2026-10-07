@@ -16,6 +16,14 @@ Alternatively, open Archipelago's **Options Creator**, select **Mental Omega**,
 configure the grouped Randomizer options, enter the slot name, and select
 **Export Options**. This creates the Player YAML without opening the Randomizer.
 
+For co-op, enable **Co-op mode** before the host exports YAML, or select
+**Co-op Missions** in Options Creator. Generate a new room using the matching
+APWorld. Only the host connects to the shared AP slot; the guest joins through
+the launcher's co-op connection dialog. Received items and progression are
+shared. For Shop, both players start a local co-op run with the host's
+AP-generated seed. Local Shop currencies and purchases remain private; the
+host reports AP purchases, mission checks, and goal completion.
+
 Launcher-exported `launcher_settings` records the exact visible launcher
 controls. Options Creator YAML stores equivalent individual options. Archipelago
 generates the full run from these settings for each room. After connection, AP seed, Grid,

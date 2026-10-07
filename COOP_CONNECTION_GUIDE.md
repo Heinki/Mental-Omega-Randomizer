@@ -49,6 +49,29 @@ connection, allow this traffic over the private ZeroTier interface. ZeroTier
 normally avoids router forwarding; it still requires local firewall permission.
 See [ZeroTier firewall guidance](https://docs.zerotier.com/routertips/).
 
+## Archipelago with a shared slot
+
+Enable co-op on the host before exporting its Player YAML, or enable
+**Co-op Missions** in Archipelago's Options Creator. Install the matching
+APWorld, generate a new room, then connect only the host launcher to that AP
+slot. Campaign rooms retain their original campaign mission pool.
+
+The guest joins through the normal co-op dialog and does not open a second AP
+connection. Host victories report checks and the goal through the existing AP
+progression logic. Received units, buildings, buffs, powers, and enemy Trap
+items are mirrored to the guest and apply on subsequent generated maps.
+Replayed item indexes do not add duplicate rewards.
+
+For Shop, use the host's AP-generated Randomizer seed for both local Shop runs.
+The guest's matching run binds to the shared AP inventory on joining. Received
+AP rewards are shared; local Ore, profiles, and Shop purchases remain private.
+Only the host spends Mental Coins on generated AP purchase checks. Reconnecting
+resends current shared inventory and stage progress.
+
+The loopback integration checks exercise the real AP client with an isolated
+protocol server, including item replay, check acknowledgments, and goal
+reporting. A hosted AP room plus two-PC gameplay still requires a live test.
+
 ## Private fields and diagnostics
 
 The host pairing code is a visible, noneditable label. Each launcher retains

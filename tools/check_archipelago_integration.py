@@ -3,16 +3,21 @@
 Run with Archipelago's Python environment and --archipelago-root pointing to
 its source checkout. --apworld optionally verifies the distributable archive.
 Only world auto-discovery is bypassed; AP options, regions, state and item fill
-use the real Archipelago implementation. No game, save, or server is modified.
+use the real Archipelago implementation. Co-op uses an isolated loopback AP
+protocol server. No game, save, or existing server is modified.
 """
 from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+from itertools import product
 import importlib
 import json
+import queue
 from pathlib import Path
 import sys
+import threading
+import time
 from types import ModuleType, SimpleNamespace
 import unittest
 
@@ -124,18 +129,131 @@ class Widget:
         return 'TButton'
 
 
+def coop_session_roundtrip(slot):
+    """Exercise the real client, item replay, check acknowledgments and goal."""
+    from websockets.sync.server import serve
+    from websockets.exceptions import ConnectionClosed
+    from Archipelago.client import ArchipelagoSession, SessionConfig
+    from randomizer.coop.archipelago import shared_run_state, received_rewards
+    from randomizer.rewards.catalogue import REWARD_BY_NAME
+
+    item_id = next(int(identifier) for identifier, name in slot['items'].items()
+                   if name in REWARD_BY_NAME and not REWARD_BY_NAME[name].get('enemy_reward'))
+    location = _scout_location_ids(slot)[0]
+    events = queue.Queue()
+    checked = threading.Event()
+    goal = threading.Event()
+    failures = []
+
+    def handler(connection):
+        try:
+            connection.send(json.dumps([{
+                'cmd': 'RoomInfo', 'seed_name': 'COOP-AP-INTEGRATION',
+                'games': ['Mental Omega'],
+            }]))
+            for message in connection:
+                for packet in json.loads(message):
+                    if packet['cmd'] == 'Connect':
+                        assert packet['items_handling'] == 7
+                        connection.send(json.dumps([{
+                            'cmd': 'Connected', 'team': 0, 'slot': 1,
+                            'checked_locations': [], 'missing_locations': [location],
+                            'slot_data': slot, 'slot_info': {},
+                        }, {
+                            'cmd': 'ReceivedItems', 'index': 0,
+                            'items': [{'item': item_id, 'location': location, 'player': 1, 'flags': 1}],
+                        }, {
+                            'cmd': 'ReceivedItems', 'index': 0,
+                            'items': [{'item': item_id, 'location': location, 'player': 1, 'flags': 1}],
+                        }]))
+                    elif packet['cmd'] == 'LocationChecks':
+                        assert packet['locations'] == [location]
+                        connection.send(json.dumps([{
+                            'cmd': 'RoomUpdate', 'checked_locations': [location],
+                        }]))
+                        checked.set()
+                    elif packet['cmd'] == 'StatusUpdate' and packet['status'] == 30:
+                        goal.set()
+        except ConnectionClosed:
+            pass
+        except Exception as exc:
+            failures.append(exc)
+
+    with serve(handler, '127.0.0.1', 0) as server:
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        session = ArchipelagoSession(
+            SessionConfig(server=f'127.0.0.1:{server.socket.getsockname()[1]}', slot_name='Shared Coop'),
+            event_callback=events.put,
+        )
+        controller = ArchipelagoController()
+        controller.state = deepcopy(slot['run_manifest']['state_snapshot'])
+        controller.state['archipelago'] = {
+            'enabled': True, 'activation': 'active', 'received_rewards': [],
+            'manifest_checksum': slot['manifest_checksum'],
+            'run_manifest': controller._archipelago_manifest_identity(slot['run_manifest']),
+            'slot_data': controller._archipelago_slot_identity(slot),
+            'slot': 1, 'team': 0,
+        }
+        controller._archipelago_slot_data = slot
+        controller._archipelago_item_names = controller._validate_archipelago_item_mapping(slot)
+        controller._archipelago_session = session
+        controller._archipelago_session_validated = True
+        controller.save_state = lambda: None
+        controller.append_archipelago_history = lambda message: None
+        controller.earned_rewards_from_checks = lambda: list(controller.archipelago_reward_history())
+        controller.is_run_complete = lambda: True
+        controller.active_progression_mode = lambda: controller.state['progression_mode']
+        try:
+            session.start()
+            deadline = time.monotonic() + 10
+            while not controller.state['archipelago']['received_rewards']:
+                event = events.get(timeout=max(0.01, deadline - time.monotonic()))
+                if event.kind == 'error':
+                    raise AssertionError(event.payload)
+                if event.kind == 'received_items':
+                    controller.apply_archipelago_received_items(event.payload)
+                if time.monotonic() >= deadline:
+                    raise AssertionError('Co-op AP item delivery timed out.')
+            records = controller.state['archipelago']['received_rewards']
+            assert len(records) == 1
+            assert not controller.apply_archipelago_received_items(({
+                'index': 0, 'item': item_id, 'location': location, 'player': 1, 'flags': 1,
+            },))
+            assert len(received_rewards(shared_run_state(controller.state, slot))) == 1
+            group = {'code': '__COOP__', 'check_id': 'victory', 'event_stem': 'victory',
+                     'locations': (location,)}
+            assert controller._report_archipelago_location_groups((group,)) == (location,)
+            assert not controller._report_archipelago_location_groups((group,))
+            assert checked.wait(5)
+            controller.report_archipelago_goal_if_complete()
+            assert goal.wait(5)
+            assert session.checkpoint()['goal_complete']
+            guest = ArchipelagoController()
+            guest.state = shared_run_state(controller.state, slot)
+            assert not guest._report_archipelago_location_groups((group,))
+            assert not guest.report_archipelago_goal_if_complete()
+            assert not failures, failures
+        finally:
+            session.stop()
+            server.shutdown()
+            worker.join(3)
+
+
 class IntegrationTests(unittest.TestCase):
     def test_clean_build_mission_snapshot(self):
         from Archipelago.mission_catalogue import generation_missions
 
         missions = generation_missions(ROOT / 'missing-game' / 'INI' / 'BattleClient.ini')
-        self.assertEqual({mission['code'] for mission in missions}, set(data.MISSION_DATA))
+        coops = generation_missions(ROOT / 'missing-game' / 'INI' / 'BattleClient.ini', coop=True)
+        self.assertEqual({mission['code'] for mission in missions + coops}, set(data.MISSION_DATA))
         self.assertEqual(len(missions), 97)
+        self.assertEqual(len(coops), 36)
 
     def test_mission_goal_bounds_and_maximum_run(self):
         option = WorldType.options_dataclass.type_hints['mission_goal']
         self.assertEqual(option.range_start, 1)
-        self.assertEqual(option.range_end, len(data.MISSION_DATA))
+        self.assertEqual(option.range_end, sum(not code.startswith('COOP_') for code in data.MISSION_DATA))
         self.assertEqual(option.from_any(15).value, 15)
         self.assertEqual(option.from_any(97).value, 97)
         with self.assertRaises(Exception):
@@ -176,9 +294,9 @@ class IntegrationTests(unittest.TestCase):
         self.assertTrue(settings['generation']['start_with_tier_one_units'])
 
     def test_generation_and_handshake(self):
-        for mode in ('Classic', 'Mission List', 'Grid Mode', 'Shop Mode'):
-            with self.subTest(mode=mode):
-                world = make_world(fixture(mode))
+        for mode, coop in product(('Classic', 'Mission List', 'Grid Mode', 'Shop Mode'), (False, True)):
+            with self.subTest(mode=mode, coop=coop):
+                world = make_world(dict(fixture(mode), coop_mode=coop))
                 mw = world.multiworld
                 self.assertEqual(len(mw.itempool), len(mw.get_unfilled_locations()))
                 distribute_items_restrictive(mw)
@@ -187,6 +305,8 @@ class IntegrationTests(unittest.TestCase):
                 slot = validate_slot_data(json.loads(json.dumps(world.fill_slot_data())))
                 ArchipelagoController._validate_archipelago_item_mapping(slot)
                 ArchipelagoController._validate_archipelago_server_state(slot)
+                self.assertEqual(slot['run_manifest']['state_snapshot']['coop_mode'], coop)
+                self.assertTrue(all(code.startswith('COOP_') == coop for code in slot['mission_order']))
                 if mode == 'Shop Mode':
                     self.assertTrue(set(slot['shop']['purchase_locations']).issubset(
                         _scout_location_ids(slot)))
@@ -198,6 +318,8 @@ class IntegrationTests(unittest.TestCase):
                     ), 120)
                     self.assertEqual(len(slot['shop']['stage_victories']),
                                      slot['shop']['run_length'])
+                if coop:
+                    coop_session_roundtrip(slot)
 
     def test_yaml_preserves_types(self):
         values = {'seed': '2026-09-07', 'progression_mode': 'Shop Mode',
@@ -319,7 +441,7 @@ class IntegrationTests(unittest.TestCase):
         for name in ('shop_progression_mode_combo', 'shop_seed_entry',
                      'shop_setup_start_button', 'shop_faction_pool_combo',
                      'shop_discount_specialization_combo', 'shop_difficulty_combo',
-                     'shop_coop_mode_check'):
+                     'shop_coop_mode_check', 'shop_coop_player_count_combo'):
             setattr(controller, name, Widget())
         controller.appearance_frame = Widget()
         controller.settings_frame = Widget([controller.shop_setup_start_button,

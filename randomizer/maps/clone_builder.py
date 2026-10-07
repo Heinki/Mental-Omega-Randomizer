@@ -1433,6 +1433,10 @@ def build_player_clone_sections(
             # inherited their native TechLevel and leaked into the sidebar;
             # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
+            if unit_id in initial_payload_source_ids:
+                # Payload creation needs an instantiable type even when its
+                # standalone production reward is still locked.
+                _remove_case_insensitive(clone_values, 'BuildLimit')
             if unit_id in initial_payload_source_ids or scripted_owner_ids:
                 # InitialPayload and reviewed scripted-team creation must not
                 # inherit native faction/prerequisite gates. Keep reference

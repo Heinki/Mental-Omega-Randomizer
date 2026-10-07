@@ -207,6 +207,41 @@ and profile. Connect through **Co-op Connection…** and use the host's Shop
 mission cards. The Grid manifest used by `prepare` only creates the private
 copies; Shop launch generates its own map from current purchases.
 
+## Production access and transport payloads
+
+Archipelago uses the host's shared slot. The APWorld selects its separate co-op
+mission snapshot from the exported `coop_mode` setting. Guest inventory mirrors
+contain received-item indexes and check mappings; credentials and local AP
+backups are excluded. Only the host queues AP checks or reports its goal.
+Co-op map rewards and enemy effects come from the received-item ledger, rather
+than local pre-generation reward assignments. AP events are deferred while a
+mission snapshot is being prepared. See the shared-slot setup in
+[COOP_CONNECTION_GUIDE.md](COOP_CONNECTION_GUIDE.md).
+
+Co-op uses the saved run's earned access and starting roster. Standard keeps
+each exact unit behind its faction's physical factory, including captured
+factories. Chaos and Arsenal retain the shared current-faction production path.
+Starting Standard roles resolve to the same faction/subfaction identities as
+campaign starters. An empty starting roster grants no diagnostic IFV access.
+
+Both human slots receive an invisible original-production gate through separate
+Player @ A/B transfers. Native types retain their authored runtime ownership,
+TechLevel, BuildLimit, positive prerequisites, placements, and TeamTypes. The
+gate blocks their production in either human House, including after capture or
+reverse engineering; earned units use their registered player clone instead.
+No player ForbiddenHouses or factory-owner exclusions are added to native
+actors. Enemy slots never receive the gate.
+
+Sealed initial payloads have complete registered private definitions, with
+production access disabled independently of the carrier's unlock. Super Thor
+keeps five Guardian GIs, five Enforcers, and one Heavy Cruiser, including all
+three weapons. Shop host and guest payloads use separate identities.
+
+Generated-map markers changed, so both players must update their launcher and
+prepare a fresh map. Existing seed progress can be kept. Static checks cover
+all 36 maps; a two-PC gameplay test is still needed to verify capture menus,
+scripted reinforcements, passenger firing, and synchronization in the engine.
+
 ## Diagnostic command line
 
 `tools/coop_direct.py` still supports the earlier one-map diagnostic without

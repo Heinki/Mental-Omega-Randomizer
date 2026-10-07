@@ -48,6 +48,9 @@ def generation_files():
     output[f'{MODULE_NAME}/_vendor/Archipelago/generation_missions.json'] = (
         ROOT / 'Archipelago' / 'generation_missions.json'
     ).read_bytes()
+    output[f'{MODULE_NAME}/_vendor/Archipelago/generation_coop_missions.json'] = (
+        ROOT / 'Archipelago' / 'generation_coop_missions.json'
+    ).read_bytes()
     from randomizer.rewards.roster import randomizer_unit_roster
     _paths, clone_ids, templates = randomizer_unit_roster()
     output[f'{MODULE_NAME}/_vendor/randomizer/rewards/_generation_roster.py'] = (

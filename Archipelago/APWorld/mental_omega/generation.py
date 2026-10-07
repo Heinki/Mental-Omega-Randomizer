@@ -12,7 +12,9 @@ def generate_manifest(settings, seed):
     from ._vendor.randomizer.generation.service import RunGenerator
     from ._vendor.Archipelago.run_manifest import build_run_manifest, gameplay_config_snapshot
 
-    missions = json.loads(files(__package__).joinpath('generation_missions.json').read_text(encoding='utf-8'))
+    filename = ('generation_coop_missions.json' if settings.get('coop_mode')
+                else 'generation_missions.json')
+    missions = json.loads(files(__package__).joinpath(filename).read_text(encoding='utf-8'))
     generator = RunGenerator(settings, missions)
     state = generator.generate(seed)
     config = gameplay_config_snapshot(generator.config)

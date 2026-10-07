@@ -11,6 +11,8 @@ if str(ROOT) not in sys.path:
 
 from randomizer.coop.catalogue import discover_coop_missions
 from randomizer.coop.shop_stage import apply_stage_snapshot, stage_digest, stage_snapshot
+from randomizer.coop.archipelago import shared_run_state
+from randomizer.coop.lobby import encode_state
 from randomizer.application.coop_controller import CoopController
 from randomizer.application.shop_controller import ShopController
 from randomizer.core.paths import GAME_ROOT
@@ -192,6 +194,17 @@ def controller_receive_case(run, snapshot, missions):
             self.messages = []
             self._coop_shop_stage_digest = stage_digest(snapshot)
             self._coop_shop_ready = False
+            self.missions = list(missions.values())
+            self.state = {}
+            for name in ('seed_var', 'campaign_var', 'reward_mode_var',
+                         'progression_mode_var', 'mission_goal_var', 'rewards_per_check_var'):
+                setattr(self, name, type('Variable', (), {
+                    'set': lambda variable, value: setattr(variable, 'value', value),
+                    'get': lambda variable: getattr(variable, 'value', ''),
+                })())
+
+        def _refresh_coop_state_views(self):
+            pass
 
         def shop_mode_selected(self):
             return True
@@ -219,6 +232,29 @@ def controller_receive_case(run, snapshot, missions):
         {'type': 'shop_ready', 'digest': stage_digest(snapshot)}
     ]
     assert guest.shop_repository.current.run_coins == run.run_coins
+    guest.shop_repository.current = replace(run, eligible_mission_codes=tuple(missions))
+    shared = shared_run_state({
+        'seed': run.seed, 'coop_mode': True, 'progression_mode': 'Shop Mode',
+        'mission_order': list(missions),
+        'archipelago': {
+            'enabled': True, 'activation': 'active', 'manifest_checksum': 'c' * 64,
+            'run_manifest': {'progression_mode': 'Shop Mode'},
+            'slot_data': {'shop': {'mission_pool': list(missions)}},
+            'slot': 1, 'team': 0, 'checkpoint': {'seed_name': 'Shared Room'},
+            'received_rewards': [{'index': 0, 'reward_name': 'Terror Drone Access'}],
+        },
+    })
+    CoopController._handle_coop_message(
+        guest, guest_lobby, {'type': 'archipelago_state', 'data': encode_state(shared)},
+    )
+    bound = guest.shop_repository.current
+    assert bound.ap_identity and bound.ap_entitlements_snapshot == ('Terror Drone Access',)
+    assert bound.run_coins == run.run_coins and bound.run_purchases == run.run_purchases
+    CoopController._handle_coop_message(
+        guest, guest_lobby, {'type': 'archipelago_state', 'data': encode_state(shared)},
+    )
+    assert guest.shop_repository.current == bound
+    assert guest._archipelago_slot_data['shop']['mission_pool'] == list(missions)
     host = Fake()
     host_lobby = type('Lobby', (), {'role': 'host'})()
     CoopController._handle_coop_message(host, host_lobby, guest_lobby.sent[0])

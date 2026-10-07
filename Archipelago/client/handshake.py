@@ -625,6 +625,9 @@ def validate_slot_data(value):
         raise ArchipelagoProtocolError(
             'Slot data run manifest has no server state snapshot.'
         )
+    coop = state_snapshot.get('coop_mode', False)
+    if type(coop) is not bool or any(code.startswith('COOP_') != coop for code in mission_order):
+        raise ArchipelagoProtocolError('Slot data mission pool differs from its co-op setting.')
     if (
         state_snapshot.get('seed') != slot_data.get('randomizer_seed')
         or state_snapshot.get('mission_order') != mission_order

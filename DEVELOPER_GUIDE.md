@@ -210,6 +210,20 @@ snapshot when no Mental Omega installation is available. Installed-game
 catalogue regeneration refreshes it. Packaging rejects empty catalogues and
 mission counts that disagree with the Missions to Finish option (1–97).
 
+The AP catalogue contains both pools: 97 campaign missions and 36 co-op
+missions. `coop_mode` selects one pool before generation; the mission-goal
+option keeps the largest pool's bound. Clean builds package both
+`generation_missions.json` and `generation_coop_missions.json`. Preserve all
+published campaign item, location, and local-victory IDs when adding co-op.
+
+Co-op AP uses one shared slot. The host owns the AP session, check reporting,
+and generated AP purchases; guest mirrors are temporary and never open a
+second session. `randomizer/coop/archipelago.py` projects the same received-item
+ledger into map rewards and matching guest Shop runs. Run the existing
+`tools/check_archipelago_integration.py` against the rebuilt `.apworld` and
+`tools/check_coop_parity.py` after changing this bridge. The former uses a
+local loopback protocol server, so it requires local socket access.
+
 Ownership, clone, AI, power, Action, or mission-map changes require all 97
 extracted maps. Determinism refactors require exact old/new plan parity, not
 distribution-only checks.

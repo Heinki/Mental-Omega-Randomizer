@@ -23,6 +23,8 @@ from randomizer.coop.reward_map import (
     apply_coop_power_rewards, apply_coop_rewards, apply_shop_credit_bonus,
 )
 from randomizer.coop.enemy_rewards import apply_coop_enemy_rewards
+from randomizer.coop.access import apply_coop_native_production_gate, coop_starting_rewards
+from randomizer.coop.archipelago import received_rewards
 from randomizer.coop.victory import inject_victory_markers
 from randomizer.maps.buff_values import _active_direct_buff_counts
 from randomizer.rewards.arsenal import ARSENAL_MODE, arsenal_launch_rewards, arsenal_unit_type
@@ -41,8 +43,8 @@ from randomizer.shop.mission_modifiers import shop_enemy_scaling_entries
 from randomizer.ui.cameos import installed_rules_registry
 
 
-PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V8'
-SHOP_MARKER = 'MOR_COOP_SHOP_V2'
+PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V9'
+SHOP_MARKER = 'MOR_COOP_SHOP_V3'
 SUPPORTED_PROGRESSION = {'Classic', 'Grid Mode', 'Mission List'}
 SIDE_COUNTRIES = (
     'UnitedStates', 'Europeans', 'Pacific',
@@ -110,6 +112,9 @@ def _map_config(game_root: Path, coop_name: str):
 
 
 def _earned_rewards(state: dict) -> list[dict]:
+    received = received_rewards(state)
+    if received is not None:
+        return [reward for reward in received if not reward.get('enemy_reward')]
     earned = list(state.get('starting_rewards') or [])
     checks_by_code = state.get('mission_checks') or {}
     for code in state.get('mission_order') or []:
@@ -123,8 +128,9 @@ def _earned_rewards(state: dict) -> list[dict]:
     ]
 
 
-def _access_candidates(state: dict, source_mission: str = '') -> list[tuple[str, dict]]:
-    rewards = _launch_rewards(state, source_mission)
+def _access_candidates(state: dict, source_mission: str = '',
+                       country: str = '') -> list[tuple[str, dict]]:
+    rewards = _launch_rewards(state, source_mission, country)
     candidates = []
     for reward in rewards:
         if reward.get('kind') in {'buff', 'superweapon', 'message', 'retired'}:
@@ -166,6 +172,7 @@ def _enemy_countries(metadata: dict) -> list[str]:
 
 
 def _grid_enemy_reward_ids(state: dict) -> list[str]:
+    received = received_rewards(state)
     checks = {
         (str(code), str(check.get('id'))): check
         for code in state.get('mission_order', ())
@@ -177,13 +184,15 @@ def _grid_enemy_reward_ids(state: dict) -> list[str]:
     )
     rewards = []
     counts = Counter()
-    for entry in state.get('enemy_reward_plan', ()):
+    entries = (state.get('enemy_reward_plan', ()) if received is None else
+               [{'reward': reward} for reward in received if reward.get('enemy_reward')])
+    for entry in entries:
         if len(rewards) >= settings['maximum_total_buffs']:
             break
         if not isinstance(entry, dict):
             continue
         check = checks.get((str(entry.get('mission')), str(entry.get('check_id'))))
-        if not check or not (check.get('unlocked') or check.get('released')):
+        if received is None and (not check or not (check.get('unlocked') or check.get('released'))):
             continue
         reward = configured_enemy_reward(
             canonical_reward(entry.get('reward') or {}), settings or {}
@@ -204,7 +213,7 @@ def _shared_shop_enemy_reward_ids(loadouts: dict) -> list[str]:
     return sorted(name for name, count in counts.items() for _ in range(count))
 
 
-def _launch_rewards(state: dict, source_mission: str = '') -> list[dict]:
+def _launch_rewards(state: dict, source_mission: str = '', country: str = '') -> list[dict]:
     earned = _earned_rewards(state)
     if state.get('reward_mode') == ARSENAL_MODE:
         if not source_mission:
@@ -213,7 +222,7 @@ def _launch_rewards(state: dict, source_mission: str = '') -> list[dict]:
         if not arsenal:
             raise ValueError(f'No saved arsenal for {source_mission.upper()}.')
         return arsenal_launch_rewards(arsenal, earned)
-    return earned
+    return earned + coop_starting_rewards(state, country)
 
 
 def _buff_counts(rewards: list[dict], access_ids: list[str]) -> dict:
@@ -237,8 +246,8 @@ def _buff_counts(rewards: list[dict], access_ids: list[str]) -> dict:
 
 
 def _selected_reward(state: dict, source_mission: str, unit_id: str,
-                     allow_test_unit: bool = False):
-    candidates = _access_candidates(state, source_mission)
+                     allow_test_unit: bool = False, country: str = ''):
+    candidates = _access_candidates(state, source_mission, country)
     if unit_id:
         selected = next((entry for entry in candidates if entry[0] == unit_id.upper()), None)
         if selected is None:
@@ -249,7 +258,7 @@ def _selected_reward(state: dict, source_mission: str, unit_id: str,
     if not candidates:
         if allow_test_unit:
             return 'FV', {'name': 'FV test access'}, True
-        raise ValueError('Saved run has no supported infantry, vehicle, aircraft, or naval access.')
+        return '', {'name': 'No unit production access'}, False
     return *candidates[0], False
 
 
@@ -309,6 +318,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
         # animation object. Disable this cosmetic marker for co-op maps only.
         'General': {'Behind': 'none'},
     })
+    apply_coop_native_production_gate(lines, manifest)
     if manifest['schema'] == 5:
         for role, scope, country in (
             ('host', 'H', manifest['player_country']),
@@ -363,14 +373,14 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     coop_name = coop_name.lower()
     source, source_key, metadata, country, family = _map_config(game_root, coop_name)
     selected_id, reward, test_override = _selected_reward(
-        state, source_mission, unit_id, allow_test_unit)
-    if not re.fullmatch(r'[A-Z0-9_]{2,24}', selected_id):
+        state, source_mission, unit_id, allow_test_unit, country)
+    if selected_id and not re.fullmatch(r'[A-Z0-9_]{2,24}', selected_id):
         raise ValueError('Invalid unit ID for co-op prototype.')
-    access_ids = sorted({entry[0] for entry in _access_candidates(state, source_mission)}
-                        | {selected_id})
+    access_ids = sorted({entry[0] for entry in _access_candidates(state, source_mission, country)}
+                        | ({selected_id} if selected_id else set()))
     for candidate_id in access_ids:
         _require_registered_type(source, candidate_id)
-    launch_rewards = _launch_rewards(state, source_mission)
+    launch_rewards = _launch_rewards(state, source_mission, country)
     buff_counts = _buff_counts(launch_rewards, access_ids)
     building_ids = _building_ids(launch_rewards)
     power_reward_ids = _power_reward_ids(launch_rewards)
@@ -382,7 +392,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     identity = _digest(json.dumps(
         [PROTOTYPE_MARKER, source_hash, str(state['seed']), access_ids,
          buff_counts, building_ids, power_reward_ids, enemy_reward_ids,
-         enemy_countries, credit_bonus, country],
+         enemy_countries, credit_bonus, country, state.get('reward_mode', '')],
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     stem = f'morcp_{coop_name.removeprefix("coop_").lower()}_{identity}'
@@ -515,7 +525,7 @@ def _validate_shop_loadout(source: Path, loadout: dict) -> dict:
     return result
 
 
-def shop_unit_loadout(run, profile=None) -> dict:
+def shop_unit_loadout(run, profile=None, *, state=None) -> dict:
     """Project one player's Shop rewards and stage effects for the map."""
     from randomizer.shop.active import (
         active_shop_rewards, active_shop_starter_defense_ids,
@@ -585,6 +595,12 @@ def shop_unit_loadout(run, profile=None) -> dict:
         enemy_reward_ids = sorted(str(entry['reward']['name']) for entry in entries)
         if enemy_reward_ids:
             loadout['enemy_reward_ids'] = enemy_reward_ids
+    if state is not None and received_rewards(state) is not None:
+        traps = _grid_enemy_reward_ids(state)
+        if traps:
+            loadout['enemy_reward_ids'] = sorted([
+                *loadout.get('enemy_reward_ids', ()), *traps,
+            ])
     credit_level = profile.upgrade_level('mission_starting_credits') if profile else 0
     credits_per_level = int(SHOP_CONFIG.permanent_upgrades[
         'mission_starting_credits'
@@ -668,11 +684,12 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     if source_key != actual_key or country != manifest.get('player_country'):
         raise ValueError('Manifest map or player side differs from installed Mental Omega.')
     unit_id = str(manifest.get('unit_id', '')).upper()
-    if not re.fullmatch(r'[A-Z0-9_]{2,24}', unit_id):
+    if unit_id and not re.fullmatch(r'[A-Z0-9_]{2,24}', unit_id):
         raise ValueError('Invalid unit ID in manifest.')
     if arsenal_unit_type(unit_id, BUFF_TARGETS.get(unit_id)) != manifest.get('production_type'):
         raise ValueError('Manifest unit category differs from launcher catalogue.')
-    _require_registered_type(source, unit_id)
+    if unit_id:
+        _require_registered_type(source, unit_id)
     seed = str(manifest.get('seed', ''))
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', seed):
         raise ValueError('Manifest seed is invalid.')
@@ -685,11 +702,12 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     credit_bonus = manifest.get('starting_credit_bonus')
     if (type(credit_bonus) is not int or not 0 <= credit_bonus <= 20000):
         raise ValueError('Invalid co-op starting credit bonus.')
-    if (not isinstance(access_ids, list) or not access_ids or
+    if (not isinstance(access_ids, list) or
             not all(isinstance(item, str) and re.fullmatch(r'[A-Z0-9_]{2,24}', item)
                     for item in access_ids) or
             access_ids != sorted(set(access_ids)) or
-            unit_id not in access_ids or not isinstance(buff_counts, dict)):
+            bool(unit_id) != bool(access_ids) or
+            (unit_id and unit_id not in access_ids) or not isinstance(buff_counts, dict)):
         raise ValueError('Invalid co-op access or buff manifest.')
     if (not isinstance(building_ids, list)
             or building_ids != sorted(set(building_ids))
@@ -722,7 +740,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     expected_identity = _digest(json.dumps(
         [PROTOTYPE_MARKER, manifest['source_sha256'], seed, access_ids,
          buff_counts, building_ids, power_reward_ids, enemy_reward_ids,
-         enemy_countries, credit_bonus, country],
+         enemy_countries, credit_bonus, country, manifest.get('reward_mode', '')],
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     expected_stem = f'morcp_{coop_name.removeprefix("coop_")}_{expected_identity}'

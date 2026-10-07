@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from randomizer.maps.ini import all_section_value_maps_preserve
+from randomizer.maps._shared import LOCKED_TECH_LEVEL, UNLOCKED_TECH_LEVEL
 from randomizer.rewards.catalogue import REWARD_BY_NAME, REWARD_BY_BUFF_KEY
 from randomizer.rewards.roster import randomizer_unit_template_values
 from randomizer.rewards.rules import unlocked_reward_tech_ids
@@ -121,10 +122,27 @@ def check_units(missions, launcher_type):
                 REWARD_BY_NAME['Opus Custom Tank Access'],
                 REWARD_BY_NAME['Hovracoon Access'],
                 REWARD_BY_NAME['Raccoon Access'],
+                REWARD_BY_NAME['Super Thor Gunship Access'],
                 *(REWARD_BY_BUFF_KEY[('STNK', kind)] for kind in ('damage', 'range', 'reload')),
                 *([REWARD_BY_BUFF_KEY[('STNK', 'initial_passenger')]] * count),
             ]
             sections = generate(launcher, missions['FPOINT'])
+            thor = sections['MORPSTHOR']
+            assert thor['OpenTopped'] == 'yes'
+            assert thor['InitialPayload.Nums'] == '5,5,1'
+            payloads = thor['InitialPayload.Types'].split(',')
+            assert thor['Passengers.Allowed'].split(',') == payloads
+            for payload in payloads:
+                assert payload in sections
+                assert sections[payload]['Primary']
+                # A saved tier-one starter may also have normal build access.
+                assert sections[payload]['TechLevel'] in {
+                    LOCKED_TECH_LEVEL, UNLOCKED_TECH_LEVEL,
+                }
+                assert sections[payload].get('BuildLimit') != '0'
+                if sections[payload]['TechLevel'] == LOCKED_TECH_LEVEL:
+                    assert not sections[payload].get('BuildLimit')
+                assert not sections[payload].get('Prerequisite.Negative')
             opus = sections['MORPSTNK']
             assert opus['InitialPayload.Types'] == 'MORP' + passenger
             assert opus['InitialPayload.Nums'] == opus['Passengers'] == '1'

@@ -1011,4 +1011,9 @@ class StateController(GenerationSettings):
         self.refresh_progress_view()
         self.refresh_coop_controls()
         if previous_coop_mode != bool(self.coop_mode_var.get()):
-            self.on_coop_mode_changed()
+            if self.archipelago_run_active():
+                # Signed server state already selected the pool. Switching
+                # presentation must not reload a standalone save over it.
+                self.refresh_missions()
+            else:
+                self.on_coop_mode_changed()

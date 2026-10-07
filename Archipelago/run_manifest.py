@@ -37,6 +37,7 @@ MANIFEST_SCHEMA_VERSION = 1
 
 GAMEPLAY_CONFIG_KEYS = (
     "seed",
+    "coop_mode",
     "campaign_filter",
     "mission_goal",
     "progression_mode",
@@ -60,6 +61,7 @@ PLAYER_GENERATION_KEYS = {
     "include_operation_missions",
     "prioritize_no_build_missions",
     "excluded_mission_codes",
+    "excluded_coop_mission_codes",
     "excluded_unit_access_ids",
     "excluded_superweapon_ids",
     "excluded_unit_buff_types",
@@ -325,6 +327,7 @@ def _launcher_snapshot_for_state(state, config):
         return result
     return {
         "seed": str(state.get("seed") or ""),
+        "coop_mode": bool(state.get("coop_mode", False)),
         "campaign_filter": str(state.get("campaign_filter") or ""),
         "mission_goal": int(state.get("mission_goal") or 1),
         "progression_mode": str(state.get("progression_mode") or "Classic"),

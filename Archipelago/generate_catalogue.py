@@ -16,6 +16,13 @@ OUTPUT_PATH = (
 
 
 def main():
+    from randomizer.core.paths import GAME_ROOT
+    if (GAME_ROOT / 'MapsMO' / 'Cooperative').is_dir():
+        from randomizer.coop.catalogue import discover_coop_missions
+        (Path(__file__).resolve().parent / 'generation_coop_missions.json').write_text(
+            json.dumps(discover_coop_missions(GAME_ROOT), ensure_ascii=False, indent=2) + '\n',
+            encoding='utf-8', newline='\n',
+        )
     existing = None
     if OUTPUT_PATH.is_file():
         existing = json.loads(OUTPUT_PATH.read_text(encoding="utf-8"))

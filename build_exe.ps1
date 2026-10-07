@@ -199,6 +199,7 @@ try {
         --add-data "$configManifestPath;configs" `
         --add-data "$assetPath;assets" `
         --add-data "$scriptDir\Archipelago\generation_missions.json;Archipelago" `
+        --add-data "$scriptDir\Archipelago\generation_coop_missions.json;Archipelago" `
         --add-binary "$tkinterBinary;." `
         --add-data "$tkinterPackage;tkinter" `
         --add-binary "$tclBinary;." `

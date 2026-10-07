@@ -41,6 +41,7 @@ MAXIMUM_ENEMY_TRAP_ITEMS = sum(
 # published catalogue checksums compatible lets already-hosted rooms reconnect
 # safely after additive reward catalogue changes.
 BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
+    "29fd0f82be96264b9ba09823a89b8bb83352a29e28e9f84f498a728376d762e3",
     "24a1d5b707e7df49c6d0f130e45c1e61048813b5dfd64cd49a886f41b35333f9",
     "8a59f49bc0a8746086ad2fd020832542b2dd7057d53cf719dd727cb11822121d",
     "f213725f91de177af64eec5a875a08a403c4bc5be0e4f3f7e510db89ba7510f8",
@@ -87,7 +88,7 @@ def build_catalogue_projection():
         })
 
     missions = []
-    for mission in generation_missions():
+    for mission in generation_missions() + generation_missions(coop=True):
         objectives = list(mission.get("objectives") or ())
         checks = [
             {
