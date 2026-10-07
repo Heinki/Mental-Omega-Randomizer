@@ -63,6 +63,9 @@ def migrate_loaded_config(loaded):
     if 'coop_feature_enabled' in loaded:
         loaded.pop('coop_feature_enabled')
         changed = True
+    if loaded.get('coop_network_mode') != 'zerotier':
+        loaded['coop_network_mode'] = 'zerotier'
+        changed = True
     archipelago = loaded.get('archipelago')
     if isinstance(archipelago, dict):
         server = str(archipelago.get('server') or '').strip()

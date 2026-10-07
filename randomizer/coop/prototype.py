@@ -13,6 +13,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from randomizer.coop.compatibility import FINGERPRINT_POLICY, resolve_path, text_hash
 from randomizer.maps.ini import (
     IniLines, all_section_value_maps, find_section_bounds,
     merge_ini_section_values,
@@ -79,10 +80,10 @@ def _values(lines: list[str], name: str) -> dict[str, str]:
 def _map_config(game_root: Path, coop_name: str):
     if not re.fullmatch(r'coop_[a-z0-9_]+', coop_name, re.I):
         raise ValueError('Co-op map must be an installed coop_*.map name.')
-    source = game_root / 'MapsMO' / 'Cooperative' / f'{coop_name.lower()}.map'
+    source = resolve_path(game_root, f'MapsMO/Cooperative/{coop_name.lower()}.map')
     if not source.is_file():
         raise FileNotFoundError(source)
-    catalogue = game_root / 'INI' / 'MentalOmegaMaps.ini'
+    catalogue = resolve_path(game_root, 'INI/MentalOmegaMaps.ini')
     lines = _text(catalogue).splitlines()
     source_key = f'MapsMO\\Cooperative\\{coop_name.lower()}'
     metadata = _values(lines, source_key)
@@ -288,7 +289,11 @@ def available_units(state: dict, source_mission: str = '') -> list[tuple[str, st
 
 def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> bytes:
     raw = source.read_bytes()
-    if _digest(raw) != manifest['source_sha256']:
+    policy = manifest.get('fingerprint_policy')
+    if policy not in (None, FINGERPRINT_POLICY):
+        raise ValueError('Co-op map compatibility check differs. Update both launchers.')
+    source_hash = text_hash(raw) if policy else _digest(raw)
+    if source_hash != manifest['source_sha256']:
         raise ValueError('Installed source map differs from host source map.')
     lines = IniLines(raw.decode('latin-1').splitlines())
     basic = _values(lines, 'Basic')
@@ -332,7 +337,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
         manifest.get('enemy_reward_ids', []),
     )
     inject_victory_markers(
-        lines, source.stem, manifest['player_country'],
+        lines, source.stem.lower(), manifest['player_country'],
     )
     lines.insert(0, f'; {manifest["marker"]} {source_key} {manifest["seed"]}')
     return ('\r\n'.join(lines) + '\r\n').encode('latin-1')
@@ -365,7 +370,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     enemy_countries = _enemy_countries(metadata)
     credit_bonus = starting_credit_bonus(launch_rewards)
     production_type = arsenal_unit_type(selected_id, BUFF_TARGETS.get(selected_id))
-    source_hash = _digest(source.read_bytes())
+    source_hash = text_hash(source.read_bytes())
     identity = _digest(json.dumps(
         [PROTOTYPE_MARKER, source_hash, str(state['seed']), access_ids,
          buff_counts, building_ids, power_reward_ids, enemy_reward_ids,
@@ -376,6 +381,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     map_key = f'MapsMO\\Cooperative\\{stem}'
     manifest = {
         'schema': 4,
+        'fingerprint_policy': FINGERPRINT_POLICY,
         'marker': PROTOTYPE_MARKER,
         'source_key': source_key,
         'source_sha256': source_hash,
@@ -397,7 +403,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
         'player_country': country,
         'map_key': map_key,
         'map_file': f'{stem}.map',
-        'description': metadata.get('description', source.stem) + ' - Randomizer',
+        'description': metadata.get('description', source.stem.lower()) + ' - Randomizer',
     }
     map_data = _map_bytes(source, source_key, manifest, family)
     manifest['map_sha256'] = _digest(map_data)
@@ -590,7 +596,7 @@ def shop_unit_loadout(run, profile=None) -> dict:
 
 def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
                         host_loadout: dict, guest_loadout: dict, *,
-                        stage: int = 1) -> tuple[dict, bytes]:
+                        stage: int = 1, _fingerprint_policy=FINGERPRINT_POLICY) -> tuple[dict, bytes]:
     """Build one identical map with two country-gated purchased unit rosters."""
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', str(seed)):
         raise ValueError('Shop seed contains characters unsafe for a map marker.')
@@ -604,7 +610,7 @@ def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
         'host': _validate_shop_loadout(source, host_loadout),
         'guest': _validate_shop_loadout(source, guest_loadout),
     }
-    source_hash = _digest(source.read_bytes())
+    source_hash = (text_hash if _fingerprint_policy else _digest)(source.read_bytes())
     identity = _digest(json.dumps(
         [SHOP_MARKER, source_hash, str(seed), stage, country, guest_country,
          enemy_countries, loadouts],
@@ -621,8 +627,10 @@ def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
         'enemy_reward_ids': _shared_shop_enemy_reward_ids(loadouts),
         'map_key': f'MapsMO\\Cooperative\\{stem}',
         'map_file': f'{stem}.map',
-        'description': metadata.get('description', source.stem) + ' - Randomizer Shop',
+        'description': metadata.get('description', source.stem.lower()) + ' - Randomizer Shop',
     }
+    if _fingerprint_policy:
+        manifest['fingerprint_policy'] = _fingerprint_policy
     data = _map_bytes(source, source_key, manifest, family)
     manifest['map_sha256'] = _digest(data)
     return manifest, data
@@ -639,6 +647,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
             game_root, manifest.get('seed', ''), coop_name,
             loadouts.get('host'), loadouts.get('guest'),
             stage=manifest.get('shop_stage'),
+            _fingerprint_policy=manifest.get('fingerprint_policy'),
         )
         if manifest != expected:
             raise ValueError('Co-op Shop manifest differs from installed map or loadouts.')
@@ -712,7 +721,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     expected_key = f'MapsMO\\Cooperative\\{expected_stem}'
     if manifest.get('map_key') != expected_key or manifest.get('map_file') != f'{expected_stem}.map':
         raise ValueError('Manifest destination does not match its source and seed.')
-    if manifest.get('description') != _metadata.get('description', source.stem) + ' - Randomizer':
+    if manifest.get('description') != _metadata.get('description', source.stem.lower()) + ' - Randomizer':
         raise ValueError('Manifest map description differs from installed map metadata.')
     data = _map_bytes(source, actual_key, manifest, family)
     if _digest(data) != manifest.get('map_sha256'):
@@ -757,7 +766,7 @@ def _remove_catalogue_entry(lines: list[str], manifest: dict) -> list[str]:
 
 
 def _catalogue_bytes(game_root: Path, manifest: dict, *, add: bool) -> bytes:
-    catalogue = game_root / 'INI' / 'MentalOmegaMaps.ini'
+    catalogue = resolve_path(game_root, 'INI/MentalOmegaMaps.ini')
     original = _text(catalogue)
     newline = '\r\n' if '\r\n' in original else '\n'
     ends_with_newline = original.endswith(('\n', '\r'))
@@ -798,7 +807,7 @@ def install(game_root: Path, manifest: dict, map_data: bytes) -> Path:
     destination = game_root / 'MapsMO' / 'Cooperative' / manifest['map_file']
     if destination.exists() and destination.read_bytes() != map_data:
         raise FileExistsError(f'Refusing to replace different map: {destination}')
-    catalogue = game_root / 'INI' / 'MentalOmegaMaps.ini'
+    catalogue = resolve_path(game_root, 'INI/MentalOmegaMaps.ini')
     updated = _catalogue_bytes(game_root, manifest, add=True)
     if not destination.exists():
         destination.write_bytes(map_data)
@@ -815,7 +824,7 @@ def remove(game_root: Path, manifest: dict) -> None:
     destination = game_root / 'MapsMO' / 'Cooperative' / manifest['map_file']
     if destination.exists() and _digest(destination.read_bytes()) != manifest.get('map_sha256'):
         raise ValueError('Installed map changed; refusing to remove it.')
-    catalogue = game_root / 'INI' / 'MentalOmegaMaps.ini'
+    catalogue = resolve_path(game_root, 'INI/MentalOmegaMaps.ini')
     updated = _catalogue_bytes(game_root, manifest, add=False)
     if updated != catalogue.read_bytes():
         catalogue.write_bytes(updated)

@@ -1,6 +1,7 @@
-# Direct co-op prototype
+# ZeroTier co-op prototype
 
-The randomizer hosts and joins directly. `MentalOmegaClient.exe` and the
+Player co-op connections use a private ZeroTier network. The randomizer hosts
+and joins over its managed IPv4 addresses. `MentalOmegaClient.exe` and the
 CnCNet service are not used. The launcher shares run state over TCP, prepares
 matching co-op maps on both computers, writes `spawn.ini` and `spawnmap.ini`,
 then starts the game through `Syringe.exe`. The game uses UDP between players.
@@ -23,12 +24,13 @@ or saved settings. Keep the constant `False` for release builds.
    missions. The catalogue currently contains 36 registered two-player maps:
    12 Allied, 12 Soviet, and 12 Epsilon. The existing campaign filter also
    narrows this pool. Configure the pool before generating the seed.
-4. On the guest, check **Co-op mode (2 players)**. Open **Co-op Connection…**
-   on both launchers. Select **LAN / ZeroTier / same PC** or **Public IP**.
-   Host selects **Host**
-   and **Connect**. Guest selects **Join**, enters host IP, and selects
-   **Connect**. Use distinct player names. For **Public IP**, share the host's
-   generated pairing code privately and enter it on the guest before connecting.
+4. Check **Co-op mode (2 players)** on the guest. Join and authorize both PCs
+   on the same private ZeroTier network. Open **Co-op Connection…** on both
+   launchers and use distinct names. Host selects **Host**, copies its visible
+   pairing code and clicks **Connect**. Guest selects **Join**, pastes the
+   host's **ZeroTier Managed IPv4** and pairing code, then clicks **Connect**.
+   Guest inputs are masked by default and still accept paste. Ports are automatic.
+   See [COOP_CONNECTION_GUIDE.md](COOP_CONNECTION_GUIDE.md) for setup and diagnostics.
 5. Guest receives host's saved run and Grid. Both see the same map order,
    unlocks, rewards, and host-selected mission. A guest can click a map or use
    **Suggest Mission**; suggestion appears in host log and connection dialog.
@@ -144,42 +146,31 @@ without changing either Shop run.
 
 The remaining live checks are tracked in [TODOS.md](TODOS.md).
 
-## Internet connection
+## ZeroTier connection
 
-**LAN / ZeroTier / same PC** uses one connection path. For ZeroTier, create one private
-ZeroTier network, join and authorize both computers, then enter the host's
-ZeroTier managed IPv4 in the guest launcher. Allow incoming TCP `19420`
-(lobby) and TCP `19421` (game preparation) on host, plus UDP `1234` on both
-computers' system firewalls over the ZeroTier interface. With a custom lobby
-port, use that TCP port and the next. Router forwarding is usually unnecessary
-for ZeroTier.
+The player UI offers ZeroTier only. Previous LAN/Public IP settings migrate to
+ZeroTier. It uses TCP `19420` for the persistent lobby, TCP `19421` for map
+preparation and UDP `1234` for gameplay. There are no player-facing port controls.
+A pairing code is required for every lobby connection; Host and Join retain
+separate codes while the launcher is open. Closing the dialog preserves the
+session. Disconnect after closing the game to change connection settings.
 
-For physical LAN, enter the host's LAN IPv4. For two launchers on the same
-computer, enter `127.0.0.1` and use separate game folders and Wine prefixes.
-An older saved `ZeroTier` selection is treated as `LAN / ZeroTier / same PC`.
+The connection log records connection stages and both peers' runtime hashes.
+Text hashes normalize CRLF/LF; binary hashes remain exact. Version, native
+multiplayer binaries, optional loose rules/art and co-op difficulty INIs are
+checked before the lobby connects, along with native co-op catalogue rows.
+Optional Phobos must match, including its
+presence. Player saves/configuration and generated catalogue entries are excluded.
+Selected source maps normalize text newlines and resolve filenames without
+case sensitivity. Generated map bytes and spawn hashes must still match exactly.
+Both players need the updated launcher protocol and fingerprint policy.
 
-The pairing diagnostic compares the exact `spawnmap.ini` bytes on both game
-copies, verifies their SHA-256 against the launch handshake, and checks the
-matching game ID and map SHA-1 in each `spawn.ini`. It also rejects a changed
-guest map before launch. Run `python tools/check_coop_pairing.py` after creating
-the two private copies with `tools/coop_local_test.py`.
-Shop's stage production restrictions travel in each player's private loadout.
-The generated map disables affected unit clones and factories for that player
-only. Live sidebar validation remains.
-
-**Public IP** uses the same launcher and game protocol without ZeroTier. Host
-needs a reachable public IPv4 and must forward TCP `19420` and `19421` to the
-host computer. Both players must forward external UDP `1234` to UDP `1234` on
-their own computers, and allow those ports in system firewalls. Guest enters
-host's public IPv4 and the same pairing code. Custom lobby port changes both
-TCP ports, but game UDP stays `1234`. The launcher does not configure routers
-or perform UDP hole punching. Carrier-grade NAT, blocked forwarding, or NAT
-that changes outbound UDP source ports can prevent play. Use ZeroTier then.
-The pairing code limits who can join; the control channel is not encrypted.
-Remote public-IP gameplay has not yet been verified with two real routers.
-
-See the [ZeroTier quickstart](https://docs.zerotier.com/quickstart/) and
-[router/firewall guidance](https://docs.zerotier.com/routertips/).
+The pairing diagnostic compares exact `spawnmap.ini` bytes, verifies their
+SHA-256 against the launch handshake, checks matching game IDs and map SHA-1,
+and rejects a changed guest map. Run `python tools/check_coop_pairing.py` after
+creating the two private copies with `tools/coop_local_test.py`.
+Shop production restrictions travel in each player's private loadout.
+Live sidebar and UDP gameplay validation remain required.
 
 ## Two launchers on one Linux PC
 
@@ -201,8 +192,10 @@ python RandomizerLauncher/tools/coop_local_test.py launch RandomizerLauncher/gen
 python RandomizerLauncher/tools/coop_local_test.py launch RandomizerLauncher/generated_coop/morcp_sthunder_<printed-id>.json --player guest
 ```
 
-Select **LAN / same PC** and use host IP `127.0.0.1`. Guest game UDP port
-becomes `1235` automatically.
+Use the ZeroTier connection dialog with host IP `127.0.0.1` for this
+developer-only loopback diagnostic. Share the host pairing code with the guest.
+The guest game UDP port becomes `1235` automatically. Loopback checks do not
+verify a connection between two PCs.
 Run `prepare` again to refresh both private executables and saved settings.
 For an Arsenal seed, also pass `--source-mission COOP_STHUNDER` to the first
 command when that map belongs to the generated mission order.

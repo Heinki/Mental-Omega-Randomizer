@@ -15,6 +15,7 @@ import secrets
 import socket
 import time
 
+from randomizer.coop.compatibility import FINGERPRINT_POLICY, resolve_path, text_hash
 from randomizer.coop.prototype import (
     SIDE_COUNTRIES, _map_config, build_shop_manifest, rebuild_from_manifest,
 )
@@ -23,7 +24,7 @@ from randomizer.maps.ini import all_section_value_maps_preserve, merge_ini_secti
 
 CONTROL_PORT = 19421
 GAME_PORT = 1234
-PROTOCOL = 2
+PROTOCOL = 3
 MAX_MESSAGE = 262_144
 PLAYER_NAME = re.compile(r'[A-Za-z0-9_-]{1,14}\Z')
 MODES = {'easy': ('Co-Op Easy', 2), 'normal': ('Co-Op Medium', 1),
@@ -86,7 +87,7 @@ def _mode_map(game_root: Path, manifest: dict, difficulty: str) -> bytes:
         raise ValueError('Co-op difficulty must be easy, normal, or hard.')
     source = rebuild_from_manifest(game_root, manifest)
     mode_name, _ = MODES[difficulty]
-    mode_file = game_root / 'INI' / 'Map Code' / f'{mode_name}.ini'
+    mode_file = resolve_path(game_root, f'INI/Map Code/{mode_name}.ini')
     mode_data = mode_file.read_bytes()
     lines = source.decode('latin-1').splitlines()
     merge_ini_section_values(lines, all_section_value_maps_preserve(mode_data.decode('latin-1').splitlines()))
@@ -201,7 +202,7 @@ def prepare_game(game_root: Path, manifest: dict, *, role: str, name: str,
 
 
 def _version_hash(game_root: Path) -> str:
-    return _digest((game_root / 'version').read_bytes())
+    return text_hash(resolve_path(game_root, 'version').read_bytes())
 
 
 def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHost',
@@ -268,7 +269,7 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                     'type': 'offer', 'protocol': PROTOCOL, 'manifest': manifest,
                     'name': name, 'game_port': game_port, 'game_id': game_id,
                     'difficulty': difficulty, 'map_sha256': mode_hash,
-                    'version_sha256': version_hash,
+                    'version_sha256': version_hash, 'fingerprint_policy': FINGERPRINT_POLICY,
                     'installation': _installation(game_root),
                 })
                 ready = _receive(stream)
@@ -324,6 +325,8 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
                 raise ValueError(str(offer.get('reason') or 'Co-op host rejected the guest.'))
             if offer.get('type') != 'offer' or offer.get('protocol') != PROTOCOL:
                 raise ValueError('Incompatible co-op host.')
+            if offer.get('fingerprint_policy') != FINGERPRINT_POLICY:
+                raise ValueError('Co-op compatibility check differs. Update both launchers.')
             _check_separate_install(_installation(game_root), offer.get('installation'))
             manifest = offer['manifest']
             if shop_setup is not None and (
@@ -337,8 +340,10 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
             host_name = _name(offer['name'])
             host_port = _port(offer['game_port'])
             game_id = offer['game_id']
-            if host_name == name or _version_hash(game_root) != offer['version_sha256']:
-                raise ValueError('Player names or Mental Omega patches differ.')
+            if host_name == name:
+                raise ValueError('Both players need distinct names.')
+            if _version_hash(game_root) != offer['version_sha256']:
+                raise ValueError('Mental Omega version differs (normalized text).')
             if _digest(_mode_map(game_root, manifest, difficulty)) != offer['map_sha256']:
                 raise ValueError('Generated co-op maps differ.')
             local_hash = prepare_game(

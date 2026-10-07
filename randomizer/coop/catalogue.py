@@ -3,13 +3,17 @@
 from pathlib import Path
 
 from randomizer.coop.prototype import _map_config
+from randomizer.coop.compatibility import resolve_path
 from randomizer.missions.catalogue import BASE_BUILD, normalize_long_description
 
 
 def discover_coop_missions(game_root: Path) -> list[dict]:
     missions = []
-    folder = game_root / 'MapsMO' / 'Cooperative'
-    for source in sorted(folder.glob('coop_*.map')):
+    folder = resolve_path(game_root, 'MapsMO/Cooperative')
+    sources = (path for path in folder.iterdir() if path.is_file()
+               and path.name.casefold().startswith('coop_')
+               and path.suffix.casefold() == '.map')
+    for source in sorted(sources, key=lambda path: path.name.casefold()):
         try:
             _, _, metadata, _, family = _map_config(game_root, source.stem)
         except (OSError, ValueError):

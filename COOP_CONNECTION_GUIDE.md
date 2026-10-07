@@ -1,0 +1,72 @@
+# ZeroTier co-op connection
+
+Player connections currently use a private ZeroTier network only. Public-IP
+connections are unsupported. Co-op remains hidden in release builds until live
+gameplay verification passes; developer builds set `COOP_FEATURE_ENABLED = True`
+in `randomizer/coop/feature.py` on both computers.
+
+## Connect two PCs
+
+1. Install ZeroTier on both PCs, create one private network, join it on both
+   PCs and authorize both devices. Use the
+   [official setup guide](https://docs.zerotier.com/start/).
+2. Use matching Mental Omega installations and updated launchers. Give each
+   player a different name and enable **Co-op mode (2 players)**.
+3. Generate the Grid on the host. For Shop, start separate runs with the same
+   seed and stage; each player retains their own profile and purchases.
+4. Open **Co-op Connection…**. The host selects **Host**, copies its displayed
+   pairing code, shares it privately and clicks **Connect**. Hosts do not enter
+   an IP address.
+5. The guest selects **Join**, pastes the host's **ZeroTier Managed IPv4** and
+   pairing code, then clicks **Connect**. Use the IPv4 without its subnet suffix,
+   port, URL or network ID. Both inputs accept paste while masked.
+6. Wait for the connected status. Host selects and launches the mission; the
+   guest can suggest missions. A working lobby does not verify native gameplay.
+
+The ports are automatic: host TCP `19420` for the lobby, host TCP `19421` for
+game preparation, and UDP `1234` on both PCs. If the PC firewall blocks the
+connection, allow this traffic over the private ZeroTier interface. ZeroTier
+normally avoids router forwarding; it still requires local firewall permission.
+See [ZeroTier firewall guidance](https://docs.zerotier.com/routertips/).
+
+## Private fields and diagnostics
+
+The host pairing code is a visible, noneditable label. Each launcher retains
+its own host code and the separately entered guest code while open. **Copy
+pairing code** copies whichever role is selected. Guest IP/code inputs are
+masked by default; **Show IP and code (visible on stream)** reveals them until
+unchecked, copied or closed. Host labels remain visible. Closing the dialog
+keeps the connection open; close the game and click **Disconnect** to reconnect
+or change settings.
+
+**Show connection log** displays connection stages, synchronization and launch
+failures. **Copy connection log** copies the displayed log. Connection messages
+redact IPs and pairing codes. Native `spawn.ini`, game logs and clipboard history
+can still contain addresses. The persistent launcher log is
+`RandomizerLauncherData/logs/launcher.log` in packaged builds, or
+`RandomizerLauncher/logs/launcher.log` in source launches.
+
+If **Mental Omega runtime differs** appears, compare the listed game files.
+Both local and remote manifests include normalized and raw SHA-256 hashes in
+the connection log. Version, co-op difficulty INIs and optional loose rules/art
+ignore CRLF/LF differences. Native binaries, including optional Phobos, must
+match exactly. Missing versus installed optional files also differ. Player
+saves and configuration folders are excluded. Selected native co-op maps use
+normalized source hashes and case-independent filenames; prepared game maps
+still require byte-identical SHA-256 and matching spawn metadata.
+Native co-op catalogue rows also match, including enemy positions and player
+restrictions; generated lobby entries are ignored when comparing that catalogue.
+
+Old launcher protocols are rejected with an update message. Update both
+launchers together. Existing saved runs are retained; previous connection
+choices migrate to ZeroTier.
+
+If connecting times out, check that the host is waiting, both ZeroTier devices
+are authorized, the guest used the host's Managed IPv4 and host TCP `19420` is
+reachable. If the lobby connects but preparation fails, check TCP `19421`.
+If both games start but cannot play together, check UDP `1234` on both PCs and
+record the mission, seed, platform, connection log and native game logs.
+
+Developer loopback diagnostics can still use `127.0.0.1` with separate game
+folders and Wine prefixes. The guest uses UDP `1235` automatically there. These
+checks do not establish that Linux/Windows gameplay works over ZeroTier.

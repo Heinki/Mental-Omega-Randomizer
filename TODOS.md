@@ -2,7 +2,7 @@
 
 ### Co-op mode: live playtest remaining
 
-Local host and guest games start. The shared Grid, co-op map pool, direct-IP
+Local host and guest games start. The shared Grid, co-op map pool, ZeroTier
 pairing setup, and provisional co-op Shop mission offers exist. Shop map
 generation now creates country-gated host and guest unit clones; both local
 game copies reached gameplay. A temporary game trigger confirmed the victory
@@ -15,7 +15,11 @@ without a host victory marker now records one failure on each player's private
 run; host Emergency Revival decides whether both runs revive. Local failure and
 duplicate-message checks pass.
 Experimental co-op is disabled by a source constant in release builds; there
-is no player-facing switch. LAN and ZeroTier share one connection choice. A
+is no player-facing switch. The player connection UI now uses ZeroTier only,
+fixed ports, required pairing
+codes, masked guest inputs and a copyable connection log. CRLF/LF differences
+and filename case no longer reject identical source maps or version text.
+Runtime mismatches list differing files and log both peers’ hashes. A
 local TCP pairing diagnostic verifies identical Grid and Shop map bytes,
 matching launch hashes and game IDs, and rejects a changed guest map. A host
 Shop result is now stored in its run and replayed after lobby
@@ -49,11 +53,16 @@ reconnect; local victory, failure, revival, and duplicate checks pass.
       Full live-game verification remains in the first task.
 - [x] Hide experimental co-op in release UI by default. A developer-only code
       constant controls test builds; saved player settings cannot enable it.
-- [x] Combine LAN and ZeroTier into one connection choice; retain Public IP.
+- [x] Adapt DTA connection fixes: ZeroTier-only UI, automatic ports, separate
+      Host/Join pairing codes, guest masking, copy controls and connection logs.
+- [x] Normalize text compatibility hashes and resolve co-op filenames without
+      case sensitivity; retain exact binary and generated-map validation.
+      Refresh guest settings/views and restore local selection on disconnect.
 - [x] Verify local Grid and Shop pairing writes byte-identical maps and matching
       spawn metadata; reject a changed guest map before launch.
-- [ ] Test two real PCs on LAN, ZeroTier, and forwarded public IPv4; package
-      and document verified setups.
+- [ ] Test two real PCs on the same authorized private ZeroTier network,
+      including Linux/Windows lobby, gameplay, victory and reconnect. Setup is
+      documented in COOP_CONNECTION_GUIDE.md; public-IP play remains unsupported.
 
 ## INFO
 

@@ -205,6 +205,8 @@ def controller_receive_case(run, snapshot, missions):
         def append_log(self, message):
             self.messages.append(message)
 
+        _record_coop_log = append_log
+
     guest = Fake()
     guest_lobby = type('Lobby', (), {
         'role': 'guest', 'sent': [],

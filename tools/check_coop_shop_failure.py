@@ -110,6 +110,8 @@ class Harness:
     def append_log(self, message, error=False):
         self.messages.append((str(message), error))
 
+    _record_coop_log = append_log
+
     def coop_publish_shop_stage(self):
         self.published += 1
         self._coop_lobby.send({

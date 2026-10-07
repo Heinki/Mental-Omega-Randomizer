@@ -3,6 +3,7 @@
 from pathlib import Path
 import hashlib
 import queue
+import shutil
 import socket
 import sys
 from tempfile import TemporaryDirectory
@@ -19,6 +20,7 @@ from randomizer.coop import direct
 from randomizer.coop.direct import host_session, join_session
 from randomizer.coop.lobby import Lobby
 from randomizer.coop.prototype import build_manifest, build_shop_manifest
+from randomizer.coop.runtime import REQUIRED_FILES
 from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import section_value_map_preserve
 
@@ -45,6 +47,11 @@ def events_until(lobby, target):
 
 def lobby_case(host_code, guest_code, expected):
     with TemporaryDirectory() as first, TemporaryDirectory() as second:
+        for folder in (first, second):
+            for name in REQUIRED_FILES:
+                destination = Path(folder) / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(GAME_ROOT / name, destination)
         port = free_port()
         host = Lobby(Path(first), 'host', 'Host', port=port, pairing_code=host_code)
         guest = Lobby(Path(second), 'guest', 'Guest', address='127.0.0.1',

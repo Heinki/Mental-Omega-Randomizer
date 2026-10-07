@@ -84,6 +84,12 @@ when an older external `ui.json` has no profiles.
 - `randomizer/application/*_controller.py`, `window.py`,
   `advanced_settings.py`, `unlock_data.py`, and `unlock_view.py`: focused UI
   orchestration controllers. Keep pure behavior outside these classes.
+- `randomizer/application/coop_connection_controller.py`: ZeroTier dialog,
+  role-specific pairing codes, display privacy and connection log controls.
+- `randomizer/coop/compatibility.py` and `runtime.py`: case-independent native
+  file resolution and newline-normalized text fingerprints. Binary and prepared
+  map hashes remain exact. Both peers must use lobby/game protocol 3.
+  [COOP_CONNECTION_GUIDE.md](COOP_CONNECTION_GUIDE.md) covers player setup.
 - `randomizer/ui/builder.py`: stable widget-construction facade.
 - `randomizer/ui/layout.py`, `settings.py`, `shop.py`, and `overlay.py`: focused
   widget builders.

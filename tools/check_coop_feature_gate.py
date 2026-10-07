@@ -95,7 +95,7 @@ class Gate(CoopController):
     def refresh_setting_states(self):
         pass
 
-    def append_log(self, _message):
+    def append_log(self, _message, error=False):
         pass
 
 
@@ -105,9 +105,9 @@ def main():
     old_config = {'coop_feature_enabled': True}
     assert migrate_loaded_config(old_config)
     assert 'coop_feature_enabled' not in old_config
-    assert normalize_network_mode('zerotier') == 'local'
-    assert normalize_network_mode('local') == 'local'
-    assert normalize_network_mode('direct') == 'direct'
+    assert normalize_network_mode('zerotier') == 'zerotier'
+    assert normalize_network_mode('local') == 'zerotier'
+    assert normalize_network_mode('direct') == 'zerotier'
     saves = []
     original = coop_controller.save_config
     coop_controller.save_config = lambda config: saves.append(dict(config))
@@ -142,7 +142,7 @@ def main():
     finally:
         coop_controller.save_config = original
         feature.COOP_FEATURE_ENABLED = False
-    print('Code-only co-op gate, two network modes, mode switching: passed')
+    print('Code-only co-op gate, ZeroTier mode migration, mode switching: passed')
 
 
 if __name__ == '__main__':
