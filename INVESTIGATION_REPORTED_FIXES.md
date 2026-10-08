@@ -133,10 +133,6 @@ Changed paths:
 
 ## Regression coverage and validation
 
-`randomizer/rewards/test_bugreport_upgrades.py` now covers native/current clone
-lists, empty and narrowed inhibitor overrides, the normal Opus weapon catalogue,
-all weapon baselines, support-weapon exclusions and replacement passenger tiers.
-
 `tools/check_reported_regressions.py` generates installed campaign maps for:
 
 - Chaos with Mission List and Shop Mode, helper buffs on/off, no purchases and
@@ -156,9 +152,6 @@ Completed validation:
 
 - Python compilation and `git diff --check` passed.
 - Launcher `--self-check` passed.
-- Upgrade and launch unit suites: 17 tests, 16 passed and one Windows-only test
-  skipped under Linux. The Windows build separately runs its launch suite and
-  exercises the packaged executable's `--launch-self-check` under Wine.
 - All 97 campaign maps passed the Chaos/Shop and Standard/Mission List audits,
   including the existing mission-specific, Shop modifier/boon and AI checks.
   The added Noise/Opus/Hovracoon generation matrix passed in that full audit.

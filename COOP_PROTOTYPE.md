@@ -165,10 +165,10 @@ Selected source maps normalize text newlines and resolve filenames without
 case sensitivity. Generated map bytes and spawn hashes must still match exactly.
 Both players need the updated launcher protocol and fingerprint policy.
 
-The pairing diagnostic compares exact `spawnmap.ini` bytes, verifies their
-SHA-256 against the launch handshake, checks matching game IDs and map SHA-1,
-and rejects a changed guest map. Run `python tools/check_coop_pairing.py` after
-creating the two private copies with `tools/coop_local_test.py`.
+Use `tools/coop_local_test.py` to create two private copies, then verify pairing
+and gameplay with both launchers. Compare exact `spawnmap.ini` bytes and their
+SHA-256 against the launch handshake, and confirm matching game IDs and map
+SHA-1 in the connection logs.
 Shop production restrictions travel in each player's private loadout.
 Live sidebar and UDP gameplay validation remain required.
 

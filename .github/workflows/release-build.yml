@@ -33,9 +33,6 @@ jobs:
       - name: Compile source
         run: python -m compileall -q .
 
-      - name: Check reported modifier and upgrade regressions
-        run: python -m unittest randomizer.maps.test_shop_modifiers randomizer.rewards.test_bugreport_upgrades -v
-
       - name: Build complete Archipelago release
         shell: powershell
         run: .\build_archipelago_release.ps1 -OutputDirectory 'release'

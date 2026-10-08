@@ -23,9 +23,6 @@ release/
 # Published Archipelago package. Intermediate build trees stay ignored.
 !Archipelago/*.apworld
 
-# Local Codex maintenance memory; never distribute with the launcher.
-AGENTS.md
-
 # Local player setup. Keep templates/docs in source, not personal seeds.
 configs/player/mental_omega_randomizer.yaml
 # Legacy path retained only so older source checkouts remain private during migration.

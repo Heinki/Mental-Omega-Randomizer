@@ -157,8 +157,11 @@ Workers receive frozen plain Python data.
 
 ## Validation
 
-Do not add unit tests. Use the existing launcher self-checks and campaign-map
-audits for validation.
+This project does not use unit tests. Do not add, restore, or run unit tests,
+including mock-based suites disguised as self-checks. Keep build scripts and
+CI workflows free of unit-test runners. This persistent rule is recorded in
+[AGENTS.md](AGENTS.md). Use the existing launcher installation/domain self-checks,
+campaign-map audits, and manual gameplay checks for validation.
 
 Routine:
 
@@ -170,12 +173,10 @@ git diff --check
 
 Packaging:
 
-Both Windows build drivers run the mission launch regression suite before
-packaging and run `MentalOmegaRandomizer.exe --launch-self-check` on the built
-artifact before copying it to the output location. The focused check needs no
-game assets and verifies both the Windows command string and the Linux Wine argv
-boundary. On Windows Python, the suite also inspects a real child's raw command
-line. Full gameplay still requires an installed copy of Mental Omega.
+Both Windows build drivers compile source, validate static configuration, and
+inspect the built executable for required Tcl/Tk archive entries before copying
+it to the output location. Run `MentalOmegaRandomizer.exe --self-check` from an
+installed copy of Mental Omega and verify mission launching in gameplay.
 
 Syringe requires quotes around the host executable even when its filename has
 no spaces: `Syringe.exe "gamemd.exe" -SPAWN -CD -SPEEDCONTROL -LOG`.
@@ -219,10 +220,9 @@ published campaign item, location, and local-victory IDs when adding co-op.
 Co-op AP uses one shared slot. The host owns the AP session, check reporting,
 and generated AP purchases; guest mirrors are temporary and never open a
 second session. `randomizer/coop/archipelago.py` projects the same received-item
-ledger into map rewards and matching guest Shop runs. Run the existing
-`tools/check_archipelago_integration.py` against the rebuilt `.apworld` and
-`tools/check_coop_parity.py` after changing this bridge. The former uses a
-local loopback protocol server, so it requires local socket access.
+ledger into map rewards and matching guest Shop runs. Run the launcher
+`--self-check` and `tools/check_coop_parity.py` after changing this bridge,
+then verify connection and Shop progression with the rebuilt `.apworld`.
 
 Ownership, clone, AI, power, Action, or mission-map changes require all 97
 extracted maps. Determinism refactors require exact old/new plan parity, not
