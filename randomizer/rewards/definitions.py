@@ -717,6 +717,18 @@ LIMITED_HERO_UNIT_IDS = frozenset(LIMITED_HERO_BUILD_LIMITS)
 for limited_unit_id, build_limit in LIMITED_HERO_BUILD_LIMITS.items():
     BUFF_TARGETS[limited_unit_id]['build_limit'] = build_limit
 
+# Capped defenses keep their combat category, access rules, and existing buffs.
+# Only their isolated player copies receive Structure Capacity stacks.
+for building_id, capacity in _SPECIAL_BUILDING_CONFIG.get(
+    'defense_capacity_rewards', {}
+).items():
+    target = BUFF_TARGETS[str(building_id).upper()]
+    target.update(capacity)
+    target['building_limit'] = int(capacity['build_limit'])
+    target['allowed_buff_types'] = [
+        *target['allowed_buff_types'], 'building_limit',
+    ]
+
 for definition in SPECIAL_BUILDING_DEFINITIONS:
     if not definition.get('capacity_rewards'):
         continue

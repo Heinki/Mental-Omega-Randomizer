@@ -688,6 +688,19 @@ def _validate_unit_policy(sections, path):
 
 
 def _validate_special_buildings(sections, path):
+    defense_capacity_rewards = sections.get('defense_capacity_rewards', {})
+    if not isinstance(defense_capacity_rewards, dict):
+        _invalid('Invalid defense capacity rewards', path)
+    for building_id, capacity in defense_capacity_rewards.items():
+        if (
+            not _is_nonempty_string(building_id)
+            or not isinstance(capacity, dict)
+            or any(
+                type(capacity.get(field)) is not int or capacity[field] < 1
+                for field in ('build_limit', 'capacity_stack_limit')
+            )
+        ):
+            _invalid(f'Invalid defense capacity reward {building_id}', path)
     required_fields = {'id', 'name', 'faction', 'prerequisite'}
     valid_factions = {'Allies', 'Soviets', 'Epsilon', 'Foehn'}
     seen_ids = set()

@@ -1290,7 +1290,7 @@ def build_player_clone_sections(
             if target.get('build_limit') is not None:
                 limit_buff_type = (
                     'building_limit'
-                    if target.get('category') == 'special_buildings'
+                    if target.get('building_limit') is not None
                     else 'build_limit'
                 )
                 if unit_id in unlimited_limit_ids:

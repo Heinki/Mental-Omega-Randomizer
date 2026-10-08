@@ -1761,6 +1761,13 @@
       "id": 81064143
     },
     {
+      "name": "Allied Warpnode Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068117
+    },
+    {
       "name": "Angelshark Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -8845,6 +8852,13 @@
       "id": 81065079
     },
     {
+      "name": "Epsilon War Rig Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068118
+    },
+    {
       "name": "Eradicator Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -9893,6 +9907,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065204
+    },
+    {
+      "name": "Foehn Signal Inhibitor Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068119
     },
     {
       "name": "Foehn Sonic Emitter Access",
@@ -13120,6 +13141,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065592
+    },
+    {
+      "name": "Hyperion Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068120
     },
     {
       "name": "Hyperion Veteran Training I",
@@ -19268,6 +19296,13 @@
       "id": 81066415
     },
     {
+      "name": "Plasmerizer Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068121
+    },
+    {
       "name": "Plasmerizer Veteran Training I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24147,6 +24182,13 @@
       "id": 81067067
     },
     {
+      "name": "Soviet Iron Guard Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068122
+    },
+    {
       "name": "Soviet MCV Access",
       "classification": "progression",
       "category": "unit_unlocks",
@@ -27435,6 +27477,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067503
+    },
+    {
+      "name": "Ultra Dome Structure Capacity I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068123
     },
     {
       "name": "Ultra Miner Power",
@@ -32384,7 +32433,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "9e48592b713501cdc12d29acad98e34b1f2d0b046113e0f0ff6f37de519163d4",
+  "catalogue_checksum": "7a23e462fc403d4de98c998cb0d9a080c2db9a6fa53011198edc361870eb3cb6",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

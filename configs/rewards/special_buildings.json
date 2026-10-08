@@ -2,6 +2,15 @@
   "schema_version": 1,
   "description": "Editable faction special-building access rewards. Standard uses the listed native construction yard; Chaos translates earned buildings to every faction construction yard.",
   "sections": {
+    "defense_capacity_rewards": {
+      "GAHYPE": {"build_limit": 2, "capacity_stack_limit": 3},
+      "GAPOST": {"build_limit": 3, "capacity_stack_limit": 3},
+      "GASTAS": {"build_limit": 1, "capacity_stack_limit": 3},
+      "NAIRDM": {"build_limit": 2, "capacity_stack_limit": 3},
+      "YAMREF": {"build_limit": 2, "capacity_stack_limit": 3},
+      "FAINHI": {"build_limit": 3, "capacity_stack_limit": 3},
+      "FAAVAL": {"build_limit": 1, "capacity_stack_limit": 3}
+    },
     "buildings": [
       {
         "id": "GAOREP",
