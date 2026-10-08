@@ -24,6 +24,7 @@ from ._shared import (
     re,
     section_value_map_preserve,
     script_referenced_taskforce_unit_ids,
+    stacking_amount,
     techno_type_possible_houses,
     taskforce_usage_houses,
     unique_in_order,
@@ -52,6 +53,7 @@ from .base import (
     _collision_safe_type_id,
     _remove_case_insensitive,
     _value_case_insensitive,
+    format_multiplier,
     parse_float,
 )
 
@@ -1276,6 +1278,44 @@ def build_player_clone_sections(
                 clone_values[key] = weapon_clone
             handled_weapon_ids.add(weapon.upper())
             weapon_clone_ids[weapon.upper()] = weapon_clone
+
+        spawn_support = target.get('spawned_aircraft_range_support')
+        if spawn_support and 'range' in handled_weapon_types:
+            spawn_id = str(spawn_support['aircraft_id'])
+            if str(_value_case_insensitive(
+                clone_values, 'Spawns', ''
+            )).upper() == spawn_id.upper():
+                spawn_values = _standalone_clone_values(
+                    lines,
+                    installed_sections,
+                    installed_name_by_lower.get(spawn_id.lower()),
+                    map_name_by_lower.get(spawn_id.lower()),
+                )
+                if spawn_values:
+                    spawn_clone = _collision_safe_type_id(
+                        f'{CLONE_POLICY["unit_id_prefix"]}{unit_id}{spawn_id}',
+                        f'player-spawn:{unit_id}:{spawn_id}',
+                        reserved_ids,
+                    )
+                    spawn_values['GuardRange'] = format_multiplier(
+                        parse_float(
+                            _value_case_insensitive(spawn_values, 'GuardRange'),
+                            float(spawn_support['base_guard_range']),
+                        ) + stacking_amount('range', counts['range'])
+                    )
+                    # A new AircraftType otherwise looks for art under its
+                    # private ID, even when the native type omitted Image.
+                    spawn_values['Image'] = _value_case_insensitive(
+                        spawn_values, 'Image', spawn_id
+                    )
+                    _register_map_type(
+                        section_rules, lines, installed_sections,
+                        'AircraftTypes', spawn_clone,
+                    )
+                    section_rules[spawn_clone] = spawn_values
+                    clone_values['Spawns'] = spawn_clone
+                else:
+                    missing.append(spawn_id)
 
         if target.get('special_damage_fields') and 'damage' in weapon_buff_types:
             unsupported.append(

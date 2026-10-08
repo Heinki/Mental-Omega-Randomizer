@@ -350,7 +350,7 @@ Country veteran lists require exact TechnoType IDs. `VeteranUnits=ABRM` does not
 
 Mission-created units have a second veterancy path. Reinforcement actions `7`, `80`, and `107` force the referenced TeamType's `VeteranLevel` and can override a correct country `Veteran*` entry with the authored rookie value `1`. Launch generation now raises only player/opted-in-helper reinforcement TeamTypes whose every TaskForce member has earned Veteran Training to `VeteranLevel=2`; mixed, unearned, enemy, and already-elite teams remain authored. Build-only production clones also keep the safe native source ID after the clone in country veteran lists because their mission placements and scripted TaskForces deliberately remain native. Reviewed native mission variants accept either the earned source or its isolated clone as proof of the earlier country-safety decision, then add their exact scripted IDs. A focused Juggernaut launch with only Volkov access/veterancy changed the native `CYCOM` reinforcement TeamType from rookie to veteran and retained `VOLKOV,CYCOM` in USSR's infantry list. The full 97-map launch path generated every mission with no new clone, reference, ownership, or rule failure.
 
-Trainable defenses may switch to `ElitePrimary` or separate `EliteWeapon1..N` gattling stages after promotion. Defense clones now discover every direct installed/map weapon reference and clone applicable weapons with the same earned damage, range, and reload stacks. All 20 trainable defenses were audited: 17 weapon-buffable types produced 58 isolated rookie/veteran/elite references; Avalon, Shrike Nest, and Psychic Tower expose no weapon-stat reward types, while their unit-stat buffs and exact veterancy still apply. Chaos buildable clones must also retain `PrerequisiteOverride=none` when `Prerequisite.Lists` exists. Stripping that sentinel reactivated installed faction prerequisites, hiding cross-faction towers in Shipwrecked despite correct access rules.
+Trainable defenses may switch to `ElitePrimary` or separate `EliteWeapon1..N` gattling stages after promotion. Defense clones now discover every direct installed/map weapon reference and clone applicable weapons with the same earned damage, range, and reload stacks. The initial audit of all 20 trainable defenses found 17 weapon-buffable types with 58 isolated rookie/veteran/elite references. Avalon and Shrike Nest gained reviewed weapon-stat support in subsequent fixes; Psychic Tower uses its separate control-capacity reward. Unit-stat buffs and exact veterancy also apply. Chaos buildable clones must also retain `PrerequisiteOverride=none` when `Prerequisite.Lists` exists. Stripping that sentinel reactivated installed faction prerequisites, hiding cross-faction towers in Shipwrecked despite correct access rules.
 
 ## Building-Free Powers
 
@@ -560,7 +560,7 @@ production receive compatible equivalents.
 - Mandatory standalone player clones have static 97-map generation coverage plus successful live isolation, sidebar, and helper-production tests. Loading cost, save/load behavior, and wider campaign trigger compatibility still need continued validation.
 - Direct unit/weapon buffs are skipped when a denied enemy shares the affected global type.
 - Matching power buildings may share the granted power instead of creating an independent copy.
-- Backwarp, Nuclear Path, and Blackout Missile use private EMPulse weapon/projectile/warhead chains fired by invisible exact-House startup cannons. Gear Change and Nanocharge use private Hunter-Seeker payload chains plus invisible exact-House providers. All five clear live-power, house, auxiliary-building, negative-building, inhibitor, and inherited designator gates; none requires its native tech structure. Psychic Flash clears those same availability gates and overpowers only `YARAIL`/`YAHADE` plus their current map-local player clones. Seed planning withholds Psychic Flash until either defense access reward is already earned. Nanocharge deliberately restores a designator gate for `LEVI`/`PROME` and their player clones, whose generated copies receive `DesignatorRange=384`; the power therefore cannot be used without an owned Leviathan or Mastodon on the field. Blasticade and Golden Wind remain excluded because their effects require preplaced Blast Trenches or Spinblades. Grinder is skipped because its native mobile form already deploys into the linked grinder building, and Old Mobile Gap Generator is skipped as obsolete campaign novelty.
+- Backwarp, Nuclear Path, and Blackout Missile use private EMPulse weapon/projectile/warhead chains fired by invisible exact-House startup cannons. Gear Change uses a private Hunter-Seeker payload chain; Nanocharge uses a direct GenericWarhead effect. Both have invisible exact-House providers. All five clear live-power, house, auxiliary-building, negative-building, inhibitor, and inherited designator gates; none requires its native tech structure. Psychic Flash clears those same availability gates and overpowers only `YARAIL`/`YAHADE` plus their current map-local player clones. Seed planning withholds Psychic Flash until either defense access reward is already earned. Nanocharge deliberately restores a designator gate for `LEVI`/`PROME` and their player clones, whose generated copies receive `DesignatorRange=384`; the power therefore cannot be used without an owned Leviathan or Mastodon on the field. Blasticade and Golden Wind remain excluded because their effects require preplaced Blast Trenches or Spinblades. Grinder is skipped because its native mobile form already deploys into the linked grinder building, and Old Mobile Gap Generator is skipped as obsolete campaign novelty.
 - Game-speed behavior needs validation across more campaign maps.
 
 ## July 26 Context and Sidebar Rules
@@ -1004,3 +1004,39 @@ References: [Ares prism forwarding defaults and weapon fields](https://ares-deve
 Mental Omega 3.3.6 stores simultaneous mind-control capacity in the controlling WeaponType's `Damage` field. The Epsilon Adept and Elite start at 1; Mastermind, Dybbuk-Seizer, and Psychic Tower start at 3. Shop Control Capacity stacks add one to private player weapon clones, including elite weapons. Mastermind has `InfiniteMindControl=yes`, so its increase delays overload rather than imposing a hard cap. Yuri's `SuperMindControl` uses permanent control and has no useful node cap to increase.
 
 Great Tempest's `SW.Damage=25` and `GreatTempestBlastWH.CellSpread=8` affect its initial Dominator strike. Repeated vortex damage comes from `FVORTEX` and `FVORTEX2` art animations (`Damage=20`) with separate `GreatTempestAnimWH` and `GreatTempestAnim2WH` warheads (`CellSpread=9`). Damage and area stacks now create private animation and warhead types, register the animations before art loads, and redirect only the rewarded superweapon's `Dominator.FirstAnim` chain. The temporary art overlay scales animation damage and its warhead spread; native and hostile Tempests keep their installed values.
+
+## Shrike Nest range and Nanocharge reports
+
+The reported APUPPET map's player Shrike Nest still referenced native
+`NestFake` and `NestLauncher`. FAGUAR had no weapon-stat metadata, so range
+rewards shared from its anti-air role had nothing to modify. Its reviewed
+metadata now includes both launcher ranges (12 and 14), enabling its own
+Optics reward as well. Player clones receive private launcher weapons and a
+private SHRIKE AircraftType whose `GuardRange` grows from 30 with the same
+range stacks. Its explicit `Image=SHRIKE` preserves native artwork, since
+the installed aircraft omits Image. The native aircraft and its payload
+weapon remain unchanged.
+Damage and reload rewards are not introduced for this indirect payload.
+
+The reported AINSOMNIA map used `MORNanoSpawner`, a stationary NCHF-derived
+dummy with `Strength=1`, `Armor=target`, and the damaging `ZTARGET_B` attached
+animation. Applying Nanocharge depended on that dummy dying and firing its
+DeathWeapon. The replacement uses `Type=GenericWarhead`, `SW.Damage=0`, and
+a registered private `MORNanoWH` directly. An invisible CASTRF-derived
+provider owns the power in its primary `SuperWeapon` slot so Ares receives an
+owned firing source for `AffectsOwner=yes`, `AffectsAllies=no`, and
+`AffectsEnemies=no`. `AllowZeroDamage=yes` and `EffectsRequireDamage=no`
+permit the repair AttachEffect without impact damage. The native MASTHEAL
+animation, 360-frame duration, Leviathan/Mastodon armor filters, monetary
+cost, recharge time, designator gate, and all-vehicle targeting upgrade are
+retained. Insomnia's native NCHF/TemporalShield mission chain is untouched.
+The conversion is also enforced for older editable power configurations.
+
+`tools/check_reported_regressions.py` generates both real campaign maps in
+Chaos Grid and Shop modes, including shared range rewards, promoted Shrike
+clones, large range stacks, and upgraded Nanocharge targeting. These audits
+verify generated rules; live firing and healing still require gameplay
+confirmation.
+
+References: [Ares GenericWarhead delivery](https://ares-developers.github.io/Ares-docs/new/superweapons/types/genericwarhead.html),
+[Ares AttachEffect animation behavior](https://ares-developers.github.io/Ares-docs/new/attacheffect.html).

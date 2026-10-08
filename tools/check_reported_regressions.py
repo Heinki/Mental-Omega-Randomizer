@@ -1,4 +1,4 @@
-"""Generate real campaign maps for the Hovracoon, Opus and Noise Severe reports."""
+"""Audit real campaign-map generation for reported gameplay regressions."""
 
 from pathlib import Path
 import re
@@ -12,6 +12,7 @@ from randomizer.maps._shared import LOCKED_TECH_LEVEL, UNLOCKED_TECH_LEVEL
 from randomizer.rewards.catalogue import REWARD_BY_NAME, REWARD_BY_BUFF_KEY
 from randomizer.rewards.roster import randomizer_unit_template_values
 from randomizer.rewards.rules import unlocked_reward_tech_ids
+from randomizer.config.tuning import stacking_amount
 from randomizer.shop.active import active_shop_rewards
 from randomizer.shop.model import MissionEconomyClass, MissionOffer, RunStatus, ShopRun
 from randomizer.shop.purchases import apply_validated_run_purchase, validate_run_purchase
@@ -193,6 +194,95 @@ def check_bottleneck(missions, launcher_type):
     print('Bottleneck: Chaos Shop, all global combat modifiers, safe death weapons', flush=True)
 
 
+def check_shrike_and_nanocharge(missions, launcher_type):
+    for progression in ('Grid Mode', 'Shop Mode'):
+        for source, count, veteran in (
+            ('FAGUAR', 1, False), ('NASAM', 1, False), ('FAGUAR', 40, True),
+        ):
+            launcher = launcher_type(progression_mode=progression, enemy_effect_ids=[])
+            if source != 'FAGUAR':
+                launcher.share_chaos_role_buffs_enabled = lambda: True
+            launcher.player_rewards = [
+                REWARD_BY_NAME['Foehn Shrike Nest Access'],
+                *([REWARD_BY_BUFF_KEY[(source, 'range')]] * count),
+                *([REWARD_BY_BUFF_KEY[('FAGUAR', 'veteran')]] if veteran else []),
+            ]
+            sections = generate(launcher, missions['APUPPET'])
+            nests = [
+                values for values in sections.values()
+                if values.get('GroupAs') == 'FAGUAR'
+            ]
+            assert len(nests) == 1, (progression, source, count)
+            nest = nests[0]
+            gain = stacking_amount('range', count)
+            for field, native_weapon, baseline in (
+                ('Primary', 'NestFake', 12), ('Secondary', 'NestLauncher', 14),
+            ):
+                weapon_id = nest[field]
+                assert weapon_id != native_weapon
+                assert float(sections[weapon_id]['Range']) == baseline + gain
+                assert native_weapon not in sections
+            spawn_id = nest['Spawns']
+            assert spawn_id != 'SHRIKE'
+            assert spawn_id in sections['AircraftTypes'].values()
+            assert float(sections[spawn_id]['GuardRange']) == 30 + gain
+            assert sections[spawn_id]['Spawned'] == 'yes'
+            assert sections[spawn_id]['Image'] == 'SHRIKE'
+            assert sections[spawn_id]['Primary'] == 'FlyingDroneRocket'
+            assert 'SHRIKE' not in sections
+            print(f'Puppet: {progression}, Shrike range source={source}, stacks={count}, veteran={veteran}', flush=True)
+
+        for upgraded in (False, True):
+            launcher = launcher_type(progression_mode=progression, enemy_effect_ids=[])
+            launcher.player_rewards = [
+                REWARD_BY_NAME['Nanocharge Power'],
+                REWARD_BY_NAME['Mastodon Access'],
+                REWARD_BY_NAME['Leviathan Helicarrier Access'],
+            ]
+            if upgraded:
+                launcher.player_rewards.extend(
+                    reward for reward in REWARD_BY_NAME.values()
+                    if reward.get('superweapon') == 'NanochargeSpecial'
+                    and reward.get('power_buff_type') == 'targeting'
+                )
+            sections = generate(launcher, missions['AINSOMNIA'])
+            nano = sections['MORNanocharge']
+            assert nano['Type'] == 'GenericWarhead'
+            assert nano['SW.Damage'] == '0'
+            assert nano['SW.AffectsHouse'] == 'owner'
+            assert not any(key.startswith('HunterSeeker.') for key in nano)
+            warhead_id = nano['SW.Warhead']
+            assert warhead_id in sections['Warheads'].values()
+            warhead = sections[warhead_id]
+            assert warhead['AllowZeroDamage'] == 'yes'
+            assert warhead['EffectsRequireDamage'] == 'no'
+            assert warhead['AffectsOwner'] == 'yes'
+            assert warhead['AffectsAllies'] == warhead['AffectsEnemies'] == 'no'
+            assert warhead['AttachEffect.Animation'] == 'MASTHEAL'
+            assert warhead['AttachEffect.Duration'] == '360'
+            assert warhead['Versus.prome'] == warhead['Versus.s_spin_levi'] == '3%'
+            provider_id = 'MORNanoProvider'
+            assert sections[provider_id]['SuperWeapon'] == 'MORNanocharge'
+            assert provider_id in sections['BuildingTypes'].values()
+            assert any(
+                value.split(',')[:2] == ['UnitedStates House', provider_id]
+                for value in sections['Structures'].values()
+            )
+            if upgraded:
+                assert not nano['SW.Designators']
+                assert warhead['Verses'].split(',')[3:6] == ['3%'] * 3
+            else:
+                designators = nano['SW.Designators'].split(',')
+                for source in ('LEVI', 'PROME'):
+                    clone_id = 'MORP' + source
+                    assert source in designators and clone_id in designators
+                    assert sections[clone_id]['DesignatorRange'] == '384'
+            # Insomnia uses its native NCHF for scripted temporal shielding.
+            assert sections['NCHF']['DeathWeapon'] == 'TemporalShield'
+            assert 'MORNanoSpawner' not in sections
+            print(f'Insomnia: {progression}, direct owner Nanocharge, all-vehicle upgrade={upgraded}', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -201,6 +291,7 @@ def main():
     check_noise(missions, _AuditLauncher)
     check_units(missions, _AuditLauncher)
     check_bottleneck(missions, _AuditLauncher)
+    check_shrike_and_nanocharge(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

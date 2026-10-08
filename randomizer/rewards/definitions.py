@@ -301,6 +301,12 @@ DEFENSE_BASE_STATS = {
 }
 
 DEFENSE_WEAPON_STATS = dict(_UNIT_DATA_CONFIG['defense_weapon_stats'])
+# Shrike's damage belongs to its spawned aircraft. Only the two launcher
+# ranges are direct, useful defense stats, including with older data overrides.
+DEFENSE_WEAPON_STATS['FAGUAR'] = {
+    'NestFake': {'range': 12},
+    'NestLauncher': {'range': 14},
+}
 
 # RULESMO.INI explicitly marks these defenses Trainable=yes and gives them
 # veteran/elite behavior.  Support structures and mine-style defenses without
@@ -637,6 +643,11 @@ def add_complete_faction_buff_targets():
 
 
 add_complete_faction_buff_targets()
+
+BUFF_TARGETS['FAGUAR']['spawned_aircraft_range_support'] = {
+    'aircraft_id': 'SHRIKE',
+    'base_guard_range': 30,
+}
 
 # Mind-control WeaponType Damage is the simultaneous-control capacity, not
 # attack damage. Keep these weapons out of generic firepower scaling and give
@@ -1034,6 +1045,58 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_super
 
 
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
+
+# Nanocharge's native HunterSeeker delivery creates an NCHF dummy and waits
+# for animation damage to kill it before firing its DeathWeapon. Apply the
+# same warhead directly, with an owned launch building for owner filtering.
+# Normalize old editable configurations as well as the shipped catalogue.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') != 'NanochargeSpecial':
+        continue
+    aid_config.setdefault('values', {}).update({
+        'Type': 'GenericWarhead',
+        'SW.Warhead': 'MORNanoWH',
+        'SW.Damage': '0',
+        'SW.AITargeting': 'None',
+        'SW.AffectsHouse': 'owner',
+        'SW.AffectsTarget': 'units',
+        'HunterSeeker.Type': None,
+        'HunterSeeker.Buildings': None,
+        'HunterSeeker.RandomOnly': None,
+    })
+    nano_clones = aid_config.setdefault('techno_clones', {})
+    nano_clones.pop('NanoSpawner', None)
+    nano_clones.pop('NanoWeapon', None)
+    nano_provider = nano_clones.setdefault('NanoProvider', {})
+    nano_provider.update({
+        'source': 'CASTRF',
+        'clone': 'MORNanoProvider',
+        'list': 'BuildingTypes',
+        'startup_count': 1,
+        'static_startup': True,
+        'provides_superweapon': True,
+    })
+    nano_provider.pop('reference_keys', None)
+    nano_provider.setdefault('values', {}).update({
+        'SuperWeapon': None,
+        'SuperWeapon2': None,
+        'Immune': 'yes',
+        'NeedsEngineer': 'no',
+    })
+    nano_warhead = nano_clones.setdefault('NanoWarhead', {})
+    nano_warhead.update({
+        'source': 'NanochargeWH',
+        'clone': 'MORNanoWH',
+        'list': 'Warheads',
+        'reference_keys': ['SW.Warhead'],
+    })
+    nano_warhead.setdefault('values', {}).update({
+        'AllowZeroDamage': 'yes',
+        'EffectsRequireDamage': 'no',
+        'AffectsOwner': 'yes',
+        'AffectsAllies': 'no',
+        'AffectsEnemies': 'no',
+    })
 
 # Moon Reinforcements is granted at map start like other portable powers, but
 # its charge must still begin empty. Preserve that normal initial cooldown for

@@ -4112,20 +4112,24 @@
           "SW.ManualFire": "yes",
           "SW.ShowCameo": "yes",
           "SW.UseAITargeting": "no",
-          "SW.AITargeting": "HunterSeeker",
-          "HunterSeeker.Type": "MORNanoSpawner",
-          "HunterSeeker.Buildings": "MORNanoProvider"
+          "Type": "GenericWarhead",
+          "SW.Warhead": "MORNanoWH",
+          "SW.Damage": "0",
+          "SW.AITargeting": "None",
+          "SW.AffectsHouse": "owner",
+          "SW.AffectsTarget": "units",
+          "HunterSeeker.Type": null,
+          "HunterSeeker.Buildings": null,
+          "HunterSeeker.RandomOnly": null
         },
         "techno_clones": {
           "NanoProvider": {
-            "source": "DUMMYDUMMY",
+            "source": "CASTRF",
             "clone": "MORNanoProvider",
             "list": "BuildingTypes",
-            "reference_keys": [
-              "HunterSeeker.Buildings"
-            ],
             "startup_count": 1,
             "static_startup": true,
+            "provides_superweapon": true,
             "values": {
               "Name": "Randomizer Nanocharge Provider",
               "UIName": "NAME:DUMMYDUMMY",
@@ -4136,6 +4140,10 @@
               "AIBuildThis": "no",
               "Power": "0",
               "Powered": "false",
+              "SuperWeapon": null,
+              "SuperWeapon2": null,
+              "Immune": "yes",
+              "NeedsEngineer": "no",
               "Capturable": "false",
               "Selectable": "no",
               "Unsellable": "yes",
@@ -4153,30 +4161,18 @@
               "Sight": "0"
             }
           },
-          "NanoSpawner": {
-            "source": "NCHF",
-            "clone": "MORNanoSpawner",
-            "list": "VehicleTypes",
-            "reference_keys": [
-              "HunterSeeker.Type"
-            ],
-            "values": {
-              "DeathWeapon": "MORNanoWeapon",
-              "TechLevel": "-1"
-            }
-          },
-          "NanoWeapon": {
-            "source": "Nanocharge",
-            "clone": "MORNanoWeapon",
-            "list": "WeaponTypes",
-            "values": {
-              "Warhead": "MORNanoWH"
-            }
-          },
           "NanoWarhead": {
             "source": "NanochargeWH",
             "clone": "MORNanoWH",
-            "list": "Warheads"
+            "list": "Warheads",
+            "reference_keys": ["SW.Warhead"],
+            "values": {
+              "AllowZeroDamage": "yes",
+              "EffectsRequireDamage": "no",
+              "AffectsOwner": "yes",
+              "AffectsAllies": "no",
+              "AffectsEnemies": "no"
+            }
           }
         }
       },

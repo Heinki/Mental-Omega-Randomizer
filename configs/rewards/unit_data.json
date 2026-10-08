@@ -3714,6 +3714,10 @@
           "range": 6.5
         }
       },
+      "FAGUAR": {
+        "NestFake": {"range": 12},
+        "NestLauncher": {"range": 14}
+      },
       "FARAIL": {
         "RailgunTowerBlast": {
           "damage": 125,

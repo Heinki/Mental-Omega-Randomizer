@@ -1056,6 +1056,15 @@ Country=UnitedStates
                     'player_clone_value_overrides', {}
                 )
             ) == {'LEVI', 'PROME'}
+            and portable_configs['NanochargeSpecial']['values'].get(
+                'Type'
+            ) == 'GenericWarhead'
+            and portable_configs['NanochargeSpecial']['techno_clones'][
+                'NanoProvider'
+            ].get('provides_superweapon') is True
+            and portable_configs['NanochargeSpecial']['techno_clones'][
+                'NanoWarhead'
+            ].get('reference_keys') == ('SW.Warhead',)
             and not any(
                 reward.get('superweapon')
                 in {'GoldenWindSpecial', 'BlasticadeSpecial'}
