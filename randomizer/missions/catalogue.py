@@ -80,6 +80,20 @@ NO_BUILD_MISSION_FLAGS = {
 LATE_FOEHN_MISSION_CODES = frozenset(_MISSION_CATALOGUE['late_foehn_mission_codes'])
 
 
+def mission_build_label(mission):
+    """Return the mission's build type independently of its reward class."""
+    classification = mission.get('build_classification') or (
+        MISSION_BUILD_CLASSIFICATIONS.get(
+            str(mission.get('code') or '').upper(), BASE_BUILD
+        )
+    )
+    return {
+        BASE_BUILD: 'Build',
+        TRUE_NO_BUILD: 'No Build',
+        NO_BUILD_PRODUCTION: 'Production',
+    }.get(classification, 'Unknown')
+
+
 def mission_reward_class(code):
     return MISSION_REWARD_CLASS_BY_CODE.get(str(code or '').upper(), '')
 

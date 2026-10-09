@@ -3,6 +3,8 @@
 from collections import Counter, defaultdict
 from tkinter import ttk
 
+from randomizer.missions.catalogue import mission_build_label
+
 from randomizer.rewards.definitions import unit_display_label
 from randomizer.rewards.display import (
     buff_effect_comparison_lines, buff_effect_lines, reward_display_name,
@@ -573,6 +575,7 @@ class ShopPolishController(ShopArchipelagoController):
             card['name'].set(f'{title} ({offer.mission_code})')
             card['detail'].set(
                 f'Faction: {faction}\n'
+                f'Mission type: {mission_build_label(mission)}\n'
                 f'Mission class: {definition.display_name}\n'
                 f'Reward tier: {definition.difficulty}\n'
                 f'Run Difficulty: +{modifier_difficulty(run.modifiers)}'
