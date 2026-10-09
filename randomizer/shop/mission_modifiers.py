@@ -235,6 +235,8 @@ def _shop_enemy_maximum(run, reward):
         return 0
     caps = settings.get('caps', {})
     maximum = max(0, int(caps.get(effect_id, reward.get('enemy_maximum', 0))))
+    if reward.get('enemy_effect') == 'powerhouse':
+        return min(maximum, int(reward['enemy_maximum']))
     if run.endless and maximum > 0 and reward.get('enemy_effect') == 'unit':
         buff_type = reward['unit_buff_type']
         player_maximum = (
@@ -265,10 +267,6 @@ def shop_enemy_scaling_entries(
 
     candidates = []
     effects = modifier_effects(run.modifiers)
-    if effects['enemy_powerhouse_stacks'] > 0:
-        candidates.append((
-            'AI Enemy Powerhouses', 'Shop run modifier', 'Enemy Powerhouses',
-        ))
     for _index in range(max(0, effects['enemy_armor_stacks'])):
         candidates.append((
             'AI T1 Unit Armor', 'Shop run modifier',
@@ -308,6 +306,7 @@ def shop_enemy_scaling_entries(
         'AI T1 Unit Firepower',
         'AI T1 Unit Fire Rate',
         'AI T1 Unit Mobility',
+        'AI Enemy Powerhouses',
     ]
     if int(run.stage) >= 8:
         reward_ids.extend((

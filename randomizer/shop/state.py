@@ -367,6 +367,9 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         coop_last_result['stage'] = result_stage
         coop_last_result['code'] = result_code
     modifiers = _unique_strings(document.get('modifiers'), 'modifiers')
+    # Powerhouses now comes from the enemy-buff pool. Retire the old toggle
+    # without rejecting saved runs or counting it toward modifier rewards.
+    modifiers = tuple(item for item in modifiers if item != 'enemy_powerhouses')
     unknown_modifiers = [
         modifier_id for modifier_id in modifiers
         if modifier_id not in config.modifiers

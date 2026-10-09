@@ -109,9 +109,10 @@ unchanged, while the additional consequence strengthens hostile AI. Archipelago
 exports the same configured inventory as Trap items with matching extra
 locations; receiving the Trap acquires its enemy bonus.
 
-Enable **Enemy Powerhouses** under Shop Mode's **Optional Run Modifiers** to
-expand eligible enemy waves throughout a new run. It is also a Shop mission
-challenge (+3 Ore / +2 Gems); the two sources share a single-stack cap.
+**Enemy Powerhouses** is a single-stack enemy buff in normal Shop stage scaling
+and the standalone/Archipelago enemy reward pool. Enemy-buff settings control
+its eligibility and cap.
+Saved runs discard the retired Powerhouses run modifier when loaded.
 Following DTA's Powerhouse implementation, eligible hostile land reinforcement
 waves gain two rotating faction heavies (such as Future Tank X-0, Apocalypse,
 Colossus, or Archelon). Air and naval waves gain one existing combat unit.

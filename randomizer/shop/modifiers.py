@@ -48,7 +48,6 @@ def modifier_effects(modifier_ids, config: ShopModeConfig = SHOP_CONFIG):
         'exclude_power_offers': 0,
         'cross_faction_power_offers': 0,
         'enemy_armor_stacks': 0,
-        'enemy_powerhouse_stacks': 0,
         'force_hardest_difficulty': 0,
         'force_enemy_challenge': 0,
         'rotate_shop_faction': 0,

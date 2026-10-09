@@ -290,9 +290,10 @@ remain unchanged, and acquired AI rewards still apply to other missions.
 
 `rewards/enemy_scaling.json` includes the single-stack `powerhouse` reward
 (`AI Enemy Powerhouses`). It appears under **AI reinforcement waves** in the
-reward-pool controls and as **Enemy Powerhouses** in `shop_mode.json` run
-modifiers and mission challenges. The run modifier uses
-`enemy_powerhouse_stacks=1`; overlapping sources respect the single-stack cap.
+reward-pool controls and participates in normal Shop stage scaling and the
+standalone/Archipelago enemy reward pool. Enemy-buff settings control its
+eligibility and cap.
+Saved runs drop the retired run-modifier ID.
 Land reinforcement teams gain two native faction heavies; air and
 naval teams gain one existing combat member. Expanded teams spawn at least
 veteran. Private TaskForces preserve shared player/allied waves, and native
