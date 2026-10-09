@@ -41,6 +41,8 @@ MAXIMUM_ENEMY_TRAP_ITEMS = sum(
 # published catalogue checksums compatible lets already-hosted rooms reconnect
 # safely after additive reward catalogue changes.
 BACKWARD_COMPATIBLE_CATALOGUE_CHECKSUMS = frozenset({
+    "7a23e462fc403d4de98c998cb0d9a080c2db9a6fa53011198edc361870eb3cb6",
+    "95688361a34d7c613ef10861d6be2611ab7841a0c993bf7a9ede0b86c651622b",
     "9e48592b713501cdc12d29acad98e34b1f2d0b046113e0f0ff6f37de519163d4",
     "29fd0f82be96264b9ba09823a89b8bb83352a29e28e9f84f498a728376d762e3",
     "24a1d5b707e7df49c6d0f130e45c1e61048813b5dfd64cd49a886f41b35333f9",

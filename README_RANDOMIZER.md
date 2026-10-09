@@ -98,16 +98,58 @@ and generated runs therefore retain prior behavior.
 
 ### AI Enemy Rewards
 
-The reviewed hostile-AI catalogue contains 48 effects: country armor and
+The reviewed hostile-AI catalogue contains 49 effects: country armor and
 production bonuses, relevant native T1/T2/T3 unit and weapon stat families,
 Paratroopers, Bloodhounds, Moon Reinforcements, and all four
-faction offensive superweapons. Enemy rewards exist
+faction offensive superweapons, and Enemy Powerhouses reinforcement waves. Enemy rewards exist
 in both the Base Randomizer and Archipelago. The Base Randomizer deterministically
 assigns up to the configured maximum beside its normal reward slots. Completing
 that check acquires both independently: the normal player reward remains
 unchanged, while the additional consequence strengthens hostile AI. Archipelago
 exports the same configured inventory as Trap items with matching extra
 locations; receiving the Trap acquires its enemy bonus.
+
+Enable **Enemy Powerhouses** under Shop Mode's **Optional Run Modifiers** to
+expand eligible enemy waves throughout a new run. It is also a Shop mission
+challenge (+3 Ore / +2 Gems); the two sources share a single-stack cap.
+Following DTA's Powerhouse implementation, eligible hostile land reinforcement
+waves gain two rotating faction heavies (such as Future Tank X-0, Apocalypse,
+Colossus, or Archelon). Air and naval waves gain one existing combat unit.
+Upgraded teams spawn at least veteran. Each enemy TeamType receives a private
+TaskForce; allied/player teams sharing the original remain unchanged.
+Transport, MCV, engineer, unique-unit, mixed-terrain and protected story teams
+are skipped. Existing no-build and scripted-opening protections remain active.
+Shop stages 4 and 8 unlock faction hero and superunit companion teams.
+Mental difficulty unlocks heroes immediately and superunits at stage 4.
+Selections vary with the run seed and mission; repeated launches reproduce
+the same composition.
+Allies rotate Tanya, Siegfried and Norio alongside Paradox Engine/Shinbot;
+Soviets use Volkov, Yunru, Morales and Boris with Centurion/Perun; Epsilon
+uses Libra, Malver, Rahn and Space Commando with both Hands of Ereshkigal,
+Ganzir Defender or Irkalla; Foehn uses Eureka, Fin, Alize and Uragan
+with Ramwagon or Archelon. Each house gets at most two hero companion team
+definitions and one superunit companion definition, attached to eligible
+existing wave creation. Repeating authored waves may summon them again.
+Private armed, damageable copies receive Hunt orders, preserving cinematic
+actors. Aircraft companions can join land or air waves; ground companions
+respect amphibious entry paths.
+
+Foehn heroes and superunits can also join Allied, Soviet and Epsilon enemies
+as auxiliaries, so they remain available without a Foehn enemy army. Each
+eligible house has an independent seeded one-in-three chance to substitute
+one Foehn hero and a one-in-three chance to substitute its superunit choice.
+The same selection applies independently to factory production: private
+copies belong to the existing enemy country and use its Barracks or War
+Factory. Unlock stages and team/production caps remain unchanged.
+
+Eligible enemies with authored AI production and matching physical/base-plan
+factories can also build one selected heavy, one hero and one superunit type
+(or both Hands) as progression unlocks them. These separate private types
+use BuildLimit=1 and Max=1 production teams, pay normal costs, and can be
+replaced after losses. Shared player/friendly countries are skipped; private
+ownership and the player production gate prevent player access through
+captured factories. Co-op records stage/difficulty in its manifest and
+rebuilds identical host/guest maps.
 
 Each received item adds one stack, bounded by its per-effect cap and the shared
 seed maximum. Armor uses the reciprocal received-damage calculation, so the

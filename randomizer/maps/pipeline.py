@@ -72,6 +72,7 @@ from randomizer.maps.rules import (
 from randomizer.maps.buff_validation import (
     validate_generated_unit_buff_changes,
 )
+from randomizer.maps.enemy_powerhouses import enemy_powerhouse_rules
 from randomizer.maps.access_diagnostics import build_unit_access_report
 from randomizer.rewards.rules import (
     expand_equivalent_role_buffs,
@@ -731,6 +732,72 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         entry['reward'] for entry in enemy_scaling_entries
     ]
     ai_reward_applications = []
+    # Expand waves before usage/production isolation. New enemy members must
+    # participate in the same native spawnability checks as authored members.
+    powerhouse_rules, powerhouse_applications, powerhouse_skips = enemy_powerhouse_rules(
+        lines,
+        scaled_enemy_houses,
+        enemy_scaling_rewards,
+        installed_rule_sections,
+        stage=reward_settings.get('shop_stage', 1),
+        seed=self.active_launch_seed(),
+        difficulty=(self.get_selected_difficulty_value()
+                    if hasattr(self, 'difficulty_var') else 1),
+        player_countries=[
+            record['country'] for record in records.values() if record.get('player')
+        ],
+        protected_mission=(
+            code in MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS
+            or mission.get('no_build') or mission.get('true_no_build')
+            or mission.get('build_classification') in {'true_no_build', 'no_build_production'}
+        ),
+        excluded_teams=(
+            section_value_map_preserve(lines, 'TeamTypes').values()
+            if (
+                code in MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS
+                or mission.get('no_build') or mission.get('true_no_build')
+                or mission.get('build_classification') in {
+                    'true_no_build', 'no_build_production',
+                }
+            ) else ()
+        ),
+        excluded_unit_ids=(
+            set(MISSION_ENEMY_NATIVE_BUFF_EXCLUSIONS.get(code, ()))
+            | runtime_identity_preserve_ids
+        ),
+    )
+    if powerhouse_rules:
+        merge_ini_section_values(lines, powerhouse_rules)
+        # Structural consumers and spawnability filters must see the new
+        # enemy-only actors, teams and creation links in their native snapshot.
+        for section, values in powerhouse_rules.items():
+            native_map_sections.setdefault(section, {}).update({
+                str(key).lower(): value for key, value in values.items()
+            })
+            native_map_sections_preserve.setdefault(section.upper(), {}).update(values)
+        reward = next(
+            reward for reward in enemy_scaling_rewards
+            if reward.get('enemy_effect') == 'powerhouse'
+        )
+        entries = [entry for entry in enemy_scaling_entries
+                   if entry['reward'].get('enemy_effect') == 'powerhouse']
+        for application in powerhouse_applications:
+            ai_reward_applications.append({
+                'mission': code,
+                'reward_name': reward['name'],
+                'source': ' + '.join(unique_in_order(entry['source'] for entry in entries)),
+                'earned_from': '; '.join(unique_in_order(entry['earned_from'] for entry in entries)),
+                **application,
+            })
+        self.append_log(
+            f'Enemy Powerhouses configured {len(powerhouse_applications)} hostile '
+            f'wave/companion/production team(s) with {sum(item["added_unit_count"] for item in powerhouse_applications)} '
+            'extra units; upgraded teams spawn at least veteran.'
+        )
+    elif any(reward.get('enemy_effect') == 'powerhouse' for reward in enemy_scaling_rewards):
+        self.append_log(f'Skipped Enemy Powerhouses for {code}: no eligible hostile reinforcement team.')
+    if powerhouse_skips:
+        self.append_log('Protected Enemy Powerhouses teams: ' + '; '.join(powerhouse_skips) + '.')
     if share_basic_equivalent_buffs:
         # Resolve shared buffs against access already proven for this launch.
         # Standard includes current-house units plus foreign role mappings
@@ -2798,6 +2865,14 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         })
     native_team_validation_ids = (
         non_player_taskforce_unit_ids - set(ENGINEER_UNIT_IDS)
+    )
+    # These private factory actors are new, not authored payloads. Their
+    # intentional player gate must remain while native payloads stay ungated.
+    native_team_validation_ids.difference_update(
+        str(actor).upper()
+        for application in powerhouse_applications
+        if application.get('application_kind') == 'production'
+        for actor in application.get('added_unit_ids', ())
     )
     if code in MISSION_NATIVE_RUNTIME_PRESERVE_ACTION_TEAMS:
         native_team_validation_ids.difference_update(scripted_story_unit_ids)

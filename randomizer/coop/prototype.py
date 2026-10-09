@@ -296,7 +296,51 @@ def available_units(state: dict, source_mission: str = '') -> list[tuple[str, st
     return sorted(unique.items())
 
 
-def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> bytes:
+def _apply_enemy_powerhouse_waves(lines, source, manifest, metadata):
+    """Resolve authored multiplayer enemy slots before expanding their waves."""
+    rewards = [canonical_reward({'name': name})
+               for name in manifest.get('enemy_reward_ids', ())]
+    if not any(reward.get('enemy_effect') == 'powerhouse' for reward in rewards):
+        return
+    from randomizer.coop.catalogue import COOP_BUILD_CLASSIFICATIONS
+    from randomizer.maps.enemy_powerhouses import enemy_powerhouse_rules
+    from randomizer.maps.houses import map_house_records
+
+    if COOP_BUILD_CLASSIFICATIONS.get(source.stem.upper()) != 'base_build':
+        return
+    players = {manifest['player_country'], manifest.get('guest_country', '')}
+    enemies = set(manifest.get('enemy_countries', ()))
+    records = map_house_records(lines)
+    hostile_houses = []
+    for slot, country in enumerate((manifest['player_country'],
+                                    manifest.get('guest_country', manifest['player_country']))):
+        house = f'<Player @ {chr(ord("A") + slot)}>'
+        records[house] = {'name': house, 'country': country, 'player': True}
+        records[country] = {'name': country, 'country': country, 'player': True}
+    for key, value in metadata.items():
+        if not key.startswith('enemyhouse'):
+            continue
+        country_index, _color, slot = map(int, value.split(','))
+        country = SIDE_COUNTRIES[country_index]
+        if slot < 2 or slot > 7 or country in players or country not in enemies:
+            continue
+        house = f'<Player @ {chr(ord("A") + slot)}>'
+        records[house] = {'name': house, 'country': country}
+        records[country] = {'name': country, 'country': country}
+        hostile_houses.extend((house, country))
+    _types, installed = installed_rules_registry(synchronous=True)
+    rules, _applications, _skips = enemy_powerhouse_rules(
+        lines, hostile_houses, rewards, installed, house_records=records,
+        stage=manifest.get('shop_stage', 1), difficulty=manifest.get('difficulty', 1),
+        seed=manifest['seed'],
+        player_countries=sorted(players - {''}),
+    )
+    if rules:
+        merge_ini_section_values(lines, rules)
+
+
+def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
+               metadata: dict) -> bytes:
     raw = source.read_bytes()
     policy = manifest.get('fingerprint_policy')
     if policy not in (None, FINGERPRINT_POLICY):
@@ -318,6 +362,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
         # animation object. Disable this cosmetic marker for co-op maps only.
         'General': {'Behind': 'none'},
     })
+    _apply_enemy_powerhouse_waves(lines, source, manifest, metadata)
     apply_coop_native_production_gate(lines, manifest)
     if manifest['schema'] == 5:
         for role, scope, country in (
@@ -361,9 +406,16 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str) -> by
     return ('\r\n'.join(lines) + '\r\n').encode('latin-1')
 
 
+def _validate_difficulty(difficulty):
+    if type(difficulty) is not int or difficulty not in {0, 1, 2}:
+        raise ValueError('Co-op difficulty must be 0 (Casual), 1 (Normal), or 2 (Mental).')
+    return difficulty
+
+
 def build_manifest(game_root: Path, state: dict, coop_name: str, *,
                    source_mission: str = '', unit_id: str = '',
-                   allow_test_unit: bool = False) -> tuple[dict, bytes]:
+                   allow_test_unit: bool = False, difficulty: int = 1) -> tuple[dict, bytes]:
+    _validate_difficulty(difficulty)
     if state.get('progression_mode') not in SUPPORTED_PROGRESSION:
         raise ValueError('Prototype supports Classic, Grid Mode, and Mission List; Shop Mode is excluded.')
     if not state.get('seed'):
@@ -392,7 +444,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     identity = _digest(json.dumps(
         [PROTOTYPE_MARKER, source_hash, str(state['seed']), access_ids,
          buff_counts, building_ids, power_reward_ids, enemy_reward_ids,
-         enemy_countries, credit_bonus, country, state.get('reward_mode', '')],
+         enemy_countries, credit_bonus, country, state.get('reward_mode', '')]
+        + ([difficulty] if difficulty != 1 else []),
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     stem = f'morcp_{coop_name.removeprefix("coop_").lower()}_{identity}'
@@ -423,7 +476,9 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
         'map_file': f'{stem}.map',
         'description': metadata.get('description', source.stem.lower()) + ' - Randomizer',
     }
-    map_data = _map_bytes(source, source_key, manifest, family)
+    if difficulty != 1:
+        manifest['difficulty'] = difficulty
+    map_data = _map_bytes(source, source_key, manifest, family, metadata)
     manifest['map_sha256'] = _digest(map_data)
     return manifest, map_data
 
@@ -620,12 +675,14 @@ def shop_unit_loadout(run, profile=None, *, state=None) -> dict:
 
 def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
                         host_loadout: dict, guest_loadout: dict, *,
-                        stage: int = 1, _fingerprint_policy=FINGERPRINT_POLICY) -> tuple[dict, bytes]:
+                        stage: int = 1, difficulty: int = 1,
+                        _fingerprint_policy=FINGERPRINT_POLICY) -> tuple[dict, bytes]:
     """Build one identical map with two country-gated purchased unit rosters."""
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', str(seed)):
         raise ValueError('Shop seed contains characters unsafe for a map marker.')
     if not isinstance(stage, int) or isinstance(stage, bool) or not 1 <= stage <= 10000:
         raise ValueError('Co-op Shop stage must be between 1 and 10000.')
+    _validate_difficulty(difficulty)
     coop_name = coop_name.lower()
     source, source_key, metadata, country, family = _map_config(game_root, coop_name)
     guest_country = shop_guest_country(metadata, country)
@@ -637,7 +694,7 @@ def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
     source_hash = (text_hash if _fingerprint_policy else _digest)(source.read_bytes())
     identity = _digest(json.dumps(
         [SHOP_MARKER, source_hash, str(seed), stage, country, guest_country,
-         enemy_countries, loadouts],
+         enemy_countries, loadouts] + ([difficulty] if difficulty != 1 else []),
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     stem = f'morcs_{coop_name.removeprefix("coop_")}_{identity}'
@@ -655,7 +712,9 @@ def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
     }
     if _fingerprint_policy:
         manifest['fingerprint_policy'] = _fingerprint_policy
-    data = _map_bytes(source, source_key, manifest, family)
+    if difficulty != 1:
+        manifest['difficulty'] = difficulty
+    data = _map_bytes(source, source_key, manifest, family, metadata)
     manifest['map_sha256'] = _digest(data)
     return manifest, data
 
@@ -671,6 +730,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
             game_root, manifest.get('seed', ''), coop_name,
             loadouts.get('host'), loadouts.get('guest'),
             stage=manifest.get('shop_stage'),
+            difficulty=manifest.get('difficulty', 1),
             _fingerprint_policy=manifest.get('fingerprint_policy'),
         )
         if manifest != expected:
@@ -691,6 +751,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     if unit_id:
         _require_registered_type(source, unit_id)
     seed = str(manifest.get('seed', ''))
+    difficulty = _validate_difficulty(manifest.get('difficulty', 1))
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', seed):
         raise ValueError('Manifest seed is invalid.')
     access_ids = manifest.get('access_ids')
@@ -740,7 +801,8 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     expected_identity = _digest(json.dumps(
         [PROTOTYPE_MARKER, manifest['source_sha256'], seed, access_ids,
          buff_counts, building_ids, power_reward_ids, enemy_reward_ids,
-         enemy_countries, credit_bonus, country, manifest.get('reward_mode', '')],
+         enemy_countries, credit_bonus, country, manifest.get('reward_mode', '')]
+        + ([difficulty] if difficulty != 1 else []),
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     expected_stem = f'morcp_{coop_name.removeprefix("coop_")}_{expected_identity}'
@@ -749,7 +811,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
         raise ValueError('Manifest destination does not match its source and seed.')
     if manifest.get('description') != _metadata.get('description', source.stem.lower()) + ' - Randomizer':
         raise ValueError('Manifest map description differs from installed map metadata.')
-    data = _map_bytes(source, actual_key, manifest, family)
+    data = _map_bytes(source, actual_key, manifest, family, _metadata)
     if _digest(data) != manifest.get('map_sha256'):
         raise ValueError('Generated map hash differs from host manifest.')
     return data

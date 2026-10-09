@@ -3,10 +3,12 @@
 This maintainer audit enables Yuri Prime, every configured Shop mission boon,
 the composed Shop combat/economy modifiers, and maximum Tier 1 AI reward
 stacks. It exercises those paths across the full campaign without starting Tk
-or the game.
+or the game. Enemy Powerhouses is enabled to audit private reinforcement
+TaskForces against each authored campaign map.
 """
 
 from copy import deepcopy
+from collections import Counter
 from pathlib import Path
 import sys
 
@@ -87,12 +89,18 @@ class _AuditLauncher(LaunchController):
         reward_mode='Chaos',
         progression_mode='Shop Mode',
         enemy_effect_ids=None,
+        powerhouse_stage=8,
+        difficulty='Mental',
+        seed='ALL-MAP-AUDIT',
     ):
         self._reward_mode = reward_mode
         self._progression_mode = progression_mode
         self.config = deepcopy(DEFAULT_CONFIG)
         self.config['generation']['reward_mode'] = reward_mode
         self.state = {}
+        self.powerhouse_stage = powerhouse_stage
+        self.audit_seed = seed
+        self.difficulty_var = _Value(difficulty)
         self.player_color_var = _Value('Default')
         self.rainbowizer_var = _Value(False)
         self.eva_voice_var = _Value('Mission default')
@@ -142,6 +150,7 @@ class _AuditLauncher(LaunchController):
             if (
                 selected_enemy_effect_ids is None
                 and not str(definition['id']).startswith('tier1_')
+                and definition['id'] != 'powerhouse'
             ) or (
                 selected_enemy_effect_ids is not None
                 and definition['id'] not in selected_enemy_effect_ids
@@ -176,6 +185,7 @@ class _AuditLauncher(LaunchController):
     def active_reward_settings(self):
         settings = dict(self.config['generation'])
         settings.update({
+            'shop_stage': self.powerhouse_stage,
             'shop_player_damage_percent': 1.25,
             'shop_player_armor_percent': 0.8,
             'shop_production_time_percent': 0.75,
@@ -186,7 +196,7 @@ class _AuditLauncher(LaunchController):
         return settings
 
     def active_launch_seed(self):
-        return 'ALL-MAP-AUDIT'
+        return self.audit_seed
 
     def active_launch_rewards(self):
         return list(self.player_rewards)
@@ -1256,6 +1266,160 @@ def _assert_reality_engineering_team_clone(missions):
         root_map.unlink()
 
 
+def _assert_powerhouse_waves(source_path, generated_path, mission, applications):
+    """Audit real campaign wave composition, ownership and authored scripts."""
+    source = {
+        str(name).lower(): {str(key).lower(): value for key, value in values.items()}
+        for name, values in all_section_value_maps_preserve(
+            Path(source_path).read_text(encoding='utf-8', errors='ignore').splitlines()
+        ).items()
+    }
+    generated = {
+        str(name).lower(): {str(key).lower(): value for key, value in values.items()}
+        for name, values in all_section_value_maps_preserve(
+            generated_path.read_text(encoding='utf-8', errors='ignore').splitlines()
+        ).items()
+    }
+    entries = [entry for entry in applications if entry.get('effect_id') == 'powerhouse']
+    if (
+        mission.get('no_build') or mission.get('true_no_build')
+        or mission.get('build_classification') in {'true_no_build', 'no_build_production'}
+    ) and entries:
+        raise AssertionError(f'{mission["code"]}: no-build waves were expanded')
+
+    def members(taskforce):
+        counts = Counter()
+        for key, value in taskforce.items():
+            if str(key).isdigit():
+                count, unit = str(value).split(',')
+                counts[unit.strip().upper()] += int(count)
+        return counts
+
+    for entry in entries:
+        team_id = entry['target'].split(' / ', 1)[0].lower()
+        if entry.get('application_kind') in {'companion', 'production'}:
+            team = generated[team_id]
+            template = source[entry['source_team_id'].lower()]
+            if team_id in source or not team_id.startswith('morest'):
+                raise AssertionError(f'{mission["code"]}: special team overwrites an authored team')
+            if team['house'] != template['house']:
+                raise AssertionError(f'{mission["code"]}: special team has wrong house')
+            if generated[team['script'].lower()].get('0') != '11,15':
+                raise AssertionError(f'{mission["code"]}: special team lacks Hunt orders')
+            counts = members(generated[team['taskforce'].lower()])
+            if counts != Counter(entry['added_unit_ids']):
+                raise AssertionError(f'{mission["code"]}: special team members differ from receipt')
+            if team_id not in {str(value).lower() for value in generated['teamtypes'].values()}:
+                raise AssertionError(f'{mission["code"]}: special team is not registered')
+            for actor_id in entry['added_unit_ids']:
+                actor = generated[actor_id.lower()]
+                registered = {str(value).lower() for registry in ('infantrytypes', 'vehicletypes')
+                              for value in generated.get(registry, {}).values()}
+                if actor_id.lower() not in registered or int(actor.get('strength', '0')) <= 0:
+                    raise AssertionError(f'{mission["code"]}: unregistered or invulnerable special actor')
+                if not any(actor.get(key, '').lower() not in {'', 'none', '<none>'}
+                           for key in ('primary', 'secondary', 'weapon1')):
+                    raise AssertionError(f'{mission["code"]}: unarmed special actor')
+                if actor.get('passengers') != '0' or actor.get('canpassiveaquire') != 'yes':
+                    raise AssertionError(f'{mission["code"]}: special actor needs manual control/cargo')
+                if entry['application_kind'] == 'production':
+                    if (actor.get('buildlimit') != '1' or actor.get('techlevel') != '1'
+                            or actor.get('requiredhouses') != entry['country']
+                            or actor.get('prerequisite') in {None, '', 'none'}
+                            or 'MORPOriginalGate'.lower() not in actor.get('prerequisite.negative', '').lower()):
+                        raise AssertionError(f'{mission["code"]}: uncapped or ungated AI production')
+                    if team['reinforce'] != 'no' or team['autocreate'] != 'yes' or team['max'] != '1':
+                        raise AssertionError(f'{mission["code"]}: factory team is a free reinforcement')
+                elif actor.get('techlevel') != '-1':
+                    raise AssertionError(f'{mission["code"]}: wave-only actor became buildable')
+            continue
+        original_team = source[team_id]
+        team = generated[team_id]
+        original_id = original_team['taskforce'].lower()
+        clone_id = team['taskforce'].lower()
+        if clone_id == original_id or not clone_id.startswith('moretf'):
+            raise AssertionError(f'{mission["code"]}/{team_id}: wave uses shared TaskForce')
+        if clone_id not in {
+            str(value).lower() for value in generated.get('taskforces', {}).values()
+        }:
+            raise AssertionError(f'{mission["code"]}/{team_id}: unregistered wave TaskForce')
+        original_counts = members(source[original_id])
+        final_counts = members(generated[clone_id])
+        if original_counts - final_counts:
+            raise AssertionError(f'{mission["code"]}/{team_id}: original wave members removed')
+        expected_additions = Counter(entry['added_unit_ids'])
+        if final_counts - original_counts != expected_additions:
+            raise AssertionError(f'{mission["code"]}/{team_id}: incorrect extra wave members')
+        if entry['added_unit_count'] not in {1, 2} or int(team['veteranlevel']) < 2:
+            raise AssertionError(f'{mission["code"]}/{team_id}: invalid wave strength or veterancy')
+        for field in ('house', 'script', 'waypoint', 'reinforce', 'droppod', 'transportwaypoint'):
+            if team.get(field) != original_team.get(field):
+                raise AssertionError(f'{mission["code"]}/{team_id}: authored {field} changed')
+        for other_id in generated.get('teamtypes', {}).values():
+            other = generated.get(str(other_id).lower(), {})
+            if str(other_id).lower() != team_id and other.get('taskforce', '').lower() == clone_id:
+                raise AssertionError(f'{mission["code"]}/{team_id}: wave clone shared with another team')
+        if generated[clone_id].get('group') != source[original_id].get('group'):
+            raise AssertionError(f'{mission["code"]}/{team_id}: authored TaskForce group changed')
+    return Counter(entry.get('application_kind', 'wave') for entry in entries)
+
+
+def _assert_powerhouse_progression(missions):
+    """Check tier unlocks through actual campaign generation, not isolated rules."""
+    from randomizer.maps.enemy_powerhouse_specials import HERO_UNITS_BY_FAMILY, SUPERUNITS_BY_FAMILY
+
+    mission = next(mission for mission in missions if mission['code'] == 'SSIDE')
+    heroes = {unit for pool in HERO_UNITS_BY_FAMILY.values() for unit in pool}
+    bosses = {unit for pool in SUPERUNITS_BY_FAMILY.values() for bundle in pool for unit in bundle}
+    for stage, difficulty, expected_level in (
+        (1, 'Normal', 0), (4, 'Normal', 1), (8, 'Normal', 2),
+        (1, 'Mental', 1), (4, 'Mental', 2),
+    ):
+        launcher = _AuditLauncher(enemy_effect_ids={'powerhouse'},
+                                  powerhouse_stage=stage, difficulty=difficulty)
+        hook = launcher.prepare_hooked_map(mission, extra_rules=launcher.map_rules_for_launch())
+        entries = launcher.enemy_applications[mission['code']]
+        sources = {unit for entry in entries for unit in entry.get('source_unit_ids', ())}
+        assert bool(sources & heroes) == (expected_level >= 1), (stage, difficulty, sources)
+        assert bool(sources & bosses) == (expected_level >= 2), (stage, difficulty, sources)
+        assert any(entry.get('application_kind') == 'production' for entry in entries)
+        _assert_powerhouse_waves(
+            launcher.extract_campaign_map(mission['scenario']),
+            GENERATED_MAP_DIR / mission['scenario'].upper(), mission, entries,
+        )
+        root_map = Path(hook['root_map'])
+        if root_map.is_file() and is_generated_hooked_map(root_map):
+            root_map.unlink()
+    print('Enemy Powerhouses Shop stage 1/4/8 and Mental progression: passed', flush=True)
+    signatures = []
+    foehn_auxiliaries = Counter()
+    for seed in ('POWERHOUSE-A', 'POWERHOUSE-B', 'POWERHOUSE-C', 'POWERHOUSE-A'):
+        launcher = _AuditLauncher(enemy_effect_ids={'powerhouse'}, seed=seed)
+        hook = launcher.prepare_hooked_map(mission, extra_rules=launcher.map_rules_for_launch())
+        entries = launcher.enemy_applications[mission['code']]
+        for entry in entries:
+            if 'foehn' in entry.get('unit_families', ()):
+                assert entry['enemy_family'] == 'allies'
+                foehn_auxiliaries[entry['application_kind']] += 1
+        signatures.append(tuple(
+            (entry.get('application_kind'), tuple(entry.get('source_unit_ids', ())),
+             tuple(entry.get('added_unit_ids', ())))
+            for entry in entries
+        ))
+        _assert_powerhouse_waves(
+            launcher.extract_campaign_map(mission['scenario']),
+            GENERATED_MAP_DIR / mission['scenario'].upper(), mission, entries,
+        )
+        root_map = Path(hook['root_map'])
+        if root_map.is_file() and is_generated_hooked_map(root_map):
+            root_map.unlink()
+    assert signatures[0] == signatures[-1]
+    assert len(set(signatures)) > 1
+    assert foehn_auxiliaries['companion'] and foehn_auxiliaries['production']
+    print('Enemy Powerhouses seeded variety and repeat-launch determinism: passed', flush=True)
+    print('Enemy Powerhouses Foehn auxiliaries in Allied SSIDE waves and factories: passed', flush=True)
+
+
 def main():
     _assert_hook_restart_race()
     missions = parse_missions(BATTLE_CLIENT_INI)
@@ -1268,6 +1432,9 @@ def main():
         allowed_unlocked_tech_ids=allowed
     )
     generated = []
+    powerhouse_waves = Counter()
+    powerhouse_sources = set()
+    foehn_auxiliaries = Counter()
     try:
         for index, mission in enumerate(missions, 1):
             launch_rules = deepcopy(extra_rules)
@@ -1288,6 +1455,23 @@ def main():
                 generated_path,
                 mission['code'],
             )
+            powerhouse_waves.update(_assert_powerhouse_waves(
+                launcher.extract_campaign_map(mission['scenario']),
+                generated_path,
+                mission,
+                launcher.enemy_applications.get(mission['code'], ()),
+            ))
+            powerhouse_sources.update(
+                unit for entry in launcher.enemy_applications.get(mission['code'], ())
+                if entry.get('effect_id') == 'powerhouse'
+                for unit in entry.get('source_unit_ids', ())
+            )
+            foehn_auxiliaries.update(
+                (entry['enemy_family'], entry['application_kind'])
+                for entry in launcher.enemy_applications.get(mission['code'], ())
+                if 'foehn' in entry.get('unit_families', ())
+                and entry.get('enemy_family') != 'foehn'
+            )
             generated.append(generated_path)
             root_map = Path(hook['root_map'])
             if root_map.is_file() and is_generated_hooked_map(root_map):
@@ -1295,6 +1479,22 @@ def main():
             print(f'[{index:02d}/97] {mission["code"]}', flush=True)
         _assert_demolition_death_weapons(generated)
         _assert_targeted_contracts(generated)
+        if not powerhouse_waves:
+            raise AssertionError('Enemy Powerhouses did not expand any campaign wave')
+        if not powerhouse_waves['companion'] or not powerhouse_waves['production']:
+            raise AssertionError('Enemy Powerhouses did not add hero/boss companions and factory production')
+        print(f'Enemy Powerhouses campaign teams: {dict(powerhouse_waves)} audited', flush=True)
+        from randomizer.maps.enemy_powerhouse_specials import HERO_UNITS_BY_FAMILY, SUPERUNITS_BY_FAMILY
+        for family, heroes in HERO_UNITS_BY_FAMILY.items():
+            assert powerhouse_sources.intersection(heroes), f'{family}: no hero teams audited'
+            bosses = {unit for bundle in SUPERUNITS_BY_FAMILY[family] for unit in bundle}
+            assert powerhouse_sources.intersection(bosses), f'{family}: no superunit teams audited'
+        assert {'STARDUSTB', 'DHANDL', 'DHANDR'} <= powerhouse_sources
+        print('Enemy Powerhouses heroes and superunits for all four factions: passed', flush=True)
+        for family in ('allies', 'soviets', 'epsilon'):
+            for kind in ('companion', 'production'):
+                assert foehn_auxiliaries[family, kind], f'{family}: no Foehn {kind} audited'
+        print(f'Foehn auxiliaries under existing enemy factions: {dict(foehn_auxiliaries)} audited', flush=True)
         if launcher.enemy_applications.get('AWITHER') != []:
             raise AssertionError(
                 'AWITHER received AI scaling despite its opening-safety policy'
@@ -1329,6 +1529,7 @@ def main():
             for _error, message in launcher.logs
         ):
             raise AssertionError('Shop clone modifiers were never applied')
+        _assert_powerhouse_progression(missions)
     finally:
         for mission in missions:
             root_map = BATTLE_CLIENT_INI.parents[1] / mission['scenario']

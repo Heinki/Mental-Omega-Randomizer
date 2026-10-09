@@ -1,6 +1,7 @@
 """Check co-op map reward isolation before a two-computer playtest."""
 
 from pathlib import Path
+from collections import Counter
 from dataclasses import replace
 import sys
 
@@ -339,12 +340,98 @@ def main():
     assert loadout['power_reward_ids'] == ['Lightning Storm Power']
     assert loadout['starting_credit_bonus'] == 4000
 
+    powerhouse_waves = 0
+    powerhouse_specials = Counter()
+    foehn_companions = 0
+    from randomizer.maps.enemy_powerhouse_specials import HERO_UNITS_BY_FAMILY, SUPERUNITS_BY_FAMILY
+    from randomizer.rewards.roster import randomizer_unit_roster
+    _, _, portable_types = randomizer_unit_roster()
+    foehn_sources = {*HERO_UNITS_BY_FAMILY['foehn'],
+                     *(unit for bundle in SUPERUNITS_BY_FAMILY['foehn'] for unit in bundle)}
+    foehn_images = {portable_types[source].get('Image', source) for source in foehn_sources}
     for mission in discover_coop_missions(GAME_ROOT):
         _, per_map = build_shop_manifest(
             GAME_ROOT, 'COOP-PARITY-SHOP', mission['coop_name'], host, guest,
         )
         assert section(per_map, 'MORHCASH')['ProduceCashStartup'] == '2000'
         assert section(per_map, 'MORGCASH')['ProduceCashStartup'] == '-3000'
+        wave_host = dict(host, enemy_reward_ids=['AI Enemy Powerhouses'])
+        wave_manifest, wave_map = build_shop_manifest(
+            GAME_ROOT, 'COOP-PARITY-POWERHOUSES', mission['coop_name'], wave_host, guest,
+            stage=8, difficulty=2,
+        )
+        assert rebuild_from_manifest(GAME_ROOT, wave_manifest) == wave_map
+        base_sections = all_section_value_maps_preserve(per_map.decode('latin-1').splitlines())
+        wave_sections = all_section_value_maps_preserve(wave_map.decode('latin-1').splitlines())
+        registry = set(section(wave_map, 'TaskForces').values())
+        changed = 0
+        for team_id in section(wave_map, 'TeamTypes').values():
+            if team_id not in base_sections:
+                team = {key.lower(): value for key, value in wave_sections[team_id].items()}
+                assert team_id.startswith('MOREST')
+                assert mission['build_classification'] == 'base_build'
+                assert team['house'] not in {'<Player @ A>', '<Player @ B>'}
+                assert team['max'] == '1'
+                assert section(wave_map, team['script'])['0'] == '11,15'
+                production = team['reinforce'] == 'no'
+                for key, raw in wave_sections[team['taskforce']].items():
+                    if not key.isdigit():
+                        continue
+                    count, actor_id = raw.split(',')
+                    assert count == '1' and actor_id.startswith('MOREU')
+                    actor = {key.lower(): value for key, value in wave_sections[actor_id].items()}
+                    assert actor['passengers'] == '0' and actor['canpassiveaquire'] == 'yes'
+                    assert any(actor.get(key, '').lower() not in {'', 'none', '<none>'}
+                               for key in ('primary', 'secondary', 'weapon1'))
+                    if production:
+                        assert actor['buildlimit'] == '1' and actor['techlevel'] == '1'
+                        assert PLAYER_ORIGINAL_PRODUCTION_GATE_ID in actor['prerequisite.negative']
+                        assert actor['requiredhouses'] in wave_manifest['enemy_countries']
+                        assert set(actor['forbiddenhouses'].split(',')) == {
+                            wave_manifest['player_country'], wave_manifest['guest_country'],
+                        }
+                    else:
+                        assert actor['techlevel'] == '-1'
+                        if actor.get('image') in foehn_images:
+                            assert not any(country.startswith('Guild') for country in wave_manifest['enemy_countries'])
+                            foehn_companions += 1
+                powerhouse_specials['production' if production else 'companion'] += 1
+                continue
+            base_team = base_sections[team_id]
+            wave_team = wave_sections[team_id]
+            base_force = base_team.get('TaskForce')
+            wave_force = wave_team.get('TaskForce')
+            if base_force == wave_force:
+                continue
+            assert wave_force.startswith('MORETF') and wave_force in registry
+            assert mission['build_classification'] == 'base_build'
+            assert wave_team['House'] not in {'<Player @ A>', '<Player @ B>'}
+            assert int(wave_team['VeteranLevel']) >= 2
+            for field, value in base_team.items():
+                if field not in {'TaskForce', 'VeteranLevel'}:
+                    assert wave_team.get(field) == value
+            def members(values):
+                counts = Counter()
+                for key, value in values.items():
+                    if key.isdigit():
+                        count, unit = value.split(',')
+                        counts[unit] += int(count)
+                return counts
+            original_members = members(base_sections[base_force])
+            final_members = members(wave_sections[wave_force])
+            assert not original_members - final_members
+            assert sum((final_members - original_members).values()) in {1, 2}
+            assert wave_sections[base_force] == base_sections[base_force]
+            changed += 1
+        if mission['no_build']:
+            assert changed == 0
+        powerhouse_waves += changed
+    assert powerhouse_waves > 0
+    assert powerhouse_specials['companion'] > 0
+    assert foehn_companions > 0
+    print(f'Co-op Enemy Powerhouses: {powerhouse_waves} private waves; deterministic host/guest maps: passed')
+    print(f'Co-op Enemy Powerhouses special teams: {dict(powerhouse_specials)} audited')
+    print(f'Co-op Foehn auxiliaries without Foehn enemy slots: {foehn_companions} audited')
     print('Co-op Grid/Shop buildings, powers, private credits, enemy buffs/powers, factory bans: passed')
 
 

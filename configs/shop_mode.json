@@ -858,6 +858,13 @@
         "bonus_meta_coins": 1,
         "enemy_reward_id": "AI T1 Unit Firepower"
       },
+      "enemy_powerhouses": {
+        "title": "Enemy Powerhouses",
+        "description": "Eligible hostile waves gain heavy extras. Shop stage 4 unlocks faction heroes, stage 8 faction superunits; Mental unlocks heroes immediately and superunits at stage 4. Foehn specials can join any enemy faction. Enemy factories can produce limited private copies. Protected missions and transport teams are skipped.",
+        "bonus_run_coins": 3,
+        "bonus_meta_coins": 2,
+        "enemy_reward_id": "AI Enemy Powerhouses"
+      },
       "tempest_threat": {
         "title": "AI Great Tempest",
         "description": "Hostile AI receives a repeating Great Tempest power.",
@@ -1032,6 +1039,13 @@
         "effects": {
           "run_reward_flat": 10,
           "reset_run_purchases_after_victory": 1
+        }
+      },
+      "enemy_powerhouses": {
+        "display_name": "Enemy Powerhouses",
+        "description": "Veteran enemy waves gain heavy extras, faction heroes at stage 4, and faction superunits at stage 8. Mental unlocks heroes immediately and superunits at stage 4. Foehn specials can join any enemy faction. Eligible enemy factories can produce limited private copies. Protected missions and transport teams are skipped.",
+        "effects": {
+          "enemy_powerhouse_stacks": 1
         }
       },
       "faction_roulette": {

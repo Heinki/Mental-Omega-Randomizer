@@ -260,6 +260,7 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                             game_root, shop_setup['seed'], shop_setup['coop_name'],
                             shop_setup['loadout'], guest_shop['loadout'],
                             stage=shop_setup['stage'],
+                            difficulty={'easy': 0, 'normal': 1, 'hard': 2}[difficulty],
                         )
                         mode_hash = _digest(_mode_map(game_root, manifest, difficulty))
                     except (KeyError, TypeError, ValueError) as exc:

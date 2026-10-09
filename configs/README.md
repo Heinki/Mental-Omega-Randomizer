@@ -288,6 +288,34 @@ rewards for missions whose scripted opening cannot survive them. Withershins
 and Parasomnia use this exception. Authored enemies and mission difficulty
 remain unchanged, and acquired AI rewards still apply to other missions.
 
+`rewards/enemy_scaling.json` includes the single-stack `powerhouse` reward
+(`AI Enemy Powerhouses`). It appears under **AI reinforcement waves** in the
+reward-pool controls and as **Enemy Powerhouses** in `shop_mode.json` run
+modifiers and mission challenges. The run modifier uses
+`enemy_powerhouse_stacks=1`; overlapping sources respect the single-stack cap.
+Land reinforcement teams gain two native faction heavies; air and
+naval teams gain one existing combat member. Expanded teams spawn at least
+veteran. Private TaskForces preserve shared player/allied waves, and native
+spawnability checks include the added enemy members. Transport, engineer, MCV,
+unique-unit, unknown-terrain and protected story teams are skipped. No-build
+and scripted-opening protections remain active. Co-op uses registered enemy
+slots and produces identical host/guest map bytes. Hero companions unlock at
+Shop stage 4, faction superunits at stage 8; Mental advances both unlocks by
+four stages. All four factions have their own pools. Allied, Soviet and
+Epsilon special selections independently substitute Foehn heroes or
+superunits with a seeded one-in-three chance for each category. Foehn copies
+use the existing hostile country and its matching factories; no Foehn enemy
+house or Foehn factory is required. Companion teams use
+private, armed portable actors and Hunt orders, with at most two hero team
+definitions and one superunit team definition per enemy house; authored
+repeating waves can summon them again. Matching enemy factories and active
+native AI production teams also receive low-priority private production
+teams, capped at one living copy per selected type per house (BuildLimit=1,
+Max=1). Production is skipped for countries shared with non-hostile actors.
+Factory actors retain the hidden player-production gate; wave-only actors
+have TechLevel=-1. Co-op manifests record non-default difficulty alongside
+the existing Shop stage.
+
 `time_freeze_immune_techno_ids` maps mission codes to exact scripted
 TechnoTypes. Generation gives each target a mission-private armor alias that
 inherits its normal armor, then gives only that alias `0%` verses on the

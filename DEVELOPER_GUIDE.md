@@ -62,6 +62,10 @@ when an older external `ui.json` has no profiles.
 - `randomizer/maps/houses.py`: house/country discovery and faction families.
 - `randomizer/maps/ownership.py`: placed/TaskForce/AITrigger ownership and helper
   safety.
+- `randomizer/maps/enemy_powerhouses.py`: private hostile wave expansion before
+  native spawnability and player-production isolation.
+- `randomizer/maps/enemy_powerhouse_specials.py`: staged faction hero/superunit
+  companions, portable hostile actors, and bounded factory production teams.
 - `randomizer/maps/settings.py`: color and EVA map overrides.
 - `randomizer/maps/hooks.py`: bounded Action editing and marker structures.
 - `randomizer/maps/progress_hooks.py`: check-to-action pairing and marker

@@ -650,6 +650,7 @@ class CoopController(CoopConnectionController):
                         manifest, _ = build_manifest(
                             GAME_ROOT, state_snapshot, mission['coop_name'],
                             source_mission=source_mission,
+                            difficulty={'easy': 0, 'normal': 1, 'hard': 2}[difficulty],
                         )
                         shop_setup = None
                     lobby.send({'type': 'launch', 'code': code,

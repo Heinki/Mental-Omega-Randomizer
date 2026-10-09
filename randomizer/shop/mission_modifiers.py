@@ -265,6 +265,10 @@ def shop_enemy_scaling_entries(
 
     candidates = []
     effects = modifier_effects(run.modifiers)
+    if effects['enemy_powerhouse_stacks'] > 0:
+        candidates.append((
+            'AI Enemy Powerhouses', 'Shop run modifier', 'Enemy Powerhouses',
+        ))
     for _index in range(max(0, effects['enemy_armor_stacks'])):
         candidates.append((
             'AI T1 Unit Armor', 'Shop run modifier',

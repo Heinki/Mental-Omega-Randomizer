@@ -337,6 +337,7 @@ def validate_shop_mode_config(sections, path, invalid):
         'exclude_power_offers',
         'cross_faction_power_offers',
         'enemy_armor_stacks',
+        'enemy_powerhouse_stacks',
         'force_hardest_difficulty',
         'force_enemy_challenge',
         'rotate_shop_faction',
@@ -369,6 +370,7 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('support_recharge_percent', 100) < 100
             or effects.get('challenge_meta_reward_percent', 100) > 100
             or effects.get('force_enemy_challenge', 0) > 0
+            or effects.get('enemy_powerhouse_stacks', 0) > 0
             or effects.get('rotate_shop_faction', 0) > 0
             or effects.get('demolition_charges', 0) > 0
             or effects.get('melee_fighters', 0) > 0
@@ -400,6 +402,7 @@ def validate_shop_mode_config(sections, path, invalid):
             or effects.get('exclude_special_offers', 0) > 0
             or effects.get('exclude_power_offers', 0) > 0
             or effects.get('enemy_armor_stacks', 0) > 0
+            or effects.get('enemy_powerhouse_stacks', 0) > 0
             or effects.get('force_hardest_difficulty', 0) > 0
             or effects.get('force_enemy_challenge', 0) > 0
             or effects.get('rotate_shop_faction', 0) > 0

@@ -490,13 +490,14 @@ def run_self_check():
             if definition.get('id') == 'ai_paratroopers'
         ]
         enemy_scaling_contract_valid = bool(
-            len(ENEMY_BUFF_DEFINITIONS) == 48
+            len(ENEMY_BUFF_DEFINITIONS) == 49
             and tuple(
                 group['label'] for group in ENEMY_BUFF_GROUP_DEFINITIONS
             ) == (
                 'AI unit stat bonuses',
                 'AI weapon bonuses',
                 'AI production-speed bonuses',
+                'AI reinforcement waves',
                 'AI support powers',
                 'AI superweapons',
             )

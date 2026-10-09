@@ -486,6 +486,7 @@ class ShopController(ShopPolishController):
         run = self._shop_context_run()
         if run is not None:
             settings = dict(run.reward_settings)
+            settings['shop_stage'] = run.stage
             settings['start_with_tier_one_units'] = True
             settings['start_with_tier_one_defenses'] = True
             settings['failure_assistance'] = False

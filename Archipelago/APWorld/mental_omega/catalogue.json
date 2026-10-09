@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "maximum_rewards_per_check": 30,
-  "maximum_enemy_trap_items": 188,
+  "maximum_enemy_trap_items": 189,
   "items": [
     {
       "name": "AI Aircraft Armor",
@@ -44,6 +44,13 @@
       "category": "enemy_buffs",
       "repeatable": true,
       "id": 81063941
+    },
+    {
+      "name": "AI Enemy Powerhouses",
+      "classification": "trap",
+      "category": "enemy_buffs",
+      "repeatable": true,
+      "id": 81068124
     },
     {
       "name": "AI Epsilon Psychic Dominator",
@@ -9802,6 +9809,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065189
+    },
+    {
+      "name": "Foehn Shrike Nest Optics I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068125
     },
     {
       "name": "Foehn Shrike Nest Recon Package I",
@@ -29182,7 +29196,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29208,7 +29222,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29228,7 +29242,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29266,7 +29280,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29292,7 +29306,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29318,7 +29332,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29356,7 +29370,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29382,7 +29396,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29420,7 +29434,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29446,7 +29460,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29478,7 +29492,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 458
+          "maximum_slots": 459
         }
       ]
     },
@@ -29504,7 +29518,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 398
+          "maximum_slots": 399
         }
       ]
     },
@@ -29536,7 +29550,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29562,7 +29576,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -29582,7 +29596,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -29614,7 +29628,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29646,7 +29660,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29678,7 +29692,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29704,7 +29718,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -29736,7 +29750,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29780,7 +29794,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 398
+          "maximum_slots": 399
         }
       ]
     },
@@ -29812,7 +29826,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29832,7 +29846,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29852,7 +29866,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -29884,7 +29898,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29916,7 +29930,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29972,7 +29986,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -29992,7 +30006,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30024,7 +30038,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30056,7 +30070,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30082,7 +30096,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30114,7 +30128,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30134,7 +30148,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30166,7 +30180,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30198,7 +30212,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 458
+          "maximum_slots": 459
         }
       ]
     },
@@ -30218,7 +30232,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -30238,7 +30252,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -30258,7 +30272,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -30284,7 +30298,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -30310,7 +30324,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -30336,7 +30350,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -30368,7 +30382,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -30406,7 +30420,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -30444,7 +30458,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -30482,7 +30496,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -30508,7 +30522,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -30528,7 +30542,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -30548,7 +30562,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -30580,7 +30594,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30612,7 +30626,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30650,7 +30664,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30682,7 +30696,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30714,7 +30728,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30734,7 +30748,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30760,7 +30774,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30798,7 +30812,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30830,7 +30844,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30850,7 +30864,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -30876,7 +30890,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 398
+          "maximum_slots": 399
         }
       ]
     },
@@ -30902,7 +30916,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 398
+          "maximum_slots": 399
         }
       ]
     },
@@ -30934,7 +30948,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -30966,7 +30980,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31004,7 +31018,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31042,7 +31056,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31068,7 +31082,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31088,7 +31102,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31120,7 +31134,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31146,7 +31160,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31166,7 +31180,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31192,7 +31206,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31212,7 +31226,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31232,7 +31246,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31258,7 +31272,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31296,7 +31310,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31322,7 +31336,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31354,7 +31368,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31374,7 +31388,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31394,7 +31408,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31432,7 +31446,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31470,7 +31484,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31496,7 +31510,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31516,7 +31530,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31548,7 +31562,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31568,7 +31582,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31594,7 +31608,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31626,7 +31640,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31652,7 +31666,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31672,7 +31686,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31710,7 +31724,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 368
+          "maximum_slots": 369
         }
       ]
     },
@@ -31754,7 +31768,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 398
+          "maximum_slots": 399
         }
       ]
     },
@@ -31774,7 +31788,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31800,7 +31814,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 308
+          "maximum_slots": 309
         }
       ]
     },
@@ -31820,7 +31834,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31852,7 +31866,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31884,7 +31898,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 338
+          "maximum_slots": 339
         }
       ]
     },
@@ -31904,7 +31918,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31924,7 +31938,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 278
+          "maximum_slots": 279
         }
       ]
     },
@@ -31938,7 +31952,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -31952,7 +31966,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -31966,7 +31980,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -31980,7 +31994,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -31994,7 +32008,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32008,7 +32022,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32022,7 +32036,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32036,7 +32050,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32050,7 +32064,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32064,7 +32078,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32078,7 +32092,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32092,7 +32106,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32106,7 +32120,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32120,7 +32134,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32134,7 +32148,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32148,7 +32162,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32162,7 +32176,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32176,7 +32190,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32190,7 +32204,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32204,7 +32218,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32218,7 +32232,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32232,7 +32246,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32246,7 +32260,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32260,7 +32274,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32274,7 +32288,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32288,7 +32302,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32302,7 +32316,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32316,7 +32330,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32330,7 +32344,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32344,7 +32358,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32358,7 +32372,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32372,7 +32386,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32386,7 +32400,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32400,7 +32414,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32414,7 +32428,7 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     },
@@ -32428,12 +32442,12 @@
           "id": "victory",
           "name": "Mission Complete",
           "hint": "Win the mission.",
-          "maximum_slots": 218
+          "maximum_slots": 219
         }
       ]
     }
   ],
-  "catalogue_checksum": "7a23e462fc403d4de98c998cb0d9a080c2db9a6fa53011198edc361870eb3cb6",
+  "catalogue_checksum": "2f21b169a3eb14d17430ce4db43c4b48b0517b560670eef4565493e4319983ad",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",
@@ -34382,6 +34396,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 01: RED DAWN RISING - Mission Complete - Reward 219",
+      "id": 81173292,
+      "mission": "AREDDAWN",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 02: EAGLE FLY FREE - Objective 1 - Reward 1",
       "id": 81129562,
       "mission": "AEAGLESFLY",
@@ -36328,6 +36349,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 02: EAGLE FLY FREE - Mission Complete - Reward 219",
+      "id": 81173293,
+      "mission": "AEAGLESFLY",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 03: ROAD TRIPPIN' - Objective 1 - Reward 1",
       "id": 81129652,
       "mission": "AROADTRIP",
@@ -38062,6 +38090,13 @@
       "mission": "AROADTRIP",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied 03: ROAD TRIPPIN' - Mission Complete - Reward 219",
+      "id": 81173294,
+      "mission": "AROADTRIP",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied 04: HEAVEN AND HELL - Objective 1 - Reward 1",
@@ -40430,6 +40465,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 04: HEAVEN AND HELL - Mission Complete - Reward 219",
+      "id": 81173295,
+      "mission": "AHEAVENHELL",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 05: BAD APPLE - Objective 1 - Reward 1",
       "id": 81129862,
       "mission": "ABADAPPLE",
@@ -42376,6 +42418,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 05: BAD APPLE - Mission Complete - Reward 219",
+      "id": 81173296,
+      "mission": "ABADAPPLE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 06: BEAUTIFUL MIND - Objective 1 - Reward 1",
       "id": 81129952,
       "mission": "ABMIND",
@@ -44320,6 +44369,13 @@
       "mission": "ABMIND",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied 06: BEAUTIFUL MIND - Mission Complete - Reward 219",
+      "id": 81173297,
+      "mission": "ABMIND",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied 07: HAMMER TO FALL - Objective 1 - Reward 1",
@@ -46688,6 +46744,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 07: HAMMER TO FALL - Mission Complete - Reward 219",
+      "id": 81173298,
+      "mission": "AHAMMERFALL",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 08: WRONG SIDE - Objective 1 - Reward 1",
       "id": 81130192,
       "mission": "AWRONGSIDE",
@@ -48632,6 +48695,13 @@
       "mission": "AWRONGSIDE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied 08: WRONG SIDE - Mission Complete - Reward 219",
+      "id": 81173299,
+      "mission": "AWRONGSIDE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied 09: ZERO SIGNAL - Objective 1 - Reward 1",
@@ -51000,6 +51070,13 @@
       "slot": 218
     },
     {
+      "name": "Allied 09: ZERO SIGNAL - Mission Complete - Reward 219",
+      "id": 81173300,
+      "mission": "AZEROSIGNAL",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied 10: THE GARDENER - Objective 1 - Reward 1",
       "id": 81130432,
       "mission": "AGARDENER",
@@ -52944,6 +53021,13 @@
       "mission": "AGARDENER",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied 10: THE GARDENER - Mission Complete - Reward 219",
+      "id": 81173301,
+      "mission": "AGARDENER",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied 11: PANIC CYCLE - Objective 1 - Reward 1",
@@ -56782,6 +56866,13 @@
       "slot": 458
     },
     {
+      "name": "Allied 11: PANIC CYCLE - Mission Complete - Reward 459",
+      "id": 81173302,
+      "mission": "APANIC",
+      "check": "victory",
+      "slot": 459
+    },
+    {
       "name": "Allied 12: SUNLIGHT (Finale) - Objective 1 - Reward 1",
       "id": 81130882,
       "mission": "ASUNLIGHT",
@@ -59988,6 +60079,13 @@
       "slot": 398
     },
     {
+      "name": "Allied 12: SUNLIGHT (Finale) - Mission Complete - Reward 399",
+      "id": 81173303,
+      "mission": "ASUNLIGHT",
+      "check": "victory",
+      "slot": 399
+    },
+    {
       "name": "Allied 13: THE MERMAID - Objective 1 - Reward 1",
       "id": 81131152,
       "mission": "ASIREN",
@@ -62984,6 +63082,13 @@
       "slot": 338
     },
     {
+      "name": "Allied 13: THE MERMAID - Mission Complete - Reward 339",
+      "id": 81173304,
+      "mission": "ASIREN",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Allied 14: PUPPET MASTER - Objective 1 - Reward 1",
       "id": 81131392,
       "mission": "APUPPET",
@@ -65560,6 +65665,13 @@
       "slot": 308
     },
     {
+      "name": "Allied 14: PUPPET MASTER - Mission Complete - Reward 309",
+      "id": 81173305,
+      "mission": "APUPPET",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Allied 15: STONE COLD CRAZY - Objective 1 - Reward 1",
       "id": 81131572,
       "mission": "ASTONE",
@@ -67714,6 +67826,13 @@
       "mission": "ASTONE",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Allied 15: STONE COLD CRAZY - Mission Complete - Reward 279",
+      "id": 81173306,
+      "mission": "ASTONE",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Allied 16: GHOST HUNT - Objective 1 - Reward 1",
@@ -70712,6 +70831,13 @@
       "slot": 338
     },
     {
+      "name": "Allied 16: GHOST HUNT - Mission Complete - Reward 339",
+      "id": 81173307,
+      "mission": "AGHOST",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Allied 17: BOTTLENECK - Objective 1 - Reward 1",
       "id": 81131932,
       "mission": "ABOTTLE",
@@ -73706,6 +73832,13 @@
       "mission": "ABOTTLE",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Allied 17: BOTTLENECK - Mission Complete - Reward 339",
+      "id": 81173308,
+      "mission": "ABOTTLE",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Allied 18: HYSTERIA - Objective 1 - Reward 1",
@@ -76704,6 +76837,13 @@
       "slot": 338
     },
     {
+      "name": "Allied 18: HYSTERIA - Mission Complete - Reward 339",
+      "id": 81173309,
+      "mission": "AHYST",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Allied 19: STORMBRINGER - Objective 1 - Reward 1",
       "id": 81132412,
       "mission": "ASTORM",
@@ -79278,6 +79418,13 @@
       "mission": "ASTORM",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Allied 19: STORMBRINGER - Mission Complete - Reward 309",
+      "id": 81173310,
+      "mission": "ASTORM",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Allied 20: PARANOIA - Objective 1 - Reward 1",
@@ -82274,6 +82421,13 @@
       "mission": "APARA",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Allied 20: PARANOIA - Mission Complete - Reward 339",
+      "id": 81173311,
+      "mission": "APARA",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Allied 21: RELENTLESS - Objective 1 - Reward 1",
@@ -86112,6 +86266,13 @@
       "slot": 398
     },
     {
+      "name": "Allied 21: RELENTLESS - Mission Complete - Reward 399",
+      "id": 81173312,
+      "mission": "ARELE",
+      "check": "victory",
+      "slot": 399
+    },
+    {
       "name": "Allied 22: INSOMNIA - Objective 1 - Reward 1",
       "id": 81133192,
       "mission": "AINSOMNIA",
@@ -89108,6 +89269,13 @@
       "slot": 338
     },
     {
+      "name": "Allied 22: INSOMNIA - Mission Complete - Reward 339",
+      "id": 81173313,
+      "mission": "AINSOMNIA",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Allied 23: WITHERSHINS - Objective 1 - Reward 1",
       "id": 81133432,
       "mission": "AWITHER",
@@ -91682,6 +91850,13 @@
       "mission": "AWITHER",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Allied 23: WITHERSHINS - Mission Complete - Reward 339",
+      "id": 81173314,
+      "mission": "AWITHER",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Allied 24: HAMARTIA (Finale) - Objective 1 - Reward 1",
@@ -94260,6 +94435,13 @@
       "slot": 338
     },
     {
+      "name": "Allied 24: HAMARTIA (Finale) - Mission Complete - Reward 339",
+      "id": 81173315,
+      "mission": "AHAMARTIA",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Soviet 01: BLEED RED - Objective 1 - Reward 1",
       "id": 81133792,
       "mission": "SBLEED",
@@ -96416,6 +96598,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet 01: BLEED RED - Mission Complete - Reward 219",
+      "id": 81173316,
+      "mission": "SBLEED",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet 02: GOLDEN GATE - Objective 1 - Reward 1",
       "id": 81133912,
       "mission": "SGGATE",
@@ -98570,6 +98759,13 @@
       "mission": "SGGATE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet 02: GOLDEN GATE - Mission Complete - Reward 219",
+      "id": 81173317,
+      "mission": "SGGATE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet 03: HAPPY BIRTHDAY - Objective 1 - Reward 1",
@@ -101568,6 +101764,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet 03: HAPPY BIRTHDAY - Mission Complete - Reward 219",
+      "id": 81173318,
+      "mission": "SHBD",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet 04: SIDE EFFECT - Objective 1 - Reward 1",
       "id": 81134272,
       "mission": "SSIDE",
@@ -103302,6 +103505,13 @@
       "mission": "SSIDE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet 04: SIDE EFFECT - Mission Complete - Reward 219",
+      "id": 81173319,
+      "mission": "SSIDE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet 05: PEACE TREATY - Objective 1 - Reward 1",
@@ -105460,6 +105670,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet 05: PEACE TREATY - Mission Complete - Reward 219",
+      "id": 81173320,
+      "mission": "SPEACE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet 06: RECHARGER - Objective 1 - Reward 1",
       "id": 81134452,
       "mission": "SRECH",
@@ -107616,6 +107833,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet 06: RECHARGER - Mission Complete - Reward 219",
+      "id": 81173321,
+      "mission": "SRECH",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet 07: IDLE GOSSIP - Objective 1 - Reward 1",
       "id": 81134572,
       "mission": "SIDLE",
@@ -109560,6 +109784,13 @@
       "mission": "SIDLE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet 07: IDLE GOSSIP - Mission Complete - Reward 219",
+      "id": 81173322,
+      "mission": "SIDLE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet 08: DEATH FROM ABOVE - Objective 1 - Reward 1",
@@ -111718,6 +111949,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet 08: DEATH FROM ABOVE - Mission Complete - Reward 219",
+      "id": 81173323,
+      "mission": "SDEATH",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet 09: ROAD TO NOWHERE - Objective 1 - Reward 1",
       "id": 81134782,
       "mission": "SROAD",
@@ -113452,6 +113690,13 @@
       "mission": "SROAD",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet 09: ROAD TO NOWHERE - Mission Complete - Reward 219",
+      "id": 81173324,
+      "mission": "SROAD",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet 10: THE LUNATIC - Objective 1 - Reward 1",
@@ -115608,6 +115853,13 @@
       "mission": "SOPEN",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet 10: THE LUNATIC - Mission Complete - Reward 219",
+      "id": 81173325,
+      "mission": "SOPEN",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet 11: UNSHAKEABLE - Objective 1 - Reward 1",
@@ -119446,6 +119698,13 @@
       "slot": 458
     },
     {
+      "name": "Soviet 11: UNSHAKEABLE - Mission Complete - Reward 459",
+      "id": 81173326,
+      "mission": "SMACHINE",
+      "check": "victory",
+      "slot": 459
+    },
+    {
       "name": "Soviet 12: DRAGONSTORM (Finale) - Objective 1 - Reward 1",
       "id": 81135322,
       "mission": "SDRAGON",
@@ -122022,6 +122281,13 @@
       "slot": 338
     },
     {
+      "name": "Soviet 12: DRAGONSTORM (Finale) - Mission Complete - Reward 339",
+      "id": 81173327,
+      "mission": "SDRAGON",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Soviet 13: THE RAVEN - Objective 1 - Reward 1",
       "id": 81135502,
       "mission": "SRAVEN",
@@ -124178,6 +124444,13 @@
       "slot": 278
     },
     {
+      "name": "Soviet 13: THE RAVEN - Mission Complete - Reward 279",
+      "id": 81173328,
+      "mission": "SRAVEN",
+      "check": "victory",
+      "slot": 279
+    },
+    {
       "name": "Soviet 14: AWAKE AND ALIVE - Objective 1 - Reward 1",
       "id": 81135622,
       "mission": "SAWAKE",
@@ -126332,6 +126605,13 @@
       "mission": "SAWAKE",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Soviet 14: AWAKE AND ALIVE - Mission Complete - Reward 279",
+      "id": 81173329,
+      "mission": "SAWAKE",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Soviet 15: EXIST TO EXIT - Objective 1 - Reward 1",
@@ -128910,6 +129190,13 @@
       "slot": 308
     },
     {
+      "name": "Soviet 15: EXIST TO EXIT - Mission Complete - Reward 309",
+      "id": 81173330,
+      "mission": "SEXIST",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Soviet 16: FIREWALKING - Objective 1 - Reward 1",
       "id": 81135922,
       "mission": "SFIRE",
@@ -131486,6 +131773,13 @@
       "slot": 308
     },
     {
+      "name": "Soviet 16: FIREWALKING - Mission Complete - Reward 309",
+      "id": 81173331,
+      "mission": "SFIRE",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Soviet 17: JUGGERNAUT - Objective 1 - Reward 1",
       "id": 81136102,
       "mission": "SJUGGER",
@@ -134060,6 +134354,13 @@
       "mission": "SJUGGER",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Soviet 17: JUGGERNAUT - Mission Complete - Reward 309",
+      "id": 81173332,
+      "mission": "SJUGGER",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Soviet 18: HEARTWORK - Objective 1 - Reward 1",
@@ -137056,6 +137357,13 @@
       "mission": "SHEART",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Soviet 18: HEARTWORK - Mission Complete - Reward 339",
+      "id": 81173333,
+      "mission": "SHEART",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Soviet 19: POWER HUNGER - Objective 1 - Reward 1",
@@ -140474,6 +140782,13 @@
       "slot": 368
     },
     {
+      "name": "Soviet 19: POWER HUNGER - Mission Complete - Reward 369",
+      "id": 81173334,
+      "mission": "SRED",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Soviet 20: THREAD OF DREAD - Objective 1 - Reward 1",
       "id": 81136822,
       "mission": "STHREAD",
@@ -143888,6 +144203,13 @@
       "mission": "STHREAD",
       "check": "victory",
       "slot": 368
+    },
+    {
+      "name": "Soviet 20: THREAD OF DREAD - Mission Complete - Reward 369",
+      "id": 81173335,
+      "mission": "STHREAD",
+      "check": "victory",
+      "slot": 369
     },
     {
       "name": "Soviet 21: MELTDOWN - Objective 1 - Reward 1",
@@ -147306,6 +147628,13 @@
       "slot": 368
     },
     {
+      "name": "Soviet 21: MELTDOWN - Mission Complete - Reward 369",
+      "id": 81173336,
+      "mission": "SMELT",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Soviet 22: EARTHRISE - Objective 1 - Reward 1",
       "id": 81137422,
       "mission": "SEARTH",
@@ -149880,6 +150209,13 @@
       "mission": "SEARTH",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Soviet 22: EARTHRISE - Mission Complete - Reward 309",
+      "id": 81173337,
+      "mission": "SEARTH",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Soviet 23: FATAL IMPACT - Objective 1 - Reward 1",
@@ -152458,6 +152794,13 @@
       "slot": 338
     },
     {
+      "name": "Soviet 23: FATAL IMPACT - Mission Complete - Reward 339",
+      "id": 81173338,
+      "mission": "SFATAL",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Soviet 24: DEATH'S HAND (Finale) - Objective 1 - Reward 1",
       "id": 81137782,
       "mission": "SHAND",
@@ -155034,6 +155377,13 @@
       "slot": 338
     },
     {
+      "name": "Soviet 24: DEATH'S HAND (Finale) - Mission Complete - Reward 339",
+      "id": 81173339,
+      "mission": "SHAND",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Epsilon 01: PEACEKEEPER - Objective 1 - Reward 1",
       "id": 81137962,
       "mission": "EPEACE",
@@ -157190,6 +157540,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon 01: PEACEKEEPER - Mission Complete - Reward 219",
+      "id": 81173340,
+      "mission": "EPEACE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon 02: ACCELERANT - Objective 1 - Reward 1",
       "id": 81138082,
       "mission": "EACCEL",
@@ -159344,6 +159701,13 @@
       "mission": "EACCEL",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon 02: ACCELERANT - Mission Complete - Reward 219",
+      "id": 81173341,
+      "mission": "EACCEL",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon 03: SCRAPYARD - Objective 1 - Reward 1",
@@ -161712,6 +162076,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon 03: SCRAPYARD - Mission Complete - Reward 219",
+      "id": 81173342,
+      "mission": "ESCRAP",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon 04: SHIPWRECKED - Objective 1 - Reward 1",
       "id": 81138352,
       "mission": "ESHIP",
@@ -163866,6 +164237,13 @@
       "mission": "ESHIP",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon 04: SHIPWRECKED - Mission Complete - Reward 219",
+      "id": 81173343,
+      "mission": "ESHIP",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon 05: HUMAN SHIELD - Objective 1 - Reward 1",
@@ -166024,6 +166402,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon 05: HUMAN SHIELD - Mission Complete - Reward 219",
+      "id": 81173344,
+      "mission": "EHUMAN",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon 06: LANDLOCKED - Objective 1 - Reward 1",
       "id": 81138592,
       "mission": "ELAND",
@@ -167758,6 +168143,13 @@
       "mission": "ELAND",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon 06: LANDLOCKED - Mission Complete - Reward 219",
+      "id": 81173345,
+      "mission": "ELAND",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon 07: THINK DIFFERENT - Objective 1 - Reward 1",
@@ -169704,6 +170096,13 @@
       "mission": "ETHINK",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon 07: THINK DIFFERENT - Mission Complete - Reward 219",
+      "id": 81173346,
+      "mission": "ETHINK",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon 08: WARRANTY VOID - Objective 1 - Reward 1",
@@ -172072,6 +172471,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon 08: WARRANTY VOID - Mission Complete - Reward 219",
+      "id": 81173347,
+      "mission": "ELORD",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon 09: KILLING FIELDS - Objective 1 - Reward 1",
       "id": 81138892,
       "mission": "EFIELDS",
@@ -174228,6 +174634,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon 09: KILLING FIELDS - Mission Complete - Reward 219",
+      "id": 81173348,
+      "mission": "EFIELDS",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon 10: FOCUS SHIFT - Objective 1 - Reward 1",
       "id": 81139012,
       "mission": "EFOCUS",
@@ -175962,6 +176375,13 @@
       "mission": "EFOCUS",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon 10: FOCUS SHIFT - Mission Complete - Reward 219",
+      "id": 81173349,
+      "mission": "EFOCUS",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon 11: SINGULARITY - Objective 1 - Reward 1",
@@ -179170,6 +179590,13 @@
       "slot": 398
     },
     {
+      "name": "Epsilon 11: SINGULARITY - Mission Complete - Reward 399",
+      "id": 81173350,
+      "mission": "ESING",
+      "check": "victory",
+      "slot": 399
+    },
+    {
       "name": "Epsilon 12: MOONLIGHT (Finale) - Objective 1 - Reward 1",
       "id": 81139342,
       "mission": "EMOON",
@@ -182376,6 +182803,13 @@
       "slot": 398
     },
     {
+      "name": "Epsilon 12: MOONLIGHT (Finale) - Mission Complete - Reward 399",
+      "id": 81173351,
+      "mission": "EMOON",
+      "check": "victory",
+      "slot": 399
+    },
+    {
       "name": "Epsilon 13: THE CONQUEROR - Objective 1 - Reward 1",
       "id": 81139612,
       "mission": "EDILEMMA",
@@ -185372,6 +185806,13 @@
       "slot": 338
     },
     {
+      "name": "Epsilon 13: THE CONQUEROR - Mission Complete - Reward 339",
+      "id": 81173352,
+      "mission": "EDILEMMA",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Epsilon 14: HUEHUECOYOTL - Objective 1 - Reward 1",
       "id": 81139852,
       "mission": "EHUEHUE",
@@ -188366,6 +188807,13 @@
       "mission": "EHUEHUE",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Epsilon 14: HUEHUECOYOTL - Mission Complete - Reward 339",
+      "id": 81173353,
+      "mission": "EHUEHUE",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Epsilon 15: MEMORY DEALER - Objective 1 - Reward 1",
@@ -191784,6 +192232,13 @@
       "slot": 368
     },
     {
+      "name": "Epsilon 15: MEMORY DEALER - Mission Complete - Reward 369",
+      "id": 81173354,
+      "mission": "EBREED",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Epsilon 16: DIVERGENCE - Objective 1 - Reward 1",
       "id": 81140392,
       "mission": "EDIVER",
@@ -195200,6 +195655,13 @@
       "slot": 368
     },
     {
+      "name": "Epsilon 16: DIVERGENCE - Mission Complete - Reward 369",
+      "id": 81173355,
+      "mission": "EDIVER",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Epsilon 17: GODSEND - Objective 1 - Reward 1",
       "id": 81140692,
       "mission": "EGODSEND",
@@ -197776,6 +198238,13 @@
       "slot": 308
     },
     {
+      "name": "Epsilon 17: GODSEND - Mission Complete - Reward 309",
+      "id": 81173356,
+      "mission": "EGODSEND",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Epsilon 18: LIZARD BRAIN - Objective 1 - Reward 1",
       "id": 81140872,
       "mission": "ELIZARD",
@@ -199930,6 +200399,13 @@
       "mission": "ELIZARD",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Epsilon 18: LIZARD BRAIN - Mission Complete - Reward 279",
+      "id": 81173357,
+      "mission": "ELIZARD",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Epsilon 19: DANCE OF BLOOD - Objective 1 - Reward 1",
@@ -202928,6 +203404,13 @@
       "slot": 338
     },
     {
+      "name": "Epsilon 19: DANCE OF BLOOD - Mission Complete - Reward 339",
+      "id": 81173358,
+      "mission": "EBLOOD",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Epsilon 20: MACHINEHEAD - Objective 1 - Reward 1",
       "id": 81141232,
       "mission": "EHEAD",
@@ -205504,6 +205987,13 @@
       "slot": 308
     },
     {
+      "name": "Epsilon 20: MACHINEHEAD - Mission Complete - Reward 309",
+      "id": 81173359,
+      "mission": "EHEAD",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Epsilon 21: OBSIDIAN SANDS - Objective 1 - Reward 1",
       "id": 81141412,
       "mission": "ESANDS",
@@ -207658,6 +208148,13 @@
       "mission": "ESANDS",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Epsilon 21: OBSIDIAN SANDS - Mission Complete - Reward 279",
+      "id": 81173360,
+      "mission": "ESANDS",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Epsilon 22: UNTHINKABLE - Objective 1 - Reward 1",
@@ -210236,6 +210733,13 @@
       "slot": 308
     },
     {
+      "name": "Epsilon 22: UNTHINKABLE - Mission Complete - Reward 309",
+      "id": 81173361,
+      "mission": "ETOTAL",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Epsilon 23: REALITY CHECK - Objective 1 - Reward 1",
       "id": 81141712,
       "mission": "EREALITY",
@@ -212810,6 +213314,13 @@
       "mission": "EREALITY",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Epsilon 23: REALITY CHECK - Mission Complete - Reward 339",
+      "id": 81173362,
+      "mission": "EREALITY",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Epsilon 24: BABEL (Finale) - Objective 1 - Reward 1",
@@ -215388,6 +215899,13 @@
       "slot": 338
     },
     {
+      "name": "Epsilon 24: BABEL (Finale) - Mission Complete - Reward 339",
+      "id": 81173363,
+      "mission": "EMIGDAL",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Foehn 01: NOBODY HOME - Objective 1 - Reward 1",
       "id": 81142072,
       "mission": "FNOBODY",
@@ -217962,6 +218480,13 @@
       "mission": "FNOBODY",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Foehn 01: NOBODY HOME - Mission Complete - Reward 309",
+      "id": 81173364,
+      "mission": "FNOBODY",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Foehn 02: KILL THE MESSENGER - Objective 1 - Reward 1",
@@ -221380,6 +221905,13 @@
       "slot": 368
     },
     {
+      "name": "Foehn 02: KILL THE MESSENGER - Mission Complete - Reward 369",
+      "id": 81173365,
+      "mission": "FKILL",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Foehn 03: TAINTED EMPIRE - Objective 1 - Reward 1",
       "id": 81142552,
       "mission": "FEMPIRE",
@@ -223954,6 +224486,13 @@
       "mission": "FEMPIRE",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Foehn 03: TAINTED EMPIRE - Mission Complete - Reward 309",
+      "id": 81173366,
+      "mission": "FEMPIRE",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Foehn 04: THE GREAT BEYOND - Objective 1 - Reward 1",
@@ -226952,6 +227491,13 @@
       "slot": 338
     },
     {
+      "name": "Foehn 04: THE GREAT BEYOND - Mission Complete - Reward 339",
+      "id": 81173367,
+      "mission": "FBEYOND",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Foehn 05: VANISHING POINT - Objective 1 - Reward 1",
       "id": 81142972,
       "mission": "FPOINT",
@@ -229528,6 +230074,13 @@
       "slot": 338
     },
     {
+      "name": "Foehn 05: VANISHING POINT - Mission Complete - Reward 339",
+      "id": 81173368,
+      "mission": "FPOINT",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Foehn 06: THE REMNANT (Finale) - Objective 1 - Reward 1",
       "id": 81143152,
       "mission": "FREMNANT",
@@ -232102,6 +232655,13 @@
       "mission": "FREMNANT",
       "check": "victory",
       "slot": 338
+    },
+    {
+      "name": "Foehn 06: THE REMNANT (Finale) - Mission Complete - Reward 339",
+      "id": 81173369,
+      "mission": "FREMNANT",
+      "check": "victory",
+      "slot": 339
     },
     {
       "name": "Allied Op: DIGITAL DEMON - Objective 1 - Reward 1",
@@ -235520,6 +236080,13 @@
       "slot": 368
     },
     {
+      "name": "Allied Op: DIGITAL DEMON - Mission Complete - Reward 369",
+      "id": 81173370,
+      "mission": "ADEMON",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Allied Op: OBSTINATE - Objective 1 - Reward 1",
       "id": 81143632,
       "mission": "AOBST",
@@ -238936,6 +239503,13 @@
       "slot": 368
     },
     {
+      "name": "Allied Op: OBSTINATE - Mission Complete - Reward 369",
+      "id": 81173371,
+      "mission": "AOBST",
+      "check": "victory",
+      "slot": 369
+    },
+    {
       "name": "Allied Op: CONVERGENCE - Objective 1 - Reward 1",
       "id": 81143932,
       "mission": "ACONV",
@@ -241512,6 +242086,13 @@
       "slot": 308
     },
     {
+      "name": "Allied Op: CONVERGENCE - Mission Complete - Reward 309",
+      "id": 81173372,
+      "mission": "ACONV",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Allied Op: FULLMETAL - Objective 1 - Reward 1",
       "id": 81144112,
       "mission": "AFULL",
@@ -243666,6 +244247,13 @@
       "mission": "AFULL",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Allied Op: FULLMETAL - Mission Complete - Reward 279",
+      "id": 81173373,
+      "mission": "AFULL",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Allied Op: GRIDLOCK - Objective 1 - Reward 1",
@@ -246664,6 +247252,13 @@
       "slot": 338
     },
     {
+      "name": "Allied Op: GRIDLOCK - Mission Complete - Reward 339",
+      "id": 81173374,
+      "mission": "AGRID",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Allied Op: PARASOMNIA - Objective 1 - Reward 1",
       "id": 81144472,
       "mission": "ASOMNIA",
@@ -248818,6 +249413,13 @@
       "mission": "ASOMNIA",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Allied Op: PARASOMNIA - Mission Complete - Reward 279",
+      "id": 81173375,
+      "mission": "ASOMNIA",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Soviet Op: ARCHETYPE - Objective 1 - Reward 1",
@@ -251394,6 +251996,13 @@
       "mission": "SARCHE",
       "check": "victory",
       "slot": 308
+    },
+    {
+      "name": "Soviet Op: ARCHETYPE - Mission Complete - Reward 309",
+      "id": 81173376,
+      "mission": "SARCHE",
+      "check": "victory",
+      "slot": 309
     },
     {
       "name": "Soviet Op: ECLIPSE - Objective 1 - Reward 1",
@@ -254392,6 +255001,13 @@
       "slot": 338
     },
     {
+      "name": "Soviet Op: ECLIPSE - Mission Complete - Reward 339",
+      "id": 81173377,
+      "mission": "SECLIPSE",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Soviet Op: TROPHY HUNTER - Objective 1 - Reward 1",
       "id": 81145012,
       "mission": "STROPH",
@@ -256968,6 +257584,13 @@
       "slot": 308
     },
     {
+      "name": "Soviet Op: TROPHY HUNTER - Mission Complete - Reward 309",
+      "id": 81173378,
+      "mission": "STROPH",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Soviet Op: NOISE SEVERE - Objective 1 - Reward 1",
       "id": 81145192,
       "mission": "SNOISE",
@@ -259122,6 +259745,13 @@
       "mission": "SNOISE",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Soviet Op: NOISE SEVERE - Mission Complete - Reward 279",
+      "id": 81173379,
+      "mission": "SNOISE",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Soviet Op: DAWNBREAKER - Objective 1 - Reward 1",
@@ -262538,6 +263168,13 @@
       "mission": "SDAWN",
       "check": "victory",
       "slot": 368
+    },
+    {
+      "name": "Soviet Op: DAWNBREAKER - Mission Complete - Reward 369",
+      "id": 81173380,
+      "mission": "SDAWN",
+      "check": "victory",
+      "slot": 369
     },
     {
       "name": "Soviet Op: BROTHERS IN ARMS - Objective 1 - Reward 1",
@@ -266376,6 +267013,13 @@
       "slot": 398
     },
     {
+      "name": "Soviet Op: BROTHERS IN ARMS - Mission Complete - Reward 399",
+      "id": 81173381,
+      "mission": "SARMS",
+      "check": "victory",
+      "slot": 399
+    },
+    {
       "name": "Epsilon Op: TACITURN - Objective 1 - Reward 1",
       "id": 81145972,
       "mission": "ETACI",
@@ -268530,6 +269174,13 @@
       "mission": "ETACI",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Epsilon Op: TACITURN - Mission Complete - Reward 279",
+      "id": 81173382,
+      "mission": "ETACI",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Epsilon Op: FALLEN ASHES - Objective 1 - Reward 1",
@@ -271108,6 +271759,13 @@
       "slot": 308
     },
     {
+      "name": "Epsilon Op: FALLEN ASHES - Mission Complete - Reward 309",
+      "id": 81173383,
+      "mission": "EASHES",
+      "check": "victory",
+      "slot": 309
+    },
+    {
       "name": "Epsilon Op: BLOOD RAGE - Objective 1 - Reward 1",
       "id": 81146272,
       "mission": "ERAGE",
@@ -273262,6 +273920,13 @@
       "mission": "ERAGE",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Epsilon Op: BLOOD RAGE - Mission Complete - Reward 279",
+      "id": 81173384,
+      "mission": "ERAGE",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Epsilon Op: SPLIT SECONDS - Objective 1 - Reward 1",
@@ -276260,6 +276925,13 @@
       "slot": 338
     },
     {
+      "name": "Epsilon Op: SPLIT SECONDS - Mission Complete - Reward 339",
+      "id": 81173385,
+      "mission": "ESPLIT",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Epsilon Op: NIGHTCRAWLER - Objective 1 - Reward 1",
       "id": 81146632,
       "mission": "ENIGHT",
@@ -279256,6 +279928,13 @@
       "slot": 338
     },
     {
+      "name": "Epsilon Op: NIGHTCRAWLER - Mission Complete - Reward 339",
+      "id": 81173386,
+      "mission": "ENIGHT",
+      "check": "victory",
+      "slot": 339
+    },
+    {
       "name": "Epsilon Op: SURVIVORS - Objective 1 - Reward 1",
       "id": 81146872,
       "mission": "ESURV",
@@ -281410,6 +282089,13 @@
       "mission": "ESURV",
       "check": "victory",
       "slot": 278
+    },
+    {
+      "name": "Epsilon Op: SURVIVORS - Mission Complete - Reward 279",
+      "id": 81173387,
+      "mission": "ESURV",
+      "check": "victory",
+      "slot": 279
     },
     {
       "name": "Foehn Op: TIME CAPSULE - Objective 1 - Reward 1",
@@ -283568,6 +284254,13 @@
       "slot": 278
     },
     {
+      "name": "Foehn Op: TIME CAPSULE - Mission Complete - Reward 279",
+      "id": 81173388,
+      "mission": "FCAPSULE",
+      "check": "victory",
+      "slot": 279
+    },
+    {
       "name": "Allied Op: Balance of Power - Mission Complete - Reward 1",
       "id": 81165444,
       "mission": "COOP_ABALANCE",
@@ -285092,6 +285785,13 @@
       "mission": "COOP_ABALANCE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Balance of Power - Mission Complete - Reward 219",
+      "id": 81173389,
+      "mission": "COOP_ABALANCE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Blut Royale - Mission Complete - Reward 1",
@@ -286620,6 +287320,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Blut Royale - Mission Complete - Reward 219",
+      "id": 81173390,
+      "mission": "COOP_ABLUT",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied Op: Attack on Buggy - Mission Complete - Reward 1",
       "id": 81165880,
       "mission": "COOP_ABUGGY",
@@ -288144,6 +288851,13 @@
       "mission": "COOP_ABUGGY",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Attack on Buggy - Mission Complete - Reward 219",
+      "id": 81173391,
+      "mission": "COOP_ABUGGY",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Downfall - Mission Complete - Reward 1",
@@ -289672,6 +290386,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Downfall - Mission Complete - Reward 219",
+      "id": 81173392,
+      "mission": "COOP_ADOWNFALL",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied Op: Enforcers - Mission Complete - Reward 1",
       "id": 81166316,
       "mission": "COOP_AENFO",
@@ -291196,6 +291917,13 @@
       "mission": "COOP_AENFO",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Enforcers - Mission Complete - Reward 219",
+      "id": 81173393,
+      "mission": "COOP_AENFO",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Hypothermia - Mission Complete - Reward 1",
@@ -292724,6 +293452,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Hypothermia - Mission Complete - Reward 219",
+      "id": 81173394,
+      "mission": "COOP_AHYPO",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied Op: Low Rider - Mission Complete - Reward 1",
       "id": 81166752,
       "mission": "COOP_ALA",
@@ -294248,6 +294983,13 @@
       "mission": "COOP_ALA",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Low Rider - Mission Complete - Reward 219",
+      "id": 81173395,
+      "mission": "COOP_ALA",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Mad Monster - Mission Complete - Reward 1",
@@ -295776,6 +296518,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Mad Monster - Mission Complete - Reward 219",
+      "id": 81173396,
+      "mission": "COOP_AMONSTER",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied Op: Panzer Ace - Mission Complete - Reward 1",
       "id": 81167188,
       "mission": "COOP_APANZER",
@@ -297300,6 +298049,13 @@
       "mission": "COOP_APANZER",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Panzer Ace - Mission Complete - Reward 219",
+      "id": 81173397,
+      "mission": "COOP_APANZER",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Impersonal War - Mission Complete - Reward 1",
@@ -298828,6 +299584,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Impersonal War - Mission Complete - Reward 219",
+      "id": 81173398,
+      "mission": "COOP_APWAR",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Allied Op: Good Old Times - Mission Complete - Reward 1",
       "id": 81167624,
       "mission": "COOP_ASARIN",
@@ -300352,6 +301115,13 @@
       "mission": "COOP_ASARIN",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Allied Op: Good Old Times - Mission Complete - Reward 219",
+      "id": 81173399,
+      "mission": "COOP_ASARIN",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Allied Op: Technologic - Mission Complete - Reward 1",
@@ -301880,6 +302650,13 @@
       "slot": 218
     },
     {
+      "name": "Allied Op: Technologic - Mission Complete - Reward 219",
+      "id": 81173400,
+      "mission": "COOP_ATECH",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: The Cardinal - Mission Complete - Reward 1",
       "id": 81168060,
       "mission": "COOP_ECARD",
@@ -303404,6 +304181,13 @@
       "mission": "COOP_ECARD",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: The Cardinal - Mission Complete - Reward 219",
+      "id": 81173401,
+      "mission": "COOP_ECARD",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Metaphor - Mission Complete - Reward 1",
@@ -304932,6 +305716,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Metaphor - Mission Complete - Reward 219",
+      "id": 81173402,
+      "mission": "COOP_ECOR",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: Backbitten - Mission Complete - Reward 1",
       "id": 81168496,
       "mission": "COOP_EJEAL",
@@ -306456,6 +307247,13 @@
       "mission": "COOP_EJEAL",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: Backbitten - Mission Complete - Reward 219",
+      "id": 81173403,
+      "mission": "COOP_EJEAL",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Television Lies - Mission Complete - Reward 1",
@@ -307984,6 +308782,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Television Lies - Mission Complete - Reward 219",
+      "id": 81173404,
+      "mission": "COOP_ELIES",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: Mind Over Matter - Mission Complete - Reward 1",
       "id": 81168932,
       "mission": "COOP_EMIND",
@@ -309508,6 +310313,13 @@
       "mission": "COOP_EMIND",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: Mind Over Matter - Mission Complete - Reward 219",
+      "id": 81173405,
+      "mission": "COOP_EMIND",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Monochromatic - Mission Complete - Reward 1",
@@ -311036,6 +311848,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Monochromatic - Mission Complete - Reward 219",
+      "id": 81173406,
+      "mission": "COOP_EMONO",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: Neuromancers - Mission Complete - Reward 1",
       "id": 81169368,
       "mission": "COOP_ENECRO",
@@ -312560,6 +313379,13 @@
       "mission": "COOP_ENECRO",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: Neuromancers - Mission Complete - Reward 219",
+      "id": 81173407,
+      "mission": "COOP_ENECRO",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Brain Reset - Mission Complete - Reward 1",
@@ -314088,6 +314914,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Brain Reset - Mission Complete - Reward 219",
+      "id": 81173408,
+      "mission": "COOP_EPAIN",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: Rainmaker - Mission Complete - Reward 1",
       "id": 81169804,
       "mission": "COOP_ERAIN",
@@ -315612,6 +316445,13 @@
       "mission": "COOP_ERAIN",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: Rainmaker - Mission Complete - Reward 219",
+      "id": 81173409,
+      "mission": "COOP_ERAIN",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Retaliation - Mission Complete - Reward 1",
@@ -317140,6 +317980,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Retaliation - Mission Complete - Reward 219",
+      "id": 81173410,
+      "mission": "COOP_ERETAL",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Epsilon Op: Rush Tactics - Mission Complete - Reward 1",
       "id": 81170240,
       "mission": "COOP_ERUSH",
@@ -318664,6 +319511,13 @@
       "mission": "COOP_ERUSH",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Epsilon Op: Rush Tactics - Mission Complete - Reward 219",
+      "id": 81173411,
+      "mission": "COOP_ERUSH",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Epsilon Op: Research Stroke - Mission Complete - Reward 1",
@@ -320192,6 +321046,13 @@
       "slot": 218
     },
     {
+      "name": "Epsilon Op: Research Stroke - Mission Complete - Reward 219",
+      "id": 81173412,
+      "mission": "COOP_ESTROKE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Burned Alive - Mission Complete - Reward 1",
       "id": 81170676,
       "mission": "COOP_SBURNED",
@@ -321716,6 +322577,13 @@
       "mission": "COOP_SBURNED",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Burned Alive - Mission Complete - Reward 219",
+      "id": 81173413,
+      "mission": "COOP_SBURNED",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet Op: Combustion - Mission Complete - Reward 1",
@@ -323244,6 +324112,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Combustion - Mission Complete - Reward 219",
+      "id": 81173414,
+      "mission": "COOP_SCOMB",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Cyberanatomy - Mission Complete - Reward 1",
       "id": 81171112,
       "mission": "COOP_SCYBER",
@@ -324768,6 +325643,13 @@
       "mission": "COOP_SCYBER",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Cyberanatomy - Mission Complete - Reward 219",
+      "id": 81173415,
+      "mission": "COOP_SCYBER",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet Op: Ego Ergo Hax - Mission Complete - Reward 1",
@@ -326296,6 +327178,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Ego Ergo Hax - Mission Complete - Reward 219",
+      "id": 81173416,
+      "mission": "COOP_SEGO",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Lights Out - Mission Complete - Reward 1",
       "id": 81171548,
       "mission": "COOP_SLIGHTS",
@@ -327820,6 +328709,13 @@
       "mission": "COOP_SLIGHTS",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Lights Out - Mission Complete - Reward 219",
+      "id": 81173417,
+      "mission": "COOP_SLIGHTS",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet Op: Needlehead - Mission Complete - Reward 1",
@@ -329348,6 +330244,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Needlehead - Mission Complete - Reward 219",
+      "id": 81173418,
+      "mission": "COOP_SNEEDLE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Ravages of War - Mission Complete - Reward 1",
       "id": 81171984,
       "mission": "COOP_SRAVAGE",
@@ -330872,6 +331775,13 @@
       "mission": "COOP_SRAVAGE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Ravages of War - Mission Complete - Reward 219",
+      "id": 81173419,
+      "mission": "COOP_SRAVAGE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet Op: Repentance - Mission Complete - Reward 1",
@@ -332400,6 +333310,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Repentance - Mission Complete - Reward 219",
+      "id": 81173420,
+      "mission": "COOP_SREPEN",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Role Reversal - Mission Complete - Reward 1",
       "id": 81172420,
       "mission": "COOP_SROLE",
@@ -333924,6 +334841,13 @@
       "mission": "COOP_SROLE",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Role Reversal - Mission Complete - Reward 219",
+      "id": 81173421,
+      "mission": "COOP_SROLE",
+      "check": "victory",
+      "slot": 219
     },
     {
       "name": "Soviet Op: Money Source - Mission Complete - Reward 1",
@@ -335452,6 +336376,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Money Source - Mission Complete - Reward 219",
+      "id": 81173422,
+      "mission": "COOP_SSOURCE",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Thunder God - Mission Complete - Reward 1",
       "id": 81172856,
       "mission": "COOP_STHUNDER",
@@ -336978,6 +337909,13 @@
       "slot": 218
     },
     {
+      "name": "Soviet Op: Thunder God - Mission Complete - Reward 219",
+      "id": 81173423,
+      "mission": "COOP_STHUNDER",
+      "check": "victory",
+      "slot": 219
+    },
+    {
       "name": "Soviet Op: Intoxicated - Mission Complete - Reward 1",
       "id": 81173074,
       "mission": "COOP_STOXIC",
@@ -338502,6 +339440,13 @@
       "mission": "COOP_STOXIC",
       "check": "victory",
       "slot": 218
+    },
+    {
+      "name": "Soviet Op: Intoxicated - Mission Complete - Reward 219",
+      "id": 81173424,
+      "mission": "COOP_STOXIC",
+      "check": "victory",
+      "slot": 219
     }
   ],
   "local_victories": [

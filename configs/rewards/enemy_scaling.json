@@ -94,6 +94,15 @@
         "maximum_stacks": 5
       },
       {
+        "id": "powerhouse",
+        "name": "AI Enemy Powerhouses",
+        "type": "Heavy Reinforcements",
+        "category": "Enemy reinforcements",
+        "effect": "powerhouse",
+        "per_stack_percent": 1,
+        "maximum_stacks": 1
+      },
+      {
         "id": "ai_paratroopers",
         "name": "AI Paratroopers",
         "type": "Support Power",

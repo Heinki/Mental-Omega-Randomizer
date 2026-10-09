@@ -1296,6 +1296,9 @@ def _validate_enemy_scaling(sections, path):
                 )
             ):
                 _invalid(f'Invalid enemy AI power {effect_id!r}', path)
+        elif definition['effect'] == 'powerhouse':
+            if maximum != 1:
+                _invalid(f'Invalid enemy reinforcement reward {effect_id!r}', path)
         elif definition['effect'] == 'unit':
             _invalid(
                 f'Unit effects belong in tier_unit_buff_templates: '
