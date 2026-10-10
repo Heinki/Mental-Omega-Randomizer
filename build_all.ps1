@@ -12,15 +12,16 @@ try {
     $apworldDirectory = [IO.Path]::GetFullPath($APWorldOutputDirectory)
     $apworldPath = Join-Path $apworldDirectory "mental_omega.apworld"
 
-    & (Join-Path $PSScriptRoot "build_exe.ps1") -Output $launcherPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "Launcher build failed with exit code $LASTEXITCODE."
-    }
-
+    # Refresh shared mission snapshots before the launcher packages them.
     & (Join-Path $PSScriptRoot "Archipelago\build_apworld.ps1") `
         -OutputDirectory $apworldDirectory | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "APWorld build failed with exit code $LASTEXITCODE."
+    }
+
+    & (Join-Path $PSScriptRoot "build_exe.ps1") -Output $launcherPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Launcher build failed with exit code $LASTEXITCODE."
     }
 
     $versions = (& python -c (

@@ -2,7 +2,7 @@
 
 ## Required versions
 
-- Mental Omega Randomizer Launcher 1.41
+- Mental Omega Randomizer Launcher 1.42
 - Mental Omega 3.3.6 in a separate, unmodified installation
 - Archipelago 0.6.8
 - `mental_omega.apworld` from the same Randomizer release as the launcher
