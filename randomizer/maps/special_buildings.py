@@ -78,49 +78,80 @@ def validate_original_refinery_contract():
     return {'pairs': pairs, 'issues': issues}
 
 
-def ore_purifier_miner_dock_rules(lines, clone_handled):
-    """Allow every isolated ore miner to dock at isolated Ore Purifier."""
+def refinery_miner_dock_rules(lines, installed_sections):
+    """Give every registered ore miner the same native/clone refinery access.
+
+    Dock is an exact BuildingType list. Campaign placements, captured miners,
+    aid payloads and unloading-image types can remain native even when factory
+    production uses a player clone. Extend only their docking compatibility;
+    UnloadingClass is an image reference, not a live type conversion.
+    """
+    sections = {}
+    names = {}
+    type_ids = {'buildingtypes': set(), 'vehicletypes': set()}
+    for registry in (installed_sections or {}, all_section_value_maps(lines)):
+        for section, values in registry.items():
+            lowered = str(section).lower()
+            names[lowered] = str(section)
+            sections.setdefault(lowered, {}).update({
+                str(key).lower(): str(value) for key, value in values.items()
+            })
+            if lowered in type_ids:
+                type_ids[lowered].update(
+                    str(value).strip().lower() for value in values.values()
+                    if str(value).strip().lower() not in {'', 'none', '<none>'}
+                )
+
+    def registered(list_name):
+        return sorted(type_ids[list_name.lower()])
+
+    refinery_ids = [
+        names[section]
+        for section in registered('BuildingTypes')
+        if sections.get(section, {}).get('refinery', '').strip().lower() == 'yes'
+    ]
+    rules = {}
+    for section in registered('VehicleTypes'):
+        values = sections.get(section, {})
+        if values.get('harvester', '').strip().lower() != 'yes':
+            continue
+        # Preserve authored preference order and other valid dock kinds.
+        docks = []
+        seen = set()
+        for dock in comma_items(values.get('dock', '')) + refinery_ids:
+            lowered = dock.lower()
+            if lowered in seen or lowered in {'none', '<none>'}:
+                continue
+            seen.add(lowered)
+            docks.append(dock)
+        rules[names[section]] = {'Dock': ','.join(docks)}
+    return rules, {
+        'refinery_ids': tuple(refinery_ids),
+        'miner_ids': tuple(rules),
+        'issues': () if rules and refinery_ids else (
+            'no registered ore miners or refineries found',
+        ),
+    }
+
+
+def ore_purifier_miner_dock_rules(lines, clone_handled, installed_sections=None):
+    """Compatibility facade for the refinery docking domain self-check."""
     purifier_id = str(
         (clone_handled or {}).get(ORE_PURIFIER_SOURCE_ID, {}).get('clone_id')
         or ''
     ).strip()
-    report = {
-        'purifier_id': purifier_id,
-        'miner_ids': (),
-        'issues': (),
-    }
-    if not purifier_id:
-        return {}, report
-
-    sections = all_section_value_maps(lines)
-    rules = {}
-    miner_ids = []
-    for details in (clone_handled or {}).values():
-        clone_id = str((details or {}).get('clone_id') or '').strip()
-        if not clone_id or clone_id.upper() == purifier_id.upper():
-            continue
-        values = _section_values(sections, clone_id)
-        if values.get('harvester', '').strip().lower() != 'yes':
-            continue
-        docks = comma_items(values.get('dock', ''))
-        rules[clone_id] = {
-            'Dock': ','.join(unique_in_order(docks + [purifier_id])),
-        }
-        miner_ids.append(clone_id)
-
-    issues = () if miner_ids else ('no cloned Harvester=yes miners found',)
-    report.update({
-        'miner_ids': tuple(unique_in_order(miner_ids)),
-        'issues': issues,
-    })
+    rules, report = refinery_miner_dock_rules(lines, installed_sections)
+    report['purifier_id'] = purifier_id
     return rules, report
 
 
 def validate_ore_purifier_miner_docks():
     """Self-check static and runtime Ore Purifier docking identities."""
     from randomizer.rewards.roster import randomizer_unit_roster
+    from randomizer.ui.cameos import installed_rules_registry
 
     _paths, clone_ids, templates = randomizer_unit_roster()
+    _superweapons, installed_sections = installed_rules_registry(synchronous=True)
     purifier_id = clone_ids[ORE_PURIFIER_SOURCE_ID]
     miner_source_ids = sorted(
         source_id
@@ -133,7 +164,16 @@ def validate_ore_purifier_miner_docks():
         source_id: {'clone_id': clone_ids[source_id]}
         for source_id in miner_source_ids + [ORE_PURIFIER_SOURCE_ID]
     }
-    lines = []
+    lines = ['[VehicleTypes]']
+    lines.extend(
+        f'{320000 + index}={clone_ids[source_id]}'
+        for index, source_id in enumerate(miner_source_ids)
+    )
+    lines.extend([
+        '[BuildingTypes]', f'350000={purifier_id}',
+        f'[{purifier_id}]',
+        *[f'{key}={value}' for key, value in templates[ORE_PURIFIER_SOURCE_ID].items()],
+    ])
     static_missing = []
     for source_id in miner_source_ids:
         clone_id = clone_ids[source_id]
@@ -143,27 +183,28 @@ def validate_ore_purifier_miner_docks():
             static_missing.append(clone_id)
         lines.extend([
             f'[{clone_id}]',
-            'Harvester=yes',
-            f'Dock={",".join(docks)}',
+            *[f'{key}={value}' for key, value in templates[source_id].items()],
             '',
         ])
     runtime_rules, runtime_report = ore_purifier_miner_dock_rules(
         lines,
         clone_handled,
+        installed_sections,
     )
     runtime_missing = [
-        clone_ids[source_id]
-        for source_id in miner_source_ids
-        if purifier_id.upper() not in {
+        miner_id
+        for miner_id in runtime_report['miner_ids']
+        if not {dock.upper() for dock in runtime_report['refinery_ids']} <= {
             dock.upper()
             for dock in comma_items(
-                runtime_rules.get(clone_ids[source_id], {}).get('Dock', '')
+                runtime_rules.get(miner_id, {}).get('Dock', '')
             )
         }
     ]
     return {
         'purifier_id': purifier_id,
-        'miner_ids': [clone_ids[source_id] for source_id in miner_source_ids],
+        'miner_ids': list(runtime_report['miner_ids']),
+        'refinery_ids': list(runtime_report['refinery_ids']),
         'static_missing': static_missing,
         'runtime_missing': runtime_missing,
         'runtime_issues': list(runtime_report['issues']),

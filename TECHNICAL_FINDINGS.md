@@ -1005,6 +1005,24 @@ Mental Omega 3.3.6 stores simultaneous mind-control capacity in the controlling 
 
 Great Tempest's `SW.Damage=25` and `GreatTempestBlastWH.CellSpread=8` affect its initial Dominator strike. Repeated vortex damage comes from `FVORTEX` and `FVORTEX2` art animations (`Damage=20`) with separate `GreatTempestAnimWH` and `GreatTempestAnim2WH` warheads (`CellSpread=9`). Damage and area stacks now create private animation and warhead types, register the animations before art loads, and redirect only the rewarded superweapon's `Dominator.FirstAnim` chain. The temporary art overlay scales animation damage and its warhead spread; native and hostile Tempests keep their installed values.
 
+The V1.42 Chaos/Grid report was reproduced in an isolated Wine engine launch
+of Accelerant with five damage stacks and twenty area stacks. The animations
+had valid sprites and `Damage=40`, but both private vortex warheads retained
+`CellSpread=0`; native vortex warheads correctly loaded `CellSpread=9`. The
+preload writer had used the lowercasing map reader to serialize engine INI
+fields, emitting `cellspread`, `verses`, and lowercased custom armor keys.
+Those fields were ignored. Preload serialization now preserves field spelling
+and the original private type names. A second engine launch confirmed both
+private warheads load `CellSpread=19` while the vortex damage remains `40` and
+native warheads remain at `9`. The final `FBLAST` is a visual/rocking effect:
+its installed `GreatTempestRockWH` has zero verses against every armor type,
+so seeing the complete animation sequence does not prove vortex damage works.
+Restart the mission through the updated launcher; existing saves retain the
+old serialized warhead definitions. Battlefield damage still needs a manual
+gameplay check. The reported-regression campaign audit covers both Accelerant
+and Kill the King, with damage-only buffs and maximum area/damage buffs, and
+checks the emitted preload INI against the actual generated map definitions.
+
 ## Shrike Nest range and Nanocharge reports
 
 The reported APUPPET map's player Shrike Nest still referenced native
@@ -1040,3 +1058,32 @@ confirmation.
 
 References: [Ares GenericWarhead delivery](https://ares-developers.github.io/Ares-docs/new/superweapons/types/genericwarhead.html),
 [Ares AttachEffect animation behavior](https://ares-developers.github.io/Ares-docs/new/attacheffect.html).
+
+
+## Native and cloned harvester docking (October 2026)
+
+The previous Ore Purifier hook extended only the player clones listed in
+`clone_handled`. Native campaign/captured miners and the native unloading
+images (`HORV`, `CMON`, `YMON`, `UMON`) retained installed Dock lists, which
+never named `MORPGAOREP` or a cloned deployed War Rig. The same lists omitted
+installed legacy refineries `NAREF` and `GAREF`.
+
+Final map preparation now discovers every registered `Harvester=yes`
+VehicleType and `Refinery=yes` BuildingType from the installed registry plus
+map overrides. It appends all native and runtime-cloned refinery identities
+to every miner's Dock list, preserving authored preference order. This pass
+runs after native restoration and Shop modifiers. No unit stats, ownership,
+production gates, FreeUnit contracts, or mission references change in this
+pass. Native types gain the same docking compatibility as player clones.
+
+`UnloadingClass` selects rendering rather than converting the live unit.
+A native `HORV` image therefore does not turn `MORPHARV` back into `HARV`;
+a replacement dummy is unnecessary. Existing art references remain intact.
+See [Ares image-change documentation](https://ares-developers.github.io/Ares-docs/restored/amphibiousimagechanges.html).
+
+The existing launcher docking self-check now checks installed miners and
+full player templates against all registered refineries. The campaign audit
+checks the actual generated Dock lists and registered unloading-image
+references across all 97 missions in Standard and Chaos. Automatic return,
+repeated unloading, and clone/buff retention still need live gameplay
+confirmation using a freshly generated map; existing saves retain old rules.

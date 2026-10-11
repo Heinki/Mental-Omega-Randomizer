@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import sys
+from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -283,6 +284,53 @@ def check_shrike_and_nanocharge(missions, launcher_type):
             print(f'Insomnia: {progression}, direct owner Nanocharge, all-vehicle upgrade={upgraded}', flush=True)
 
 
+def check_tempest(missions, launcher_type):
+    """Audit real campaign maps and the early Tempest rules/art deployment."""
+    from randomizer.core.paths import CAMEO_CACHE_DIR, GENERATED_MAP_DIR
+    from randomizer.maps.assets import deploy_generated_unit_art
+
+    for code in ('EACCEL', 'FKILL'):
+        for area_count in (0, 20):
+            mission = missions[code]
+            launcher = launcher_type(
+                progression_mode='Grid Mode', enemy_effect_ids=[],
+            )
+            launcher.player_rewards = [
+                REWARD_BY_NAME['Great Tempest Power'],
+                *([REWARD_BY_NAME['Great Tempest Power Amplified Payload I']] * 5),
+                *([REWARD_BY_NAME['Great Tempest Power Expanded Area I']] * area_count),
+            ]
+            sections = generate(launcher, mission)
+            with TemporaryDirectory(prefix='mo-tempest-map-audit-') as folder:
+                target = Path(folder) / 'artmo.ini'
+                _, aliases = deploy_generated_unit_art(
+                    GENERATED_MAP_DIR / mission['scenario'].upper(),
+                    target_path=target,
+                    art_cache_path=CAMEO_CACHE_DIR / 'artmo.ini',
+                    rules_cache_path=CAMEO_CACHE_DIR / 'rulesmo.ini',
+                )
+                preload = all_section_value_maps_preserve(
+                    (target.parent / 'rulesmo.ini').read_text().splitlines()
+                )
+                registered = set(preload['Warheads'].values())
+                for animation in sections['MORTempestAnimations']:
+                    art = aliases[animation]
+                    assert art['Damage'] == '40'
+                    warhead = art['Warhead']
+                    if area_count:
+                        assert warhead in registered
+                        # Engine INI keys and emitted type names must keep
+                        # their spelling, including custom armor overrides.
+                        assert preload[warhead] == sections[warhead]
+                        assert preload[warhead]['CellSpread'] == '19'
+                        assert preload[warhead]['Verses'].startswith('50%,50%,40%')
+                    else:
+                        assert warhead in {'GreatTempestAnimWH', 'GreatTempestAnim2WH'}
+                        assert preload[warhead]['CellSpread'] == '9'
+                assert aliases['MORFVORTEX']['Next'] == 'MORFVORTEX2'
+            print(f'{code}: Chaos Grid Tempest, damage=5, area={area_count}, early warhead casing preserved', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -292,6 +340,7 @@ def main():
     check_units(missions, _AuditLauncher)
     check_bottleneck(missions, _AuditLauncher)
     check_shrike_and_nanocharge(missions, _AuditLauncher)
+    check_tempest(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

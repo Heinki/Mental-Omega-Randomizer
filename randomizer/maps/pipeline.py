@@ -103,7 +103,7 @@ from randomizer.maps.shop_modifiers import (
 )
 from randomizer.maps.special_buildings import (
     DEFAULT_REFINERY_MINER_IDS,
-    ore_purifier_miner_dock_rules,
+    refinery_miner_dock_rules,
     reprocessor_bounty_rules,
 )
 from randomizer.missions.houses import (
@@ -2297,23 +2297,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                     f'{len(production_gate_source_ids)} source type(s), '
                     f'{len(placed_production_gates)} player house gate(s).'
                 )
-        ore_dock_rules, ore_dock_report = ore_purifier_miner_dock_rules(
-            lines,
-            clone_handled,
-        )
-        if ore_dock_rules:
-            merge_ini_section_values(lines, ore_dock_rules)
-        if ore_dock_report['purifier_id']:
-            self.append_log(
-                f'Bound {len(ore_dock_report["miner_ids"])} player ore miner '
-                f'clone(s) to {ore_dock_report["purifier_id"]}.'
-                + (
-                    ' Issues: ' + '; '.join(ore_dock_report['issues']) + '.'
-                    if ore_dock_report['issues']
-                    else ''
-                ),
-                error=bool(ore_dock_report['issues']),
-            )
         reprocessor_rules, reprocessor_report = reprocessor_bounty_rules(
             lines,
             installed_rule_sections,
@@ -3300,6 +3283,24 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if value
             )
             + '.'
+        )
+
+    # Run after native restoration and all modifiers so neither path can
+    # replace docking lists with the installed native-only list again.
+    if launch_active:
+        ore_dock_rules, ore_dock_report = refinery_miner_dock_rules(
+            lines, installed_rule_sections,
+        )
+        merge_ini_section_values(lines, ore_dock_rules)
+        self.append_log(
+            f'Bound {len(ore_dock_report["miner_ids"])} native/player ore miner '
+            f'type(s) to all {len(ore_dock_report["refinery_ids"])} registered '
+            'native/player refinery type(s).'
+            + (
+                ' Issues: ' + '; '.join(ore_dock_report['issues']) + '.'
+                if ore_dock_report['issues'] else ''
+            ),
+            error=bool(ore_dock_report['issues']),
         )
 
     packed_sections = {

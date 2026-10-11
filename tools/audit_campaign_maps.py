@@ -311,6 +311,49 @@ def _assert_hook_restart_race():
         raise AssertionError('A genuine restart produced the wrong failure count')
 
 
+def _assert_miner_docking(path):
+    """Audit actual generated native/clone refinery compatibility."""
+    _superweapons, installed = installed_rules_registry(synchronous=True)
+    generated = all_section_value_maps_preserve(path.read_text().splitlines())
+    effective = {
+        name.upper(): {key.lower(): str(value) for key, value in values.items()}
+        for name, values in installed.items()
+    }
+    for name, values in generated.items():
+        effective.setdefault(name.upper(), {}).update({
+            key.lower(): str(value) for key, value in values.items()
+        })
+
+    def registered(list_name):
+        return {
+            str(value).strip().upper()
+            for registry in (installed, generated)
+            for name, values in registry.items()
+            if name.lower() == list_name.lower()
+            for value in values.values()
+        }
+
+    refineries = {
+        name for name in registered('BuildingTypes')
+        if effective.get(name, {}).get('refinery', '').lower() == 'yes'
+    }
+    vehicles = registered('VehicleTypes')
+    miners = {
+        name for name in vehicles
+        if effective.get(name, {}).get('harvester', '').lower() == 'yes'
+    }
+    assert miners and refineries, path.name
+    for miner in miners:
+        docks = {
+            dock.strip().upper()
+            for dock in effective[miner].get('dock', '').split(',')
+        }
+        assert refineries <= docks, (path.name, miner, sorted(refineries - docks))
+        unloading = effective[miner].get('unloadingclass', '').strip().upper()
+        if unloading and unloading not in {'NONE', '<NONE>'}:
+            assert unloading in vehicles and unloading in effective, (path.name, miner, unloading)
+
+
 def _assert_targeted_contracts(generated_paths):
     installed_superweapons, _installed_sections = installed_rules_registry(
         synchronous=True
@@ -837,6 +880,7 @@ def _assert_all_mission_mcv_mode(
                 f'{mission["code"]}'
             )
         generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
+        _assert_miner_docking(generated_path)
         _assert_native_mcvs_untouched(
             launcher.extract_campaign_map(mission['scenario']),
             generated_path,
@@ -1450,6 +1494,7 @@ def main():
             generated_path = GENERATED_MAP_DIR / mission['scenario'].upper()
             if not generated_path.is_file():
                 raise AssertionError(f'Missing generated map {generated_path}')
+            _assert_miner_docking(generated_path)
             _assert_native_mcvs_untouched(
                 launcher.extract_campaign_map(mission['scenario']),
                 generated_path,

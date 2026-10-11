@@ -11,7 +11,10 @@ import ctypes
 from pathlib import Path
 
 from randomizer.core.paths import APP_DIR, CAMEO_CACHE_DIR, GAME_ROOT, SOURCE_DIR
-from randomizer.maps.ini import all_section_value_maps
+from randomizer.maps.ini import (
+    all_section_value_maps,
+    all_section_value_maps_preserve,
+)
 from randomizer.rewards.definitions import UNIT_SIDEBAR_IMAGES
 
 
@@ -623,6 +626,9 @@ def _art_cameo_sections(text, preserve_keys=False):
 
 def _merge_art_section_values(text, section_values):
     """Merge art overrides without shadowing complete installed sections."""
+    section_names = {
+        str(section).upper(): str(section) for section in section_values
+    }
     pending = {
         str(section).upper(): {
             str(key).lower(): (str(key), value)
@@ -676,7 +682,7 @@ def _merge_art_section_values(text, section_values):
             continue
         if output and output[-1].strip():
             output.append('')
-        output.append(f'[{section}]')
+        output.append(f'[{section_names[section]}]')
         output.extend(
             f'{key}={value}'
             for key, value in values.values()
@@ -838,7 +844,10 @@ def _stage_mutation_preload_rules(
             next_key += 1
     preload = {'Animations': additions}
     if map_path is not None:
-        map_sections = all_section_value_maps(
+        # These values are written back to an engine INI. Lowercasing its
+        # keys leaves private warheads with their constructor defaults:
+        # CellSpread=0 and no loaded armor/effect overrides.
+        map_sections = all_section_value_maps_preserve(
             Path(map_path).read_text(encoding='utf-8', errors='ignore').splitlines()
         )
         map_by_upper = {
@@ -858,21 +867,22 @@ def _stage_mutation_preload_rules(
             default=-1,
         ) + 1
         for animation in animations:
-            warhead = str(aliases[animation].get('Warhead') or '').upper()
-            if not warhead.startswith('MOR'):
+            warhead = str(aliases[animation].get('Warhead') or '').strip()
+            warhead_upper = warhead.upper()
+            if not warhead_upper.startswith('MOR'):
                 continue
-            values = map_by_upper.get(warhead)
+            values = map_by_upper.get(warhead_upper)
             if not values:
                 raise CustomAssetError(
                     f'Private animation warhead {warhead} is missing'
                 )
             preload[warhead] = values
-            if warhead not in registered_warheads:
+            if warhead_upper not in registered_warheads:
                 type_key = map_warhead_keys.get(
-                    warhead, str(next_warhead_key)
+                    warhead_upper, str(next_warhead_key)
                 )
                 preload.setdefault('Warheads', {})[type_key] = warhead
-                registered_warheads.add(warhead)
+                registered_warheads.add(warhead_upper)
                 if type_key == str(next_warhead_key):
                     next_warhead_key += 1
     target = Path(target_dir) / 'rulesmo.ini'
