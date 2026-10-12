@@ -38,15 +38,23 @@ DEFAULT_SHOP_PATHS = ShopPersistencePaths(
     backup_dir=BACKUP_DIR / 'shop',
 )
 
+# Permanent progression is personal; solo and co-op runs have separate journals.
+COOP_SHOP_PATHS = ShopPersistencePaths(
+    profile=SHOP_PROFILE_PATH,
+    run=SHOP_RUN_PATH.with_name('shop_coop_run.json'),
+    transaction=SHOP_TRANSACTION_PATH.with_name('shop_coop_transaction.json'),
+    backup_dir=BACKUP_DIR / 'shop_coop',
+)
 
-def _next_backup_path(path, backup_dir):
+
+def _next_backup_path(path, backup_dir, *, suffix='invalid-backup'):
     backup_dir.mkdir(parents=True, exist_ok=True)
-    base = backup_dir / f'{path.name}.invalid-backup'
+    base = backup_dir / f'{path.name}.{suffix}'
     candidate = base
-    suffix = 2
+    number = 2
     while candidate.exists():
-        candidate = backup_dir / f'{base.name}.{suffix}'
-        suffix += 1
+        candidate = backup_dir / f'{base.name}.{number}'
+        number += 1
     return candidate
 
 
@@ -195,3 +203,24 @@ class ShopRepository:
         with self._lock:
             self.prepare_commit(profile, run, transaction_id)
             self.recover_pending_transaction()
+
+
+def shop_repository_for_mode(*, coop_mode):
+    """Select a run journal and preserve co-op saves from the shared-file era."""
+    solo = ShopRepository()
+    coop = ShopRepository(COOP_SHOP_PATHS)
+    # Recover both journals before migrating a run or reading the shared profile.
+    solo.recover_pending_transaction()
+    coop.recover_pending_transaction()
+    legacy_run = solo.load_run()
+    if (legacy_run is not None and legacy_run.eligible_mission_codes
+            and all(code.startswith('COOP_')
+                    for code in legacy_run.eligible_mission_codes)):
+        destination = coop.paths.run
+        if destination.exists():
+            destination = _next_backup_path(
+                solo.paths.run, coop.paths.backup_dir,
+                suffix='coop-migration-backup',
+            )
+        solo.paths.run.replace(destination)
+    return coop if coop_mode else solo

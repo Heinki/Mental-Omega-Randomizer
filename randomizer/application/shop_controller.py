@@ -80,7 +80,7 @@ from randomizer.shop.model import (
     RunStatus,
     ShopRewardType,
 )
-from randomizer.shop.persistence import ShopPersistenceError, ShopRepository
+from randomizer.shop.persistence import ShopPersistenceError, shop_repository_for_mode
 from randomizer.shop.service import ShopProgressionService
 from randomizer.shop.text import gem_text
 from randomizer.shop.transitions import ShopTransitionError
@@ -111,9 +111,7 @@ SHOP_REWARD_MODE = SHOP_ACCESS_REWARD_MODE
 class ShopController(ShopPolishController):
     def initialize_shop_controller(self):
         self.shop_config = SHOP_CONFIG
-        self.shop_repository = ShopRepository()
-        self.shop_service = ShopProgressionService(self.shop_repository)
-        self.shop_profile, self.shop_run = self.shop_repository.load()
+        self.select_shop_repository()
         self.shop_stage_var = tk.StringVar(value='Stage — / 10')
         self.shop_status_var = tk.StringVar(value='Run Status: Not Started')
         self.shop_run_coins_var = tk.StringVar(value='Run Ore: 0')
@@ -352,6 +350,14 @@ class ShopController(ShopPolishController):
         if reset_scroll:
             self.settings_canvas.yview_moveto(0)
 
+    def select_shop_repository(self):
+        """Keep solo and co-op run state separate while sharing personal unlocks."""
+        self.shop_repository = shop_repository_for_mode(
+            coop_mode=bool(self.coop_mode_var.get()),
+        )
+        self.shop_service = ShopProgressionService(self.shop_repository)
+        self.shop_profile, self.shop_run = self.shop_repository.load()
+
     def refresh_shop_settings_controls(self):
         if not hasattr(self, 'shop_setup_start_button'):
             return
@@ -373,7 +379,8 @@ class ShopController(ShopPolishController):
             text='Run Active' if active else 'Start Shop Mode',
         )
         self.shop_coop_mode_check.configure(
-            state='disabled' if locked or active or getattr(self, '_coop_lobby', None)
+            state='disabled' if locked or self.shop_launch_active()
+            or getattr(self, '_coop_lobby', None)
             else 'normal'
         )
         self.shop_coop_player_count_combo.configure(

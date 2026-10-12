@@ -75,11 +75,12 @@ class CoopController(CoopConnectionController):
         active_shop = bool(self.shop_mode_selected() and run is not None
                            and run.status is RunStatus.ACTIVE)
         locked = (not available or bool(getattr(self, '_coop_lobby', None))
-                  or active_game or active_shop or self.gameplay_settings_locked())
+                  or active_game or self.shop_launch_active()
+                  or self.gameplay_settings_locked())
         for widget in (self.coop_mode_check, self.shop_coop_mode_check):
             widget.configure(state='disabled' if locked else 'normal')
         for widget in (self.coop_player_count_combo, self.shop_coop_player_count_combo):
-            widget.configure(state='disabled' if locked else 'readonly')
+            widget.configure(state='disabled' if locked or active_shop else 'readonly')
         self._refresh_coop_connection_fields()
         for button in (self.launch_selected_button, self.compact_launch_button):
             button.configure(text='Suggest Mission' if guest else 'Launch Selected Mission')
@@ -100,25 +101,13 @@ class CoopController(CoopConnectionController):
             self.coop_mode_var.set(False)
             return
         process = getattr(self, 'active_game_process', None)
-        if (self.gameplay_settings_locked() or getattr(self, '_coop_lobby', None)
+        if (self.gameplay_settings_locked() or self.shop_launch_active()
+                or getattr(self, '_coop_lobby', None)
                 or (process is not None and process.poll() is None)):
             self.coop_mode_var.set(bool(self.config.get('coop_mode', False)))
             return
         enabled = bool(self.coop_mode_var.get())
-        if self.shop_mode_selected():
-            run = self.shop_repository.load_run()
-            if run is not None and run.status is RunStatus.ACTIVE:
-                co_op_run = bool(run.eligible_mission_codes) and all(
-                    str(code).startswith('COOP_') for code in run.eligible_mission_codes
-                )
-                if co_op_run != enabled:
-                    self.coop_mode_var.set(bool(self.config.get('coop_mode', False)))
-                    messagebox.showwarning(
-                        'Co-op Shop',
-                        'Finish the active Shop run before switching its mission pool.',
-                        parent=self,
-                    )
-                    return
+        self.select_shop_repository()
         self.config['coop_mode'] = enabled
         self.config['progression_mode'] = self.progression_mode_var.get()
         self.refresh_coop_controls()
@@ -162,21 +151,21 @@ class CoopController(CoopConnectionController):
             return
         if self.shop_mode_selected():
             run = self.shop_repository.load_run()
-            if run is None:
+            if run is None and role == 'host':
                 messagebox.showwarning('Co-op', 'Start a Shop run first.')
                 return
-            if run.status is not RunStatus.ACTIVE:
+            if run is not None and run.status is not RunStatus.ACTIVE and role == 'host':
                 try:
-                    recoverable = role == 'host' and recovery_result_message(run) is not None
+                    recoverable = recovery_result_message(run) is not None
                 except ValueError as exc:
                     messagebox.showwarning('Co-op', str(exc))
                     return
                 if not recoverable:
                     messagebox.showwarning(
-                        'Co-op', 'A finished Shop run can reconnect only as host to sync its result.'
+                        'Co-op', 'This Shop run has ended. Start a new co-op Shop run before hosting.'
                     )
                     return
-            if (not run.eligible_mission_codes or any(
+            if run is not None and (not run.eligible_mission_codes or any(
                     not str(code).startswith('COOP_')
                     for code in run.eligible_mission_codes)):
                 messagebox.showwarning('Co-op', 'Start a Shop run from the co-op map pool.')
@@ -340,11 +329,18 @@ class CoopController(CoopConnectionController):
             return
         if self.shop_mode_selected() and self.coop_mode_var.get():
             try:
-                if self.state.get('coop_mode'):
+                run = self.shop_repository.load_run()
+                ap = self.state.get('archipelago')
+                # A standalone Shop run leaves the previous Grid save loaded.
+                # Only its own AP inventory may precede Shop stage sync: a Grid
+                # snapshot would switch the guest out of Shop Mode.
+                if (run is not None and self.state.get('coop_mode')
+                        and self.state.get('progression_mode') == 'Shop Mode'
+                        and self.state.get('seed') == run.seed
+                        and isinstance(ap, dict) and ap.get('enabled')):
                     lobby.send({'type': 'archipelago_state',
                                 'data': encode_state(shared_run_state(
                                     self.state, getattr(self, '_archipelago_slot_data', None)))})
-                run = self.shop_repository.load_run()
                 result = recovery_result_message(run)
                 if result:
                     lobby.send(result)
@@ -491,6 +487,9 @@ class CoopController(CoopConnectionController):
                     self.finish_progression_launch_context()
             elif kind in {'state', 'archipelago_state'}:
                 state = decode_state(message.get('data', ''))
+                if (kind == 'archipelago_state'
+                        and state.get('progression_mode') != 'Shop Mode'):
+                    raise ValueError('Host sent Grid state as Shop inventory. Update the host launcher.')
                 codes = state.get('mission_order', [])
                 available = {mission['code'] for mission in self.missions}
                 if not isinstance(codes, list) or not codes or not all(

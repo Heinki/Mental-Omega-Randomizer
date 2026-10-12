@@ -11,6 +11,8 @@ randomizer_state.json
 shop_profile.json
 shop_run.json
 shop_transaction.json
+shop_coop_run.json
+shop_coop_transaction.json
 self_check.json
 RandomizerLauncherData/
 logs/
