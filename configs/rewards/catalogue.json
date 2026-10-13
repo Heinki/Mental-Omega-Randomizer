@@ -4195,9 +4195,33 @@
           "SW.UseAITargeting": "no",
           "SW.AITargeting": "None",
           "HunterSeeker.RandomOnly": "no",
+          "HunterSeeker.Type": "MORHunterDrone",
           "HunterSeeker.Buildings": "MORHunterProvider"
         },
         "techno_clones": {
+          "HunterDrone": {
+            "source": "SUNB",
+            "clone": "MORHunterDrone",
+            "list": "VehicleTypes",
+            "reference_keys": [
+              "HunterSeeker.Type"
+            ],
+            "values": {
+              "Image": "SUNB",
+              "TechLevel": "-1",
+              "Owner": "Europeans,UnitedStates,Pacific,Europeans2,MORPLAYER,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3",
+              "RequiredHouses": null,
+              "ForbiddenHouses": null,
+              "FactoryOwners": null,
+              "FactoryOwners.Forbidden": null,
+              "Prerequisite.Negative": null,
+              "PoweredBy": "",
+              "Primary": "MORHunterHit",
+              "DeathWeapon": "MORHunterBlast",
+              "InitialPayload.Types": "MORHunterAddon",
+              "Passengers.Allowed": "MORHunterAddon"
+            }
+          },
           "HunterProvider": {
             "source": "DUMMYDUMMY",
             "clone": "MORHunterProvider",
@@ -4235,6 +4259,83 @@
               "Firestorm.Wall": "no",
               "Sight": "0"
             }
+          },
+          "HunterAddon": {
+            "source": "SUNB_1",
+            "clone": "MORHunterAddon",
+            "list": "VehicleTypes",
+            "values": {
+              "Image": "FAKEP",
+              "TechLevel": "-1",
+              "Primary": "MORHunterLaser",
+              "Owner": "Europeans,UnitedStates,Pacific,Europeans2,MORPLAYER,USSR,Latin,Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3",
+              "RequiredHouses": null,
+              "ForbiddenHouses": null,
+              "Prerequisite.Negative": null
+            }
+          },
+          "HunterHit": {
+            "source": "SeekerFake",
+            "clone": "MORHunterHit",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORHunterHitP",
+              "Warhead": "MORHunterHitWH"
+            }
+          },
+          "HunterBlast": {
+            "source": "SunburstBomb",
+            "clone": "MORHunterBlast",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORHunterBlastP",
+              "Warhead": "MORHunterBlastWH"
+            }
+          },
+          "HunterLaser": {
+            "source": "SunburstLaser",
+            "clone": "MORHunterLaser",
+            "list": "WeaponTypes",
+            "values": {
+              "Projectile": "MORHunterLaserP",
+              "Warhead": "MORHunterLaserWH"
+            }
+          },
+          "HunterHitP": {
+            "source": "InvisibleHigh",
+            "clone": "MORHunterHitP",
+            "list": "Projectiles",
+            "values": {}
+          },
+          "HunterBlastP": {
+            "source": "InvisibleWork",
+            "clone": "MORHunterBlastP",
+            "list": "Projectiles",
+            "values": {}
+          },
+          "HunterLaserP": {
+            "source": "InvisibleLaser",
+            "clone": "MORHunterLaserP",
+            "list": "Projectiles",
+            "values": {}
+          },
+          "HunterHitWH": {
+            "source": "SeekerWH",
+            "clone": "MORHunterHitWH",
+            "list": "Warheads",
+            "values": {}
+          },
+          "HunterBlastWH": {
+            "source": "SunburstBombWH",
+            "clone": "MORHunterBlastWH",
+            "list": "Warheads",
+            "values": {}
+          },
+          "HunterLaserWH": {
+            "source": "SunburstLaserWH",
+            "clone": "MORHunterLaserWH",
+            "list": "Warheads",
+            "values": {}
           }
         }
       },

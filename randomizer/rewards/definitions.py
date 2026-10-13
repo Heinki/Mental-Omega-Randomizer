@@ -1046,6 +1046,67 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_super
 
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
 
+# The portable power must not reuse a mission-mutated native SUNB identity.
+# Keep old editable catalogue files on the same installed-template clone path.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') != 'HunterSeekerSpecial':
+        continue
+    aid_config.setdefault('values', {})['HunterSeeker.Type'] = 'MORHunterDrone'
+    hunter_drone = aid_config.setdefault('techno_clones', {}).setdefault(
+        'HunterDrone', {}
+    )
+    hunter_drone.update({
+        'source': 'SUNB',
+        'clone': 'MORHunterDrone',
+        'list': 'VehicleTypes',
+        'reference_keys': ['HunterSeeker.Type'],
+    })
+    hunter_drone.setdefault('values', {}).update({
+        'Image': 'SUNB',
+        'TechLevel': '-1',
+        'Owner': (
+            'Europeans,UnitedStates,Pacific,Europeans2,MORPLAYER,USSR,Latin,'
+            'Chinese,PsiCorps,Headquaters,ScorpionCell,Guild1,Guild2,Guild3'
+        ),
+        'RequiredHouses': None,
+        'ForbiddenHouses': None,
+        'FactoryOwners': None,
+        'FactoryOwners.Forbidden': None,
+        'Prerequisite.Negative': None,
+        'PoweredBy': '',
+        'Primary': 'MORHunterHit',
+        'DeathWeapon': 'MORHunterBlast',
+        'InitialPayload.Types': 'MORHunterAddon',
+        'Passengers.Allowed': 'MORHunterAddon',
+    })
+    # Campaigns also override SeekerWH and SunburstBombWH. Preserve the
+    # complete installed hit, explosion, and open-topped laser chains.
+    for key, source, clone, registry, values in (
+        ('HunterAddon', 'SUNB_1', 'MORHunterAddon', 'VehicleTypes', {
+            'Image': 'FAKEP', 'TechLevel': '-1', 'Primary': 'MORHunterLaser',
+            'Owner': hunter_drone['values']['Owner'], 'RequiredHouses': None,
+            'ForbiddenHouses': None, 'Prerequisite.Negative': None,
+        }),
+        ('HunterHit', 'SeekerFake', 'MORHunterHit', 'WeaponTypes', {
+            'Projectile': 'MORHunterHitP', 'Warhead': 'MORHunterHitWH',
+        }),
+        ('HunterBlast', 'SunburstBomb', 'MORHunterBlast', 'WeaponTypes', {
+            'Projectile': 'MORHunterBlastP', 'Warhead': 'MORHunterBlastWH',
+        }),
+        ('HunterLaser', 'SunburstLaser', 'MORHunterLaser', 'WeaponTypes', {
+            'Projectile': 'MORHunterLaserP', 'Warhead': 'MORHunterLaserWH',
+        }),
+        ('HunterHitP', 'InvisibleHigh', 'MORHunterHitP', 'Projectiles', {}),
+        ('HunterBlastP', 'InvisibleWork', 'MORHunterBlastP', 'Projectiles', {}),
+        ('HunterLaserP', 'InvisibleLaser', 'MORHunterLaserP', 'Projectiles', {}),
+        ('HunterHitWH', 'SeekerWH', 'MORHunterHitWH', 'Warheads', {}),
+        ('HunterBlastWH', 'SunburstBombWH', 'MORHunterBlastWH', 'Warheads', {}),
+        ('HunterLaserWH', 'SunburstLaserWH', 'MORHunterLaserWH', 'Warheads', {}),
+    ):
+        clone_spec = aid_config['techno_clones'].setdefault(key, {})
+        clone_spec.update({'source': source, 'clone': clone, 'list': registry})
+        clone_spec.setdefault('values', {}).update(values)
+
 # Nanocharge's native HunterSeeker delivery creates an NCHF dummy and waits
 # for animation damage to kill it before firing its DeathWeapon. Apply the
 # same warhead directly, with an owned launch building for owner filtering.

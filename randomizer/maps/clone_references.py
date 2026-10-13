@@ -8,10 +8,12 @@ from ._shared import (
     ai_trigger_team_usage_houses,
     all_section_value_maps,
     build_unit_usage_index,
+    comma_items,
     directly_created_team_ids,
     section_value_map_preserve,
     taskforce_usage_houses,
     unit_usage_houses,
+    unique_in_order,
 )
 from .base import (
     _collision_safe_type_id,
@@ -92,6 +94,48 @@ def prism_forwarding_clone_rules(lines, installed_sections, clone_handled):
         expanded = list(dict.fromkeys(expanded))
         if expanded != [item.strip().upper() for item in str(targets).split(',')]:
             rules.setdefault(building, {})['PrismForwarding.Targets'] = ','.join(expanded)
+    return rules
+
+
+def empulse_cannon_clone_rules(lines, installed_sections, clone_handled):
+    """Extend exact cannon lists with the actual player building identities."""
+    current = {
+        str(section).lower(): values
+        for section, values in all_section_value_maps(lines).items()
+    }
+    families = {}
+    for source, details in clone_handled.items():
+        clones = unique_in_order(
+            str(details.get(field) or '').strip()
+            for field in ('clone_id', 'reference_clone_id')
+            if details.get(field)
+        )
+        if clones:
+            families[str(source).upper()] = clones
+    rules = {}
+    installed_powers = installed_sections.get('SuperWeaponTypes', {})
+    current_powers = section_value_map_preserve(lines, 'SuperWeaponTypes')
+    for power in unique_in_order([
+        *installed_powers.values(), *current_powers.values(),
+    ]):
+        values = {
+            str(key).lower(): value
+            for key, value in installed_sections.get(power, {}).items()
+        }
+        values.update(current.get(str(power).lower(), {}))
+        cannons = comma_items(_value_case_insensitive(
+            values, 'EMPulse.Cannons', ''
+        ))
+        # An empty list intentionally means every EMPulseCannon building.
+        # Keep that engine default rather than narrowing it to known clones.
+        if not cannons:
+            continue
+        expanded = list(cannons)
+        for cannon in cannons:
+            expanded.extend(families.get(cannon.upper(), ()))
+        expanded = unique_in_order(expanded)
+        if expanded != cannons:
+            rules.setdefault(power, {})['EMPulse.Cannons'] = ','.join(expanded)
     return rules
 
 

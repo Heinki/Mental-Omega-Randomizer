@@ -119,6 +119,26 @@ def main():
     assert section(guest_map, 'MORGFV')['TechLevel'] == '-1'
     assert section(guest_map, 'MORGHTNK')['TechLevel'] == '-1'
     assert rebuild_from_manifest(GAME_ROOT, guest_manifest) == guest_map
+    # Aquaphobia/Grounded must not classify hovering infantry as naval/air.
+    hover_loadout = {
+        'access_ids': sorted(['YURIPR', 'LIBRA', 'DUNE', 'JUMPJET', 'ORCA', 'DEST']),
+        'buff_counts': {},
+    }
+    for restrictions in (['aircraft', 'naval'], ['infantry']):
+        modifier_host = {**hover_loadout, 'production_restrictions': restrictions}
+        hover_manifest, hover_map = build_shop_manifest(
+            GAME_ROOT, 'COOP-HOVER-INFANTRY', 'coop_sthunder',
+            modifier_host, hover_loadout,
+        )
+        for source in ('YURIPR', 'LIBRA', 'DUNE', 'JUMPJET'):
+            expected = '-1' if 'infantry' in restrictions else '1'
+            assert section(hover_map, f'MORH{source}')['TechLevel'] == expected
+            assert section(hover_map, f'MORG{source}')['TechLevel'] == '1'
+        for source in ('ORCA', 'DEST'):
+            expected = '-1' if 'infantry' not in restrictions else '1'
+            assert section(hover_map, f'MORH{source}')['TechLevel'] == expected
+            assert section(hover_map, f'MORG{source}')['TechLevel'] == '1'
+        assert rebuild_from_manifest(GAME_ROOT, hover_manifest) == hover_map
     for invalid in (['vehicles', 'vehicles'], ['unknown'], [42]):
         try:
             build_shop_manifest(

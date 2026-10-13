@@ -116,6 +116,8 @@ class _AuditLauncher(LaunchController):
             'GI Firepower I',
             'GI Armor Plating I',
             'Gear Change Power',
+            'Hunter-Seeker Power',
+            'Soviet Repair Crane Access',
             'Industrial Plant Access',
             'Allied MCV Access',
             'Soviet MCV Access',

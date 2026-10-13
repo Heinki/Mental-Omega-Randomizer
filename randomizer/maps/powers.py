@@ -3,11 +3,13 @@
 from ._shared import (
     MAX_MAP_ACTION_LINE_LENGTH,
     SUPERWEAPON_ACTIONS_PER_TRIGGER,
+    all_section_value_maps,
     action_group_tokens,
     append_section_entry,
     comma_items,
     map_house_records,
     next_numeric_section_index,
+    parse_action_groups,
     player_controlled_houses,
     section_value_map_preserve,
     unique_in_order,
@@ -100,6 +102,7 @@ def _startup_building_placements(
             for dy in clearance:
                 occupied.add((waypoint_x + dx, waypoint_y + dy))
     map_objects = []
+    own_anchors = []
     friendly_anchors = []
     fallback_anchors = []
     # Structures are stable, playable anchors and much less likely than map
@@ -116,6 +119,12 @@ def _startup_building_placements(
             occupied.add(cell)
             fallback_anchors.append(cell)
             owner = tokens[0].lower()
+            if owner in aliases or owner.replace(' house', '') in aliases:
+                object_values = section_value_map_preserve(lines, tokens[1])
+                if str(_value_case_insensitive(
+                    object_values, 'InvisibleInGame', 'no'
+                )).lower() not in {'yes', 'true', '1'}:
+                    own_anchors.append(cell)
             if (
                 owner in anchor_aliases
                 or owner.replace(' house', '') in anchor_aliases
@@ -138,6 +147,41 @@ def _startup_building_placements(
         anchors = list(dict.fromkeys(fallback_anchors))
     if not anchors:
         return []
+
+    # Hunter Seeker searches for walkable land beside its provider. In maps
+    # with no initial player objects, the first allied structure can be remote
+    # scenery (Puppet Master's CASANT), not the player's reinforcement area.
+    # Prefer actual player spawn actions, including their waypoint overrides.
+    player_spawn_anchors = []
+    sections = {
+        str(section).lower(): values
+        for section, values in all_section_value_maps(lines).items()
+    }
+    waypoints = section_value_map_preserve(lines, 'Waypoints')
+    for action_value in section_value_map_preserve(lines, 'Actions').values():
+        _count, groups = parse_action_groups(action_value)
+        for group in groups:
+            if group[0] not in {'7', '80', '107'}:
+                continue
+            team = sections.get(str(group[2]).lower(), {})
+            team_owner = str(team.get('house') or '').lower()
+            if team_owner not in aliases:
+                continue
+            label = str(group[7]).strip().upper()
+            if not label.isalpha():
+                continue
+            waypoint = 0
+            for letter in label:
+                waypoint = waypoint * 26 + ord(letter) - ord('A') + 1
+            try:
+                packed = int(waypoints[str(waypoint - 1)])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if packed > 0:
+                player_spawn_anchors.append((packed % 1000, packed // 1000))
+    hunter_anchors = list(dict.fromkeys(
+        own_anchors + player_spawn_anchors + anchors
+    ))
 
     offsets = []
     for radius in range(4, 13):
@@ -163,9 +207,18 @@ def _startup_building_placements(
 
     startup_placements = []
     for building_number, building_id in enumerate(building_ids):
+        provider = sections.get(building_id.lower(), {})
+        power = sections.get(str(provider.get('superweapon') or '').lower(), {})
+        building_anchors = (
+            hunter_anchors if str(power.get('type') or '').lower() == 'hunterseeker'
+            else anchors
+        )
+        anchor_offset = 0 if building_anchors is hunter_anchors else building_number
         chosen = None
-        for anchor_number in range(len(anchors)):
-            anchor = anchors[(building_number + anchor_number) % len(anchors)]
+        for anchor_number in range(len(building_anchors)):
+            anchor = building_anchors[
+                (anchor_offset + anchor_number) % len(building_anchors)
+            ]
             inward_offsets = sorted(
                 offsets,
                 key=lambda offset: (

@@ -354,6 +354,62 @@ Trainable defenses may switch to `ElitePrimary` or separate `EliteWeapon1..N` ga
 
 ## Building-Free Powers
 
+You Shall Not Build's production roulette previously treated any non-flying
+`SpeedType=Hover` or amphibious movement zone as naval, including infantry.
+`YURIPR` (Yuri Prime/Epsilon Elite), `LIBRA`, `LIBRC`, and `DUNE` therefore lost
+production under Aquaphobia even when infantry production was allowed. The
+shared campaign/co-op restriction pass now gives registered InfantryTypes and
+their player clones precedence over movement traits. Hovering and flying
+infantry are blocked only by the infantry restriction; actual aircraft, boats,
+and the modifier's intended vehicle hovercraft restrictions retain their
+existing classification. Real campaign launch audits cover separate and combined
+air/naval bans, vehicle bans, and infantry bans. The co-op loadout audit also
+checks that one player's restriction does not affect the other player's clones.
+
+Repair Crane's native `CraneSpecial` is an automatic self-targeting EMPulse
+power. Its `EMPulse.Cannons=NADRON,CAEXPS` list compares exact BuildingTypes;
+the generated crane inherited `SuperWeapon=CraneSpecial` but its player clone
+was absent from that list. The repair warheads filter armor and house relation,
+not native versus cloned unit identities. Launch finalization now extends
+explicit cannon lists with actual production/reference clone IDs after native
+restoration and modifiers. This also replaces the earlier Iron Guard patch,
+which guessed a stable roster clone ID before runtime clone allocation. Native
+cannons remain listed, and an empty cannon list retains its engine default.
+The behavior follows [Ares EMPulse documentation](https://ares-developers.github.io/Ares-docs/new/superweapons/types/empulse.html).
+
+Hunter-Seeker's portable SuperWeaponType was cloned, but its payload remained
+native `SUNB`. It now points to registered `MORHunterDrone`, copied from the
+installed template with `Image=SUNB`, unrestricted ownership, and the installed
+flying locomotor and automatic hunting behavior. Its initial `SUNB_1` passenger,
+impact/explosion/laser weapons, projectiles, and warheads also receive registered
+private copies. Reality and Hamartia override the native blast/impact warheads,
+so cloning only the drone would still leave those mission changes in its effect
+chain. Private references resolve after clone ID allocation, including renamed
+IDs when a campaign already uses a preferred name. Older editable catalogues
+receive the same payload normalization; native mission definitions stay intact.
+
+The [Ares activation implementation](https://github.com/Ares-Developers/Ares/blob/master/src/Misc/SWTypes/HunterSeeker.cpp)
+searches for a foot-passable launch cell near the provider, rejects cells outside
+the usable map area, and requires the drone's `Put` call to succeed. Merely
+registering the provider does not establish that a launch succeeded. Before
+this change, Puppet Master placed its provider at `(66,103)` near allied
+`CASANT`, while Divergence used `(95,70)` near the allied outpost. Neither map
+begins with ordinary player-owned objects. Hunter-Seeker providers now prefer
+visible objects owned by the exact player, then actual player reinforcement
+action waypoints (including action-specific overrides), before allied/fallback
+anchors. Invisible implementation gates cannot take precedence over those
+player spawn locations. The existing three-cell clearance around every authored
+waypoint still applies. Focused generated-map audits now place the providers at
+`(178,114)` and `(156,162)` respectively; these are provider cells, and Ares
+chooses the drone's nearby launch cell at runtime.
+
+Instant activation remains unchanged. Ares campaign target acquisition does
+not apply the multiplayer preference for military targets: non-allied neutral
+scenery can be randomly selected even with `HunterSeeker.RandomOnly=no`.
+This explains a possible apparently ineffective launch, but live gameplay is
+still required to establish which engine failure occurred in the reported
+sessions. Existing mission exclusions for unsafe physical providers remain.
+
 Installed `ChronoliftSpecial` and dependent `PostliftSpecial` both use `RechargeTime=1`. Reward configuration now states both values explicitly, preventing drift without changing installed balance.
 
 Earned offensive, secondary, and support/aid powers use action `34` (`Add repeating Superweapon`) from player-owned map-start triggers. Eligible entries include player-facing strikes, buffs, scouting, delivery/reinforcement powers, and five useful mine/grid spawners converted from automatic self-targeting to manual map targeting. Neutral tech powers, internal handlers, and source-object-only effects are not rewards.

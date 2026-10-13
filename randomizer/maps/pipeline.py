@@ -469,31 +469,6 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         extra_rules,
         allowed_unlocked_tech_ids=mission_effective_tech_ids,
     )
-    iron_guard_clone = owned_clone_ids.get('NAIRDM')
-    if iron_guard_clone and 'NAIRDM' in {
-        str(tech_id).upper() for tech_id in mission_effective_tech_ids
-    }:
-        iron_guard_values = section_value_map_preserve(lines, 'IronGuardSpecial')
-        if not iron_guard_values:
-            iron_guard_values = installed_rule_sections.get('IronGuardSpecial', {})
-        iron_guard_cannons = next(
-            (
-                value
-                for key, value in iron_guard_values.items()
-                if str(key).lower() == 'empulse.cannons'
-            ),
-            'NAIRDM',
-        )
-        rule_sections.setdefault('IronGuardSpecial', {})[
-            'EMPulse.Cannons'
-        ] = ','.join(unique_in_order(
-            [
-                cannon.strip()
-                for cannon in str(iron_guard_cannons or 'NAIRDM').split(',')
-                if cannon.strip()
-            ]
-            + [iron_guard_clone]
-        ))
     owned_clone_rule_overlays = {}
     for section in list(rule_sections):
         section_upper = str(section).upper()
@@ -3302,6 +3277,17 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             ),
             error=bool(ore_dock_report['issues']),
         )
+
+    # Resolve exact cannon identities after restoration and modifiers. Stable
+    # roster IDs are insufficient when veterancy compacts a building clone.
+    if launch_active:
+        from randomizer.maps.clone_references import empulse_cannon_clone_rules
+        cannon_rules = empulse_cannon_clone_rules(
+            lines, installed_rule_sections, clone_handled,
+        )
+        if cannon_rules:
+            merge_ini_section_values(lines, cannon_rules)
+            self.append_log('Linked EMPulse support powers to player building clones.')
 
     packed_sections = {
         'PreviewPack', 'IsoMapPack5', 'OverlayPack', 'OverlayDataPack',

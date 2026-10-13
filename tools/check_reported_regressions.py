@@ -331,6 +331,134 @@ def check_tempest(missions, launcher_type):
             print(f'{code}: Chaos Grid Tempest, damage=5, area={area_count}, early warhead casing preserved', flush=True)
 
 
+def check_crane_and_hunter_seeker(missions, launcher_type):
+    """Audit support building identities and instant Hunter Seeker delivery."""
+    from randomizer.ui.cameos import installed_rules_registry
+    from randomizer.maps.powers import _scripted_waypoint_cells
+
+    _power_ids, installed = installed_rules_registry(synchronous=True)
+    for code in ('APUPPET', 'EDIVER', 'EREALITY', 'AHAMARTIA', 'SHAND'):
+        original = all_section_value_maps_preserve(
+            (ROOT / 'extracted_maps' / missions[code]['scenario'].upper())
+            .read_text().splitlines()
+        )
+        for mode in ('Standard', 'Chaos'):
+            for veteran in (False, True):
+                launcher = launcher_type(
+                    reward_mode=mode, progression_mode='Mission List',
+                    enemy_effect_ids=[],
+                )
+                names = [
+                    'Hunter-Seeker Power', 'Soviet Repair Crane Access',
+                    'Soviet Iron Guard Access', 'Rhino Heavy Tank Access',
+                ]
+                if veteran:
+                    names.append('Soviet Repair Crane Drill I')
+                launcher.player_rewards = [REWARD_BY_NAME[name] for name in names]
+                sections = generate(launcher, missions[code])
+                for source, power in (
+                    ('NADRON', 'CraneSpecial'), ('NAIRDM', 'IronGuardSpecial'),
+                ):
+                    clones = [
+                        type_id for type_id in sections['BuildingTypes'].values()
+                        if sections.get(type_id, {}).get('GroupAs') == source
+                    ]
+                    assert clones, (code, mode, source)
+                    cannons = sections[power]['EMPulse.Cannons'].split(',')
+                    assert source in cannons and set(clones).issubset(cannons)
+                    for clone in clones:
+                        assert sections[clone]['SuperWeapon'] == power
+                        assert sections[clone]['Primary']
+                hunter = sections['MORHunterSeeker']
+                assert hunter['Type'] == 'HunterSeeker'
+                assert hunter['SW.AutoFire'] == 'no'
+                assert hunter['RechargeTime'] == installed['HunterSeekerSpecial']['RechargeTime']
+                drone_id = hunter['HunterSeeker.Type']
+                assert drone_id != 'SUNB' and drone_id in sections['VehicleTypes'].values()
+                drone = sections[drone_id]
+                for key in (
+                    'HunterSeeker', 'Locomotor', 'MovementZone', 'FlightLevel',
+                ):
+                    assert drone[key] == installed['SUNB'][key], (code, key)
+                addon_id = drone['InitialPayload.Types']
+                assert addon_id != 'SUNB_1' and drone['Passengers.Allowed'] == addon_id
+                assert addon_id in sections['VehicleTypes'].values()
+                for weapon_id, source in (
+                    (drone['Primary'], 'SeekerFake'),
+                    (drone['DeathWeapon'], 'SunburstBomb'),
+                    (sections[addon_id]['Primary'], 'SunburstLaser'),
+                ):
+                    weapon = sections[weapon_id]
+                    assert weapon_id != source and weapon_id in sections['WeaponTypes'].values()
+                    assert weapon['Damage'] == installed[source]['Damage']
+                    warhead_id = weapon['Warhead']
+                    projectile_id = weapon['Projectile']
+                    assert warhead_id in sections['Warheads'].values()
+                    assert projectile_id in sections['Projectiles'].values()
+                    assert sections[warhead_id] == installed[installed[source]['Warhead']]
+                    assert sections[projectile_id] == installed[installed[source]['Projectile']]
+                assert drone['Image'] == 'SUNB'
+                assert not drone.get('RequiredHouses') and not drone.get('PoweredBy')
+                for source in ('SUNB', 'SUNB_1', 'SeekerWH', 'SunburstBombWH', 'SunburstLaserWH'):
+                    assert sections.get(source, {}) == original.get(source, {}), (code, source)
+                assert sections.get('HunterSeekerSpecial', {}) == original.get('HunterSeekerSpecial', {})
+                provider_id = hunter['HunterSeeker.Buildings']
+                placements = [
+                    value.split(',') for value in sections['Structures'].values()
+                    if value.split(',')[1] == provider_id
+                ]
+                assert len(placements) == 1
+                assert placements[0][0] == original['Basic']['Player']
+                assert sections[provider_id]['SuperWeapon'] == 'MORHunterSeeker'
+                cell = tuple(map(int, placements[0][3:5]))
+                waypoint_cells = _scripted_waypoint_cells(
+                    (ROOT / 'extracted_maps' / missions[code]['scenario'].upper())
+                    .read_text().splitlines()
+                )
+                assert all(max(abs(cell[0] - x), abs(cell[1] - y)) > 3
+                           for x, y in waypoint_cells)
+                # Both missions start through player-owned reinforcement actions.
+                # Do not fall back to Puppet Master's remote Guild1 landmark.
+                if code == 'APUPPET':
+                    assert max(abs(cell[0] - 190), abs(cell[1] - 114)) <= 12, cell
+                print(f'{code}: {mode}, crane veteran={veteran}, cannon identities bound, '
+                      f'instant Hunter Seeker provider={cell}', flush=True)
+
+
+def check_hover_infantry_restrictions(missions, launcher_type):
+    """Audit production roulette against real campaign infantry/air/naval clones."""
+    access_names = (
+        'Epsilon Elite Access', 'Libra Access', 'Dunerider Access',
+        'Rocketeer Access', 'Gyrocopter Access', 'Harrier Access',
+        'Horizon Destroyer Access', 'Hovracoon Access', 'Rhino Heavy Tank Access',
+    )
+    production_categories = {
+        'YURIPR': 'infantry', 'LIBRA': 'infantry', 'DUNE': 'infantry',
+        'JUMPJET': 'infantry', 'GYRO': 'infantry', 'ORCA': 'aircraft',
+        'DEST': 'naval', 'COON': 'naval', 'HTNK': 'vehicles',
+    }
+    for code in ('APUPPET', 'EDIVER'):
+        for blocked in ((), ('aircraft',), ('naval',), ('aircraft', 'naval'),
+                        ('vehicles',), ('infantry',)):
+            launcher = launcher_type(progression_mode='Shop Mode', enemy_effect_ids=[])
+            launcher.config['generation']['shop_production_restrictions'] = blocked
+            launcher.player_rewards = [REWARD_BY_NAME[name] for name in access_names]
+            sections = generate(launcher, missions[code])
+            for source, category in production_categories.items():
+                clones = [
+                    type_id
+                    for registry in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes')
+                    for type_id in sections[registry].values()
+                    if sections.get(type_id, {}).get('GroupAs') == source
+                ]
+                assert clones, (code, source)
+                for clone in clones:
+                    denied = sections[clone]['TechLevel'] == '-1'
+                    assert denied == (category in blocked), (code, blocked, source, clone)
+            print(f'{code}: Shop production restrictions={blocked}, hover/flying infantry '
+                  'retain infantry category; aircraft/naval/vehicle bans preserved', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -341,6 +469,8 @@ def main():
     check_bottleneck(missions, _AuditLauncher)
     check_shrike_and_nanocharge(missions, _AuditLauncher)
     check_tempest(missions, _AuditLauncher)
+    check_crane_and_hunter_seeker(missions, _AuditLauncher)
+    check_hover_infantry_restrictions(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

@@ -733,6 +733,8 @@ def cloned_superweapon_plan(
                     merged_clone_spec['values'] = merged_values
                 techno_clones[techno_source] = merged_clone_spec
         if isinstance(techno_clones, dict):
+            techno_reference_ids = {}
+            private_techno_ids = []
             for techno_source, clone_spec in techno_clones.items():
                 if not isinstance(clone_spec, dict):
                     continue
@@ -751,6 +753,8 @@ def cloned_superweapon_plan(
                 techno_clone = allocate_type_id(
                     preferred_techno_clone, f'{list_section}:{techno_source}'
                 )
+                techno_reference_ids[preferred_techno_clone.lower()] = techno_clone
+                private_techno_ids.append(techno_clone)
                 techno_values = dict(techno_source_values)
                 techno_values.update(clone_spec.get('values') or {})
                 if clone_spec.get('static_startup'):
@@ -859,6 +863,25 @@ def cloned_superweapon_plan(
                     [techno_clone]
                     * max(0, startup_count - existing_startup_count)
                 )
+
+            # Private effect chains can reference another configured clone.
+            # Resolve those references after every ID has been allocated, so
+            # a map-local name collision cannot redirect a payload to a native
+            # section or leave its passenger/weapon chain incomplete.
+            reference_fields = {
+                'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+                'deathweapon', 'projectile', 'warhead', 'airburstweapon',
+                'initialpayload.types', 'passengers.allowed',
+            }
+            for techno_clone in private_techno_ids:
+                values = section_rules[techno_clone]
+                for key, value in list(values.items()):
+                    if str(key).lower() not in reference_fields or value is None:
+                        continue
+                    values[key] = ','.join(
+                        techno_reference_ids.get(item.lower(), item)
+                        for item in comma_items(value)
+                    )
 
         # Weapon/warhead/projectile helpers are not TechnoTypes or
         # SuperWeaponTypes. Clone them as isolated sections and register them

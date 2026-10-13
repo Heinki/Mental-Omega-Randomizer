@@ -45,6 +45,11 @@ def apply_shop_clone_restrictions(
     blocked = set(settings.get('shop_production_restrictions') or ())
     if not blocked:
         return ()
+    infantry_ids = {
+        str(type_id).upper()
+        for sections in (installed_sections, rule_sections)
+        for type_id in sections.get('InfantryTypes', {}).values()
+    }
     touched = []
     for source_id, details in handled_by_unit.items():
         source_id = str(source_id).upper()
@@ -55,8 +60,13 @@ def apply_shop_clone_restrictions(
         values.update(clone_values)
         get = lambda key: str(values.get(_key(values, key), '')).strip().lower()
         category = str(BUFF_TARGETS.get(source_id, {}).get('category') or '')
+        if source_id in infantry_ids or clone_id.upper() in infantry_ids:
+            category = 'infantry'
         flying = get('MovementZone') == 'fly' or get('JumpJet') == 'yes'
-        naval = (
+        # Hover infantry (Yuri Prime, Libra, Dunerider) can cross water but
+        # still belong to infantry production. Locomotion never makes them
+        # naval units; the infantry restriction must remain their only gate.
+        naval = category != 'infantry' and (
             source_id in NAVAL_UNIT_IDS
             or get('Naval') == 'yes'
             or get('WaterBound') == 'yes'
