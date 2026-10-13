@@ -74,8 +74,11 @@ def _member_kind(unit_id, mission, installed, protected):
         or not values
         or passengers != 0
         or build_limit != 0
+        # Campaigns use special armor (0% damage) and Immune for cinematic
+        # actors. A03's MAMM is one: never duplicate it in random combat waves.
+        or str(values.get('armor', '')).casefold() == 'special'
         or any(str(values.get(key, '')).casefold() in _TRUE_VALUES for key in (
-            'harvester', 'weeder', 'engineer', 'isvehicletransport', 'carryall',
+            'immune', 'harvester', 'weeder', 'engineer', 'isvehicletransport', 'carryall',
             'isdeployment', 'deploytocombat',
         ))
         or str(values.get('category', '')).casefold() == 'transport'

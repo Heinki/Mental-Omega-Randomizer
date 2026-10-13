@@ -119,7 +119,9 @@ Colossus, or Archelon). Air and naval waves gain one existing combat unit.
 Upgraded teams spawn at least veteran. Each enemy TeamType receives a private
 TaskForce; allied/player teams sharing the original remain unchanged.
 Transport, MCV, engineer, unique-unit, mixed-terrain and protected story teams
-are skipped. Existing no-build and scripted-opening protections remain active.
+are skipped. Invulnerable native types (`Armor=special` or `Immune=yes`) are
+excluded from additions; waves containing them are left authored.
+Existing no-build and scripted-opening protections remain active.
 Shop stages 4 and 8 unlock faction hero and superunit companion teams.
 Mental difficulty unlocks heroes immediately and superunits at stage 4.
 Selections vary with the run seed and mission; repeated launches reproduce
