@@ -178,6 +178,11 @@ every safe hostile consumer. Each power goes to only the first active hostile
 House, preventing duplicate timers. Offensive superweapons still require their
 matching faction; the four reinforcement/drop powers are faction-neutral so
 they remain usable on maps without an Allied, Soviet, Epsilon, or Foehn enemy.
+If a campaign shortens a native offensive power's recharge below its installed
+value for scripted use, the AI reward receives an isolated installed-rule copy
+instead. It waits through the normal cooldown before its first and subsequent
+launches. Gridlock therefore gives the rewarded AI nuke a 10-minute recharge,
+while its native `NukeSpecial RechargeTime=0.03` scripted salvo stays intact.
 
 Settings exposes reviewed AI stat, weapon, production-speed, support-power,
 and superweapon groups. AI unit/building cost reductions are deliberately

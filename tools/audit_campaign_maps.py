@@ -686,7 +686,7 @@ def _assert_mermaid_mode_matrix(missions):
 
 
 def _assert_reported_mission_mode_matrix(missions):
-    """Check the Remnant unlock and Parasomnia safety with full AI rewards."""
+    """Check Remnant, Parasomnia, and Gridlock with full AI rewards."""
     for progression_mode in ('Mission List', 'Grid Mode', 'Shop Mode'):
         for reward_mode in ('Standard', 'Chaos'):
             launcher = _AuditLauncher(
@@ -694,7 +694,7 @@ def _assert_reported_mission_mode_matrix(missions):
                 progression_mode=progression_mode,
                 enemy_effect_ids=[item['id'] for item in ENEMY_BUFF_DEFINITIONS],
             )
-            for code in ('FREMNANT', 'ASOMNIA'):
+            for code in ('FREMNANT', 'ASOMNIA', 'AGRID'):
                 mission = next(item for item in missions if item['code'] == code)
                 context = f'{code}/{progression_mode}/{reward_mode}'
                 source = all_section_value_maps_preserve(
@@ -725,6 +725,19 @@ def _assert_reported_mission_mode_matrix(missions):
                         for _error, msg in launcher.logs
                     ):
                         raise AssertionError(f'Missing opening-safety log: {context}')
+                elif code == 'AGRID':
+                    nuke = sections.get('MORENuke', {})
+                    if (
+                        nuke.get('RechargeTime') != '10'
+                        or nuke.get('SW.InitialReady') != 'no'
+                        or sections['NukeSpecial']['RechargeTime'] != '0.03'
+                        or sections['NukeSpecial'].get('SW.AllowAI')
+                        != source['NukeSpecial'].get('SW.AllowAI')
+                    ):
+                        raise AssertionError(f'AI nuke cooldown isolation failed: {context}')
+                    for section in ('Triggers', 'Actions', 'Events'):
+                        if sections[section]['01000757'] != source[section]['01000757']:
+                            raise AssertionError(f'Scripted nuclear salvo changed: {context}')
                 else:
                     action_id = '01000302'
                     if sections['Actions'][action_id] != source['Actions'][action_id]:
@@ -763,6 +776,103 @@ def _assert_reported_mission_mode_matrix(missions):
                 root_map = Path(hook['root_map'])
                 if root_map.is_file() and is_generated_hooked_map(root_map):
                     root_map.unlink()
+
+
+def _assert_enemy_power_cooldowns(missions):
+    """Audit real campaign AI grants against authored script-only cooldowns."""
+    installed_types, installed = installed_rules_registry(synchronous=True)
+    offensive_ids = {
+        definition['id'] for definition in ENEMY_BUFF_DEFINITIONS
+        if definition.get('use_existing_power')
+    }
+    isolated = []
+    for mission in missions:
+        launcher = _AuditLauncher(enemy_effect_ids=offensive_ids)
+        source = all_section_value_maps_preserve(
+            launcher.extract_campaign_map(mission['scenario'])
+            .read_text(encoding='utf-8-sig').splitlines()
+        )
+        rules = launcher.map_rules_for_launch(
+            allowed_unlocked_tech_ids=unlocked_reward_tech_ids(launcher.player_rewards)
+        )
+        for section, values in launcher.mission_required_launch_rules(mission).items():
+            rules.setdefault(section, {}).update(values)
+        hook = launcher.prepare_hooked_map(mission, extra_rules=rules)
+        if hook is None:
+            raise AssertionError(f'No AI cooldown audit map for {mission["code"]}')
+        try:
+            lines = (GENERATED_MAP_DIR / mission['scenario'].upper()).read_text(
+                encoding='utf-8-sig'
+            ).splitlines()
+            sections = all_section_value_maps_preserve(lines)
+            runtime_types = list(dict.fromkeys([
+                *installed_types, *sections.get('SuperWeaponTypes', {}).values(),
+            ]))
+            grants = [
+                group[2]
+                for trigger_id, value in sections.get('Triggers', {}).items()
+                if 'MOR Earned Superweapons' in value
+                for group in parse_action_groups(sections['Actions'][trigger_id])[1]
+                if group[0] == '34'
+            ]
+            applications = launcher.enemy_applications.get(mission['code'], ())
+            for definition in ENEMY_BUFF_DEFINITIONS:
+                if definition['id'] not in offensive_ids:
+                    continue
+                power_id = definition['superweapon']
+                native = source.get(power_id, {})
+                cooldown = float(installed[power_id]['RechargeTime'])
+                if float(native.get('RechargeTime', cooldown)) >= cooldown:
+                    continue
+                generated_native = sections.get(power_id, {})
+                if (
+                    any(generated_native.get(key) != value
+                        for key, value in native.items())
+                    or any(generated_native.get(key) != native.get(key)
+                           for key in ('SW.AllowAI', 'SW.AITargeting',
+                                       'SW.AITargeting.Constraints'))
+                ):
+                    raise AssertionError(
+                        f'{mission["code"]}: scripted {power_id} rules changed'
+                    )
+                native_index = str(runtime_types.index(power_id))
+                if native_index in grants:
+                    raise AssertionError(
+                        f'{mission["code"]}: AI reward grants rapid native {power_id}'
+                    )
+                if not any(entry.get('effect_id') == definition['id']
+                           for entry in applications):
+                    continue
+                clone_prefix = canonical_reward({
+                    'name': definition['name'],
+                })['enemy_superweapon_clone']
+                clones = [
+                    (index, sections.get(type_id, {}))
+                    for index, type_id in enumerate(runtime_types)
+                    if type_id.startswith(clone_prefix)
+                ]
+                if len(clones) != 1:
+                    raise AssertionError(f'{mission["code"]}: missing isolated {power_id}')
+                index, clone = clones[0]
+                if (
+                    float(clone['RechargeTime']) != cooldown
+                    or clone.get('SW.InitialReady') != 'no'
+                    or clone.get('SW.UseAITargeting') != 'yes'
+                    or clone.get('SW.AllowPlayer') != 'no'
+                    or clone.get('SW.AllowAI') != 'yes'
+                    or any(clone.get(field) != installed[power_id].get(field)
+                           for field in ('Type', 'Action', 'WeaponType', 'Nuke.Payload'))
+                    or grants.count(str(index)) != 1
+                ):
+                    raise AssertionError(f'{mission["code"]}: unsafe isolated {power_id}')
+                isolated.append((mission['code'], power_id, cooldown))
+        finally:
+            root_map = Path(hook['root_map'])
+            if root_map.is_file() and is_generated_hooked_map(root_map):
+                root_map.unlink()
+    if ('AGRID', 'NukeSpecial', 10.0) not in isolated:
+        raise AssertionError('Gridlock AI nuke did not receive its normal cooldown')
+    print(f'Campaign AI power cooldown audit: {isolated}', flush=True)
 
 
 def _assert_native_mcvs_untouched(source_path, generated_path, context):
@@ -1560,6 +1670,7 @@ def main():
         )
         _assert_mermaid_mode_matrix(missions)
         _assert_reported_mission_mode_matrix(missions)
+        _assert_enemy_power_cooldowns(missions)
         _assert_golden_gate_transport_factories(missions)
         _assert_mode_switch_buff_clones(missions, reward_mode='Chaos')
         _assert_mode_switch_buff_clones(missions, reward_mode='Standard')
@@ -1585,7 +1696,7 @@ def main():
     print(
         'All 97 campaign maps passed Chaos/Shop and Standard/Mission List '
         'MCV-chain audits plus Shop modifier/boon/Yuri/AI audit; '
-        'Mermaid, Remnant, Parasomnia, Golden Gate, Nanofiber, Taciturn, '
+        'Mermaid, Remnant, Parasomnia, Gridlock, Golden Gate, Nanofiber, Taciturn, '
         'and Reality focused checks passed.'
     )
 

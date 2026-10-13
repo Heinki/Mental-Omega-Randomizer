@@ -629,6 +629,43 @@ def enemy_native_unit_buff_rules(
 
 
 
+def enemy_mission_safe_power_rewards(lines, rewards, installed_sections):
+    """Isolate native AI rewards whose campaign cooldown is script-only.
+
+    A campaign can shorten a native power to fire a scripted salvo. Granting
+    that same type permanently also gives the AI the script's rapid recharge.
+    Keep the authored type intact and give the reward an installed-rule copy.
+    """
+    map_sections = {
+        str(section).lower(): values
+        for section, values in all_section_value_maps(lines).items()
+    }
+    installed_by_lower = {
+        str(section).lower(): values
+        for section, values in installed_sections.items()
+    }
+    prepared = []
+    for reward in rewards or ():
+        power_id = str(reward.get('superweapon') or '').strip().lower()
+        if reward.get('enemy_use_existing_power') and power_id:
+            installed = installed_by_lower.get(power_id, {})
+            native = map_sections.get(power_id, {})
+            installed_recharge = parse_float(
+                _value_case_insensitive(installed, 'RechargeTime'), 0
+            )
+            native_recharge = parse_float(
+                _value_case_insensitive(native, 'RechargeTime'),
+                installed_recharge,
+            )
+            if installed_recharge > 0 and native_recharge < installed_recharge:
+                reward = dict(reward)
+                reward['enemy_use_existing_power'] = False
+                reward['enemy_isolated_native_power'] = True
+                reward['_runtime_canonical'] = True
+        prepared.append(reward)
+    return prepared
+
+
 def enemy_existing_power_grant_plan(lines, rewards, installed_types):
     """Grant reviewed native powers by runtime index; create no clone section."""
     runtime_types = list(installed_types or ())
@@ -715,12 +752,22 @@ def enemy_power_launch_rewards(rewards):
         # cloned_superweapon_plan silently ignores the power.
         converted['enemy_reward'] = False
         converted['superweapon_clone'] = reward['enemy_superweapon_clone']
-        converted['superweapon_recharge_multiplier'] = 2
-        values = dict(reward.get('superweapon_rules') or {})
+        isolated_native = bool(reward.get('enemy_isolated_native_power'))
+        converted['superweapon_recharge_multiplier'] = (
+            1 if isolated_native else 2
+        )
+        # Native offensive rewards retain installed effects, not the player
+        # building-free profile or its auxiliary payload copies.
+        values = (
+            {} if isolated_native
+            else dict(reward.get('superweapon_rules') or {})
+        )
+        if isolated_native:
+            converted.pop('superweapon_techno_clones', None)
         values.update({
             'IsPowered': 'false',
             'Money.Amount': '0',
-            'SW.InitialReady': 'yes',
+            'SW.InitialReady': 'no' if isolated_native else 'yes',
             'SW.AllowAI': 'yes',
             'SW.AllowPlayer': 'no',
             'SW.AITargeting': reward['enemy_ai_targeting'],

@@ -1131,6 +1131,24 @@ References: [Ares GenericWarhead delivery](https://ares-developers.github.io/Are
 [Ares AttachEffect animation behavior](https://ares-developers.github.io/Ares-docs/new/attacheffect.html).
 
 
+## Gridlock AI nuclear reward cooldown (October 2026)
+
+The reported `AGRID.map` granted native `NukeSpecial` (runtime index `0`) to
+the hostile `Latin` House. Gridlock authors that power with `RechargeTime=0.03`
+and `ShowTimer=no` for its scripted salvo. Permanent Action 34 ownership plus
+automatic AI targeting turned that 1.8-second recharge into repeated attacks
+on the player's base; the installed nuke normally takes 10 minutes.
+
+AI power preparation now checks native offensive reward cooldowns against
+installed rules. A shortened campaign cooldown selects an isolated AI-only
+copy instead of native Action 34 ownership or native targeting overrides.
+The copy keeps the installed effect and recharge, starts uncharged, and uses
+the existing faction-matched, single-House grant path. Reinforcement rewards
+retain their doubled recharge and immediate first use. Native campaign power
+definitions and scripted timings remain intact. The campaign-map audit checks
+these shortened native definitions, isolated cooldowns, and runtime grants
+across all installed missions.
+
 ## Native and cloned harvester docking (October 2026)
 
 The previous Ore Purifier hook extended only the player clones listed in

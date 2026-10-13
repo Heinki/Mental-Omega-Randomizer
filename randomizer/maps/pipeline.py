@@ -37,6 +37,7 @@ from randomizer.maps.rules import (
     enemy_country_buff_rules,
     enemy_existing_power_grant_plan,
     enemy_existing_power_rule_overrides,
+    enemy_mission_safe_power_rewards,
     enemy_native_unit_buff_rules,
     enemy_power_launch_rewards,
     helper_ai_autobuild_plan,
@@ -703,9 +704,18 @@ def prepare_hooked_map(self, mission, extra_rules=None):
             'reviewed mission-opening safety exception.'
         )
         enemy_scaling_entries = []
-    enemy_scaling_rewards = [
-        entry['reward'] for entry in enemy_scaling_entries
-    ]
+    enemy_scaling_rewards = enemy_mission_safe_power_rewards(
+        lines,
+        [entry['reward'] for entry in enemy_scaling_entries],
+        installed_rule_sections,
+    )
+    for reward in enemy_scaling_rewards:
+        if reward.get('enemy_isolated_native_power'):
+            self.append_log(
+                f'Isolated {reward["superweapon"]} AI reward for {code}: '
+                'campaign recharge is shorter than the installed cooldown; '
+                'reward uses an installed-rule copy and waits through its first recharge.'
+            )
     ai_reward_applications = []
     # Expand waves before usage/production isolation. New enemy members must
     # participate in the same native spawnability checks as authored members.
