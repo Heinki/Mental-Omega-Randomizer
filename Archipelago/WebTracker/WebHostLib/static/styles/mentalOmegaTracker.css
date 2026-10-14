@@ -1,0 +1,60 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #14171a; color: #edf0f2; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { padding: 20px 24px 16px; background: #20262c; border-bottom: 2px solid #526272; }
+nav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+a { color: #a9d6ff; }
+h1 { margin: 18px 0; font-size: clamp(1.3rem, 3vw, 2rem); }
+h1 span { color: #a9d6ff; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+input[type=search] { margin-left: 8px; padding: 8px 12px; border: 1px solid #788795; border-radius: 4px; background: #101418; color: white; max-width: 100%; }
+input[type=checkbox] { accent-color: #91caff; }
+#refresh-status { color: #b6c4cf; font-size: .85rem; }
+main { padding: 20px 24px 40px; }
+.summary { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+.guide, .effect-note { color: #b9c4ce; line-height: 1.5; font-size: .85rem; }
+.faction { --accent: #526272; margin: 24px 0; padding: 16px; border-top: 4px solid var(--accent); background: #1b2025; border-radius: 4px; }
+.faction-allies { --accent: #4484b8; }
+.faction-soviets { --accent: #c1574e; }
+.faction-epsilon { --accent: #9e70c5; }
+.faction-foehn { --accent: #40a393; }
+.faction-neutral, .faction-global { --accent: #b39650; }
+h2 { margin: 0 0 16px; font-size: 1.2rem; }
+h3 { color: #b9c4ce; font-size: .9rem; font-weight: 500; margin: 20px 0 10px; }
+.cameo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; align-items: start; }
+.cameo-card { border: 1px solid #414b55; border-radius: 3px; background: #11161b; min-width: 0; }
+.cameo-card > summary { list-style: none; cursor: pointer; padding: 10px 6px 8px; text-align: center; }
+.cameo-card > summary::-webkit-details-marker { display: none; }
+.cameo-card > summary:hover { background: #2d3740; }
+summary:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #b3ddff; outline-offset: 3px; }
+.cameo { position: relative; display: block; width: 60px; height: 48px; margin: 0 auto 8px; border: 1px solid #788795; }
+.cameo img { display: block; width: 60px; height: 48px; object-fit: cover; }
+.locked .cameo img { filter: grayscale(1) brightness(.35); }
+.active .cameo { box-shadow: 0 0 0 2px var(--accent); }
+.placeholder { display: grid; width: 60px; height: 48px; place-items: center; background: #334655; font-size: 1rem; }
+.badge { position: absolute; bottom: -3px; right: -5px; min-width: 20px; padding: 1px 4px; background: #d9e9f6; color: #101418; border: 1px solid #101418; font-size: .75rem; font-weight: 700; }
+.card-label { display: block; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
+.card-status { display: block; margin-top: 5px; color: #a7b6c3; font-size: .68rem; }
+.cameo-card[open] { grid-column: span 3; border-color: var(--accent); }
+.cameo-card[open] > summary { display: flex; align-items: center; gap: 14px; text-align: left; }
+.cameo-card[open] .cameo { margin: 0; flex-shrink: 0; }
+.cameo-card[open] .card-label { font-size: 1rem; flex: 1; }
+.card-details { border-top: 1px solid #414b55; padding: 14px; font-size: .8rem; line-height: 1.45; }
+h4 { font-size: .85rem; margin: 12px 0 8px; }
+ul { padding-left: 20px; }
+.reward { padding: 12px 0; border-top: 1px solid #313a42; }
+.reward > strong, .reward-count { display: block; }
+.reward-count { color: #a7b6c3; margin-top: 3px; }
+.reward.received > strong { color: #a9d6ff; }
+.reward p { margin: 8px 0; }
+.next-effect summary { cursor: pointer; color: #b6c4cf; }
+.mission-section { margin-top: 28px; }
+.mission { margin: 8px 0; border: 1px solid #414b55; border-radius: 3px; }
+.mission > summary { padding: 12px; cursor: pointer; }
+.mission > summary span { float: right; }
+.mission ul { list-style: none; padding: 0 16px; font-size: .85rem; line-height: 1.8; }
+.mission li { color: #b9c4ce; }
+.mission li.checked { color: #8fe1b8; }
+[hidden] { display: none !important; }
+@media (max-width: 600px) { header, main { padding: 16px 12px; } .faction { padding: 12px; } .cameo-card[open] { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: no-preference) { .cameo-card > summary { transition: background .15s; } }

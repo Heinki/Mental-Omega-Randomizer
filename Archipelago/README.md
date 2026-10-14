@@ -100,6 +100,15 @@ change Archipelago generation or fill behavior.
 
 ## Generate and host the room
 
+### Cameo website tracker
+
+The public Archipelago website uses its generic tracker until its operators
+deploy a Mental Omega game-specific renderer. Installing an APWorld by itself
+does not change that website. A website integration using the launcher's cameo
+design, reward descriptions and stack values is available in
+[WebTracker/README.md](WebTracker/README.md), with an exporter and installer for
+an Archipelago WebHost you control. It needs no new APWorld slot-data format.
+
 Generate the multiworld normally with Archipelago 0.6.8 after every player's
 YAML is in the `Players` folder. Upload or host the generated output using your
 normal Archipelago workflow.

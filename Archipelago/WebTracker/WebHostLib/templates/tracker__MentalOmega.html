@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ player_name }}'s Mental Omega Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/mentalOmegaTracker.css') }}">
+    <script defer src="{{ url_for('static', filename='assets/mentalOmegaTracker.js') }}"></script>
+</head>
+<body>
+    <header>
+        <nav aria-label="Tracker navigation">
+            <a href="{{ url_for('get_multiworld_tracker', tracker=room.tracker) }}">Return to Multiworld Tracker</a>
+            <a href="{{ url_for('get_generic_game_tracker', tracker=room.tracker, tracked_team=team, tracked_player=player) }}">Items, locations &amp; hints table</a>
+        </nav>
+        <h1>{{ player_name }}'s <span>Mental Omega Tracker</span></h1>
+        <div class="controls">
+            <label>Search <input id="cameo-search" type="search" placeholder="Unit, power, ability…"></label>
+            <label><input id="received-only" type="checkbox"> Received / starting only</label>
+            <span id="refresh-status" role="status">Updates every minute</span>
+        </div>
+    </header>
+    <main id="omega-tracker" data-second="{{ saving_second }}">
+        <div class="summary">
+            <strong>{{ 'Goal completed' if game_finished else progression_mode }}</strong>
+            <span>{{ reward_total }} rewards received / starting</span>
+            <span>{{ checked_total }} / {{ location_total }} reward checks</span>
+        </div>
+        <p class="guide">Select a cameo for descriptions, base stats and reward effects. Colored cameos show access received or starting access. Buffs can arrive before access. Mission rules still determine availability.</p>
+        {% for section in sections %}
+        <section class="faction faction-{{ section.faction|lower }}" aria-label="{{ section.faction }}">
+            <h2>{{ section.faction }}</h2>
+            {% for category, cards in section.cards|groupby('category') %}
+            <div class="category">
+                <h3>{{ category }}</h3>
+                <div class="cameo-grid">
+                    {% for card in cards %}
+                    <details class="cameo-card {{ 'active' if card.active else 'locked' }}" data-key="{{ card.key }}" data-search="{{ card.search }}" data-received="{{ 'true' if card.has_items else 'false' }}">
+                        <summary title="{{ card.label }} — {{ card.status }}">
+                            <span class="cameo">
+                                {% if card.image %}<img src="{{ url_for('static', filename='assets/mentalOmegaTracker/' + card.image) }}" width="60" height="48" alt="" loading="lazy">{% else %}<span class="placeholder" aria-hidden="true">{{ card.label[:2] }}</span>{% endif %}
+                                {% if card.count %}<span class="badge">{{ card.count }}</span>{% endif %}
+                            </span>
+                            <span class="card-label">{{ card.label }}</span>
+                            <span class="card-status">{{ card.status }}</span>
+                        </summary>
+                        <div class="card-details">
+                            {% if card.base_stats %}<h4>Base stats</h4><ul>{% for stat in card.base_stats %}<li>{{ stat }}</li>{% endfor %}</ul>{% endif %}
+                            {% if card.combined %}<h4>Combined durability</h4><ul>{% for effect in card.combined %}<li>{{ effect }}</li>{% endfor %}</ul>{% endif %}
+                            <h4>Rewards</h4>
+                            {% for row in card.rows %}
+                            <div class="reward {{ 'received' if row.count else '' }}">
+                                <strong>{{ row.name }}</strong>
+                                <span class="reward-count">{{ row.count }} received{% if row.buff %} · {{ row.level }}/{{ row.maximum }} effective stacks{% endif %}</span>
+                                <p>{{ row.description }}</p>
+                                {% if row.effects %}<ul>{% for effect in row.effects %}<li>{{ effect }}</li>{% endfor %}</ul>{% endif %}
+                                {% if row.next_effects and row.level < row.maximum %}<details class="next-effect"><summary>Next stack</summary><ul>{% for effect in row.next_effects %}<li>{{ effect }}</li>{% endfor %}</ul></details>{% endif %}
+                            </div>
+                            {% endfor %}
+                            <p class="effect-note">Values use launcher base stats. Each reward lists its own effect; health and armor also show combined durability. Shared buffs, mission overrides and temporary arsenals follow launcher rules.</p>
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        {% endfor %}
+        {% if unknown_items %}<section class="unknown"><h2>Other received items</h2><ul>{% for item in unknown_items %}<li>{{ item.name }} × {{ item.count }}</li>{% endfor %}</ul></section>{% endif %}
+        <section class="mission-section">
+            <h2>Mission / Shop checks</h2>
+            {% for mission in missions %}
+            <details class="mission" data-key="mission:{{ mission.code }}"><summary>{{ mission.code }} <span>{{ mission.checked }}/{{ mission.total }}</span></summary>
+                <ul>{% for row in mission.rows %}<li class="{{ 'checked' if row.checked else '' }}">{{ '✓' if row.checked else '○' }} {{ row.name }}</li>{% endfor %}</ul>
+            </details>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>
