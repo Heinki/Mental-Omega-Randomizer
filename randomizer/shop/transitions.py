@@ -60,6 +60,19 @@ class FailureTransition:
     profile: ShopProfile | None = None
     revived: bool = False
     salvaged_run_coins: int = 0
+    gem_dividend_meta_coins: int = 0
+
+
+def _gem_dividend(profile, remaining_ore, config):
+    if profile is None:
+        return 0
+    ore_per_gem = int(
+        config.permanent_upgrades['gem_dividend'].effects['ore_per_gem']
+    )
+    return (
+        profile.upgrade_level('gem_dividend')
+        * (max(0, remaining_ore) // ore_per_gem)
+    )
 
 
 def victory_key(run_id, stage, mission_code):
@@ -574,8 +587,6 @@ def apply_mission_victory(
             ),
         ),
         challenge_hunter_level=profile.upgrade_level('challenge_hunter'),
-        gem_dividend_level=profile.upgrade_level('gem_dividend'),
-        remaining_run_coins=run.run_coins,
         config=config,
     )
     if final_victory:
@@ -589,6 +600,16 @@ def apply_mission_victory(
             meta_coins=reward.meta_coins + completion_bonus,
             run_completion_meta_coins=completion_bonus,
         )
+    if final_victory or run.endless:
+        dividend = _gem_dividend(
+            profile, run.run_coins + reward.run_coins, config
+        )
+        if dividend:
+            reward = replace(
+                reward,
+                meta_coins=reward.meta_coins + dividend,
+                gem_dividend_meta_coins=dividend,
+            )
     key = victory_key(run.run_id, run.stage, mission_code)
     updated_profile = replace(
         profile,
@@ -649,6 +670,7 @@ def apply_mission_failure(
     revival_offers=(),
     salvage_run_coins=0,
     maximum_salvaged_run_coins=0,
+    config: ShopModeConfig = SHOP_CONFIG,
 ):
     mission_code = str(mission_code or '').upper()
     if run.status is RunStatus.FAILED:
@@ -689,11 +711,21 @@ def apply_mission_failure(
         run.run_coins,
         max(0, int(salvage_run_coins)),
     )
+    dividend = _gem_dividend(profile, run.run_coins, config)
     updated_profile = (
-        replace(profile, salvaged_run_coins=salvage)
+        replace(
+            profile,
+            salvaged_run_coins=salvage,
+            meta_coins=profile.meta_coins + dividend,
+            lifetime_meta_coins_earned=(
+                profile.lifetime_meta_coins_earned + dividend
+            ),
+        )
         if profile is not None else None
     )
-    return FailureTransition(failed, True, updated_profile, False, salvage)
+    return FailureTransition(
+        failed, True, updated_profile, False, salvage, dividend
+    )
 
 
 def abandon_run(run):

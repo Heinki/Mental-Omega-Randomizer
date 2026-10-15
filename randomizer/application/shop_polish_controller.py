@@ -450,10 +450,6 @@ class ShopPolishController(ShopArchipelagoController):
                         challenge_hunter_level=(
                             self.shop_profile.upgrade_level('challenge_hunter')
                         ),
-                        gem_dividend_level=self.shop_profile.upgrade_level(
-                            'gem_dividend'
-                        ),
-                        remaining_run_coins=run.run_coins,
                     ))
             if not run.mission_offers:
                 lines.append('Run finished. See Run Summary and Run History.')
@@ -530,10 +526,6 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
-                remaining_run_coins=run.run_coins,
             )
             modifier_reward_parts = run_modifier_reward_parts(
                 offer.economy_class,
@@ -545,10 +537,6 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
-                remaining_run_coins=run.run_coins,
             )
             selected = bool(
                 run.mission_committed
@@ -650,10 +638,6 @@ class ShopPolishController(ShopArchipelagoController):
                 challenge_hunter_level=self.shop_profile.upgrade_level(
                     'challenge_hunter'
                 ),
-                gem_dividend_level=self.shop_profile.upgrade_level(
-                    'gem_dividend'
-                ),
-                remaining_run_coins=run.run_coins,
             )
             mission_context = self.mission_description_tooltip(mission)
             if reward_hidden:
@@ -1734,10 +1718,16 @@ class ShopPolishController(ShopArchipelagoController):
                 'missions as Veterans.'
             ),
             'gem_dividend': (
-                f'On each mission victory, gain 1 Gem per '
-                f'{effects.get("ore_per_gem", 0)} Ore held before victory, '
-                f'capped at {effects.get("maximum_gems_per_level", 0)} '
-                'Gems per level. Does not spend Ore.'
+                f'Each full {effects.get("ore_per_gem", 0)} Ore pays 1 Gem '
+                'per upgrade level. At level 3, each group pays 3 Gems. '
+                'No cap.\n'
+                'Normal run: paid once on final mission victory or a defeat '
+                'that ends the run. Final victory includes its Ore reward; '
+                'defeat uses Ore held when you lose.\n'
+                'Endless run: paid after every mission victory and on a '
+                'run-ending defeat.\n'
+                'Emergency Revival and Give Up pay nothing. Dividend does '
+                'not deduct Ore.'
             ),
             'premium_supplier': (
                 f'From stage {effects.get("minimum_stage", 0)}, guarantee '
@@ -1910,9 +1900,8 @@ class ShopPolishController(ShopArchipelagoController):
             challenge_hunter_level=self.shop_profile.upgrade_level(
                 'challenge_hunter'
             ),
-            gem_dividend_level=self.shop_profile.upgrade_level('gem_dividend'),
-            remaining_run_coins=previous_run.run_coins,
         )
+        dividend = transition.reward.gem_dividend_meta_coins
         completion_bonus = transition.reward.run_completion_meta_coins
         modifier_completion_gems = (
             len(tuple(dict.fromkeys(previous_run.modifiers)))
@@ -1931,6 +1920,10 @@ class ShopPolishController(ShopArchipelagoController):
                 f'+{gem_text(modifier_completion_gems)}'
                 if modifier_completion_gems else ''
             )
+            + (
+                f' | Gem Dividend: +{gem_text(dividend)}'
+                if dividend else ''
+            )
         )
         if transition.run.status is RunStatus.COMPLETED:
             self.shop_panels.select(self.shop_summary_panel)
@@ -1946,6 +1939,11 @@ class ShopPolishController(ShopArchipelagoController):
         self._set_shop_message(
             f'{source}: {code} failed at stage '
             f'{transition.run.failed_stage}. Shop run ended.'
+            + (
+                f' Gem Dividend: +'
+                f'{gem_text(transition.gem_dividend_meta_coins)}.'
+                if transition.gem_dividend_meta_coins else ''
+            )
             + (
                 f' Recovery Salvage saved {transition.salvaged_run_coins} Ore '
                 'for the next run.'

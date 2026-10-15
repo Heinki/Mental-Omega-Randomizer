@@ -16,8 +16,6 @@ def run_modifier_reward_delta(
     modifiers=(),
     mission_modifier=None,
     challenge_hunter_level=0,
-    gem_dividend_level=0,
-    remaining_run_coins=0,
     config=SHOP_CONFIG,
 ):
     """Return exact Ore/Gem change caused by selected run modifiers."""
@@ -27,8 +25,6 @@ def run_modifier_reward_delta(
         modifiers=modifiers,
         mission_modifier=mission_modifier,
         challenge_hunter_level=challenge_hunter_level,
-        gem_dividend_level=gem_dividend_level,
-        remaining_run_coins=remaining_run_coins,
         config=config,
     )
     unmodified = mission_reward(
@@ -37,8 +33,6 @@ def run_modifier_reward_delta(
         modifiers=(),
         mission_modifier=mission_modifier,
         challenge_hunter_level=challenge_hunter_level,
-        gem_dividend_level=gem_dividend_level,
-        remaining_run_coins=remaining_run_coins,
         config=config,
     )
     return (
@@ -56,8 +50,7 @@ def run_modifier_bonus_text(run_coins, meta_coins):
 
 def run_modifier_reward_parts(
     mission_class, *, modifiers=(), mission_modifier=None,
-    victory_coin_bonus_level=0, challenge_hunter_level=0,
-    gem_dividend_level=0, remaining_run_coins=0, config=SHOP_CONFIG,
+    victory_coin_bonus_level=0, challenge_hunter_level=0, config=SHOP_CONFIG,
 ):
     """Return modifier currency changes excluding the shown mission bonus."""
     modifier_ids = tuple(dict.fromkeys(str(item) for item in modifiers or ()))
@@ -66,8 +59,6 @@ def run_modifier_reward_parts(
         'mission_modifier': mission_modifier,
         'victory_coin_bonus_level': victory_coin_bonus_level,
         'challenge_hunter_level': challenge_hunter_level,
-        'gem_dividend_level': gem_dividend_level,
-        'remaining_run_coins': remaining_run_coins,
         'config': config,
     }
     previous = mission_reward(modifiers=(), **reward_options)
@@ -116,8 +107,6 @@ def reward_breakdown_lines(
     modifiers=(),
     mission_modifier=None,
     challenge_hunter_level=0,
-    gem_dividend_level=0,
-    remaining_run_coins=0,
     config=SHOP_CONFIG,
 ):
     definition = config.mission_rewards[mission_class]
@@ -127,8 +116,6 @@ def reward_breakdown_lines(
         modifiers=modifiers,
         mission_modifier=mission_modifier,
         challenge_hunter_level=challenge_hunter_level,
-        gem_dividend_level=gem_dividend_level,
-        remaining_run_coins=remaining_run_coins,
         config=config,
     )
     lines = [
@@ -142,8 +129,6 @@ def reward_breakdown_lines(
             modifiers=modifiers,
             mission_modifier=mission_modifier,
             challenge_hunter_level=challenge_hunter_level,
-            gem_dividend_level=gem_dividend_level,
-            remaining_run_coins=remaining_run_coins,
             config=config,
         )
         lines.append(run_modifier_bonus_text(
@@ -165,10 +150,6 @@ def reward_breakdown_lines(
             'Challenge Hunter: '
             f'+{reward.challenge_hunter_run_coins} Ore, '
             f'+{gem_text(reward.challenge_hunter_meta_coins)}'
-        )
-    if reward.gem_dividend_meta_coins:
-        lines.append(
-            f'Gem Dividend: +{gem_text(reward.gem_dividend_meta_coins)}'
         )
     lines.append(
         f'Total: +{reward.run_coins} Ore, '
