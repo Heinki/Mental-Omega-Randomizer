@@ -1,5 +1,6 @@
 """Audit real campaign-map generation for reported gameplay regressions."""
 
+from itertools import product
 from pathlib import Path
 import re
 import sys
@@ -289,46 +290,61 @@ def check_tempest(missions, launcher_type):
     from randomizer.core.paths import CAMEO_CACHE_DIR, GENERATED_MAP_DIR
     from randomizer.maps.assets import deploy_generated_unit_art
 
-    for code in ('EACCEL', 'FKILL'):
-        for area_count in (0, 20):
-            mission = missions[code]
-            launcher = launcher_type(
-                progression_mode='Grid Mode', enemy_effect_ids=[],
+    modes = (
+        ('Chaos', 'Shop Mode'),
+        ('Chaos', 'Grid Mode'),
+        ('Randomizer Arsenal', 'Grid Mode'),
+    )
+    buffs = (
+        (1, 0, '23', '9'),
+        (0, 1, '20', '9.5'),
+        (5, 0, '40', '9'),
+        (5, 20, '40', '19'),
+    )
+    for code, (reward_mode, progression), buff in product(
+        ('EACCEL', 'FKILL', 'AROADTRIP'), modes, buffs,
+    ):
+        damage_count, area_count, expected_damage, expected_spread = buff
+        mission = missions[code]
+        launcher = launcher_type(
+            reward_mode=reward_mode, progression_mode=progression,
+            enemy_effect_ids=[],
+        )
+        launcher.player_rewards = [
+            REWARD_BY_NAME['Great Tempest Power'],
+            *([REWARD_BY_NAME['Great Tempest Power Amplified Payload I']] * damage_count),
+            *([REWARD_BY_NAME['Great Tempest Power Expanded Area I']] * area_count),
+        ]
+        sections = generate(launcher, mission)
+        with TemporaryDirectory(prefix='mo-tempest-map-audit-') as folder:
+            target = Path(folder) / 'artmo.ini'
+            _, aliases = deploy_generated_unit_art(
+                GENERATED_MAP_DIR / mission['scenario'].upper(),
+                target_path=target,
+                art_cache_path=CAMEO_CACHE_DIR / 'artmo.ini',
+                rules_cache_path=CAMEO_CACHE_DIR / 'rulesmo.ini',
             )
-            launcher.player_rewards = [
-                REWARD_BY_NAME['Great Tempest Power'],
-                *([REWARD_BY_NAME['Great Tempest Power Amplified Payload I']] * 5),
-                *([REWARD_BY_NAME['Great Tempest Power Expanded Area I']] * area_count),
-            ]
-            sections = generate(launcher, mission)
-            with TemporaryDirectory(prefix='mo-tempest-map-audit-') as folder:
-                target = Path(folder) / 'artmo.ini'
-                _, aliases = deploy_generated_unit_art(
-                    GENERATED_MAP_DIR / mission['scenario'].upper(),
-                    target_path=target,
-                    art_cache_path=CAMEO_CACHE_DIR / 'artmo.ini',
-                    rules_cache_path=CAMEO_CACHE_DIR / 'rulesmo.ini',
-                )
-                preload = all_section_value_maps_preserve(
-                    (target.parent / 'rulesmo.ini').read_text().splitlines()
-                )
-                registered = set(preload['Warheads'].values())
-                for animation in sections['MORTempestAnimations']:
-                    art = aliases[animation]
-                    assert art['Damage'] == '40'
-                    warhead = art['Warhead']
-                    if area_count:
-                        assert warhead in registered
-                        # Engine INI keys and emitted type names must keep
-                        # their spelling, including custom armor overrides.
-                        assert preload[warhead] == sections[warhead]
-                        assert preload[warhead]['CellSpread'] == '19'
-                        assert preload[warhead]['Verses'].startswith('50%,50%,40%')
-                    else:
-                        assert warhead in {'GreatTempestAnimWH', 'GreatTempestAnim2WH'}
-                        assert preload[warhead]['CellSpread'] == '9'
-                assert aliases['MORFVORTEX']['Next'] == 'MORFVORTEX2'
-            print(f'{code}: Chaos Grid Tempest, damage=5, area={area_count}, early warhead casing preserved', flush=True)
+            preload = all_section_value_maps_preserve(
+                (target.parent / 'rulesmo.ini').read_text().splitlines()
+            )
+            registered = set(preload['Warheads'].values())
+            for animation in sections['MORTempestAnimations']:
+                art = aliases[animation]
+                assert art['Damage'] == expected_damage
+                warhead = art['Warhead']
+                if area_count:
+                    assert warhead in registered
+                    # Engine INI keys and emitted type names must keep
+                    # their spelling, including custom armor overrides.
+                    assert preload[warhead] == sections[warhead]
+                    assert preload[warhead]['CellSpread'] == expected_spread
+                    assert preload[warhead]['Verses'].startswith('50%,50%,40%')
+                else:
+                    assert warhead in {'GreatTempestAnimWH', 'GreatTempestAnim2WH'}
+                    assert preload[warhead]['CellSpread'] == '9'
+            assert aliases['MORFVORTEX']['Next'] == 'MORFVORTEX2'
+        print(f'{code}: {reward_mode} {progression} Tempest, damage={damage_count}, '
+              f'area={area_count}, early warhead casing preserved', flush=True)
 
 
 def check_crane_and_hunter_seeker(missions, launcher_type):

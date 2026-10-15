@@ -1174,15 +1174,9 @@ class LaunchController:
                             + '.'
                         )
                 except Exception as exc:
-                    if '[mortempestanimations]' in read_text(
-                        hook['root_map']
-                    ).lower():
-                        raise RuntimeError(
-                            'Could not prepare required Great Tempest buff artwork.'
-                        ) from exc
-                    if '[mornanofiberanimations]' in read_text(
-                        hook['root_map']
-                    ).lower():
+                    map_text = read_text(hook['root_map']).lower()
+                    requires_tempest_art = '[mortempestanimations]' in map_text
+                    if '[mornanofiberanimations]' in map_text:
                         failure = traceback.format_exc()
                         suppress_nanofiber_clone_mutations(hook['root_map'])
                         self.append_log(
@@ -1202,8 +1196,8 @@ class LaunchController:
                         )
                         # Asset deployment may have failed after partially
                         # staging the mutation rules. Clear only launcher-owned
-                        # files, then retry ordinary cameo deployment without
-                        # the private animation aliases.
+                        # files, then retry without the private Nanofiber
+                        # aliases. Tempest aliases remain required.
                         self.disable_generated_rules_for_client()
                         claim_runtime_asset_lease()
                         try:
@@ -1216,7 +1210,12 @@ class LaunchController:
                                     + ', '.join(sorted(art_aliases))
                                     + '.'
                                 )
-                        except Exception:
+                        except Exception as retry_exc:
+                            if requires_tempest_art:
+                                raise RuntimeError(
+                                    'Could not prepare required Great Tempest '
+                                    f'buff artwork: {retry_exc}'
+                                ) from retry_exc
                             self.append_log(
                                 'Could not prepare temporary unit cameo art; '
                                 'existing custom art was left untouched.',
@@ -1226,6 +1225,11 @@ class LaunchController:
                                 traceback.format_exc(), error=True
                             )
                     else:
+                        if requires_tempest_art:
+                            raise RuntimeError(
+                                'Could not prepare required Great Tempest '
+                                f'buff artwork: {exc}'
+                            ) from exc
                         self.append_log(
                             'Could not prepare temporary unit cameo art; '
                             'existing custom art was left untouched.',
