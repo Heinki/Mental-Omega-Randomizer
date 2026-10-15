@@ -4,6 +4,9 @@ from copy import deepcopy
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
 
+from randomizer.core.paths import BACKUP_DIR
+from randomizer.core.storage import atomic_write_json, read_json_object
+
 from .archipelago_yaml_controller import ArchipelagoYamlController
 
 from ._dependencies import (
@@ -18,6 +21,9 @@ from ._dependencies import (
     threading,
     time,
 )
+
+
+ARCHIPELAGO_RESUME_PATH = BACKUP_DIR / 'archipelago_resume.json'
 
 
 class ArchipelagoController(ArchipelagoYamlController):
@@ -390,6 +396,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             return loaded_state, False
 
         self._archipelago_cached_state = deepcopy(loaded_state)
+        atomic_write_json(ARCHIPELAGO_RESUME_PATH, loaded_state, indent=None)
         self._archipelago_standalone_state = deepcopy(standalone_state)
         self._archipelago_standalone_config = self._standalone_archipelago_config(
             self.config, standalone_config
@@ -431,6 +438,9 @@ class ArchipelagoController(ArchipelagoYamlController):
             return False
 
         self._archipelago_cached_state = deepcopy(self.state)
+        atomic_write_json(
+            ARCHIPELAGO_RESUME_PATH, self._archipelago_cached_state, indent=None
+        )
         restored_config = self._standalone_archipelago_config(
             self.config, standalone_config
         )
@@ -485,6 +495,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         self._archipelago_standalone_state = None
         self._archipelago_standalone_config = None
         self._archipelago_cached_state = None
+        ARCHIPELAGO_RESUME_PATH.unlink(missing_ok=True)
         self._set_archipelago_chat_enabled(False)
         self.archipelago_status_var.set('Disconnected')
         self.archipelago_yaml_status_var.set(
@@ -569,6 +580,19 @@ class ArchipelagoController(ArchipelagoYamlController):
     def _archipelago_saved_checkpoint(self, endpoint, slot_name):
         ap_state = self.state.get('archipelago', {}) if self.state else {}
         cached_state = getattr(self, '_archipelago_cached_state', None)
+        if cached_state is None:
+            try:
+                cached_state = read_json_object(ARCHIPELAGO_RESUME_PATH)
+            except FileNotFoundError:
+                pass
+            except (OSError, ValueError) as exc:
+                log_event(
+                    'archipelago_resume_load_failed',
+                    level=logging.WARNING,
+                    error=str(exc),
+                )
+            else:
+                self._archipelago_cached_state = cached_state
         cached_ap = (
             cached_state.get('archipelago', {})
             if isinstance(cached_state, dict) else {}
@@ -845,6 +869,9 @@ class ArchipelagoController(ArchipelagoYamlController):
                 item_names,
                 active_session,
             )
+            self.apply_archipelago_received_items(
+                active_session.checkpoint().get('received_items', ())
+            )
             self._apply_manifest_launcher_settings(slot_manifest)
             self._synchronize_archipelago_progression_ui(slot_manifest)
             self._promote_archipelago_run()
@@ -1058,22 +1085,23 @@ class ArchipelagoController(ArchipelagoYamlController):
         snapshot = self._validate_archipelago_server_state(result.slot_data)
         slot_manifest = result.slot_data['run_manifest']
         cached_state = getattr(self, '_archipelago_cached_state', None)
-        cached_ap = (
-            cached_state.get('archipelago', {})
-            if isinstance(cached_state, dict) else {}
-        )
-        previous_ap = deepcopy(
-            cached_ap
-            if isinstance(cached_ap, dict)
-            and cached_ap.get('manifest_checksum')
-            == slot_manifest.get('manifest_checksum')
-            else self._configured_archipelago_state() or {}
-        )
-        if (
-            previous_ap.get('manifest_checksum')
-            != slot_manifest.get('manifest_checksum')
-        ):
-            previous_ap = {}
+        previous_state = {}
+        for candidate in (self.state, cached_state):
+            if not isinstance(candidate, dict):
+                continue
+            candidate_ap = candidate.get('archipelago')
+            if (
+                isinstance(candidate_ap, dict)
+                and candidate_ap.get('manifest_checksum')
+                == slot_manifest.get('manifest_checksum')
+                and candidate_ap.get('team') == result.team
+                and candidate_ap.get('slot') == result.slot
+                and (candidate_ap.get('checkpoint') or {}).get('seed_name')
+                == result.seed_name
+            ):
+                previous_state = candidate
+                break
+        previous_ap = deepcopy(previous_state.get('archipelago', {}))
         previous_ap.update({
             'activation': 'active',
             'enabled': True,
@@ -1098,6 +1126,21 @@ class ArchipelagoController(ArchipelagoYamlController):
             )
         previous_location_info = previous_ap.pop('location_info', {})
         self.state = deepcopy(snapshot)
+        for key in (
+            'mission_failure_stacks', 'mission_assistance_units',
+            'enemy_reward_applications',
+        ):
+            if key in previous_state:
+                self.state[key] = deepcopy(previous_state[key])
+        for code, checks in self.state.get('mission_checks', {}).items():
+            unlocked_checks = {
+                check.get('id')
+                for check in previous_state.get('mission_checks', {}).get(code, ())
+                if isinstance(check, dict) and check.get('unlocked')
+            }
+            for check in checks:
+                if check.get('id') in unlocked_checks:
+                    check['unlocked'] = True
         self.state['archipelago'] = previous_ap
         # Validated HandshakeResult is immutable by convention after delivery.
         # Avoid another full manifest/state copy on Tk thread.
@@ -1141,6 +1184,21 @@ class ArchipelagoController(ArchipelagoYamlController):
         ))
         checked = incoming if replace else previous | incoming
         self._archipelago_server_checked_locations = checked
+        ap_state = self._active_archipelago_state() or {}
+        session = getattr(self, '_archipelago_session', None)
+        checkpoint = (
+            session.checkpoint()
+            if session is not None
+            and getattr(self, '_archipelago_session_validated', False)
+            else ap_state.get('checkpoint', {})
+        )
+        known = set(checked)
+        if isinstance(checkpoint, dict) and checkpoint.get('format', 1) >= 2:
+            for key in ('completed_locations', 'pending_locations'):
+                known.update(
+                    int(value) for value in checkpoint.get(key, ())
+                    if int(value) in allowed
+                )
         mission_checks = self.state.get('mission_checks', {})
         changed = checked != previous
         completed = []
@@ -1148,7 +1206,10 @@ class ArchipelagoController(ArchipelagoYamlController):
         for code in self.state.get('mission_order', []):
             checks = mission_checks.get(code, [])
             mission_started = False
-            mission_complete = False
+            local_victory = getattr(
+                self, '_archipelago_local_victories', {}
+            ).get(str(code).upper(), {}).get('location')
+            mission_complete = bool(local_victory and local_victory in known)
             for check in checks:
                 if not isinstance(check, dict):
                     continue
@@ -1156,8 +1217,11 @@ class ArchipelagoController(ArchipelagoYamlController):
                 mapped = set(getattr(
                     self, '_archipelago_location_groups', {}
                 ).get((str(code).upper(), check_id), ()))
-                unlocked = bool(mapped and mapped.issubset(checked))
                 before = bool(check.get('unlocked'))
+                unlocked = before or mission_complete or bool(
+                    mapped and mapped.issubset(known)
+                    and (check_id != 'victory' or not local_victory)
+                )
                 check.pop('released', None)
                 if unlocked:
                     check['unlocked'] = True

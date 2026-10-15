@@ -852,10 +852,10 @@ class ArchipelagoSession:
         confirmed = []
         with self._lock:
             for location in checked:
-                # RoomUpdate is broadcast for checks made by other slots too.
-                # It carries no owner. Accept only locations this MO client
-                # already reported and is awaiting confirmation for.
-                if location not in self._pending_locations:
+                if (
+                    location not in self._pending_locations
+                    and location not in self._missing_locations
+                ):
                     continue
                 self._pending_locations.discard(location)
                 self._completed_locations.add(location)
