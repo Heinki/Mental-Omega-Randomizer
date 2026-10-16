@@ -994,6 +994,7 @@ class LaunchController:
             self.record_failed_mission_attempt(attempt_code, 'Mission closed without victory')
         self.active_hook = None
         self.active_game_process = None
+        self.refresh_game_speed_controls()
         self.active_mission_attempt = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
@@ -1350,6 +1351,7 @@ class LaunchController:
             if launch_note:
                 self.append_log(launch_note)
             self.active_game_process = process
+            self.refresh_game_speed_controls()
             self.active_hook = hook
             if self.active_hook is not None:
                 self.active_hook['scenario_ready'] = False

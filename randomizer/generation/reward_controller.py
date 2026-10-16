@@ -13,11 +13,20 @@ from randomizer.rewards.rules import tech_ids_for_rewards
 
 
 class RewardGeneration:
+    def native_challenge_rewards_enabled(self):
+        context = self.__dict__.get('_seed_generation_context') or {}
+        category = context.get('mission_category') or (self.state or {}).get('mission_category')
+        if category is None:
+            category = getattr(self, 'config', {}).get('mission_category')
+        return category == 'challenge'
+
     def mission_lookup(self):
         return self._mission_by_code
 
     def objective_templates_for_code(self, code):
         mission = self.mission_lookup().get(code, {})
+        if mission.get('challenge_name'):
+            return [('victory', 'Challenge Victory', 'Defeat every enemy in the challenge.')]
         if mission.get('coop_name'):
             return [('victory', 'Mission Victory', 'Win the co-op mission.')]
         objectives = mission.get('objectives') or []
@@ -54,7 +63,8 @@ class RewardGeneration:
                 if hasattr(self, 'campaign_var')
                 else (self.state or {}).get('campaign_filter', '')
             )
-        return selected == 'Foehn' and self.active_reward_mode() == 'Standard'
+        return (not self.native_challenge_rewards_enabled()
+                and selected == 'Foehn' and self.active_reward_mode() == 'Standard')
 
     def active_launch_reward_factions(self):
         """Return factions whose saved rewards may affect this launch.
@@ -72,6 +82,8 @@ class RewardGeneration:
         if not selected and hasattr(self, 'campaign_var'):
             selected = self.campaign_var.get()
         if selected == 'Foehn':
+            if self.native_challenge_rewards_enabled():
+                return {'Foehn', 'Neutral'}
             # Foehn Standard intentionally uses bundled Allied/Soviet access;
             # native Foehn powers may also be valid campaign rewards.
             return {'Allies', 'Soviets', 'Foehn', 'Neutral'}
@@ -85,7 +97,8 @@ class RewardGeneration:
         """Keep native Foehn unit access exclusive to Chaos reward mode."""
         reward = canonical_reward(reward)
         return bool(
-            self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
+            not self.native_challenge_rewards_enabled()
+            and self.active_reward_mode() not in {'Chaos', ARSENAL_MODE}
             and reward.get('kind') != 'superweapon'
             and reward.get('access_category') != 'special_building'
             and not self.reward_is_special_building(reward)
@@ -500,6 +513,8 @@ class RewardGeneration:
         if selected is None:
             selected = self.campaign_var.get() if hasattr(self, 'campaign_var') else ''
         if selected == 'Foehn':
+            if self.native_challenge_rewards_enabled():
+                return {'Foehn'}
             return {'Allies', 'Soviets'}
         if selected in {'Allies', 'Soviets', 'Epsilon'}:
             return {selected}

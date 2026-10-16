@@ -938,7 +938,7 @@ def _build_gameplay_settings(self, settings_frame):
         reward_frame,
         text='Unlimited unique / hero units',
         variable=self.unlimited_hero_units_var,
-        command=self.refresh_setting_states,
+        command=self.on_unlimited_hero_units_changed,
     )
     self.unlimited_hero_units_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
@@ -951,7 +951,7 @@ def _build_gameplay_settings(self, settings_frame):
         reward_frame,
         text='Include offensive superweapon rewards',
         variable=self.include_superweapon_rewards_var,
-        command=self.on_unlimited_hero_units_changed,
+        command=self.refresh_setting_states,
     )
     self.include_superweapon_rewards_check.grid(row=9, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(

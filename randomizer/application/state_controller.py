@@ -2,7 +2,7 @@
 
 from randomizer.config.tuning import mission_assistance_stack_count
 from randomizer.coop import feature
-from randomizer.core.paths import COOP_STATE_PATH
+from randomizer.core.paths import state_path_for_mode
 from .archipelago_state import normalize_archipelago_activation
 
 from ._dependencies import (
@@ -79,7 +79,10 @@ from randomizer.generation.state_controller import GenerationSettings
 
 class StateController(GenerationSettings):
     def load_state(self):
-        path = COOP_STATE_PATH if self.config.get('coop_mode') else STATE_PATH
+        category = self.config.get('mission_category') or (
+            'coop' if self.config.get('coop_mode') else 'campaign'
+        )
+        path = state_path_for_mode(category, self.config.get('coop_mode', False))
         if not path.exists():
             return {}
         try:
@@ -334,7 +337,10 @@ class StateController(GenerationSettings):
         self.__dict__.pop('_unlock_dashboard_sources_cache', None)
         self.__dict__.pop('_configured_reward_pool_cache', None)
         self._enemy_buffs_view_dirty = True
-        path = COOP_STATE_PATH if self.state.get('coop_mode') else STATE_PATH
+        category = self.state.get('mission_category') or (
+            'coop' if self.state.get('coop_mode') else 'campaign'
+        )
+        path = state_path_for_mode(category, self.state.get('coop_mode', False))
         atomic_write_json(path, self.state, indent=None)
         self.coop_publish_state()
 
@@ -595,6 +601,9 @@ class StateController(GenerationSettings):
         return bool(self.config.get('use_act_based_reward_multipliers', True))
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
+        self.config['mission_category'] = self.selected_mission_category()
+        self.config['challenge_player_count'] = self.selected_challenge_player_count()
+        self.config['challenge_country'] = self.challenge_country_var.get()
         self.config['coop_mode'] = bool(
             feature.COOP_FEATURE_ENABLED and self.coop_mode_var.get()
         )
@@ -642,6 +651,9 @@ class StateController(GenerationSettings):
         self.config['generation']['excluded_mission_codes'] = sorted(self.excluded_mission_codes)
         self.config['generation']['excluded_coop_mission_codes'] = sorted(
             self.excluded_coop_mission_codes
+        )
+        self.config['generation']['excluded_challenge_mission_codes'] = sorted(
+            self.excluded_challenge_mission_codes
         )
         self.config['generation']['excluded_unit_access_ids'] = sorted(
             self.excluded_unit_access_ids
@@ -743,6 +755,9 @@ class StateController(GenerationSettings):
 
     def load_settings_file(self):
         """Import every launcher option while preserving run progress."""
+        if self.challenge_launch_active():
+            messagebox.showinfo('Challenges', 'Close the current challenge before loading settings.')
+            return
         if self.gameplay_settings_locked() or getattr(self, '_coop_lobby', None):
             return
         path = filedialog.askopenfilename(
@@ -781,12 +796,21 @@ class StateController(GenerationSettings):
 
     def apply_portable_settings(self, config):
         """Apply one validated portable config to every live setting control."""
-        previous_coop_mode = bool(self.coop_mode_var.get())
+        if self.challenge_launch_active():
+            return
+        previous_setup = self.selected_mission_setup()
         config.pop('coop_feature_enabled', None)
         if not feature.COOP_FEATURE_ENABLED:
             config['coop_mode'] = False
         self.config = config
+        category = config.get('mission_category') or (
+            'coop' if config.get('coop_mode') else 'campaign'
+        )
+        self.mission_category_var.set(category)
+        self.challenge_player_count_var.set(str(config.get('challenge_player_count', 1)))
+        self.challenge_country_var.set(str(config.get('challenge_country') or 'UnitedStates'))
         self.coop_mode_var.set(bool(config.get('coop_mode', False)))
+        self.sync_mission_transport_mode()
         generation = self.config.get('generation', {})
         if generation.get('reward_mode') == 'Chaos (Experimental)':
             generation['reward_mode'] = 'Chaos'
@@ -890,6 +914,11 @@ class StateController(GenerationSettings):
         self.excluded_coop_mission_codes = {
             str(code).upper()
             for code in generation.get('excluded_coop_mission_codes', [])
+            if str(code).strip()
+        }
+        self.excluded_challenge_mission_codes = {
+            str(code).upper()
+            for code in generation.get('excluded_challenge_mission_codes', [])
             if str(code).strip()
         }
         self.excluded_unit_access_ids = {
@@ -1010,7 +1039,7 @@ class StateController(GenerationSettings):
         self.unlock_dashboard_signature = None
         self.refresh_progress_view()
         self.refresh_coop_controls()
-        if previous_coop_mode != bool(self.coop_mode_var.get()):
+        if previous_setup != self.selected_mission_setup():
             if self.archipelago_run_active():
                 # Signed server state already selected the pool. Switching
                 # presentation must not reload a standalone save over it.

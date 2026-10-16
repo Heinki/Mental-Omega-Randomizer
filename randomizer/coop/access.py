@@ -8,7 +8,7 @@ from randomizer.maps.production import (
 )
 from randomizer.missions.access import (
     _alternative_prerequisite_rules, _native_access_prerequisites, access_catalog,
-    STANDARD_TIER_ONE_FAMILIES,
+    STANDARD_TIER_ONE_FAMILIES, TIER_ONE_ROLE_UNITS,
 )
 from randomizer.missions.tier_one import (
     _selected_tier_one_roles, _standard_tier_one_entry,
@@ -35,12 +35,14 @@ def coop_starting_rewards(state, country=''):
     units = set(state.get('starting_unit_ids') or ())
     defenses = set(state.get('starting_defense_ids') or ())
     if state.get('reward_mode') == 'Standard':
+        include_foehn = country in {'Guild1', 'Guild2', 'Guild3'}
+        families = (*STANDARD_TIER_ONE_FAMILIES, *(['foehn'] if include_foehn else []))
         units = {
             _standard_tier_one_entry(role, family, [country])[0]
             for role in _selected_tier_one_roles(units)
-            for family in STANDARD_TIER_ONE_FAMILIES
+            for family in families if family in TIER_ONE_ROLE_UNITS.get(role, {})
         }
-        defenses = expanded_tier_one_defense_ids(defenses)
+        defenses = expanded_tier_one_defense_ids(defenses, include_foehn=include_foehn)
     excluded = set((state.get('reward_settings') or {}).get('excluded_unit_access_ids', ()))
     return [
         {'name': f'{source_id} co-op starting access',
@@ -91,6 +93,7 @@ def apply_coop_native_production_gate(lines, manifest):
     _append_grid_power_providers(
         lines, manifest['player_country'], [], [PLAYER_ORIGINAL_PRODUCTION_GATE_ID],
         [], installed, label='Original Production Gate',
+        human_slots=range(manifest.get('player_count', 2)),
     )
 
 

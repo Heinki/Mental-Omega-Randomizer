@@ -1,4 +1,4 @@
-"""ZeroTier connection dialog, private fields, and diagnostics."""
+"""Private-network connection dialog, private fields, and diagnostics."""
 
 import time
 import secrets
@@ -20,13 +20,14 @@ class CoopConnectionController:
             return
         dialog = tk.Toplevel(self)
         self._coop_dialog = dialog
-        dialog.title('ZeroTier co-op connection')
+        dialog.title('Private network game connection')
         dialog.transient(self)
         frame = ttk.Frame(dialog, padding=12)
         frame.pack(fill='both', expand=True)
         if not hasattr(self, '_coop_role'):
-            self._coop_role = tk.StringVar(master=self, value='Host')
-            self._coop_name = tk.StringVar(master=self, value='CoopHost')
+            self._coop_role = tk.StringVar(master=self, value=(
+                'Join' if self.config.get('coop_role') == 'Join' else 'Host'))
+            self._coop_name = tk.StringVar(master=self, value=self.config.get('player_name') or 'Commander')
             self._coop_address = tk.StringVar(master=self, value=self.config.get('coop_last_host', ''))
             self._coop_host_pairing = tk.StringVar(master=self, value=secrets.token_hex(12))
             self._coop_pairing = tk.StringVar(master=self, value='')
@@ -35,7 +36,7 @@ class CoopConnectionController:
         self._coop_private_entries = []
         self._coop_connection_entries = []
         frame.columnconfigure(1, weight=1)
-        for row, (label, variable) in enumerate((('Role', self._coop_role), ('Player name', self._coop_name), ('Host ZeroTier IPv4', self._coop_address), ('Pairing code', self._coop_pairing))):
+        for row, (label, variable) in enumerate((('Role', self._coop_role), ('Player name', self._coop_name), ('Host private IPv4', self._coop_address), ('Pairing code', self._coop_pairing))):
             field_label = ttk.Label(frame, text=label)
             field_label.grid(row=row, column=0, sticky='w', padx=(0, 8))
             widget = ttk.Combobox(frame, textvariable=variable, values=('Host', 'Join'), state='readonly') if row == 0 else ttk.Entry(frame, textvariable=variable, width=30)
@@ -55,21 +56,24 @@ class CoopConnectionController:
         self._coop_show_details_check = ttk.Checkbutton(
             frame, variable=self._coop_show_details, command=self._toggle_coop_details)
         self._coop_show_details_check.grid(row=4, column=0, columnspan=2, sticky='w', pady=(6, 0))
-        ttk.Button(frame, text='Copy pairing code', command=self._copy_coop_pairing).grid(row=5, column=0, sticky='w', pady=5)
+        self.build_challenge_player_controls(frame, row=5)
+        ttk.Button(frame, text='Copy pairing code', command=self._copy_coop_pairing).grid(row=6, column=0, sticky='w', pady=5)
         self._coop_start_button = ttk.Button(frame, text='Connect', command=self._connect_coop_from_dialog)
-        self._coop_start_button.grid(row=6, column=0, pady=8)
+        self._coop_start_button.grid(row=7, column=0, pady=8)
         self._coop_disconnect_button = ttk.Button(frame, text='Disconnect', command=self.disconnect_coop)
-        self._coop_disconnect_button.grid(row=6, column=1)
-        ttk.Label(frame, textvariable=self._coop_status_var, wraplength=430).grid(row=7, column=0, columnspan=2)
+        self._coop_disconnect_button.grid(row=7, column=1)
+        ttk.Label(frame, textvariable=self._coop_status_var, wraplength=430).grid(row=8, column=0, columnspan=2)
         ttk.Button(frame, text='Show connection log', command=self._show_coop_log).grid(
-            row=8, column=0, columnspan=2, sticky='w', pady=(8, 0))
+            row=9, column=0, columnspan=2, sticky='w', pady=(8, 0))
         dialog.protocol('WM_DELETE_WINDOW', self._close_coop_dialog)
         ttk.Label(frame, text=(
-            'Enable co-op mode in Settings before connecting. Use the same authorized '
-            'private ZeroTier network. Guest enters the host’s '
-            'Managed IPv4 and pairing code. Host generates the Grid first; Shop players '
+            'Choose co-op, or challenge with 2 players, in Settings before connecting. Use the same authorized '
+            'private network (Tailscale or ZeroTier). Guest enters the host’s '
+            'private IPv4 and pairing code. Host generates the Grid first; Shop players '
             'start separate runs with the same seed and stage. Ports are automatic.'
-        ), wraplength=430, justify='left').grid(row=9, column=0, columnspan=2, pady=(8, 0))
+            ' Each challenge player chooses their own house and a different color here. '
+            'Host controls game speed and difficulty.'
+        ), wraplength=430, justify='left').grid(row=10, column=0, columnspan=2, pady=(8, 0))
         self._refresh_coop_connection_fields()
 
     def _hide_coop_details(self):
@@ -101,6 +105,8 @@ class CoopConnectionController:
     def _on_coop_role_changed(self, *_args):
         if self._coop_name.get() in ('CoopHost', 'CoopGuest'):
             self._coop_name.set('CoopHost' if self._coop_role.get() == 'Host' else 'CoopGuest')
+        if hasattr(self, '_coop_color_label') and 'coop_challenge_color' not in self.config:
+            self._coop_color_label.set('Red' if self._coop_role.get() == 'Join' else 'Teal')
         self._refresh_coop_connection_fields()
 
     def _record_coop_log(self, message, error=False):
@@ -175,6 +181,7 @@ class CoopConnectionController:
         button = getattr(self, '_coop_disconnect_button', None)
         if button and button.winfo_exists():
             button.configure(state='normal' if connected else 'disabled')
+        self.refresh_challenge_player_controls()
 
     def _coop_safe_message(self, value):
         private = [getattr(self, name).get() for name in

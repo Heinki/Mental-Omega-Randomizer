@@ -28,6 +28,8 @@ DISABLED_RULESMO_INI = GAME_ROOT / 'rulesmo.ini.randomizer-disabled'
 BATTLE_CLIENT_INI = GAME_ROOT / 'INI' / 'BattleClient.ini'
 STATE_PATH = APP_DIR / 'randomizer_state.json'
 COOP_STATE_PATH = APP_DIR / 'randomizer_coop_state.json'
+CHALLENGE_STATE_PATH = APP_DIR / 'challenge_solo_state.json'
+CHALLENGE_COOP_STATE_PATH = APP_DIR / 'challenge_coop_state.json'
 SHOP_PROFILE_PATH = APP_DIR / 'shop_profile.json'
 SHOP_RUN_PATH = APP_DIR / 'shop_run.json'
 SHOP_TRANSACTION_PATH = APP_DIR / 'shop_transaction.json'
@@ -40,3 +42,10 @@ LEGACY_CONFIG_DIR = APP_DIR / 'config'
 LOG_DIR = APP_DIR / 'logs'
 LAUNCHER_LOG = LOG_DIR / 'launcher.log'
 MAP_RENDERER_DIR = GAME_ROOT / 'Map Renderer'
+
+
+def state_path_for_mode(category, coop_mode=False):
+    """Keep campaign, cooperative and challenge runs in distinct save files."""
+    if category == 'challenge':
+        return CHALLENGE_COOP_STATE_PATH if coop_mode else CHALLENGE_STATE_PATH
+    return COOP_STATE_PATH if category == 'coop' or coop_mode else STATE_PATH

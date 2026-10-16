@@ -1411,7 +1411,9 @@ class AdvancedSettingsController:
             return
         filtered_count = len(self.filtered_missions_for_seed())
         self.campaign_label.configure(text=(
-            f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
+            f'Challenge maps ({filtered_count})'
+            if self.selected_mission_category() == 'challenge'
+            else f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
             else f'Campaign ({filtered_count})'
         ))
         self.mission_goal_spinbox.configure(to=max(1, filtered_count))

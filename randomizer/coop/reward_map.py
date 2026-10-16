@@ -26,6 +26,7 @@ from randomizer.maps.powers import (
 from randomizer.missions.access import CHAOS_PRIMARY_PRODUCTION
 from randomizer.rewards.arsenal import arsenal_unit_type
 from randomizer.rewards.catalogue import BUFF_TARGETS, canonical_reward
+from randomizer.rewards.definitions import LIMITED_HERO_UNIT_IDS
 from randomizer.rewards.roster import (
     installed_rules_template_overlay, randomizer_unit_roster,
 )
@@ -66,11 +67,12 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                        country: str | None = None, access_ids=None,
                        buff_counts=None, clone_scope: str = '',
                        production_restrictions=(), building_ids=()) -> None:
-    """Add shared Grid clones or one country's private Shop clones.
+    """Add shared clones or one country's isolated Shop/challenge roster.
 
     Native map objects and AI TaskForces keep their original IDs. Shop uses
-    separate countries and clone IDs for the two human slots; Grid keeps the
-    original shared country and clone IDs. Shop production restrictions only
+    separate countries and clone IDs for the two human slots. Challenges do
+    the same when players choose different countries, sharing one clone set
+    when their country matches. Shop production restrictions only
     disable the affected player's unit clones.
     """
     if clone_scope not in ('', 'H', 'G'):
@@ -187,6 +189,15 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                 values['BuildLimit'] = str(max(1, base_limit) + amount)
             elif buff_type != 'veteran' and buff_type not in _WEAPON_BUFFS:
                 raise ValueError(f'Unsupported co-op buff: {source_id} {buff_type}')
+        if manifest.get('unlimited_hero_units') and source_id in LIMITED_HERO_UNIT_IDS:
+            # Match the campaign clone policy: an absent BuildLimit removes
+            # the simultaneous-unit cap, whereas zero would block production.
+            # Change only earned player clones, after capacity buffs, so the
+            # native AI/script identities retain their authored limits. Shared
+            # country clones work for both humans; the engine counts per House.
+            for key in list(values):
+                if key.lower() == 'buildlimit':
+                    values.pop(key)
         weapon_counts = {
             key: value for key, value in unit_counts.items() if key in _WEAPON_BUFFS
         }
@@ -430,11 +441,11 @@ def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
 
 def _append_grid_power_providers(lines, country, actions, buildings,
                                  installed_types, installed, *,
-                                 label='Shared Grid Powers'):
-    """Give both human slots providers using native Player @ A/B transfers.
+                                 label='Shared Grid Powers', human_slots=(0, 1)):
+    """Give human slots providers using native Player @ A/B transfers.
 
     Trigger owners resolve a country to its first house. Both Grid players
-    use the same country, so action 34 and country-owned static providers only
+    may use the same country, so action 34 and country-owned static providers only
     grant powers to one player. Neutral hidden buildings with separate tags
     use action 14's explicit multiplayer house indices, as authored co-op
     maps do when assigning their starting units and cash buildings.
@@ -498,7 +509,10 @@ def _append_grid_power_providers(lines, country, actions, buildings,
     merge_ini_section_values(lines, rules)
     if not providers:
         return
-    for slot, house_index in enumerate((4475, 4476), 1):
+    for human_slot in human_slots:
+        if type(human_slot) is not int or human_slot not in (0, 1):
+            raise ValueError('Invalid human slot for multiplayer reward providers.')
+        slot, house_index = human_slot + 1, 4475 + human_slot
         trigger = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGGP')
         tag = unique_section_key(lines, ('Tags',), 'RNGGT')
         name = f'MOR {label} P{slot}'
@@ -520,16 +534,18 @@ def _append_grid_power_providers(lines, country, actions, buildings,
 
 
 def apply_coop_power_rewards(lines: list[str], country: str,
-                             reward_ids: list[str], *, shared_grid=False) -> None:
-    """Grant earned powers to a private Shop country or both shared Grid slots."""
+                             reward_ids: list[str], *, shared_grid=False,
+                             human_slots=(0, 1), countries=()) -> None:
+    """Grant earned powers to private Shop or shared Grid/challenge humans."""
     if not reward_ids:
         return
     rewards = [canonical_reward({'name': name}) for name in reward_ids]
+    player_countries = list(dict.fromkeys(countries or (country,)))
     installed_types, installed = installed_rules_registry(synchronous=True)
     rewards = apply_power_buffs_to_unlock_rewards(rewards, installed)
     rules, actions, _names, startup, static, missing = cloned_superweapon_plan(
         lines, rewards, installed_types, installed,
-        superweapon_required_houses=[country], force_required_houses=True,
+        superweapon_required_houses=player_countries, force_required_houses=True,
     )
     if missing:
         raise ValueError('Co-op power source rules are missing: ' + ', '.join(missing))
@@ -538,7 +554,8 @@ def apply_coop_power_rewards(lines: list[str], country: str,
     merge_ini_section_values(lines, rules)
     if shared_grid:
         _append_grid_power_providers(
-            lines, country, actions, [*startup, *static], installed_types, installed,
+            lines, ','.join(player_countries), actions, [*startup, *static], installed_types, installed,
+            human_slots=human_slots,
         )
         return
     if static:

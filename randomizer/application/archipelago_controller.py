@@ -267,6 +267,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         candidates = [
             *self._widget_descendants(self.settings_frame),
             *self._widget_descendants(self.advanced_tab),
+            *(combo for _, combo in getattr(self, 'play_game_speed_controls', ())),
             self.archipelago_save_yaml_button,
         ]
         stateful = []

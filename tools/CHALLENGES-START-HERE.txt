@@ -1,0 +1,78 @@
+MENTAL OMEGA CHALLENGES 1.44.0
+
+Use the custom repository branch/commit supplied with the handoff. The upstream
+repository is https://github.com/Heinki/Mental-Omega-Randomizer; upstream alone
+does not include this custom challenge build. The receiving agent should build
+the supplied custom source and place the EXE beside gamemd.exe and Syringe.exe
+in a complete Mental Omega 3.3.6 installation. Use a normal writable folder.
+No Python installation is needed to run the finished EXE. Keep Khang's saves,
+connection details, pairing codes and logs out of the brother's fresh profile.
+
+CONNECT THE TWO PCS
+Both PCs need the same working private network. If your existing co-op connection
+already works over Tailscale or ZeroTier, keep using it. With ZeroTier, join the
+same network on both PCs and authorize both members in ZeroTier Central. Use the
+host's Managed IPv4 from that network. With Tailscale, use the host's Tailscale
+IPv4. The launcher does not install or join either network automatically.
+Official ZeroTier download: https://www.zerotier.com/download/
+Official setup guide: https://docs.zerotier.com/quickstart/
+
+FIRST-TIME FIREWALL SETUP (both PCs)
+Connect the private network first. The receiving agent should copy
+tools/Setup-Private-Network.ps1 beside the built EXE and run it with -Elevate,
+then approve the Windows administrator prompt. A setup report is saved beside
+the game if it fails. The equivalent command in an administrator PowerShell is:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Setup-Private-Network.ps1
+
+The helper allows only this folder's launcher TCP 19420/19421 and game UDP 1234
+on detected ZeroTier/Tailscale adapters. It does not open router ports. If you
+move this folder, run the helper again from the new location.
+
+KHANG / HOST
+1. Open the updated Mental Omega Challenges launcher. In Settings choose
+   Mission category: challenge and Players: 2.
+2. The Settings country filters the mission pool. Generate the challenge run
+   with your desired rewards. Set Game speed before launching; the host's speed
+   is used for both players.
+3. Open Co-op Connection, choose Host, enter a unique player name and pick your
+   own challenge house/country and color in that dialog. Click Connect.
+4. Share your private-network IPv4 and the displayed pairing code with your
+   brother. Keep the launcher open and wait for him to join.
+5. After both players' choices appear, choose a compatible challenge and launch.
+   The launcher prepares and starts the same game on both PCs.
+
+BROTHER / JOIN
+1. Open the prepared custom launcher. Choose challenge, 2 players, name Brother
+   and role Join. Use the same 1.44.0 version as the host.
+2. Open Co-op Connection and choose Join. Set a unique player name and pick your
+   own challenge house/country and color in that dialog. Enter Khang's private
+   IPv4 (four numbers only, without /24 or a port) and his pairing code. Connect.
+3. Your host supplies the run, rewards, difficulty and game speed. Wait for him
+   to launch. Keep the launcher open during play so results can synchronize.
+
+PLAYING
+Each player uses their chosen house and color. Some challenge maps reserve
+houses/colors for their enemy; choose another offered option if one is rejected.
+The host controls mission launches and shared progression. Completed challenges
+and randomized rewards synchronize through the lobby. Keep both launchers open
+after leaving the game so they can finish receiving results.
+
+IF CONNECTION FAILS
+Check that both PCs are online and authorized on the same private network, then
+check the host IPv4 and pairing code. While the host is listening, the guest can
+check the actual lobby port in PowerShell:
+
+  Test-NetConnection -ComputerName HOST_PRIVATE_IPV4 -Port 19420
+
+If TcpTestSucceeded is False, fix the private-network route or game firewall
+rules. If the lobby works but game preparation fails, check TCP 19421. If both
+games start but cannot connect, check UDP 1234 on both PCs. Use the same package
+version and avoid changing the game assets independently.
+
+Close and reopen the launcher to install a later version. Your progress is in
+RandomizerLauncherData beside the EXE. Keep that folder private when re-sharing.
+
+Custom challenge build based on Heinki's Mental Omega Randomizer:
+https://github.com/Heinki/Mental-Omega-Randomizer
+Randomizer license: LICENSE-Randomizer.txt. Engine notices are included beside it.

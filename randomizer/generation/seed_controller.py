@@ -158,6 +158,11 @@ class SeedGeneration:
             'seed': seed,
             'created_at': now_stamp(),
             'coop_mode': bool(options.get('coop_mode', False)),
+            'mission_category': options.get('mission_category') or (
+                'coop' if options.get('coop_mode') else 'campaign'
+            ),
+            'challenge_player_count': options.get('challenge_player_count', 1),
+            'challenge_country': options.get('challenge_country', 'UnitedStates'),
             'campaign_filter': options['campaign_filter'],
             'reward_mode': options['reward_mode'],
             'progression_mode': progression_mode,

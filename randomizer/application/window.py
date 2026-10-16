@@ -48,6 +48,32 @@ class WindowController:
         build_launcher_widgets(self)
         self.refresh_coop_controls()
 
+    def game_speed_controls_locked(self):
+        process = getattr(self, 'active_game_process', None)
+        return bool(
+            (process is not None and process.poll() is None)
+            or getattr(self, '_coop_busy', False)
+            or getattr(self, '_challenge_preparing', False)
+            or self.coop_guest_connected()
+            or self.gameplay_settings_locked()
+        )
+
+    def refresh_game_speed_controls(self):
+        visible = self.selected_mission_category() != 'coop'
+        state = 'disabled' if self.game_speed_controls_locked() else 'readonly'
+        for row, combo in getattr(self, 'play_game_speed_controls', ()):
+            row.grid() if visible else row.grid_remove()
+            combo.configure(state=state)
+
+    def on_game_speed_changed(self, _event=None):
+        if self.game_speed_controls_locked():
+            self.game_speed_var.set(self.config.get('game_speed', '3 - Medium'))
+            return
+        self.config['game_speed'] = self.game_speed_var.get()
+        save_config(self.config)
+        self.publish_challenge_player_options()
+        self.refresh_challenge_player_controls()
+
     def update_header_summary(self, *_args):
         """Show the core selected run settings beneath the launcher title."""
         seed = self.current_display_seed()
@@ -56,9 +82,13 @@ class WindowController:
             self.reward_mode_var.get(),
             self.progression_mode_var.get(),
             self.difficulty_var.get(),
-            self.game_speed_var.get(),
         ]
-        if self.coop_mode_var.get():
+        if self.selected_mission_category() != 'coop':
+            parts.append(self.game_speed_var.get())
+        if self.selected_mission_category() == 'challenge':
+            parts.append(f'Challenges · {self.challenge_country_var.get()} · '
+                         f'{self.selected_challenge_player_count()} player(s)')
+        elif self.coop_mode_var.get():
             parts.append('Co-op')
         if seed:
             parts.insert(0, f'Seed: {seed}')
