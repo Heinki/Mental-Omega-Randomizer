@@ -132,7 +132,9 @@ def original_player_production_gate_rules(
     gate_values.update({
         'Name': 'Randomizer Original Production Gate',
         'UIName': 'NAME:DUMMYDUMMY',
-        'Image': 'DUMMYDUMMY',
+        # Native GALITE art has a 0x0 foundation. DUMMYDUMMY is invisible
+        # but occupies one building cell, leaving a hidden placement blocker.
+        'Image': 'GALITE',
         'InvisibleInGame': 'yes',
         'SuperWeapon': None,
         'SuperWeapon2': None,

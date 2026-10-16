@@ -19,6 +19,10 @@ def player_can_use_nanofiber(active_power_ids, player_faction):
 
 
 def nanofiber_clone_rules(lines, installed_sections, clone_handled):
+    return nanofiber_multi_clone_rules(lines, installed_sections, [clone_handled])
+
+
+def nanofiber_multi_clone_rules(lines, installed_sections, clone_sets):
     """Append a player-only mutation chain to the native Nanofiber chain.
 
     Native animations index General.AnimToInfantry, rather than a conversion
@@ -41,17 +45,18 @@ def nanofiber_clone_rules(lines, installed_sections, clone_handled):
         return result
 
     active = []
-    for source, variants in LINKED_BUFF_VARIANTS.items():
-        for target, definition in variants.items():
-            stage = definition.get('nanofiber_stage')
-            source_clone = (clone_handled.get(source) or {}).get('clone_id')
-            target_clone = (clone_handled.get(target) or {}).get('clone_id')
-            if stage and source_clone and target_clone:
-                reference_clone = clone_handled[source].get('reference_clone_id')
-                source_clones = tuple(dict.fromkeys(
-                    clone for clone in (source_clone, reference_clone) if clone
-                ))
-                active.append((int(stage), source_clones, target_clone))
+    for clone_handled in clone_sets:
+        for source, variants in LINKED_BUFF_VARIANTS.items():
+            for target, definition in variants.items():
+                stage = definition.get('nanofiber_stage')
+                source_clone = (clone_handled.get(source) or {}).get('clone_id')
+                target_clone = (clone_handled.get(target) or {}).get('clone_id')
+                if stage and source_clone and target_clone:
+                    reference_clone = clone_handled[source].get('reference_clone_id')
+                    source_clones = tuple(dict.fromkeys(
+                        clone for clone in (source_clone, reference_clone) if clone
+                    ))
+                    active.append((int(stage), source_clones, target_clone))
     if not active:
         return {}
     active.sort()
@@ -73,12 +78,13 @@ def nanofiber_clone_rules(lines, installed_sections, clone_handled):
             ('WH', 'Warheads'), ('A', 'Animations'),
         ):
             type_id = _collision_safe_type_id(
-                f'MORNano{stage}{kind}', f'nanofiber:{stage}:{kind}', reserved
+                f'MORNano{stage}{kind}',
+                f'nanofiber:{stage}:{source_clone}:{kind}', reserved
             )
             ids[kind] = type_id
             _register_map_type(rules, lines, installed_sections, registry, type_id)
         armor = _collision_safe_type_id(
-            f'MORNanoArmor{stage}', f'nanofiber-armor:{stage}',
+            f'MORNanoArmor{stage}', f'nanofiber-armor:{stage}:{source_clone}',
             reserved,
         )
         source_values = values(source_clone)

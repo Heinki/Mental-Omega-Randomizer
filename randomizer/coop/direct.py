@@ -322,6 +322,7 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                  bind: str = '0.0.0.0', control_port: int = CONTROL_PORT,
                  game_port: int = GAME_PORT, difficulty: str = 'normal',
                  session_token: str = '', on_ready=None,
+                 prepare_assets=None,
                  shop_setup: dict | None = None,
                  player_options: dict | None = None) -> dict:
     """Wait for one guest, verify setup, then signal both launchers to start."""
@@ -417,6 +418,8 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                 )
                 if local_hash != mode_hash:
                     raise ValueError('Host map changed while preparing game.')
+                if prepare_assets is not None:
+                    prepare_assets()
                 _line(stream, {'type': 'start', 'game_id': game_id})
     result = {'role': 'host', 'peer': guest_name, 'peer_ip': address[0],
               'game_id': game_id, 'map_sha256': mode_hash}
@@ -429,6 +432,7 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
 def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
                  control_port: int = CONTROL_PORT, game_port: int = GAME_PORT,
                  session_token: str = '', on_ready=None,
+                 prepare_assets=None,
                  shop_setup: dict | None = None,
                  player_options: dict | None = None) -> dict:
     _name(name)
@@ -496,6 +500,8 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
             )
             if local_hash != offer['map_sha256']:
                 raise ValueError('Generated co-op maps differ.')
+            if prepare_assets is not None:
+                prepare_assets()
             ready = {'type': 'ready', 'map_sha256': local_hash,
                      'version_sha256': _version_hash(game_root)}
             if player_options is not None:

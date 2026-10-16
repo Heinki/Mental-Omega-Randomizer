@@ -759,8 +759,10 @@ def cloned_superweapon_plan(
                 techno_values.update(clone_spec.get('values') or {})
                 if clone_spec.get('static_startup'):
                     # Static providers are implementation objects, never map
-                    # scenery, path blockers, or AI targets. DUMMYDUMMY-derived
-                    # specs are solid unless IsPassable is set explicitly.
+                    # scenery, placement blockers, or AI targets. Native
+                    # GALITE art has a 0x0 foundation; IsPassable alone only
+                    # permits movement over a hidden one-cell building.
+                    techno_values['Image'] = 'GALITE'
                     techno_values['InvisibleInGame'] = 'yes'
                     techno_values['IsPassable'] = 'yes'
                 if clone_spec.get('provides_superweapon'):

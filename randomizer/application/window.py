@@ -24,7 +24,9 @@ class WindowController:
     def close_launcher(self):
         """Keep cleanup polling alive until an active game safely exits."""
         process = getattr(self, 'active_game_process', None)
-        if process is not None and process.poll() is None:
+        if ((process is not None and process.poll() is None)
+                or getattr(self, '_challenge_preparing', False)
+                or getattr(self, '_coop_busy', False)):
             self._close_after_game = True
             self.withdraw()
             return

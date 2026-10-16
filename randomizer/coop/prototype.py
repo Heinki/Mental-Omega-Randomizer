@@ -226,12 +226,14 @@ def _launch_rewards(state: dict, source_mission: str = '', country: str = '') ->
     return earned + coop_starting_rewards(state, country)
 
 
-def _buff_counts(rewards: list[dict], access_ids: list[str]) -> dict:
+def _buff_counts(rewards: list[dict], access_ids: list[str],
+                 building_ids=()) -> dict:
+    earned_ids = sorted(set(access_ids) | set(building_ids))
     counts = _active_direct_buff_counts(
-        rewards, additional_unlocked_tech_ids=access_ids,
-        unit_specific_mode=True, global_production_unit_ids=access_ids,
+        rewards, additional_unlocked_tech_ids=earned_ids,
+        unit_specific_mode=True, global_production_unit_ids=earned_ids,
     )
-    selected = {unit_id: dict(counts.get(unit_id, {})) for unit_id in access_ids}
+    selected = {unit_id: dict(counts.get(unit_id, {})) for unit_id in earned_ids}
     for reward in rewards:
         if reward.get('kind') != 'buff' or reward.get('buff_type') != 'veteran':
             continue
@@ -415,6 +417,12 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
         lines, manifest.get('enemy_countries', []), player_countries,
         manifest.get('enemy_reward_ids', []),
     )
+    from randomizer.coop.native_powers import apply_coop_payload_support
+    apply_coop_payload_support(lines)
+    from randomizer.coop.native_mutations import apply_coop_native_mutations
+    apply_coop_native_mutations(lines, manifest)
+    from randomizer.coop.native_veterancy import compact_coop_veteran_ids
+    compact_coop_veteran_ids(lines, player_countries)
     if manifest.get('mission_category') != 'challenge':
         inject_victory_markers(
             lines, source.stem.lower(), manifest['player_country'],
@@ -470,8 +478,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     for candidate_id in access_ids:
         _require_registered_type(source, candidate_id)
     launch_rewards = _launch_rewards(state, source_mission, country)
-    buff_counts = _buff_counts(launch_rewards, access_ids)
     building_ids = _building_ids(launch_rewards)
+    buff_counts = _buff_counts(launch_rewards, access_ids, building_ids)
     power_reward_ids = _power_reward_ids(launch_rewards)
     enemy_reward_ids = _grid_enemy_reward_ids(state)
     enemy_countries = _enemy_countries(metadata)
@@ -488,9 +496,11 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
                 state, source_mission, guest)} | ({selected_id} if test_override else set()))
             for candidate_id in guest_ids:
                 _require_registered_type(source, candidate_id)
+            guest_buildings = _building_ids(guest_rewards)
             context['player_loadouts']['guest'] = {
-                'access_ids': guest_ids, 'buff_counts': _buff_counts(guest_rewards, guest_ids),
-                'building_ids': _building_ids(guest_rewards),
+                'access_ids': guest_ids,
+                'buff_counts': _buff_counts(guest_rewards, guest_ids, guest_buildings),
+                'building_ids': guest_buildings,
             }
     production_type = arsenal_unit_type(selected_id, BUFF_TARGETS.get(selected_id))
     source_hash = text_hash(source.read_bytes())
@@ -582,8 +592,7 @@ def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False) ->
                    for item in access_ids)
             or access_ids != sorted(set(access_ids))
             or not isinstance(buff_counts, dict)
-            or any(unit_id not in access_ids or not isinstance(counts, dict)
-                   for unit_id, counts in buff_counts.items())):
+            or any(not isinstance(counts, dict) for counts in buff_counts.values())):
         raise ValueError('Invalid co-op Shop unit access or buff loadout.')
     for unit_id in access_ids:
         _require_registered_type(source, unit_id)
@@ -611,6 +620,8 @@ def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False) ->
                    } for item in building_ids)
             or building_ids != sorted(set(building_ids))):
         raise ValueError('Invalid co-op Shop building access.')
+    if set(buff_counts) - (set(access_ids) | set(building_ids)):
+        raise ValueError('Co-op buffs require earned unit or building access.')
     credit_bonus = loadout.get('starting_credit_bonus', 0)
     if type(credit_bonus) is not int or not -10000 <= credit_bonus <= 50000:
         raise ValueError('Invalid co-op Shop starting credit bonus.')
@@ -695,10 +706,10 @@ def shop_unit_loadout(run, profile=None, *, state=None) -> dict:
         reward = canonical_reward_for_id(reward_name)
         if reward.get('buff_type') == 'veteran':
             rewards.append(reward)
-    loadout = {'access_ids': access_ids,
-               'buff_counts': _buff_counts(rewards, access_ids)}
     building_ids = sorted(set(_building_ids(rewards))
                           | set(active_shop_starter_defense_ids(run)))
+    loadout = {'access_ids': access_ids,
+               'buff_counts': _buff_counts(rewards, access_ids, building_ids)}
     if building_ids:
         loadout['building_ids'] = building_ids
     power_reward_ids = _power_reward_ids(rewards)
@@ -871,10 +882,11 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     for candidate_id in access_ids:
         _require_registered_type(source, candidate_id)
     for candidate_id, counts in buff_counts.items():
-        if candidate_id not in access_ids or not isinstance(counts, dict):
+        if (candidate_id not in set(access_ids) | set(building_ids)
+                or not isinstance(counts, dict)):
             raise ValueError('Invalid co-op buff target.')
-        if any(not isinstance(value, int) or not 1 <= value <= 100
-               for value in counts.values()):
+        if any(not isinstance(buff_type, str) or type(value) is not int
+               or not 1 <= value <= 100 for buff_type, value in counts.items()):
             raise ValueError('Invalid co-op buff count.')
     if manifest.get('schema') == 7:
         loadouts = manifest.get('player_loadouts')

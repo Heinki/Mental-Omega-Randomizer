@@ -1,4 +1,4 @@
-# Challenge build 1.44.0
+# Challenge build 1.44.1
 
 ## Agent handoff
 
@@ -59,7 +59,41 @@ Version 1.44.0 finishes the paired challenge setup. Each player selects their
 own house/country and color in **Co-op Connection**. Different factions receive
 their own production roster while sharing the host's run, unlocks and rewards.
 The host sets game speed and difficulty; the paired game speed control is locked.
-Map-specific enemy houses and colors stay reserved. Both players must use 1.44.0.
+Map-specific enemy houses and colors stay reserved. Both players must use the
+same build; the current build is 1.44.1.
+
+Version 1.44.1 repairs native behavior of unlocked objects. Grumble and other
+mode-switching units now bring their private deployed/converted definitions
+and return links. Earned Reprocessors participate in the bounty enabler list;
+Iron Guards and other building powers target their actual player clones.
+Iron Guard still needs enough electricity, but does not need a second Iron
+Curtain building to operate. Invisible implementation providers use the native
+GALITE art's zero-cell foundation, so they no longer occupy build placement
+cells. Their power ownership and trigger assignments remain intact.
+
+The audit also repairs Prism Tower forwarding, refinery/miner docking, aircraft
+pad capacity, deployed Boid powers, Signal Inhibitor references, Elite Reserves
+Academy targets, and summoned/delivered helper ownership. Power payloads stay
+private and unbuildable; their powers do not unlock independent production.
+Earned building buffs now travel through both players' manifests and apply to
+their actual buildings and weapons. Mastermind capacity and Opus passenger
+upgrades are supported, and Stardust/Rejuvenator production gates are repaired.
+Nanofiber evolution retains each player's private infantry and earned buffs;
+the required art and early animation registrations are prepared before launch.
+Large veteran rosters use compact IDs to stay within the native country limit.
+
+Reopen the desktop shortcut after closing the old launcher. These changes apply
+when preparing the next match; an already running game keeps its old map rules.
+Existing earned rewards and save progress do not require a new seed. Both PCs
+must update to 1.44.1 before connecting.
+
+Heavyobject is a valid, intact stock map. Its enemy houses include Last Bastion,
+Euro Alliance and Epsilon HQ, so those player houses cannot use it. Two-player
+catalogues now expose all 22 maps, with actual allowed houses selected per map
+in the lobby. For a new run containing every challenge, use All Campaigns and
+set Mission goal to 22. Existing 19-map saves retain their layout and progress;
+they are not silently expanded. Solo house filtering remains and explains this
+restriction in Settings. Haihead or Coronia can play Heavyobject.
 
 Both launchers verify native team results. If the host is eliminated first,
 the surviving guest can report a verified team victory for that exact game;
@@ -210,3 +244,12 @@ Foehn starters, every difficulty and host-speed extremes. Deterministic peer
 rebuilds passed. Real TCP preparation and authenticated lobby message exchange
 passed between separate game folders, including reversed human color order.
 These checks prepare runtime files without launching or automating a game.
+
+Version 1.44.1 validation includes the complete earned mobile/building catalogue,
+private deploy/conversion dependencies, all 93 reward powers across all 22 stock
+challenge maps, deterministic host/guest rebuilds, and staged mutation artwork.
+The existing saved 19-map run regenerates without modifying its progress;
+Reprocessor enablers contain both human clones and hidden providers have zero
+build-placement footprint. Large catalogue veteran lists fit the configured
+native limit after aliasing. Compilation and packaged checks supplement these
+map audits. Live ability behavior still needs player verification in the game.

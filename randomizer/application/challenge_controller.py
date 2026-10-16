@@ -112,10 +112,28 @@ class ChallengeController:
 
     def refresh_challenge_support_controls(self):
         challenge = self.selected_mission_category() == 'challenge'
+        paired = self.selected_challenge_player_count() == 2
         label = getattr(self, 'challenge_country_label_var', None)
         if label is not None:
             country = self.challenge_country_var.get()
             label.set(COUNTRY_LABELS.get(country, country))
+        availability = getattr(self, 'challenge_availability_var', None)
+        if availability is not None:
+            if paired:
+                text = ('Two-player seeds can use all 22 challenges. Each player chooses an '
+                        'allowed house and color for the selected map in Co-op Connection. '
+                        'Set Mission goal to 22 to include every challenge in a new run. '
+                        'Existing saved runs keep their original maps and progress.')
+            else:
+                text = ('Solo maps are filtered by your selected house. Heavyobject cannot use '
+                        'Last Bastion, Euro Alliance or Epsilon HQ because they are enemies there; '
+                        'Haihead or Coronia can play it. Generate a new seed after changing house.')
+            availability.set(text)
+        for prefix in ('', 'shop_'):
+            for suffix in ('challenge_country_combo', 'challenge_country_label'):
+                widget = getattr(self, prefix + suffix, None)
+                if widget is not None:
+                    widget.grid() if challenge and not paired else widget.grid_remove()
         if challenge and self.progression_mode_var.get() == 'Shop Mode':
             self.progression_mode_var.set('Grid Mode')
         modes = tuple(mode for mode in PROGRESSION_MODES
@@ -228,6 +246,7 @@ class ChallengeController:
         self.refresh_game_speed_controls()
 
         def prepare():
+            self.begin_direct_game_preparation()
             manifest, _ = build_manifest(
                 GAME_ROOT, state, mission['coop_name'], country=country,
                 player_count=1, difficulty=difficulty, game_speed=game_speed,
@@ -238,6 +257,7 @@ class ChallengeController:
                 difficulty=('easy', 'normal', 'hard')[difficulty],
                 game_speed=game_speed,
             )
+            self.prepare_direct_game_art()
             # Capture the old log boundary before the engine can emit results.
             watch = self.create_challenge_result_watch(mission, name)
             shutdown_watch = GameShutdownWatch(DEBUG_LOG)
@@ -261,9 +281,13 @@ class ChallengeController:
             self.after(1000, self.poll_solo_challenge)
 
         def fail(exc, detail):
+            self.disable_generated_rules_for_client()
             self._challenge_preparing = False
             self.append_log(detail, error=True)
             self.refresh_coop_controls()
+            if getattr(self, '_close_after_game', False):
+                self.close_launcher()
+                return
             messagebox.showerror('Challenge Launch Failed', str(exc))
 
         self.run_in_background(
@@ -300,6 +324,7 @@ class ChallengeController:
             self.after(100, self.poll_solo_challenge)
             return
         self.active_game_process = None
+        self.disable_generated_rules_for_client()
         if shutdown_watch is not None:
             shutdown_watch.close()
         self._challenge_shutdown_watch = None
