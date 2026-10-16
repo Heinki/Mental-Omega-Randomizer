@@ -42,6 +42,9 @@ from randomizer.generation.seed_controller import SeedGeneration
 class SeedController(SeedGeneration):
 
     def on_new_seed(self):
+        if self.challenge_launch_active():
+            messagebox.showinfo('Challenges', 'Close the active challenge before starting a new seed.')
+            return
         if self.gameplay_settings_locked():
             return
         if self.coop_guest_connected():
@@ -58,6 +61,8 @@ class SeedController(SeedGeneration):
         self.generate_seed_from_settings()
 
     def generate_seed_from_settings(self):
+        if self.challenge_launch_active():
+            return
         if self.gameplay_settings_locked():
             return
         options = self.seed_generation_options_from_settings()
@@ -74,6 +79,10 @@ class SeedController(SeedGeneration):
     def seed_generation_options_from_settings(self):
         """Validate live controls and freeze one exact generation request."""
         if self.gameplay_settings_locked():
+            return None
+        category = self.selected_mission_category()
+        if category == 'challenge' and self.progression_mode_var.get() == 'Shop Mode':
+            self.append_log('Challenges support Classic, Grid Mode and Mission List.', error=True)
             return None
         if not self.missions:
             self.append_log('Cannot generate seed: no missions loaded.', error=True)
@@ -187,6 +196,7 @@ class SeedController(SeedGeneration):
             return
 
         generation_context = {
+            'mission_category': category,
             'campaign_filter': self.campaign_var.get(),
             'reward_mode': self.reward_mode_var.get(),
             'use_act_based_reward_multipliers': (
@@ -219,6 +229,9 @@ class SeedController(SeedGeneration):
             'starting_unit_ids': starting_unit_ids,
             'progression_mode': self.progression_mode_var.get(),
             'coop_mode': bool(self.coop_mode_var.get()),
+            'mission_category': category,
+            'challenge_player_count': int(self.challenge_player_count_var.get()),
+            'challenge_country': self.challenge_country_var.get(),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
             'mission_pool_settings': {
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),

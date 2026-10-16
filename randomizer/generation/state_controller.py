@@ -371,6 +371,12 @@ class GenerationSettings:
         eligible_ids = expanded_tier_one_defense_ids(
             marker,
             families=families,
+            include_foehn=(
+                getattr(self, 'native_challenge_rewards_enabled', lambda: False)()
+                and str((self.__dict__.get('_seed_generation_context') or {}).get(
+                    'campaign_filter', (self.state or {}).get('campaign_filter', '')
+                )) == 'Foehn'
+            ),
         )
         return list(marker) if eligible_ids - excluded_ids else []
 

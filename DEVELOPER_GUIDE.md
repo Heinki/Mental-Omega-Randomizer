@@ -83,6 +83,16 @@ when an older external `ui.json` has no profiles.
 
 ### Launcher and files
 
+- `randomizer/challenges/catalogue.py`, `native.py`, and `results.py`: installed
+  challenge metadata, native mode/option resolution and conservative fresh-log
+  multiplayer result detection.
+- `randomizer/application/challenge_controller.py`: category selection, solo
+  challenge launching and result-to-progression orchestration.
+- `randomizer/coop/challenge.py`: challenge manifest identity and replay policy;
+  `direct.py` supports one-human preparation and the existing paired transport.
+- [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md): local challenge build scope and
+  manual solo/paired verification steps.
+
 - `launcher_gui.py`: entry point and packaged self-check.
 - `randomizer/application/app.py`: Tk composition and initialization only.
 - `randomizer/application/*_controller.py`, `window.py`,

@@ -19,15 +19,15 @@
     "game_speeds": [
       [
         "0 - Slowest",
-        0
+        6
       ],
       [
         "1 - Slower",
-        1
+        5
       ],
       [
         "2 - Slow",
-        2
+        4
       ],
       [
         "3 - Medium",
@@ -35,15 +35,15 @@
       ],
       [
         "4 - Fast",
-        4
+        2
       ],
       [
         "5 - Faster",
-        5
+        1
       ],
       [
         "6 - Fastest",
-        6
+        0
       ]
     ],
     "campaign_filters": [
