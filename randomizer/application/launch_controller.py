@@ -753,10 +753,25 @@ class LaunchController:
             return False
 
     def disable_generated_rules_for_client(self):
+        from randomizer.maps.assets import _other_live_runtime_asset_owner
+        if _other_live_runtime_asset_owner():
+            return
         for path in (RULESMO_INI, DISABLED_RULESMO_INI):
             if path.exists() and is_generated_rules_file(path):
                 path.unlink()
         remove_generated_unit_art()
+
+    def begin_direct_game_preparation(self):
+        claim_runtime_asset_lease()
+        self.disable_generated_rules_for_client()
+        claim_runtime_asset_lease()
+
+    def prepare_direct_game_art(self):
+        """Load clone artwork and mutation registrations before direct spawn."""
+        art_path, aliases = deploy_generated_unit_art(GAME_ROOT / 'spawnmap.ini')
+        if art_path:
+            self.append_log('Prepared temporary challenge/co-op artwork for '
+                            f'{len(aliases)} definitions.')
 
     def build_command(self):
         command = [

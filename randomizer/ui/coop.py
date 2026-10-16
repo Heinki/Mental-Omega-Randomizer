@@ -25,7 +25,7 @@ def build_coop_controls(self, parent, row, *, shop=False):
     )
     count.grid(row=1, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
-    country_label = ttk.Label(frame, text='Mission pool country')
+    country_label = ttk.Label(frame, text='Solo challenge house')
     country_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
     if not hasattr(self, 'challenge_country_label_var'):
         selected = self.challenge_country_var.get()
@@ -43,15 +43,15 @@ def build_coop_controls(self, parent, row, *, shop=False):
         frame, text='Co-op Connection…', command=self.open_coop_dialog,
     )
     connect.grid(row=3, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    if not hasattr(self, 'challenge_availability_var'):
+        self.challenge_availability_var = tk.StringVar(master=self)
     ttk.Label(
-        frame, text='Challenges support solo or two players. Country choice filters '
-                    'compatible maps. Generate a seed after changing the setup. '
-                    'Each player chooses their own house and color in Co-op Connection. '
-                    'Host controls progression and game speed.',
+        frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
     ).grid(row=4, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
     setattr(self, prefix + 'challenge_country_combo', country)
+    setattr(self, prefix + 'challenge_country_label', country_label)
     setattr(self, prefix + 'challenge_fields', (player_label, count, country_label, country))
     if shop:
         self.shop_coop_row = frame

@@ -739,6 +739,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
 
         def worker():
             try:
+                self.begin_direct_game_preparation()
                 if role == 'host':
                     if not mission:
                         raise ValueError('Selected co-op map is missing.')
@@ -774,6 +775,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                         control_port=lobby.port + 1,
                         difficulty=difficulty,
                         session_token=session_token,
+                        prepare_assets=self.prepare_direct_game_art,
                         shop_setup=shop_setup,
                         **({'player_options': player_options} if challenge else {}),
                     )
@@ -788,11 +790,13 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                         control_port=lobby.port + 1,
                         game_port=1235 if same_machine else 1234,
                         session_token=session_token,
+                        prepare_assets=self.prepare_direct_game_art,
                         shop_setup=shop_setup,
                         **({'player_options': player_options} if challenge else {}),
                     )
                 self._coop_queue.put(('ready', result))
             except Exception as exc:
+                self.disable_generated_rules_for_client()
                 self._coop_queue.put(('error', str(exc), traceback.format_exc()))
 
         threading.Thread(target=worker, name='CoopGame', daemon=True).start()
@@ -816,6 +820,9 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             self._record_coop_log('Co-op game failed: ' + event[1], error=True)
             self._record_coop_log(event[2], error=True)
             self._set_coop_status('Game connection failed: ' + event[1])
+            if getattr(self, '_close_after_game', False):
+                self.close_launcher()
+                return
             messagebox.showerror('Co-op', self._coop_safe_message(event[1]))
             return
         result = event[1]
@@ -849,6 +856,10 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             if self.shop_mode_selected():
                 self.finish_progression_launch_context()
             self._record_coop_log('Co-op game launch failed: ' + str(exc), error=True)
+            self.disable_generated_rules_for_client()
+            if getattr(self, '_close_after_game', False):
+                self.close_launcher()
+                return
             messagebox.showerror('Co-op', self._coop_safe_message(exc))
             return
         self.active_game_process = process
@@ -897,6 +908,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             self.after(100, self._poll_coop_game)
             return
         self.active_game_process = None
+        self.disable_generated_rules_for_client()
         if shutdown_watch is not None:
             shutdown_watch.close()
         self._coop_shutdown_watch = None
