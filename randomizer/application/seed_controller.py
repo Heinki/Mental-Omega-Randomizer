@@ -38,6 +38,7 @@ from ._dependencies import (
 )
 
 from randomizer.generation.seed_controller import SeedGeneration
+from randomizer.challenges.presentation import challenge_color_group
 
 class SeedController(SeedGeneration):
 
@@ -696,7 +697,8 @@ class SeedController(SeedGeneration):
                     checks_done,
                     checks_total,
                 ),
-                'faction': (mission.get('side') or '').casefold(),
+                'faction': (challenge_color_group(mission)
+                            or mission.get('side') or '').casefold(),
                 'code': code.casefold(),
                 'title': (mission.get('title') or code).casefold(),
             }

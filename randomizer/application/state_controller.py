@@ -380,6 +380,7 @@ class StateController(GenerationSettings):
         include_special_buildings = bool(self.include_special_buildings_var.get())
         include_special_rewards = bool(self.include_special_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
+        unlimited_buildings = bool(self.unlimited_buildings_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
         failure_assistance = bool(self.failure_assistance_var.get())
@@ -453,6 +454,7 @@ class StateController(GenerationSettings):
             'include_special_buildings': include_special_buildings,
             'include_special_rewards': include_special_rewards,
             'unlimited_hero_units': unlimited_hero_units,
+            'unlimited_buildings': unlimited_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
             'failure_assistance': failure_assistance,
@@ -688,6 +690,7 @@ class StateController(GenerationSettings):
         self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
         self.config['generation']['include_special_rewards'] = reward_settings['include_special_rewards']
         self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
+        self.config['generation']['unlimited_buildings'] = reward_settings['unlimited_buildings']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
@@ -965,6 +968,7 @@ class StateController(GenerationSettings):
             'include_special_buildings': self.include_special_buildings_var,
             'include_special_rewards': self.include_special_rewards_var,
             'unlimited_hero_units': self.unlimited_hero_units_var,
+            'unlimited_buildings': self.unlimited_buildings_var,
             'share_chaos_role_buffs': self.share_chaos_role_buffs_var,
             'buff_allied_helpers': self.buff_allied_helpers_var,
             'failure_assistance': self.failure_assistance_var,

@@ -1861,6 +1861,11 @@ def prepare_hooked_map(self, mission, extra_rules=None):
                 if self.active_reward_settings().get('unlimited_hero_units', False)
                 else ()
             ),
+            unlimited_build_limit_building_ids=(
+                buildable_clone_ids
+                if self.active_reward_settings().get('unlimited_buildings', False)
+                else ()
+            ),
             share_basic_equivalent_buffs=share_basic_equivalent_buffs,
             unit_specific_mode=chaos_unit_specific_buffs,
             native_trigger_reference_ids=(

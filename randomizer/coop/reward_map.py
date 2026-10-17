@@ -23,7 +23,7 @@ from randomizer.coop.access import clone_production_owners, standard_coop_access
 from randomizer.coop.native_buildings import (
     apply_building_reward_buffs, preserve_native_building_abilities,
 )
-from randomizer.coop.native_units import unit_transform_plan
+from randomizer.coop.native_units import TRANSFORM_REFERENCE_KEYS, unit_transform_plan
 from randomizer.maps.powers import (
     append_static_startup_buildings, append_superweapon_grant_trigger,
 )
@@ -67,6 +67,24 @@ def _lookup(sections: dict, section: str) -> dict:
     return dict(sections[name]) if name is not None else {}
 
 
+def _remove_building_cap(values: dict) -> None:
+    """Remove concurrent/lifetime caps while retaining explicit build locks.
+
+    A missing BuildLimit uses the engine's unlimited default. Zero instead
+    blocks production, and may protect hidden implementation types, so it
+    must never be treated as an unlimited setting.
+    """
+    for key in list(values):
+        if str(key).lower() != 'buildlimit':
+            continue
+        try:
+            limited = int(str(values[key]).strip()) != 0
+        except (TypeError, ValueError):
+            continue
+        if limited:
+            values.pop(key)
+
+
 def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                        country: str | None = None, access_ids=None,
                        buff_counts=None, clone_scope: str = '',
@@ -86,6 +104,8 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                   if access_ids is None else access_ids)
     counts = (manifest.get('buff_counts') or {}
               if buff_counts is None else buff_counts)
+    unlimited_buildings = manifest.get('unlimited_buildings', False)
+    building_roots = {str(item).upper() for item in building_ids}
     _, clone_ids, templates = randomizer_unit_roster()
     _, installed = installed_rules_registry(synchronous=True)
     templates, _ = installed_rules_template_overlay(templates, installed)
@@ -134,6 +154,30 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         access_ids, templates, clone_ids, installed, map_sections, clone_scope,
         building_access_ids=building_ids,
     )
+    unlimited_building_forms = set()
+    if unlimited_buildings:
+        unlimited_building_forms.update(
+            plan.clone_id for plan in unit_plans if plan.type_list == 'BuildingTypes'
+        )
+        # Follow earned building roots explicitly: if SMIN also has its own
+        # unit access, its plan can be rooted at SMIN rather than War Rig.
+        # Removing only the deployed building's cap would leave that mobile
+        # half enforcing the same shared deploy-pair count.
+        by_clone = {plan.clone_id.upper(): plan for plan in unit_plans}
+        pending = [plan for plan in unit_plans if plan.source_id in building_roots]
+        visited = set()
+        for plan in pending:
+            if plan.clone_id in visited:
+                continue
+            visited.add(plan.clone_id)
+            unlimited_building_forms.add(plan.clone_id)
+            for key, value in plan.template.items():
+                if str(key).lower() not in TRANSFORM_REFERENCE_KEYS:
+                    continue
+                for token in str(value or '').split(','):
+                    related = by_clone.get(token.strip().upper())
+                    if related is not None and related.clone_id not in visited:
+                        pending.append(related)
     for plan in unit_plans:
         # War Rig access starts as a building and undeploys into a mobile
         # form. Its visible building is processed by the building loop once;
@@ -219,6 +263,11 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
             for key in list(values):
                 if key.lower() == 'buildlimit':
                     values.pop(key)
+        if plan.clone_id in unlimited_building_forms:
+            # Include hidden deployed structures and War Rig's mobile form:
+            # Ares counts both sides of a deploy pair against either cap.
+            # Mobile hero roots remain governed by their separate setting.
+            _remove_building_cap(values)
         weapon_counts = {
             key: value for key, value in unit_counts.items() if key in _WEAPON_BUFFS
         }
@@ -351,6 +400,8 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
             changes, source_id, values, BUFF_TARGETS[source_id], building_counts,
             installed, map_sections, clone_scope, register,
         )
+        if unlimited_buildings:
+            _remove_building_cap(values)
         if building_counts.get('veteran') and BUFF_TARGETS[source_id].get('trainable'):
             veteran.setdefault('Buildings', []).append(clone_id)
         changes[clone_id] = values

@@ -1348,15 +1348,15 @@ def build_player_clone_sections(
             # BuildLimit=1. Launcher locks (0) and one-build-only limits (-1)
             # can deadlock Autocreate teams and remain intentionally removed.
             _remove_case_insensitive(clone_values, 'BuildLimit')
-            if target.get('build_limit') is not None:
+            if unit_id in unlimited_limit_ids:
+                handled_unit_types.update({'build_limit', 'building_limit'})
+            elif target.get('build_limit') is not None:
                 limit_buff_type = (
                     'building_limit'
                     if target.get('building_limit') is not None
                     else 'build_limit'
                 )
-                if unit_id in unlimited_limit_ids:
-                    handled_unit_types.add('build_limit')
-                elif clone_build_limit:
+                if clone_build_limit:
                     build_limit = int(clone_build_limit)
                     if counts.get(limit_buff_type):
                         build_limit += int(counts[limit_buff_type])
@@ -1494,10 +1494,17 @@ def build_player_clone_sections(
             # inherited their native TechLevel and leaked into the sidebar;
             # this must not depend on whether the source is tagged a variant.
             clone_values['TechLevel'] = LOCKED_TECH_LEVEL
-            if unit_id in initial_payload_source_ids:
+            if (
+                unit_id in initial_payload_source_ids
+                or unit_id in unlimited_limit_ids
+            ):
                 # Payload creation needs an instantiable type even when its
-                # standalone production reward is still locked.
+                # standalone production reward is still locked. Linked
+                # forms of an unlimited earned building likewise keep no
+                # cap while remaining absent from the construction sidebar.
                 _remove_case_insensitive(clone_values, 'BuildLimit')
+                if unit_id in unlimited_limit_ids:
+                    handled_unit_types.update({'build_limit', 'building_limit'})
             if unit_id in initial_payload_source_ids or scripted_owner_ids:
                 # InitialPayload and reviewed scripted-team creation must not
                 # inherit native faction/prerequisite gates. Keep reference
