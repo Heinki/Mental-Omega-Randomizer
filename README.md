@@ -14,7 +14,7 @@ copies.
 
 This custom fork also supports native Mental Omega challenges with randomized
 rewards, an optional local AI teammate, and synchronized two-human play. See
-[challenge setup and agent handoff](CHALLENGES_TESTING.md) for build 1.44.3.
+[challenge setup and agent handoff](CHALLENGES_TESTING.md) for build 1.44.4.
 
 ## Disclaimer
 

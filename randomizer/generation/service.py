@@ -143,7 +143,6 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
             'coop_mode': bool(config.get('coop_mode', False)),
             'mission_category': config['mission_category'],
             'challenge_player_count': config.get('challenge_player_count', 1),
-            'challenge_country': config.get('challenge_country', 'UnitedStates'),
             'seed': seed,
             'seed_was_explicit': False,
             'seed_missions': missions,

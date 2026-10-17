@@ -94,6 +94,11 @@ when an older external `ui.json` has no profiles.
   enemies, without an Other1 network peer. The AI uses its original army;
   human rewards, production gates and credit bonuses stay private.
   Paired transport reuses each machine's locally replay-validated map bytes.
+- `randomizer/challenges/state.py`: one-time expansion of complete legacy solo
+  house-filtered pools. It appends connected grid nodes and plans only new
+  checks; existing pending rewards and original goal must never be rerolled.
+  Houses live in launch preferences, outside new seed identity. Catalogue
+  discovery always returns all 22 maps; actual houses are validated at launch.
 - [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md): local challenge build scope and
   manual solo/paired verification steps.
 

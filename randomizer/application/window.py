@@ -88,8 +88,7 @@ class WindowController:
         if self.selected_mission_category() != 'coop':
             parts.append(self.game_speed_var.get())
         if self.selected_mission_category() == 'challenge':
-            parts.append(f'Challenges · {self.challenge_country_var.get()} · '
-                         f'{self.selected_challenge_player_count()} player(s)')
+            parts.append(f'Challenges · {self.selected_challenge_player_count()} human(s)')
         elif self.coop_mode_var.get():
             parts.append('Co-op')
         if seed:

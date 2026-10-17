@@ -162,7 +162,6 @@ class SeedGeneration:
                 'coop' if options.get('coop_mode') else 'campaign'
             ),
             'challenge_player_count': options.get('challenge_player_count', 1),
-            'challenge_country': options.get('challenge_country', 'UnitedStates'),
             'campaign_filter': options['campaign_filter'],
             'reward_mode': options['reward_mode'],
             'progression_mode': progression_mode,
@@ -204,6 +203,10 @@ class SeedGeneration:
             'mission_arsenals': mission_arsenals,
             'check_schema_version': CHECK_SCHEMA_VERSION,
         }
+        if state['mission_category'] == 'challenge':
+            # Houses are chosen for each launch; the seed owns only its
+            # progression and reward plan, never a player's current house.
+            state['challenge_catalogue_version'] = 2
         if grid is not None:
             state['grid'] = grid
         return {

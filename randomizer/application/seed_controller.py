@@ -232,7 +232,6 @@ class SeedController(SeedGeneration):
             'coop_mode': bool(self.coop_mode_var.get()),
             'mission_category': category,
             'challenge_player_count': int(self.challenge_player_count_var.get()),
-            'challenge_country': self.challenge_country_var.get(),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
             'mission_pool_settings': {
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),

@@ -1,4 +1,4 @@
-# Challenge build 1.44.3
+# Challenge build 1.44.4
 
 ## Agent handoff
 
@@ -61,7 +61,23 @@ own house/country and color in **Co-op Connection**. Different factions receive
 their own production roster while sharing the host's run, unlocks and rewards.
 The host sets game speed and difficulty; the paired game speed control is locked.
 Map-specific enemy houses and colors stay reserved. Both players must use the
-same build; the current build is 1.44.3.
+same build; the current build is 1.44.4.
+
+Version 1.44.4 makes human and AI houses **per-launch choices**. The challenge
+catalogue always includes all 22 installed maps, independently of either house.
+For a local game, choose Your house and the optional AI house under Local
+challenge players. For two humans, each chooses in Co-op Connection. Changing
+houses never regenerates the seed, rerolls rewards or clears progress.
+Selections stay unchanged when switching maps. Launch preflight checks every
+participating house and color against that map's native restrictions, names
+any conflicts and lists allowed choices before preparing the game. Two allies
+may use the same house, but must choose different permitted colors.
+
+Old solo runs that included the whole former 18/19-map house-filtered pool gain
+their omitted maps as additional challenges. Existing mission order, completed
+checks, reward assignments, grid positions and original goal remain intact;
+only the added maps receive new checks. A backup is saved before migration.
+Deliberately shorter runs and explicit map exclusions retain their saved plans.
 
 Version 1.44.3 adds **Play with an AI teammate** for challenges with **Human
 players: 1**. Select an open challenge, then choose your color and the AI's
@@ -129,13 +145,12 @@ when preparing the next match; an already running game keeps its old map rules.
 Existing earned rewards and save progress do not require a new seed for these
 1.44.1 fixes. Both PCs should use the same current version before connecting.
 
-Heavyobject is a valid, intact stock map. Its enemy houses include Last Bastion,
-Euro Alliance and Epsilon HQ, so those player houses cannot use it. Two-player
-catalogues now expose all 22 maps, with actual allowed houses selected per map
-in the lobby. For a new run containing every challenge, use All Campaigns and
-set Mission goal to 22. Existing 19-map saves retain their layout and progress;
-they are not silently expanded. Solo house filtering remains and explains this
-restriction in Settings. Haihead or Coronia can play Heavyobject.
+Heavyobject is a valid, intact stock map and remains listed for every house.
+Its enemy houses include Last Bastion, Euro Alliance and Epsilon HQ, so launch
+preflight requires those players to choose another house for that map. Haihead
+or Coronia can play it. All local and paired catalogues expose all 22 maps.
+For a new run containing every challenge, use All Campaigns and set Mission
+goal to 22. Normal progression locks and deliberate map exclusions still apply.
 
 Both launchers verify native team results. If the host is eliminated first,
 the surviving guest can report a verified team victory for that exact game;
@@ -165,21 +180,19 @@ host's choice on both machines. Ordinary cooperative campaign speed is unchanged
 ## Start a solo run
 
 1. Open **Mental Omega Challenges Test** from the Windows desktop.
-2. In Settings, select mission category **challenge**, **Human players: 1**, and a
-   country. Country choices filter maps that prohibit that country or use it
-   for an enemy. The 22 stock challenges are available across country choices;
-   one country normally has 18 or 19 compatible maps.
+2. In Settings, select mission category **challenge** and **Human players: 1**.
+   All 22 stock challenges are in the pool regardless of your current house.
 3. Choose Classic, Mission List, or Grid Mode; choose Standard, Chaos, or
    Randomizer Arsenal rewards and the desired difficulty.
 4. Click **Generate New Seed**, select an open challenge and choose **Game speed**.
-   Under **Local challenge players**, choose your color. Optionally enable
+   Under **Local challenge players**, choose your house and color. Optionally enable
    **Play with an AI teammate** and choose its house, different color and
    difficulty. Click **Launch Selected Mission** directly.
 
 Basic unit and defense access is enabled when Challenges is first selected,
 so the initial base-building challenge has a usable roster. Further unlocks
-and buffs come from completed challenges. Changing country or player count
-requires a matching new seed; existing saved runs are preserved separately.
+and buffs come from completed challenges. Changing either player's house needs
+no new seed. One-human and two-human runs retain separate saved progression.
 
 ## Check native behavior and results
 
