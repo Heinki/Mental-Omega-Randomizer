@@ -414,7 +414,7 @@ class RewardController(RewardGeneration):
         category = category or self.selected_mission_category()
         if category == 'challenge':
             return discover_challenge_missions(
-                GAME_ROOT, country=country or self.challenge_country_var.get(),
+                GAME_ROOT,
                 player_count=player_count or self.selected_challenge_player_count(),
             )
         if category == 'coop':
@@ -434,10 +434,10 @@ class RewardController(RewardGeneration):
         )
         if (state_category == self.selected_mission_category()
                 and (state_category != 'challenge' or (
-                    self.state.get('challenge_country') == self.challenge_country_var.get()
-                    and self.state.get('challenge_player_count', 1)
+                    self.state.get('challenge_player_count', 1)
                     == self.selected_challenge_player_count()))):
             self.sync_state_mission_objectives()
+            self.migrate_challenge_catalogue()
         self.redraw_mission_tree()
         if (
             hasattr(self, 'workspace_tabs')

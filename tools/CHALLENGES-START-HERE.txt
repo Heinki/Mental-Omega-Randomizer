@@ -1,4 +1,4 @@
-MENTAL OMEGA CHALLENGES 1.44.3
+MENTAL OMEGA CHALLENGES 1.44.4
 
 Custom source: https://github.com/ckbk456/Mental-Omega-Randomizer
 Use the custom repository branch/commit supplied with the handoff. The upstream
@@ -46,7 +46,7 @@ KHANG / HOST
 
 BROTHER / JOIN
 1. Open the prepared custom launcher. Choose challenge, 2 players, name Brother
-   and role Join. Use the same 1.44.3 version as the host.
+   and role Join. Use the same 1.44.4 version as the host.
 2. Open Co-op Connection and choose Join. Set a unique player name and pick your
    own challenge house/country and color in that dialog. Enter Khang's private
    IPv4 (four numbers only, without /24 or a port) and his pairing code. Connect.
@@ -55,12 +55,14 @@ BROTHER / JOIN
 
 PLAY A LOCAL CHALLENGE WITH AN AI
 Choose challenge and Human players: 1. Generate or load your solo run and select
-an open map. In Local challenge players, choose Your color and enable Play with
+an open map. In Local challenge players, choose Your house/color and enable Play with
 an AI teammate. Select the AI house, a different color and Easy/Normal/Hard
 difficulty. Click Launch Selected Mission; no co-op connection or Archipelago
 is needed. The AI uses its native army in the second allied start. AI difficulty
 is separate from challenge enemy difficulty. Changing these launch choices
-does not require a new seed. Ordinary co-op missions still require two humans.
+does not require a new seed. All 22 challenges stay in the catalogue; launch
+checks both houses and colors against the chosen map and explains any conflict.
+Houses remain selected when switching maps. Ordinary co-op still needs two humans.
 
 PLAYING
 Each player uses their chosen house and color. Some challenge maps reserve

@@ -5,7 +5,9 @@ import re
 from tkinter import messagebox
 
 from randomizer.challenges.results import ChallengeResultWatch
-from randomizer.challenges.catalogue import COUNTRY_LABELS, SIDE_COUNTRIES, SIDE_FAMILIES
+from randomizer.challenges.catalogue import (
+    COUNTRY_LABELS, allowed_colors, allowed_countries, map_config,
+)
 from randomizer.config.player import save_config
 from randomizer.coop import feature
 from randomizer.coop.direct import prepare_solo_game
@@ -30,7 +32,7 @@ class ChallengeController:
         state = self.state
         return state, (
             state.get('seed'), state.get('mission_category'),
-            state.get('challenge_player_count'), state.get('challenge_country'),
+            state.get('challenge_player_count'),
         )
 
     def challenge_run_identity_matches(self, snapshot):
@@ -52,8 +54,11 @@ class ChallengeController:
 
     def selected_mission_setup(self):
         country = getattr(self, 'challenge_country_var', None)
-        return (self.selected_mission_category(), self.selected_challenge_player_count(),
-                country.get() if country is not None else self.config.get('challenge_country'))
+        category = self.selected_mission_category()
+        return (category, self.selected_challenge_player_count(),
+                None if category == 'challenge' else (
+                    country.get() if country is not None else self.config.get('challenge_country')
+                ))
 
     def sync_mission_transport_mode(self):
         category = self.selected_mission_category()
@@ -67,11 +72,11 @@ class ChallengeController:
             'coop' if self.config.get('coop_mode') else 'campaign'
         ))
         self.challenge_player_count_var.set(str(self.config.get('challenge_player_count', 1)))
-        self.challenge_country_var.set(str(self.config.get('challenge_country') or 'UnitedStates'))
         self.restore_challenge_local_options_from_config()
         self.sync_mission_transport_mode()
 
     def restore_challenge_local_options_from_config(self):
+        self.challenge_country_var.set(str(self.config.get('challenge_country') or 'UnitedStates'))
         self.challenge_ai_enabled_var.set(bool(self.config.get('challenge_ai_enabled', False)))
         self.challenge_ai_country_var.set(str(self.config.get('challenge_ai_country') or 'USSR'))
         self.challenge_ai_color_var.set(str(self.config.get('challenge_ai_color') or 'Red'))
@@ -83,6 +88,7 @@ class ChallengeController:
 
     def store_challenge_local_options(self):
         """Launch preferences stay separate from the saved challenge seed."""
+        self.config['challenge_country'] = self.challenge_country_var.get()
         self.config['challenge_ai_enabled'] = bool(self.challenge_ai_enabled_var.get())
         self.config['challenge_ai_country'] = self.challenge_ai_country_var.get()
         self.config['challenge_ai_color'] = self.challenge_ai_color_var.get()
@@ -109,6 +115,7 @@ class ChallengeController:
         self.refresh_challenge_local_controls()
         self.store_challenge_local_options()
         save_config(self.config)
+        self.update_header_summary()
 
     def coop_selection_changed(self):
         result = super().coop_selection_changed()
@@ -128,28 +135,12 @@ class ChallengeController:
             return
         self.ensure_challenge_player_options()
         mission = self.selected_mission()
-        countries = tuple(mission.get('allowed_countries', ())) if mission else tuple(COUNTRY_LABELS)
-        countries = countries or tuple(COUNTRY_LABELS)
-        colors = tuple(mission.get('allowed_colors', ())) if mission else tuple(range(13))
-        color_choices = tuple(label for label, value in self._coop_color_values.items()
-                              if value in colors)
-        if not color_choices:
-            return
-        if self.challenge_solo_color_var.get() not in color_choices:
-            self.challenge_solo_color_var.set(color_choices[0])
-        ai_colors = tuple(label for label in color_choices
-                          if label != self.challenge_solo_color_var.get())
-        if ai_colors and self.challenge_ai_color_var.get() not in ai_colors:
-            self.challenge_ai_color_var.set(ai_colors[0])
+        countries = tuple(COUNTRY_LABELS)
+        color_choices = tuple(self._coop_color_values)
         country = self.challenge_ai_country_var.get()
-        if country not in countries:
-            family = (SIDE_FAMILIES[SIDE_COUNTRIES.index(country)]
-                      if country in SIDE_COUNTRIES else '')
-            country = next((candidate for candidate in countries
-                            if SIDE_FAMILIES[SIDE_COUNTRIES.index(candidate)] == family),
-                           countries[0])
-            self.challenge_ai_country_var.set(country)
-        self.challenge_ai_country_label_var.set(COUNTRY_LABELS[country])
+        self.challenge_ai_country_label_var.set(COUNTRY_LABELS.get(country, country))
+        country = self.challenge_country_var.get()
+        self.challenge_country_label_var.set(COUNTRY_LABELS.get(country, country))
         enabled = bool(self.challenge_ai_enabled_var.get())
         locked = self.challenge_local_options_locked()
         state = 'disabled' if locked else 'readonly'
@@ -160,6 +151,9 @@ class ChallengeController:
             getattr(self, prefix + 'challenge_solo_color_combo').configure(
                 state=state, values=color_choices,
             )
+            getattr(self, prefix + 'challenge_country_combo').configure(
+                state=state, values=tuple(COUNTRY_LABELS.values()),
+            )
             getattr(self, prefix + 'challenge_ai_toggle').configure(
                 state='disabled' if locked else 'normal',
             )
@@ -169,17 +163,57 @@ class ChallengeController:
             combos['house'].configure(state=state, values=tuple(
                 COUNTRY_LABELS[country] for country in countries
             ))
-            combos['color'].configure(state=state, values=ai_colors)
+            combos['color'].configure(state=state, values=color_choices)
             combos['difficulty'].configure(state=state, values=('Easy', 'Normal', 'Hard'))
         text = ('The AI takes the second allied starting position. Its difficulty is '
                 'independent of the challenge difficulty. ' if enabled else '')
-        text += 'Houses and colors follow the selected map. Launch directly; no connection is needed.'
+        text += ('Choose houses for each challenge without changing your seed. '
+                 'Launch checks map restrictions and color conflicts. No connection is needed.')
+        if mission:
+            available = mission.get('allowed_countries', countries)
+            restricted = []
+            if self.challenge_country_var.get() not in available:
+                restricted.append('you')
+            if enabled and self.challenge_ai_country_var.get() not in available:
+                restricted.append('the AI teammate')
+            if restricted:
+                text += '\nChoose another house for ' + ' and '.join(restricted) + ' on this map.'
+            colors = mission.get('allowed_colors', tuple(range(13)))
+            if (self._coop_color_values.get(self.challenge_solo_color_var.get()) not in colors
+                    or (enabled and self._coop_color_values.get(
+                        self.challenge_ai_color_var.get()) not in colors)):
+                text += '\nA selected color is reserved by this map.'
+        if enabled and self.challenge_solo_color_var.get() == self.challenge_ai_color_var.get():
+            text += '\nChoose different colors for you and the AI.'
         self.challenge_local_summary_var.set(text)
 
-    def challenge_local_launch_options(self):
+    def challenge_local_launch_options(self, mission):
         """Capture validated native color indices before background preparation."""
         self.refresh_challenge_local_controls()
         self.ensure_challenge_player_options()
+        _, _, metadata, _, _ = map_config(GAME_ROOT, mission['coop_name'])
+        countries = allowed_countries(metadata)
+        colors = allowed_colors(metadata)
+        errors = []
+        players = [('Your', self.challenge_country_var.get(), self.challenge_solo_color_var.get())]
+        if self.challenge_ai_enabled_var.get():
+            players.append(('AI teammate', self.challenge_ai_country_var.get(),
+                            self.challenge_ai_color_var.get()))
+        for role, country, color in players:
+            if country not in countries:
+                errors.append(f'{role} house {COUNTRY_LABELS.get(country, country)} is '
+                              'restricted or reserved for an enemy on this challenge.')
+            if self._coop_color_values.get(color) not in colors:
+                errors.append(f'{role} color {color} is unavailable on this challenge.')
+        if len(players) == 2 and players[0][2] == players[1][2]:
+            errors.append('You and the AI teammate must use different colors.')
+        if errors:
+            errors.append('Allowed houses: ' + ', '.join(COUNTRY_LABELS[country]
+                                                       for country in countries) + '.')
+            errors.append('Allowed colors: ' + ', '.join(
+                label for label, color in self._coop_color_values.items() if color in colors
+            ) + '.')
+            raise ValueError('\n\n'.join(errors))
         human_color = self._coop_color_values[self.challenge_solo_color_var.get()]
         ai = None
         if self.challenge_ai_enabled_var.get():
@@ -215,12 +249,16 @@ class ChallengeController:
         save_config(self.config)
 
     def on_challenge_country_selected(self, event=None):
+        if self.challenge_local_options_locked():
+            self.restore_challenge_local_options_from_config()
+            self.refresh_challenge_support_controls()
+            return
         selected = self.challenge_country_label_var.get()
         country = next((country for country, label in COUNTRY_LABELS.items()
                         if label == selected), None)
         if country:
             self.challenge_country_var.set(country)
-        self.on_challenge_setup_changed(event)
+        self.on_challenge_local_options_changed(event)
 
     def on_challenge_setup_changed(self, _event=None):
         if self.challenge_launch_active():
@@ -257,14 +295,13 @@ class ChallengeController:
         availability = getattr(self, 'challenge_availability_var', None)
         if availability is not None:
             if paired:
-                text = ('Two-player seeds can use all 22 challenges. Each player chooses an '
-                        'allowed house and color for the selected map in Co-op Connection. '
-                        'Set Mission goal to 22 to include every challenge in a new run. '
-                        'Existing saved runs keep their original maps and progress.')
+                text = ('All 22 challenges are available regardless of house. Each human chooses '
+                        'a house and color in Co-op Connection. Launch checks both players '
+                        'against the selected map restrictions.')
             else:
-                text = ('Solo maps are filtered by your selected house. Heavyobject cannot use '
-                        'Last Bastion, Euro Alliance or Epsilon HQ because they are enemies there; '
-                        'Haihead or Coronia can play it. Generate a new seed after changing house.')
+                text = ('All 22 challenges are available regardless of house. Change your house '
+                        'and the optional AI teammate for each map; your seed and progress '
+                        'stay the same. Launch reports any restricted houses or conflicting colors.')
             availability.set(text)
         for prefix in ('', 'shop_'):
             for suffix in ('challenge_country_combo', 'challenge_country_label'):
@@ -315,15 +352,13 @@ class ChallengeController:
         return super().start_shop_run()
 
     def challenge_run_ready(self):
-        expected = ('challenge', self.selected_challenge_player_count(),
-                    self.challenge_country_var.get())
+        expected = ('challenge', self.selected_challenge_player_count())
         active = (self.state.get('mission_category'),
-                  self.state.get('challenge_player_count', 1),
-                  self.state.get('challenge_country'))
+                  self.state.get('challenge_player_count', 1))
         if not self.state or active != expected:
             messagebox.showwarning(
                 'Challenge Seed Required',
-                'Generate a challenge seed for the selected country and player count first.',
+                'Generate a challenge seed for the selected human player count first.',
             )
             return False
         if self.shop_mode_selected() or self.archipelago_run_active():
@@ -371,9 +406,14 @@ class ChallengeController:
         )
 
     def start_solo_challenge(self, mission):
+        try:
+            human_color, ai_teammate = self.challenge_local_launch_options(mission)
+        except (OSError, ValueError) as exc:
+            messagebox.showwarning('Challenge Player Conflict', str(exc))
+            return
         launch_snapshot = self.capture_challenge_run_identity()
         state = copy.deepcopy(self.state)
-        country = str(state['challenge_country'])
+        country = self.challenge_country_var.get()
         name = re.sub(r'[^A-Za-z0-9_-]', '', str(
             self.config.get('player_name') or 'Commander'
         ))[:14] or 'Commander'
@@ -381,7 +421,6 @@ class ChallengeController:
             name = 'Commander'
         difficulty = self.get_selected_difficulty_value()
         game_speed = self.get_selected_game_speed_value()
-        human_color, ai_teammate = self.challenge_local_launch_options()
         self._challenge_preparing = True
         self.refresh_coop_controls()
 

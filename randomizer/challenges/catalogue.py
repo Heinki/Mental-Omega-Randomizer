@@ -137,10 +137,11 @@ def map_config(game_root: Path, map_name: str, player_country: str | None = None
 
 def discover_challenge_missions(game_root: Path, player_country: str | None = None, *,
                                 country: str | None = None, player_count: int = 1) -> list[dict]:
-    """Discover solo-compatible maps or the full paired challenge catalogue.
+    """Discover the full catalogue independently of per-match player choices.
 
-    Paired players choose their actual houses per map in the lobby, so an old
-    pool-country preference must not hide otherwise playable challenges.
+    Country parameters remain accepted for older callers. A mission's default
+    country is deterministic metadata, while map_config validates the actual
+    human and AI houses immediately before launch.
     """
     if player_count not in (1, 2):
         raise ValueError('Challenges support one or two human players.')
@@ -158,14 +159,7 @@ def discover_challenge_missions(game_root: Path, player_country: str | None = No
             continue
         _validate_metadata(metadata)
         available = allowed_countries(metadata)
-        if selected and selected not in available and player_count == 1:
-            continue
-        preferred_family = (SIDE_FAMILIES[SIDE_COUNTRIES.index(selected)]
-                            if selected else '')
-        chosen = selected if selected in available else next((
-            country for country in available
-            if SIDE_FAMILIES[SIDE_COUNTRIES.index(country)] == preferred_family
-        ), available[0])
+        chosen = available[0]
         family = SIDE_FAMILIES[SIDE_COUNTRIES.index(chosen)]
         enemies = enemy_houses(metadata)
         missions.append({

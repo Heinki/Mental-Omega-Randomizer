@@ -25,33 +25,33 @@ def build_coop_controls(self, parent, row, *, shop=False):
     )
     count.grid(row=1, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
-    country_label = ttk.Label(frame, text='Solo challenge house')
-    country_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
+    local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
+    local.grid(row=2, column=0, columnspan=3, sticky='ew', pady=(8, 0))
+    local.columnconfigure(1, weight=1)
+    country_label = ttk.Label(local, text='Your house')
+    country_label.grid(row=0, column=0, sticky='w', padx=(0, 8), pady=2)
     if not hasattr(self, 'challenge_country_label_var'):
         selected = self.challenge_country_var.get()
         self.challenge_country_label_var = tk.StringVar(
             master=self, value=COUNTRY_LABELS.get(selected, selected),
         )
     country = ttk.Combobox(
-        frame, textvariable=self.challenge_country_label_var,
+        local, textvariable=self.challenge_country_label_var,
         values=tuple(COUNTRY_LABELS.values()),
         state='readonly', width=18,
     )
-    country.grid(row=2, column=1, columnspan=2, sticky='ew', padx=(8, 0), pady=(5, 0))
+    country.grid(row=0, column=1, sticky='ew', pady=2)
     country.bind('<<ComboboxSelected>>', self.on_challenge_country_selected)
-    local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
-    local.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(8, 0))
-    local.columnconfigure(1, weight=1)
-    ttk.Label(local, text='Your color').grid(row=0, column=0, sticky='w', padx=(0, 8))
+    ttk.Label(local, text='Your color').grid(row=1, column=0, sticky='w', padx=(0, 8))
     human_color = ttk.Combobox(
         local, textvariable=self.challenge_solo_color_var, state='readonly', width=18,
     )
-    human_color.grid(row=0, column=1, sticky='ew')
+    human_color.grid(row=1, column=1, sticky='ew')
     ai_toggle = ttk.Checkbutton(
         local, text='Play with an AI teammate', variable=self.challenge_ai_enabled_var,
         command=self.on_challenge_local_options_changed,
     )
-    ai_toggle.grid(row=1, column=0, columnspan=2, sticky='w', pady=(6, 2))
+    ai_toggle.grid(row=2, column=0, columnspan=2, sticky='w', pady=(6, 2))
     if not hasattr(self, 'challenge_ai_country_label_var'):
         selected = self.challenge_ai_country_var.get()
         self.challenge_ai_country_label_var = tk.StringVar(
@@ -62,7 +62,7 @@ def build_coop_controls(self, parent, row, *, shop=False):
     for index, (name, text, variable) in enumerate((
             ('house', 'AI house', self.challenge_ai_country_label_var),
             ('color', 'AI color', self.challenge_ai_color_var),
-            ('difficulty', 'AI difficulty', self.challenge_ai_difficulty_var)), start=2):
+            ('difficulty', 'AI difficulty', self.challenge_ai_difficulty_var)), start=3):
         field_label = ttk.Label(local, text=text)
         field_label.grid(row=index, column=0, sticky='w', padx=(0, 8), pady=2)
         combo = ttk.Combobox(local, textvariable=variable, state='readonly', width=18)
@@ -76,17 +76,17 @@ def build_coop_controls(self, parent, row, *, shop=False):
         self.challenge_local_summary_var = tk.StringVar(master=self)
     ttk.Label(local, textvariable=self.challenge_local_summary_var, wraplength=330,
               justify='left', style='Muted.TLabel').grid(
-                  row=5, column=0, columnspan=2, sticky='w', pady=(5, 0))
+                  row=6, column=0, columnspan=2, sticky='w', pady=(5, 0))
     connect = ttk.Button(
         frame, text='Co-op Connection…', command=self.open_coop_dialog,
     )
-    connect.grid(row=4, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    connect.grid(row=3, column=0, columnspan=3, sticky='w', pady=(5, 0))
     if not hasattr(self, 'challenge_availability_var'):
         self.challenge_availability_var = tk.StringVar(master=self)
     ttk.Label(
         frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
-    ).grid(row=5, column=0, columnspan=3, sticky='w')
+    ).grid(row=4, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
     setattr(self, prefix + 'challenge_local_frame', local)
     setattr(self, prefix + 'challenge_solo_color_combo', human_color)

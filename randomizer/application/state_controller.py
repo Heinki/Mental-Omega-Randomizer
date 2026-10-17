@@ -2,7 +2,7 @@
 
 from randomizer.config.tuning import mission_assistance_stack_count
 from randomizer.coop import feature
-from randomizer.core.paths import state_path_for_mode
+from randomizer.core.paths import BACKUP_DIR, state_path_for_mode
 from .archipelago_state import normalize_archipelago_activation
 
 from ._dependencies import (
@@ -78,6 +78,39 @@ from ._dependencies import (
 from randomizer.generation.state_controller import GenerationSettings
 
 class StateController(GenerationSettings):
+    def migrate_challenge_catalogue(self):
+        """Upgrade a full legacy solo pool without replacing existing content."""
+        if (self.coop_guest_connected() or self.challenge_launch_active()
+                or not self.state or self.state.get('mission_category') != 'challenge'
+                or self.state.get('challenge_catalogue_version') == 2):
+            return
+        from time import time_ns
+        from randomizer.challenges.state import migrate_legacy_challenge_run
+
+        previous = self.state
+        try:
+            result = migrate_legacy_challenge_run(self.state, self.missions, self.config)
+            if result is None:
+                return
+            upgraded, added = result
+            if added:
+                atomic_write_json(
+                    BACKUP_DIR / f'challenge-catalogue-v2-{time_ns()}.json',
+                    self.state, indent=None,
+                )
+            self.state = upgraded
+            self.save_state()
+            if added:
+                self.append_log(
+                    f'Added {len(added)} previously house-filtered challenges. '
+                    'Existing seed, rewards, grid positions and goal are preserved.'
+                )
+        except Exception:
+            self.state = previous
+            log_event('challenge_catalogue_migration_failed', level=logging.ERROR,
+                      traceback=traceback.format_exc())
+            self.append_log('Could not add legacy challenges; the saved run was retained.', error=True)
+
     def load_state(self):
         category = self.config.get('mission_category') or (
             'coop' if self.config.get('coop_mode') else 'campaign'

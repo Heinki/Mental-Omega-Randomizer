@@ -145,9 +145,8 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         save_config(self.config)
         self.state = self.load_state()
         if (self.selected_mission_category() == 'challenge' and self.state
-                and (self.state.get('challenge_country') != self.challenge_country_var.get()
-                     or self.state.get('challenge_player_count', 1)
-                     != self.selected_challenge_player_count())):
+                and self.state.get('challenge_player_count', 1)
+                != self.selected_challenge_player_count()):
             # Keep the saved run on disk; a different setup needs a new seed.
             self.state = {}
         self.migrate_state()
@@ -552,7 +551,6 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                     raise ValueError('Host sent unsupported challenge run settings.')
                 self.mission_category_var.set(category)
                 self.challenge_player_count_var.set(str(state.get('challenge_player_count', 1)))
-                self.challenge_country_var.set(str(state.get('challenge_country') or 'UnitedStates'))
                 self.sync_mission_transport_mode()
                 # Host owns the mission pool; each player's lobby house is local.
                 self.missions = self.load_missions()

@@ -3,7 +3,9 @@
 import tkinter as tk
 from tkinter import ttk
 
-from randomizer.challenges.catalogue import COUNTRY_LABELS, allowed_colors, map_config
+from randomizer.challenges.catalogue import (
+    COUNTRY_LABELS, allowed_colors, allowed_countries, map_config,
+)
 from randomizer.config.player import save_config
 from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import all_section_value_maps_preserve
@@ -113,16 +115,43 @@ class ChallengeLobbyController:
         peer = getattr(self, '_coop_peer_options', None)
         if peer is None:
             raise ValueError('Wait for your brother to connect and choose his house and color.')
-        lobby = self._coop_lobby
+        peer = self.validate_challenge_player_options(peer)
+        lobby = getattr(self, '_coop_lobby', None)
+        if lobby is None or lobby.role not in {'host', 'guest'}:
+            raise ValueError('Connect both launchers before starting a two-player challenge.')
         host, guest = (own, peer) if lobby.role == 'host' else (peer, own)
-        _, _, metadata, _, _ = map_config(GAME_ROOT, mission['coop_name'], host['country'])
-        map_config(GAME_ROOT, mission['coop_name'], guest['country'])
-        colors = allowed_colors(metadata)
-        if host['color'] not in colors or guest['color'] not in colors:
-            raise ValueError('This challenge reserves a selected color for its enemies. Choose another color.')
-        if host['color'] == guest['color']:
-            raise ValueError('Both players chose the same color. One player must choose a different color.')
+        conflicts = self.challenge_player_conflicts(mission, {'Host': host, 'Guest': guest})
+        if conflicts:
+            raise ValueError(' '.join(conflicts))
         return {'host': dict(host), 'guest': dict(guest)}
+
+    def challenge_player_conflicts(self, mission, players):
+        """Explain incompatible saved selections without changing either player."""
+        _, _, metadata, _, _ = map_config(GAME_ROOT, mission['coop_name'])
+        countries, colors = allowed_countries(metadata), allowed_colors(metadata)
+        color_name = lambda value: next((label for label, code in self._coop_color_values.items()
+                                         if code == value), str(value))
+        conflicts = []
+        invalid_houses = [
+            f'{role}: {COUNTRY_LABELS[options["country"]]}'
+            for role, options in players.items() if options['country'] not in countries
+        ]
+        if invalid_houses:
+            conflicts.append('Unavailable house choices (' + '; '.join(invalid_houses)
+                             + '). This challenge restricts these houses or uses them as enemies.')
+            conflicts.append('Allowed houses: ' + ', '.join(COUNTRY_LABELS[country]
+                                                           for country in countries) + '.')
+        invalid_colors = [
+            f'{role}: {color_name(options["color"])}'
+            for role, options in players.items() if options['color'] not in colors
+        ]
+        if invalid_colors:
+            conflicts.append('Reserved color choices (' + '; '.join(invalid_colors) + ').')
+            conflicts.append('Allowed colors: ' + ', '.join(color_name(color)
+                                                           for color in colors) + '.')
+        if len({options['color'] for options in players.values()}) != len(players):
+            conflicts.append('Both players chose the same color. One player must choose a different color.')
+        return conflicts
 
     def receive_challenge_player_options(self, lobby, message):
         self._coop_peer_options = self.validate_challenge_player_options(message)
@@ -147,13 +176,13 @@ class ChallengeLobbyController:
         frame.grid()
         state = 'disabled' if self.challenge_player_choices_locked() else 'readonly'
         mission = self.selected_mission()
-        countries = mission.get('allowed_countries', ()) if mission else COUNTRY_LABELS
+        # A new map may make a stored choice unavailable. Keep that choice
+        # visible and explain the conflict rather than silently replacing it.
         self._coop_house_combo.configure(state=state, values=tuple(
-            COUNTRY_LABELS[country] for country in countries
+            COUNTRY_LABELS.values()
         ))
-        colors = mission.get('allowed_colors', tuple(range(13))) if mission else tuple(range(13))
         self._coop_color_combo.configure(state=state, values=tuple(
-            label for label, value in self._coop_color_values.items() if value in colors
+            self._coop_color_values
         ))
         own = self.own_challenge_player_options()
         peer = getattr(self, '_coop_peer_options', None)
@@ -165,9 +194,14 @@ class ChallengeLobbyController:
         else:
             text += '  Waiting for peer choices.'
         text += f'\nHost game speed: {self.game_speed_var.get()}.'
-        if mission and peer:
+        if mission:
             try:
-                self.challenge_pair_options(mission)
+                if peer:
+                    self.challenge_pair_options(mission)
+                else:
+                    conflicts = self.challenge_player_conflicts(mission, {'You': own})
+                    if conflicts:
+                        text += '\n' + ' '.join(conflicts)
             except ValueError as exc:
                 text += '\n' + str(exc)
         self._coop_player_summary.set(text)
