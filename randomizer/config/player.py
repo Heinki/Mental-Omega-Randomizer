@@ -67,6 +67,18 @@ def migrate_loaded_config(loaded):
     if type(count) is not int or count not in (1, 2):
         loaded['challenge_player_count'] = 1
         changed = True
+    if type(loaded.get('challenge_ai_enabled', False)) is not bool:
+        loaded['challenge_ai_enabled'] = False
+        changed = True
+    for key, fallback in (('challenge_solo_color', 'Teal'),
+                          ('challenge_ai_country', 'USSR'),
+                          ('challenge_ai_color', 'Red')):
+        if key in loaded and (not isinstance(loaded[key], str) or not loaded[key].strip()):
+            loaded[key] = DEFAULT_CONFIG.get(key, fallback)
+            changed = True
+    if loaded.get('challenge_ai_difficulty', 'Normal') not in ('Easy', 'Normal', 'Hard'):
+        loaded['challenge_ai_difficulty'] = 'Normal'
+        changed = True
     if 'coop_feature_enabled' in loaded:
         loaded.pop('coop_feature_enabled')
         changed = True

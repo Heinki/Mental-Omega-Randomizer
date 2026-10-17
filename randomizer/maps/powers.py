@@ -18,6 +18,7 @@ from ._shared import (
 from .base import (
     _value_case_insensitive,
 )
+from .ini import find_section_bounds
 
 def _waypoint_label(index):
     """Return FinalAlert's zero-based Excel-style waypoint label."""
@@ -300,18 +301,25 @@ def append_static_startup_buildings(lines, houses, building_ids=()):
             building_ids,
             reserved_cells=reserved_cells,
         )
+        entries = []
         for building_id, (cell_x, cell_y) in placements:
-            append_section_entry(
-                lines,
-                'Structures',
-                str(next_structure),
-                (
-                    f'{house},{building_id},256,{cell_x},{cell_y},64,None,'
-                    '1,0,1,0,0,None,None,None,0,0'
-                ),
+            entries.append(
+                f'{next_structure}={house},{building_id},256,{cell_x},{cell_y},64,None,'
+                '1,0,1,0,0,None,None,None,0,0'
             )
             next_structure += 1
             placed.append((house, building_id, cell_x, cell_y))
+        if entries:
+            # Placements for this house are already chosen. Append the exact
+            # same ordered records together so large power inventories do not
+            # rescan and invalidate the whole map once per hidden building.
+            start, end = find_section_bounds(lines, 'Structures')
+            if start is None:
+                if lines and lines[-1].strip():
+                    lines.append('')
+                lines.extend(['[Structures]', *entries])
+            else:
+                lines[end:end] = entries
     return placed
 
 def append_superweapon_grant_trigger(

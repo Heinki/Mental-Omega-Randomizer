@@ -30,13 +30,16 @@ def _lookup(sections, name):
 
 def _merge(*sections):
     result = {}
+    names = {}
     for values in sections:
         for key, value in values.items():
-            for previous in list(result):
-                if str(previous).lower() == str(key).lower():
-                    result.pop(previous)
+            lowered = str(key).lower()
+            previous = names.pop(lowered, None)
+            if previous is not None:
+                result.pop(previous)
             if value is not None:
                 result[key] = value
+                names[lowered] = key
     return result
 
 

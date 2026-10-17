@@ -13,7 +13,7 @@ class IniLines(list):
         self._invalidate_indexes()
 
     def _invalidate_indexes(self):
-        self._section_bounds_cache = {}
+        self._section_bounds_cache = None
         self._section_values_cache = {}
         self._section_values_preserve_cache = {}
         self._all_sections_cache = None
@@ -110,23 +110,34 @@ def set_ini_value_lines(text, section, key, value):
 def find_section_bounds(lines, section):
     wanted = section.lower()
     if isinstance(lines, IniLines):
-        cached = lines._section_bounds_cache.get(wanted)
-        if cached is not None:
-            return cached
+        if lines._section_bounds_cache is None:
+            # Support placement reads many generated type sections, including
+            # absent types. Index all bounds once per map revision instead of
+            # scanning the entire enlarged map for every individual lookup.
+            bounds = {}
+            current = None
+            start = None
+            for index, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith('[') and stripped.endswith(']'):
+                    if current is not None:
+                        bounds.setdefault(current, (start, index))
+                    current = stripped[1:-1].strip().lower()
+                    start = index
+            if current is not None:
+                bounds.setdefault(current, (start, len(lines)))
+            lines._section_bounds_cache = bounds
+        return lines._section_bounds_cache.get(wanted, (None, None))
     start = None
     for index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             if start is not None:
                 bounds = (start, index)
-                if isinstance(lines, IniLines):
-                    lines._section_bounds_cache[wanted] = bounds
                 return bounds
             if stripped[1:-1].strip().lower() == wanted:
                 start = index
     bounds = (None, None) if start is None else (start, len(lines))
-    if isinstance(lines, IniLines):
-        lines._section_bounds_cache[wanted] = bounds
     return bounds
 
 

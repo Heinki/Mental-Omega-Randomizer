@@ -1,4 +1,4 @@
-# Challenge build 1.44.2
+# Challenge build 1.44.3
 
 ## Agent handoff
 
@@ -52,7 +52,8 @@ both PCs, and quit. Real socket pairing, map generation/replay, native log
 audits and packaged self-checks have been exercised locally.
 
 This local build adds stock Mental Omega challenges to Classic, Mission List,
-and Grid Mode, with earned randomized rewards and either one or two humans.
+and Grid Mode, with earned randomized rewards, one local human with an optional
+AI teammate, or two humans over the existing private-network connection.
 Shop Mode and Archipelago challenge seeds are not included in this build.
 
 Version 1.44.0 finishes the paired challenge setup. Each player selects their
@@ -60,7 +61,30 @@ own house/country and color in **Co-op Connection**. Different factions receive
 their own production roster while sharing the host's run, unlocks and rewards.
 The host sets game speed and difficulty; the paired game speed control is locked.
 Map-specific enemy houses and colors stay reserved. Both players must use the
-same build; the current build is 1.44.2.
+same build; the current build is 1.44.3.
+
+Version 1.44.3 adds **Play with an AI teammate** for challenges with **Human
+players: 1**. Select an open challenge, then choose your color and the AI's
+allowed house, color and Easy/Normal/Hard difficulty under Local challenge
+players. Launch Selected Mission starts locally without connecting to co-op or
+Archipelago. The AI occupies the second allied start, uses its native army,
+and has its own difficulty; the human keeps the run's earned rewards. Enemy
+challenge difficulty remains the existing Casual/Normal/Mental setting.
+These launch choices do not require a new seed. Two-human games keep their
+existing connection flow and host-controlled speed.
+
+Launch preparation now indexes native rules and INI section bounds instead of
+repeatedly scanning them. Host and guest also reuse their locally validated map
+when writing the game files. Both PCs still independently rebuild and verify
+the selected map, native files and rewards before the game starts.
+
+Measured build plus verified replay time on real saved runs fell from 8.37 to
+1.64 seconds for the current paired run, 3.86 to 0.85 seconds for the solo run,
+and 15.87 to 3.33 seconds for an archived run with 439 earned rewards. All nine
+manifest/map outputs remained byte-identical. These measure launcher map
+preparation, not native game loading or frozen executable startup. Actual AI
+teammate gameplay still requires a live win/loss check; preparation audits
+covered all 22 installed maps and existing native result logs.
 
 Version 1.44.2 adds **Unlimited build-limited buildings** in Settings > Reward
 Pool, independently of Unlimited unique / hero units. Enable it before
@@ -141,14 +165,16 @@ host's choice on both machines. Ordinary cooperative campaign speed is unchanged
 ## Start a solo run
 
 1. Open **Mental Omega Challenges Test** from the Windows desktop.
-2. In Settings, select mission category **challenge**, **1** player, and a
+2. In Settings, select mission category **challenge**, **Human players: 1**, and a
    country. Country choices filter maps that prohibit that country or use it
    for an enemy. The 22 stock challenges are available across country choices;
    one country normally has 18 or 19 compatible maps.
 3. Choose Classic, Mission List, or Grid Mode; choose Standard, Chaos, or
    Randomizer Arsenal rewards and the desired difficulty.
-4. Click **Generate New Seed**, select an open challenge, choose **Game speed**,
-   and launch it.
+4. Click **Generate New Seed**, select an open challenge and choose **Game speed**.
+   Under **Local challenge players**, choose your color. Optionally enable
+   **Play with an AI teammate** and choose its house, different color and
+   difficulty. Click **Launch Selected Mission** directly.
 
 Basic unit and defense access is enabled when Challenges is first selected,
 so the initial base-building challenge has a usable roster. Further unlocks
@@ -172,8 +198,12 @@ requires a matching new seed; existing saved runs are preserved separately.
 
 The result reader starts before each game and reads only fresh native log
 data. A Winner row by itself is insufficient: installed unfinished games also
-produce such rows. Victory requires the expected humans to have complete
-Winner records and every registered enemy to have a complete Loser record.
+produce such rows. Paired and AI games require native completion, complete
+statistics for the whole expected roster, at least one allied Winner and every
+registered enemy marked Loser. An eliminated human can therefore receive team
+credit if the remaining ally wins. AI rows follow native house order, with the
+allied AI directly after the local human; ambiguous or incomplete rows award
+nothing. Solo games retain their existing complete enemy-loss verification.
 
 ## Play with two people
 

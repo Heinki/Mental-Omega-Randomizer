@@ -109,7 +109,7 @@ def _catalogue_settings(game_root: Path, manifest: dict) -> tuple[int, int, list
         config, _ = validate_context(game_root, manifest)
         metadata = config[2]
         side = SIDE_COUNTRIES.index(config[3])
-        if manifest.get('schema') == 7:
+        if manifest.get('schema') in (7, 8):
             guest_side = (SIDE_COUNTRIES.index(manifest['guest_country'])
                           if manifest['player_count'] == 2 else side)
             colors = list(manifest['player_colors'])
@@ -152,6 +152,7 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
                 game_id: int, difficulty: str, map_data: bytes) -> bytes:
     host_side, guest_side, colors, enemies = _catalogue_settings(game_root, manifest)
     player_count = manifest.get('player_count', 2)
+    ai_teammate = manifest.get('ai_teammate')
     host = role == 'host'
     own_side, other_side = ((host_side, guest_side) if host
                             else (guest_side, host_side))
@@ -162,7 +163,7 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
         'Settings': {
             'Name': name, 'Scenario': 'spawnmap.ini', 'UIGameMode': mode_name,
             'UIMapName': manifest['description'], 'PlayerCount': str(player_count),
-            'AIPlayers': str(len(enemies)), 'Seed': str(game_id),
+            'AIPlayers': str(len(enemies) + bool(ai_teammate)), 'Seed': str(game_id),
             'GameID': str(game_id), 'Host': 'Yes' if host else 'No',
             'IsSinglePlayer': 'No', 'Side': str(own_side), 'Color': str(own_color),
             'IsSpectator': 'No', 'Port': str(local_port), 'GameSpeed': '2',
@@ -192,19 +193,34 @@ def _spawn_data(game_root: Path, manifest: dict, *, role: str, name: str,
         }
     if manifest.get('mission_category') == 'challenge':
         sections['Settings'].update(manifest['native_settings'])
-    if manifest.get('schema') in (4, 6, 7) and manifest.get('starting_credit_bonus', 0):
+    if ai_teammate:
+        # CnCNet places computer houses after all human houses, irrespective
+        # of color. AIPlayers counts this ally as well as the authored enemies;
+        # PlayerCount remains one human and no network OtherN entry is needed.
+        # Native handicap numbers run opposite to launcher difficulty indexes.
+        sections.update({
+            'Multi1_Alliances': {'HouseAllyOne': '1'},
+            'Multi2_Alliances': {'HouseAllyOne': '0'},
+            'HouseHandicaps': {'Multi2': str(2 - ai_teammate['difficulty'])},
+            'HouseCountries': {'Multi2': str(SIDE_COUNTRIES.index(ai_teammate['country']))},
+            'HouseColors': {'Multi2': str(ai_teammate['color'])},
+        })
+        sections['SpawnLocations']['Multi2'] = '1'
+    if (manifest.get('schema') in (4, 6, 7)
+            and manifest.get('starting_credit_bonus', 0)):
         # The CnCNet spawner reads Settings/Credits as real starting credits.
         # Source: CnCNet/yr-patches src/spawner/load_spawn.c.
         sections['Settings']['Credits'] = str(
             int(sections['Settings'].get('Credits', '10000')) + manifest['starting_credit_bonus']
         )
-    for index, (enemy_side, enemy_color, location) in enumerate(enemies, player_count + 1):
+    first_enemy = player_count + bool(ai_teammate) + 1
+    for index, (enemy_side, enemy_color, location) in enumerate(enemies, first_enemy):
         key = f'Multi{index}'
         sections.setdefault('HouseHandicaps', {})[key] = str(handicap)
         sections.setdefault('HouseCountries', {})[key] = str(enemy_side)
         sections.setdefault('HouseColors', {})[key] = str(enemy_color)
         sections['SpawnLocations'][key] = str(location)
-        allies = [other - 1 for other in range(player_count + 1, player_count + 1 + len(enemies))
+        allies = [other - 1 for other in range(first_enemy, first_enemy + len(enemies))
                   if other != index]
         if allies:
             sections[f'{key}_Alliances'] = {
@@ -232,6 +248,26 @@ def prepare_game(game_root: Path, manifest: dict, *, role: str, name: str,
     if not 1 <= game_id <= 2**31 - 1:
         raise ValueError('Invalid co-op game ID.')
     map_data = _mode_map(game_root, manifest, difficulty)
+    return _write_runtime(
+        game_root, manifest, role=role, name=name, peer_name=peer_name,
+        peer_ip=peer_ip, local_port=local_port, peer_port=peer_port,
+        game_id=game_id, difficulty=difficulty, map_data=map_data,
+    )
+
+
+def _write_runtime(game_root: Path, manifest: dict, *, role: str, name: str,
+                   peer_name: str, peer_ip: str, local_port: int, peer_port: int,
+                   game_id: int, difficulty: str, map_data: bytes) -> str:
+    """Write one map already replay-validated locally by this launch operation."""
+    if role not in ('host', 'guest'):
+        raise ValueError('Co-op role must be host or guest.')
+    _name(name)
+    _port(local_port)
+    if manifest.get('player_count', 2) == 2:
+        _name(peer_name)
+        _port(peer_port)
+    if type(game_id) is not int or not 1 <= game_id <= 2**31 - 1:
+        raise ValueError('Invalid game ID.')
     spawn_data = _spawn_data(game_root, manifest, role=role, name=name,
                              peer_name=peer_name, peer_ip=peer_ip,
                              local_port=local_port, peer_port=peer_port,
@@ -245,7 +281,7 @@ def prepare_game(game_root: Path, manifest: dict, *, role: str, name: str,
 def prepare_solo_game(game_root: Path, manifest: dict, *, name: str,
                       game_id: int | None = None, difficulty: str = 'normal',
                       game_speed: int = 2) -> str:
-    """Prepare one local challenge human without creating a peer connection."""
+    """Prepare a local human and optional allied AI without a peer connection."""
     if manifest.get('mission_category') != 'challenge' or manifest.get('player_count') != 1:
         raise ValueError('Solo launch requires a one-player challenge manifest.')
     _name(name)
@@ -258,14 +294,11 @@ def prepare_solo_game(game_root: Path, manifest: dict, *, name: str,
     if type(game_id) is not int or not 1 <= game_id <= 2**31 - 1:
         raise ValueError('Invalid challenge game ID.')
     map_data = _mode_map(game_root, manifest, difficulty)
-    spawn_data = _spawn_data(
+    return _write_runtime(
         game_root, manifest, role='host', name=name, peer_name='', peer_ip='',
         local_port=GAME_PORT, peer_port=GAME_PORT, game_id=game_id,
         difficulty=difficulty, map_data=map_data,
     )
-    (game_root / 'spawnmap.ini').write_bytes(map_data)
-    (game_root / 'spawn.ini').write_bytes(spawn_data)
-    return _digest(map_data)
 
 
 def _version_hash(game_root: Path) -> str:
@@ -332,14 +365,17 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
     if (shop_setup is None) == (manifest is None):
         raise ValueError('Provide either a fixed co-op manifest or host Shop setup.')
     if manifest is not None:
+        if manifest.get('player_count', 2) != 2:
+            raise ValueError('Peer hosting requires two human players; launch AI challenges locally.')
         _check_challenge_player_options(game_root, manifest, player_options, 'host')
     elif player_options is not None:
         raise ValueError('Independent house and color choices require a challenge.')
     with socket.create_server((bind, control_port), backlog=1) as server:
         # Open the port before expensive map generation. A guest can now join
         # immediately after the host presses Start, even with a large Grid run.
-        mode_hash = (_digest(_mode_map(game_root, manifest, difficulty))
-                     if manifest is not None else '')
+        map_data = (_mode_map(game_root, manifest, difficulty)
+                    if manifest is not None else None)
+        mode_hash = _digest(map_data) if map_data is not None else ''
         version_hash = _version_hash(game_root)
         game_id = secrets.randbelow(2**31 - 1) + 1
         server.settimeout(120)
@@ -390,7 +426,8 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                             stage=shop_setup['stage'],
                             difficulty={'easy': 0, 'normal': 1, 'hard': 2}[difficulty],
                         )
-                        mode_hash = _digest(_mode_map(game_root, manifest, difficulty))
+                        map_data = _mode_map(game_root, manifest, difficulty)
+                        mode_hash = _digest(map_data)
                     except (KeyError, TypeError, ValueError) as exc:
                         _line(stream, {'type': 'reject', 'reason': str(exc)})
                         raise
@@ -410,11 +447,12 @@ def host_session(game_root: Path, manifest: dict | None, *, name: str = 'CoopHos
                     game_root, manifest, ready.get('player_options'), 'guest',
                     required=manifest.get('schema') == 7,
                 )
-                local_hash = prepare_game(
+                local_hash = _write_runtime(
                     game_root, manifest, role='host', name=name,
                     peer_name=guest_name, peer_ip=address[0],
                     local_port=game_port, peer_port=guest_port,
                     game_id=game_id, difficulty=difficulty,
+                    map_data=map_data,
                 )
                 if local_hash != mode_hash:
                     raise ValueError('Host map changed while preparing game.')
@@ -490,13 +528,19 @@ def join_session(game_root: Path, address: str, *, name: str = 'CoopGuest',
                 raise ValueError('Both players need distinct names.')
             if _version_hash(game_root) != offer['version_sha256']:
                 raise ValueError('Mental Omega version differs (normalized text).')
-            if _digest(_mode_map(game_root, manifest, difficulty)) != offer['map_sha256']:
+            if manifest.get('player_count', 2) != 2:
+                raise ValueError('Peer launch requires a two-human mission manifest.')
+            # Rebuild and verify once on this machine; reuse those exact bytes
+            # for the accepted spawn instead of repeating the expensive graph.
+            map_data = _mode_map(game_root, manifest, difficulty)
+            if _digest(map_data) != offer['map_sha256']:
                 raise ValueError('Generated co-op maps differ.')
-            local_hash = prepare_game(
+            local_hash = _write_runtime(
                 game_root, manifest, role='guest', name=name,
                 peer_name=host_name, peer_ip=host_ip,
                 local_port=game_port, peer_port=host_port,
                 game_id=game_id, difficulty=difficulty,
+                map_data=map_data,
             )
             if local_hash != offer['map_sha256']:
                 raise ValueError('Generated co-op maps differ.')

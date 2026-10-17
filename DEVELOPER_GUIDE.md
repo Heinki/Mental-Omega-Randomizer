@@ -89,7 +89,11 @@ when an older external `ui.json` has no profiles.
 - `randomizer/application/challenge_controller.py`: category selection, solo
   challenge launching and result-to-progression orchestration.
 - `randomizer/coop/challenge.py`: challenge manifest identity and replay policy;
-  `direct.py` supports one-human preparation and the existing paired transport.
+  schema 8 binds an optional local AI's country, color and difficulty. Human
+  count stays one; `direct.py` creates the AI as Multi2, followed by native
+  enemies, without an Other1 network peer. The AI uses its original army;
+  human rewards, production gates and credit bonuses stay private.
+  Paired transport reuses each machine's locally replay-validated map bytes.
 - [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md): local challenge build scope and
   manual solo/paired verification steps.
 

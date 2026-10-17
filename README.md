@@ -12,6 +12,10 @@ campaign maps directly, tracks objective and victory checks, locks unearned
 technology, and applies earned access and buffs through generated mission
 copies.
 
+This custom fork also supports native Mental Omega challenges with randomized
+rewards, an optional local AI teammate, and synchronized two-human play. See
+[challenge setup and agent handoff](CHALLENGES_TESTING.md) for build 1.44.3.
+
 ## Disclaimer
 
 I am *not* part of the Development of Mental Omega nor did I contribute in any way, all I did was access the game and the mapfiles to create the randomizer. Credits go to the Mental Omega Developers and their work!
