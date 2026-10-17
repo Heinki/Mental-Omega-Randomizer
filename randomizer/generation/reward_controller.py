@@ -476,6 +476,12 @@ class RewardGeneration:
                             and not self.reward_is_special_building(reward)
                         )
                         and not (
+                            reward_settings.get('unlimited_buildings')
+                            and reward.get('buff_type') in {'build_limit', 'building_limit'}
+                            and (self.reward_is_special_building(reward)
+                                 or self.reward_is_defensive_building(reward))
+                        )
+                        and not (
                             chaos_mode
                             and reward.get('buff_type') == 'production'
                             and not reward.get('global_buff')

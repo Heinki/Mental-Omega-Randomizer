@@ -3,6 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
+from randomizer.challenges.presentation import challenge_color_group
+from randomizer.ui.gradient_label import AnimatedGradientLabel
 from randomizer.ui.tooltips import WidgetTooltip
 
 
@@ -43,6 +45,7 @@ def redraw_grid(self):
     index_by_code = {
         mission['code']: index for index, mission in enumerate(self.missions)
     }
+    mission_by_code = {mission['code']: mission for mission in self.missions}
     width = int(grid.get('width', 1))
     height = int(grid.get('height', 1))
     signature = (
@@ -51,7 +54,8 @@ def redraw_grid(self):
         height,
         tuple(
             sorted(
-                (code, int(node['x']), int(node['y']))
+                (code, int(node['x']), int(node['y']),
+                 challenge_color_group(mission_by_code.get(code, {})))
                 for code, node in grid['nodes'].items()
             )
         ),
@@ -142,7 +146,12 @@ def redraw_grid(self):
             pady=3,
         )
         banner.grid(row=0, column=0, sticky='ew', padx=4, pady=(4, 0))
-        body = tk.Label(
+        body_class = (
+            AnimatedGradientLabel
+            if challenge_color_group(mission_by_code.get(code, {})) == 'Mixed'
+            else tk.Label
+        )
+        body = body_class(
             selection_frame,
             font=('Segoe UI', 9, 'bold'),
             justify='center',

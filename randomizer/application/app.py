@@ -468,6 +468,9 @@ class LauncherApp(
         self.unlimited_hero_units_var = tk.BooleanVar(
             value=reward_settings['unlimited_hero_units']
         )
+        self.unlimited_buildings_var = tk.BooleanVar(
+            value=reward_settings['unlimited_buildings']
+        )
         self.share_chaos_role_buffs_var = tk.BooleanVar(
             value=reward_settings['share_chaos_role_buffs']
         )
@@ -522,6 +525,8 @@ class LauncherApp(
         }
         if self.unlimited_hero_units_var.get():
             self.buff_type_vars['build_limit'].set(False)
+        if self.unlimited_buildings_var.get():
+            self.buff_type_vars['building_limit'].set(False)
         self.log_visible_var = tk.BooleanVar(value=False)
         self.mission_search_var = tk.StringVar(value='')
         self.unlock_dashboard_search_var = tk.StringVar(value='')

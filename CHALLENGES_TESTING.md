@@ -1,4 +1,4 @@
-# Challenge build 1.44.1
+# Challenge build 1.44.2
 
 ## Agent handoff
 
@@ -60,7 +60,25 @@ own house/country and color in **Co-op Connection**. Different factions receive
 their own production roster while sharing the host's run, unlocks and rewards.
 The host sets game speed and difficulty; the paired game speed control is locked.
 Map-specific enemy houses and colors stay reserved. Both players must use the
-same build; the current build is 1.44.1.
+same build; the current build is 1.44.2.
+
+Version 1.44.2 adds **Unlimited build-limited buildings** in Settings > Reward
+Pool, independently of Unlimited unique / hero units. Enable it before
+generating a standalone challenge, co-op, or campaign run. It removes nonzero
+build caps from earned player defenses and special buildings, including their
+private deploy/undeploy forms. It does not grant unearned building access,
+remove prerequisites or electricity requirements, or alter native enemy caps.
+Structure +1 rewards are omitted while this option is enabled. Shop Mode keeps
+its existing capacity economy. The option defaults off for existing configs
+and saves; an existing seed retains its saved choice.
+
+Challenge colors now follow the authored enemy factions instead of the human
+house fallback: Soviets red, Allies blue, Yuri/Epsilon purple, Foehn teal.
+Endurance is Foehn/teal. Challenges XVII-XXII face mixed armies and use a moving
+rainbow gradient drawn natively on Tk Canvas, with readable text and the normal
+status badges. Animation pauses when hidden or minimized. These display fixes
+apply to existing runs after reopening the updated launcher; they do not change
+house eligibility, game rules, rewards or mission order.
 
 Version 1.44.1 repairs native behavior of unlocked objects. Grumble and other
 mode-switching units now bring their private deployed/converted definitions
@@ -84,8 +102,8 @@ Large veteran rosters use compact IDs to stay within the native country limit.
 
 Reopen the desktop shortcut after closing the old launcher. These changes apply
 when preparing the next match; an already running game keeps its old map rules.
-Existing earned rewards and save progress do not require a new seed. Both PCs
-must update to 1.44.1 before connecting.
+Existing earned rewards and save progress do not require a new seed for these
+1.44.1 fixes. Both PCs should use the same current version before connecting.
 
 Heavyobject is a valid, intact stock map. Its enemy houses include Last Bastion,
 Euro Alliance and Epsilon HQ, so those player houses cannot use it. Two-player

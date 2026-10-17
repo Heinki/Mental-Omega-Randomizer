@@ -507,6 +507,9 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     unlimited_hero_units = bool(
         (state.get('reward_settings') or {}).get('unlimited_hero_units', False)
     )
+    unlimited_buildings = bool(
+        (state.get('reward_settings') or {}).get('unlimited_buildings', False)
+    )
     from randomizer.coop.challenge import CHALLENGE_MARKER, destination, identity_fields
     marker = CHALLENGE_MARKER if context else PROTOTYPE_MARKER
     identity = _digest(json.dumps(
@@ -515,7 +518,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
          enemy_countries, credit_bonus, country, state.get('reward_mode', '')]
         + (identity_fields(context, difficulty) if context else
            [difficulty] if difficulty != 1 else [])
-        + ([{'unlimited_hero_units': True}] if unlimited_hero_units else []),
+        + ([{'unlimited_hero_units': True}] if unlimited_hero_units else [])
+        + ([{'unlimited_buildings': True}] if unlimited_buildings else []),
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     stem = f'morcp_{coop_name.removeprefix("coop_").lower()}_{identity}'
@@ -551,6 +555,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     }
     if unlimited_hero_units:
         manifest['unlimited_hero_units'] = True
+    if unlimited_buildings:
+        manifest['unlimited_buildings'] = True
     if difficulty != 1:
         manifest['difficulty'] = difficulty
     map_data = _map_bytes(source, source_key, manifest, family, metadata)
@@ -850,6 +856,9 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     unlimited_hero_units = manifest.get('unlimited_hero_units', False)
     if type(unlimited_hero_units) is not bool:
         raise ValueError('Invalid unlimited hero unit setting in manifest.')
+    unlimited_buildings = manifest.get('unlimited_buildings', False)
+    if type(unlimited_buildings) is not bool:
+        raise ValueError('Invalid unlimited building setting in manifest.')
     if (type(credit_bonus) is not int or not 0 <= credit_bonus <= 20000):
         raise ValueError('Invalid co-op starting credit bonus.')
     if (not isinstance(access_ids, list) or
@@ -911,7 +920,8 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
          enemy_countries, credit_bonus, country, manifest.get('reward_mode', '')]
         + (identity_fields(context, difficulty) if context else
            [difficulty] if difficulty != 1 else [])
-        + ([{'unlimited_hero_units': True}] if unlimited_hero_units else []),
+        + ([{'unlimited_hero_units': True}] if unlimited_hero_units else [])
+        + ([{'unlimited_buildings': True}] if unlimited_buildings else []),
         sort_keys=True, separators=(',', ':'),
     ).encode('utf-8'))[:10]
     expected_stem = f'morcp_{coop_name.removeprefix("coop_")}_{expected_identity}'

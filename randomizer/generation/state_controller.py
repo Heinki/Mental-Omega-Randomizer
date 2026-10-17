@@ -64,6 +64,7 @@ class GenerationSettings:
         include_special_buildings = bool(generation_config.get('include_special_buildings', True))
         include_special_rewards = bool(generation_config.get('include_special_rewards', True))
         unlimited_hero_units = bool(generation_config.get('unlimited_hero_units', False))
+        unlimited_buildings = bool(generation_config.get('unlimited_buildings', False))
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
         failure_assistance = bool(generation_config.get('failure_assistance', False))
@@ -90,6 +91,7 @@ class GenerationSettings:
             'include_special_buildings': include_special_buildings,
             'include_special_rewards': include_special_rewards,
             'unlimited_hero_units': unlimited_hero_units,
+            'unlimited_buildings': unlimited_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
             'failure_assistance': failure_assistance,
@@ -184,6 +186,7 @@ class GenerationSettings:
         settings.setdefault('include_special_buildings', True)
         settings.setdefault('include_special_rewards', True)
         settings.setdefault('unlimited_hero_units', False)
+        settings.setdefault('unlimited_buildings', False)
         settings.setdefault('share_chaos_role_buffs', False)
         settings.setdefault(
             'buff_allied_helpers',

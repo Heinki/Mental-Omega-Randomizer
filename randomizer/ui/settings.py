@@ -934,18 +934,36 @@ def _build_gameplay_settings(self, settings_frame):
         'for example GI, Conscript, Initiate, and Knightframe. Shared groups are displayed '
         'together in Unlocks.',
     )
+    build_limits_frame = ttk.Frame(reward_frame)
+    build_limits_frame.grid(row=8, column=0, sticky='ew', pady=(4, 0))
     self.unlimited_hero_units_check = ttk.Checkbutton(
-        reward_frame,
+        build_limits_frame,
         text='Unlimited unique / hero units',
         variable=self.unlimited_hero_units_var,
         command=self.on_unlimited_hero_units_changed,
     )
-    self.unlimited_hero_units_check.grid(row=8, column=0, sticky='w', pady=(4, 0))
+    self.unlimited_hero_units_check.grid(row=0, column=0, sticky='w')
     WidgetTooltip(
         self.unlimited_hero_units_check,
         'Removes the simultaneous-unit cap from trainable unique and hero units for the player. '
         'Opted-in allied helpers share the same clones. Hero +1 rewards are omitted; '
         'special-building capacity rewards can remain enabled.',
+    )
+    self.unlimited_buildings_check = ttk.Checkbutton(
+        build_limits_frame,
+        text='Unlimited build-limited buildings',
+        variable=self.unlimited_buildings_var,
+        command=self.on_unlimited_buildings_changed,
+    )
+    self.unlimited_buildings_check.grid(
+        row=1, column=0, sticky='w', pady=(4, 0)
+    )
+    WidgetTooltip(
+        self.unlimited_buildings_check,
+        'Removes build caps from unlocked player defenses and special buildings. '
+        'Structure +1 rewards are omitted. '
+        'Construction prerequisites and power requirements still apply. '
+        'Choose this before generating a new run.',
     )
     self.include_superweapon_rewards_check = ttk.Checkbutton(
         reward_frame,
@@ -1260,6 +1278,8 @@ def _build_gameplay_settings(self, settings_frame):
             command=(
                 self.on_hero_limit_buff_changed
                 if buff_type['id'] == 'build_limit'
+                else self.on_building_limit_buff_changed
+                if buff_type['id'] == 'building_limit'
                 else self.refresh_setting_states
             ),
         )

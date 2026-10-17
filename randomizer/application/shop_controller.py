@@ -1972,6 +1972,7 @@ class ShopController(ShopPolishController):
             'include_special_buildings': True,
             'include_special_rewards': True,
             'unlimited_hero_units': False,
+            'unlimited_buildings': False,
             'share_chaos_role_buffs': False,
             'buff_allied_helpers': bool(self.buff_allied_helpers_var.get()),
             'failure_assistance': False,

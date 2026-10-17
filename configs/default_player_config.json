@@ -86,6 +86,7 @@
         "include_special_buildings": true,
         "include_special_rewards": true,
         "unlimited_hero_units": false,
+        "unlimited_buildings": false,
         "share_chaos_role_buffs": false,
         "include_buff_rewards": true,
         "include_superweapon_rewards": true,
