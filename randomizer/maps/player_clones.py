@@ -11,6 +11,7 @@ from ._shared import (
     build_unit_usage_index,
     canonical_house_name,
     comma_items,
+    linked_buff_variant_ids,
     player_controlled_houses,
     player_house_from_map,
     resolve_configured_helper_houses,
@@ -165,6 +166,7 @@ def player_unit_clone_rules(
     forced_isolated_clone_ids=(),
     forced_compact_clone_ids=(),
     unlimited_build_limit_unit_ids=(),
+    unlimited_build_limit_building_ids=(),
     share_basic_equivalent_buffs=False,
     unit_specific_mode=False,
     native_trigger_reference_ids=(),
@@ -398,6 +400,48 @@ def player_unit_clone_rules(
         if str(item).upper() in buildable_ids
         and str(item).upper() in LIMITED_HERO_UNIT_IDS
     }
+    registered_building_ids = {
+        str(type_id).strip().upper()
+        for registry in (installed_sections, map_sections)
+        for section, values in registry.items()
+        if str(section).lower() == 'buildingtypes'
+        for type_id in values.values()
+        if str(type_id).strip()
+    }
+
+    def has_building_live_cap(type_id):
+        installed_name = installed_name_by_lower.get(type_id.lower())
+        native_name = native_map_name_by_lower.get(type_id.lower())
+        native_values = (
+            installed_sections.get(installed_name, {})
+            if installed_name
+            else native_map_sections.get(native_name, {})
+        )
+        return bool(
+            _positive_build_limit(native_values)
+            or _positive_build_limit({
+                'BuildLimit': BUFF_TARGETS.get(type_id, {}).get('build_limit'),
+            })
+        )
+
+    unlimited_building_ids = {
+        str(item).upper()
+        for item in (unlimited_build_limit_building_ids or ())
+        if str(item).upper() in buildable_ids
+        and (
+            str(item).upper() in registered_building_ids
+            # Reviewed campaign-only buildings such as NACLONS have no
+            # installed source registration until their owned clone is added.
+            or BUFF_TARGETS.get(str(item).upper(), {}).get('category')
+            in {'defenses', 'special_buildings'}
+        )
+        and has_building_live_cap(str(item).upper())
+    }
+    for building_id in unlimited_building_ids:
+        # A War Rig's mobile form is the same earned building, even though
+        # SMIN is registered as a VehicleType. Keep its round trip unlimited
+        # without applying this option to unrelated mobile hero rewards.
+        unlimited_limit_ids.update(linked_buff_variant_ids(building_id))
     owner_ids = [str(item) for item in build_owner_ids if item]
     helper_autobuild_support = {
         str(unit_id).upper(): {

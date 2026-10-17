@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from randomizer.coop.direct import CONTROL_PORT, GAME_PORT, host_session, join_session
-from randomizer.coop.prototype import shop_unit_loadout
+from randomizer.coop.prototype import SIDE_COUNTRIES, shop_unit_loadout
 from randomizer.core.paths import GAME_ROOT, SHOP_RUN_PATH
 from randomizer.shop.model import RunStatus
 from randomizer.shop.state import normalize_shop_run
@@ -71,6 +71,10 @@ def main(argv=None) -> int:
     parser.add_argument('--control-port', type=int, default=CONTROL_PORT)
     parser.add_argument('--game-port', type=int, default=GAME_PORT)
     parser.add_argument('--name', default='')
+    parser.add_argument('--country', choices=SIDE_COUNTRIES,
+                        help='Confirm this player\'s selected challenge country')
+    parser.add_argument('--color', type=int, choices=range(13),
+                        help='Confirm this player\'s native challenge color index')
     parser.add_argument('--dry-run', action='store_true',
                         help='Prepare both games and handshake, without starting Syringe')
     commands = parser.add_subparsers(dest='command', required=True)
@@ -88,6 +92,10 @@ def main(argv=None) -> int:
     join.add_argument('--shop-run', type=Path,
                       help='Send only this player’s Shop unit loadout to host')
     args = parser.parse_args(argv)
+    if (args.country is None) != (args.color is None):
+        parser.error('--country and --color must be supplied together.')
+    player_options = ({'country': args.country, 'color': args.color}
+                      if args.country is not None else None)
     root = args.game_root.resolve()
     try:
         if args.command in ('host', 'host-shop'):
@@ -100,12 +108,13 @@ def main(argv=None) -> int:
             result = host_session(root, manifest, name=args.name or 'CoopHost',
                                   bind=args.bind, control_port=args.control_port,
                                   game_port=args.game_port, difficulty=args.difficulty,
-                                  shop_setup=setup)
+                                  shop_setup=setup, player_options=player_options)
         else:
             result = join_session(root, args.host_address,
                                   name=args.name or 'CoopGuest',
                                   control_port=args.control_port,
                                   game_port=args.game_port,
+                                  player_options=player_options,
                                   shop_setup=(shop_setup(args.shop_run)
                                               if args.shop_run else None))
         print(f'Paired with {result["peer"]}; game ID {result["game_id"]}; '

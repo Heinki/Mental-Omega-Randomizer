@@ -24,6 +24,16 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         if 'generation' in settings and not isinstance(settings['generation'], dict):
             raise ValueError('launcher_settings.generation must be a mapping.')
         self.config = deep_merge(DEFAULT_CONFIG, settings)
+        if 'mission_category' not in settings:
+            self.config['mission_category'] = 'coop' if settings.get('coop_mode') else 'campaign'
+        category = self.config['mission_category']
+        if category not in {'campaign', 'coop', 'challenge'}:
+            raise ValueError('launcher_settings.mission_category is invalid.')
+        if category == 'challenge':
+            count = self.config.get('challenge_player_count', 1)
+            if type(count) is not int or count not in (1, 2):
+                raise ValueError('Challenge player count must be 1 or 2.')
+            self.config['coop_mode'] = count == 2
         if type(self.config.get('coop_mode', False)) is not bool:
             raise ValueError('launcher_settings.coop_mode must be a boolean.')
         self.state = {}
@@ -39,6 +49,8 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         mode = config['progression_mode']
         campaign = config['campaign_filter']
         reward_mode = generation['reward_mode']
+        if config['mission_category'] == 'challenge' and mode == 'Shop Mode':
+            raise ValueError('Challenges currently support Classic, Grid Mode and Mission List.')
         for name, value, choices in (
             ('progression_mode', mode, PROGRESSION_MODES),
             ('campaign_filter', campaign, CAMPAIGN_FILTERS),
@@ -52,7 +64,8 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
                 'include_operation_missions', 'prioritize_no_build_missions',
             )
         }
-        exclusion_key = ('excluded_coop_mission_codes' if config.get('coop_mode')
+        exclusion_key = ('excluded_challenge_mission_codes' if config['mission_category'] == 'challenge'
+                         else 'excluded_coop_mission_codes' if config.get('coop_mode')
                          else 'excluded_mission_codes')
         excluded = {str(code).upper() for code in generation.get(exclusion_key, ())}
         missions = [
@@ -77,6 +90,7 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
                 raise ValueError(f'{key} must be an integer between 1 and {maximum}.')
 
         self._seed_generation_context = {
+            'mission_category': config['mission_category'],
             'campaign_filter': campaign,
             'reward_mode': reward_mode,
             'progression_mode': mode,
@@ -127,6 +141,8 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         options = {
             **self._seed_generation_context,
             'coop_mode': bool(config.get('coop_mode', False)),
+            'mission_category': config['mission_category'],
+            'challenge_player_count': config.get('challenge_player_count', 1),
             'seed': seed,
             'seed_was_explicit': False,
             'seed_missions': missions,

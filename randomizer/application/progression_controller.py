@@ -1,6 +1,7 @@
 """Mission visibility, Grid state, selection, and launch validation."""
 
 from randomizer.missions.catalogue import mission_build_label
+from randomizer.challenges.presentation import challenge_color_group
 
 from ._dependencies import (
     ARSENAL_MODE,
@@ -31,7 +32,8 @@ class ProgressionController:
         haystack = ' '.join(str(value) for value in (
             mission.get('code', ''),
             mission.get('title', ''),
-            mission.get('side', ''),
+            challenge_color_group(mission) or mission.get('side', ''),
+            'Yuri' if challenge_color_group(mission) == 'Epsilon' else '',
             mission.get('operation', ''),
             mission.get('scenario', ''),
         )).casefold()
@@ -175,6 +177,10 @@ class ProgressionController:
                 continue
             mission = lookup.get(code, {})
             state = states.get(code, GRID_LOCKED)
+            challenge_group = challenge_color_group(mission)
+            gradient_enabled = getattr(widgets['body'], 'set_gradient_enabled', None)
+            if gradient_enabled is not None:
+                gradient_enabled(challenge_group == 'Mixed' and state != GRID_LOCKED)
             if hide_locked and state == GRID_LOCKED:
                 signature = ('hidden', code in search_codes, canvas_color)
                 if self.grid_tile_signatures.get(code) == signature:
@@ -205,8 +211,10 @@ class ProgressionController:
                     foreground=foreground,
                 )
                 continue
-            faction = normalize_faction(mission.get('side', ''))
-            faction_color = FACTION_TILE_COLORS.get(faction, '#315b82')
+            faction = challenge_group or normalize_faction(mission.get('side', ''))
+            faction_color = FACTION_TILE_COLORS.get(
+                faction, '#4c4176' if challenge_group == 'Mixed' else '#315b82',
+            )
             started = self.is_mission_started(code)
             counts = self.mission_check_counts(code) if started else None
             assistance_stacks = (
@@ -220,7 +228,7 @@ class ProgressionController:
                 state, started, counts, assistance_stacks,
                 code == selected_code, code in search_codes,
                 is_goal, hover_highlight, canvas_color,
-                id(mission), mission.get('title'),
+                id(mission), mission.get('title'), faction, faction_color,
             )
             if self.grid_tile_signatures.get(code) == signature:
                 continue
@@ -318,7 +326,7 @@ class ProgressionController:
 
         for idx, mission in self.visible_missions():
             code = mission['code']
-            side = mission.get('side', '')
+            side = challenge_color_group(mission) or mission.get('side', '')
             title = mission.get('title', code)
             checks_done, checks_total = self.mission_check_counts(code)
             if self.is_mission_complete(code):
@@ -598,6 +606,12 @@ class ProgressionController:
         if len(lines) == 1:
             lines.extend(('', 'No briefing available.'))
         lines.insert(1, f'Mission type: {mission_build_label(mission)}')
+        challenge_group = challenge_color_group(mission)
+        if challenge_group:
+            opponents = {'Epsilon': 'Yuri / Epsilon', 'Mixed': 'Mixed factions'}.get(
+                challenge_group, challenge_group,
+            )
+            lines.insert(2, f'Opponents: {opponents}')
         return '\n'.join(lines)
 
     def mission_check_reward_name(self, check, reward):

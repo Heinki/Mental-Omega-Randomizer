@@ -1,36 +1,101 @@
-"""Compact DTA-style co-op controls for launcher settings."""
+"""Mission category, challenge player choice, and multiplayer connection."""
 
 import tkinter as tk
 from tkinter import ttk
+
+from randomizer.challenges.catalogue import COUNTRY_LABELS
 
 
 def build_coop_controls(self, parent, row, *, shop=False):
     """Group mode, player count, connection button and help below appearance."""
     frame = ttk.Frame(parent)
     frame.grid(row=row, column=0, columnspan=2, sticky='ew', pady=(8, 0))
-    toggle = ttk.Checkbutton(
-        frame, text='Co-op mode (experimental)', variable=self.coop_mode_var,
-        command=self.on_coop_mode_changed,
+    ttk.Label(frame, text='Mission category').grid(row=0, column=0, sticky='w')
+    toggle = ttk.Combobox(
+        frame, textvariable=self.mission_category_var,
+        values=('campaign', 'coop', 'challenge'), state='readonly', width=12,
     )
-    toggle.grid(row=0, column=0, sticky='w')
-    ttk.Label(frame, text='Players').grid(row=0, column=1, padx=(12, 4))
-    if not hasattr(self, 'coop_player_count_var'):
-        # Mental Omega currently supports native two-player co-op maps only.
-        self.coop_player_count_var = tk.StringVar(master=self, value='2')
+    toggle.grid(row=0, column=1, columnspan=2, sticky='ew', padx=(8, 0))
+    toggle.bind('<<ComboboxSelected>>', self.on_mission_category_changed)
+    player_label = ttk.Label(frame, text='Human players')
+    player_label.grid(row=1, column=0, sticky='w', pady=(5, 0))
     count = ttk.Combobox(
-        frame, textvariable=self.coop_player_count_var, values=('2',),
+        frame, textvariable=self.challenge_player_count_var, values=('1', '2'),
         state='readonly', width=3,
     )
-    count.grid(row=0, column=2)
+    count.grid(row=1, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
+    count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
+    local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
+    local.grid(row=2, column=0, columnspan=3, sticky='ew', pady=(8, 0))
+    local.columnconfigure(1, weight=1)
+    country_label = ttk.Label(local, text='Your house')
+    country_label.grid(row=0, column=0, sticky='w', padx=(0, 8), pady=2)
+    if not hasattr(self, 'challenge_country_label_var'):
+        selected = self.challenge_country_var.get()
+        self.challenge_country_label_var = tk.StringVar(
+            master=self, value=COUNTRY_LABELS.get(selected, selected),
+        )
+    country = ttk.Combobox(
+        local, textvariable=self.challenge_country_label_var,
+        values=tuple(COUNTRY_LABELS.values()),
+        state='readonly', width=18,
+    )
+    country.grid(row=0, column=1, sticky='ew', pady=2)
+    country.bind('<<ComboboxSelected>>', self.on_challenge_country_selected)
+    ttk.Label(local, text='Your color').grid(row=1, column=0, sticky='w', padx=(0, 8))
+    human_color = ttk.Combobox(
+        local, textvariable=self.challenge_solo_color_var, state='readonly', width=18,
+    )
+    human_color.grid(row=1, column=1, sticky='ew')
+    ai_toggle = ttk.Checkbutton(
+        local, text='Play with an AI teammate', variable=self.challenge_ai_enabled_var,
+        command=self.on_challenge_local_options_changed,
+    )
+    ai_toggle.grid(row=2, column=0, columnspan=2, sticky='w', pady=(6, 2))
+    if not hasattr(self, 'challenge_ai_country_label_var'):
+        selected = self.challenge_ai_country_var.get()
+        self.challenge_ai_country_label_var = tk.StringVar(
+            master=self, value=COUNTRY_LABELS.get(selected, selected),
+        )
+    ai_fields = []
+    ai_combos = {}
+    for index, (name, text, variable) in enumerate((
+            ('house', 'AI house', self.challenge_ai_country_label_var),
+            ('color', 'AI color', self.challenge_ai_color_var),
+            ('difficulty', 'AI difficulty', self.challenge_ai_difficulty_var)), start=3):
+        field_label = ttk.Label(local, text=text)
+        field_label.grid(row=index, column=0, sticky='w', padx=(0, 8), pady=2)
+        combo = ttk.Combobox(local, textvariable=variable, state='readonly', width=18)
+        combo.grid(row=index, column=1, sticky='ew', pady=2)
+        combo.bind('<<ComboboxSelected>>', self.on_challenge_ai_house_selected
+                   if name == 'house' else self.on_challenge_local_options_changed)
+        ai_fields.extend((field_label, combo))
+        ai_combos[name] = combo
+    human_color.bind('<<ComboboxSelected>>', self.on_challenge_local_options_changed)
+    if not hasattr(self, 'challenge_local_summary_var'):
+        self.challenge_local_summary_var = tk.StringVar(master=self)
+    ttk.Label(local, textvariable=self.challenge_local_summary_var, wraplength=330,
+              justify='left', style='Muted.TLabel').grid(
+                  row=6, column=0, columnspan=2, sticky='w', pady=(5, 0))
     connect = ttk.Button(
         frame, text='Co-op Connection…', command=self.open_coop_dialog,
     )
-    connect.grid(row=1, column=0, sticky='w', pady=(5, 0))
+    connect.grid(row=3, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    if not hasattr(self, 'challenge_availability_var'):
+        self.challenge_availability_var = tk.StringVar(master=self)
     ttk.Label(
-        frame, text='Host controls the shared Grid and mission selection. '
-                    'Shop players keep separate runs, Ore, purchases, units and buffs.',
+        frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
-    ).grid(row=2, column=0, columnspan=3, sticky='w')
+    ).grid(row=4, column=0, columnspan=3, sticky='w')
+    prefix = 'shop_' if shop else ''
+    setattr(self, prefix + 'challenge_local_frame', local)
+    setattr(self, prefix + 'challenge_solo_color_combo', human_color)
+    setattr(self, prefix + 'challenge_ai_toggle', ai_toggle)
+    setattr(self, prefix + 'challenge_ai_fields', tuple(ai_fields))
+    setattr(self, prefix + 'challenge_ai_combos', ai_combos)
+    setattr(self, prefix + 'challenge_country_combo', country)
+    setattr(self, prefix + 'challenge_country_label', country_label)
+    setattr(self, prefix + 'challenge_fields', (player_label, count, country_label, country))
     if shop:
         self.shop_coop_row = frame
         self.shop_coop_mode_check = toggle

@@ -83,6 +83,25 @@ when an older external `ui.json` has no profiles.
 
 ### Launcher and files
 
+- `randomizer/challenges/catalogue.py`, `native.py`, and `results.py`: installed
+  challenge metadata, native mode/option resolution and conservative fresh-log
+  multiplayer result detection.
+- `randomizer/application/challenge_controller.py`: category selection, solo
+  challenge launching and result-to-progression orchestration.
+- `randomizer/coop/challenge.py`: challenge manifest identity and replay policy;
+  schema 8 binds an optional local AI's country, color and difficulty. Human
+  count stays one; `direct.py` creates the AI as Multi2, followed by native
+  enemies, without an Other1 network peer. The AI uses its original army;
+  human rewards, production gates and credit bonuses stay private.
+  Paired transport reuses each machine's locally replay-validated map bytes.
+- `randomizer/challenges/state.py`: one-time expansion of complete legacy solo
+  house-filtered pools. It appends connected grid nodes and plans only new
+  checks; existing pending rewards and original goal must never be rerolled.
+  Houses live in launch preferences, outside new seed identity. Catalogue
+  discovery always returns all 22 maps; actual houses are validated at launch.
+- [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md): local challenge build scope and
+  manual solo/paired verification steps.
+
 - `launcher_gui.py`: entry point and packaged self-check.
 - `randomizer/application/app.py`: Tk composition and initialization only.
 - `randomizer/application/*_controller.py`, `window.py`,
@@ -198,6 +217,26 @@ quoting removes the mandatory quotes. Linux passes a real argv list to Wine.
 # Full publishable bundle with manifest, setup guide, and checksums.
 .\build_archipelago_release.ps1
 ```
+
+For the standalone challenge launcher, first commit the source and build the EXE
+with `build_exe.ps1` (or its supported `-LocalTestBuild` option). Run the packaged
+`--self-check` from a complete Mental Omega installation, then package that exact
+EXE without copying its surrounding game or player profile:
+
+```powershell
+python tools/package_challenges.py --exe "<BUILT_EXE>" --output "<NEW_RELEASE_DIRECTORY>" `
+  --build-provenance "LocalTestBuild; Python 3.13.2; PyInstaller 6.19.0; websockets 17.0"
+```
+
+Replace the provenance with the actual build mode and tool versions. The package
+contains only the canonical `MentalOmegaRandomizer.exe`, start/testing guides,
+license, optional network helper, and `RELEASE-MANIFEST.json`. The manifest records
+the source Git SHA, dirty-checkout status, provenance, and payload hashes. The
+extracted `MentalOmegaRandomizer-<APP_VERSION>-windows` directory, same-name ZIP,
+and external `SHA256SUMS` are created under `--output`; existing artifacts are
+never overwritten. Use `--without-network-helper` to omit that optional script.
+Package source archives separately with `git archive`; game files, profiles,
+logs, caches, and APWorld data do not belong in this launcher package.
 
 Equivalent Linux maintainer commands (the EXE remains a Windows executable):
 

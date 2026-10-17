@@ -1182,6 +1182,16 @@ class AdvancedSettingsController:
             self.unlimited_hero_units_var.set(False)
         self.refresh_setting_states()
 
+    def on_unlimited_buildings_changed(self):
+        if self.unlimited_buildings_var.get():
+            self.buff_type_vars['building_limit'].set(False)
+        self.refresh_setting_states()
+
+    def on_building_limit_buff_changed(self):
+        if self.buff_type_vars['building_limit'].get():
+            self.unlimited_buildings_var.set(False)
+        self.refresh_setting_states()
+
     def on_progression_mode_changed(self, _event=None):
         self.refresh_progression_setting_states()
         if not self.state:
@@ -1202,6 +1212,7 @@ class AdvancedSettingsController:
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         buffs_enabled = bool(self.include_buff_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
+        unlimited_buildings = bool(self.unlimited_buildings_var.get())
         special_buildings_enabled = bool(self.include_special_buildings_var.get())
         power_rewards_enabled = any((
             self.include_superweapon_rewards_var.get(),
@@ -1239,6 +1250,7 @@ class AdvancedSettingsController:
                 state=(
                     'normal'
                     if buffs_enabled and special_buildings_enabled
+                    and not unlimited_buildings
                     else 'disabled'
                 )
             )
@@ -1411,7 +1423,9 @@ class AdvancedSettingsController:
             return
         filtered_count = len(self.filtered_missions_for_seed())
         self.campaign_label.configure(text=(
-            f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
+            f'Challenge maps ({filtered_count})'
+            if self.selected_mission_category() == 'challenge'
+            else f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
             else f'Campaign ({filtered_count})'
         ))
         self.mission_goal_spinbox.configure(to=max(1, filtered_count))

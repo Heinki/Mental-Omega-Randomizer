@@ -1,7 +1,7 @@
-"""Developer-only switch for the experimental co-op prototype.
+"""Source-level availability switch for experimental cooperative play.
 
-Set this to True in source and rebuild a test launcher to expose co-op.
-Release builds keep it False; player settings cannot override it.
+Packagers can set this to False to hide two-human modes. Player settings
+cannot override this source-level choice.
 """
 
 COOP_FEATURE_ENABLED = True

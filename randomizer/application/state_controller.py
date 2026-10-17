@@ -2,7 +2,7 @@
 
 from randomizer.config.tuning import mission_assistance_stack_count
 from randomizer.coop import feature
-from randomizer.core.paths import COOP_STATE_PATH
+from randomizer.core.paths import BACKUP_DIR, state_path_for_mode
 from .archipelago_state import normalize_archipelago_activation
 
 from ._dependencies import (
@@ -78,8 +78,44 @@ from ._dependencies import (
 from randomizer.generation.state_controller import GenerationSettings
 
 class StateController(GenerationSettings):
+    def migrate_challenge_catalogue(self):
+        """Upgrade a full legacy solo pool without replacing existing content."""
+        if (self.coop_guest_connected() or self.challenge_launch_active()
+                or not self.state or self.state.get('mission_category') != 'challenge'
+                or self.state.get('challenge_catalogue_version') == 2):
+            return
+        from time import time_ns
+        from randomizer.challenges.state import migrate_legacy_challenge_run
+
+        previous = self.state
+        try:
+            result = migrate_legacy_challenge_run(self.state, self.missions, self.config)
+            if result is None:
+                return
+            upgraded, added = result
+            if added:
+                atomic_write_json(
+                    BACKUP_DIR / f'challenge-catalogue-v2-{time_ns()}.json',
+                    self.state, indent=None,
+                )
+            self.state = upgraded
+            self.save_state()
+            if added:
+                self.append_log(
+                    f'Added {len(added)} previously house-filtered challenges. '
+                    'Existing seed, rewards, grid positions and goal are preserved.'
+                )
+        except Exception:
+            self.state = previous
+            log_event('challenge_catalogue_migration_failed', level=logging.ERROR,
+                      traceback=traceback.format_exc())
+            self.append_log('Could not add legacy challenges; the saved run was retained.', error=True)
+
     def load_state(self):
-        path = COOP_STATE_PATH if self.config.get('coop_mode') else STATE_PATH
+        category = self.config.get('mission_category') or (
+            'coop' if self.config.get('coop_mode') else 'campaign'
+        )
+        path = state_path_for_mode(category, self.config.get('coop_mode', False))
         if not path.exists():
             return {}
         try:
@@ -334,7 +370,10 @@ class StateController(GenerationSettings):
         self.__dict__.pop('_unlock_dashboard_sources_cache', None)
         self.__dict__.pop('_configured_reward_pool_cache', None)
         self._enemy_buffs_view_dirty = True
-        path = COOP_STATE_PATH if self.state.get('coop_mode') else STATE_PATH
+        category = self.state.get('mission_category') or (
+            'coop' if self.state.get('coop_mode') else 'campaign'
+        )
+        path = state_path_for_mode(category, self.state.get('coop_mode', False))
         atomic_write_json(path, self.state, indent=None)
         self.coop_publish_state()
 
@@ -374,6 +413,7 @@ class StateController(GenerationSettings):
         include_special_buildings = bool(self.include_special_buildings_var.get())
         include_special_rewards = bool(self.include_special_rewards_var.get())
         unlimited_hero_units = bool(self.unlimited_hero_units_var.get())
+        unlimited_buildings = bool(self.unlimited_buildings_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
         failure_assistance = bool(self.failure_assistance_var.get())
@@ -447,6 +487,7 @@ class StateController(GenerationSettings):
             'include_special_buildings': include_special_buildings,
             'include_special_rewards': include_special_rewards,
             'unlimited_hero_units': unlimited_hero_units,
+            'unlimited_buildings': unlimited_buildings,
             'share_chaos_role_buffs': share_chaos_role_buffs,
             'buff_allied_helpers': buff_allied_helpers,
             'failure_assistance': failure_assistance,
@@ -595,6 +636,10 @@ class StateController(GenerationSettings):
         return bool(self.config.get('use_act_based_reward_multipliers', True))
 
     def save_launcher_config(self, seed, mission_goal, rewards_per_check):
+        self.config['mission_category'] = self.selected_mission_category()
+        self.config['challenge_player_count'] = self.selected_challenge_player_count()
+        self.config['challenge_country'] = self.challenge_country_var.get()
+        self.store_challenge_local_options()
         self.config['coop_mode'] = bool(
             feature.COOP_FEATURE_ENABLED and self.coop_mode_var.get()
         )
@@ -643,6 +688,9 @@ class StateController(GenerationSettings):
         self.config['generation']['excluded_coop_mission_codes'] = sorted(
             self.excluded_coop_mission_codes
         )
+        self.config['generation']['excluded_challenge_mission_codes'] = sorted(
+            self.excluded_challenge_mission_codes
+        )
         self.config['generation']['excluded_unit_access_ids'] = sorted(
             self.excluded_unit_access_ids
         )
@@ -676,6 +724,7 @@ class StateController(GenerationSettings):
         self.config['generation']['include_special_buildings'] = reward_settings['include_special_buildings']
         self.config['generation']['include_special_rewards'] = reward_settings['include_special_rewards']
         self.config['generation']['unlimited_hero_units'] = reward_settings['unlimited_hero_units']
+        self.config['generation']['unlimited_buildings'] = reward_settings['unlimited_buildings']
         self.config['generation']['share_chaos_role_buffs'] = reward_settings['share_chaos_role_buffs']
         self.config['generation']['include_buff_rewards'] = reward_settings['include_buff_rewards']
         self.config['generation']['include_superweapon_rewards'] = reward_settings['include_superweapon_rewards']
@@ -743,6 +792,9 @@ class StateController(GenerationSettings):
 
     def load_settings_file(self):
         """Import every launcher option while preserving run progress."""
+        if self.challenge_launch_active():
+            messagebox.showinfo('Challenges', 'Close the current challenge before loading settings.')
+            return
         if self.gameplay_settings_locked() or getattr(self, '_coop_lobby', None):
             return
         path = filedialog.askopenfilename(
@@ -781,12 +833,22 @@ class StateController(GenerationSettings):
 
     def apply_portable_settings(self, config):
         """Apply one validated portable config to every live setting control."""
-        previous_coop_mode = bool(self.coop_mode_var.get())
+        if self.challenge_launch_active():
+            return
+        previous_setup = self.selected_mission_setup()
         config.pop('coop_feature_enabled', None)
         if not feature.COOP_FEATURE_ENABLED:
             config['coop_mode'] = False
         self.config = config
+        category = config.get('mission_category') or (
+            'coop' if config.get('coop_mode') else 'campaign'
+        )
+        self.mission_category_var.set(category)
+        self.challenge_player_count_var.set(str(config.get('challenge_player_count', 1)))
+        self.challenge_country_var.set(str(config.get('challenge_country') or 'UnitedStates'))
+        self.restore_challenge_local_options_from_config()
         self.coop_mode_var.set(bool(config.get('coop_mode', False)))
+        self.sync_mission_transport_mode()
         generation = self.config.get('generation', {})
         if generation.get('reward_mode') == 'Chaos (Experimental)':
             generation['reward_mode'] = 'Chaos'
@@ -892,6 +954,11 @@ class StateController(GenerationSettings):
             for code in generation.get('excluded_coop_mission_codes', [])
             if str(code).strip()
         }
+        self.excluded_challenge_mission_codes = {
+            str(code).upper()
+            for code in generation.get('excluded_challenge_mission_codes', [])
+            if str(code).strip()
+        }
         self.excluded_unit_access_ids = {
             str(unit_id).upper()
             for unit_id in reward_settings['excluded_unit_access_ids']
@@ -936,6 +1003,7 @@ class StateController(GenerationSettings):
             'include_special_buildings': self.include_special_buildings_var,
             'include_special_rewards': self.include_special_rewards_var,
             'unlimited_hero_units': self.unlimited_hero_units_var,
+            'unlimited_buildings': self.unlimited_buildings_var,
             'share_chaos_role_buffs': self.share_chaos_role_buffs_var,
             'buff_allied_helpers': self.buff_allied_helpers_var,
             'failure_assistance': self.failure_assistance_var,
@@ -1010,7 +1078,7 @@ class StateController(GenerationSettings):
         self.unlock_dashboard_signature = None
         self.refresh_progress_view()
         self.refresh_coop_controls()
-        if previous_coop_mode != bool(self.coop_mode_var.get()):
+        if previous_setup != self.selected_mission_setup():
             if self.archipelago_run_active():
                 # Signed server state already selected the pool. Switching
                 # presentation must not reload a standalone save over it.

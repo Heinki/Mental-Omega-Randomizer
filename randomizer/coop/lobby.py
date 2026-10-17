@@ -20,7 +20,7 @@ from randomizer.coop.runtime import installation_details, validate_runtime
 
 
 LOBBY_PORT = 19420
-PROTOCOL = 3
+PROTOCOL = 4
 MAX_WIRE = 8 * 1024 * 1024
 MAX_STATE = 32 * 1024 * 1024
 
@@ -163,7 +163,7 @@ class Lobby:
                 else (peer_nonce, local_nonce)
             )
             def proof(role):
-                payload = f'coop-lobby-v3:{role}:{host_nonce}:{guest_nonce}'.encode('ascii')
+                payload = f'coop-lobby-v4:{role}:{host_nonce}:{guest_nonce}'.encode('ascii')
                 return hmac.new(self.pairing_code.encode('utf-8'), payload,
                                 hashlib.sha256).hexdigest()
             self._send_raw({'type': 'proof', 'value': proof(self.role)})
@@ -185,7 +185,7 @@ class Lobby:
             while not self._closed.is_set():
                 message = self._receive(stream)
                 if message.get('type') not in {
-                    'state', 'select', 'suggest', 'launch',
+                    'state', 'select', 'suggest', 'launch', 'player_options', 'challenge_victory',
                     'shop_stage', 'shop_ready', 'shop_victory', 'shop_failure',
                 }:
                     raise ValueError('Invalid co-op lobby message.')

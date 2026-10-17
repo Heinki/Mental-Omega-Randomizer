@@ -8,6 +8,10 @@ generated_maps/
 generated_coop/
 cameo_cache/
 randomizer_state.json
+randomizer_coop_state.json
+challenge_solo_state.json
+challenge_coop_state.json
+runtime_assets/
 shop_profile.json
 shop_run.json
 shop_transaction.json

@@ -20,12 +20,17 @@ from randomizer.maps.ini import (
 )
 from randomizer.maps.shop_modifiers import apply_shop_clone_restrictions
 from randomizer.coop.access import clone_production_owners, standard_coop_access_rules
+from randomizer.coop.native_buildings import (
+    apply_building_reward_buffs, preserve_native_building_abilities,
+)
+from randomizer.coop.native_units import TRANSFORM_REFERENCE_KEYS, unit_transform_plan
 from randomizer.maps.powers import (
     append_static_startup_buildings, append_superweapon_grant_trigger,
 )
 from randomizer.missions.access import CHAOS_PRIMARY_PRODUCTION
 from randomizer.rewards.arsenal import arsenal_unit_type
 from randomizer.rewards.catalogue import BUFF_TARGETS, canonical_reward
+from randomizer.rewards.definitions import LIMITED_HERO_UNIT_IDS
 from randomizer.rewards.roster import (
     installed_rules_template_overlay, randomizer_unit_roster,
 )
@@ -45,10 +50,10 @@ _FACTORY_CATEGORY = {
     'infantry': 'infantry', 'vehicles': 'vehicles',
     'naval': 'naval', 'aircraft': 'air',
 }
-_WEAPON_BUFFS = {'damage', 'range', 'reload'}
+_WEAPON_BUFFS = {'damage', 'range', 'reload', 'mind_control'}
 _BUFF_ORDER = (
     'health', 'armor', 'sight', 'ammo', 'storage', 'income',
-    'passenger_capacity', 'open_topped', 'self_healing', 'cloak',
+    'passenger_capacity', 'initial_passenger', 'open_topped', 'self_healing', 'cloak',
     'sensors', 'production', 'cost', 'speed',
 )
 
@@ -62,15 +67,34 @@ def _lookup(sections: dict, section: str) -> dict:
     return dict(sections[name]) if name is not None else {}
 
 
+def _remove_building_cap(values: dict) -> None:
+    """Remove concurrent/lifetime caps while retaining explicit build locks.
+
+    A missing BuildLimit uses the engine's unlimited default. Zero instead
+    blocks production, and may protect hidden implementation types, so it
+    must never be treated as an unlimited setting.
+    """
+    for key in list(values):
+        if str(key).lower() != 'buildlimit':
+            continue
+        try:
+            limited = int(str(values[key]).strip()) != 0
+        except (TypeError, ValueError):
+            continue
+        if limited:
+            values.pop(key)
+
+
 def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                        country: str | None = None, access_ids=None,
                        buff_counts=None, clone_scope: str = '',
                        production_restrictions=(), building_ids=()) -> None:
-    """Add shared Grid clones or one country's private Shop clones.
+    """Add shared clones or one country's isolated Shop/challenge roster.
 
     Native map objects and AI TaskForces keep their original IDs. Shop uses
-    separate countries and clone IDs for the two human slots; Grid keeps the
-    original shared country and clone IDs. Shop production restrictions only
+    separate countries and clone IDs for the two human slots. Challenges do
+    the same when players choose different countries, sharing one clone set
+    when their country matches. Shop production restrictions only
     disable the affected player's unit clones.
     """
     if clone_scope not in ('', 'H', 'G'):
@@ -80,6 +104,8 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                   if access_ids is None else access_ids)
     counts = (manifest.get('buff_counts') or {}
               if buff_counts is None else buff_counts)
+    unlimited_buildings = manifest.get('unlimited_buildings', False)
+    building_roots = {str(item).upper() for item in building_ids}
     _, clone_ids, templates = randomizer_unit_roster()
     _, installed = installed_rules_registry(synchronous=True)
     templates, _ = installed_rules_template_overlay(templates, installed)
@@ -124,25 +150,50 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
     veteran = {'Infantry': [], 'Units': [], 'Aircraft': []}
     handled = {}
     source_rules = {}
-    for source_id in access_ids:
-        source_id = str(source_id).upper()
-        target = BUFF_TARGETS.get(source_id)
+    unit_plans = unit_transform_plan(
+        access_ids, templates, clone_ids, installed, map_sections, clone_scope,
+        building_access_ids=building_ids,
+    )
+    unlimited_building_forms = set()
+    if unlimited_buildings:
+        unlimited_building_forms.update(
+            plan.clone_id for plan in unit_plans if plan.type_list == 'BuildingTypes'
+        )
+        # Follow earned building roots explicitly: if SMIN also has its own
+        # unit access, its plan can be rooted at SMIN rather than War Rig.
+        # Removing only the deployed building's cap would leave that mobile
+        # half enforcing the same shared deploy-pair count.
+        by_clone = {plan.clone_id.upper(): plan for plan in unit_plans}
+        pending = [plan for plan in unit_plans if plan.source_id in building_roots]
+        visited = set()
+        for plan in pending:
+            if plan.clone_id in visited:
+                continue
+            visited.add(plan.clone_id)
+            unlimited_building_forms.add(plan.clone_id)
+            for key, value in plan.template.items():
+                if str(key).lower() not in TRANSFORM_REFERENCE_KEYS:
+                    continue
+                for token in str(value or '').split(','):
+                    related = by_clone.get(token.strip().upper())
+                    if related is not None and related.clone_id not in visited:
+                        pending.append(related)
+    for plan in unit_plans:
+        # War Rig access starts as a building and undeploys into a mobile
+        # form. Its visible building is processed by the building loop once;
+        # its private mobile form follows the same hidden-unit path as Grumble.
+        if plan.buildable and plan.type_list == 'BuildingTypes':
+            continue
+        source_id = plan.source_id
+        target = BUFF_TARGETS.get(source_id) or BUFF_TARGETS.get(plan.root_id)
         unit_type = arsenal_unit_type(source_id, target)
-        if not target or unit_type not in _TYPE_LIST:
+        if not target or (plan.buildable and unit_type not in _TYPE_LIST):
             raise ValueError(f'Unsupported co-op unit reward: {source_id}')
-        clone_id = (f'MOR{clone_scope}{source_id}' if clone_scope
-                    else clone_ids.get(source_id))
-        template = templates.get(source_id)
-        if not clone_id or not template:
-            native = _lookup(installed, source_id)
-            native.update(_lookup(map_sections, source_id))
-            if not native:
-                raise ValueError(f'No source definition for co-op unit: {source_id}')
-            clone_id = f'MOR{clone_scope or "P"}{source_id}'
-            template = dict(native)
-            template.setdefault('Image', source_id)
-        factory = CHAOS_PRIMARY_PRODUCTION[family].get(_FACTORY_CATEGORY[unit_type])
-        if not factory:
+        clone_id = plan.clone_id
+        template = plan.template
+        factory = (CHAOS_PRIMARY_PRODUCTION[family].get(_FACTORY_CATEGORY[unit_type])
+                   if plan.buildable else None)
+        if plan.buildable and not factory:
             raise ValueError(f'No co-op factory for {source_id}')
         for type_list, definitions in STANDALONE_UNIT_RULE_TEMPLATES.get(
             source_id, {},
@@ -162,17 +213,32 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                 'secondary', 'eliteprimary', 'elitesecondary',
             } or _weapon_key(key):
                 values[key] = value
+        # Portable access replaces the source's campaign/factory gates. For
+        # example, Stardust's installed stolen-tech flag otherwise silently
+        # survives its earned unlock and keeps the reward unbuildable.
+        for key in list(values):
+            lowered = str(key).lower()
+            if (lowered.startswith('prerequisite')
+                    or lowered in {'factoryowners', 'factoryowners.forbidden', 'builtat'}):
+                values.pop(key)
         values.update({
-            'TechLevel': '1', 'Owner': clone_production_owners(source_values, country),
+            'TechLevel': '1' if plan.buildable else '-1',
+            'Owner': clone_production_owners(source_values, country),
             'RequiredHouses': country,
             'ForbiddenHouses': 'none', 'Prerequisite': factory,
             'PrerequisiteOverride': None, 'Prerequisite.List0': None,
             'Prerequisite.Lists': None, 'Prerequisite.Negative': None,
             'AllowedToStartInMultiplayer': 'no',
         })
-        if manifest.get('reward_mode') == 'Standard':
-            values.update(standard_coop_access_rules(source_id))
-        unit_counts = counts.get(source_id, {})
+        if plan.buildable and manifest.get('reward_mode') == 'Standard':
+            # Rejuvenator is a portable Neutral reward, with no Standard
+            # faction/access-catalog factory. Its earned clone uses the
+            # selected human faction's vehicle factory already set above.
+            if source_id != 'REJU':
+                values.update(standard_coop_access_rules(source_id))
+        # Mode switches keep the earned root's stacks; hidden forms are never
+        # independent unlocks or a route around a production restriction.
+        unit_counts = counts.get(source_id, counts.get(plan.root_id, {}))
         effective_target = _target_with_effective_unit_stats(target, values)
         for buff_type in _BUFF_ORDER:
             if buff_type not in unit_counts:
@@ -187,6 +253,21 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                 values['BuildLimit'] = str(max(1, base_limit) + amount)
             elif buff_type != 'veteran' and buff_type not in _WEAPON_BUFFS:
                 raise ValueError(f'Unsupported co-op buff: {source_id} {buff_type}')
+        if (manifest.get('unlimited_hero_units')
+                and plan.root_id in LIMITED_HERO_UNIT_IDS):
+            # Match the campaign clone policy: an absent BuildLimit removes
+            # the simultaneous-unit cap, whereas zero would block production.
+            # Change only earned player clones, after capacity buffs, so the
+            # native AI/script identities retain their authored limits. Shared
+            # country clones work for both humans; the engine counts per House.
+            for key in list(values):
+                if key.lower() == 'buildlimit':
+                    values.pop(key)
+        if plan.clone_id in unlimited_building_forms:
+            # Include hidden deployed structures and War Rig's mobile form:
+            # Ares counts both sides of a deploy pair against either cap.
+            # Mobile hero roots remain governed by their separate setting.
+            _remove_building_cap(values)
         weapon_counts = {
             key: value for key, value in unit_counts.items() if key in _WEAPON_BUFFS
         }
@@ -223,6 +304,10 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                     }
                     changed = False
                     for buff_type, amount in sorted(weapon_counts.items()):
+                        mind_control = weapon_key in target.get('mind_control_weapons', {})
+                        if ((buff_type == 'mind_control' and not mind_control)
+                                or (buff_type == 'damage' and mind_control)):
+                            continue
                         changed |= apply_weapon_buff_value(
                             weapon_values, base_stats, buff_type, amount,
                         )
@@ -237,7 +322,7 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                     else:
                         seen_weapons[weapon_key] = native_weapon
                 values[field] = seen_weapons[weapon_key]
-        if unit_counts.get('veteran'):
+        if unit_counts.get('veteran') and plan.type_list != 'BuildingTypes':
             category = {
                 'infantry': 'Infantry', 'vehicles': 'Units',
                 'naval': 'Units', 'aircraft': 'Aircraft',
@@ -246,13 +331,29 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         changes[clone_id] = values
         handled[source_id] = {'clone_id': clone_id}
         source_rules[source_id] = source_values
-        type_list = _TYPE_LIST[unit_type]
-        register(type_list, clone_id)
+        register(plan.type_list, clone_id)
+    plans_by_source = {plan.source_id: plan for plan in unit_plans}
+    for plan in unit_plans:
+        root = plans_by_source[plan.root_id]
+        handled.setdefault(plan.root_id, {'clone_id': root.clone_id})
+        handled[plan.root_id].setdefault('clone_ids', []).append(plan.clone_id)
+    # Exact AircraftType registration also determines airfield capacity. Use
+    # the campaign rule builder so reward planes cannot bypass or stall pads.
+    from randomizer.maps.player_clones import player_clone_pad_aircraft_rules
+    pad_rules, _pad_ids = player_clone_pad_aircraft_rules(lines, installed, handled)
+    for section, values in pad_rules.items():
+        changes.setdefault(section, {}).update(values)
     if production_restrictions:
         apply_shop_clone_restrictions(
             changes, handled, source_rules,
             {'shop_production_restrictions': production_restrictions},
         )
+    # Deployed unit forms can provide native powers too (FABOID). They are
+    # earned through their root unit rather than independent building access.
+    building_clones = {plan.source_id: plan.clone_id for plan in unit_plans
+                       if plan.type_list == 'BuildingTypes'}
+    planned_buildings = {plan.source_id: plan.template for plan in unit_plans
+                         if plan.type_list == 'BuildingTypes' and plan.buildable}
     for source_id in building_ids:
         source_id = str(source_id).upper()
         if BUFF_TARGETS.get(source_id, {}).get('category') not in {
@@ -261,7 +362,7 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
             raise ValueError(f'Unsupported co-op building reward: {source_id}')
         native = _lookup(installed, source_id)
         native.update(_lookup(map_sections, source_id))
-        template = templates.get(source_id)
+        template = planned_buildings.get(source_id, templates.get(source_id))
         if not native and not template:
             raise ValueError(f'No source definition for co-op building: {source_id}')
         clone_id = f'MOR{clone_scope or "P"}{source_id}'
@@ -269,6 +370,19 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         # packaged player roster. Use that complete reviewed template when
         # the installed rules have no native section.
         values = dict(template or native)
+        # Challenge armor/power tuning belongs to the authored native map,
+        # while the reviewed clone policy still controls independent powers
+        # and production access (for example the Industrial Plant's Gear Change).
+        for key, value in _lookup(map_sections, source_id).items():
+            if key.lower() in {
+                'strength', 'armor', 'power', 'powered', 'cost', 'sight',
+                'ammo', 'storage', 'producecashamount', 'producecashdelay',
+                'primary', 'secondary', 'eliteprimary', 'elitesecondary',
+            } or _weapon_key(key):
+                for previous in list(values):
+                    if previous.lower() == key.lower():
+                        values.pop(previous)
+                values[key] = value
         values.update({
             'Image': native.get('Image') or source_id,
             'TechLevel': '1', 'Owner': clone_production_owners(native, country),
@@ -281,8 +395,23 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         })
         if manifest.get('reward_mode') == 'Standard':
             values.update(standard_coop_access_rules(source_id))
+        building_counts = counts.get(source_id, {})
+        apply_building_reward_buffs(
+            changes, source_id, values, BUFF_TARGETS[source_id], building_counts,
+            installed, map_sections, clone_scope, register,
+        )
+        if unlimited_buildings:
+            _remove_building_cap(values)
+        if building_counts.get('veteran') and BUFF_TARGETS[source_id].get('trainable'):
+            veteran.setdefault('Buildings', []).append(clone_id)
         changes[clone_id] = values
         register('BuildingTypes', clone_id)
+        building_clones[source_id] = clone_id
+    preserve_native_building_abilities(
+        changes, building_clones, installed, map_sections,
+        country, clone_scope, register,
+        techno_clones={plan.source_id: plan.clone_id for plan in unit_plans},
+    )
     _register_initial_payloads(
         changes, templates, clone_ids, installed, map_sections,
         country, clone_scope, register,
@@ -400,7 +529,7 @@ def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
     type_id = f'MOR{scope}CASH'
     values = dict(source)
     values.update({
-        'Image': 'CASHGIVE', 'TechLevel': '-1', 'Owner': country,
+        'Image': 'GALITE', 'TechLevel': '-1', 'Owner': country,
         'RequiredHouses': country, 'ForbiddenHouses': 'none',
         'ProduceCashStartup': str(amount), 'ProduceCashAmount': '0',
         'ProduceCashDelay': '0', 'Capturable': 'no', 'Selectable': 'no',
@@ -430,11 +559,11 @@ def apply_shop_credit_bonus(lines: list[str], country: str, scope: str,
 
 def _append_grid_power_providers(lines, country, actions, buildings,
                                  installed_types, installed, *,
-                                 label='Shared Grid Powers'):
-    """Give both human slots providers using native Player @ A/B transfers.
+                                 label='Shared Grid Powers', human_slots=(0, 1)):
+    """Give human slots providers using native Player @ A/B transfers.
 
     Trigger owners resolve a country to its first house. Both Grid players
-    use the same country, so action 34 and country-owned static providers only
+    may use the same country, so action 34 and country-owned static providers only
     grant powers to one player. Neutral hidden buildings with separate tags
     use action 14's explicit multiplayer house indices, as authored co-op
     maps do when assigning their starting units and cash buildings.
@@ -477,7 +606,7 @@ def _append_grid_power_providers(lines, country, actions, buildings,
         reserved.add(provider.upper())
         values = dict(dummy)
         values.update({
-            'Name': 'Randomizer shared Grid power provider', 'Image': 'DUMMYDUMMY',
+            'Name': 'Randomizer shared Grid power provider', 'Image': 'GALITE',
             'SuperWeapon': power_id, 'SuperWeapon2': None, 'SuperWeapons': None,
             'TechLevel': '-1', 'BuildLimit': '0', 'Owner': country,
             'RequiredHouses': country, 'ForbiddenHouses': 'none',
@@ -495,10 +624,20 @@ def _append_grid_power_providers(lines, country, actions, buildings,
         type_keys.add(str(next_type_key))
         next_type_key += 1
         providers.append(provider)
+    # Every entry here is an implementation object, including providers
+    # returned by the shared power planner and the original-production gate.
+    # Retain their real House ownership/powers without consuming a build cell.
+    for provider in providers:
+        rules.setdefault(provider, {}).update({
+            'Image': 'GALITE', 'InvisibleInGame': 'yes', 'IsPassable': 'yes',
+        })
     merge_ini_section_values(lines, rules)
     if not providers:
         return
-    for slot, house_index in enumerate((4475, 4476), 1):
+    for human_slot in human_slots:
+        if type(human_slot) is not int or human_slot not in (0, 1):
+            raise ValueError('Invalid human slot for multiplayer reward providers.')
+        slot, house_index = human_slot + 1, 4475 + human_slot
         trigger = unique_section_key(lines, ('Events', 'Actions', 'Triggers'), 'RNGGP')
         tag = unique_section_key(lines, ('Tags',), 'RNGGT')
         name = f'MOR {label} P{slot}'
@@ -520,25 +659,33 @@ def _append_grid_power_providers(lines, country, actions, buildings,
 
 
 def apply_coop_power_rewards(lines: list[str], country: str,
-                             reward_ids: list[str], *, shared_grid=False) -> None:
-    """Grant earned powers to a private Shop country or both shared Grid slots."""
+                             reward_ids: list[str], *, shared_grid=False,
+                             human_slots=(0, 1), countries=()) -> None:
+    """Grant earned powers to private Shop or shared Grid/challenge humans."""
     if not reward_ids:
         return
     rewards = [canonical_reward({'name': name}) for name in reward_ids]
+    player_countries = list(dict.fromkeys(countries or (country,)))
     installed_types, installed = installed_rules_registry(synchronous=True)
     rewards = apply_power_buffs_to_unlock_rewards(rewards, installed)
+    if any(reward.get('superweapon_sidebar_image') for reward in rewards):
+        from randomizer.maps.assets import deploy_superweapon_sidebar_assets
+        deploy_superweapon_sidebar_assets(rewards)
     rules, actions, _names, startup, static, missing = cloned_superweapon_plan(
         lines, rewards, installed_types, installed,
-        superweapon_required_houses=[country], force_required_houses=True,
+        superweapon_required_houses=player_countries, force_required_houses=True,
     )
     if missing:
         raise ValueError('Co-op power source rules are missing: ' + ', '.join(missing))
     if not rules:
         raise ValueError('Co-op power rewards produced no map rules.')
+    from randomizer.coop.native_powers import close_reward_power_references
+    close_reward_power_references(lines, rules, installed, player_countries)
     merge_ini_section_values(lines, rules)
     if shared_grid:
         _append_grid_power_providers(
-            lines, country, actions, [*startup, *static], installed_types, installed,
+            lines, ','.join(player_countries), actions, [*startup, *static], installed_types, installed,
+            human_slots=human_slots,
         )
         return
     if static:

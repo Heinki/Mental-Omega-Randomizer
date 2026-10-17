@@ -753,10 +753,25 @@ class LaunchController:
             return False
 
     def disable_generated_rules_for_client(self):
+        from randomizer.maps.assets import _other_live_runtime_asset_owner
+        if _other_live_runtime_asset_owner():
+            return
         for path in (RULESMO_INI, DISABLED_RULESMO_INI):
             if path.exists() and is_generated_rules_file(path):
                 path.unlink()
         remove_generated_unit_art()
+
+    def begin_direct_game_preparation(self):
+        claim_runtime_asset_lease()
+        self.disable_generated_rules_for_client()
+        claim_runtime_asset_lease()
+
+    def prepare_direct_game_art(self):
+        """Load clone artwork and mutation registrations before direct spawn."""
+        art_path, aliases = deploy_generated_unit_art(GAME_ROOT / 'spawnmap.ini')
+        if art_path:
+            self.append_log('Prepared temporary challenge/co-op artwork for '
+                            f'{len(aliases)} definitions.')
 
     def build_command(self):
         command = [
@@ -994,6 +1009,7 @@ class LaunchController:
             self.record_failed_mission_attempt(attempt_code, 'Mission closed without victory')
         self.active_hook = None
         self.active_game_process = None
+        self.refresh_game_speed_controls()
         self.active_mission_attempt = None
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
@@ -1350,6 +1366,7 @@ class LaunchController:
             if launch_note:
                 self.append_log(launch_note)
             self.active_game_process = process
+            self.refresh_game_speed_controls()
             self.active_hook = hook
             if self.active_hook is not None:
                 self.active_hook['scenario_ready'] = False

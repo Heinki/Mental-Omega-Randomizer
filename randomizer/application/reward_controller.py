@@ -42,6 +42,7 @@ from ._dependencies import (
 
 from randomizer.generation.reward_controller import RewardGeneration
 from randomizer.coop.catalogue import discover_coop_missions
+from randomizer.challenges.catalogue import discover_challenge_missions
 from randomizer.core.paths import GAME_ROOT
 
 class RewardController(RewardGeneration):
@@ -408,9 +409,15 @@ class RewardController(RewardGeneration):
         self.append_log('Refreshing mission list...')
         self.apply_missions(self.load_missions())
 
-    def load_missions(self):
-        """Read mission catalogue without touching Tk state."""
-        if self.coop_mode_var.get():
+    def load_missions(self, *, category=None, country=None, player_count=None):
+        """Read a catalogue; background callers provide frozen mode settings."""
+        category = category or self.selected_mission_category()
+        if category == 'challenge':
+            return discover_challenge_missions(
+                GAME_ROOT,
+                player_count=player_count or self.selected_challenge_player_count(),
+            )
+        if category == 'coop':
             return discover_coop_missions(GAME_ROOT)
         return parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
 
@@ -422,8 +429,15 @@ class RewardController(RewardGeneration):
         if self.missions and self.mission_goal_var.get() > len(self.missions):
             self.mission_goal_var.set(len(self.missions))
         self.update_mission_goal_limit()
-        if bool(self.state.get('coop_mode')) == bool(self.coop_mode_var.get()):
+        state_category = self.state.get(
+            'mission_category', 'coop' if self.state.get('coop_mode') else 'campaign'
+        )
+        if (state_category == self.selected_mission_category()
+                and (state_category != 'challenge' or (
+                    self.state.get('challenge_player_count', 1)
+                    == self.selected_challenge_player_count()))):
             self.sync_state_mission_objectives()
+            self.migrate_challenge_catalogue()
         self.redraw_mission_tree()
         if (
             hasattr(self, 'workspace_tabs')

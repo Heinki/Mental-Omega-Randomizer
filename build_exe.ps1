@@ -1,5 +1,6 @@
 param(
-    [string]$Output = "..\MentalOmegaRandomizer.exe"
+    [string]$Output = "..\MentalOmegaRandomizer.exe",
+    [switch]$LocalTestBuild
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,11 +27,18 @@ New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
 $requiredPythonVersion = '3.14.6'
 $pythonVersion = (& python -c "import platform; print(platform.python_version())" 2>$null).Trim()
-if ($LASTEXITCODE -ne 0 -or $pythonVersion -ne $requiredPythonVersion) {
+if ($LASTEXITCODE -ne 0 -or (
+    $pythonVersion -ne $requiredPythonVersion -and -not (
+        $LocalTestBuild -and [Version]$pythonVersion -ge [Version]'3.13.0'
+    )
+)) {
     throw (
         "Python $requiredPythonVersion is required for reproducible launcher builds; " +
         "found $pythonVersion."
     )
+}
+if ($LocalTestBuild -and $pythonVersion -ne $requiredPythonVersion) {
+    Write-Host "Local test build with installed Python $pythonVersion; official releases still require $requiredPythonVersion."
 }
 if (-not (python -m PyInstaller --version 2>$null)) {
     throw "PyInstaller is required. Install build dependencies with: python -m pip install -r requirements-build.txt"

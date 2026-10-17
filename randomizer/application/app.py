@@ -56,9 +56,11 @@ from .unlock_view import UnlockViewController
 from .enemy_scaling import EnemyScalingController
 from .archipelago_controller import ArchipelagoController
 from .coop_controller import CoopController
+from .challenge_controller import ChallengeController
 
 
 class LauncherApp(
+    ChallengeController,
     WindowController,
     ShopController,
     StateController,
@@ -282,6 +284,11 @@ class LauncherApp(
             for code in generation_config.get('excluded_coop_mission_codes', [])
             if str(code).strip()
         }
+        self.excluded_challenge_mission_codes = {
+            str(code).upper()
+            for code in generation_config.get('excluded_challenge_mission_codes', [])
+            if str(code).strip()
+        }
         self.excluded_unit_access_ids = {
             str(unit_id).upper()
             for unit_id in generation_config.get('excluded_unit_access_ids', [])
@@ -340,9 +347,38 @@ class LauncherApp(
             DEFAULT_PROGRESSION_MODE,
         )
         self.progression_mode_var = tk.StringVar(value=progression_mode_default)
-        self.coop_mode_var = tk.BooleanVar(value=bool(
-            self.config.get('coop_mode', self.state.get('coop_mode', False))
+        category = self.config.get('mission_category')
+        if category not in {'campaign', 'coop', 'challenge'}:
+            category = 'coop' if self.config.get('coop_mode') else 'campaign'
+        self.mission_category_var = tk.StringVar(value=category)
+        self.challenge_player_count_var = tk.StringVar(value=str(
+            self.config.get('challenge_player_count', 1)
         ))
+        self.challenge_country_var = tk.StringVar(value=str(
+            self.config.get('challenge_country') or 'UnitedStates'
+        ))
+        self.challenge_ai_enabled_var = tk.BooleanVar(
+            value=bool(self.config.get('challenge_ai_enabled', False))
+        )
+        self.challenge_ai_country_var = tk.StringVar(value=str(
+            self.config.get('challenge_ai_country') or 'USSR'
+        ))
+        self.challenge_ai_color_var = tk.StringVar(value=str(
+            self.config.get('challenge_ai_color') or 'Red'
+        ))
+        self.challenge_ai_difficulty_var = tk.StringVar(value=valid_choice(
+            self.config.get('challenge_ai_difficulty'), ('Easy', 'Normal', 'Hard'), 'Normal',
+        ))
+        self.challenge_solo_color_var = tk.StringVar(value=str(
+            self.config.get('challenge_solo_color') or 'Teal'
+        ))
+        self.coop_player_count_var = self.challenge_player_count_var
+        self.coop_mode_var = tk.BooleanVar(value=(
+            category == 'coop' or (category == 'challenge'
+                                  and self.challenge_player_count_var.get() == '2')
+        ))
+        if category == 'challenge' and self.progression_mode_var.get() == 'Shop Mode':
+            self.progression_mode_var.set('Grid Mode')
         grid_state = self.state.get('grid', {}) if isinstance(self.state.get('grid'), dict) else {}
         self.grid_two_starts_var = tk.BooleanVar(
             value=bool(grid_state.get(
@@ -447,6 +483,9 @@ class LauncherApp(
         self.unlimited_hero_units_var = tk.BooleanVar(
             value=reward_settings['unlimited_hero_units']
         )
+        self.unlimited_buildings_var = tk.BooleanVar(
+            value=reward_settings['unlimited_buildings']
+        )
         self.share_chaos_role_buffs_var = tk.BooleanVar(
             value=reward_settings['share_chaos_role_buffs']
         )
@@ -501,6 +540,8 @@ class LauncherApp(
         }
         if self.unlimited_hero_units_var.get():
             self.buff_type_vars['build_limit'].set(False)
+        if self.unlimited_buildings_var.get():
+            self.buff_type_vars['building_limit'].set(False)
         self.log_visible_var = tk.BooleanVar(value=False)
         self.mission_search_var = tk.StringVar(value='')
         self.unlock_dashboard_search_var = tk.StringVar(value='')
@@ -516,6 +557,7 @@ class LauncherApp(
         self._enemy_buffs_view_dirty = True
         self.busy_depth = 0
         self.ui_queue = queue.Queue()
+        self.initialize_challenge_defaults()
         self.initialize_shop_controller()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
@@ -526,10 +568,15 @@ class LauncherApp(
         self.after_idle(self.start_initial_load)
 
     def start_initial_load(self):
+        category = self.selected_mission_category()
+        country = self.challenge_country_var.get()
+        player_count = self.selected_challenge_player_count()
         self.run_in_background(
             'Loading randomizer…',
             'Reading missions and restoring the current run. Please wait.',
-            self.load_missions,
+            lambda: self.load_missions(
+                category=category, country=country, player_count=player_count,
+            ),
             self.finish_initial_load,
             self.handle_initial_load_error,
         )
