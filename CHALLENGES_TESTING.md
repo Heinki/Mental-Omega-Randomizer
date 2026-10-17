@@ -1,316 +1,191 @@
-# Challenge build 1.44.4
+# Native challenges — 1.44.5
 
-## Agent handoff
+The launcher supports all 22 stock Mental Omega challenges with earned
+randomized rewards in **Classic**, **Mission List**, and **Grid Mode**.
+Choose one local human, one human with an optional AI teammate, or two humans
+connected over a private network. **Shop Mode and Archipelago challenge seeds
+are not supported.** Ordinary cooperative campaign missions require two humans.
 
-Custom source: https://github.com/ckbk456/Mental-Omega-Randomizer (main).
-Upstream: https://github.com/Heinki/Mental-Omega-Randomizer.
-Use this custom fork; the upstream release alone does not contain these changes.
+## Installation and updates
 
-Set up the brother's Windows PC as the guest. Khang is the host. Use a dedicated
-Mental Omega 3.3.6 game folder with matching native files on both PCs. This repo
-contains launcher source, not the game data. The currently verified gamemd.exe
-SHA-256 is `7F798F3336AB370325AF29BDDDE90791CC9E097EF1928CF25B13DA7EC227F486`.
-Do not substitute another engine silently; the runtime handshake compares it.
+Use a complete, writable, clean Mental Omega 3.3.6 installation. Verify that a
+stock mission runs normally, then put `MentalOmegaRandomizer.exe` beside
+`MentalOmegaClient.exe`, `gamemd.exe`, and `Syringe.exe`. This repository contains
+launcher source; it does not supply the game. A packaged launcher needs no
+separate Python installation. Custom maps, map packs, rules edits, and mixed
+mod installations are outside the audited baseline.
 
-1. Clone the custom fork. Read `AGENTS.md`, `DEVELOPER_GUIDE.md`, and
-   `tools/CHALLENGES-START-HERE.txt`. Keep the user's other coding projects out
-   of this game setup. Do not add or run unit tests; use the existing operational
-   checks and real map/log audits.
-2. Build with Python 3.14.6 and `requirements-build.txt`, then run
-   `build_exe.ps1 -Output '<GAME_FOLDER>\MentalOmegaRandomizer.exe'`. An existing
-   Python 3.13+ runtime can use the explicit `-LocalTestBuild` switch. This path
-   was validated with Python 3.13.2, PyInstaller 6.19.0 and websockets 17.0.
-3. Run the new EXE with `--self-check` from the game folder; inspect
-   `RandomizerLauncherData/self_check.json`. Do not start a game automatically.
-4. Configure the guest's player YAML under
-   `RandomizerLauncherData/configs/player/mental_omega_randomizer.yaml` with
-   `player_name: Brother`, `coop_role: Join`, `mission_category: challenge`,
-   `coop_mode: true`, `challenge_player_count: 2`,
-   `coop_challenge_country: UnitedStates`, and `coop_challenge_color: Red`.
-   These are defaults; the brother chooses his actual house/color in the lobby.
-   Do not copy Khang's private saves, IP history, passwords or pairing codes.
-5. Preserve an existing working private-network route. ZeroTier itself is an
-   external dependency: if using it, install the official signed client, join
-   the same network on both PCs, and authorize both members. The launcher does
-   not create/join a ZeroTier network. Khang's PC currently has a Tailscale route;
-   verify the actual private IPv4 rather than assuming a network ID or address.
-6. Copy `tools/Setup-Private-Network.ps1` beside the built EXE. Run `-WhatIf`
-   to inspect its rules and `-Elevate` to apply them with Windows administrator
-   approval. It allows this folder's launcher TCP 19420/19421 and gamemd UDP 1234
-   only on detected ZeroTier/Tailscale adapters. No router forwarding is needed.
-7. Khang opens Host in Co-op Connection and privately supplies his VPN IPv4 and
-   pairing code. Brother opens Join and enters them. Each chooses an allowed
-   house and a different color. Host owns the run, difficulty and fixed speed;
-   guest receives the same rewards and progress. Keep both launchers connected.
+Close the previous launcher before updating its EXE or shortcut. Preserve
+`RandomizerLauncherData`: it contains the player's settings, saves, and caches.
+Existing earned rewards and progress carry forward. Both multiplayer peers
+must use the same launcher version and matching native game files; the launch
+handshake checks the engine, relevant rules, metadata, and prepared map.
+Do not distribute another player's profile or private connection information.
 
-Khang's local host copy is already prepared for two-player challenges with
-Chaos rewards, the existing starting unlock settings and speed **5 - Faster**.
-His solo save is preserved separately. No ZIP or game-data transfer was created.
-No Computer Use/gameplay automation is required for setup. Final live gameplay
-validation still needs both people: connect, win a challenge, verify rewards on
-both PCs, and quit. Real socket pairing, map generation/replay, native log
-audits and packaged self-checks have been exercised locally.
+## Start a local challenge
 
-This local build adds stock Mental Omega challenges to Classic, Mission List,
-and Grid Mode, with earned randomized rewards, one local human with an optional
-AI teammate, or two humans over the existing private-network connection.
-Shop Mode and Archipelago challenge seeds are not included in this build.
+1. In **Settings**, choose mission category **challenge** and **Human players: 1**.
+2. Choose Classic, Mission List, or Grid Mode; Standard, Chaos, or Randomizer
+   Arsenal rewards; and the desired challenge difficulty.
+3. Generate a seed or continue a saved solo run. To include every challenge in
+   a new run, use **All Campaigns**, a **Mission goal of 22**, and no map exclusions.
+4. Select an open challenge. Under **Local challenge players**, choose
+   **Your house** and **Your color**.
+5. Optionally enable **Play with an AI teammate** and choose its house, a
+   different color, and **Easy / Normal / Hard** difficulty.
+6. Choose **Game speed** beside the launch button, then click
+   **Launch Selected Mission**. A local game needs no co-op or Archipelago connection.
 
-Version 1.44.0 finishes the paired challenge setup. Each player selects their
-own house/country and color in **Co-op Connection**. Different factions receive
-their own production roster while sharing the host's run, unlocks and rewards.
-The host sets game speed and difficulty; the paired game speed control is locked.
-Map-specific enemy houses and colors stay reserved. Both players must use the
-same build; the current build is 1.44.4.
+The AI takes the second allied starting position and uses its native army;
+only the human receives the run's earned technology and buffs. AI difficulty
+is independent of the challenge enemies' **Casual / Normal / Mental** difficulty.
+Basic unit and defense starters are enabled when challenges are first selected.
 
-Version 1.44.4 makes human and AI houses **per-launch choices**. The challenge
-catalogue always includes all 22 installed maps, independently of either house.
-For a local game, choose Your house and the optional AI house under Local
-challenge players. For two humans, each chooses in Co-op Connection. Changing
-houses never regenerates the seed, rerolls rewards or clears progress.
-Selections stay unchanged when switching maps. Launch preflight checks every
-participating house and color against that map's native restrictions, names
-any conflicts and lists allowed choices before preparing the game. Two allies
-may use the same house, but must choose different permitted colors.
+Human and AI houses, colors, AI difficulty, and game speed are launch preferences:
+changing them does not regenerate the seed, reroll rewards, or clear progress.
+All 22 maps remain in the catalogue regardless of the selected house. Selections
+stay unchanged when switching maps. Before preparing a game, the launcher checks
+both houses and colors against the selected map and explains conflicts with
+allowed alternatives. Allies may use the same house but need distinct permitted
+colors. For example, Heavyobject reserves Last Bastion, Euro Alliance, and
+Epsilon HQ for enemies; those players must choose another house for that match.
 
-Old solo runs that included the whole former 18/19-map house-filtered pool gain
-their omitted maps as additional challenges. Existing mission order, completed
-checks, reward assignments, grid positions and original goal remain intact;
-only the added maps receive new checks. A backup is saved before migration.
-Deliberately shorter runs and explicit map exclusions retain their saved plans.
+Speed labels follow the native client: **4 - Fast**, **5 - Faster**, and
+**6 - Fastest** accelerate play. Ordinary cooperative campaign speed is unchanged.
 
-Version 1.44.3 adds **Play with an AI teammate** for challenges with **Human
-players: 1**. Select an open challenge, then choose your color and the AI's
-allowed house, color and Easy/Normal/Hard difficulty under Local challenge
-players. Launch Selected Mission starts locally without connecting to co-op or
-Archipelago. The AI occupies the second allied start, uses its native army,
-and has its own difficulty; the human keeps the run's earned rewards. Enemy
-challenge difficulty remains the existing Casual/Normal/Mental setting.
-These launch choices do not require a new seed. Two-human games keep their
-existing connection flow and host-controlled speed.
+## Play with two humans
 
-Launch preparation now indexes native rules and INI section bounds instead of
-repeatedly scanning them. Host and guest also reuse their locally validated map
-when writing the game files. Both PCs still independently rebuild and verify
-the selected map, native files and rewards before the game starts.
+Each player needs a separate matching game installation and the same launcher.
+Use an existing authorized ZeroTier or Tailscale network; network installation,
+member authorization, and optional firewall setup are described in
+[Co-op Connection Guide](COOP_CONNECTION_GUIDE.md).
 
-Measured build plus verified replay time on real saved runs fell from 8.37 to
-1.64 seconds for the current paired run, 3.86 to 0.85 seconds for the solo run,
-and 15.87 to 3.33 seconds for an archived run with 439 earned rewards. All nine
-manifest/map outputs remained byte-identical. These measure launcher map
-preparation, not native game loading or frozen executable startup. Actual AI
-teammate gameplay still requires a live win/loss check; preparation audits
-covered all 22 installed maps and existing native result logs.
+1. Host: select **challenge**, **Human players: 2**, a progression mode, and
+   reward settings, then generate or continue a two-player seed.
+2. Open **Co-op Connection**, choose **Host**, enter a player name, and connect.
+   Share the displayed pairing code and the host's private-network IPv4 privately.
+3. Guest: select challenge with two humans, open the same dialog, choose **Join**,
+   enter a different player name, and connect using the host's IPv4 and pairing code.
+   Human names must not be `Computer`, which is the native AI result name.
+4. Each player chooses a house and color in the dialog. Either can change houses
+   between matches without resetting the shared run. Launch preflight checks
+   both selections against the map, including enemy house and color reservations.
+5. The host selects and launches an open challenge. The guest can suggest maps.
+   Both games use the host's difficulty and pinned game speed. Keep both
+   launchers connected while playing and while results synchronize.
 
-Version 1.44.2 adds **Unlimited build-limited buildings** in Settings > Reward
-Pool, independently of Unlimited unique / hero units. Enable it before
-generating a standalone challenge, co-op, or campaign run. It removes nonzero
-build caps from earned player defenses and special buildings, including their
-private deploy/undeploy forms. It does not grant unearned building access,
-remove prerequisites or electricity requirements, or alter native enemy caps.
-Structure +1 rewards are omitted while this option is enabled. Shop Mode keeps
-its existing capacity economy. The option defaults off for existing configs
-and saves; an existing seed retains its saved choice.
+The host owns the seed, progression, and shared reward inventory. Each human
+receives the appropriate production roster for their selected country. Both
+peers independently rebuild and verify the map before starting. If the host is
+eliminated first, a verified surviving guest victory can still advance that
+exact shared game; the host launcher must remain connected.
 
-Challenge colors now follow the authored enemy factions instead of the human
-house fallback: Soviets red, Allies blue, Yuri/Epsilon purple, Foehn teal.
-Endurance is Foehn/teal. Challenges XVII-XXII face mixed armies and use a moving
-rainbow gradient drawn natively on Tk Canvas, with readable text and the normal
-status badges. Animation pauses when hidden or minimized. These display fixes
-apply to existing runs after reopening the updated launcher; they do not change
-house eligibility, game rules, rewards or mission order.
+## Rewards and saved runs
 
-Version 1.44.1 repairs native behavior of unlocked objects. Grumble and other
-mode-switching units now bring their private deployed/converted definitions
-and return links. Earned Reprocessors participate in the bounty enabler list;
-Iron Guards and other building powers target their actual player clones.
-Iron Guard still needs enough electricity, but does not need a second Iron
-Curtain building to operate. Invisible implementation providers use the native
-GALITE art's zero-cell foundation, so they no longer occupy build placement
-cells. Their power ownership and trigger assignments remain intact.
+**Unlimited unique / hero units** removes simultaneous-unit caps from the
+reviewed earned mobile roster. **Unlimited build-limited buildings**, under
+**Settings > Reward Pool**, independently removes nonzero caps from earned
+player defenses and special buildings, including their private deploy forms.
+Enable these generation options before creating a run; an existing seed keeps
+its saved choices. Unlimited buildings omits Structure +1 rewards. Neither
+option grants unearned technology, removes normal prerequisites or electricity
+requirements, or changes enemy caps. Shop retains its capacity economy.
 
-The audit also repairs Prism Tower forwarding, refinery/miner docking, aircraft
-pad capacity, deployed Boid powers, Signal Inhibitor references, Elite Reserves
-Academy targets, and summoned/delivered helper ownership. Power payloads stay
-private and unbuildable; their powers do not unlock independent production.
-Earned building buffs now travel through both players' manifests and apply to
-their actual buildings and weapons. Mastermind capacity and Opus passenger
-upgrades are supported, and Stardust/Rejuvenator production gates are repaired.
-Nanofiber evolution retains each player's private infantry and earned buffs;
-the required art and early animation registrations are prepared before launch.
-Large veteran rosters use compact IDs to stay within the native country limit.
+Earned objects retain their native mechanics through private player definitions:
 
-Reopen the desktop shortcut after closing the old launcher. These changes apply
-when preparing the next match; an already running game keeps its old map rules.
-Existing earned rewards and save progress do not require a new seed for these
-1.44.1 fixes. Both PCs should use the same current version before connecting.
+- Grumble and other deploying or converting units keep their alternate forms
+  and return links. Nanofiber evolution keeps private infantry and earned buffs,
+  with the required animation art staged before launch.
+- Reprocessor bounty enablers and Iron Guard, Boid, and other building powers
+  refer to the actual player buildings. Iron Guard needs electricity, but no
+  separate Iron Curtain building.
+- Prism forwarding, refinery/miner docking, aircraft pads, Signal Inhibitors,
+  Academy targets, summoned helpers, and delivered units retain their native
+  relationships. Helper payloads remain unbuildable.
+- Building and weapon buffs follow each human's roster. Mastermind capacity,
+  Opus passengers, Stardust/Rejuvenator production access, and compact veteran
+  aliases are included in the native compatibility handling.
+- Invisible implementation providers use zero-cell art foundations, preserving
+  their ownership and effects without occupying building placement cells.
 
-Heavyobject is a valid, intact stock map and remains listed for every house.
-Its enemy houses include Last Bastion, Euro Alliance and Epsilon HQ, so launch
-preflight requires those players to choose another house for that map. Haihead
-or Coronia can play it. All local and paired catalogues expose all 22 maps.
-For a new run containing every challenge, use All Campaigns and set Mission
-goal to 22. Normal progression locks and deliberate map exclusions still apply.
+Challenge tile colors identify the authored enemy factions: Soviet red, Allied
+blue, Epsilon purple, and Foehn teal. Endurance is Foehn. Mixed challenges
+XVII–XXII use an animated Tk Canvas rainbow; animation pauses while hidden or
+minimized. Display colors do not change gameplay restrictions.
 
-Both launchers verify native team results. If the host is eliminated first,
-the surviving guest can report a verified team victory for that exact game;
-the host still owns progression and reward synchronization. Keep the host
-launcher connected while the other player finishes.
+One-human and two-human challenge runs have separate saves. Whole former
+18/19-map house-filtered solo runs can gain their omitted maps through a backed-up
+migration. Existing order, completed checks, reward assignments, grid positions,
+and original goal remain intact; only added maps receive new checks. Deliberately
+shorter runs and explicit map exclusions retain their plans. Normal progression
+locks still apply, and replaying a completed challenge grants no duplicate reward.
 
-Version 1.43.3 fixes **Unlimited unique / hero units** in challenges and ordinary
-co-op. The saved run setting now reaches the generated player unit rules and
-participates in both players' map verification. It removes simultaneous-unit
-caps for the reviewed trainable hero/unique roster; special-building caps and
-enemy unit caps retain their normal behavior. Close the game and launcher, then
-reopen the desktop shortcut and relaunch the challenge. An existing run with
-this option enabled needs no new seed.
+## Completion, quitting, and diagnostics
 
-Version 1.43.2 adds recovery for the observed black screen when quitting. After
-the current session logs a processed Quit/EXIT and finishes its game loop, the
-launcher allows normal cleanup, then closes that game's captured process tree
-if cleanup remains stuck. Natural victory/defeat score screens alone do not
-trigger this recovery, and shutdown records never grant victory rewards.
+Challenge results come from fresh native `debug/debug.log` records. A Winner row
+alone is insufficient: unfinished native games can print that row. Paired and
+AI games require native completion, complete expected statistics, every enemy
+marked Loser, and at least one allied Winner. An eliminated human can receive
+team credit if the remaining ally wins. AI score rows follow native house order,
+with the allied AI directly after the local human. Solo games retain complete
+enemy-loss verification. Missing, ambiguous, crashed, or unfinished results grant
+no victory; returning from the score screen may be needed before statistics flush.
 
-Game speed is now available beside **Launch Selected Mission**, including when
-Details is hidden. Choose **4 - Fast**, **5 - Faster**, or **6 - Fastest** before
-launching for faster play; the choice is saved and needs no new seed. The labels
-now match Mental Omega's native speed direction. Two-player challenges use the
-host's choice on both machines. Ordinary cooperative campaign speed is unchanged.
+Quit recovery waits for a processed Quit/EXIT record and the game loop to finish.
+If that launched game's captured process tree still fails to clean up, the
+launcher closes that tree after a grace period. A normal victory/defeat screen
+does not trigger recovery, and shutdown records do not grant rewards.
 
-## Start a solo run
+Run `MentalOmegaRandomizer.exe --self-check` from the game directory. Inspect
+`RandomizerLauncherData/self_check.json` for the expected `app_version` and
+`passed: true`. Keep these diagnostics when reporting a problem:
 
-1. Open **Mental Omega Challenges Test** from the Windows desktop.
-2. In Settings, select mission category **challenge** and **Human players: 1**.
-   All 22 stock challenges are in the pool regardless of your current house.
-3. Choose Classic, Mission List, or Grid Mode; choose Standard, Chaos, or
-   Randomizer Arsenal rewards and the desired difficulty.
-4. Click **Generate New Seed**, select an open challenge and choose **Game speed**.
-   Under **Local challenge players**, choose your house and color. Optionally enable
-   **Play with an AI teammate** and choose its house, different color and
-   difficulty. Click **Launch Selected Mission** directly.
+- `RandomizerLauncherData/logs/launcher.log` and `self_check.json`;
+- native `debug/debug.log`;
+- mission code, seed, reward mode, player houses, and whether AI or a peer was used.
 
-Basic unit and defense access is enabled when Challenges is first selected,
-so the initial base-building challenge has a usable roster. Further unlocks
-and buffs come from completed challenges. Changing either player's house needs
-no new seed. One-human and two-human runs retain separate saved progression.
+Packaged saves are `RandomizerLauncherData/challenge_solo_state.json` and
+`challenge_coop_state.json`. Review saves and native logs before sharing; they
+can contain progress or private network details.
 
-## Check native behavior and results
+## Maintainer build and validation
 
-- Native challenge difficulty, enemy countries, alliances, starting positions,
-  scripted units and map-specific restrictions should match Mental Omega.
-- The selected country must have its initial construction/production and
-  basic combat access. Enemy challenge abilities must still work.
-- Win by defeating every enemy. After the native game writes its final result
-  statistics, the launcher should complete the challenge once and unlock its
-  saved rewards. Depending on when the engine flushes statistics, return from
-  the results screen before checking launcher progress.
-- Losing, quitting an unfinished challenge, or crashing must not award a
-  victory. A missing or ambiguous result remains uncompleted.
-- Replaying an already completed challenge must not grant the same reward
-  twice. Restarting the launcher should preserve challenge progress.
+Read `AGENTS.md` and [Developer Guide](DEVELOPER_GUIDE.md). Official Windows
+packaging requires **Python 3.14.6** and the pinned `requirements-build.txt`.
+From the source checkout:
 
-The result reader starts before each game and reads only fresh native log
-data. A Winner row by itself is insufficient: installed unfinished games also
-produce such rows. Paired and AI games require native completion, complete
-statistics for the whole expected roster, at least one allied Winner and every
-registered enemy marked Loser. An eliminated human can therefore receive team
-credit if the remaining ally wins. AI rows follow native house order, with the
-allied AI directly after the local human; ambiguous or incomplete rows award
-nothing. Solo games retain their existing complete enemy-loss verification.
+```powershell
+python -m pip install -r requirements-build.txt
+.\build_exe.ps1 -Output '<GAME_FOLDER>\MentalOmegaRandomizer.exe'
+```
 
-## Play with two people
+For local validation with an existing **Python 3.13+** installation, the explicit
+`-LocalTestBuild` switch permits that runtime. It still checks static configs,
+compiles source, and verifies the bundled Tcl/Tk archive. This exception does
+not change the official release runtime or dependency pins.
 
-Both players need this same custom executable and matching Mental Omega game
-files, including `gamemd.exe`. Each launcher must have its own game folder.
+Use compilation, the existing packaged installation/domain self-check, the
+existing `tools/check_coop_parity.py` audit, installed-map audits, and manual
+play as appropriate. Do not add or run unit-test suites under the current
+repository policy. A self-check prepares no gameplay session.
 
-1. Host: select **challenge**, **2** players, a mission-pool country and a
-   progression mode; generate a seed. The pool country filters the available
-   maps. Actual player houses are selected separately in the connection dialog.
-2. Open **Co-op Connection**. Choose Host and a unique player name, connect,
-   choose your own house and color, and provide the displayed pairing code to
-   the other player together with your private-network IPv4.
-3. Guest: open the same build, select a two-player mode, open the connection
-   dialog, choose Join and a different player name, and enter the host's
-   private IPv4 and pairing code. Select your own house and a different color.
-   An existing authorized Tailscale or ZeroTier
-   network can carry the connection. Do not configure router port forwarding.
-4. The guest receives the host's challenge list, seed, progression and rewards.
-   Both players' actual house/color choices appear in the dialog. The host
-   selects a compatible challenge and game speed, then launches it. Incompatible
-   houses or duplicate/reserved colors produce an explanation before launch.
-   Both games use the host's speed and difficulty.
-5. Both peers independently rebuild and hash the prepared map before starting.
-   A verified host victory publishes progression and rewards to the guest.
+Recorded development coverage includes all 22 native maps and three challenge
+difficulties; one-human, local-AI, and two-human preparation; all twelve player
+countries; three reward modes; speed extremes; Foehn starters; deterministic
+manifest replay; the earned unit/building catalogue and 93 reward powers;
+private deployment and mutation art; and native reward isolation. Real loopback
+lobby/preparation checks used separate game directories, matching game IDs and
+byte-identical maps, including reversed human color order. Archived native logs
+were audited for verified results and unfinished games without awarding false wins.
 
-For a same-PC paired trial, a second copy and desktop shortcut named
-**Mental Omega Challenges Guest Test** have also been prepared. Join
-`127.0.0.1`. The existing transport automatically separates game ports.
-The two copies must not share `spawn.ini`, `spawnmap.ini`, or runtime data.
+Native-rule/INI indexing and reuse of each peer's validated map reduce repeated
+preparation work. Sample build-plus-replay measurements fell from 8.37 to 1.64,
+3.86 to 0.85, and 15.87 to 3.33 seconds across three saved rosters; all nine
+manifest/map outputs remained byte-identical. These measure map preparation,
+not frozen launcher startup or native game loading.
 
-## Diagnostics and build
-
-The test installation uses its own `RandomizerLauncherData`, with
-`challenge_solo_state.json` and `challenge_coop_state.json` as separate saves.
-Useful reports are `RandomizerLauncherData/logs/launcher.log` and the native
-`debug/debug.log`. Retain both when reporting a challenge failure.
-
-The source is based on upstream commit
-`7078843a0ffee3f17a8b7c98b438a25c1cd4fe41`. Official packaging still requires
-the repository's pinned Python 3.14.6 runtime. The explicit `-LocalTestBuild`
-switch also accepts an existing Python 3.13+ runtime for local validation;
-it retains static-config, compilation and Tcl/Tk archive checks.
-
-Follow `AGENTS.md`: use compilation, existing installation/domain self-checks,
-installed-map audits and gameplay checks. Do not add or run unit-test suites.
-
-## Checks completed for the challenge feature
-
-- Packaged installation/domain self-check: passed, exit code 0.
-- Native option patches: all 22 maps at all three difficulty levels.
-- Map manifests and deterministic replay: all 22 maps with one and two humans;
-  all twelve player countries and all three difficulties represented.
-- Native Foehn Standard starters: all three countries, solo and paired.
-- Existing cooperative campaign parity audit: passed.
-- Actual launcher startup: 19 compatible Euro Alliance challenges, correct
-  starter preset, supported mode controls, no callback errors.
-- Actual native log results: one completed paired match emitted victory once;
-  twenty archived unfinished matches produced no verified victory.
-- Existing direct connection tool: real loopback host/guest dry run passed;
-  both installations prepared byte-identical maps and the same game ID.
-
-These checks do not replace live gameplay of the new challenge mode. Test a
-solo win, an unfinished quit, and a paired win before relying on a long run.
-
-The 1.43.2 quit recovery is based on the observed native quit log. Live validation
-of the new recovery is pending; this update does not automate game interaction.
-
-Additional 1.43.2 validation: all seven speed labels match the installed native
-client; 88 installed challenge preparations (22 maps, one/two humans, both speed
-extremes) passed with real saved rewards and deterministic replay. Actual solo
-runtime preparation and TCP host/guest pairing verified matching selected
-speeds, with the original runtime files restored afterward. Existing schema 6
-manifests remain compatible.
-
-Additional 1.43.3 validation: the real saved run was prepared with the option
-off/on for Regenbogen solo, Regenbogen paired, Allied Balance, and Ablution.
-All 16 map generations, including peer rebuilds, matched. Exactly 23 earned
-hero/unique player sections lost their BuildLimit; native originals, enemies,
-buildings, providers, and other sections were identical between settings.
-The existing roster validator passed all 34 reviewed hero/unique unit types.
-Packaged installation/domain checks passed in both test installations.
-
-Version 1.44.0 validation includes 66 paired installed-map preparations across
-all 22 maps and all three reward modes, with same/cross-faction countries,
-Foehn starters, every difficulty and host-speed extremes. Deterministic peer
-rebuilds passed. Real TCP preparation and authenticated lobby message exchange
-passed between separate game folders, including reversed human color order.
-These checks prepare runtime files without launching or automating a game.
-
-Version 1.44.1 validation includes the complete earned mobile/building catalogue,
-private deploy/conversion dependencies, all 93 reward powers across all 22 stock
-challenge maps, deterministic host/guest rebuilds, and staged mutation artwork.
-The existing saved 19-map run regenerates without modifying its progress;
-Reprocessor enablers contain both human clones and hidden providers have zero
-build-placement footprint. Large catalogue veteran lists fit the configured
-native limit after aliasing. Compilation and packaged checks supplement these
-map audits. Live ability behavior still needs player verification in the game.
+These checks do not establish complete live gameplay coverage. A local AI win
+and loss, a sustained two-PC session with synchronized rewards, restored native
+ability behavior, and quit recovery still need player verification on the target
+installations. Loopback preparation does not establish Windows/Linux gameplay
+compatibility over a private network.

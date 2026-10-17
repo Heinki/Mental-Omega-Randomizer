@@ -218,6 +218,26 @@ quoting removes the mandatory quotes. Linux passes a real argv list to Wine.
 .\build_archipelago_release.ps1
 ```
 
+For the standalone challenge launcher, first commit the source and build the EXE
+with `build_exe.ps1` (or its supported `-LocalTestBuild` option). Run the packaged
+`--self-check` from a complete Mental Omega installation, then package that exact
+EXE without copying its surrounding game or player profile:
+
+```powershell
+python tools/package_challenges.py --exe "<BUILT_EXE>" --output "<NEW_RELEASE_DIRECTORY>" `
+  --build-provenance "LocalTestBuild; Python 3.13.2; PyInstaller 6.19.0; websockets 17.0"
+```
+
+Replace the provenance with the actual build mode and tool versions. The package
+contains only the canonical `MentalOmegaRandomizer.exe`, start/testing guides,
+license, optional network helper, and `RELEASE-MANIFEST.json`. The manifest records
+the source Git SHA, dirty-checkout status, provenance, and payload hashes. The
+extracted `MentalOmegaRandomizer-<APP_VERSION>-windows` directory, same-name ZIP,
+and external `SHA256SUMS` are created under `--output`; existing artifacts are
+never overwritten. Use `--without-network-helper` to omit that optional script.
+Package source archives separately with `git archive`; game files, profiles,
+logs, caches, and APWorld data do not belong in this launcher package.
+
 Equivalent Linux maintainer commands (the EXE remains a Windows executable):
 
 ```bash

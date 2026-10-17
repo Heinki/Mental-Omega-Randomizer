@@ -114,7 +114,7 @@ class ChallengeLobbyController:
         own = self.own_challenge_player_options()
         peer = getattr(self, '_coop_peer_options', None)
         if peer is None:
-            raise ValueError('Wait for your brother to connect and choose his house and color.')
+            raise ValueError('Wait for your partner to connect and choose their house and color.')
         peer = self.validate_challenge_player_options(peer)
         lobby = getattr(self, '_coop_lobby', None)
         if lobby is None or lobby.role not in {'host', 'guest'}:
