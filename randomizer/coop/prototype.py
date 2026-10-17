@@ -265,25 +265,29 @@ def _selected_reward(state: dict, source_mission: str, unit_id: str,
     return *candidates[0], False
 
 
-def _require_registered_type(source: Path, unit_id: str) -> None:
-    """Reject map-only rewards absent from this co-op map's type registry."""
+def _registered_unit_types(source: Path) -> frozenset[str]:
+    """Index this installed map once per launch/replay, rather than per reward."""
     _powers, installed = installed_rules_registry(synchronous=True)
     map_sections = all_section_value_maps(_text(source).splitlines())
+    registered = set()
     for sections in (installed, map_sections):
         names = {str(name).lower(): name for name in sections}
-        type_section = names.get(unit_id.lower())
-        if not type_section:
-            continue
-        if any(
-            unit_id.upper() in {
-                str(value).upper() for value in sections.get(names.get(category.lower()), {}).values()
-            }
+        registered.update(
+            str(value).upper()
             for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes')
-            if names.get(category.lower())
-        ):
-            return
+            for value in sections.get(names.get(category.lower()), {}).values()
+            if str(value).lower() in names
+        )
     _, clone_ids, templates = randomizer_unit_roster()
-    if unit_id in clone_ids and templates.get(unit_id):
+    registered.update(unit_id for unit_id in clone_ids if templates.get(unit_id))
+    return frozenset(registered)
+
+
+def _require_registered_type(source: Path, unit_id: str, registered_types=None) -> None:
+    """Reject map-only rewards absent from this co-op map's type registry."""
+    if registered_types is None:
+        registered_types = _registered_unit_types(source)
+    if unit_id.upper() in registered_types:
         return
     raise ValueError(
         f'{unit_id} is absent from installed and co-op map type lists; '
@@ -313,6 +317,9 @@ def _apply_enemy_powerhouse_waves(lines, source, manifest, metadata):
             and COOP_BUILD_CLASSIFICATIONS.get(source.stem.upper()) != 'base_build'):
         return
     players = {manifest['player_country'], manifest.get('guest_country', '')}
+    ai_teammate = manifest.get('ai_teammate')
+    if ai_teammate:
+        players.add(ai_teammate['country'])
     enemies = set(manifest.get('enemy_countries', ()))
     records = map_house_records(lines)
     hostile_houses = []
@@ -324,6 +331,11 @@ def _apply_enemy_powerhouse_waves(lines, source, manifest, metadata):
         )))
     for slot, country in enumerate(countries[:manifest.get('player_count', 2)]):
         house = f'<Player @ {chr(ord("A") + slot)}>'
+        records[house] = {'name': house, 'country': country, 'player': True}
+        records[country] = {'name': country, 'country': country, 'player': True}
+    if ai_teammate:
+        house = '<Player @ B>'
+        country = ai_teammate['country']
         records[house] = {'name': house, 'country': country, 'player': True}
         records[country] = {'name': country, 'country': country, 'player': True}
     for key, value in metadata.items():
@@ -373,7 +385,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
     })
     _apply_enemy_powerhouse_waves(lines, source, manifest, metadata)
     apply_coop_native_production_gate(lines, manifest)
-    if manifest['schema'] == 5 or (manifest['schema'] == 7
+    if manifest['schema'] == 5 or (manifest['schema'] in (7, 8)
             and manifest.get('guest_country', manifest['player_country'])
             != manifest['player_country']):
         for role, scope, country in (
@@ -395,7 +407,7 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
                 apply_coop_power_rewards(
                     lines, country, loadout.get('power_reward_ids', []),
                 )
-        if manifest['schema'] == 7:
+        if manifest['schema'] in (7, 8):
             apply_coop_power_rewards(
                 lines, manifest['player_country'], manifest.get('power_reward_ids', []),
                 shared_grid=True, countries=(manifest['player_country'], manifest['guest_country']),
@@ -413,6 +425,16 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
     player_countries = {manifest['player_country']}
     if manifest['schema'] in (5, 7) and manifest.get('guest_country'):
         player_countries.add(manifest['guest_country'])
+    if manifest.get('ai_teammate'):
+        # Keep all allied native armies out of enemy reward overrides, even
+        # when a shared native unit belongs to several different countries.
+        player_countries.add(manifest['ai_teammate']['country'])
+        # Settings/Credits is global to human and AI houses. Apply the earned
+        # delta to the human house instead so the AI retains native finances.
+        apply_shop_credit_bonus(
+            lines, manifest['player_country'], 'H',
+            manifest.get('starting_credit_bonus', 0),
+        )
     apply_coop_enemy_rewards(
         lines, manifest.get('enemy_countries', []), player_countries,
         manifest.get('enemy_reward_ids', []),
@@ -421,6 +443,18 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
     apply_coop_payload_support(lines)
     from randomizer.coop.native_mutations import apply_coop_native_mutations
     apply_coop_native_mutations(lines, manifest)
+    if manifest.get('ai_teammate'):
+        # Native unit TaskForces use authored IDs, but the AI base planner
+        # scans BuildingTypes. Exclude earned copies from that scan when an
+        # allied AI uses the same country as the human; its original buildings
+        # are still available because the production gate belongs only to A.
+        building_clones = {
+            str(value) for value in _values(lines, 'BuildingTypes').values()
+            if str(value).upper().startswith(('MORP', 'MORH', 'MORG'))
+        }
+        merge_ini_section_values(lines, {
+            clone: {'AIBuildThis': 'no'} for clone in sorted(building_clones)
+        })
     from randomizer.coop.native_veterancy import compact_coop_veteran_ids
     compact_coop_veteran_ids(lines, player_countries)
     if manifest.get('mission_category') != 'challenge':
@@ -442,7 +476,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
                    allow_test_unit: bool = False, difficulty: int = 1,
                    country: str = '', player_count: int = 2,
                    mission_category: str = '', game_speed: int = 2,
-                   guest_country: str = '', player_colors=None) -> tuple[dict, bytes]:
+                   guest_country: str = '', player_colors=None,
+                   ai_teammate: dict | None = None) -> tuple[dict, bytes]:
     _validate_difficulty(difficulty)
     if state.get('progression_mode') not in SUPPORTED_PROGRESSION:
         raise ValueError('Prototype supports Classic, Grid Mode, and Mission List; Shop Mode is excluded.')
@@ -458,12 +493,15 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
         from randomizer.coop.challenge import challenge_context
         config, context = challenge_context(
             game_root, coop_name, country, player_count, difficulty, game_speed,
+            ai_teammate=ai_teammate,
             **({'guest_country': (guest_country or country or '') if player_count == 2 else guest_country,
                 'player_colors': player_colors}
                if player_count == 2 or player_colors is not None else {}),
         )
         source, source_key, metadata, country, family = config
     elif category == 'coop':
+        if ai_teammate is not None:
+            raise ValueError('AI teammates are available only in local challenges.')
         if player_count != 2:
             raise ValueError('Co-op requires two human players.')
         source, source_key, metadata, country, family = _map_config(game_root, coop_name)
@@ -475,8 +513,9 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
         raise ValueError('Invalid unit ID for co-op prototype.')
     access_ids = sorted({entry[0] for entry in _access_candidates(state, source_mission, country)}
                         | ({selected_id} if selected_id else set()))
+    registered_types = _registered_unit_types(source)
     for candidate_id in access_ids:
-        _require_registered_type(source, candidate_id)
+        _require_registered_type(source, candidate_id, registered_types)
     launch_rewards = _launch_rewards(state, source_mission, country)
     building_ids = _building_ids(launch_rewards)
     buff_counts = _buff_counts(launch_rewards, access_ids, building_ids)
@@ -495,7 +534,7 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
             guest_ids = sorted({entry[0] for entry in _access_candidates(
                 state, source_mission, guest)} | ({selected_id} if test_override else set()))
             for candidate_id in guest_ids:
-                _require_registered_type(source, candidate_id)
+                _require_registered_type(source, candidate_id, registered_types)
             guest_buildings = _building_ids(guest_rewards)
             context['player_loadouts']['guest'] = {
                 'access_ids': guest_ids,
@@ -527,7 +566,8 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     if context:
         stem, map_key = destination(coop_name, identity)
     manifest = {
-        'schema': (7 if 'player_colors' in context else 6) if context else 4,
+        'schema': ((8 if 'ai_teammate' in context else
+                    7 if 'player_colors' in context else 6) if context else 4),
         'fingerprint_policy': FINGERPRINT_POLICY,
         'marker': marker,
         'source_key': source_key,
@@ -581,7 +621,8 @@ def shop_guest_country(metadata: dict, host_country: str) -> str:
     return SIDE_COUNTRIES[candidates[0]]
 
 
-def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False) -> dict:
+def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False,
+                            registered_types=None) -> dict:
     if (not isinstance(loadout, dict)
             or not {'access_ids', 'buff_counts'} <= set(loadout)
             or set(loadout) - {
@@ -600,8 +641,10 @@ def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False) ->
             or not isinstance(buff_counts, dict)
             or any(not isinstance(counts, dict) for counts in buff_counts.values())):
         raise ValueError('Invalid co-op Shop unit access or buff loadout.')
+    if registered_types is None:
+        registered_types = _registered_unit_types(source)
     for unit_id in access_ids:
-        _require_registered_type(source, unit_id)
+        _require_registered_type(source, unit_id, registered_types)
         if not arsenal_unit_type(unit_id, BUFF_TARGETS.get(unit_id)):
             raise ValueError(f'Unsupported co-op Shop unit: {unit_id}')
     for unit_id, counts in buff_counts.items():
@@ -771,9 +814,10 @@ def build_shop_manifest(game_root: Path, seed: str, coop_name: str,
     source, source_key, metadata, country, family = _map_config(game_root, coop_name)
     guest_country = shop_guest_country(metadata, country)
     enemy_countries = _enemy_countries(metadata)
+    registered_types = _registered_unit_types(source)
     loadouts = {
-        'host': _validate_shop_loadout(source, host_loadout),
-        'guest': _validate_shop_loadout(source, guest_loadout),
+        'host': _validate_shop_loadout(source, host_loadout, registered_types=registered_types),
+        'guest': _validate_shop_loadout(source, guest_loadout, registered_types=registered_types),
     }
     source_hash = (text_hash if _fingerprint_policy else _digest)(source.read_bytes())
     identity = _digest(json.dumps(
@@ -821,7 +865,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
             raise ValueError('Co-op Shop manifest differs from installed map or loadouts.')
         return data
     context = {}
-    if manifest.get('schema') in (6, 7):
+    if manifest.get('schema') in (6, 7, 8):
         from randomizer.coop.challenge import identity_fields, validate_context
         config, context = validate_context(game_root, manifest)
     elif manifest.get('schema') != 4 or manifest.get('marker') != PROTOTYPE_MARKER:
@@ -829,6 +873,8 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
     elif (manifest.get('mission_category', 'coop') != 'coop'
           or manifest.get('player_count', 2) != 2):
         raise ValueError('Legacy co-op manifest cannot select challenge settings.')
+    elif 'ai_teammate' in manifest:
+        raise ValueError('Legacy co-op manifests cannot select an AI teammate.')
     source_key = str(manifest.get('source_key', ''))
     coop_name = source_key.rsplit('\\', 1)[-1]
     source, actual_key, _metadata, country, family = (
@@ -840,8 +886,9 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
         raise ValueError('Invalid unit ID in manifest.')
     if arsenal_unit_type(unit_id, BUFF_TARGETS.get(unit_id)) != manifest.get('production_type'):
         raise ValueError('Manifest unit category differs from launcher catalogue.')
+    registered_types = _registered_unit_types(source)
     if unit_id:
-        _require_registered_type(source, unit_id)
+        _require_registered_type(source, unit_id, registered_types)
     seed = str(manifest.get('seed', ''))
     difficulty = _validate_difficulty(manifest.get('difficulty', 1))
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', seed):
@@ -889,7 +936,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
             or enemy_countries != _enemy_countries(_metadata)):
         raise ValueError('Invalid co-op enemy reward manifest.')
     for candidate_id in access_ids:
-        _require_registered_type(source, candidate_id)
+        _require_registered_type(source, candidate_id, registered_types)
     for candidate_id, counts in buff_counts.items():
         if (candidate_id not in set(access_ids) | set(building_ids)
                 or not isinstance(counts, dict)):
@@ -897,7 +944,7 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
         if any(not isinstance(buff_type, str) or type(value) is not int
                or not 1 <= value <= 100 for buff_type, value in counts.items()):
             raise ValueError('Invalid co-op buff count.')
-    if manifest.get('schema') == 7:
+    if manifest.get('schema') in (7, 8):
         loadouts = manifest.get('player_loadouts')
         roles = {'host', 'guest'} if manifest['player_count'] == 2 else {'host'}
         if not isinstance(loadouts, dict) or set(loadouts) != roles:
@@ -906,7 +953,10 @@ def rebuild_from_manifest(game_root: Path, manifest: dict) -> bytes:
             if (not isinstance(loadouts[role], dict)
                     or set(loadouts[role]) != {'access_ids', 'buff_counts', 'building_ids'}):
                 raise ValueError('Invalid challenge player reward loadout.')
-            _validate_shop_loadout(source, loadouts[role], allow_empty=True)
+            _validate_shop_loadout(
+                source, loadouts[role], allow_empty=True,
+                registered_types=registered_types,
+            )
         if loadouts['host'] != {'access_ids': access_ids, 'buff_counts': buff_counts,
                                'building_ids': building_ids}:
             raise ValueError('Host challenge rewards differ from shared run rewards.')

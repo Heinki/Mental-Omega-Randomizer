@@ -606,6 +606,7 @@ class StateController(GenerationSettings):
         self.config['mission_category'] = self.selected_mission_category()
         self.config['challenge_player_count'] = self.selected_challenge_player_count()
         self.config['challenge_country'] = self.challenge_country_var.get()
+        self.store_challenge_local_options()
         self.config['coop_mode'] = bool(
             feature.COOP_FEATURE_ENABLED and self.coop_mode_var.get()
         )
@@ -812,6 +813,7 @@ class StateController(GenerationSettings):
         self.mission_category_var.set(category)
         self.challenge_player_count_var.set(str(config.get('challenge_player_count', 1)))
         self.challenge_country_var.set(str(config.get('challenge_country') or 'UnitedStates'))
+        self.restore_challenge_local_options_from_config()
         self.coop_mode_var.set(bool(config.get('coop_mode', False)))
         self.sync_mission_transport_mode()
         generation = self.config.get('generation', {})

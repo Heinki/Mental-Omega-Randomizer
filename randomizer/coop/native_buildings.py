@@ -39,14 +39,16 @@ def _lookup(registry, name):
 
 def _merge(*sections):
     result = {}
+    names = {}
     for section in sections:
         for key, value in section.items():
-            previous = next((item for item in result
-                             if str(item).lower() == str(key).lower()), None)
+            lowered = str(key).lower()
+            previous = names.pop(lowered, None)
             if previous is not None:
                 result.pop(previous)
             if value is not None:
                 result[key] = value
+                names[lowered] = key
     return result
 
 

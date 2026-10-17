@@ -11,14 +11,30 @@ CHALLENGE_MARKER = 'MOR_CHALLENGE_V1'
 
 
 def challenge_context(game_root, name, country, player_count, difficulty, game_speed=2,
-                      *, guest_country=None, player_colors=None):
-    """Bind selected humans, speed, and installed rules into peer identity."""
+                      *, guest_country=None, player_colors=None, ai_teammate=None):
+    """Bind humans, an optional local AI, speed, and native rules to identity."""
     if type(player_count) is not int or player_count not in (1, 2):
         raise ValueError('Challenges support one or two human players.')
     if type(game_speed) is not int or game_speed not in range(7):
         raise ValueError('Game speed must be between 0 and 6.')
     config = map_config(game_root, name, player_country=country or None)
     metadata = config[2]
+    if ai_teammate is not None:
+        if player_count != 1:
+            raise ValueError('An AI teammate requires one local human player.')
+        if (not isinstance(ai_teammate, dict)
+                or set(ai_teammate) != {'country', 'color', 'difficulty'}
+                or not isinstance(ai_teammate['country'], str)
+                or not ai_teammate['country']
+                or type(ai_teammate['color']) is not int
+                or type(ai_teammate['difficulty']) is not int
+                or ai_teammate['difficulty'] not in range(3)):
+            raise ValueError('Choose an AI house, color, and difficulty (0–2).')
+        # The native AI keeps its original army. It must still avoid enemy
+        # countries: enemy reward overrides are scoped to those identities.
+        map_config(game_root, name, player_country=ai_teammate['country'])
+        if ai_teammate['color'] not in allowed_colors(metadata):
+            raise ValueError('Choose an AI color allowed by this challenge.')
     if not int(metadata.get('minplayers', '1')) <= player_count <= int(metadata.get('maxplayers', '2')):
         raise ValueError('Challenge does not support the selected player count.')
     settings = spawn_settings(game_root, metadata, difficulty)
@@ -36,7 +52,7 @@ def challenge_context(game_root, name, country, player_count, difficulty, game_s
             metadata, sort_keys=True, separators=(',', ':'),
         ).encode('utf-8')).hexdigest(),
     }
-    if guest_country is not None or player_colors is not None:
+    if guest_country is not None or player_colors is not None or ai_teammate is not None:
         if player_count == 1 and guest_country:
             raise ValueError('Solo challenges cannot select a guest country.')
         if player_count == 2:
@@ -46,12 +62,18 @@ def challenge_context(game_root, name, country, player_count, difficulty, game_s
             fields['guest_country'] = guest_country
             settings['DisableGameSpeed'] = 'Yes'
         available = allowed_colors(metadata)
-        colors = list(available[:player_count]) if player_colors is None else player_colors
+        default_colors = [color for color in available
+                          if ai_teammate is None or color != ai_teammate['color']]
+        colors = default_colors[:player_count] if player_colors is None else player_colors
         if (not isinstance(colors, (tuple, list)) or len(colors) != player_count
                 or any(type(color) is not int or color not in available for color in colors)
                 or len(set(colors)) != player_count):
             raise ValueError('Choose distinct player colors allowed by this challenge.')
         fields['player_colors'] = list(colors)
+        if ai_teammate is not None:
+            if ai_teammate['color'] in colors:
+                raise ValueError('Choose distinct human and AI teammate colors.')
+            fields['ai_teammate'] = dict(ai_teammate)
     return config, fields
 
 
@@ -61,7 +83,7 @@ def identity_fields(context, difficulty):
             context['native_metadata_sha256'], difficulty]
     if 'player_colors' in context:
         fields.append({key: context[key] for key in (
-            'guest_country', 'player_colors', 'player_loadouts',
+            'guest_country', 'player_colors', 'player_loadouts', 'ai_teammate',
         ) if key in context})
     return fields
 
@@ -72,11 +94,11 @@ def destination(name, identity):
 
 
 def validate_context(game_root, manifest):
-    if manifest.get('schema') not in (6, 7) or manifest.get('marker') != CHALLENGE_MARKER:
+    if manifest.get('schema') not in (6, 7, 8) or manifest.get('marker') != CHALLENGE_MARKER:
         raise ValueError('Unsupported challenge manifest. Update both launchers.')
     name = str(manifest.get('source_key', '')).rsplit('\\', 1)[-1]
     selections = {}
-    if manifest['schema'] == 7:
+    if manifest['schema'] in (7, 8):
         if 'player_colors' not in manifest or (manifest.get('player_count') == 2
                 and not manifest.get('guest_country')):
             raise ValueError('Challenge player houses or colors are missing.')
@@ -84,6 +106,12 @@ def validate_context(game_root, manifest):
                       'player_colors': manifest['player_colors']}
     elif any(key in manifest for key in ('guest_country', 'player_colors', 'player_loadouts')):
         raise ValueError('Legacy challenge manifests cannot select separate player houses.')
+    if manifest['schema'] == 8:
+        if not isinstance(manifest.get('ai_teammate'), dict):
+            raise ValueError('Local AI challenge settings are missing.')
+        selections['ai_teammate'] = manifest['ai_teammate']
+    elif 'ai_teammate' in manifest:
+        raise ValueError('Legacy challenge manifests cannot select an AI teammate.')
     config, fields = challenge_context(
         game_root, name, manifest.get('player_country'),
         manifest.get('player_count'), manifest.get('difficulty', 1),

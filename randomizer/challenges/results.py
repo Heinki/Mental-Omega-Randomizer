@@ -5,7 +5,9 @@ installed logs contain full all-Winner score tables with SawCompletion=0.
 Therefore a local Winner alone is insufficient. Victory requires complete
 human statistics and a Loser record for every registered enemy. Paired wins
 also require native completion and a winning teammate, including when the
-other human was defeated earlier.
+other human was defeated earlier. Local AI games keep the ally in Multi2;
+their complete, ordered native score table separates that Computer row from
+the authored enemies rather than counting every Computer as an enemy.
 """
 
 from __future__ import annotations
@@ -26,16 +28,20 @@ class ChallengeResultParser:
     """Incremental native records scoped to a fresh, actually started map."""
 
     def __init__(self, local_name: str, enemy_count: int, *,
-                 scenario: str = 'spawnmap.ini', expected_human_names=()):
+                 scenario: str = 'spawnmap.ini', expected_human_names=(),
+                 ai_teammate: bool = False):
         names = tuple(dict.fromkeys((local_name, *expected_human_names)))
         if any(not str(name).strip() or str(name).casefold() == 'computer' for name in names):
             raise ValueError('Challenge human names must be distinct from the Computer AI name.')
         if type(enemy_count) is not int or not 1 <= enemy_count <= 6:
             raise ValueError('Challenge result detection needs 1–6 registered enemies.')
+        if type(ai_teammate) is not bool or (ai_teammate and len(names) != 1):
+            raise ValueError('An AI teammate requires exactly one local human player.')
         self.local_name = local_name
         self.enemy_count = enemy_count
         self.scenario = str(scenario).replace('\\', '/').rsplit('/', 1)[-1].casefold()
         self.expected_human_names = names
+        self.ai_teammate = ai_teammate
         self.result = None
         self.reset()
 
@@ -104,6 +110,9 @@ class ChallengeResultParser:
             self._resolve()
 
     def _resolve(self) -> None:
+        if self.ai_teammate:
+            self._resolve_ai_team()
+            return
         humans = {name: [] for name in self.expected_human_names}
         enemies = []
         for name, result in self._records:
@@ -136,16 +145,37 @@ class ChallengeResultParser:
                 and all(result == 'Loser' for result in enemies)):
             self.result = 'victory'
 
+    def _resolve_ai_team(self) -> None:
+        # Native score records follow MultiN house order, not score order.
+        # GameLobbyBase.WriteSpawnIni assigns AI entries after the humans;
+        # LogFileStatisticsParser resolves duplicate Computer names in that
+        # same order. Our local spawn contract reserves Multi1 for the human,
+        # Multi2 for its AI ally, then Multi3+ for every authored enemy.
+        # https://github.com/CnCNet/xna-cncnet-client/blob/master/ClientCore/Statistics/GameParsers/LogFileStatisticsParser.cs
+        if (len(self._records) != self.enemy_count + 2
+                or self._records[0][0] != self.local_name
+                or any(name != 'Computer' for name, _result in self._records[1:])):
+            return
+        local, ally, *enemies = (result for _name, result in self._records)
+        if (self._saw_completion and not self._quit_without_completion
+                and all(result == 'Loser' for result in enemies)
+                and 'Winner' in (local, ally)):
+            self.result = 'victory'
+        elif local == ally == 'Loser':
+            self.result = 'defeat'
+
 
 class ChallengeResultWatch:
     """Snapshot before spawning, then poll only newly written debug-log bytes."""
 
     def __init__(self, path: Path, local_name: str, enemy_count: int, *,
-                 scenario: str = 'spawnmap.ini', expected_human_names=()):
+                 scenario: str = 'spawnmap.ini', expected_human_names=(),
+                 ai_teammate: bool = False):
         self.path = Path(path)
         self.parser = ChallengeResultParser(
             local_name, enemy_count, scenario=scenario,
             expected_human_names=expected_human_names,
+            ai_teammate=ai_teammate,
         )
         self.error = ''
         self.result = None

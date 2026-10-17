@@ -357,6 +357,21 @@ class LauncherApp(
         self.challenge_country_var = tk.StringVar(value=str(
             self.config.get('challenge_country') or 'UnitedStates'
         ))
+        self.challenge_ai_enabled_var = tk.BooleanVar(
+            value=bool(self.config.get('challenge_ai_enabled', False))
+        )
+        self.challenge_ai_country_var = tk.StringVar(value=str(
+            self.config.get('challenge_ai_country') or 'USSR'
+        ))
+        self.challenge_ai_color_var = tk.StringVar(value=str(
+            self.config.get('challenge_ai_color') or 'Red'
+        ))
+        self.challenge_ai_difficulty_var = tk.StringVar(value=valid_choice(
+            self.config.get('challenge_ai_difficulty'), ('Easy', 'Normal', 'Hard'), 'Normal',
+        ))
+        self.challenge_solo_color_var = tk.StringVar(value=str(
+            self.config.get('challenge_solo_color') or 'Teal'
+        ))
         self.coop_player_count_var = self.challenge_player_count_var
         self.coop_mode_var = tk.BooleanVar(value=(
             category == 'coop' or (category == 'challenge'
