@@ -12,9 +12,10 @@ campaign maps directly, tracks objective and victory checks, locks unearned
 technology, and applies earned access and buffs through generated mission
 copies.
 
-This custom fork also supports native Mental Omega challenges with randomized
-rewards, an optional local AI teammate, and synchronized two-human play. See
-[challenge setup and agent handoff](CHALLENGES_TESTING.md) for build 1.44.4.
+Native Mental Omega challenges support randomized rewards, an optional local AI
+teammate, and synchronized two-human play. Choose houses and colors before each
+match without resetting the run. See the [challenge guide](CHALLENGES_TESTING.md)
+for setup, supported modes, and validation limits in version 1.44.5.
 
 ## Disclaimer
 
@@ -57,7 +58,16 @@ Expected result is `True`. Matching checksums confirm that the file matches the 
 
 ### Supported game content
 
-The stable solo Randomizer has been developed and tested against the **original Mental Omega campaign maps only**. An [experimental co-op prototype](COOP_PROTOTYPE.md) is disabled by a developer-only source constant in release builds and still needs full live-game tests. Custom maps, funmaps, map packs, modified rules, and installations containing other gameplay modifiers are not currently supported. Those additions can redefine houses, units, weapons, triggers, and mission scripts in ways the Randomizer has not audited; combining them may produce incorrect rewards or progress, buff the wrong force, fail to launch, or affect the original content.
+The Randomizer targets the **original Mental Omega campaign, cooperative, and
+22 stock challenge maps**. Cooperative play and challenges are available in the
+launcher, with additional live gameplay verification still needed. See the
+[connection guide](COOP_CONNECTION_GUIDE.md) and
+[challenge guide](CHALLENGES_TESTING.md) for their supported flows. Custom maps,
+funmaps, map packs, modified rules, and installations containing other gameplay
+modifiers are not currently supported. Those additions can redefine houses,
+units, weapons, triggers, and mission scripts in ways the Randomizer has not
+audited; combining them may produce incorrect rewards or progress, buff the
+wrong force, fail to launch, or affect the original content.
 
 Using a dedicated clean installation is the same isolation normally recommended for map packs and other game modifiers. It protects the player's usual installation and gives bug reports a known baseline. The launcher does **not** modify Mental Omega's MIX archives: it reads the installed archives, creates a generated loose copy of the selected campaign map, and stores its own configuration, saves, logs, and caches in `RandomizerLauncherData`.
 
@@ -87,6 +97,8 @@ Each document has one purpose so the same behavior is not maintained in several 
 |---|---|---|
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Contributors | Feature-to-file map, runtime flow, module boundaries, change rules, validation |
 | [README_RANDOMIZER.md](README_RANDOMIZER.md) | Players and future Archipelago option authors | Complete settings tables, reward display, game modes, seed lifecycle, and user-facing limitations |
+| [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md) | Challenge players and maintainers | Solo/AI/two-human setup, per-match choices, rewards, native results, build and validation scope |
+| [COOP_CONNECTION_GUIDE.md](COOP_CONNECTION_GUIDE.md) | Multiplayer players | Private-network setup, host/guest flow, firewall helper, and connection diagnostics |
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
 | [configs/README.md](configs/README.md) | Maintainers and advanced users | Editable static mission, faction, reward, unit, and UI JSON configuration |
 | [Archipelago/SETUP.md](Archipelago/SETUP.md) | Multiworld players and hosts | APWorld installation, YAML generation, connection, and artifact verification |
@@ -189,7 +201,7 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `randomizer/rewards/` | Reward definitions, display, planning, roster, and weapon data |
 | `randomizer/ui/` | Widget layout, settings panels, themes, tooltips, Grid rendering, and cameos |
 | `configs/` | Editable static policy/templates plus ignored `player/` runtime YAML |
-| `tools/` | Maintainer-only data generation |
+| `tools/` | Maintainer audits/data generation and optional private-network setup helper |
 | `build_exe.ps1` | PyInstaller build workflow |
 | `build_exe_wine.sh` | Windows PyInstaller build through Wine on Linux |
 | `build_all_linux.sh` | Combined Linux launcher + APWorld build workflow |
@@ -214,7 +226,7 @@ When reporting a reproducible problem, include those files together with the mis
 
 ## Current Status
 
-The standalone flow supports seed generation, campaign filtering, Standard and experimental Chaos rewards, direct spawned mission launch, objective/victory marker detection on many maps, tech locking/unlocking, positive buffs, allied-helper buffs, optional building-free offensive/secondary superweapons and aid powers, and installed in-game unit and superpower cameos.
+The standalone flow supports seed generation, campaign filtering, Standard and experimental Chaos rewards, direct spawned mission launch, objective/victory marker detection on many maps, tech locking/unlocking, positive buffs, allied-helper buffs, optional building-free offensive/secondary superweapons and aid powers, and installed in-game unit and superpower cameos. Native challenges add optional AI or synchronized two-human play, per-match houses/colors, host-owned multiplayer speed, and native team-result detection; challenge Shop and Archipelago seeds are excluded.
 
 The principal remaining limitations are mission-specific objective matching, a few allied-house safety cases, validation of game speed on more maps, and engine limits around isolating direct unit/weapon buffs when enemies use the same global type. See [Technical Findings: Known Limits](TECHNICAL_FINDINGS.md#known-limits) for the maintained list.
 

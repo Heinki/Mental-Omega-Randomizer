@@ -1,91 +1,88 @@
-MENTAL OMEGA CHALLENGES 1.44.4
+MENTAL OMEGA CHALLENGES 1.44.5
 
-Custom source: https://github.com/ckbk456/Mental-Omega-Randomizer
-Use the custom repository branch/commit supplied with the handoff. The upstream
-repository is https://github.com/Heinki/Mental-Omega-Randomizer; upstream alone
-does not include this custom challenge build. The receiving agent should build
-the supplied custom source and place the EXE beside gamemd.exe and Syringe.exe
-in a complete Mental Omega 3.3.6 installation. Use a normal writable folder.
-No Python installation is needed to run the finished EXE. Keep Khang's saves,
-connection details, pairing codes and logs out of the brother's fresh profile.
+Use a clean, writable Mental Omega 3.3.6 installation. Put the matching launcher
+beside MentalOmegaClient.exe, gamemd.exe, and Syringe.exe. The source repository
+does not include game data. A packaged EXE needs no separate Python installation.
+Build and detailed feature instructions are in CHALLENGES_TESTING.md.
 
-CONNECT THE TWO PCS
-Both PCs need the same working private network. If your existing co-op connection
-already works over Tailscale or ZeroTier, keep using it. With ZeroTier, join the
-same network on both PCs and authorize both members in ZeroTier Central. Use the
-host's Managed IPv4 from that network. With Tailscale, use the host's Tailscale
-IPv4. The launcher does not install or join either network automatically.
-Official ZeroTier download: https://www.zerotier.com/download/
-Official setup guide: https://docs.zerotier.com/quickstart/
+LOCAL PLAY
+1. In Settings choose mission category challenge and Human players: 1.
+2. Generate or continue a Classic, Mission List, or Grid run. All 22 challenges
+   are available regardless of house. For every map in a new run, use
+   All Campaigns, Mission goal 22, and no challenge exclusions.
+3. Select an open challenge. Under Local challenge players choose Your house
+   and Your color. Optionally enable Play with an AI teammate, then choose
+   the AI house, a different color, and Easy/Normal/Hard difficulty.
+4. Choose Game speed and click Launch Selected Mission. Local play needs no
+   network or Archipelago connection. AI difficulty is independent of the
+   enemies' challenge difficulty. The AI uses its native army.
 
-FIRST-TIME FIREWALL SETUP (both PCs)
-Connect the private network first. The receiving agent should copy
-tools/Setup-Private-Network.ps1 beside the built EXE and run it with -Elevate,
-then approve the Windows administrator prompt. A setup report is saved beside
-the game if it fails. The equivalent command in an administrator PowerShell is:
+Houses, colors, AI difficulty, and speed can change between matches without a
+new seed. The launcher preserves selections and checks native map restrictions
+before launch. Allies may share a house but need distinct permitted colors.
+Challenges support Standard, Chaos, and Randomizer Arsenal rewards; challenge
+Shop Mode and Archipelago seeds are not supported.
 
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Setup-Private-Network.ps1
+TWO HUMAN PLAYERS
+Both PCs need matching game files, the same launcher version, and an authorized
+private ZeroTier or Tailscale connection. Preserve an existing working route.
+The launcher does not install, create, or join either network automatically.
+See COOP_CONNECTION_GUIDE.md for network setup and troubleshooting.
 
-The helper allows only this folder's launcher TCP 19420/19421 and game UDP 1234
-on detected ZeroTier/Tailscale adapters. It does not open router ports. If you
-move this folder, run the helper again from the new location.
+Host:
+1. Select challenge and Human players: 2; generate or continue a shared run.
+2. Open Co-op Connection, choose Host, enter a player name, and connect.
+3. Share the host's private-network IPv4 and displayed pairing code privately.
+4. Choose a challenge house/color in the dialog and wait for the guest to join.
+5. Select and launch an open challenge. The host controls progression,
+   challenge difficulty, and pinned game speed for both players.
 
-KHANG / HOST
-1. Open the updated Mental Omega Challenges launcher. In Settings choose
-   Mission category: challenge and Players: 2.
-2. Paired seeds can include all 22 challenges. Set Mission goal to 22 for every
-   map in a new run; existing saves keep their original maps and progress.
-   Generate with your desired rewards. Set Game speed before launching;
-   the host's speed is used for both players.
-3. Open Co-op Connection, choose Host, enter a unique player name and pick your
-   own challenge house/country and color in that dialog. Click Connect.
-4. Share your private-network IPv4 and the displayed pairing code with your
-   brother. Keep the launcher open and wait for him to join.
-5. After both players' choices appear, choose a compatible challenge and launch.
-   The launcher prepares and starts the same game on both PCs.
+Guest:
+1. Select challenge and Human players: 2, then open Co-op Connection.
+2. Choose Join and a different player name. Enter the host's private IPv4
+   without a subnet suffix, port, URL, or network ID, plus the pairing code.
+3. Connect and choose a house/color in the dialog. The host supplies the run
+   and shared rewards. Both humans must avoid the native AI name Computer.
+4. Keep both launchers open and connected during play and result synchronization.
 
-BROTHER / JOIN
-1. Open the prepared custom launcher. Choose challenge, 2 players, name Brother
-   and role Join. Use the same 1.44.4 version as the host.
-2. Open Co-op Connection and choose Join. Set a unique player name and pick your
-   own challenge house/country and color in that dialog. Enter Khang's private
-   IPv4 (four numbers only, without /24 or a port) and his pairing code. Connect.
-3. Your host supplies the run, rewards, difficulty and game speed. Wait for him
-   to launch. Keep the launcher open during play so results can synchronize.
+FIRST-TIME FIREWALL SETUP (Windows)
+Use the supplied Setup-Private-Network.ps1 beside the EXE. When building from
+source, copy it from tools/ into the game folder. Connect the private network,
+then preview the helper from that folder:
 
-PLAY A LOCAL CHALLENGE WITH AN AI
-Choose challenge and Human players: 1. Generate or load your solo run and select
-an open map. In Local challenge players, choose Your house/color and enable Play with
-an AI teammate. Select the AI house, a different color and Easy/Normal/Hard
-difficulty. Click Launch Selected Mission; no co-op connection or Archipelago
-is needed. The AI uses its native army in the second allied start. AI difficulty
-is separate from challenge enemy difficulty. Changing these launch choices
-does not require a new seed. All 22 challenges stay in the catalogue; launch
-checks both houses and colors against the chosen map and explains any conflict.
-Houses remain selected when switching maps. Ordinary co-op still needs two humans.
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Setup-Private-Network.ps1 -WhatIf
 
-PLAYING
-Each player uses their chosen house and color. Some challenge maps reserve
-houses/colors for their enemy; choose another offered option if one is rejected.
-The host controls mission launches and shared progression. Completed challenges
-and randomized rewards synchronize through the lobby. Keep both launchers open
-after leaving the game so they can finish receiving results.
+Apply with -Elevate and approve the Windows administrator prompt. The helper
+allows this folder's launcher TCP 19420/19421 and gamemd UDP 1234 only on detected
+ZeroTier/Tailscale adapters. It does not configure router forwarding. Run it
+again after moving the game folder or changing the launcher filename. Use
+-Launcher MentalOmegaRandomizer.exe to select a specific EXE when needed.
 
-IF CONNECTION FAILS
-Check that both PCs are online and authorized on the same private network, then
-check the host IPv4 and pairing code. While the host is listening, the guest can
-check the actual lobby port in PowerShell:
+RESULTS AND UPDATES
+Wins require verified native results; unfinished quits, crashes, and ambiguous
+results award nothing. The surviving ally can finish after a human is eliminated.
+A completed challenge grants its saved rewards once. Some score tables flush
+only after leaving the native results screen.
+
+Close the old launcher before replacing it or updating its shortcut. Preserve
+RandomizerLauncherData, which contains the player's saves and settings. One-human
+and two-human challenge saves are separate. Do not include private profiles,
+connection histories, or pairing codes when distributing the launcher.
+
+DIAGNOSTICS
+Run MentalOmegaRandomizer.exe --self-check from the game directory. Confirm
+RandomizerLauncherData/self_check.json shows app_version 1.44.5 and passed true.
+For connection failures, check the private route, address, pairing code, and
+firewall. While the host is listening, the guest can check the lobby port:
 
   Test-NetConnection -ComputerName HOST_PRIVATE_IPV4 -Port 19420
 
-If TcpTestSucceeded is False, fix the private-network route or game firewall
-rules. If the lobby works but game preparation fails, check TCP 19421. If both
-games start but cannot connect, check UDP 1234 on both PCs. Use the same package
-version and avoid changing the game assets independently.
+If the lobby connects but preparation fails, check TCP 19421. If both games
+start but cannot connect, check UDP 1234 on both PCs. Retain the connection log,
+RandomizerLauncherData/logs/launcher.log, and native debug/debug.log when reporting
+problems, after reviewing private data. Installed-map and loopback audits do not
+replace live verification of AI games, two-PC rewards, native abilities, and quit
+recovery. See CHALLENGES_TESTING.md for validation scope and known limits.
 
-Close and reopen the launcher to install a later version. Your progress is in
-RandomizerLauncherData beside the EXE. Keep that folder private when re-sharing.
-
-Custom challenge build based on Heinki's Mental Omega Randomizer:
-https://github.com/Heinki/Mental-Omega-Randomizer
-Randomizer license: LICENSE-Randomizer.txt. Engine notices are included beside it.
+Project source: https://github.com/Heinki/Mental-Omega-Randomizer
+Randomizer license: LICENSE. Engine notices remain in the game installation.
