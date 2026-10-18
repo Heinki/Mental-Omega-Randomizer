@@ -674,7 +674,7 @@ def _build_right_panel(self, main_frame):
     shop_loadout_search.grid(
         row=13, column=0, columnspan=2, sticky='ew', pady=(0, 6)
     )
-    ttk.Label(shop_loadout_search, text='Search permanent units:').pack(
+    ttk.Label(shop_loadout_search, text='Search permanent units and powers:').pack(
         side='left'
     )
     ttk.Entry(
@@ -689,8 +689,8 @@ def _build_right_panel(self, main_frame):
         ('selected', 'name', 'tier', 'source'),
         (
             ('selected', 'Next Run', 90),
-            ('name', 'Starting Extra Unit', 330),
-            ('tier', 'Tier', 80),
+            ('name', 'Starting Unit or Power', 330),
+            ('tier', 'Tier / Type', 80),
             ('source', 'Source', 130),
         ),
         selectmode='none',
@@ -698,7 +698,7 @@ def _build_right_panel(self, main_frame):
         cameos=True,
     )
     self.shop_loadout_select_tree.bind(
-        '<ButtonRelease-1>', self.toggle_shop_setup_unit
+        '<ButtonRelease-1>', self.toggle_shop_setup_reward
     )
 
     self.shop_permanent_units_without_buffs_check = ttk.Checkbutton(

@@ -1879,8 +1879,13 @@ class ShopController(ShopPolishController):
         finally:
             self.finish_progression_launch_context()
 
-    def _selected_loadout_reward_ids(self):
-        return tuple(sorted(self._shop_pending_loadout_selection))
+    def _selected_loadout_reward_ids(self, reward_type=ShopRewardType.UNIT_ACCESS):
+        """Separate unit slots from the freely selectable permanent powers."""
+        return tuple(sorted(
+            reward_id for reward_id in self._shop_pending_loadout_selection
+            for entry in [self._shop_entry_by_reward_id.get(reward_id)]
+            if entry is not None and entry.reward_type is reward_type
+        ))
 
     def _maximum_shop_loadout(self):
         definition = self.shop_config.permanent_upgrades['expanded_loadout']
@@ -1934,7 +1939,7 @@ class ShopController(ShopPolishController):
                 parent=self,
             )
 
-    def toggle_shop_setup_unit(self, event):
+    def toggle_shop_setup_reward(self, event):
         if (
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
@@ -1946,7 +1951,12 @@ class ShopController(ShopPolishController):
             return 'break'
         if reward_id in self._shop_pending_loadout_selection:
             self._shop_pending_loadout_selection.remove(reward_id)
-        elif len(self._shop_pending_loadout_selection) >= self._maximum_shop_loadout():
+        elif (
+            self._shop_entry_by_reward_id[reward_id].reward_type
+            is ShopRewardType.UNIT_ACCESS
+            and len(self._selected_loadout_reward_ids())
+            >= self._maximum_shop_loadout()
+        ):
             self._set_shop_message(
                 f'Starting loadout allows up to '
                 f'{self._maximum_shop_loadout()} extra units.',
@@ -2040,6 +2050,8 @@ class ShopController(ShopPolishController):
                 parent=self,
             )
             return
+        if not self._shop_loadout_selection_initialized:
+            self._refresh_shop_setup()
         if not self.config.get('shop_mode_rules_acknowledged', False):
             if not messagebox.askokcancel(
                 'Shop Mode Rules',
@@ -2126,7 +2138,10 @@ class ShopController(ShopPolishController):
             if reward_id in permanent_entitlements
         )
         permanent_powers = tuple(
-            reward_id for reward_id in self.shop_profile.permanent_power_unlocks
+            reward_id for reward_id in self._selected_loadout_reward_ids(
+                ShopRewardType.POWER_ACCESS
+            )
+            if reward_id in self.shop_profile.permanent_power_unlocks
             for entry in [self._shop_entry_by_reward_id.get(reward_id)]
             if entry is not None and self._shop_entry_available(entry)
         )
@@ -2501,7 +2516,14 @@ class ShopController(ShopPolishController):
         maximum_loadout = self._maximum_shop_loadout()
         ap_identity, ap_reward_ids = self.archipelago_shop_context()
         local_owned = set(self.shop_profile.permanent_unit_unlocks)
-        ap_owned = set(ap_unit_entitlement_ids(ap_reward_ids))
+        local_owned.update(self.shop_profile.permanent_power_unlocks)
+        ap_owned = {
+            reward_id for reward_id in ap_automatic_reward_ids(ap_reward_ids)
+            for entry in [self._shop_entry_by_reward_id.get(reward_id)]
+            if entry is not None and entry.reward_type in {
+                ShopRewardType.UNIT_ACCESS, ShopRewardType.POWER_ACCESS,
+            }
+        }
         active_run = bool(
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
@@ -2527,14 +2549,16 @@ class ShopController(ShopPolishController):
         owned = local_owned | (ap_owned if active_run else set())
         if active_run:
             selected = set(self.shop_run.selected_permanent_units)
+            selected.update(self.shop_run.permanent_power_unlocks_snapshot)
             self._shop_pending_loadout_selection = (
                 selected & eligible_local_owned
             )
         else:
             if not self._shop_loadout_selection_initialized:
-                self._shop_pending_loadout_selection = set(
-                    self.shop_run.selected_permanent_units
-                    if self.shop_run is not None else ()
+                self._shop_pending_loadout_selection = (
+                    set(self.shop_run.selected_permanent_units)
+                    | set(self.shop_run.permanent_power_unlocks_snapshot)
+                    if self.shop_run is not None else set()
                 ) & eligible_local_owned
                 self._shop_loadout_selection_initialized = True
             self._shop_pending_loadout_selection.intersection_update(
@@ -2545,13 +2569,15 @@ class ShopController(ShopPolishController):
             selected.update(ap_owned)
         self.shop_loadout_help_var.set(
             f'Click a row to toggle it for next run. Selected '
-            f'{len(self._shop_pending_loadout_selection)} / {maximum_loadout}. '
+            f'{len(self._selected_loadout_reward_ids())} / {maximum_loadout} '
+            f'extra units, '
+            f'{len(self._selected_loadout_reward_ids(ShopRewardType.POWER_ACCESS))} '
+            'permanent powers. Powers use no unit slots. '
             + (
-                'Received AP units are automatic and use no slots. '
+                'Received AP units and powers are automatic and use no slots. '
                 if ap_identity else ''
             )
-            + 'Mandatory Tier 1 starters and owned permanent powers are '
-            'automatic; powers use no unit slots.'
+            + 'Mandatory Tier 1 starters are automatic.'
             + (
                 ' Low-Tech War blocks Tier 3 loadout entries.'
                 if 'low_tech_war' in loadout_modifiers else ''
@@ -2560,7 +2586,9 @@ class ShopController(ShopPolishController):
         )
         entries = sorted(
             (
-                entry for entry in self._shop_unit_entries
+                entry for entry in (
+                    *self._shop_unit_entries, *self._shop_power_entries
+                )
                 if entry.reward_id in owned
                 and self._shop_entry_available(entry)
                 and (
@@ -2599,7 +2627,11 @@ class ShopController(ShopPolishController):
                         if entry.reward_id in selected else '—'
                     ),
                     entry.reward_id,
-                    (entry.tier or '').replace('_', ' ').title(),
+                    (
+                        'Power'
+                        if entry.reward_type is ShopRewardType.POWER_ACCESS
+                        else (entry.tier or '').replace('_', ' ').title()
+                    ),
                     (
                         'Permanent + AP'
                         if entry.reward_id in local_owned
@@ -3202,7 +3234,8 @@ class ShopController(ShopPolishController):
         values = self.shop_permanent_power_tree.item(selected[0], 'values')
         self.shop_permanent_power_info_var.set(
             f'{values[0]} • {values[1]} • {values[2]} • {values[3]}. '
-            'Permanent powers activate automatically in future Shop runs.'
+            'Choose powers for your next run in Shop Setup; '
+            'they use no unit slots.'
         )
         self.shop_permanent_power_button.configure(
             text=f'Buy {values[0]} — {values[3]}' if allowed else values[2]
