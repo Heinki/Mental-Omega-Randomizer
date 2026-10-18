@@ -2,6 +2,29 @@
 
 This document is the authoritative implementation reference. Player-facing option semantics are intentionally kept in [README_RANDOMIZER.md](README_RANDOMIZER.md#settings-reference) so they are not duplicated here.
 
+## Reported BiA cloning and Archipelago release regressions
+
+Brothers in Arms (`SARMS`) deliberately changes native `NAFIST` to
+`Factory=<none>` with `CloningFacility=yes`. The reward vehicle's linked
+deployed clone previously inherited those mission-only fields, duplicating
+vehicles instead of operating as a War Factory. Earned vehicle deployment
+buildings now restore their installed factory/cloning role after mission
+overrides; native `NAFIST` and `NAFISTB` retain their authored behavior. The
+reported-regression campaign audit covers Standard/Chaos, Mission List/Shop,
+and access-only/buffed reward deployment.
+
+Archipelago `checked_locations` proves that rewards were sent, not that a
+mission was played. Server collect/release commands produce the same check
+updates as gameplay; full release also checks private local-victory markers.
+Reconciliation now preserves local `unlocked` checks as gameplay evidence and
+marks externally checked reward groups `released`. It never derives mission
+victory from server locations, including checkpoint copies of those locations.
+Released missions remain playable and cannot trigger `CLIENT_GOAL` or Grid
+auto-release. Matching room/team/slot reconnects preserve local gameplay flags.
+Received-item processing and server location acknowledgments remain separate.
+Server history alone cannot recover gameplay progress on a fresh installation
+or reliably repair victories already inferred by an older launcher.
+
 ## Runtime Architecture
 
 | Component | Responsibility |

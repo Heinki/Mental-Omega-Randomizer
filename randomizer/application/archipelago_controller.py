@@ -1167,7 +1167,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         return previous_ap
 
     def _apply_archipelago_server_locations(self, location_ids, replace=False):
-        """Project server-checked locations into mission/Grid completion state."""
+        """Track sent rewards without treating server checks as gameplay wins."""
         apply_started = time.perf_counter()
         slot_data = getattr(self, '_archipelago_slot_data', {})
         allowed = getattr(self, '_archipelago_allowed_locations', frozenset())
@@ -1206,10 +1206,11 @@ class ArchipelagoController(ArchipelagoYamlController):
         for code in self.state.get('mission_order', []):
             checks = mission_checks.get(code, [])
             mission_started = False
-            local_victory = getattr(
-                self, '_archipelago_local_victories', {}
-            ).get(str(code).upper(), {}).get('location')
-            mission_complete = bool(local_victory and local_victory in known)
+            mission_complete = any(
+                isinstance(check, dict)
+                and check.get('id') == 'victory' and check.get('unlocked')
+                for check in checks
+            )
             for check in checks:
                 if not isinstance(check, dict):
                     continue
@@ -1218,11 +1219,20 @@ class ArchipelagoController(ArchipelagoYamlController):
                     self, '_archipelago_location_groups', {}
                 ).get((str(code).upper(), check_id), ()))
                 before = bool(check.get('unlocked'))
-                unlocked = before or mission_complete or bool(
-                    mapped and mapped.issubset(known)
-                    and (check_id != 'victory' or not local_victory)
+                before_released = bool(check.get('released'))
+                # Release and collect commands send ordinary checked_locations,
+                # including private victory markers on a full-world release.
+                # Only persisted local gameplay checks prove completion. Keep
+                # externally sent rewards separate so the mission stays
+                # playable and cannot report CLIENT_GOAL or release the grid.
+                unlocked = before or mission_complete
+                released = bool(
+                    not unlocked and mapped and mapped.issubset(known)
                 )
-                check.pop('released', None)
+                if released:
+                    check['released'] = True
+                else:
+                    check.pop('released', None)
                 if unlocked:
                     check['unlocked'] = True
                     mission_started = True
@@ -1230,7 +1240,10 @@ class ArchipelagoController(ArchipelagoYamlController):
                         mission_complete = True
                 else:
                     check.pop('unlocked', None)
-                changed = changed or before != unlocked
+                changed = (
+                    changed or before != unlocked
+                    or before_released != released
+                )
             if mission_started and not mission_complete:
                 started.append(code)
             if mission_complete:
@@ -1898,7 +1911,7 @@ class ArchipelagoController(ArchipelagoYamlController):
                 self._archipelago_location_ids(code, check.get('id', ''))
             )
             total += count
-            if check.get('unlocked'):
+            if check.get('unlocked') or check.get('released'):
                 done += count
         return done, total
 

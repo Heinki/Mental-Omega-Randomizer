@@ -475,6 +475,40 @@ def check_hover_infantry_restrictions(missions, launcher_type):
                   'retain infantry category; aircraft/naval/vehicle bans preserved', flush=True)
 
 
+def check_brothers_in_arms(missions, launcher_type):
+    """Audit reward deployment against SARMS's native vehicle-cloning factory."""
+    mission = missions['SARMS']
+    original = all_section_value_maps_preserve(
+        (ROOT / 'extracted_maps' / mission['scenario'].upper()).read_text().splitlines()
+    )
+    for progression, mode, buffed in product(
+        ('Mission List', 'Shop Mode'), ('Standard', 'Chaos'), (False, True),
+    ):
+        launcher = launcher_type(
+            progression_mode=progression, reward_mode=mode, enemy_effect_ids=[],
+        )
+        launcher.player_rewards = [REWARD_BY_NAME["Stalin's Fist Access"]]
+        if buffed:
+            launcher.player_rewards.extend([
+                REWARD_BY_NAME["Stalin's Fist Reinforced Frames I"],
+                REWARD_BY_NAME["Stalin's Fist Stealth Systems I"],
+            ])
+        sections = generate(launcher, mission)
+        mobile = sections['MORPMWF']
+        deployed_id = mobile['DeploysInto']
+        assert deployed_id != 'NAFIST' and deployed_id in sections
+        deployed = sections[deployed_id]
+        assert deployed['Factory'] == 'UnitType'
+        assert deployed.get('CloningFacility', 'no').lower() == 'no'
+        assert deployed.get('Cloning', 'no').lower() == 'no'
+        assert deployed['UndeploysInto'] == 'MORPMWF'
+        for identity in ('NAFIST', 'NAFISTB'):
+            for key in ('Factory', 'CloningFacility', 'UndeploysInto'):
+                assert sections[identity].get(key) == original[identity].get(key)
+        print(f'Brothers in Arms: {progression}, {mode}, buffed={buffed}; '
+              'reward factory and native cloner preserved', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -487,6 +521,7 @@ def main():
     check_tempest(missions, _AuditLauncher)
     check_crane_and_hunter_seeker(missions, _AuditLauncher)
     check_hover_infantry_restrictions(missions, _AuditLauncher)
+    check_brothers_in_arms(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

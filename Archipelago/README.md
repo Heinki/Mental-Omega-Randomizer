@@ -139,9 +139,10 @@ store counts and paths, proxy host (never credentials), and verification code
 for a support report.
 
 When validation succeeds, the connection status turns green. The launcher
-then loads the seed, mission list, Grid, unlocks, completed checks, and
-progression from the Archipelago server. Gameplay settings controlled by the
-room become read-only while connected.
+then loads the seed, mission list, Grid layout, unlocks, and sent reward checks
+from the Archipelago server. Mission completion and Grid progression retain
+your locally saved gameplay checks. Gameplay settings controlled by the room
+become read-only while connected.
 
 ## Play and report checks
 
@@ -155,9 +156,13 @@ Item messages identify who found the item, its recipient, source location, and
 game when the server provides that metadata. The chat field also accepts normal
 chat and server commands such as `!hint` and `!release`.
 
-In Grid Mode, the visible grid and mission availability come from the server.
-Completing checks refreshes progression and unlock information. Finishing the
-Grid goal follows the Grid completion option stored in the room's YAML.
+In Grid Mode, the layout comes from the server; mission availability follows
+your locally completed missions. Server release and collect commands send
+rewards without completing their missions or your goal. Those missions remain
+playable, even if all their rewards were sent already. Keep your launcher save
+when moving computers: server check history cannot distinguish gameplay from
+released rewards. Finishing the Grid goal follows the Grid completion option
+stored in the room's YAML.
 
 In Shop Mode, use the launcher's **Shop Mode** workspace. Its mission pool and
 run length come from the signed room. Every victory reports the next private
