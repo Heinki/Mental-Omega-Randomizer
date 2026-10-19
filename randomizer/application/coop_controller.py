@@ -130,6 +130,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             self.coop_mode_var.set(bool(self.config.get('coop_mode', False)))
             self.restore_mission_setup_from_config()
             return
+        self.initialize_challenge_defaults()
         enabled = bool(self.coop_mode_var.get())
         self.select_shop_repository()
         self.config['coop_mode'] = enabled

@@ -416,7 +416,10 @@ class StateController(GenerationSettings):
         unlimited_buildings = bool(self.unlimited_buildings_var.get())
         share_chaos_role_buffs = bool(self.share_chaos_role_buffs_var.get())
         buff_allied_helpers = bool(self.buff_allied_helpers_var.get())
-        failure_assistance = bool(self.failure_assistance_var.get())
+        failure_assistance = (
+            self.selected_mission_category() != 'challenge'
+            and bool(self.failure_assistance_var.get())
+        )
         include_buffs = bool(self.include_buff_rewards_var.get())
         include_superweapons = bool(self.include_superweapon_rewards_var.get())
         include_secondary_superweapons = bool(self.include_secondary_superweapon_rewards_var.get())
@@ -710,13 +713,18 @@ class StateController(GenerationSettings):
             if buff_types
         }
         self.config['generation']['buff_allied_helpers'] = bool(self.buff_allied_helpers_var.get())
-        self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
+        if self.selected_mission_category() != 'challenge':
+            self.config['generation']['failure_assistance'] = reward_settings['failure_assistance']
         self.config['generation'].pop('experimental_player_unit_clones', None)
         self.config['generation']['enabled_reward_types'] = reward_settings['enabled_reward_types']
         self.config['generation']['randomize_unit_access'] = reward_settings['randomize_unit_access']
         self.config['generation']['access_limits'] = reward_settings['access_limits']
-        self.config['generation']['start_with_tier_one_units'] = reward_settings['start_with_tier_one_units']
-        self.config['generation']['start_with_tier_one_defenses'] = reward_settings['start_with_tier_one_defenses']
+        starters = self.config.setdefault(
+            'challenge_starters' if self.selected_mission_category() == 'challenge'
+            else 'generation', {}
+        )
+        for key in ('start_with_tier_one_units', 'start_with_tier_one_defenses'):
+            starters[key] = reward_settings[key]
         self.config['generation']['starting_reward_count'] = reward_settings['starting_reward_count']
         self.config['generation']['starting_reward_types'] = reward_settings['starting_reward_types']
         self.config['generation']['starting_unlock_rewards'] = reward_settings['starting_unlock_rewards']
@@ -1017,6 +1025,8 @@ class StateController(GenerationSettings):
         }
         for key, variable in setting_vars.items():
             variable.set(bool(reward_settings[key]))
+        self.failure_assistance_var.set(bool(generation.get('failure_assistance', False)))
+        self._starter_settings_category = category
         self.starting_reward_count_var.set(str(reward_settings['starting_reward_count']))
         allowed_starting_types = set(reward_settings['starting_reward_types'])
         for definition in STARTING_REWARD_TYPE_DEFINITIONS:

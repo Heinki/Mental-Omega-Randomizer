@@ -119,6 +119,16 @@ class ArchipelagoYamlController:
         saved_archipelago = deepcopy(merged.get('archipelago', {}))
         for key, value in snapshot.items():
             merged[key] = deepcopy(value)
+        category = snapshot.get('mission_category') or (
+            'coop' if snapshot.get('coop_mode') else 'campaign'
+        )
+        if category not in {'campaign', 'coop'}:
+            raise ValueError('Archipelago does not support challenge runs.')
+        merged['mission_category'] = category
+        merged['coop_mode'] = category == 'coop'
+        merged.setdefault('generation', {})['unlimited_buildings'] = bool(
+            (snapshot.get('generation') or {}).get('unlimited_buildings', False)
+        )
         merged['archipelago'] = saved_archipelago
         self.apply_portable_settings(merged)
 

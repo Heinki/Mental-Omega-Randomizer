@@ -17,6 +17,13 @@ import random
 class GenerationSettings:
     def config_reward_settings(self):
         generation_config = self.config.get('generation', {})
+        challenge = self.config.get('mission_category') == 'challenge'
+        if challenge:
+            generation_config = dict(generation_config)
+            starters = self.config.get('challenge_starters') or {}
+            for key in ('start_with_tier_one_units', 'start_with_tier_one_defenses'):
+                if key in starters:
+                    generation_config[key] = starters[key]
         arsenal_settings = normalize_arsenal_settings(
             generation_config.get('arsenal')
         )
@@ -67,7 +74,9 @@ class GenerationSettings:
         unlimited_buildings = bool(generation_config.get('unlimited_buildings', False))
         share_chaos_role_buffs = bool(generation_config.get('share_chaos_role_buffs', False))
         buff_allied_helpers = bool(generation_config.get('buff_allied_helpers', False))
-        failure_assistance = bool(generation_config.get('failure_assistance', False))
+        failure_assistance = not challenge and bool(
+            generation_config.get('failure_assistance', False)
+        )
         reward_weights = normalize_reward_weights(
             generation_config.get('reward_weights')
         )
@@ -193,6 +202,8 @@ class GenerationSettings:
             bool(self.config.get('generation', {}).get('buff_allied_helpers', False)),
         )
         settings.setdefault('failure_assistance', False)
+        if (self.state or {}).get('mission_category') == 'challenge':
+            settings['failure_assistance'] = False
         # Legacy seeds may contain experimental_player_unit_clones. Clone
         # isolation is mandatory now, so the stored flag is deliberately ignored.
         settings.pop('experimental_player_unit_clones', None)

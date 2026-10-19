@@ -36,6 +36,8 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
             self.config['coop_mode'] = count == 2
         if type(self.config.get('coop_mode', False)) is not bool:
             raise ValueError('launcher_settings.coop_mode must be a boolean.')
+        if category != 'challenge':
+            self.config['coop_mode'] = category == 'coop'
         self.state = {}
         self.missions = deepcopy(missions)
         self._mission_by_code = {mission['code']: mission for mission in self.missions}
@@ -71,7 +73,9 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
         missions = [
             mission for mission in self.missions
             if mission['code'].upper() not in excluded
-            and (campaign == CAMPAIGN_FILTERS[0] or normalize_faction(mission.get('side', '')) == campaign)
+            and (config['mission_category'] == 'challenge'
+                 or campaign == CAMPAIGN_FILTERS[0]
+                 or normalize_faction(mission.get('side', '')) == campaign)
         ]
         missions = filter_missions_by_build_settings(
             missions,

@@ -1,5 +1,7 @@
 """Advanced reward-pool controls and setting dependencies."""
 
+from randomizer.challenges.presentation import challenge_color_group
+
 from ._dependencies import (
     ARSENAL_MODE,
     ALWAYS_AVAILABLE_TECH_IDS,
@@ -696,7 +698,8 @@ class AdvancedSettingsController:
 
         campaign_missions = [
             mission for mission in self.missions
-            if selected_campaign == CAMPAIGN_FILTERS[0]
+            if self.selected_mission_category() == 'challenge'
+            or selected_campaign == CAMPAIGN_FILTERS[0]
             or normalize_faction(mission.get('side', '')) == selected_campaign
         ]
         visible_missions = filter_missions_by_build_settings(
@@ -713,7 +716,7 @@ class AdvancedSettingsController:
                 'missions',
                 mission.get('code'),
                 mission.get('title'),
-                mission.get('side'),
+                challenge_color_group(mission) or mission.get('side'),
                 mission.get('operation'),
                 mission.get('scenario'),
             )
@@ -728,7 +731,9 @@ class AdvancedSettingsController:
                 )
             mission_columns = self.advanced_pool_column_count('missions')
             for index, mission in enumerate(displayed_missions):
-                faction = normalize_faction(mission.get('side', ''))
+                faction = challenge_color_group(mission) or normalize_faction(
+                    mission.get('side', '')
+                )
                 self.draw_advanced_pool_card(
                     mission_frame,
                     index // mission_columns,
@@ -946,7 +951,10 @@ class AdvancedSettingsController:
             entries = [
                 {
                     'id': mission['code'].upper(),
-                    'faction': normalize_faction(mission.get('side', '')),
+                    'faction': challenge_color_group(mission) or normalize_faction(
+                        mission.get('side', '')
+                    ),
+                    'mission_category': mission.get('mission_category'),
                     'special': bool(mission.get('operation')),
                 }
                 for mission in filter_missions_by_build_settings(
@@ -1039,6 +1047,9 @@ class AdvancedSettingsController:
 
     def advanced_pool_entry_is_visible(self, entry):
         """Match the campaign/Arsenal scope already used by Advanced cards."""
+        if (self.selected_mission_category() == 'challenge'
+                and entry.get('mission_category') == 'challenge'):
+            return True
         selected_campaign = self.campaign_var.get()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         arsenal_factions = {
@@ -1423,7 +1434,7 @@ class AdvancedSettingsController:
             return
         filtered_count = len(self.filtered_missions_for_seed())
         self.campaign_label.configure(text=(
-            f'Challenge maps ({filtered_count})'
+            f'Reward faction ({filtered_count} challenge maps)'
             if self.selected_mission_category() == 'challenge'
             else f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
             else f'Campaign ({filtered_count})'
