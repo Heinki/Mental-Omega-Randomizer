@@ -1199,3 +1199,29 @@ checks the actual generated Dock lists and registered unloading-image
 references across all 97 missions in Standard and Chaos. Automatic return,
 repeated unloading, and clone/buff retention still need live gameplay
 confirmation using a freshly generated map; existing saves retain old rules.
+
+## Co-op native production gate (October 19, 2026)
+
+Co-op Shop and Grid maps transferred a hidden `MORPOriginalGate` building to
+each human slot and added it to native units' `Prerequisite.Negative` lists.
+The building inherited `DontScore=yes` from the shared production-gate builder.
+The installed engine's `HouseClass::RegisterGain` skips such buildings when
+updating `OwnedBuildingTypes1`. Ares checks that counter for
+[negative prerequisites](https://github.com/Ares-Developers/Ares/blob/master/src/Enum/Prerequisites.cpp).
+Ownership alone therefore did not hide native faction production.
+
+Co-op generation now sets only this gate's `DontScore=no`. It retains
+`Points=0`, `Insignificant=yes`, `KeepAlive=no`, invisibility and immunity.
+Authored native objects, AI production and private purchased clones retain
+their existing rules. Both co-op map markers advance so peers must regenerate
+matching maps instead of reusing an older generated identity.
+
+An isolated spawned Thunder God probe reproduced the counter failure: both
+player slots owned the gate but had a prerequisite count of zero. With the
+flag cleared, both counts became one; enemy and Neutral counts remained zero.
+The probe used one human and an AI in the second co-op slot. A two-computer
+ZeroTier session was not performed. A further probe using the final generated
+map successfully reinforced both slots with 30 native Conscripts each after
+the gates activated. Existing Shop and parity map audits now check the flag as
+well as the native negative prerequisites. Existing game saves retain their
+old rules and require a fresh mission launch.

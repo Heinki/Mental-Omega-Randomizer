@@ -19,6 +19,7 @@ from randomizer.coop.prototype import (
 )
 from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import section_value_map_preserve
+from randomizer.maps.production import PLAYER_ORIGINAL_PRODUCTION_GATE_ID
 from randomizer.rewards.catalogue import REWARD_POOL
 from randomizer.shop.modifiers import stage_production_restrictions
 from randomizer.shop.model import BuffPurchase, PurchaseRecord, RunStatus, ShopRun
@@ -66,10 +67,20 @@ def main():
         )
         assert manifest['schema'] == 5
         assert section(data, 'General')['Behind'] == 'none'
+        gate = section(data, PLAYER_ORIGINAL_PRODUCTION_GATE_ID)
+        # DontScore buildings are absent from the engine prerequisite counter.
+        assert gate['DontScore'] == 'no'
+        assert gate['Points'] == '0' and gate['KeepAlive'] == 'no'
+        for source in ('E1', 'E2', 'INIT', 'FV', 'HTNK', 'LTNK'):
+            assert PLAYER_ORIGINAL_PRODUCTION_GATE_ID in section(
+                data, source,
+            )['Prerequisite.Negative'].split(',')
         assert manifest['player_country'] != manifest['guest_country']
         assert rebuild_from_manifest(GAME_ROOT, manifest) == data
         for difficulty in MODES:
-            assert section(_mode_map(GAME_ROOT, manifest, difficulty), 'General')['Behind'] == 'none'
+            runtime = _mode_map(GAME_ROOT, manifest, difficulty)
+            assert section(runtime, 'General')['Behind'] == 'none'
+            assert section(runtime, PLAYER_ORIGINAL_PRODUCTION_GATE_ID)['DontScore'] == 'no'
         host_clone = section(data, 'MORHFV')
         guest_clone = section(data, 'MORGFV')
         guest_tank = section(data, 'MORGHTNK')

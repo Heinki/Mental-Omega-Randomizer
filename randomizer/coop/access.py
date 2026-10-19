@@ -86,7 +86,11 @@ def apply_coop_native_production_gate(lines, manifest):
         rules[source_id].pop('ForbiddenHouses', None)
     gate = rules[PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
     gate.update({'Owner': manifest['player_country'], 'RequiredHouses': 'none',
-                 'ForbiddenHouses': 'none'})
+                 'ForbiddenHouses': 'none', 'DontScore': 'no'})
+    # RegisterGain skips DontScore buildings in OwnedBuildingTypes1, which
+    # Ares checks for Prerequisite.Negative. Both players can own the gate
+    # without it blocking anything unless this flag is cleared. Points=0,
+    # Insignificant=yes and KeepAlive=no still keep it out of mission goals.
     merge_ini_section_values(lines, rules)
     _append_grid_power_providers(
         lines, manifest['player_country'], [], [PLAYER_ORIGINAL_PRODUCTION_GATE_ID],
