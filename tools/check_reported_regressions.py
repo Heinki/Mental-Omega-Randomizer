@@ -509,6 +509,63 @@ def check_brothers_in_arms(missions, launcher_type):
               'reward factory and native cloner preserved', flush=True)
 
 
+def check_captured_factory_access(missions, launcher_type):
+    """Audit the reported maps with locked and purchased portable units."""
+    from randomizer.maps.production import PLAYER_ORIGINAL_PRODUCTION_GATE_ID
+    from randomizer.ui.cameos import installed_rules_registry
+
+    _powers, installed = installed_rules_registry(synchronous=True)
+    armor_types = {str(key).lower() for key in installed['ArmorTypes']}
+    for code, progression, mode, purchased in product(
+        ('AZEROSIGNAL', 'FBEYOND'), ('Grid Mode', 'Mission List', 'Shop Mode'),
+        ('Standard', 'Chaos'), (False, True),
+    ):
+        launcher = launcher_type(
+            progression_mode=progression, reward_mode=mode, enemy_effect_ids=[],
+        )
+        launcher.player_rewards = [
+            REWARD_BY_NAME[name] for name in (
+                'Cavalier Medium Tank Access', 'Archon AMC Access',
+                'Psychic Boss Brute Access', 'Gene Boss Brute Access',
+                'Virus Boss Brute Access',
+            )
+        ] if purchased else []
+        sections = generate(launcher, missions[code])
+        gate = sections[PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
+        assert gate['DontScore'] == 'no', (code, progression, mode)
+        player = sections['Basic']['Player']
+        assert any(
+            value.split(',')[:2] == [player, PLAYER_ORIGINAL_PRODUCTION_GATE_ID]
+            for value in sections['Structures'].values()
+        ), (code, progression, mode, 'missing player gate')
+        for source in ('AMC', 'MTNK'):
+            assert PLAYER_ORIGINAL_PRODUCTION_GATE_ID in (
+                sections[source].get('Prerequisite.Negative', '').split(',')
+            ), (code, progression, mode, purchased, source)
+        if purchased:
+            for source in ('BRUTM', 'BRUTS', 'BRUTV'):
+                clone = sections['MORP' + source]
+                assert clone['Armor'] == 'brute' and 'brute' in armor_types
+        # Locked opening units stay native and retain runtime house access.
+        # Purchased clones can still take part in the usual placement rewrite.
+        original = all_section_value_maps_preserve(
+            (ROOT / 'extracted_maps' / missions[code]['scenario'].upper())
+            .read_text().splitlines()
+        )
+        if code == 'AZEROSIGNAL' and not purchased:
+            for key, value in original['Units'].items():
+                if value.split(',')[1] in {'AMC', 'MTNK'}:
+                    assert sections['Units'][key] == value
+            for source in ('AMC', 'MTNK'):
+                authored = {**installed[source], **original.get(source, {})}
+                authored_forbidden = authored.get('ForbiddenHouses')
+                assert sections[source].get(
+                    'ForbiddenHouses', authored_forbidden,
+                ) == authored_forbidden
+        print(f'{code}: {mode} {progression}, purchased={purchased}; '
+              'captured-factory gate and portable Brute armor valid', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -522,6 +579,7 @@ def main():
     check_crane_and_hunter_seeker(missions, _AuditLauncher)
     check_hover_infantry_restrictions(missions, _AuditLauncher)
     check_brothers_in_arms(missions, _AuditLauncher)
+    check_captured_factory_access(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

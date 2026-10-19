@@ -28,6 +28,9 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Boss Brute armor aliases exist only in Time Capsule's map-local rules.
+    # Older editable rosters survive upgrades; correct their portable copies.
+    **{source_id: {'Armor': 'brute'} for source_id in ('BRUTM', 'BRUTS', 'BRUTV')},
     # Keep sealed Opus payload behavior on preserved pre-upgrade rosters too.
     'STNK': dict(TEMPLATE_VALUE_OVERRIDES['STNK']),
     # Gear Change is an independent action-granted reward. Older packaged
@@ -1054,6 +1057,11 @@ def validate_special_roster_contracts():
             'BRUTE2 remains in player roster/rewards '
             f'(reward_count={boomer_reward_count})'
         )
+
+    for source_id in ('BRUTM', 'BRUTS', 'BRUTV'):
+        _key, armor = _case_insensitive_item(templates.get(source_id, {}), 'Armor')
+        if str(armor or '').lower() != 'brute':
+            errors.append(f'{source_id} portable armor must be brute, got {armor!r}')
 
     commando = templates.get('CBRIS', {})
     _key, theater_gate = _case_insensitive_item(

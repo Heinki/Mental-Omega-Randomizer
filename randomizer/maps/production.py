@@ -46,13 +46,15 @@ def original_player_production_gate_rules(
     campaign Autocreate teams obey both fields, so leaving randomizer locks on
     the shared original silently disables AI paradrops and air attacks. The
     exact-House hidden negative prerequisite keeps the human on isolated
-    clones without changing AI production eligibility. Build-only story
-    sources instead use ``FactoryOwners.Forbidden`` because their native
-    identity must remain creatable by authored player TeamTypes. Native types
-    used only by non-player TaskForces keep both fields authored: either
+    clones without changing AI production eligibility. Placed native player
+    units keep their authored house filters and use this production gate too:
+    factory-owner filters alone admit units through captured factories.
+    Other build-only story sources use ``FactoryOwners.Forbidden`` because
+    their native identity must remain creatable by authored player TeamTypes.
+    Native types used only by non-player TaskForces keep both fields authored: either
     generated gate can prevent campaign AI teams from forming. If the same
     native identity is already player-owned, its authored house filter wins
-    and only player-original factories are excluded.
+    and the hidden production prerequisite blocks additional native builds.
     """
     native_source_ids = {
         str(source_id).upper()
@@ -89,11 +91,13 @@ def original_player_production_gate_rules(
     factory_owner_only_ids.difference_update(native_taskforce_ids)
     # A native identity already owned by the player cannot carry a matching
     # ForbiddenHouses value: the engine leaves that object visible but unable
-    # to receive commands. Keep its runtime ownership valid and isolate only
-    # production from factories originally owned by the player.
-    factory_owner_only_ids.update(player_runtime_ids)
+    # to receive commands. Keep its runtime ownership valid; the hidden
+    # prerequisite blocks production even after an enemy factory is captured.
+    # Explicit story/DropPod exclusions remain authoritative.
+    factory_owner_only_ids.difference_update(player_runtime_ids)
+    preserve_forbidden_house_ids.update(player_runtime_ids)
     negative_gate_exclusions.update(factory_owner_only_ids)
-    negative_gate_exclusions.update(native_taskforce_ids)
+    negative_gate_exclusions.update(native_taskforce_ids - player_runtime_ids)
     player_forbidden_houses = unique_in_order(
         str(house).strip()
         for house in (player_forbidden_houses or ())
@@ -151,7 +155,10 @@ def original_player_production_gate_rules(
         'LegalTarget': 'no',
         'Insignificant': 'yes',
         'ImmuneToEMP': 'yes',
-        'DontScore': 'yes',
+        # RegisterGain skips DontScore buildings in OwnedBuildingTypes1.
+        # Ares reads that counter for negative prerequisites, so an owned
+        # DontScore gate never blocks production, including captured factories.
+        'DontScore': 'no',
         'KeepAlive': 'no',
         'BaseNormal': 'no',
         'AIBaseNormal': 'no',
@@ -279,7 +286,12 @@ def validate_native_taskforce_production_filters(
     player_forbidden_houses=(),
     player_factory_forbidden_houses=(),
 ):
-    """Reject player-isolation gates on authored non-player team payloads."""
+    """Preserve native-only AI payload filters; allow the shared player gate.
+
+    A type also present in the player's native army cannot use a player house
+    exclusion. Its hidden gate belongs only to controlled player Houses, so
+    AI Houses can still build it with their authored levels and limits.
+    """
     installed_by_lower = {
         str(section).lower(): values
         for section, values in (installed_sections or {}).items()
@@ -322,7 +334,7 @@ def validate_native_taskforce_production_filters(
         generated_negative = comma_items(effective_value(
             source_id, generated, 'Prerequisite.Negative'
         ))
-        if any(
+        if source_id not in player_runtime_ids and any(
             value.upper() == PLAYER_ORIGINAL_PRODUCTION_GATE_ID.upper()
             for value in generated_negative
         ):

@@ -111,14 +111,17 @@ TEMPLATE_VALUE_OVERRIDES = {
     'BRUTM': {
         'Image': 'BRUTM',
         'Cost': '5000',
+        'Armor': 'brute',
     },
     'BRUTS': {
         'Image': 'BRUTS',
         'Cost': '5000',
+        'Armor': 'brute',
     },
     'BRUTV': {
         'Image': 'BRUTV',
         'Cost': '5000',
+        'Armor': 'brute',
     },
     'CAPU': {
         'Name': 'Heavy Trooper',

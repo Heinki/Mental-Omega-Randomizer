@@ -1225,3 +1225,47 @@ map successfully reinforced both slots with 30 native Conscripts each after
 the gates activated. Existing Shop and parity map audits now check the flag as
 well as the native negative prerequisites. Existing game saves retain their
 old rules and require a fresh mission launch.
+
+
+## Captured campaign factories, Shop roster cameos, and boss Brute armor (October 19, 2026)
+
+The supplied `bugreports/AZEROSIGNAL.map` has native AMC and MTNK on the
+player's opening army. Their production restrictions contain only
+`FactoryOwners.Forbidden=Europeans,MORPLAYER,Pacific`; a captured Soviet
+factory therefore restores unearned native Archon and Cavalier production.
+`FBEYOND.map` instead contains negative prerequisites, but both supplied maps
+set the hidden `MORPOriginalGate` building to `DontScore=yes`. As with the co-op
+counter failure above, that flag prevents the gate from contributing to the
+counter Ares uses for negative prerequisites.
+
+The shared gate builder now emits `DontScore=no`. Native player runtime types
+retain their authored house filters and receive the hidden production
+prerequisite rather than automatically falling back to a factory-owner-only
+restriction. This keeps placed native units controllable and blocks additional
+native production after capture. Explicit story/DropPod exclusions remain in
+place, and native-only non-player TaskForces retain authored production filters.
+The reported-map audit regenerates both missions across Standard/Chaos and
+Grid/Mission List/Shop, with locked and purchased access. Existing saves keep
+their old rules; launch a fresh mission with the rebuilt launcher.
+
+Validation passed all 24 reported-map mode/access combinations, the full
+97-map campaign audit and its focused MCV/AI/mission checks, the reported
+regression audit, and source plus packaged installation self-checks. An
+isolated live Zero Signal launch transferred a Soviet War Factory to the
+player. Engine `CanBuild` returned 0 for both AMC and MTNK with gate count 1;
+temporarily clearing that counter returned 1 for both. Restoring the counter
+still allowed the authored Archon/Spy reinforcement team to arrive, increasing
+the player's native AMC count from six to seven.
+
+The supplied screenshot shows missing Hijackers, Instant Shelter, and Ultra
+Miner power cameos in the current Shop roster. The roster filtered power rows
+out before calling the existing combined unit/power cameo resolver. Those rows
+now participate in image loading. Missing unit images also schedule the same
+asynchronous extraction retry already used for powers.
+
+Portable Psychic, Gene, and Virus Boss Brutes inherited `bruts`/`brutv` armor
+from Time Capsule, where those names are defined by the mission. They are not
+registered in the installed global rules. Portable templates and generation
+policy now use installed `brute` armor; mandatory runtime overrides repair old
+editable roster files preserved across upgrades. Authored Time Capsule native
+unit and armor definitions stay unchanged.

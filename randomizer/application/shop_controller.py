@@ -1250,6 +1250,9 @@ class ShopController(ShopPolishController):
             except Exception:
                 self._shop_cameo_images[cache_key] = None
         if any(
+            not self._shop_cameo_images.get(f'unit:{unit_id}')
+            for unit_id in unit_ids
+        ) or any(
             not self._shop_cameo_images.get(f'power:{power_id}')
             for power_id in power_ids
         ):
@@ -2439,7 +2442,7 @@ class ShopController(ShopPolishController):
                 visible.append(record)
         cameo_images = self._prepare_shop_unit_cameos(
             record['item'] for record in visible
-            if not record['is_power'] and not record['archipelago_item']
+            if not record['archipelago_item']
         )
         unit_buff_targets = {entry.target_id for entry in self._shop_buff_entries}
         power_buff_targets = {
