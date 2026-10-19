@@ -633,7 +633,10 @@ class SeedController(SeedGeneration):
 
     def filtered_missions_for_seed(self):
         selected = self.campaign_var.get()
-        missions = list(self.missions) if selected == CAMPAIGN_FILTERS[0] else [
+        missions = list(self.missions) if (
+            self.selected_mission_category() == 'challenge'
+            or selected == CAMPAIGN_FILTERS[0]
+        ) else [
             mission
             for mission in self.missions
             if normalize_faction(mission.get('side', '')) == selected

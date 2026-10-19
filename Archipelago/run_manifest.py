@@ -38,6 +38,7 @@ MANIFEST_SCHEMA_VERSION = 1
 GAMEPLAY_CONFIG_KEYS = (
     "seed",
     "coop_mode",
+    "mission_category",
     "campaign_filter",
     "mission_goal",
     "progression_mode",
@@ -76,6 +77,7 @@ PLAYER_GENERATION_KEYS = {
     "include_special_buildings",
     "include_special_rewards",
     "unlimited_hero_units",
+    "unlimited_buildings",
     "share_chaos_role_buffs",
     "buff_allied_helpers",
     "failure_assistance",
@@ -328,6 +330,7 @@ def _launcher_snapshot_for_state(state, config):
     return {
         "seed": str(state.get("seed") or ""),
         "coop_mode": bool(state.get("coop_mode", False)),
+        "mission_category": "coop" if state.get("coop_mode") else "campaign",
         "campaign_filter": str(state.get("campaign_filter") or ""),
         "mission_goal": int(state.get("mission_goal") or 1),
         "progression_mode": str(state.get("progression_mode") or "Classic"),

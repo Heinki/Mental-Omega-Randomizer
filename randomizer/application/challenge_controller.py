@@ -231,22 +231,36 @@ class ChallengeController:
             self.restore_mission_setup_from_config()
             return
         self.sync_mission_transport_mode()
-        self.initialize_challenge_defaults()
         self.on_coop_mode_changed()
 
     def initialize_challenge_defaults(self):
-        """Give the first challenge seed a usable production roster."""
-        if (self.selected_mission_category() != 'challenge'
-                or self.config.get('challenge_defaults_initialized')):
+        """Restore category-specific Tier 1 starter preferences."""
+        category = self.selected_mission_category()
+        previous = getattr(self, '_starter_settings_category', None)
+        if previous == category:
             return
-        generation = self.config.setdefault('generation', {})
-        for key, variable in (
-                ('start_with_tier_one_units', self.start_with_tier_one_units_var),
-                ('start_with_tier_one_defenses', self.start_with_tier_one_defenses_var)):
-            generation[key] = True
-            variable.set(True)
-        self.config['challenge_defaults_initialized'] = True
-        save_config(self.config)
+        variables = {
+            'start_with_tier_one_units': self.start_with_tier_one_units_var,
+            'start_with_tier_one_defenses': self.start_with_tier_one_defenses_var,
+        }
+        if previous is not None:
+            destination = self.config.setdefault(
+                'challenge_starters' if previous == 'challenge' else 'generation', {}
+            )
+            destination.update({
+                key: bool(variable.get()) for key, variable in variables.items()
+            })
+        source = self.config.setdefault(
+            'challenge_starters' if category == 'challenge' else 'generation', {}
+        )
+        legacy = (
+            self.config.get('generation', {})
+            if category == 'challenge' and self.config.get('challenge_defaults_initialized')
+            else {}
+        )
+        for key, variable in variables.items():
+            variable.set(bool(source.setdefault(key, legacy.get(key, category == 'challenge'))))
+        self._starter_settings_category = category
 
     def on_challenge_country_selected(self, event=None):
         if self.challenge_local_options_locked():
@@ -302,7 +316,20 @@ class ChallengeController:
                 text = ('All 22 challenges are available regardless of house. Change your house '
                         'and the optional AI teammate for each map; your seed and progress '
                         'stay the same. Launch reports any restricted houses or conflicting colors.')
-            availability.set(text)
+            availability.set(text + ' Reward faction limits rewards, not challenge maps.')
+        assistance = getattr(self, 'failure_assistance_check', None)
+        if assistance is not None:
+            assistance.configure(
+                state='disabled' if challenge or self.gameplay_settings_locked() else 'normal'
+            )
+        description = getattr(self, 'assistance_description_label', None)
+        if description is not None:
+            description.grid_remove() if challenge else description.grid()
+        if assistance is not None:
+            assistance.configure(text=(
+                'Retry assistance is unavailable for challenges'
+                if challenge else 'Strengthen failed missions on retry'
+            ))
         for prefix in ('', 'shop_'):
             for suffix in ('challenge_country_combo', 'challenge_country_label'):
                 widget = getattr(self, prefix + suffix, None)

@@ -12,6 +12,14 @@ def generate_manifest(settings, seed):
     from ._vendor.randomizer.generation.service import RunGenerator
     from ._vendor.Archipelago.run_manifest import build_run_manifest, gameplay_config_snapshot
 
+    settings = dict(settings)
+    category = settings.get('mission_category') or (
+        'coop' if settings.get('coop_mode') else 'campaign'
+    )
+    if category not in {'campaign', 'coop'}:
+        raise ValueError('Archipelago supports campaign and co-op mission categories only.')
+    settings['mission_category'] = category
+    settings['coop_mode'] = category == 'coop'
     filename = ('generation_coop_missions.json' if settings.get('coop_mode')
                 else 'generation_missions.json')
     missions = json.loads(files(__package__).joinpath(filename).read_text(encoding='utf-8'))
