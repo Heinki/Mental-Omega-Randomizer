@@ -939,6 +939,27 @@ def build_player_clone_sections(
                 continue
             _remove_case_insensitive(clone_source_values, key)
             clone_source_values[key] = value
+        if (
+            identity_target.get('runtime_transform')
+            and identity_target.get('category') == 'defenses'
+            and linked_peer_ids.intersection(buildable_ids)
+            and installed_unit
+        ):
+            # Reward vehicles must deploy into their installed production
+            # building. SARMS repurposes native NAFIST as a vehicle cloner;
+            # copying that mission identity made the earned Stalin's Fist
+            # clone units instead of acting as a War Factory. Preserve the
+            # native story building and its scripts, but restore the reward
+            # form's factory role, including absent/default cloning flags.
+            installed_values = installed_sections[installed_unit]
+            for key in (
+                'Factory', 'Cloning', 'CloningFacility',
+                'ConstructionYard', 'WeaponsFactory',
+            ):
+                _remove_case_insensitive(clone_source_values, key)
+                value = _value_case_insensitive(installed_values, key)
+                if value is not None:
+                    clone_source_values[key] = value
         if target_unit_id in ENGINEER_UNIT_IDS:
             # Mission-only Engineer variants (Space Engineer, cached Chrono
             # Engineer, one-hit objective actors) must remain on their native

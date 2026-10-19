@@ -78,6 +78,7 @@ def check_standard_access():
             assert PLAYER_ORIGINAL_PRODUCTION_GATE_ID in section(
                 data, source,
             )['Prerequisite.Negative'].split(',')
+        assert section(data, PLAYER_ORIGINAL_PRODUCTION_GATE_ID)['DontScore'] == 'no'
         structures = section(data, 'Structures')
         tags = section(data, 'Tags')
         actions = section(data, 'Actions')

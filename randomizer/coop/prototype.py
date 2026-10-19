@@ -43,8 +43,8 @@ from randomizer.shop.mission_modifiers import shop_enemy_scaling_entries
 from randomizer.ui.cameos import installed_rules_registry
 
 
-PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V9'
-SHOP_MARKER = 'MOR_COOP_SHOP_V3'
+PROTOTYPE_MARKER = 'MOR_COOP_PROTOTYPE_V10'
+SHOP_MARKER = 'MOR_COOP_SHOP_V4'
 SUPPORTED_PROGRESSION = {'Classic', 'Grid Mode', 'Mission List'}
 SIDE_COUNTRIES = (
     'UnitedStates', 'Europeans', 'Pacific',
