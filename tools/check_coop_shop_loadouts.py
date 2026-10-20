@@ -22,7 +22,8 @@ from randomizer.maps.ini import section_value_map_preserve
 from randomizer.maps.production import PLAYER_ORIGINAL_PRODUCTION_GATE_ID
 from randomizer.rewards.catalogue import REWARD_POOL
 from randomizer.shop.modifiers import stage_production_restrictions
-from randomizer.shop.model import BuffPurchase, PurchaseRecord, RunStatus, ShopRun
+from randomizer.shop.model import BuffPurchase, PurchaseRecord, RunStatus, ShopProfile, ShopRun
+from randomizer.ui.cameos import installed_rules_registry
 
 
 def section(data, name):
@@ -30,6 +31,7 @@ def section(data, name):
 
 
 def main():
+    _, installed = installed_rules_registry(synchronous=True)
     health_reward = next(
         item['name'] for item in REWARD_POOL
         if item.get('unit') == 'FV' and item.get('buff_type') == 'health'
@@ -58,6 +60,14 @@ def main():
     assert shop_unit_loadout(restricted_run)['production_restrictions'] == sorted(
         stage_production_restrictions(restricted_run)
     )
+    personal_run = replace(
+        host_run, modifiers=('glass_cannon', 'overclocked_factories', 'support_doctrine'),
+    )
+    personal = shop_unit_loadout(
+        personal_run, ShopProfile(permanent_upgrades={'global_production_speed': 2}),
+    )
+    personal['power_reward_ids'] = ['Airborne Power']
+    ordinary = {**host, 'power_reward_ids': ['Airborne Power']}
 
     missions = discover_coop_missions(GAME_ROOT)
     assert len(missions) == 36
@@ -113,6 +123,40 @@ def main():
         assert section(host_spawn, 'Other1')['Side'] == str(guest_index)
         assert section(guest_spawn, 'Settings')['Side'] == str(guest_index)
         assert section(guest_spawn, 'Other1')['Side'] == str(host_index)
+
+        # Audit generated maps with different personal tradeoffs, including
+        # both players buying the same power. Native actors remain authored.
+        tuned_manifest, tuned = build_shop_manifest(
+            GAME_ROOT, 'COOP-SHOP-MODIFIERS', mission['coop_name'], personal,
+            {**guest, 'power_reward_ids': ['Airborne Power']},
+        )
+        _, baseline = build_shop_manifest(
+            GAME_ROOT, 'COOP-SHOP-MODIFIERS', mission['coop_name'], ordinary,
+            {**guest, 'power_reward_ids': ['Airborne Power']},
+        )
+        tuned_clone = section(tuned, 'MORHFV')
+        base_clone = section(baseline, 'MORHFV')
+        assert int(tuned_clone['Strength']) == round(int(base_clone['Strength']) * 0.8)
+        assert int(tuned_clone['Cost']) == round(int(base_clone['Cost']) * 1.2)
+        assert abs(float(tuned_clone['BuildTimeMultiplier'])
+                   - float(base_clone.get('BuildTimeMultiplier', 1)) * 0.75) < 0.000001
+        assert section(tuned, 'MORGFV') == section(baseline, 'MORGFV')
+        assert section(tuned, 'FV') == section(baseline, 'FV')
+        base_weapon = dict(installed.get(base_clone['Primary'], {}))
+        base_weapon.update(section(baseline, base_clone['Primary']))
+        tuned_weapon = section(tuned, tuned_clone['Primary'])
+        assert int(tuned_weapon['Damage']) == round(float(base_weapon['Damage']) * 1.25)
+        assert section(tuned, base_clone['Primary']) == section(baseline, base_clone['Primary'])
+        def aid_recharge(map_data, country):
+            return next(float(values['RechargeTime'])
+                        for power in section(map_data, 'SuperWeaponTypes').values()
+                        if (values := section(map_data, power)).get('SW.RequiredHouses') == country
+                        and values.get('Type', '').lower() == 'amerparadrop')
+        for country, factor in ((tuned_manifest['player_country'], 0.7),
+                                (tuned_manifest['guest_country'], 1.0)):
+            assert abs(aid_recharge(tuned, country)
+                       - aid_recharge(baseline, country) * factor) < 0.000001
+        assert rebuild_from_manifest(GAME_ROOT, tuned_manifest) == tuned
 
     restricted_host = {**host, 'production_restrictions': ['vehicles']}
     restricted_manifest, restricted_map = build_shop_manifest(
@@ -206,7 +250,8 @@ def main():
             pass
         else:
             raise AssertionError('Modified guest country was accepted.')
-    print('Shop private clones and sides on 36 maps; reversible install; Grid shared clone unchanged')
+    print('Shop private clones, sides, production/combat/aid modifiers on 36 maps; '
+          'reversible install; Grid shared clone unchanged')
 
 
 if __name__ == '__main__':

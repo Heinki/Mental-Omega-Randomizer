@@ -162,7 +162,8 @@ class ChallengeController:
         return result
 
     def refresh_challenge_local_controls(self):
-        local = self.challenges_available() and not self.coop_mode_var.get()
+        local = (self.challenges_available() and not self.coop_mode_var.get()
+                 and any(is_challenge(mission) for mission in getattr(self, 'missions', ())))
         frames = [getattr(self, prefix + 'challenge_local_frame', None)
                   for prefix in ('', 'shop_')]
         for frame in frames:
@@ -370,25 +371,32 @@ class ChallengeController:
             country = self.challenge_country_var.get()
             label.set(COUNTRY_LABELS.get(country, country))
         count = sum(is_challenge(mission) for mission in getattr(self, 'missions', ()))
+        available = (self.progression_mode_var.get() != 'Shop Mode'
+                     and not self.archipelago_run_active() and count > 0)
         availability = getattr(self, 'challenge_availability_var', None)
         if availability is not None:
             text = ('Solo gets an AI helper; Co-op uses two players.\n'
                     'Map house/color restrictions apply.')
-            if self.progression_mode_var.get() == 'Shop Mode' or self.archipelago_run_active():
-                text = 'Challenges are unavailable in Shop Mode and Archipelago.'
             if challenge:
                 text = ('Saved challenge-only run. Toggle Co-op to switch mission pools.\n'
                         'Map house/color restrictions apply.')
-            availability.set(text)
+            availability.set(text if available and self.challenges_available() else '')
         for prefix in ('', 'shop_'):
+            if not available:
+                for field in getattr(self, prefix + 'challenge_fields', ()):
+                    field.grid_remove()
+            label = getattr(self, prefix + 'challenge_availability_label', None)
+            if label is not None:
+                label.grid() if available and self.challenges_available() else label.grid_remove()
             widget = getattr(self, prefix + 'include_challenge_missions_check', None)
             if widget is not None:
-                supported = (not challenge and self.progression_mode_var.get() != 'Shop Mode'
-                             and not self.gameplay_settings_locked() and not self.coop_guest_connected())
+                visible = available and not challenge and not self.coop_guest_connected()
+                supported = visible and not self.gameplay_settings_locked()
                 widget.configure(
                     text=f'Include challenge maps ({count} installed)',
                     state='normal' if supported else 'disabled',
                 )
+                widget.grid() if visible else widget.grid_remove()
         assistance = getattr(self, 'failure_assistance_check', None)
         if assistance is not None:
             assistance.configure(

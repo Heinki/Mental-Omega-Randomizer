@@ -88,7 +88,8 @@ def _remove_building_cap(values: dict) -> None:
 def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
                        country: str | None = None, access_ids=None,
                        buff_counts=None, clone_scope: str = '',
-                       production_restrictions=(), building_ids=()) -> None:
+                       production_restrictions=(), building_ids=(),
+                       shop_settings=None) -> None:
     """Add shared clones or one country's isolated Shop/challenge roster.
 
     Native map objects and AI TaskForces keep their original IDs. Shop uses
@@ -407,6 +408,7 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         changes[clone_id] = values
         register('BuildingTypes', clone_id)
         building_clones[source_id] = clone_id
+        handled[source_id] = {'clone_id': clone_id}
     preserve_native_building_abilities(
         changes, building_clones, installed, map_sections,
         country, clone_scope, register,
@@ -416,6 +418,12 @@ def apply_coop_rewards(lines: list[str], manifest: dict, family: str, *,
         changes, templates, clone_ids, installed, map_sections,
         country, clone_scope, register,
     )
+    if shop_settings:
+        from randomizer.coop.shop_modifiers import apply_personal_shop_modifiers
+        apply_personal_shop_modifiers(
+            changes, handled, installed, map_sections, shop_settings,
+            clone_scope, register,
+        )
     factory_categories = {
         'infantry': 'infantry', 'vehicles': 'vehicles',
         'aircraft': 'air', 'naval': 'naval',
@@ -660,7 +668,8 @@ def _append_grid_power_providers(lines, country, actions, buildings,
 
 def apply_coop_power_rewards(lines: list[str], country: str,
                              reward_ids: list[str], *, shared_grid=False,
-                             human_slots=(0, 1), countries=()) -> None:
+                             human_slots=(0, 1), countries=(),
+                             support_recharge=1.0) -> None:
     """Grant earned powers to private Shop or shared Grid/challenge humans."""
     if not reward_ids:
         return
@@ -668,6 +677,15 @@ def apply_coop_power_rewards(lines: list[str], country: str,
     player_countries = list(dict.fromkeys(countries or (country,)))
     installed_types, installed = installed_rules_registry(synchronous=True)
     rewards = apply_power_buffs_to_unlock_rewards(rewards, installed)
+    if support_recharge != 1.0:
+        rewards = [
+            {**reward, 'superweapon_recharge_multiplier': float(
+                reward.get('superweapon_recharge_multiplier', 1.0)
+            ) * support_recharge}
+            if reward.get('kind') == 'superweapon' and reward.get('power_category') == 'aid'
+            else reward
+            for reward in rewards
+        ]
     if any(reward.get('superweapon_sidebar_image') for reward in rewards):
         from randomizer.maps.assets import deploy_superweapon_sidebar_assets
         deploy_superweapon_sidebar_assets(rewards)

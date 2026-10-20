@@ -525,7 +525,7 @@ class WindowController:
         normal_names = (
             'settings_intro_label',
             'seed_settings_frame',
-            'map_colors_frame',
+            'mission_appearance_column',
             'mission_pool_frame',
             'reward_frame',
             'arsenal_frame',
@@ -539,6 +539,8 @@ class WindowController:
         if not all(hasattr(self, name) for name in required):
             return
         shop_mode = self.progression_mode_var.get() == 'Shop Mode'
+        self.coop_controls_frame.grid_remove() if shop_mode else self.coop_controls_frame.grid()
+        self.shop_coop_row.grid() if shop_mode else self.shop_coop_row.grid_remove()
         wide = int(width or 0) >= 840
         buff_columns = 1 if int(width or 0) < 600 else 2
         layout_signature = (shop_mode, wide, buff_columns)
@@ -575,8 +577,8 @@ class WindowController:
             self.seed_settings_frame.grid(
                 row=1, column=0, sticky='nsew', padx=(0, 4)
             )
-            self.map_colors_frame.grid(
-                row=1, column=1, sticky='nsew', padx=(4, 0)
+            self.mission_appearance_column.grid(
+                row=1, column=1, sticky='new', padx=(4, 0)
             )
             self.mission_pool_frame.grid(
                 row=2, column=0, sticky='nsew', padx=(0, 4), pady=(8, 0)

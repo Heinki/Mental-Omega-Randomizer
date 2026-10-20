@@ -677,13 +677,21 @@ class ShopPolishController(ShopArchipelagoController):
             )
             co_op_shop = self.coop_mode_var.get() and self.shop_mode_selected()
             if co_op_shop:
-                if run.mission_committed and selected:
+                if self.coop_guest_connected():
+                    lobby = getattr(self, '_coop_lobby', None)
+                    launch_text = 'Suggest Mission'
+                    launchable = bool(
+                        lobby and lobby.connected and enabled
+                        and not getattr(self, '_coop_busy', False)
+                    )
+                elif run.mission_committed and selected:
                     launch_text = 'Launch Co-op Mission'
                 elif run.selected_mission_code == offer.mission_code:
                     launch_text = 'Commit This Mission'
                 else:
                     launch_text = 'Select This Mission'
-                if (run.selected_mission_code == offer.mission_code
+                if (not self.coop_guest_connected()
+                        and run.selected_mission_code == offer.mission_code
                         and not getattr(self, '_coop_shop_ready', False)):
                     launchable = False
                     launch_text = 'Waiting for Guest…'
@@ -737,6 +745,7 @@ class ShopPolishController(ShopArchipelagoController):
             run is not None
             and run.status is RunStatus.ACTIVE
             and not self.shop_launch_active()
+            and not getattr(self, '_coop_lobby', None)
         )
         self.shop_give_up_button.configure(
             state='normal' if can_give_up else 'disabled'

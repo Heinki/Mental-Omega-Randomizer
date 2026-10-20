@@ -11,15 +11,14 @@ from tkinter import messagebox
 
 from .coop_connection_controller import CoopConnectionController
 from .challenge_lobby import ChallengeLobbyController
+from .coop_shop_controller import CoopShopController, CoopShopSetupRequired
 from randomizer.config.player import save_config
 from randomizer.coop import feature
 from randomizer.coop.direct import host_session, join_session
 from randomizer.coop.lobby import LOBBY_PORT, Lobby, decode_state, encode_state
 from randomizer.coop.archipelago import shared_run_state, shared_shop_inventory
 from randomizer.coop.prototype import build_manifest, shop_unit_loadout
-from randomizer.coop.shop_stage import (
-    apply_stage_snapshot, recovery_result_message, stage_digest, stage_snapshot,
-)
+from randomizer.coop.shop_stage import recovery_result_message, stage_snapshot
 from randomizer.coop.victory import victory_marker_name
 from randomizer.core.diagnostics import event as log_event
 from randomizer.core.game_shutdown import GameShutdownWatch
@@ -35,31 +34,14 @@ def normalize_network_mode(value):
     return 'zerotier'
 
 
-class CoopShopSetupRequired(ValueError):
-    """A paired guest must prepare its own Shop run before stage sync."""
-
-    def __init__(self, snapshot):
-        seed = snapshot.get('seed') if isinstance(snapshot, dict) else None
-        stage = snapshot.get('stage') if isinstance(snapshot, dict) else None
-        if (not isinstance(seed, str) or not seed or len(seed) > 128
-                or type(stage) is not int or stage < 1):
-            raise ValueError('Invalid host Shop stage snapshot.')
-        self.seed = seed
-        super().__init__(
-            f'Host is playing Shop Mode. Host seed: {seed}; stage: {stage}.\n\n'
-            'Select Shop Mode, enable co-op, and start your own Shop run with '
-            'the same seed before joining. Both runs must have the same stage '
-            'and completed missions. Your profile and purchases stay separate.'
-        )
-
-
-class CoopController(ChallengeLobbyController, CoopConnectionController):
+class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectionController):
     def refresh_coop_controls(self):
         if not hasattr(self, 'coop_connection_button'):
             return
         available = feature.COOP_FEATURE_ENABLED
-        for widget in (self.coop_controls_frame, self.shop_coop_row):
-            widget.grid()
+        shop = self.shop_mode_selected()
+        self.coop_controls_frame.grid_remove() if shop else self.coop_controls_frame.grid()
+        self.shop_coop_row.grid() if shop else self.shop_coop_row.grid_remove()
         category = self.selected_mission_category()
         challenge = self.challenge_mission()
         enabled = available and self.coop_mode_var.get()
@@ -82,15 +64,20 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         active_shop = bool(self.shop_mode_selected() and run is not None
                            and run.status is RunStatus.ACTIVE)
         locked = (bool(getattr(self, '_coop_lobby', None))
+                  or bool(getattr(self, '_coop_busy', False))
                   or active_game or self.shop_launch_active()
                   or self.gameplay_settings_locked())
+        for name in ('progression_mode_combo', 'shop_progression_mode_combo'):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.configure(state='disabled' if locked else 'readonly')
         for widget in (self.coop_mode_check, self.shop_coop_mode_check):
             widget.configure(state='disabled' if locked or not available else 'normal')
         for widget in (self.coop_player_count_combo, self.shop_coop_player_count_combo):
             widget.configure(state='disabled' if locked or active_shop else 'readonly')
         for prefix in ('', 'shop_'):
             for widget in getattr(self, prefix + 'challenge_fields', ()):
-                widget.grid() if category == 'challenge' else widget.grid_remove()
+                widget.grid() if category == 'challenge' and self.challenges_available() else widget.grid_remove()
             country = getattr(self, prefix + 'challenge_country_combo', None)
             if country is not None:
                 country.configure(state='disabled' if locked else 'readonly')
@@ -127,6 +114,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             return
         process = getattr(self, 'active_game_process', None)
         if (self.gameplay_settings_locked() or self.shop_launch_active()
+                or getattr(self, '_coop_busy', False)
                 or getattr(self, '_coop_lobby', None)
                 or (process is not None and process.poll() is None)):
             self.coop_mode_var.set(bool(self.config.get('coop_mode', False)))
@@ -180,6 +168,9 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             return
         if getattr(self, '_coop_lobby', None):
             return
+        if getattr(self, '_coop_busy', False):
+            messagebox.showwarning('Co-op', 'Wait for the current game preparation to finish.')
+            return
         session = getattr(self, '_archipelago_session', None)
         if role == 'guest' and session is not None and session.running:
             messagebox.showwarning(
@@ -192,6 +183,12 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             return
         if self.shop_mode_selected():
             run = self.shop_repository.load_run()
+            if run is not None and run.status is RunStatus.ACTIVE:
+                try:
+                    stage_snapshot(run)
+                except ValueError as exc:
+                    messagebox.showwarning('Co-op Shop', str(exc))
+                    return
             if run is None and role == 'host':
                 messagebox.showwarning('Co-op', 'Start a Shop run first.')
                 return
@@ -250,6 +247,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             })
         save_config(self.config)
         self._coop_lobby = lobby
+        self._coop_progression_mode = self.progression_mode_var.get()
         self._coop_peer_options = None
         self.ensure_challenge_player_options()
         self._coop_connection_error = False
@@ -273,6 +271,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         was_guest = lobby.role == 'guest'
         lobby.close()
         self._coop_lobby = None
+        self.__dict__.pop('_coop_progression_mode', None)
         self._coop_peer_options = None
         self._coop_shop_ready = False
         self._coop_shop_stage_digest = ''
@@ -297,6 +296,8 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             self._set_coop_status('Disconnected.')
         self._record_coop_log('Co-op lobby disconnected.')
         self.refresh_coop_controls()
+        if self.shop_mode_selected():
+            self.refresh_shop_mode()
 
     def _refresh_coop_state_views(self):
         for key in ('_active_reward_settings_cache', '_canonical_earned_rewards_cache',
@@ -306,6 +307,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         self.grid_render_signature = None
         self._coop_applying_selection = True
         try:
+            self.sync_shop_workspace()
             self.redraw_mission_tree()
             self.redraw_progression_views()
             self.refresh_progress_view()
@@ -409,19 +411,6 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         except (OSError, ValueError) as exc:
             self._record_coop_log('Co-op state sync failed: ' + str(exc), error=True)
 
-    def coop_publish_shop_stage(self):
-        lobby = getattr(self, '_coop_lobby', None)
-        if not (lobby and lobby.connected and lobby.role == 'host'
-                and self.coop_mode_var.get() and self.shop_mode_selected()):
-            return
-        try:
-            snapshot = stage_snapshot(self.shop_repository.load_run())
-            self._coop_shop_stage_digest = stage_digest(snapshot)
-            self._coop_shop_ready = False
-            lobby.send({'type': 'shop_stage', 'data': snapshot})
-        except (OSError, ValueError) as exc:
-            self._record_coop_log('Co-op Shop stage sync failed: ' + str(exc), error=True)
-
     def coop_broadcast_selection(self):
         lobby = getattr(self, '_coop_lobby', None)
         mission = self.selected_mission()
@@ -450,97 +439,13 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
 
     def _handle_coop_message(self, lobby, message):
         kind = message['type']
+        if self.receive_coop_shop_message(lobby, message):
+            return
         if kind == 'player_options':
             self.receive_challenge_player_options(lobby, message)
             return
         if lobby.role == 'guest':
-            if kind == 'shop_stage':
-                if not self.coop_mode_var.get():
-                    raise ValueError('Enable co-op before joining a Shop host.')
-                run = self.shop_repository.load_run()
-                snapshot = message.get('data')
-                if (not self.shop_mode_selected() or run is None
-                        or run.status is not RunStatus.ACTIVE):
-                    raise CoopShopSetupRequired(snapshot)
-                updated = apply_stage_snapshot(run, snapshot, self.mission_lookup())
-                if updated != run:
-                    self.shop_repository.save_run(updated)
-                self.shop_run = updated
-                self.refresh_shop_mode()
-                lobby.send({'type': 'shop_ready', 'digest': stage_digest(snapshot)})
-                self._record_coop_log(f'Host Shop stage {updated.stage} synced.')
-            elif kind == 'shop_victory':
-                if not (self.coop_mode_var.get() and self.shop_mode_selected()):
-                    raise ValueError('Host Shop victory reached a non-Shop guest.')
-                run = self.shop_repository.load_run()
-                code = message.get('code')
-                stage = message.get('stage')
-                if type(stage) is not int:
-                    raise ValueError('Host Shop victory has invalid stage.')
-                if (run is not None and run.seed == message.get('seed')
-                        and code in run.completed_missions
-                        and (run.stage > stage or run.status is RunStatus.COMPLETED)):
-                    return
-                if (run is None or run.status is not RunStatus.ACTIVE
-                        or run.seed != message.get('seed') or run.stage != stage
-                        or not run.mission_committed
-                        or run.selected_mission_code != code):
-                    raise ValueError('Host Shop victory differs from guest committed stage.')
-                self._shop_launch_run = run
-                self._shop_launch_mission_pool = tuple(self._shop_run_mission_pool(run))
-                if not self.unlock_mission_check(code, 'victory', 'Co-op host victory'):
-                    raise ValueError('Guest Shop victory could not be recorded.')
-                self._record_coop_log(f'Co-op Shop victory synced for {code}.')
-                process = getattr(self, 'active_game_process', None)
-                if process is None or process.poll() is not None:
-                    self.finish_progression_launch_context()
-            elif kind == 'shop_failure':
-                if not (self.coop_mode_var.get() and self.shop_mode_selected()):
-                    raise ValueError('Host Shop failure reached a non-Shop guest.')
-                run = self.shop_repository.load_run()
-                code = message.get('code')
-                stage = message.get('stage')
-                token = message.get('session_token')
-                recovery = message.get('recovery') is True
-                if (type(stage) is not int or not isinstance(code, str)
-                        or not code.startswith('COOP_')
-                        or type(message.get('revived')) is not bool
-                        or message.get('recovery') not in (None, True)
-                        or (not recovery and (
-                            not isinstance(token, str) or len(token) < 24
-                            or token != getattr(self, '_coop_active_game_token', None)
-                        ))):
-                    raise ValueError('Host Shop failure has invalid game identity.')
-                if (run is None or run.seed != message.get('seed')
-                        or run.stage != stage):
-                    raise ValueError('Host Shop failure differs from guest run.')
-                if (run.status is RunStatus.FAILED
-                        and run.failed_stage == stage
-                        and run.failed_mission_code == code):
-                    return
-                if (run.status is RunStatus.ACTIVE and not run.mission_committed
-                        and run.emergency_revivals_used > 0):
-                    return
-                if (run.status is not RunStatus.ACTIVE or not run.mission_committed
-                        or run.selected_mission_code != code):
-                    raise ValueError('Host Shop failure differs from guest committed stage.')
-                self.shop_profile, run = self.shop_repository.load()
-                self._shop_launch_run = run
-                self._shop_launch_mission_pool = tuple(self._shop_run_mission_pool(run))
-                self._coop_host_revival = message['revived']
-                try:
-                    recorded = self.record_failed_mission_attempt(
-                        code, 'Co-op host failure'
-                    )
-                finally:
-                    self._coop_host_revival = None
-                if not recorded:
-                    raise ValueError('Guest Shop failure could not be recorded.')
-                self._record_coop_log(f'Co-op Shop failure synced for {code}.')
-                process = getattr(self, 'active_game_process', None)
-                if process is None or process.poll() is not None:
-                    self.finish_progression_launch_context()
-            elif kind in {'state', 'archipelago_state'}:
+            if kind in {'state', 'archipelago_state'}:
                 state = decode_state(message.get('data', ''))
                 if (kind == 'archipelago_state'
                         and state.get('progression_mode') != 'Shop Mode'):
@@ -585,6 +490,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                 ):
                     if key in state:
                         variable.set(state[key])
+                self._coop_progression_mode = self.progression_mode_var.get()
                 if hasattr(self, 'archipelago_status_var'):
                     self.archipelago_status_var.set(
                         'Shared AP slot — host connected' if ap.get('enabled')
@@ -649,15 +555,6 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             if not self.is_mission_complete(code):
                 self._record_coop_log(f'Guest verified native challenge team victory for {code}.')
                 self.unlock_mission_check(code, 'victory', 'Co-op guest verified team victory')
-        elif kind == 'shop_ready':
-            if (self.shop_mode_selected() and self.coop_mode_var.get()
-                    and getattr(self, '_coop_shop_stage_digest', '')
-                    and message.get('digest') == self._coop_shop_stage_digest):
-                self._coop_shop_ready = True
-                self._record_coop_log('Guest Shop stage ready.')
-                self.refresh_shop_mode()
-            else:
-                raise ValueError('Guest acknowledged a different Shop stage.')
         elif kind == 'suggest':
             code = message.get('code')
             mission = self.mission_lookup().get(code)
@@ -712,6 +609,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                 messagebox.showwarning('Challenge Player Choices', str(exc))
                 return
         self._coop_busy = True
+        self._coop_preparing_lobby = lobby
         self.refresh_coop_controls()
         if role == 'host':
             session_token = secrets.token_urlsafe(24)
@@ -732,6 +630,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         shop_run = (self.shop_repository.load_run()
                     if self.shop_mode_selected() and self.coop_mode_var.get()
                     else None)
+        shop_profile = self.shop_profile if shop_run is not None else None
         difficulty = {'Casual': 'easy', 'Normal': 'normal',
                       'Mental': 'hard'}.get(self.difficulty_var.get(), 'normal')
         if shop_run is not None:
@@ -744,6 +643,9 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
 
         def worker():
             try:
+                shop_loadout = (shop_unit_loadout(
+                    shop_run, shop_profile, state=state_snapshot, mission=mission,
+                ) if shop_run is not None else None)
                 self.begin_direct_game_preparation()
                 if role == 'host':
                     if not mission:
@@ -757,7 +659,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                         shop_setup = {
                             'seed': shop_run.seed, 'stage': shop_run.stage,
                             'coop_name': mission['coop_name'],
-                            'loadout': shop_unit_loadout(shop_run, self.shop_profile, state=state_snapshot),
+                            'loadout': shop_loadout,
                         }
                     else:
                         source_mission = code if state_snapshot.get('reward_mode') == ARSENAL_MODE else ''
@@ -788,7 +690,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                     same_machine = lobby.address.lower() in ('127.0.0.1', 'localhost')
                     shop_setup = ({
                         'seed': shop_run.seed, 'stage': shop_run.stage,
-                        'loadout': shop_unit_loadout(shop_run, self.shop_profile, state=state_snapshot),
+                        'loadout': shop_loadout,
                     } if shop_run is not None else None)
                     result = join_session(
                         GAME_ROOT, lobby.address, name=lobby.name,
@@ -814,6 +716,11 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             if getattr(self, '_coop_busy', False):
                 self.after(100, self._poll_coop_session)
             return
+        if event[0] != 'error' and (
+                getattr(self, '_coop_lobby', None) is not self._coop_preparing_lobby
+                or not self._coop_preparing_lobby.connected):
+            self.disable_generated_rules_for_client()
+            event = ('error', 'Co-op lobby disconnected during game preparation.', '')
         if event[0] == 'error':
             finish = getattr(self, '_finish_archipelago_mission_preparation', None)
             if callable(finish):

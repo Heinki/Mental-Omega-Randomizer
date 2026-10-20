@@ -1227,6 +1227,54 @@ well as the native negative prerequisites. Existing game saves retain their
 old rules and require a fresh mission launch.
 
 
+## Co-op Shop comparison with DTA (October 20, 2026)
+
+The local DTA Randomizer's `coop/production.py`, `coop/shop.py`, and application
+co-op controller provided the comparison. DTA carries each player's launch
+settings into production-only clones, synchronizes host mission controls over
+personal economies, guards preparation and run changes, and lets guests suggest
+Shop missions. MO already had private H/G rosters and deterministic manifest
+replay; replacing that working RA2 implementation with DTA's engine code was
+unnecessary.
+
+The engine mechanisms differ. DTA uses Vinifera `HouseClass.ActLike`, registered
+`[Houses]` production masks, virtual Spawn houses 50–57, and action 106 credit
+grants. MO retains RA2 `[Countries]`, Ares `RequiredHouses` / `SW.RequiredHouses`,
+native CnCNet spawn metadata, action-14 human-house transfers 4475/4476 for shared
+providers, and action-125 private cash-building creation. Ares documents power
+availability as a country restriction, not a Tiberian Sun ActsLike mask:
+[Ares availability reference](https://ares-developers.github.io/Ares-docs/new/superweapons/availability.html).
+No TS trigger numbers, country aliases, or DLL requirements were copied.
+
+MO's Shop projection omitted its global production-speed upgrade and personal
+damage, durability, production, cost, and aid-recharge tradeoffs. The projection
+now serializes bounded personal multipliers into the existing content-hashed
+manifest. Generation reuses `apply_shop_clone_modifiers`; firepower adjustments
+receive private weapon copies before applying multipliers, including when there
+was no purchased weapon buff. Mind-control capacity and healing weapons remain
+unchanged. Aid recharge composes with existing power buffs. Native actors and the
+other player's roster retain their own values. Mission-specific enemy scaling
+now receives the actual mission's no-build flags rather than synthetic base-build
+metadata. Three unsupported global actor/weapon modifiers are explicitly disabled
+for co-op, following DTA's supported-modifier gating approach.
+
+Shop stage schema 2 compares eligible pools, repeat/Endless rules and shared
+mission-control modifiers before acknowledging readiness. A delayed acknowledgement
+for a superseded selection is ignored instead of disconnecting the lobby. Guest
+cards send digest-bound suggestions without changing purchases or mission choices.
+Progression mode and personal run lifecycle changes are guarded while paired;
+Endless entry requires both players to disconnect and enter matching runs first.
+Map preparation captures the personal profile before starting its worker, and a
+completed preparation cannot launch after its lobby has disconnected.
+
+`shop_loadout.py` and `application/coop_shop_controller.py` hold the extracted
+Shop responsibilities; existing prototype imports remain available. Shop map
+marker V5 rejects older map generation. Grid keeps its marker, shared roster,
+spawn handling and BEHIND suppression. Validation uses launcher self-checks and
+the existing real-map Shop/Grid/parity audits, with Shop tradeoff coverage added
+to the 36-map audit. Offline map checks do not establish sustained two-PC gameplay
+or UI interaction coverage.
+
 ## Captured campaign factories, Shop roster cameos, and boss Brute armor (October 19, 2026)
 
 The supplied `bugreports/AZEROSIGNAL.map` has native AMC and MTNK on the

@@ -180,7 +180,10 @@ class CoopConnectionController:
             )
         button = getattr(self, '_coop_disconnect_button', None)
         if button and button.winfo_exists():
-            button.configure(state='normal' if connected else 'disabled')
+            process = getattr(self, 'active_game_process', None)
+            running = process is not None and process.poll() is None
+            button.configure(state='normal' if connected and not running
+                             and not getattr(self, '_coop_busy', False) else 'disabled')
         self.refresh_challenge_player_controls()
 
     def _coop_safe_message(self, value):

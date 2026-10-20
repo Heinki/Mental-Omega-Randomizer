@@ -9,9 +9,12 @@ from randomizer.ui.tooltips import WidgetTooltip
 
 def build_coop_controls(self, parent, row, *, shop=False):
     """Group co-op, optional challenges, player setup, and connection."""
-    frame = ttk.Frame(parent)
+    frame = ttk.LabelFrame(
+        parent, text='Co-op' if shop else 'Co-op & Challenges', padding=8,
+    )
     frame.columnconfigure(1, weight=1)
-    frame.grid(row=row, column=0, columnspan=2, sticky='ew', pady=(8, 0))
+    frame.grid(row=row, column=0, columnspan=2 if shop else 1,
+               sticky='ew', pady=(8, 8))
     toggle = ttk.Checkbutton(
         frame, text='Co-op', variable=self.coop_mode_var,
         command=self.on_coop_checkbox_changed,
@@ -95,11 +98,13 @@ def build_coop_controls(self, parent, row, *, shop=False):
     connect.grid(row=4, column=0, columnspan=3, sticky='w', pady=(5, 0))
     if not hasattr(self, 'challenge_availability_var'):
         self.challenge_availability_var = tk.StringVar(master=self)
-    ttk.Label(
+    availability = ttk.Label(
         frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
-    ).grid(row=5, column=0, columnspan=3, sticky='w')
+    )
+    availability.grid(row=5, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
+    setattr(self, prefix + 'challenge_availability_label', availability)
     setattr(self, prefix + 'include_challenge_missions_check', include)
     setattr(self, prefix + 'challenge_local_frame', local)
     setattr(self, prefix + 'challenge_solo_color_combo', human_color)

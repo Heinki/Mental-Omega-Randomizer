@@ -719,12 +719,12 @@ def _build_gameplay_settings(self, settings_frame):
     self.settings_intro_label.grid(row=1, column=0, sticky='ew', pady=(8, 8))
 
     map_colors_frame = ttk.LabelFrame(
-        settings_frame,
+        self.mission_appearance_column,
         text='Mission Appearance',
         padding=(8, 8, 8, 8),
     )
     self.map_colors_frame = map_colors_frame
-    map_colors_frame.grid(row=2, column=0, sticky='ew')
+    map_colors_frame.grid(row=0, column=0, sticky='ew')
     map_colors_frame.columnconfigure(1, weight=1)
     ttk.Label(map_colors_frame, text='Player color').grid(
         row=0, column=0, sticky='w', padx=(0, 8)
@@ -774,7 +774,7 @@ def _build_gameplay_settings(self, settings_frame):
 
     mission_pool_frame = self.mission_pool_frame
     mission_pool_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
-    build_coop_controls(self, mission_pool_frame, 0)
+    build_coop_controls(self, self.mission_appearance_column, 1)
     self.include_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
         text='Include true no-build / fixed-unit missions',

@@ -297,6 +297,8 @@ def _build_right_panel(self, main_frame):
     settings_frame.columnconfigure(0, weight=1)
     settings_frame.columnconfigure(1, weight=0)
     self.settings_frame = settings_frame
+    self.mission_appearance_column = ttk.Frame(settings_frame)
+    self.mission_appearance_column.columnconfigure(0, weight=1)
     self.settings_canvas_window = settings_canvas.create_window(
         (0, 0),
         window=settings_frame,
@@ -565,10 +567,10 @@ def _build_right_panel(self, main_frame):
         style='Muted.TLabel',
         justify='left',
         wraplength=720,
-    ).grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 12))
+    ).grid(row=2, column=0, columnspan=2, sticky='ew', pady=(0, 12))
 
     ttk.Label(shop_settings_frame, text='Progression').grid(
-        row=1, column=0, sticky='w', padx=(0, 12)
+        row=0, column=0, sticky='w', padx=(0, 12)
     )
     self.shop_progression_mode_combo = ttk.Combobox(
         shop_settings_frame,
@@ -577,21 +579,21 @@ def _build_right_panel(self, main_frame):
         values=PROGRESSION_MODES,
         width=18,
     )
-    self.shop_progression_mode_combo.grid(row=1, column=1, sticky='ew')
+    self.shop_progression_mode_combo.grid(row=0, column=1, sticky='ew')
     self.shop_progression_mode_combo.bind(
         '<<ComboboxSelected>>', self.on_progression_mode_changed, add='+'
     )
 
     ttk.Separator(shop_settings_frame, orient='horizontal').grid(
-        row=2, column=0, columnspan=2, sticky='ew', pady=12
+        row=3, column=0, columnspan=2, sticky='ew', pady=12
     )
     ttk.Label(
         shop_settings_frame,
         text='Seed name (optional; blank generates a new seed)',
         font=('Segoe UI', 10, 'bold'),
-    ).grid(row=3, column=0, columnspan=2, sticky='w')
+    ).grid(row=4, column=0, columnspan=2, sticky='w')
     shop_seed_row = ttk.Frame(shop_settings_frame)
-    shop_seed_row.grid(row=4, column=0, columnspan=2, sticky='ew', pady=(2, 10))
+    shop_seed_row.grid(row=5, column=0, columnspan=2, sticky='ew', pady=(2, 10))
     shop_seed_row.columnconfigure(0, weight=1)
     self.shop_seed_entry = ttk.Entry(
         shop_seed_row,
@@ -607,7 +609,7 @@ def _build_right_panel(self, main_frame):
         ),
     )
     for row, (label, attribute, variable, values) in enumerate(
-        shop_run_options, start=5
+        shop_run_options, start=6
     ):
         ttk.Label(shop_settings_frame, text=label).grid(
             row=row, column=0, sticky='w', padx=(0, 12), pady=(4, 0)
@@ -632,7 +634,7 @@ def _build_right_panel(self, main_frame):
         shop_settings_frame, text='Mission Pool', padding=8
     )
     shop_mission_filters.grid(
-        row=7, column=0, columnspan=2, sticky='ew', pady=(8, 0)
+        row=8, column=0, columnspan=2, sticky='ew', pady=(8, 0)
     )
     self.shop_include_no_build_missions_check = ttk.Checkbutton(
         shop_mission_filters,
@@ -683,25 +685,25 @@ def _build_right_panel(self, main_frame):
         style='Muted.TLabel',
         justify='left',
         wraplength=720,
-    ).grid(row=9, column=0, columnspan=2, sticky='ew', pady=(12, 0))
+    ).grid(row=10, column=0, columnspan=2, sticky='ew', pady=(12, 0))
 
     ttk.Separator(shop_settings_frame, orient='horizontal').grid(
-        row=10, column=0, columnspan=2, sticky='ew', pady=12
+        row=11, column=0, columnspan=2, sticky='ew', pady=12
     )
     ttk.Label(
         shop_settings_frame,
         text='Starting Loadout',
         font=('Segoe UI', 10, 'bold'),
-    ).grid(row=11, column=0, columnspan=2, sticky='w')
+    ).grid(row=12, column=0, columnspan=2, sticky='w')
     ttk.Label(
         shop_settings_frame,
         textvariable=self.shop_loadout_help_var,
         style='Muted.TLabel',
         wraplength=720,
-    ).grid(row=12, column=0, columnspan=2, sticky='ew', pady=(2, 6))
+    ).grid(row=13, column=0, columnspan=2, sticky='ew', pady=(2, 6))
     shop_loadout_search = ttk.Frame(shop_settings_frame)
     shop_loadout_search.grid(
-        row=13, column=0, columnspan=2, sticky='ew', pady=(0, 6)
+        row=14, column=0, columnspan=2, sticky='ew', pady=(0, 6)
     )
     ttk.Label(shop_loadout_search, text='Search permanent units and powers:').pack(
         side='left'
@@ -711,7 +713,7 @@ def _build_right_panel(self, main_frame):
     ).pack(side='left', fill='x', expand=True, padx=(6, 0))
     shop_loadout_frame = ttk.Frame(shop_settings_frame)
     shop_loadout_frame.grid(
-        row=14, column=0, columnspan=2, sticky='nsew'
+        row=15, column=0, columnspan=2, sticky='nsew'
     )
     self.shop_loadout_select_tree = _tree(
         shop_loadout_frame,
@@ -748,7 +750,7 @@ def _build_right_panel(self, main_frame):
         shop_settings_frame, text='Optional Run Modifiers', padding=8
     )
     modifier_frame.grid(
-        row=15, column=0, columnspan=2, sticky='ew', pady=(10, 0)
+        row=16, column=0, columnspan=2, sticky='ew', pady=(10, 0)
     )
     self.shop_modifier_status_var = tk.StringVar(value='')
     self.shop_modifier_difficulty_var = tk.StringVar(value='Run Difficulty +0')
@@ -810,7 +812,7 @@ def _build_right_panel(self, main_frame):
         self.shop_modifier_buttons.append(checkbutton)
         self.shop_modifier_button_by_id[modifier_id] = checkbutton
 
-    build_coop_controls(self, shop_settings_frame, 16, shop=True)
+    build_coop_controls(self, shop_settings_frame, 1, shop=True)
 
     self.shop_setup_start_button = ttk.Button(
         shop_settings_frame,

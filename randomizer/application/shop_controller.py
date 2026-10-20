@@ -361,7 +361,9 @@ class ShopController(ShopPolishController):
     def refresh_shop_settings_controls(self):
         if not hasattr(self, 'shop_setup_start_button'):
             return
-        locked = self.gameplay_settings_locked()
+        locked = (self.gameplay_settings_locked()
+                  or bool(getattr(self, '_coop_lobby', None))
+                  or bool(getattr(self, '_coop_busy', False)))
         active = bool(
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
@@ -402,6 +404,11 @@ class ShopController(ShopPolishController):
                 )
 
     def on_progression_mode_changed(self, event=None):
+        if getattr(self, '_coop_lobby', None) or getattr(self, '_coop_busy', False):
+            self.progression_mode_var.set(getattr(
+                self, '_coop_progression_mode', self.config.get('progression_mode', 'Grid Mode'),
+            ))
+            return
         self.sync_shop_workspace()
         self.sync_shop_settings_view(reset_scroll=True)
         result = super().on_progression_mode_changed(event)
@@ -945,6 +952,7 @@ class ShopController(ShopPolishController):
                 state='normal' if (run is not None and
                     run.status is RunStatus.COMPLETED and
                     not run.ap_identity and
+                    not getattr(self, '_coop_lobby', None) and
                     not self.archipelago_run_active()) else 'disabled'
             )
             if run is not None and run.status is not RunStatus.ACTIVE:
@@ -1285,6 +1293,9 @@ class ShopController(ShopPolishController):
         return self._shop_cameo_images[cache_key]
 
     def give_up_shop_run(self):
+        if getattr(self, '_coop_lobby', None):
+            self._set_shop_message('Disconnect co-op before ending your personal Shop run.')
+            return
         run = self.shop_run
         if (
             run is None
@@ -1361,6 +1372,9 @@ class ShopController(ShopPolishController):
         self.shop_permanent_tabs.select(self.shop_permanent_powers_panel)
 
     def reset_shop_profile(self):
+        if getattr(self, '_coop_lobby', None):
+            self._set_shop_message('Disconnect co-op before resetting your Shop profile.')
+            return
         if self.shop_launch_active():
             self._set_shop_message(
                 'Close the running mission before resetting the Shop profile.',
@@ -1543,7 +1557,7 @@ class ShopController(ShopPolishController):
 
     def _advance_coop_shop_mission(self, index):
         if self.coop_guest_connected():
-            self._set_shop_message('Host controls co-op Shop mission selection.')
+            self.suggest_coop_shop_mission(index)
             return
         self.shop_profile, run = self.shop_repository.load()
         try:
@@ -2015,6 +2029,9 @@ class ShopController(ShopPolishController):
         return settings
 
     def start_shop_endless(self):
+        if getattr(self, '_coop_lobby', None):
+            self._set_shop_message('Disconnect both players, start matching Endless runs, then reconnect.')
+            return
         run = self.shop_run
         if (run is None or run.status is not RunStatus.COMPLETED or
                 run.ap_identity or self.archipelago_run_active() or
@@ -2042,6 +2059,9 @@ class ShopController(ShopPolishController):
         self.refresh_shop_mode()
 
     def start_shop_run(self):
+        if getattr(self, '_coop_lobby', None):
+            self._set_shop_message('Disconnect co-op before starting a new Shop run.')
+            return
         if not self.missions:
             messagebox.showwarning(
                 'Shop Mode', 'Mission data is still loading.', parent=self
@@ -2085,6 +2105,13 @@ class ShopController(ShopPolishController):
             modifier_id for modifier_id, variable in self.shop_modifier_vars.items()
             if variable.get()
         )
+        if self.coop_mode_var.get():
+            from randomizer.coop.shop_loadout import validate_shop_modifiers
+            try:
+                validate_shop_modifiers(modifiers)
+            except ValueError as exc:
+                self._set_shop_message(exc, error=True)
+                return
         effects = modifier_effects(modifiers)
         faction_filter = self.shop_campaign_filter()
         if not modifier_allows_faction_pool(modifiers, faction_filter):
@@ -2684,12 +2711,18 @@ class ShopController(ShopPolishController):
             self.shop_modifier_status_var.set(
                 'Optional run-wide tradeoffs. Check any combination before '
                 'starting; both benefits and penalties apply for the whole run.'
+                + (' Co-op excludes Demolition Charges, Melee Fighters, and One Shot, One Kill.'
+                   if self.coop_mode_var.get() else '')
             )
         single_faction = self.shop_campaign_filter() != 'All Campaigns'
+        from randomizer.coop.shop_loadout import UNSUPPORTED_SHOP_MODIFIERS
         for modifier_id, button in self.shop_modifier_button_by_id.items():
             unavailable = (
                 modifier_id == 'faction_roulette' and single_faction
+                or self.coop_mode_var.get() and modifier_id in UNSUPPORTED_SHOP_MODIFIERS
             )
+            if unavailable and not modifiers_locked:
+                self.shop_modifier_vars[modifier_id].set(False)
             button.configure(
                 state='disabled'
                 if modifiers_locked or unavailable else 'normal'

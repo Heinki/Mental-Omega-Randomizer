@@ -20,6 +20,9 @@ standalone play with an optional AI teammate. See the
 3. For Classic, Mission List, or Grid Mode, the host generates or continues the
    shared run. For ordinary co-op Shop Mode, both players first start separate
    runs with the same seed and stage; each retains their own profile and purchases.
+   Use the same eligible mission pool, repeat/Endless rules, and mission-control
+   modifiers (No Safety Net, Narrow Intelligence, Hardcore, Faction Roulette).
+   Other supported modifiers and personal upgrades can differ.
    A guest joining a Shop host from another mode receives setup instructions.
    Start the matching guest run and reconnect. Existing active runs are preserved.
 4. Open **Co-op Connection**. The host chooses **Host**, enters a player name,
@@ -40,6 +43,20 @@ Each challenge human receives a roster for their chosen country. Earned powers
 have separate native player providers, including Chronolift and Time Freeze.
 Shop purchases stay private. Matching prepared maps and a working lobby do not
 by themselves verify a live game session.
+
+In Shop, the host selects an offer, waits for the guest acknowledgement, commits
+it, then launches after the committed stage is acknowledged. The guest's mission
+cards offer **Suggest Mission**; only the host changes mission controls. Personal
+production-speed upgrades, Glass Cannon, Overclocked Factories, and Support
+Doctrine apply to that player's generated units and powers. Demolition Charges,
+Melee Fighters, and One Shot, One Kill are unavailable in co-op because their
+campaign implementations rewrite native actors globally.
+
+Progression mode remains locked while paired. To give up, reset a profile, start
+a new run, or enter Endless, disconnect first. For Endless, both players must
+start matching Endless runs before reconnecting. Close both games before changing
+the next stage. Update both launchers for Shop stage schema 2 and map marker V5;
+existing profiles and purchases are retained.
 
 ## Ports and optional Windows firewall helper
 

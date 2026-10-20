@@ -11,9 +11,10 @@ from randomizer.shop.config import SHOP_CONFIG
 from randomizer.shop.missions import classify_mission
 from randomizer.shop.model import MissionEconomyClass, MissionOffer, RunStatus
 from randomizer.shop.state import normalize_shop_run
+from randomizer.coop.shop_loadout import validate_shop_modifiers
 
 
-STAGE_SCHEMA = 1
+STAGE_SCHEMA = 2
 _CODE = re.compile(r'COOP_[A-Z0-9_]+\Z')
 
 
@@ -23,6 +24,7 @@ def stage_snapshot(run) -> dict:
         raise ValueError('Host needs an active Shop run.')
     if not run.mission_offers:
         raise ValueError('Host Shop stage has no mission offers.')
+    validate_shop_modifiers(run.modifiers)
     return {
         'schema': STAGE_SCHEMA,
         'seed': run.seed,
@@ -35,6 +37,12 @@ def stage_snapshot(run) -> dict:
         'rerolls_used': run.rerolls_used,
         'assisted_mission_code': run.assisted_mission_code or '',
         'difficulty_assists_used': run.difficulty_assists_used,
+        'eligible_mission_codes': sorted(run.eligible_mission_codes),
+        'endless': run.endless,
+        'allow_repeats': run.allow_repeats,
+        'mission_modifiers': sorted(set(run.modifiers) & {
+            'no_safety_net', 'narrow_intelligence', 'hardcore', 'faction_roulette',
+        }),
     }
 
 
@@ -73,11 +81,17 @@ def apply_stage_snapshot(run, snapshot: dict, missions: dict):
     """Apply host mission decisions; preserve guest purchases, buffs, and Ore."""
     if run is None or run.status is not RunStatus.ACTIVE:
         raise ValueError('Guest needs an active Shop run.')
-    expected_fields = set(stage_snapshot(run))
-    if not isinstance(snapshot, dict) or set(snapshot) != expected_fields:
+    if not isinstance(snapshot, dict):
         raise ValueError('Invalid host Shop stage snapshot.')
-    if type(snapshot['schema']) is not int or snapshot['schema'] != STAGE_SCHEMA:
-        raise ValueError('Incompatible Shop stage snapshot.')
+    if type(snapshot.get('schema')) is not int or snapshot['schema'] != STAGE_SCHEMA:
+        raise ValueError('Incompatible Shop stage snapshot. Update both launchers.')
+    local = stage_snapshot(run)
+    if set(snapshot) != set(local):
+        raise ValueError('Invalid host Shop stage snapshot.')
+    if (type(snapshot['endless']) is not bool or type(snapshot['allow_repeats']) is not bool
+            or any(snapshot[key] != local[key] for key in (
+                'eligible_mission_codes', 'endless', 'allow_repeats', 'mission_modifiers'))):
+        raise ValueError('Shop players need matching mission pools, repeat rules, and mission-control modifiers.')
     if (not isinstance(snapshot['seed'], str)
             or type(snapshot['stage']) is not int
             or type(snapshot['run_length']) is not int
@@ -95,7 +109,8 @@ def apply_stage_snapshot(run, snapshot: dict, missions: dict):
         if not isinstance(entry, dict) or set(entry) != {'mission_code', 'class'}:
             raise ValueError('Invalid host Shop mission offer.')
         code = entry['mission_code']
-        if not isinstance(code, str) or not _CODE.fullmatch(code) or code not in missions:
+        if (not isinstance(code, str) or not _CODE.fullmatch(code) or code not in missions
+                or run.eligible_mission_codes and code not in run.eligible_mission_codes):
             raise ValueError('Host offered a mission outside guest co-op catalogue.')
         try:
             economy_class = MissionEconomyClass(entry['class'])
