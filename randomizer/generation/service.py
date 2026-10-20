@@ -3,10 +3,11 @@
 from copy import deepcopy
 
 from randomizer.config.player import DEFAULT_CONFIG, deep_merge
-from randomizer.missions.catalogue import filter_missions_by_build_settings, normalize_faction
+from randomizer.missions.catalogue import filter_missions_by_build_settings
 from randomizer.rewards.arsenal import ARSENAL_MODE
 from randomizer.rewards.catalogue import MAX_REWARDS_PER_CHECK
 from randomizer.ui.config import CAMPAIGN_FILTERS, PROGRESSION_MODES, REWARD_MODES
+from randomizer.missions.pool import select_mission_pool
 from .reward_controller import RewardGeneration
 from .seed_controller import SeedGeneration
 from .starting_unlocks import StartingUnlocks
@@ -66,17 +67,18 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
                 'include_operation_missions', 'prioritize_no_build_missions',
             )
         }
+        include_challenges = bool(generation.get('include_challenge_missions', False))
+        include_challenges = include_challenges and mode != 'Shop Mode'
+        mission_settings['include_challenge_missions'] = include_challenges
         exclusion_key = ('excluded_challenge_mission_codes' if config['mission_category'] == 'challenge'
                          else 'excluded_coop_mission_codes' if config.get('coop_mode')
                          else 'excluded_mission_codes')
         excluded = {str(code).upper() for code in generation.get(exclusion_key, ())}
-        missions = [
-            mission for mission in self.missions
-            if mission['code'].upper() not in excluded
-            and (config['mission_category'] == 'challenge'
-                 or campaign == CAMPAIGN_FILTERS[0]
-                 or normalize_faction(mission.get('side', '')) == campaign)
-        ]
+        missions = select_mission_pool(
+            self.missions, category=config['mission_category'], campaign=campaign,
+            include_challenges=include_challenges, excluded_codes=excluded,
+            excluded_challenge_codes=generation.get('excluded_challenge_mission_codes', ()),
+        )
         missions = filter_missions_by_build_settings(
             missions,
             include_true_no_build=mission_settings['include_no_build_missions'],

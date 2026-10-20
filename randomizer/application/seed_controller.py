@@ -234,6 +234,7 @@ class SeedController(SeedGeneration):
             'challenge_player_count': int(self.challenge_player_count_var.get()),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
             'mission_pool_settings': {
+                'include_challenge_missions': self.optional_challenges_enabled(),
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
                 'include_no_build_production_missions': bool(
                     self.include_no_build_production_missions_var.get()
@@ -632,19 +633,7 @@ class SeedController(SeedGeneration):
             self.disable_generated_rules_for_client()
 
     def filtered_missions_for_seed(self):
-        selected = self.campaign_var.get()
-        missions = list(self.missions) if (
-            self.selected_mission_category() == 'challenge'
-            or selected == CAMPAIGN_FILTERS[0]
-        ) else [
-            mission
-            for mission in self.missions
-            if normalize_faction(mission.get('side', '')) == selected
-        ]
-        missions = [
-            mission for mission in missions
-            if mission.get('code', '').upper() not in self.active_mission_exclusions()
-        ]
+        missions = self.mission_pool_candidates()
         return filter_missions_by_build_settings(
             missions,
             include_true_no_build=self.include_no_build_missions_var.get(),
@@ -663,7 +652,9 @@ class SeedController(SeedGeneration):
             shown_codes = set(self.unlocked_mission_codes()) | set(self.state.get('completed_missions', []))
             visible = [(idx, mission) for idx, mission in enumerate(self.missions) if mission['code'] in shown_codes]
         else:
-            visible = list(enumerate(self.missions))
+            eligible = {mission["code"] for mission in self.filtered_missions_for_seed()}
+            visible = [(idx, mission) for idx, mission in enumerate(self.missions)
+                       if mission["code"] in eligible]
         visible = [
             item for item in visible if self.mission_matches_search(item[1])
         ]

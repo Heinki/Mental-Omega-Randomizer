@@ -337,7 +337,8 @@ def _build_right_panel(self, main_frame):
     options_row = ttk.Frame(seed_settings_frame)
     options_row.grid(row=2, column=0, sticky='ew', pady=(0, 6))
     options_row.columnconfigure(1, weight=1)
-    ttk.Label(options_row, text='Missions to finish').grid(row=0, column=0, sticky='w', padx=(0, 8))
+    self.mission_goal_label = ttk.Label(options_row, text='Missions to finish')
+    self.mission_goal_label.grid(row=0, column=0, sticky='w', padx=(0, 8))
     self.mission_goal_spinbox = ttk.Spinbox(
         options_row,
         from_=1,
@@ -346,16 +347,21 @@ def _build_right_panel(self, main_frame):
         width=6,
     )
     self.mission_goal_spinbox.grid(row=0, column=1, sticky='w')
-    self.campaign_label = ttk.Label(options_row, text='Campaign')
-    self.campaign_label.grid(row=2, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    mission_pool_frame = ttk.LabelFrame(
+        settings_frame, text='Mission Pool', padding=(8, 8, 8, 8),
+    )
+    self.mission_pool_frame = mission_pool_frame
+    mission_pool_frame.columnconfigure(1, weight=1)
+    self.campaign_label = ttk.Label(mission_pool_frame, text='Campaign filter')
+    self.campaign_label.grid(row=1, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.campaign_combo = ttk.Combobox(
-        options_row,
+        mission_pool_frame,
         state='readonly',
         textvariable=self.campaign_var,
         values=CAMPAIGN_FILTERS,
         width=14,
     )
-    self.campaign_combo.grid(row=2, column=1, sticky='ew', pady=(6, 0))
+    self.campaign_combo.grid(row=1, column=1, sticky='ew', pady=(6, 0))
     self.campaign_combo.bind('<<ComboboxSelected>>', self.on_campaign_filter_changed, add='+')
 
     settings_file_row = ttk.Frame(seed_settings_frame)

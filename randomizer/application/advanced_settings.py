@@ -696,12 +696,7 @@ class AdvancedSettingsController:
                 or entry.get('faction') == selected_campaign
             )
 
-        campaign_missions = [
-            mission for mission in self.missions
-            if self.selected_mission_category() == 'challenge'
-            or selected_campaign == CAMPAIGN_FILTERS[0]
-            or normalize_faction(mission.get('side', '')) == selected_campaign
-        ]
+        campaign_missions = self.mission_pool_candidates(apply_exclusions=False)
         visible_missions = filter_missions_by_build_settings(
             campaign_missions,
             include_true_no_build=self.include_no_build_missions_var.get(),
@@ -958,7 +953,7 @@ class AdvancedSettingsController:
                     'special': bool(mission.get('operation')),
                 }
                 for mission in filter_missions_by_build_settings(
-                    self.missions,
+                    self.mission_pool_candidates(apply_exclusions=False),
                     include_true_no_build=self.include_no_build_missions_var.get(),
                     include_no_build_production=(
                         self.include_no_build_production_missions_var.get()
@@ -1047,9 +1042,8 @@ class AdvancedSettingsController:
 
     def advanced_pool_entry_is_visible(self, entry):
         """Match the campaign/Arsenal scope already used by Advanced cards."""
-        if (self.selected_mission_category() == 'challenge'
-                and entry.get('mission_category') == 'challenge'):
-            return True
+        if entry.get('mission_category') == 'challenge':
+            return self.selected_mission_category() == 'challenge' or self.optional_challenges_enabled()
         selected_campaign = self.campaign_var.get()
         arsenal_mode = self.reward_mode_var.get() == ARSENAL_MODE
         arsenal_factions = {
@@ -1162,6 +1156,9 @@ class AdvancedSettingsController:
     def on_mission_pool_settings_changed(self):
         self.refresh_setting_states()
         self.update_mission_goal_limit()
+        self.refresh_advanced_pool_views()
+        if not self.state:
+            self.redraw_mission_tree()
 
     def on_reward_mode_changed(self, _event=None):
         self.refresh_setting_states()
@@ -1433,9 +1430,14 @@ class AdvancedSettingsController:
         if not self.missions:
             return
         filtered_count = len(self.filtered_missions_for_seed())
+        self.mission_goal_label.configure(text=f'Missions to finish (max {filtered_count})')
         self.campaign_label.configure(text=(
             f'Reward faction ({filtered_count} challenge maps)'
             if self.selected_mission_category() == 'challenge'
+            else f'Co-op + challenges ({filtered_count})'
+            if self.coop_mode_var.get() and self.optional_challenges_enabled()
+            else f'Campaign + challenges ({filtered_count})'
+            if self.optional_challenges_enabled()
             else f'Co-op maps ({filtered_count})' if self.coop_mode_var.get()
             else f'Campaign ({filtered_count})'
         ))

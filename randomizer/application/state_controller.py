@@ -675,6 +675,9 @@ class StateController(GenerationSettings):
         self.config['eva_voice'] = self.eva_voice_var.get()
         reward_settings = self.current_reward_settings()
         self.config.setdefault('generation', {})['starting_unlocked_missions'] = STARTING_UNLOCKED_MISSIONS
+        self.config['generation']['include_challenge_missions'] = bool(
+            self.include_challenge_missions_var.get()
+        )
         self.config['generation']['include_no_build_missions'] = bool(
             self.include_no_build_missions_var.get()
         )
@@ -925,6 +928,9 @@ class StateController(GenerationSettings):
             EVA_VOICE_CHOICES[0],
         ))
 
+        self.include_challenge_missions_var.set(bool(
+            generation.get('include_challenge_missions', False)
+        ))
         self.include_no_build_missions_var.set(bool(
             generation.get('include_no_build_missions', True)
         ))

@@ -90,10 +90,23 @@ def allowed_colors(metadata: dict) -> tuple[int, ...]:
     return tuple(index for index in range(13) if index not in denied)
 
 
+def automatic_ai_teammate(metadata, human_color, *, country='USSR', color=1, difficulty=1):
+    """Fill the second allied slot using safe, deterministic preferences."""
+    countries = allowed_countries(metadata)
+    colors = [value for value in allowed_colors(metadata) if value != human_color]
+    if not countries or not colors:
+        raise ValueError('This challenge has no permitted AI house or distinct allied color.')
+    return {
+        'country': country if country in countries else countries[0],
+        'color': color if color in colors else colors[0],
+        'difficulty': difficulty,
+    }
+
+
 def _validate_metadata(metadata: dict) -> None:
     if metadata.get('iscoopmission', '').casefold() not in {'true', 'yes', '1'}:
         raise ValueError('Selected map is not registered as a challenge mission.')
-    if metadata.get('minplayers') != '1' or metadata.get('maxplayers') != '2':
+    if metadata.get('minplayers') not in {'1', '2'} or metadata.get('maxplayers') != '2':
         raise ValueError('Challenges require native one- or two-player registration.')
     modes = {value.strip().casefold() for value in metadata.get('gamemodes', '').split(',')}
     if any(mode.casefold() not in modes for mode in CHALLENGE_MODES):
@@ -172,7 +185,8 @@ def discover_challenge_missions(game_root: Path, player_country: str | None = No
             'allowed_countries': list(available), 'reward_safe_countries': list(available),
             'allowed_colors': list(allowed_colors(metadata)),
             'enemy_houses': enemies, 'enemy_count': len(enemies),
-            'min_players': 1, 'max_players': 2,
+            'min_players': int(metadata['minplayers']), 'max_players': 2,
+            'requires_teammate': int(metadata['minplayers']) > 1,
             'briefing': normalize_long_description(metadata.get('briefing', '')),
             'objectives': [], 'objective_count': 1,
             'build_classification': BASE_BUILD, 'no_build': False,

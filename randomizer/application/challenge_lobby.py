@@ -92,14 +92,14 @@ class ChallengeLobbyController:
         self.refresh_challenge_player_controls()
 
     def on_challenge_host_difficulty_changed(self, _event=None):
-        if self.selected_mission_category() == 'challenge' and not self.coop_guest_connected():
+        if self.challenges_available() and not self.coop_guest_connected():
             self.config['difficulty'] = self.difficulty_var.get()
             save_config(self.config)
             self.publish_challenge_player_options()
 
     def publish_challenge_player_options(self):
         lobby = getattr(self, '_coop_lobby', None)
-        if not (lobby and lobby.connected and self.selected_mission_category() == 'challenge'):
+        if not (lobby and lobby.connected and self.challenges_available()):
             return
         message = {'type': 'player_options', **self.own_challenge_player_options()}
         if lobby.role == 'host':
@@ -170,7 +170,7 @@ class ChallengeLobbyController:
         frame = getattr(self, '_coop_player_frame', None)
         if frame is None or not frame.winfo_exists():
             return
-        if self.selected_mission_category() != 'challenge':
+        if not self.challenges_available():
             frame.grid_remove()
             return
         frame.grid()
@@ -194,7 +194,7 @@ class ChallengeLobbyController:
         else:
             text += '  Waiting for peer choices.'
         text += f'\nHost game speed: {self.game_speed_var.get()}.'
-        if mission:
+        if self.challenge_mission():
             try:
                 if peer:
                     self.challenge_pair_options(mission)

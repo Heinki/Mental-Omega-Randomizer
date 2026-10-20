@@ -55,6 +55,7 @@
         "include_no_build_missions": true,
         "include_no_build_production_missions": true,
         "include_operation_missions": true,
+        "include_challenge_missions": false,
         "prioritize_no_build_missions": false,
         "excluded_mission_codes": [],
         "excluded_coop_mission_codes": [],

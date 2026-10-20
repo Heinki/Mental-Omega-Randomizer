@@ -29,7 +29,7 @@ def build_general_settings(self, settings_frame):
             'speed, health, weapon damage, armor effectiveness, and attack range. Movement '
             'uses safe per-unit ceilings: infantry 8, vehicles/naval 12, aircraft 30. Applies '
             'to earned units and units supplied by that mission; normal faction rosters '
-            'are used when unit access is not randomized.'
+            'are used when unit access is not randomized. Native challenge maps do not use retry assistance.'
         ),
         wraplength=340,
         justify='left',

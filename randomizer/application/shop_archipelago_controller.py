@@ -18,6 +18,7 @@ from randomizer.shop.archipelago_purchases import (
     archipelago_purchase_records,
 )
 from randomizer.shop.model import RunStatus
+from randomizer.missions.pool import is_challenge
 from randomizer.shop.text import gem_text
 
 
@@ -48,10 +49,10 @@ class ShopArchipelagoController:
 
     def _shop_campaign_missions(self, campaign):
         if campaign == CAMPAIGN_FILTERS[0]:
-            return list(self.missions)
+            return [mission for mission in self.missions if not is_challenge(mission)]
         return [
             mission for mission in self.missions
-            if normalize_faction(mission.get('side', '')) == campaign
+            if not is_challenge(mission) and normalize_faction(mission.get('side', '')) == campaign
         ]
 
     def filtered_missions_for_seed(self):

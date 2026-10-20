@@ -417,9 +417,9 @@ class RewardController(RewardGeneration):
                 GAME_ROOT,
                 player_count=player_count or self.selected_challenge_player_count(),
             )
-        if category == 'coop':
-            return discover_coop_missions(GAME_ROOT)
-        return parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT)
+        missions = (discover_coop_missions(GAME_ROOT) if category == 'coop'
+                    else parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT))
+        return missions + discover_challenge_missions(GAME_ROOT)
 
     def apply_missions(self, missions):
         """Apply a previously parsed mission catalogue to launcher widgets."""
@@ -454,4 +454,5 @@ class RewardController(RewardGeneration):
         if children:
             self.missions_tree.selection_set(children[0])
             self.selected_index.set(int(children[0]))
+        self.refresh_coop_controls()
         self.append_log(f'Loaded {len(self.missions)} missions.')

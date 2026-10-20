@@ -35,8 +35,9 @@ def challenge_context(game_root, name, country, player_count, difficulty, game_s
         map_config(game_root, name, player_country=ai_teammate['country'])
         if ai_teammate['color'] not in allowed_colors(metadata):
             raise ValueError('Choose an AI color allowed by this challenge.')
-    if not int(metadata.get('minplayers', '1')) <= player_count <= int(metadata.get('maxplayers', '2')):
-        raise ValueError('Challenge does not support the selected player count.')
+    participants = player_count + (ai_teammate is not None)
+    if not int(metadata.get('minplayers', '1')) <= participants <= int(metadata.get('maxplayers', '2')):
+        raise ValueError('This challenge requires a second human or an AI teammate.')
     settings = spawn_settings(game_root, metadata, difficulty)
     # The explicit launcher choice replaces the native lobby's speed cap.
     settings['GameSpeed'] = str(game_speed)

@@ -4,29 +4,41 @@ import tkinter as tk
 from tkinter import ttk
 
 from randomizer.challenges.catalogue import COUNTRY_LABELS
+from randomizer.ui.tooltips import WidgetTooltip
 
 
 def build_coop_controls(self, parent, row, *, shop=False):
-    """Group mode, player count, connection button and help below appearance."""
+    """Group co-op, optional challenges, player setup, and connection."""
     frame = ttk.Frame(parent)
+    frame.columnconfigure(1, weight=1)
     frame.grid(row=row, column=0, columnspan=2, sticky='ew', pady=(8, 0))
-    ttk.Label(frame, text='Mission category').grid(row=0, column=0, sticky='w')
-    toggle = ttk.Combobox(
-        frame, textvariable=self.mission_category_var,
-        values=('campaign', 'coop', 'challenge'), state='readonly', width=12,
+    toggle = ttk.Checkbutton(
+        frame, text='Co-op', variable=self.coop_mode_var,
+        command=self.on_coop_checkbox_changed,
     )
-    toggle.grid(row=0, column=1, columnspan=2, sticky='ew', padx=(8, 0))
-    toggle.bind('<<ComboboxSelected>>', self.on_mission_category_changed)
-    player_label = ttk.Label(frame, text='Human players')
-    player_label.grid(row=1, column=0, sticky='w', pady=(5, 0))
+    toggle.grid(row=0, column=0, columnspan=3, sticky='w')
+    WidgetTooltip(toggle, 'Off: solo campaign missions. On: two-player co-op missions.')
+    include = ttk.Checkbutton(
+        frame, text='Include challenge maps',
+        variable=self.include_challenge_missions_var,
+        command=self.on_mission_pool_settings_changed,
+    )
+    include.grid(row=1, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    WidgetTooltip(
+        include,
+        'Adds installed challenges to the next seed. Mission goal and Advanced exclusions apply. '
+        'Available in standalone Grid Mode, Mission List and Classic.',
+    )
+    player_label = ttk.Label(frame, text='Human players (legacy run)')
+    player_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
     count = ttk.Combobox(
         frame, textvariable=self.challenge_player_count_var, values=('1', '2'),
         state='readonly', width=3,
     )
-    count.grid(row=1, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
+    count.grid(row=2, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
     local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
-    local.grid(row=2, column=0, columnspan=3, sticky='ew', pady=(8, 0))
+    local.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(8, 0))
     local.columnconfigure(1, weight=1)
     country_label = ttk.Label(local, text='Your house')
     country_label.grid(row=0, column=0, sticky='w', padx=(0, 8), pady=2)
@@ -80,14 +92,15 @@ def build_coop_controls(self, parent, row, *, shop=False):
     connect = ttk.Button(
         frame, text='Co-op Connection…', command=self.open_coop_dialog,
     )
-    connect.grid(row=3, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    connect.grid(row=4, column=0, columnspan=3, sticky='w', pady=(5, 0))
     if not hasattr(self, 'challenge_availability_var'):
         self.challenge_availability_var = tk.StringVar(master=self)
     ttk.Label(
         frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
-    ).grid(row=4, column=0, columnspan=3, sticky='w')
+    ).grid(row=5, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
+    setattr(self, prefix + 'include_challenge_missions_check', include)
     setattr(self, prefix + 'challenge_local_frame', local)
     setattr(self, prefix + 'challenge_solo_color_combo', human_color)
     setattr(self, prefix + 'challenge_ai_toggle', ai_toggle)

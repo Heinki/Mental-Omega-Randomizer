@@ -753,9 +753,8 @@ def _build_gameplay_settings(self, settings_frame):
         'Assigns deterministic random colors to non-neutral allied and enemy AI houses. '
         'Civilian, neutral, and script-only neutral houses keep their authored colors.',
     )
-    build_coop_controls(self, map_colors_frame, 2)
     ttk.Label(map_colors_frame, text='EVA voice').grid(
-        row=3, column=0, sticky='w', padx=(0, 8), pady=(5, 0)
+        row=2, column=0, sticky='w', padx=(0, 8), pady=(5, 0)
     )
     self.eva_voice_combo = ttk.Combobox(
         map_colors_frame,
@@ -764,7 +763,7 @@ def _build_gameplay_settings(self, settings_frame):
         values=EVA_VOICE_CHOICES,
         width=15,
     )
-    self.eva_voice_combo.grid(row=3, column=1, sticky='ew', pady=(5, 0))
+    self.eva_voice_combo.grid(row=2, column=1, sticky='ew', pady=(5, 0))
     self.eva_voice_combo.bind(
         '<MouseWheel>', self.on_settings_control_mousewheel, add='+'
     )
@@ -773,20 +772,16 @@ def _build_gameplay_settings(self, settings_frame):
         'Uses one announcer for the whole mission. Random is deterministic for the seed and mission.',
     )
 
-    mission_pool_frame = ttk.LabelFrame(
-        settings_frame,
-        text='Mission Pool',
-        padding=(8, 8, 8, 8),
-    )
-    self.mission_pool_frame = mission_pool_frame
+    mission_pool_frame = self.mission_pool_frame
     mission_pool_frame.grid(row=3, column=0, sticky='ew', pady=(8, 0))
+    build_coop_controls(self, mission_pool_frame, 0)
     self.include_no_build_missions_check = ttk.Checkbutton(
         mission_pool_frame,
         text='Include true no-build / fixed-unit missions',
         variable=self.include_no_build_missions_var,
         command=self.on_mission_pool_settings_changed,
     )
-    self.include_no_build_missions_check.grid(row=0, column=0, sticky='w')
+    self.include_no_build_missions_check.grid(row=2, column=0, columnspan=2, sticky='w')
     WidgetTooltip(
         self.include_no_build_missions_check,
         'Includes missions completed only with fixed units, heroes, or scripted map powers and no player production.',
@@ -798,7 +793,7 @@ def _build_gameplay_settings(self, settings_frame):
         command=self.on_mission_pool_settings_changed,
     )
     self.include_no_build_production_missions_check.grid(
-        row=1, column=0, sticky='w', pady=(4, 0)
+        row=3, column=0, columnspan=2, sticky='w', pady=(4, 0)
     )
     WidgetTooltip(
         self.include_no_build_production_missions_check,
@@ -811,7 +806,7 @@ def _build_gameplay_settings(self, settings_frame):
         command=self.on_mission_pool_settings_changed,
     )
     self.include_operation_missions_check.grid(
-        row=2, column=0, sticky='w', pady=(4, 0)
+        row=4, column=0, columnspan=2, sticky='w', pady=(4, 0)
     )
     WidgetTooltip(
         self.include_operation_missions_check,
@@ -823,7 +818,7 @@ def _build_gameplay_settings(self, settings_frame):
         text='Prioritize included no-build missions in opening',
         variable=self.prioritize_no_build_missions_var,
     )
-    self.prioritize_no_build_missions_check.grid(row=3, column=0, sticky='w', pady=(4, 0))
+    self.prioritize_no_build_missions_check.grid(row=5, column=0, columnspan=2, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.prioritize_no_build_missions_check,
         'Fills protected Mission List/Grid opening positions with easier enabled true-no-build and production-no-build missions first.',

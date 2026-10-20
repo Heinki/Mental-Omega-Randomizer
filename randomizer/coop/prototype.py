@@ -486,11 +486,17 @@ def build_manifest(game_root: Path, state: dict, coop_name: str, *,
     if not re.fullmatch(r'[A-Za-z0-9_.-]{1,96}', str(state['seed'])):
         raise ValueError('Seed contains characters unsafe for a map marker.')
     coop_name = coop_name.lower()
-    category = mission_category or state.get('mission_category') or (
-        'challenge' if coop_name.startswith('c_') else 'coop')
+    category = mission_category or ('challenge' if coop_name.startswith('c_') else 'coop')
     context = {}
     if category == 'challenge':
         from randomizer.coop.challenge import challenge_context
+        if player_count == 1 and state.get('mission_category') == 'campaign' and ai_teammate is None:
+            from randomizer.challenges.catalogue import (
+                allowed_colors, automatic_ai_teammate, map_config,
+            )
+            metadata = map_config(game_root, coop_name, player_country=country or None)[2]
+            human_color = player_colors[0] if player_colors else allowed_colors(metadata)[0]
+            ai_teammate = automatic_ai_teammate(metadata, human_color)
         config, context = challenge_context(
             game_root, coop_name, country, player_count, difficulty, game_speed,
             ai_teammate=ai_teammate,

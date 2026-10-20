@@ -26,6 +26,7 @@ from randomizer.core.game_shutdown import GameShutdownWatch
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT
 from randomizer.rewards.arsenal import ARSENAL_MODE
 from randomizer.shop.model import RunStatus
+from randomizer.missions.pool import MissionExclusions
 from randomizer.ui.config import GAME_SPEEDS
 
 
@@ -60,7 +61,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         for widget in (self.coop_controls_frame, self.shop_coop_row):
             widget.grid()
         category = self.selected_mission_category()
-        challenge = category == 'challenge'
+        challenge = self.challenge_mission()
         enabled = available and self.coop_mode_var.get()
         guest = self.coop_guest_connected()
         self.campaign_combo.configure(values=(
@@ -84,12 +85,12 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                   or active_game or self.shop_launch_active()
                   or self.gameplay_settings_locked())
         for widget in (self.coop_mode_check, self.shop_coop_mode_check):
-            widget.configure(state='disabled' if locked else 'readonly')
+            widget.configure(state='disabled' if locked or not available else 'normal')
         for widget in (self.coop_player_count_combo, self.shop_coop_player_count_combo):
             widget.configure(state='disabled' if locked or active_shop else 'readonly')
         for prefix in ('', 'shop_'):
             for widget in getattr(self, prefix + 'challenge_fields', ()):
-                widget.grid() if challenge else widget.grid_remove()
+                widget.grid() if category == 'challenge' else widget.grid_remove()
             country = getattr(self, prefix + 'challenge_country_combo', None)
             if country is not None:
                 country.configure(state='disabled' if locked else 'readonly')
@@ -112,8 +113,9 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
     def active_mission_exclusions(self):
         if self.selected_mission_category() == 'challenge':
             return self.excluded_challenge_mission_codes
-        return (self.excluded_coop_mission_codes if self.coop_mode_var.get()
+        base = (self.excluded_coop_mission_codes if self.coop_mode_var.get()
                 else self.excluded_mission_codes)
+        return MissionExclusions(base, self.excluded_challenge_mission_codes)
 
     def coop_guest_connected(self):
         lobby = getattr(self, '_coop_lobby', None)
@@ -241,7 +243,8 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             names = ('campaign_var', 'reward_mode_var', 'seed_var', 'difficulty_var',
                      'progression_mode_var', 'mission_goal_var', 'rewards_per_check_var',
                      'selected_index', 'mission_category_var', 'challenge_player_count_var',
-                     'challenge_country_var', 'coop_mode_var', 'game_speed_var')
+                     'challenge_country_var', 'coop_mode_var', 'game_speed_var',
+                     'include_challenge_missions_var')
             self._coop_local_snapshot = (copy.deepcopy(self.state), {
                 key: getattr(self, key).get() for key in names
             })
@@ -550,6 +553,9 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                         or state.get('progression_mode') == 'Shop Mode'
                         or (state.get('archipelago') or {}).get('enabled')):
                     raise ValueError('Host sent unsupported challenge run settings.')
+                self.include_challenge_missions_var.set(bool(
+                    (state.get('mission_pool_settings') or {}).get('include_challenge_missions', False)
+                ))
                 self.mission_category_var.set(category)
                 self.challenge_player_count_var.set(str(state.get('challenge_player_count', 1)))
                 self.sync_mission_transport_mode()
@@ -624,7 +630,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                 session_token = message.get('session_token')
                 if not isinstance(session_token, str) or len(session_token) < 24:
                     raise ValueError('Host sent invalid co-op game token.')
-                if self.state.get('mission_category') == 'challenge':
+                if self.challenge_mission(code):
                     choices = message.get('player_options')
                     if (not isinstance(choices, dict)
                             or choices.get('guest') != self.own_challenge_player_options()):
@@ -632,7 +638,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                 self._start_coop_game('guest', code, session_token=session_token)
         elif kind == 'challenge_victory':
             code = message.get('code')
-            if (self.state.get('mission_category') != 'challenge'
+            if (not self.challenge_mission(code)
                     or code != getattr(self, '_coop_active_game_code', None)
                     or message.get('session_token') != getattr(self, '_coop_active_game_token', None)
                     or type(message.get('game_id')) is not int
@@ -665,7 +671,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
             return
         lobby = getattr(self, '_coop_lobby', None)
         mission = self.selected_mission()
-        if self.selected_mission_category() == 'challenge' and not self.challenge_run_ready():
+        if self.challenge_mission() and not self.challenge_run_ready():
             return
         if not self.state.get('coop_mode') or mission is None:
             messagebox.showwarning('Co-op', 'Generate a co-op seed and select a map first.')
@@ -677,7 +683,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         if not lobby or not lobby.connected:
             messagebox.showwarning('Co-op', 'Connect both launchers first.')
             return
-        if self.selected_mission_category() == 'challenge' and any(
+        if self.challenge_mission() and any(
                 name.casefold() == 'computer' for name in (lobby.name, lobby.peer)):
             messagebox.showwarning('Challenges', 'Use human player names other than Computer.')
             return
@@ -695,7 +701,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         if self.active_game_process is not None and self.active_game_process.poll() is None:
             messagebox.showwarning('Co-op', 'Close current game first.')
             return
-        challenge = self.state.get('mission_category') == 'challenge'
+        challenge = self.challenge_mission(code)
         player_options = None
         pair_options = None
         if challenge:
@@ -715,7 +721,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         self._coop_active_game_token = session_token
         self._coop_challenge_launch_snapshot = (
             self.capture_challenge_run_identity()
-            if self.state.get('mission_category') == 'challenge' else None
+            if challenge else None
         )
         mission = self.mission_lookup().get(code)
         begin = getattr(self, '_begin_archipelago_mission_preparation', None)
@@ -763,7 +769,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
                                 'guest_country': pair_options['guest']['country'],
                                 'player_colors': (pair_options['host']['color'], pair_options['guest']['color']),
                                 'player_count': 2, 'game_speed': game_speed}
-                               if state_snapshot.get('mission_category') == 'challenge' else {}),
+                               if challenge else {}),
                         )
                         shop_setup = None
                     lobby.send({'type': 'launch', 'code': code,
@@ -839,7 +845,7 @@ class CoopController(ChallengeLobbyController, CoopConnectionController):
         self._record_coop_log(f'Co-op paired with {result["peer"]}; game ID {result["game_id"]}; '
                         f'map {result["map_sha256"]}.')
         challenge_watch = None
-        if self.state.get('mission_category') == 'challenge':
+        if self.challenge_mission(self._coop_active_game_code):
             lobby = getattr(self, '_coop_lobby', None)
             challenge_watch = self.create_challenge_result_watch(
                 self.mission_lookup()[self._coop_active_game_code],
