@@ -1,7 +1,6 @@
 """Reward canonicalization, stacking, and human-readable display."""
 
 import re
-from math import ceil
 
 from .definitions import (
     BUFF_EFFECTS,
@@ -19,7 +18,7 @@ from .definitions import (
 from randomizer.config.tuning import (
     REWARD_PLANNING,
     stacked_cost,
-    stacked_self_heal_amount,
+    stacked_self_heal_rate,
     stacked_weapon_damage,
     stacked_weapon_rof,
     stacking_amount,
@@ -168,7 +167,7 @@ WEAPON_STAT_BUFF_TYPES = {'damage', 'range', 'reload', 'mind_control'}
 UNIT_STAT_BUFF_TYPES = {
     'health', 'sight', 'ammo', 'storage', 'income',
     'passenger_capacity', 'open_topped', 'initial_passenger',
-    'self_healing', 'cloak', 'sensors',
+    'self_healing', 'self_healing_cap', 'self_healing_rate', 'cloak', 'sensors',
 }
 MAP_GUARDED_BUFF_TYPES = WEAPON_STAT_BUFF_TYPES | UNIT_STAT_BUFF_TYPES
 CLONE_REQUIRED_BUFF_TYPES = (
@@ -328,23 +327,19 @@ def _uncached_buff_stack_limit(reward):
             previous = current
         return configured
     if buff_type == 'self_healing':
-        fraction_per_stack = float(
-            BUFF_EFFECTS['defense_self_heal_fraction']
-        )
-        maximum_fraction = float(
-            BUFF_EFFECTS['maximum_self_heal_fraction']
-        )
-        configured = max(1, int(ceil(
-            maximum_fraction / fraction_per_stack
-        )))
         target = BUFF_TARGETS.get(reward.get('unit'), {})
-        base_strength = float(target.get('strength', 1))
-        previous = stacked_self_heal_amount(base_strength, 1)
-        for count in range(2, configured + 1):
-            current = stacked_self_heal_amount(base_strength, count)
-            if current == previous:
-                return count - 1
-            previous = current
+        return max(1, int(target.get('self_healing_unlock_stacks', 2)))
+    if buff_type == 'self_healing_cap':
+        return 1
+    if buff_type == 'self_healing_rate':
+        target = BUFF_TARGETS.get(reward.get('unit'), {})
+        base_rate = target.get('self_healing_rate')
+        configured = int(BUFF_EFFECTS['self_heal_rate']['stack_limit'])
+        for count in range(1, configured):
+            if stacked_self_heal_rate(count, base_rate) == stacked_self_heal_rate(
+                count + 1, base_rate
+            ):
+                return count
         return configured
     if buff_type == 'building_limit':
         target = BUFF_TARGETS.get(reward.get('unit'), {})
@@ -668,11 +663,43 @@ def buff_effect_lines(
     if buff_type == 'open_topped':
         return [stacked(f'{prefix}Passengers can fire from transport')]
     if buff_type == 'self_healing':
-        _base, base_strength = durability()
-        heal_amount = stacked_self_heal_amount(base_strength, count)
-        return [stacked(
-            f'{prefix}Self-healing {heal_amount} HP per tick'
-        )]
+        if count <= 0 and not target.get('self_healing'):
+            for rank in ('Veteran', 'Elite'):
+                if 'self_heal' in {
+                    ability.casefold()
+                    for ability in target.get(f'{rank.lower()}_abilities', ())
+                }:
+                    return [stacked(f'{prefix}Self-healing enabled from {rank} rank')]
+            return [stacked(f'{prefix}Self-healing disabled')]
+        if target.get('category') == 'defenses' or not target.get('trainable', True):
+            return [stacked(f'{prefix}Self-healing enabled')]
+        rank = (
+            'Rookie' if target.get('self_healing')
+            or count >= int(target.get('self_healing_unlock_stacks', 2))
+            else 'Veteran'
+        )
+        return [stacked(f'{prefix}Self-healing enabled from {rank} rank')]
+    if buff_type == 'self_healing_cap':
+        caps = target.get('self_healing_caps', (1, 1, 1))
+        if len(set(caps)) == 1:
+            base_text = f'{number(caps[0] * 100)}%'
+        else:
+            base_text = ', '.join(
+                f'{rank} {number(cap * 100)}%'
+                for rank, cap in zip(('Rookie', 'Veteran', 'Elite'), caps)
+            )
+        if count <= 0:
+            return [stacked(f'{prefix}Self-healing cap {base_text}')]
+        base_text = f' [{base_text}]' if show_base_values else ''
+        return [stacked(f'{prefix}Self-healing cap 100%{base_text}')]
+    if buff_type == 'self_healing_rate':
+        base_rate = target.get('self_healing_rate')
+        return value_text(
+            'Self-healing tick interval',
+            stacked_self_heal_rate(count, base_rate) * 60,
+            stacked_self_heal_rate(0, base_rate) * 60,
+            ' seconds',
+        )
     if buff_type == 'cloak':
         return [stacked(f'{prefix}Cloaking enabled')]
     if buff_type == 'sensors':
@@ -696,7 +723,7 @@ def buff_effect_comparison_lines(reward, current_count, *, buff_counts=None):
     next_lines = buff_effect_lines(reward, count=current_count + 1, **options)
     if not next_lines:
         return []
-    if buff_stack_limit(reward) == 1:
+    if reward.get('buff_type') == 'self_healing' or buff_stack_limit(reward) == 1:
         return next_lines
     current_lines = buff_effect_lines(reward, count=current_count, **options)
     if len(current_lines) != len(next_lines):

@@ -53,7 +53,8 @@ _FACTORY_CATEGORY = {
 _WEAPON_BUFFS = {'damage', 'range', 'reload', 'mind_control'}
 _BUFF_ORDER = (
     'health', 'armor', 'sight', 'ammo', 'storage', 'income',
-    'passenger_capacity', 'initial_passenger', 'open_topped', 'self_healing', 'cloak',
+    'passenger_capacity', 'initial_passenger', 'open_topped', 'self_healing',
+    'self_healing_cap', 'self_healing_rate', 'cloak',
     'sensors', 'production', 'cost', 'speed',
 )
 

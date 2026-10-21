@@ -26,6 +26,12 @@ PROTOTYPE_ITEM_IDS = {
 # Keep published network identity when an obsolete reward becomes a useful
 # replacement. Launcher reward aliases translate old room item names.
 RENAMED_ITEM_IDS = {
+    "Aerial Fortress Irkalla Rapid Regeneration I": (
+        "Aerial Fortress Irkalla Repair Systems I", 81068104
+    ),
+    "Yuri Rapid Regeneration I": (
+        "Yuri Repair Systems I", 81067725
+    ),
     "Rejuvenator Healing Output I": (
         "Rejuvenator Ammo Reserves I", 81066605
     ),

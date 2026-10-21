@@ -788,8 +788,22 @@
       {
         "id": "self_healing",
         "name": "Repair Systems",
-        "setting_label": "Self-healing",
-        "description": "{plural} gain self-healing in future launched missions.",
+        "setting_label": "Self-healing access",
+        "description": "{plural} unlock self-healing at Veteran rank, then Rookie rank. Nontrainable units and buildings gain immediate access.",
+        "requires_clone": true
+      },
+      {
+        "id": "self_healing_cap",
+        "name": "Regeneration Capacity",
+        "setting_label": "Self-healing cap",
+        "description": "{plural} can self-heal to full health at every rank.",
+        "requires_clone": true
+      },
+      {
+        "id": "self_healing_rate",
+        "name": "Rapid Regeneration",
+        "setting_label": "Self-healing rate",
+        "description": "{plural} self-heal more frequently.",
         "requires_clone": true
       },
       {

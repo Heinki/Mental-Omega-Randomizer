@@ -1211,7 +1211,8 @@ def build_player_clone_sections(
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'storage', 'income',
             'passenger_capacity', 'initial_passenger',
-            'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
+            'open_topped', 'self_healing', 'self_healing_cap',
+            'self_healing_rate', 'cloak', 'sensors', 'production',
             'cost', 'speed',
         ):
             if buff_type in direct_types and apply_unit_buff_value(

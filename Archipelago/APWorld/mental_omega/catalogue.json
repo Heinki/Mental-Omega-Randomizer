@@ -403,6 +403,13 @@
       "id": 81063953
     },
     {
+      "name": "Abrams Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068126
+    },
+    {
       "name": "Abrams Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -492,6 +499,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81068093
+    },
+    {
+      "name": "Aegis Cruiser Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068127
     },
     {
       "name": "Aegis Cruiser Recon Package I",
@@ -599,6 +613,13 @@
       "id": 81063978
     },
     {
+      "name": "Aerial Fortress Irkalla Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068104
+    },
+    {
       "name": "Aerial Fortress Irkalla Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -611,13 +632,6 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81063980
-    },
-    {
-      "name": "Aerial Fortress Irkalla Repair Systems I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81068104
     },
     {
       "name": "Aerial Fortress Irkalla Sensor Suite I",
@@ -688,6 +702,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81063990
+    },
+    {
+      "name": "Aeroblaze Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068129
     },
     {
       "name": "Aeroblaze Recon Package I",
@@ -800,6 +821,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064006
+    },
+    {
+      "name": "Airborne Humvee Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068130
     },
     {
       "name": "Airborne Humvee Recon Package I",
@@ -921,6 +949,13 @@
       "id": 81064023
     },
     {
+      "name": "Akula Missile Sub Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068131
+    },
+    {
       "name": "Akula Missile Sub Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -996,6 +1031,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064034
+    },
+    {
+      "name": "Alanqa Skystation Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068132
     },
     {
       "name": "Alanqa Skystation Recon Package I",
@@ -1103,6 +1145,13 @@
       "id": 81064049
     },
     {
+      "name": "Alize Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068133
+    },
+    {
       "name": "Alize Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -1178,6 +1227,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064060
+    },
+    {
+      "name": "Allied Attack Dog Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068134
     },
     {
       "name": "Allied Attack Dog Recon Package I",
@@ -1285,6 +1341,13 @@
       "id": 81064075
     },
     {
+      "name": "Allied Grand Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068135
+    },
+    {
       "name": "Allied Grand Cannon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -1374,6 +1437,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064088
+    },
+    {
+      "name": "Allied Gun Turret Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068136
     },
     {
       "name": "Allied Gun Turret Recon Package I",
@@ -1474,6 +1544,13 @@
       "id": 81064101
     },
     {
+      "name": "Allied Patriot Missiles Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068137
+    },
+    {
       "name": "Allied Patriot Missiles Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -1563,6 +1640,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064114
+    },
+    {
+      "name": "Allied Pillbox Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068138
     },
     {
       "name": "Allied Pillbox Recon Package I",
@@ -1656,6 +1740,13 @@
       "id": 81064127
     },
     {
+      "name": "Allied Prism Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068139
+    },
+    {
       "name": "Allied Prism Tower Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -1731,6 +1822,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064138
+    },
+    {
+      "name": "Allied Warpnode Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068140
     },
     {
       "name": "Allied Warpnode Recon Package I",
@@ -1824,6 +1922,13 @@
       "id": 81064150
     },
     {
+      "name": "Angelshark Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068141
+    },
+    {
       "name": "Angelshark Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -1906,6 +2011,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067812
+    },
+    {
+      "name": "Apocalypse Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068142
     },
     {
       "name": "Apocalypse Prototype Recon Package I",
@@ -1999,6 +2111,13 @@
       "id": 81064162
     },
     {
+      "name": "Apocalypse Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068143
+    },
+    {
       "name": "Apocalypse Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -2090,6 +2209,13 @@
       "id": 81064175
     },
     {
+      "name": "Archelon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068144
+    },
+    {
       "name": "Archelon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -2165,6 +2291,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064186
+    },
+    {
+      "name": "Archer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068145
     },
     {
       "name": "Archer Recon Package I",
@@ -2263,6 +2396,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064200
+    },
+    {
+      "name": "Archon AMC Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068146
     },
     {
       "name": "Archon AMC Recon Package I",
@@ -2377,6 +2517,13 @@
       "id": 81064216
     },
     {
+      "name": "Armadillo Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068147
+    },
+    {
       "name": "Armadillo Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -2475,6 +2622,13 @@
       "id": 81067826
     },
     {
+      "name": "Arnie Frankfurter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068148
+    },
+    {
       "name": "Arnie Frankfurter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -2564,6 +2718,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064229
+    },
+    {
+      "name": "Arsonist Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068149
     },
     {
       "name": "Arsonist Recon Package I",
@@ -2662,6 +2823,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064243
+    },
+    {
+      "name": "Athena Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068150
     },
     {
       "name": "Athena Cannon Recon Package I",
@@ -2790,6 +2958,13 @@
       "id": 81064261
     },
     {
+      "name": "Barracuda Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068151
+    },
+    {
       "name": "Barracuda Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -2858,6 +3033,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064271
+    },
+    {
+      "name": "Basilisk Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068152
     },
     {
       "name": "Basilisk Recon Package I",
@@ -2958,6 +3140,13 @@
       "id": 81064285
     },
     {
+      "name": "Battle Tortoise Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068153
+    },
+    {
       "name": "Battle Tortoise Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -3047,6 +3236,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064298
+    },
+    {
+      "name": "Bison Combat Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068154
     },
     {
       "name": "Bison Combat Tank Recon Package I",
@@ -3145,6 +3341,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064312
+    },
+    {
+      "name": "Bison Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068155
     },
     {
       "name": "Bison Prototype Recon Package I",
@@ -3250,6 +3453,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064327
+    },
+    {
+      "name": "Black Eagle Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068156
     },
     {
       "name": "Black Eagle Recon Package I",
@@ -3406,6 +3616,13 @@
       "id": 81064349
     },
     {
+      "name": "Blizzard Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068157
+    },
+    {
       "name": "Blizzard Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -3488,6 +3705,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064361
+    },
+    {
+      "name": "Bloatick Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068158
     },
     {
       "name": "Bloatick Recon Package I",
@@ -3651,6 +3875,13 @@
       "id": 81064381
     },
     {
+      "name": "Boidmachine Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068159
+    },
+    {
       "name": "Boidmachine Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -3719,6 +3950,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064391
+    },
+    {
+      "name": "Bomb Buggy Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068160
     },
     {
       "name": "Bomb Buggy Recon Package I",
@@ -3826,6 +4064,13 @@
       "id": 81064419
     },
     {
+      "name": "Borillo Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068161
+    },
+    {
       "name": "Borillo Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -3924,6 +4169,13 @@
       "id": 81064433
     },
     {
+      "name": "Boris Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068162
+    },
+    {
       "name": "Boris Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4006,6 +4258,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064445
+    },
+    {
+      "name": "Brute Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068163
     },
     {
       "name": "Brute Recon Package I",
@@ -4104,6 +4363,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064459
+    },
+    {
+      "name": "Bulldog Light Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068164
     },
     {
       "name": "Bulldog Light Tank Recon Package I",
@@ -4211,6 +4477,13 @@
       "id": 81064474
     },
     {
+      "name": "Buratino Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068165
+    },
+    {
       "name": "Buratino Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4309,6 +4582,13 @@
       "id": 81064488
     },
     {
+      "name": "Buzzard Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068166
+    },
+    {
       "name": "Buzzard Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4391,6 +4671,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064500
+    },
+    {
+      "name": "Camo Pillbox Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068167
     },
     {
       "name": "Camo Pillbox Recon Package I",
@@ -4491,6 +4778,13 @@
       "id": 81064514
     },
     {
+      "name": "Catastrophe Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068168
+    },
+    {
       "name": "Catastrophe Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4580,6 +4874,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064527
+    },
+    {
+      "name": "Cavalier Medium Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068169
     },
     {
       "name": "Cavalier Medium Tank Recon Package I",
@@ -4692,6 +4993,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064543
+    },
+    {
+      "name": "Centurion Siege Crawler Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068170
     },
     {
       "name": "Centurion Siege Crawler Recon Package I",
@@ -4820,6 +5128,13 @@
       "id": 81064561
     },
     {
+      "name": "Charon Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068171
+    },
+    {
       "name": "Charon Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4911,6 +5226,13 @@
       "id": 81064574
     },
     {
+      "name": "Chitzkoi Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068172
+    },
+    {
       "name": "Chitzkoi Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -4993,6 +5315,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064586
+    },
+    {
+      "name": "Chrono Legionnaire Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068173
     },
     {
       "name": "Chrono Legionnaire Recon Package I",
@@ -5098,6 +5427,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064600
+    },
+    {
+      "name": "Chrono Prison Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068174
     },
     {
       "name": "Chrono Prison Recon Package I",
@@ -5261,6 +5597,13 @@
       "id": 81064621
     },
     {
+      "name": "Clairvoyant Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068175
+    },
+    {
       "name": "Clairvoyant Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -5380,6 +5723,13 @@
       "id": 81064637
     },
     {
+      "name": "Col. Krukov Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068176
+    },
+    {
       "name": "Col. Krukov Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -5469,6 +5819,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064650
+    },
+    {
+      "name": "Col. Reznov Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068177
     },
     {
       "name": "Col. Reznov Recon Package I",
@@ -5562,6 +5919,13 @@
       "id": 81064663
     },
     {
+      "name": "Colossus Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068178
+    },
+    {
       "name": "Colossus Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -5651,6 +6015,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064676
+    },
+    {
+      "name": "Condor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068179
     },
     {
       "name": "Condor Recon Package I",
@@ -5744,6 +6115,13 @@
       "id": 81067792
     },
     {
+      "name": "Crazy Ivan Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068180
+    },
+    {
       "name": "Crazy Ivan Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -5819,6 +6197,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81068095
+    },
+    {
+      "name": "Cryocopter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068181
     },
     {
       "name": "Cryocopter Recon Package I",
@@ -6059,6 +6444,13 @@
       "id": 81067844
     },
     {
+      "name": "Cyborg Commando Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068182
+    },
+    {
       "name": "Cyborg Commando Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -6150,6 +6542,13 @@
       "id": 81064720
     },
     {
+      "name": "Cyborg Vanguard Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068183
+    },
+    {
       "name": "Cyborg Vanguard Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -6239,6 +6638,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064733
+    },
+    {
+      "name": "Cyclops Walker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068184
     },
     {
       "name": "Cyclops Walker Recon Package I",
@@ -6388,6 +6794,13 @@
       "id": 81064754
     },
     {
+      "name": "Demolition Truck Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068185
+    },
+    {
       "name": "Demolition Truck Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -6484,6 +6897,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064768
+    },
+    {
+      "name": "Desolator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068186
     },
     {
       "name": "Desolator Recon Package I",
@@ -6589,6 +7009,13 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81064780
+    },
+    {
+      "name": "Disruptor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068187
     },
     {
       "name": "Disruptor Recon Package I",
@@ -6724,6 +7151,13 @@
       "id": 81064792
     },
     {
+      "name": "Diverbee Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068188
+    },
+    {
       "name": "Diverbee Prototype Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -6757,6 +7191,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064797
+    },
+    {
+      "name": "Diverbee Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068189
     },
     {
       "name": "Diverbee Recon Package I",
@@ -6836,6 +7277,13 @@
       "id": 81064808
     },
     {
+      "name": "Dolphin Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068190
+    },
+    {
       "name": "Dolphin Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -6911,6 +7359,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064819
+    },
+    {
+      "name": "Draco Light Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068191
     },
     {
       "name": "Draco Light Tank Recon Package I",
@@ -6995,6 +7450,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064831
+    },
+    {
+      "name": "Dragonfly Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068192
     },
     {
       "name": "Dragonfly Recon Package I",
@@ -7116,6 +7578,13 @@
       "id": 81067738
     },
     {
+      "name": "Drakuv Prison Vehicle Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068193
+    },
+    {
       "name": "Drakuv Prison Vehicle Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -7207,6 +7676,13 @@
       "id": 81064846
     },
     {
+      "name": "Driller APC Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068194
+    },
+    {
       "name": "Driller APC Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -7282,6 +7758,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064857
+    },
+    {
+      "name": "Dunerider Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068195
     },
     {
       "name": "Dunerider Recon Package I",
@@ -7375,6 +7858,13 @@
       "id": 81064870
     },
     {
+      "name": "Dustdevil Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068196
+    },
+    {
       "name": "Dustdevil Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -7450,6 +7940,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064881
+    },
+    {
+      "name": "Dybbuk-Attacker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068197
     },
     {
       "name": "Dybbuk-Attacker Recon Package I",
@@ -7529,6 +8026,13 @@
       "id": 81064892
     },
     {
+      "name": "Dybbuk-Evolver Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068198
+    },
+    {
       "name": "Dybbuk-Evolver Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -7604,6 +8108,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064903
+    },
+    {
+      "name": "Dybbuk-Seizer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068199
     },
     {
       "name": "Dybbuk-Seizer Recon Package I",
@@ -7837,6 +8348,13 @@
       "id": 81064936
     },
     {
+      "name": "Enterprise Aircraft Carrier Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068200
+    },
+    {
       "name": "Enterprise Aircraft Carrier Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -7935,6 +8453,13 @@
       "id": 81064949
     },
     {
+      "name": "Epsilon Adept Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068201
+    },
+    {
       "name": "Epsilon Adept Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8019,6 +8544,13 @@
       "id": 81064961
     },
     {
+      "name": "Epsilon Antares Battery Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068202
+    },
+    {
       "name": "Epsilon Antares Battery Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8096,6 +8628,13 @@
       "id": 81064972
     },
     {
+      "name": "Epsilon Chimera Core Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068203
+    },
+    {
       "name": "Epsilon Chimera Core Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8171,6 +8710,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81064983
+    },
+    {
+      "name": "Epsilon Cosmonaut Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068204
     },
     {
       "name": "Epsilon Cosmonaut Recon Package I",
@@ -8278,6 +8824,13 @@
       "id": 81064997
     },
     {
+      "name": "Epsilon Elite Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068205
+    },
+    {
       "name": "Epsilon Elite Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8369,6 +8922,13 @@
       "id": 81065010
     },
     {
+      "name": "Epsilon Gatling Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068206
+    },
+    {
       "name": "Epsilon Gatling Cannon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8453,6 +9013,13 @@
       "id": 81065022
     },
     {
+      "name": "Epsilon Genomines Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068207
+    },
+    {
       "name": "Epsilon Genomines Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8521,6 +9088,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065032
+    },
+    {
+      "name": "Epsilon Inferno Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068208
     },
     {
       "name": "Epsilon Inferno Tower Recon Package I",
@@ -8607,6 +9181,13 @@
       "id": 81065043
     },
     {
+      "name": "Epsilon Mind Reader Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068209
+    },
+    {
       "name": "Epsilon Mind Reader Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8682,6 +9263,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065054
+    },
+    {
+      "name": "Epsilon Spook Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068210
     },
     {
       "name": "Epsilon Spook Recon Package I",
@@ -8761,6 +9349,13 @@
       "id": 81065065
     },
     {
+      "name": "Epsilon Tank Bunker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068211
+    },
+    {
       "name": "Epsilon Tank Bunker Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -8822,6 +9417,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065074
+    },
+    {
+      "name": "Epsilon War Rig Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068212
     },
     {
       "name": "Epsilon War Rig Recon Package I",
@@ -8920,6 +9522,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065087
+    },
+    {
+      "name": "Eradicator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068213
     },
     {
       "name": "Eradicator Recon Package I",
@@ -9027,6 +9636,13 @@
       "id": 81065102
     },
     {
+      "name": "Eureka Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068214
+    },
+    {
       "name": "Eureka Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9109,6 +9725,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065114
+    },
+    {
+      "name": "Field Medic Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068215
     },
     {
       "name": "Field Medic Recon Package I",
@@ -9209,6 +9832,13 @@
       "id": 81065128
     },
     {
+      "name": "Fin Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068216
+    },
+    {
       "name": "Fin Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9284,6 +9914,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065139
+    },
+    {
+      "name": "Flak Trooper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068217
     },
     {
       "name": "Flak Trooper Recon Package I",
@@ -9375,6 +10012,13 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81065149
+    },
+    {
+      "name": "Flame Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068218
     },
     {
       "name": "Flame Tower Recon Package I",
@@ -9482,6 +10126,13 @@
       "id": 81068060
     },
     {
+      "name": "Flint Westwood Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068219
+    },
+    {
       "name": "Flint Westwood Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9573,6 +10224,13 @@
       "id": 81065155
     },
     {
+      "name": "Foehn Nanocoat Regulator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068220
+    },
+    {
       "name": "Foehn Nanocoat Regulator Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9648,6 +10306,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065166
+    },
+    {
+      "name": "Foehn Neutralizer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068221
     },
     {
       "name": "Foehn Neutralizer Recon Package I",
@@ -9734,6 +10399,13 @@
       "id": 81065178
     },
     {
+      "name": "Foehn Railgun Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068222
+    },
+    {
       "name": "Foehn Railgun Tower Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9818,6 +10490,13 @@
       "id": 81068125
     },
     {
+      "name": "Foehn Shrike Nest Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068223
+    },
+    {
       "name": "Foehn Shrike Nest Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -9886,6 +10565,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065199
+    },
+    {
+      "name": "Foehn Signal Inhibitor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068224
     },
     {
       "name": "Foehn Signal Inhibitor Recon Package I",
@@ -9970,6 +10656,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065210
+    },
+    {
+      "name": "Foehn Sonic Emitter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068225
     },
     {
       "name": "Foehn Sonic Emitter Recon Package I",
@@ -10182,6 +10875,13 @@
       "id": 81065240
     },
     {
+      "name": "Foxtrot Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068226
+    },
+    {
       "name": "Foxtrot Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -10243,6 +10943,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065249
+    },
+    {
+      "name": "Fury Drone Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068227
     },
     {
       "name": "Fury Drone Recon Package I",
@@ -10329,6 +11036,13 @@
       "id": 81065261
     },
     {
+      "name": "Future Tank Alpha Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068228
+    },
+    {
       "name": "Future Tank Alpha Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -10413,6 +11127,13 @@
       "id": 81065273
     },
     {
+      "name": "Future Tank X-0 Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068229
+    },
+    {
       "name": "Future Tank X-0 Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -10495,6 +11216,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065284
+    },
+    {
+      "name": "GI Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068230
     },
     {
       "name": "GI Recon Package I",
@@ -10602,6 +11330,13 @@
       "id": 81065299
     },
     {
+      "name": "Ganzir Defender Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068231
+    },
+    {
       "name": "Ganzir Defender Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -10684,6 +11419,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065311
+    },
+    {
+      "name": "Gatling Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068232
     },
     {
       "name": "Gatling Tank Recon Package I",
@@ -10798,6 +11540,13 @@
       "id": 81067877
     },
     {
+      "name": "Gehenna Platform (Earthrise) Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068233
+    },
+    {
       "name": "Gehenna Platform (Earthrise) Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -10887,6 +11636,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065326
+    },
+    {
+      "name": "Gehenna Platform Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068234
     },
     {
       "name": "Gehenna Platform Recon Package I",
@@ -10999,6 +11755,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067892
+    },
+    {
+      "name": "Gene Boss Brute Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068235
     },
     {
       "name": "Gene Boss Brute Recon Package I",
@@ -11125,6 +11888,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067907
+    },
+    {
+      "name": "Genequad Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068236
     },
     {
       "name": "Genequad Recon Package I",
@@ -11316,6 +12086,13 @@
       "id": 81065357
     },
     {
+      "name": "Gharial Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068237
+    },
+    {
       "name": "Gharial Prototype Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -11356,6 +12133,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065363
+    },
+    {
+      "name": "Gharial Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068238
     },
     {
       "name": "Gharial Recon Package I",
@@ -11456,6 +12240,13 @@
       "id": 81065376
     },
     {
+      "name": "Giant Squid Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068239
+    },
+    {
       "name": "Giant Squid Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -11531,6 +12322,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065387
+    },
+    {
+      "name": "Giantsbane Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068240
     },
     {
       "name": "Giantsbane Recon Package I",
@@ -11652,6 +12450,13 @@
       "id": 81065404
     },
     {
+      "name": "Gravitron Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068241
+    },
+    {
       "name": "Gravitron Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -11771,6 +12576,13 @@
       "id": 81065421
     },
     {
+      "name": "Grumble Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068242
+    },
+    {
       "name": "Grumble Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -11860,6 +12672,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065434
+    },
+    {
+      "name": "Guardian GI Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068243
     },
     {
       "name": "Guardian GI Recon Package I",
@@ -11953,6 +12772,13 @@
       "id": 81065447
     },
     {
+      "name": "Gyrocopter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068244
+    },
+    {
       "name": "Gyrocopter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12042,6 +12868,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065460
+    },
+    {
+      "name": "Hailstorm Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068245
     },
     {
       "name": "Hailstorm Recon Package I",
@@ -12149,6 +12982,13 @@
       "id": 81065475
     },
     {
+      "name": "Halftrack Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068246
+    },
+    {
       "name": "Halftrack Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12252,6 +13092,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065490
+    },
+    {
+      "name": "Hands of Ereshkigal Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068247
     },
     {
       "name": "Hands of Ereshkigal Recon Package I",
@@ -12373,6 +13220,13 @@
       "id": 81065507
     },
     {
+      "name": "Harrier Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068248
+    },
+    {
       "name": "Harrier Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12434,6 +13288,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065516
+    },
+    {
+      "name": "Hazequad Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068249
     },
     {
       "name": "Hazequad Recon Package I",
@@ -12513,6 +13374,13 @@
       "id": 81068082
     },
     {
+      "name": "Heavy Trooper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068250
+    },
+    {
       "name": "Heavy Trooper Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12588,6 +13456,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065524
+    },
+    {
+      "name": "Hijacker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068251
     },
     {
       "name": "Hijacker Recon Package I",
@@ -12702,6 +13577,13 @@
       "id": 81065540
     },
     {
+      "name": "Horizon Destroyer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068252
+    },
+    {
       "name": "Horizon Destroyer Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12786,6 +13668,13 @@
       "id": 81065552
     },
     {
+      "name": "Hovracoon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068253
+    },
+    {
       "name": "Hovracoon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -12861,6 +13750,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065563
+    },
+    {
+      "name": "Hummingbird Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068254
     },
     {
       "name": "Hummingbird Recon Package I",
@@ -12947,6 +13843,13 @@
       "id": 81065575
     },
     {
+      "name": "Huntress Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068255
+    },
+    {
       "name": "Huntress Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13029,6 +13932,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067919
+    },
+    {
+      "name": "Hydra Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068256
     },
     {
       "name": "Hydra Cannon Recon Package I",
@@ -13120,6 +14030,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065587
+    },
+    {
+      "name": "Hyperion Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068257
     },
     {
       "name": "Hyperion Recon Package I",
@@ -13234,6 +14151,13 @@
       "id": 81065601
     },
     {
+      "name": "Infector Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068258
+    },
+    {
       "name": "Infector Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13302,6 +14226,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065611
+    },
+    {
+      "name": "Infiltrator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068259
     },
     {
       "name": "Infiltrator Recon Package I",
@@ -13388,6 +14319,13 @@
       "id": 81065623
     },
     {
+      "name": "Initiate Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068260
+    },
+    {
       "name": "Initiate Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13465,6 +14403,13 @@
       "id": 81065633
     },
     {
+      "name": "Instant Shelter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068261
+    },
+    {
       "name": "Instant Shelter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13540,6 +14485,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065639
+    },
+    {
+      "name": "Invader Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068262
     },
     {
       "name": "Invader Recon Package I",
@@ -13659,6 +14611,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065656
+    },
+    {
+      "name": "Iron Dragon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068263
     },
     {
       "name": "Iron Dragon Recon Package I",
@@ -13822,6 +14781,13 @@
       "id": 81065679
     },
     {
+      "name": "Irritator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068264
+    },
+    {
       "name": "Irritator Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13899,6 +14865,13 @@
       "id": 81067937
     },
     {
+      "name": "Ivan Biker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068265
+    },
+    {
       "name": "Ivan Biker Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -13974,6 +14947,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067949
+    },
+    {
+      "name": "Ivan Cadet Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068266
     },
     {
       "name": "Ivan Cadet Recon Package I",
@@ -14116,6 +15096,13 @@
       "id": 81065699
     },
     {
+      "name": "Jackal Racer Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068267
+    },
+    {
       "name": "Jackal Racer Prototype Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -14163,6 +15150,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065706
+    },
+    {
+      "name": "Jackal Racer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068268
     },
     {
       "name": "Jackal Racer Recon Package I",
@@ -14263,6 +15257,13 @@
       "id": 81065720
     },
     {
+      "name": "Jaguar Battle Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068269
+    },
+    {
       "name": "Jaguar Battle Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -14359,6 +15360,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065734
+    },
+    {
+      "name": "Kappa Hover Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068270
     },
     {
       "name": "Kappa Hover Tank Recon Package I",
@@ -14529,6 +15537,13 @@
       "id": 81065758
     },
     {
+      "name": "Kirov Airship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068271
+    },
+    {
       "name": "Kirov Airship Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -14625,6 +15640,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065772
+    },
+    {
+      "name": "Kirov Command Airship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068272
     },
     {
       "name": "Kirov Command Airship Recon Package I",
@@ -14739,6 +15761,13 @@
       "id": 81065788
     },
     {
+      "name": "Knightframe Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068273
+    },
+    {
       "name": "Knightframe Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -14830,6 +15859,13 @@
       "id": 81065801
     },
     {
+      "name": "Kuznetsov Dreadnought Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068274
+    },
+    {
       "name": "Kuznetsov Dreadnought Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -14912,6 +15948,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065813
+    },
+    {
+      "name": "Lancer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068275
     },
     {
       "name": "Lancer Recon Package I",
@@ -15019,6 +16062,13 @@
       "id": 81065828
     },
     {
+      "name": "Lasher Light Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068276
+    },
+    {
       "name": "Lasher Light Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -15108,6 +16158,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065841
+    },
+    {
+      "name": "Leviathan Helicarrier Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068277
     },
     {
       "name": "Leviathan Helicarrier Recon Package I",
@@ -15234,6 +16291,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065859
+    },
+    {
+      "name": "Libra Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068278
     },
     {
       "name": "Libra Recon Package I",
@@ -15374,6 +16438,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065879
+    },
+    {
+      "name": "Lionheart Bomber Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068279
     },
     {
       "name": "Lionheart Bomber Recon Package I",
@@ -15530,6 +16601,13 @@
       "id": 81065901
     },
     {
+      "name": "M.A.D.M.A.N. Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068280
+    },
+    {
       "name": "M.A.D.M.A.N. Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -15626,6 +16704,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065915
+    },
+    {
+      "name": "Magnetron Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068281
     },
     {
       "name": "Magnetron Recon Package I",
@@ -15761,6 +16846,13 @@
       "id": 81065934
     },
     {
+      "name": "Malver Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068282
+    },
+    {
       "name": "Malver Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -15829,6 +16921,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065944
+    },
+    {
+      "name": "Mandjet Transport Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068283
     },
     {
       "name": "Mandjet Transport Recon Package I",
@@ -15913,6 +17012,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065956
+    },
+    {
+      "name": "Mantis Scrap Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068284
     },
     {
       "name": "Mantis Scrap Tank Recon Package I",
@@ -16013,6 +17119,13 @@
       "id": 81065970
     },
     {
+      "name": "Marauder Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068285
+    },
+    {
       "name": "Marauder Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -16109,6 +17222,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81065983
+    },
+    {
+      "name": "Mastermind Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068286
     },
     {
       "name": "Mastermind Recon Package I",
@@ -16251,6 +17371,13 @@
       "id": 81066003
     },
     {
+      "name": "Mastodon Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068287
+    },
+    {
       "name": "Mastodon Prototype Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -16291,6 +17418,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066009
+    },
+    {
+      "name": "Mastodon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068288
     },
     {
       "name": "Mastodon Recon Package I",
@@ -16417,6 +17551,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066025
+    },
+    {
+      "name": "Megalodon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068289
     },
     {
       "name": "Megalodon Recon Package I",
@@ -16552,6 +17693,13 @@
       "id": 81066041
     },
     {
+      "name": "Mirage Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068290
+    },
+    {
       "name": "Mirage Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -16655,6 +17803,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067964
+    },
+    {
+      "name": "Mobile Grinder Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068291
     },
     {
       "name": "Mobile Grinder Recon Package I",
@@ -16776,6 +17931,13 @@
       "id": 81066063
     },
     {
+      "name": "Morales Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068292
+    },
+    {
       "name": "Morales Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -16851,6 +18013,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066074
+    },
+    {
+      "name": "Mortar Quad Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068293
     },
     {
       "name": "Mortar Quad Recon Package I",
@@ -16935,6 +18104,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066086
+    },
+    {
+      "name": "Mosquito Demoboat Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068294
     },
     {
       "name": "Mosquito Demoboat Recon Package I",
@@ -17105,6 +18281,13 @@
       "id": 81066109
     },
     {
+      "name": "Nautilus Magnetic Sub Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068295
+    },
+    {
       "name": "Nautilus Magnetic Sub Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17210,6 +18393,13 @@
       "id": 81066124
     },
     {
+      "name": "Navy SEAL Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068296
+    },
+    {
       "name": "Navy SEAL Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17301,6 +18491,13 @@
       "id": 81066137
     },
     {
+      "name": "Neonwasp Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068297
+    },
+    {
       "name": "Neonwasp Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17383,6 +18580,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066149
+    },
+    {
+      "name": "Norio Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068298
     },
     {
       "name": "Norio Recon Package I",
@@ -17525,6 +18729,13 @@
       "id": 81066169
     },
     {
+      "name": "Nuwa Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068299
+    },
+    {
       "name": "Nuwa Cannon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17616,6 +18827,13 @@
       "id": 81066182
     },
     {
+      "name": "Old Artillery Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068300
+    },
+    {
       "name": "Old Artillery Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17705,6 +18923,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066195
+    },
+    {
+      "name": "Old Demo Truck Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068301
     },
     {
       "name": "Old Demo Truck Recon Package I",
@@ -17805,6 +19030,13 @@
       "id": 81066210
     },
     {
+      "name": "Old Heavy Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068302
+    },
+    {
       "name": "Old Heavy Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17903,6 +19135,13 @@
       "id": 81066224
     },
     {
+      "name": "Old Longbow Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068303
+    },
+    {
       "name": "Old Longbow Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -17992,6 +19231,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066237
+    },
+    {
+      "name": "Old M.A.D. Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068304
     },
     {
       "name": "Old M.A.D. Tank Recon Package I",
@@ -18085,6 +19331,13 @@
       "id": 81066251
     },
     {
+      "name": "Old Mammoth Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068305
+    },
+    {
       "name": "Old Mammoth Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18176,6 +19429,13 @@
       "id": 81066264
     },
     {
+      "name": "Old Ranger Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068306
+    },
+    {
       "name": "Old Ranger Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18258,6 +19518,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066276
+    },
+    {
+      "name": "Old V2 Launcher Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068307
     },
     {
       "name": "Old V2 Launcher Recon Package I",
@@ -18358,6 +19625,13 @@
       "id": 81068114
     },
     {
+      "name": "Opus Custom Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068308
+    },
+    {
       "name": "Opus Custom Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18440,6 +19714,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066298
+    },
+    {
+      "name": "Orcinus Waveshaper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068309
     },
     {
       "name": "Orcinus Waveshaper Recon Package I",
@@ -18582,6 +19863,13 @@
       "id": 81066316
     },
     {
+      "name": "Oxidizer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068310
+    },
+    {
       "name": "Oxidizer Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18722,6 +20010,13 @@
       "id": 81066336
     },
     {
+      "name": "Paladin Tank Hunter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068311
+    },
+    {
       "name": "Paladin Tank Hunter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18820,6 +20115,13 @@
       "id": 81066350
     },
     {
+      "name": "Paradox Engine Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068312
+    },
+    {
       "name": "Paradox Engine Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -18909,6 +20211,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066363
+    },
+    {
+      "name": "Perun Flagship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068313
     },
     {
       "name": "Perun Flagship Recon Package I",
@@ -19009,6 +20318,13 @@
       "id": 81066377
     },
     {
+      "name": "Phantasm MLRS Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068314
+    },
+    {
       "name": "Phantasm MLRS Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19100,6 +20416,13 @@
       "id": 81066390
     },
     {
+      "name": "Piranha Minisub Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068315
+    },
+    {
       "name": "Piranha Minisub Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19182,6 +20505,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81068106
+    },
+    {
+      "name": "Plague Splatter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068316
     },
     {
       "name": "Plague Splatter Recon Package I",
@@ -19273,6 +20603,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81068100
+    },
+    {
+      "name": "Plasmerizer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068317
     },
     {
       "name": "Plasmerizer Recon Package I",
@@ -19373,6 +20710,13 @@
       "id": 81068102
     },
     {
+      "name": "Prism Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068318
+    },
+    {
       "name": "Prism Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19455,6 +20799,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066431
+    },
+    {
+      "name": "PsiCorps Psychic Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068319
     },
     {
       "name": "PsiCorps Psychic Tower Recon Package I",
@@ -19560,6 +20911,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067979
+    },
+    {
+      "name": "Psychic Boss Brute Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068320
     },
     {
       "name": "Psychic Boss Brute Recon Package I",
@@ -19674,6 +21032,13 @@
       "id": 81066448
     },
     {
+      "name": "Psychic Sensor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068321
+    },
+    {
       "name": "Psychic Sensor Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -19749,6 +21114,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066459
+    },
+    {
+      "name": "Pteranodon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068322
     },
     {
       "name": "Pteranodon Recon Package I",
@@ -19840,6 +21212,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066472
+    },
+    {
+      "name": "Pyro Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068323
     },
     {
       "name": "Pyro Recon Package I",
@@ -19940,6 +21319,13 @@
       "id": 81066486
     },
     {
+      "name": "Qilin Assault Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068324
+    },
+    {
       "name": "Qilin Assault Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -20022,6 +21408,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066498
+    },
+    {
+      "name": "Quetzal Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068325
     },
     {
       "name": "Quetzal Recon Package I",
@@ -20150,6 +21543,13 @@
       "id": 81066516
     },
     {
+      "name": "Quickshifter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068326
+    },
+    {
       "name": "Quickshifter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -20232,6 +21632,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066528
+    },
+    {
+      "name": "Raccoon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068327
     },
     {
       "name": "Raccoon Recon Package I",
@@ -20381,6 +21788,13 @@
       "id": 81066549
     },
     {
+      "name": "Rahn Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068328
+    },
+    {
       "name": "Rahn Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -20470,6 +21884,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066562
+    },
+    {
+      "name": "Ramwagon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068329
     },
     {
       "name": "Ramwagon Recon Package I",
@@ -20563,6 +21984,13 @@
       "id": 81066575
     },
     {
+      "name": "Rashidi Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068330
+    },
+    {
       "name": "Rashidi Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -20652,6 +22080,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066588
+    },
+    {
+      "name": "Reaper Corvette Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068331
     },
     {
       "name": "Reaper Corvette Recon Package I",
@@ -20799,6 +22234,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066609
+    },
+    {
+      "name": "Rejuvenator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068332
     },
     {
       "name": "Rejuvenator Recon Package I",
@@ -20962,6 +22404,13 @@
       "id": 81066631
     },
     {
+      "name": "Repulsor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068333
+    },
+    {
       "name": "Repulsor Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21046,6 +22495,13 @@
       "id": 81066643
     },
     {
+      "name": "Resheph Ballistic Sub Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068334
+    },
+    {
       "name": "Resheph Ballistic Sub Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21121,6 +22577,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066654
+    },
+    {
+      "name": "Rhino Heavy Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068335
     },
     {
       "name": "Rhino Heavy Tank Recon Package I",
@@ -21221,6 +22684,13 @@
       "id": 81066668
     },
     {
+      "name": "Riot Trooper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068336
+    },
+    {
       "name": "Riot Trooper Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21303,6 +22773,13 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81066677
+    },
+    {
+      "name": "Risen Monolith Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068337
     },
     {
       "name": "Risen Monolith Recon Package I",
@@ -21403,6 +22880,13 @@
       "id": 81066684
     },
     {
+      "name": "Roadrunner Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068338
+    },
+    {
       "name": "Roadrunner Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21485,6 +22969,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066696
+    },
+    {
+      "name": "Robo Tengu Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068339
     },
     {
       "name": "Robo Tengu Recon Package I",
@@ -21578,6 +23069,13 @@
       "id": 81066709
     },
     {
+      "name": "Robot Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068340
+    },
+    {
       "name": "Robot Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21660,6 +23158,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066721
+    },
+    {
+      "name": "Rocketeer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068341
     },
     {
       "name": "Rocketeer Recon Package I",
@@ -21774,6 +23279,13 @@
       "id": 81066737
     },
     {
+      "name": "SODAR Array Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068342
+    },
+    {
       "name": "SODAR Array Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -21835,6 +23347,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066746
+    },
+    {
+      "name": "Saboteur Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068343
     },
     {
       "name": "Saboteur Recon Package I",
@@ -21919,6 +23438,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066758
+    },
+    {
+      "name": "Salamander Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068344
     },
     {
       "name": "Salamander Recon Package I",
@@ -22017,6 +23543,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81068002
+    },
+    {
+      "name": "Sammy Stallion Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068345
     },
     {
       "name": "Sammy Stallion Recon Package I",
@@ -22131,6 +23664,13 @@
       "id": 81066774
     },
     {
+      "name": "Scavenger Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068346
+    },
+    {
       "name": "Scavenger Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -22220,6 +23760,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066787
+    },
+    {
+      "name": "Scourge Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068347
     },
     {
       "name": "Scourge Recon Package I",
@@ -22320,6 +23867,13 @@
       "id": 81066801
     },
     {
+      "name": "Scud Launcher Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068348
+    },
+    {
       "name": "Scud Launcher Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -22416,6 +23970,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066815
+    },
+    {
+      "name": "Seawolf Gunboat Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068349
     },
     {
       "name": "Seawolf Gunboat Recon Package I",
@@ -22516,6 +24077,13 @@
       "id": 81066829
     },
     {
+      "name": "Seitaad Ballista Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068350
+    },
+    {
       "name": "Seitaad Ballista Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -22612,6 +24180,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066843
+    },
+    {
+      "name": "Sentinel Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068351
     },
     {
       "name": "Sentinel Recon Package I",
@@ -22747,6 +24322,13 @@
       "id": 81066862
     },
     {
+      "name": "Shadow Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068352
+    },
+    {
       "name": "Shadow Tank Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -22829,6 +24411,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066874
+    },
+    {
+      "name": "Shadray Torch Tank Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068353
     },
     {
       "name": "Shadray Torch Tank Recon Package I",
@@ -22943,6 +24532,13 @@
       "id": 81066890
     },
     {
+      "name": "Shin Tsurugi Decimator Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068354
+    },
+    {
       "name": "Shin Tsurugi Decimator Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -23025,6 +24621,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066902
+    },
+    {
+      "name": "Shock Trooper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068355
     },
     {
       "name": "Shock Trooper Recon Package I",
@@ -23116,6 +24719,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066915
+    },
+    {
+      "name": "Siege Cadre Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068356
     },
     {
       "name": "Siege Cadre Recon Package I",
@@ -23230,6 +24840,13 @@
       "id": 81066931
     },
     {
+      "name": "Siegfried Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068357
+    },
+    {
       "name": "Siegfried Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -23326,6 +24943,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066945
+    },
+    {
+      "name": "Siren Frigate Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068358
     },
     {
       "name": "Siren Frigate Recon Package I",
@@ -23433,6 +25057,13 @@
       "id": 81066960
     },
     {
+      "name": "Smoke Turret Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068359
+    },
+    {
       "name": "Smoke Turret Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -23515,6 +25146,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066972
+    },
+    {
+      "name": "Sniper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068360
     },
     {
       "name": "Sniper Recon Package I",
@@ -23629,6 +25267,13 @@
       "id": 81066988
     },
     {
+      "name": "Soviet Attack Dog Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068361
+    },
+    {
       "name": "Soviet Attack Dog Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -23704,6 +25349,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81066999
+    },
+    {
+      "name": "Soviet Battle Bunker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068362
     },
     {
       "name": "Soviet Battle Bunker Recon Package I",
@@ -23811,6 +25463,13 @@
       "id": 81067012
     },
     {
+      "name": "Soviet Conscript Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068363
+    },
+    {
       "name": "Soviet Conscript Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -23900,6 +25559,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067025
+    },
+    {
+      "name": "Soviet Cosmonaut Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068364
     },
     {
       "name": "Soviet Cosmonaut Recon Package I",
@@ -24000,6 +25666,13 @@
       "id": 81067039
     },
     {
+      "name": "Soviet Flak Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068365
+    },
+    {
       "name": "Soviet Flak Cannon Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24091,6 +25764,13 @@
       "id": 81067052
     },
     {
+      "name": "Soviet Hammer Defense Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068366
+    },
+    {
       "name": "Soviet Hammer Defense Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24168,6 +25848,13 @@
       "id": 81067063
     },
     {
+      "name": "Soviet Iron Guard Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068367
+    },
+    {
       "name": "Soviet Iron Guard Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24238,6 +25925,13 @@
       "id": 81067071
     },
     {
+      "name": "Soviet Repair Crane Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068368
+    },
+    {
       "name": "Soviet Repair Crane Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24299,6 +25993,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067080
+    },
+    {
+      "name": "Soviet Sensor Tower Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068369
     },
     {
       "name": "Soviet Sensor Tower Recon Package I",
@@ -24369,6 +26070,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067090
+    },
+    {
+      "name": "Soviet Sentry Gun Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068370
     },
     {
       "name": "Soviet Sentry Gun Recon Package I",
@@ -24460,6 +26168,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067103
+    },
+    {
+      "name": "Soviet Tesla Coil Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068371
     },
     {
       "name": "Soviet Tesla Coil Recon Package I",
@@ -24574,6 +26289,13 @@
       "id": 81067119
     },
     {
+      "name": "Space Commando Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068372
+    },
+    {
       "name": "Space Commando Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24656,6 +26378,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067131
+    },
+    {
+      "name": "Speeder Trike Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068373
     },
     {
       "name": "Speeder Trike Recon Package I",
@@ -24784,6 +26513,13 @@
       "id": 81067149
     },
     {
+      "name": "Spy Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068374
+    },
+    {
       "name": "Spy Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -24852,6 +26588,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067159
+    },
+    {
+      "name": "Stalin's Fist Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068375
     },
     {
       "name": "Stalin's Fist Recon Package I",
@@ -24931,6 +26674,13 @@
       "id": 81067170
     },
     {
+      "name": "Stalker Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068376
+    },
+    {
       "name": "Stalker Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25006,6 +26756,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067181
+    },
+    {
+      "name": "Stallion Transport Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068377
     },
     {
       "name": "Stallion Transport Recon Package I",
@@ -25113,6 +26870,13 @@
       "id": 81067195
     },
     {
+      "name": "Stinger Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068378
+    },
+    {
       "name": "Stinger Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25202,6 +26966,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067208
+    },
+    {
+      "name": "Stormchild Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068379
     },
     {
       "name": "Stormchild Recon Package I",
@@ -25309,6 +27080,13 @@
       "id": 81067223
     },
     {
+      "name": "Stryker IFV Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068380
+    },
+    {
       "name": "Stryker IFV Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25400,6 +27178,13 @@
       "id": 81067236
     },
     {
+      "name": "Super Thor Gunship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068381
+    },
+    {
       "name": "Super Thor Gunship Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25482,6 +27267,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067248
+    },
+    {
+      "name": "Suppressor Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068382
     },
     {
       "name": "Suppressor Recon Package I",
@@ -25596,6 +27388,13 @@
       "id": 81068073
     },
     {
+      "name": "Sweeper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068383
+    },
+    {
       "name": "Sweeper Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25694,6 +27493,13 @@
       "id": 81067275
     },
     {
+      "name": "Swordfish Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068384
+    },
+    {
       "name": "Swordfish Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25778,6 +27584,13 @@
       "id": 81067287
     },
     {
+      "name": "Syckle Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068385
+    },
+    {
       "name": "Syckle Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -25853,6 +27666,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067298
+    },
+    {
+      "name": "Syncronin Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068386
     },
     {
       "name": "Syncronin Recon Package I",
@@ -25953,6 +27773,13 @@
       "id": 81068013
     },
     {
+      "name": "Tank Killer Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068387
+    },
+    {
       "name": "Tank Killer Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26051,6 +27878,13 @@
       "id": 81067314
     },
     {
+      "name": "Tanya Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068388
+    },
+    {
       "name": "Tanya Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26126,6 +27960,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067325
+    },
+    {
+      "name": "Tarchia Cannon Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068389
     },
     {
       "name": "Tarchia Cannon Recon Package I",
@@ -26224,6 +28065,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067339
+    },
+    {
+      "name": "Tarchia Prototype Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068390
     },
     {
       "name": "Tarchia Prototype Recon Package I",
@@ -26359,6 +28207,13 @@
       "id": 81067357
     },
     {
+      "name": "Teratorn Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068391
+    },
+    {
       "name": "Teratorn Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26455,6 +28310,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067371
+    },
+    {
+      "name": "Terror Drone Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068392
     },
     {
       "name": "Terror Drone Recon Package I",
@@ -26583,6 +28445,13 @@
       "id": 81067389
     },
     {
+      "name": "Tesla Cruiser Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068393
+    },
+    {
       "name": "Tesla Cruiser Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26674,6 +28543,13 @@
       "id": 81067402
     },
     {
+      "name": "Tesla Trooper Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068394
+    },
+    {
       "name": "Tesla Trooper Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26763,6 +28639,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067415
+    },
+    {
+      "name": "Thor Gunship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068395
     },
     {
       "name": "Thor Gunship Recon Package I",
@@ -26870,6 +28753,13 @@
       "id": 81067430
     },
     {
+      "name": "Tigr APC Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068396
+    },
+    {
       "name": "Tigr APC Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -26973,6 +28863,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067445
+    },
+    {
+      "name": "Topol-M Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068397
     },
     {
       "name": "Topol-M Recon Package I",
@@ -27108,6 +29005,13 @@
       "id": 81067462
     },
     {
+      "name": "Trident Battleship Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068398
+    },
+    {
       "name": "Trident Battleship Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -27197,6 +29101,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067475
+    },
+    {
+      "name": "Tsurugi Powersuit Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068399
     },
     {
       "name": "Tsurugi Powersuit Recon Package I",
@@ -27297,6 +29208,13 @@
       "id": 81067489
     },
     {
+      "name": "Typhoon Attack Sub Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068400
+    },
+    {
       "name": "Typhoon Attack Sub Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -27388,6 +29306,13 @@
       "id": 81068031
     },
     {
+      "name": "Tyrant Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068401
+    },
+    {
       "name": "Tyrant Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -27456,6 +29381,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067498
+    },
+    {
+      "name": "Ultra Dome Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068402
     },
     {
       "name": "Ultra Dome Recon Package I",
@@ -27575,6 +29507,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067514
+    },
+    {
+      "name": "Uragan Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068403
     },
     {
       "name": "Uragan Recon Package I",
@@ -27703,6 +29642,13 @@
       "id": 81068045
     },
     {
+      "name": "Virus Boss Brute Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068404
+    },
+    {
       "name": "Virus Boss Brute Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -27778,6 +29724,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067528
+    },
+    {
+      "name": "Virus Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068405
     },
     {
       "name": "Virus Recon Package I",
@@ -27899,6 +29852,13 @@
       "id": 81067545
     },
     {
+      "name": "Volkov Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068406
+    },
+    {
       "name": "Volkov Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -27988,6 +29948,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067558
+    },
+    {
+      "name": "Voyager Transport Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068407
     },
     {
       "name": "Voyager Transport Recon Package I",
@@ -28086,6 +30053,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067572
+    },
+    {
+      "name": "Vulture Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068408
     },
     {
       "name": "Vulture Recon Package I",
@@ -28214,6 +30188,13 @@
       "id": 81067589
     },
     {
+      "name": "Warhawk Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068409
+    },
+    {
       "name": "Warhawk Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -28298,6 +30279,13 @@
       "id": 81067601
     },
     {
+      "name": "Watercat Transport Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068410
+    },
+    {
       "name": "Watercat Transport Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -28380,6 +30368,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067613
+    },
+    {
+      "name": "Whipray Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068411
     },
     {
       "name": "Whipray Recon Package I",
@@ -28478,6 +30473,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067627
+    },
+    {
+      "name": "Wolfhound Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068412
     },
     {
       "name": "Wolfhound Recon Package I",
@@ -28613,6 +30615,13 @@
       "id": 81067646
     },
     {
+      "name": "Wormqueen Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068413
+    },
+    {
       "name": "Wormqueen Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -28711,6 +30720,13 @@
       "id": 81067660
     },
     {
+      "name": "Yunru Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068414
+    },
+    {
       "name": "Yunru Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -28802,6 +30818,13 @@
       "id": 81067722
     },
     {
+      "name": "Yuri Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81067725
+    },
+    {
       "name": "Yuri Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -28814,13 +30837,6 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067724
-    },
-    {
-      "name": "Yuri Repair Systems I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067725
     },
     {
       "name": "Yuri Sensor Suite I",
@@ -28898,6 +30914,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067672
+    },
+    {
+      "name": "Zephyr Artillery Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068416
     },
     {
       "name": "Zephyr Artillery Recon Package I",
@@ -29019,6 +31042,13 @@
       "id": 81067689
     },
     {
+      "name": "Zorbtrotter Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068417
+    },
+    {
       "name": "Zorbtrotter Recon Package I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -29122,6 +31152,13 @@
       "category": "unit_buffs",
       "repeatable": true,
       "id": 81067704
+    },
+    {
+      "name": "Zubr Transport Rapid Regeneration I",
+      "classification": "useful",
+      "category": "unit_buffs",
+      "repeatable": true,
+      "id": 81068418
     },
     {
       "name": "Zubr Transport Recon Package I",
@@ -32447,7 +34484,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "2f21b169a3eb14d17430ce4db43c4b48b0517b560670eef4565493e4319983ad",
+  "catalogue_checksum": "79566ef9bf1b98422d46848e2f65586a57a7441692044d9c3bff6a596300108b",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",

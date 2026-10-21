@@ -21,7 +21,8 @@ _OWNED_BUILDING_LINKS = {
 _EMPTY = {'', 'none', '<none>'}
 _BUFF_ORDER = (
     'health', 'armor', 'sight', 'ammo', 'storage', 'income',
-    'passenger_capacity', 'open_topped', 'self_healing', 'cloak',
+    'passenger_capacity', 'open_topped', 'self_healing', 'self_healing_cap',
+    'self_healing_rate', 'cloak',
     'sensors', 'production', 'cost', 'speed',
 )
 _WEAPON_BUFFS = {'damage', 'range', 'reload', 'mind_control'}

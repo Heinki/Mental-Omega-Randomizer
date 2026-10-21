@@ -18,6 +18,7 @@
       "sensor_sight_bonus": 2,
       "defense_self_heal_fraction": 0.01,
       "maximum_self_heal_fraction": 0.5,
+      "self_heal_rate": {"minutes_at_15_fps": 0.03, "factor_per_stack": 0.9, "minimum_minutes": 0.0011111111111111111, "stack_limit": 40},
       "movement_speed": {
         "safe_ceilings": {
           "infantry": 8,

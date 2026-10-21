@@ -13,6 +13,7 @@ from ._shared import (
     buff_stack_limit,
     buffs_with_unlocked_access,
     capped_movement_speed,
+    comma_items,
     expand_equivalent_role_buffs,
     linked_buff_variant_ids,
     map_house_records,
@@ -25,13 +26,15 @@ from ._shared import (
     unique_in_order,
 )
 from .base import (
+    _remove_case_insensitive,
+    _value_case_insensitive,
     _next_reserved_type_key,
     format_multiplier,
     parse_float,
 )
 from randomizer.config.tuning import (
     stacked_cost,
-    stacked_self_heal_amount,
+    stacked_self_heal_rate,
     stacked_weapon_damage,
     stacked_weapon_rof,
 )
@@ -192,13 +195,32 @@ def apply_unit_buff_value(values, target, buff_type, count):
             return False
         values['OpenTopped'] = 'yes'
     elif buff_type == 'self_healing':
-        values['SelfHealing'] = 'yes'
-        # Ares defaults to one hitpoint per RepairRate tick. Give every stack
-        # another configured fraction of effective maximum strength.
-        current_strength = resolved_safe_strength(target, values)
-        values['SelfHealing.Amount'] = str(
-            stacked_self_heal_amount(current_strength, count)
+        if target.get('category') == 'defenses' or not target.get('trainable', True):
+            _remove_case_insensitive(values, 'SelfHealing')
+            values['SelfHealing'] = 'yes'
+        else:
+            for rank in ('Veteran', 'Elite'):
+                key = f'{rank}Abilities'
+                fallback = ','.join(target.get(f'{rank.lower()}_abilities', ()))
+                abilities = list(comma_items(
+                    _value_case_insensitive(values, key, fallback)
+                ))
+                if 'self_heal' not in {item.casefold() for item in abilities}:
+                    abilities.append('SELF_HEAL')
+                _remove_case_insensitive(values, key)
+                values[key] = ','.join(abilities)
+            if count >= int(target.get('self_healing_unlock_stacks', 2)):
+                _remove_case_insensitive(values, 'SelfHealing')
+                values['SelfHealing'] = 'yes'
+    elif buff_type == 'self_healing_cap':
+        _remove_case_insensitive(values, 'SelfHealing.Max')
+        values['SelfHealing.Max'] = '100%'
+    elif buff_type == 'self_healing_rate':
+        base_rate = _value_case_insensitive(
+            values, 'SelfHealing.Rate', target.get('self_healing_rate')
         )
+        _remove_case_insensitive(values, 'SelfHealing.Rate')
+        values['SelfHealing.Rate'] = str(stacked_self_heal_rate(count, base_rate))
     elif buff_type == 'cloak':
         values['Cloakable'] = 'yes'
         values['Cloakable.Stages'] = '1'

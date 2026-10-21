@@ -1,6 +1,7 @@
 """Typed access to editable reward, clone, and assistance tuning."""
 
 from functools import lru_cache
+from math import isfinite
 
 from randomizer.config.static import load_static_config
 
@@ -105,6 +106,22 @@ def stacked_weapon_rof(base_rof, count):
     if count > 0 and base_rof > 1:
         return min(rounded, base_rof - 1)
     return rounded
+
+
+def stacked_self_heal_rate(count, base_rate=None):
+    """Return Ares minutes between healing ticks after rate upgrades."""
+    values = BUFF_EFFECTS['self_heal_rate']
+    count = max(0, min(int(values['stack_limit']), int(count)))
+    try:
+        base_rate = float(base_rate)
+    except (TypeError, ValueError):
+        base_rate = float(values['minutes_at_15_fps'])
+    if not isfinite(base_rate) or base_rate <= 0:
+        base_rate = float(values['minutes_at_15_fps'])
+    return max(
+        float(values['minimum_minutes']),
+        base_rate * float(values['factor_per_stack']) ** count,
+    )
 
 
 def stacked_self_heal_amount(base_strength, count):

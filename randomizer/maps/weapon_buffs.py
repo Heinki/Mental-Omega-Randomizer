@@ -216,7 +216,7 @@ def unit_weapon_buff_rules(
                 )
                 if authored_passengers is not None:
                     try:
-                        effective_target = dict(target)
+                        effective_target = dict(effective_target)
                         effective_target['passengers'] = int(
                             float(str(authored_passengers).strip())
                         )
@@ -228,7 +228,8 @@ def unit_weapon_buff_rules(
             for buff_type in (
                 'health', 'armor', 'sight', 'ammo', 'storage', 'income',
                 'passenger_capacity',
-                'open_topped', 'self_healing', 'cloak', 'sensors', 'cost',
+                'open_topped', 'self_healing', 'self_healing_cap',
+                'self_healing_rate', 'cloak', 'sensors', 'cost',
                 'speed',
             ):
                 if buff_type in direct_types and apply_unit_buff_value(
@@ -392,7 +393,8 @@ def native_variant_unit_buff_rules(
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'storage', 'income',
             'passenger_capacity',
-            'open_topped', 'self_healing', 'cloak', 'sensors', 'production',
+            'open_topped', 'self_healing', 'self_healing_cap',
+            'self_healing_rate', 'cloak', 'sensors', 'production',
             'cost', 'speed',
         ):
             if buff_type in counts:

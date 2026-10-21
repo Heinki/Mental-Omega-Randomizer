@@ -14,6 +14,9 @@ from randomizer.rewards.power_buff_definitions import (
     build_power_buff_rewards,
 )
 from randomizer.rewards.enemy_scaling import build_enemy_reward_pool
+from randomizer.rewards.healing import (
+    self_healing_metadata, self_healing_buff_types,
+)
 from randomizer.rewards.roster import (
     randomizer_unit_ids_with_behavior,
     randomizer_unit_template_values,
@@ -615,7 +618,8 @@ def add_complete_faction_buff_targets():
     defense_buff_types = [
         'production', 'cost', 'armor', 'health', 'sight',
         'damage', 'reload', 'range',
-        'self_healing', 'cloak', 'sensors', 'veteran',
+        'self_healing', 'self_healing_cap', 'self_healing_rate',
+        'cloak', 'sensors', 'veteran',
     ]
     for faction, defenses in FACTION_DEFENSE_ROSTERS.items():
         for defense_id, label in defenses.items():
@@ -906,6 +910,14 @@ def build_buff_rewards():
             continue
         for buff_type in BUFF_TYPES:
             buff_type_id = buff_type['id']
+            if (
+                buff_type_id in {'self_healing', 'self_healing_cap', 'self_healing_rate'}
+                and (
+                    buff_type_id not in self_healing_buff_types(target)
+                    or unit_id in EXCLUDED_BUFF_TYPE_IDS.get('self_healing', ())
+                )
+            ):
+                continue
             broad_exclusions = (
                 frozenset()
                 if buff_type_id == 'storage' and target.get('storage')
@@ -924,10 +936,7 @@ def build_buff_rewards():
                 continue
             if (
                 unit_id in EXISTING_CAPABILITY_IDS.get(buff_type_id, ())
-                and not (
-                    buff_type_id == 'self_healing'
-                    and target.get('stackable_existing_self_healing')
-                )
+                and buff_type_id != 'self_healing'
             ):
                 continue
             if buff_type_id == 'veteran' and not target.get('trainable', True):
@@ -1036,6 +1045,18 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
                     source_weapons[weapon_id] = dict(stats)
                     source_weapon_ids.add(str(weapon_id).upper())
 
+
+for unit_id, target in BUFF_TARGETS.items():
+    template = _RANDOMIZER_TEMPLATE_VALUES.get(unit_id, {})
+    target.update(self_healing_metadata(
+        {'Trainable': 'yes' if target.get('trainable', True) else 'no', **template},
+        target.get('category'),
+    ))
+    allowed_types = target.get('allowed_buff_types')
+    if allowed_types and 'self_healing' in allowed_types:
+        target['allowed_buff_types'] = list(dict.fromkeys([
+            *allowed_types, 'self_healing_cap', 'self_healing_rate',
+        ]))
 
 UNIT_BUFF_REWARDS = build_buff_rewards()
 
@@ -1498,6 +1519,8 @@ REWARD_BY_BUFF_KEY = {
 RETIRED_REWARD_BY_NAME = _REWARD_CATALOGUE_CONFIG['retired_reward_by_name']
 REWARD_ALIASES = {
     **ACCESS_REWARD_ALIASES,
+    'Aerial Fortress Irkalla Repair Systems I': 'Aerial Fortress Irkalla Rapid Regeneration I',
+    'Yuri Repair Systems I': 'Yuri Rapid Regeneration I',
     'Medic Drill I': 'Field Medic Drill I',
     'Humvee Assembly I': 'Humvee Drill I',
     'IFV Assembly I': 'IFV Drill I',

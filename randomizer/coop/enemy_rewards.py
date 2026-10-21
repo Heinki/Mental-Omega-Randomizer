@@ -4,8 +4,11 @@ from collections import Counter
 import hashlib
 import re
 
+from randomizer.config.tuning import stacked_self_heal_amount
 from randomizer.maps.base import cloned_superweapon_plan, format_multiplier, parse_float
-from randomizer.maps.buff_values import apply_unit_buff_value, apply_weapon_buff_value
+from randomizer.maps.buff_values import (
+    apply_unit_buff_value, apply_weapon_buff_value, resolved_safe_strength,
+)
 from randomizer.maps.clone_references import _target_with_effective_unit_stats
 from randomizer.maps.enemy_scaling import (
     _authored_tech_tier, enemy_existing_power_grant_plan,
@@ -88,7 +91,12 @@ def _safe_enemy_unit_buffs(lines, enemies, players, counts, rewards, installed):
             'cloak', 'sensors', 'speed',
         ):
             amount = effects.get((tier, buff_type), 0)
-            if amount:
+            if amount and buff_type == 'self_healing':
+                updated['SelfHealing'] = 'yes'
+                updated['SelfHealing.Amount'] = str(stacked_self_heal_amount(
+                    resolved_safe_strength(effective_target, updated), amount,
+                ))
+            elif amount:
                 apply_unit_buff_value(updated, effective_target, buff_type, amount)
         weapon_counts = {
             buff_type: effects[(tier, buff_type)]

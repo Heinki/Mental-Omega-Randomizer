@@ -2,6 +2,7 @@
 
 import re
 
+from randomizer.config.tuning import stacked_self_heal_amount
 from randomizer.rewards.enemy_scaling import (
     enemy_effect_text,
     enemy_effect_values,
@@ -34,6 +35,7 @@ from .buff_values import (
     _register_map_type,
     apply_unit_buff_value,
     apply_weapon_buff_value,
+    resolved_safe_strength,
 )
 from .clone_references import (
     _standalone_clone_values_from_maps,
@@ -490,7 +492,12 @@ def enemy_native_unit_buff_rules(
             definition, count = effect_entry
             before_values = {**current_values, **unit_updates}
             candidate = dict(before_values)
-            if not apply_unit_buff_value(
+            if buff_type == 'self_healing':
+                candidate['SelfHealing'] = 'yes'
+                candidate['SelfHealing.Amount'] = str(stacked_self_heal_amount(
+                    resolved_safe_strength(effective_target, candidate), count
+                ))
+            elif not apply_unit_buff_value(
                 candidate, effective_target, buff_type, count
             ):
                 continue
