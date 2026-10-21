@@ -42,6 +42,7 @@ from ._dependencies import (
 )
 
 from .window import WindowController
+from .update_controller import UpdateController
 from .state_controller import StateController
 from .reward_controller import RewardController
 from .shop_controller import ShopController
@@ -60,6 +61,7 @@ from .challenge_controller import ChallengeController
 
 
 class LauncherApp(
+    UpdateController,
     ChallengeController,
     WindowController,
     ShopController,
@@ -589,6 +591,7 @@ class LauncherApp(
         self.refresh_progress_view()
         self.refresh_shop_mode()
         self.initial_load_complete = True
+        self.start_update_check()
         log_event(
             'launcher_ready',
             missions=len(self.missions),

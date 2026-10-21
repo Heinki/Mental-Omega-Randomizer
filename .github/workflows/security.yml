@@ -27,12 +27,9 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r requirements-build.txt
       - name: Compile source
         run: python -m compileall -q .
-      - name: Build launcher and APWorld
+      - name: Build and verify complete release bundle
         shell: powershell
-        run: >-
-          .\build_all.ps1
-          -LauncherOutput 'release\MentalOmegaRandomizer.exe'
-          -APWorldOutputDirectory 'release'
+        run: .\build_archipelago_release.ps1 -OutputDirectory 'release'
 
   codeql:
     name: CodeQL (Python)

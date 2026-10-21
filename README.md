@@ -37,6 +37,11 @@ launcher and APWorld from different releases.
 
 ## Release Safety and Verification
 
+The Windows launcher supports optional in-place updates from GitHub Releases.
+Declining an update suppresses its popup for that version; the corner Update
+button remains available. See [launcher updates](UPDATING.md) for publishing,
+APWorld installation, and recovery details.
+
 No badge or antivirus scan can prove that any program is harmless. Releases use checks that make the build public and verifiable:
 
 - GitHub Actions builds tagged Windows releases from repository source on a clean hosted runner.

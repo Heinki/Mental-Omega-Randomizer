@@ -60,8 +60,11 @@ def _build_window_shell(self):
         font=('Segoe UI', 14, 'bold'),
     )
     header.grid(row=0, column=0, sticky='w')
+    header_actions = ttk.Frame(main_frame)
+    header_actions.grid(row=0, column=1, sticky='ne')
+    self.create_update_button(header_actions)
     self.settings_toggle_button = ttk.Button(
-        main_frame,
+        header_actions,
         text='Hide Details',
         command=self.toggle_settings_panel,
     )
