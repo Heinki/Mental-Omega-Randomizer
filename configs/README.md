@@ -296,7 +296,9 @@ eligibility and cap.
 Saved runs drop the retired run-modifier ID.
 Land reinforcement teams gain two native faction heavies; air and
 naval teams gain one existing combat member. Expanded teams spawn at least
-veteran. Private TaskForces preserve shared player/allied waves, and native
+veteran. Epsilon heavy additions exclude Masterminds so fixed-unit openings
+on base-building missions cannot lose their only hero or Engineer to random
+mind control. Private TaskForces preserve shared player/allied waves, and native
 spawnability checks include the added enemy members. Transport, engineer, MCV,
 unique-unit, unknown-terrain and protected story teams are skipped. No-build
 and scripted-opening protections remain active. Co-op uses registered enemy

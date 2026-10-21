@@ -26,7 +26,9 @@ from .enemy_powerhouse_specials import special_powerhouse_rules
 POWERHOUSE_UNITS_BY_FAMILY = {
     'allies': ('AHVYBOT', 'BLZZ', 'SREF'),
     'soviets': ('MAMM', 'EMPR', 'TTNK'),
-    'epsilon': ('DEVO', 'MIND', 'TELE'),
+    # Masterminds can capture the mission's only hero/Engineer before the
+    # player reaches a base, even on maps classified as base-building.
+    'epsilon': ('DEVO', 'TELE'),
     'foehn': ('ARCH', 'PROME', 'TARCHIA'),
 }
 _REINFORCEMENT_ACTIONS = frozenset({'7', '80', '107'})

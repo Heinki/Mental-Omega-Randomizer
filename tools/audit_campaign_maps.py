@@ -882,6 +882,14 @@ def _assert_native_mcvs_untouched(source_path, generated_path, context):
     generated = all_section_value_maps_preserve(
         generated_path.read_text(encoding='utf-8-sig').splitlines()
     )
+    # Unchanged buildings inherit installed prerequisites without a generated
+    # map section. Locked rewards no longer create incidental building clones
+    # that used to mask this omission in the audit.
+    _powers, installed = installed_rules_registry(synchronous=True)
+    effective_rules = {
+        name: {**installed.get(name, {}), **generated.get(name, {})}
+        for name in set(installed) | set(generated)
+    }
     reviewed_overrides = resolved_map_section_rules(
         source_lines, MISSION_MAP_SECTION_RULES.get(context, {})
     )
@@ -930,7 +938,7 @@ def _assert_native_mcvs_untouched(source_path, generated_path, context):
                 )
                 for token in str(value).split(',')
             }
-            for values in generated.values()
+            for values in effective_rules.values()
         ):
             raise AssertionError(
                 f'{context} native Yard {deploy_target} unlocks no structures'

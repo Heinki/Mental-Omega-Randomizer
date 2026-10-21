@@ -566,6 +566,81 @@ def check_captured_factory_access(missions, launcher_type):
               'captured-factory gate and portable Brute armor valid', flush=True)
 
 
+def check_ghost_hunt_powerhouses(missions, launcher_type):
+    """Audit the base-building mission's vulnerable fixed-unit opening."""
+    from randomizer.core.paths import GENERATED_MAP_DIR
+    from tools.audit_campaign_maps import _assert_powerhouse_waves
+
+    mission = missions['AGHOST']
+    for progression in ('Grid Mode', 'Shop Mode'):
+        launcher = launcher_type(
+            progression_mode=progression, enemy_effect_ids={'powerhouse'},
+        )
+        launcher.player_rewards = []
+        generate(launcher, mission)
+        applications = launcher.enemy_applications[mission['code']]
+        waves = [entry for entry in applications
+                 if entry.get('application_kind') == 'wave']
+        assert waves, (progression, 'no hostile waves audited')
+        assert all('MIND' not in entry.get('added_unit_ids', ())
+                   for entry in applications), progression
+        _assert_powerhouse_waves(
+            launcher.extract_campaign_map(mission['scenario']),
+            GENERATED_MAP_DIR / mission['scenario'].upper(), mission, applications,
+        )
+        print(f'Ghost Hunt: {progression}; no added Masterminds, authored waves preserved', flush=True)
+
+
+def check_bleed_red_access(missions, launcher_type):
+    """Audit locked launch overlays and native Boris creation on the real map."""
+    from randomizer.ui.cameos import installed_rules_registry
+
+    mission = missions['SBLEED']
+    original = all_section_value_maps_preserve(
+        (ROOT / 'extracted_maps' / mission['scenario'].upper()).read_text().splitlines()
+    )
+    _powers, installed = installed_rules_registry(synchronous=True)
+    for progression, mode, purchased in product(
+        ('Grid Mode', 'Mission List', 'Shop Mode'),
+        ('Standard', 'Chaos'), (False, True),
+    ):
+        launcher = launcher_type(
+            progression_mode=progression, reward_mode=mode, enemy_effect_ids=[],
+        )
+        launcher.player_rewards = [REWARD_BY_NAME['Morales Access']] if purchased else []
+        sections = generate(launcher, mission)
+        for source in ('E2', 'SHK', 'HTNK', 'MORALES'):
+            clone = sections.get('MORP' + source, {})
+            if purchased and source == 'MORALES':
+                assert clone.get('TechLevel') == UNLOCKED_TECH_LEVEL
+            else:
+                assert clone.get('TechLevel', LOCKED_TECH_LEVEL) == LOCKED_TECH_LEVEL, (
+                    progression, mode, purchased, source,
+                )
+        # The native Boris actor must remain spawnable and controllable.
+        # Only its human factory production is filtered, including when the
+        # earned build-only clone is present alongside native story teams.
+        boris = sections['MORALES']
+        assert {'USSR', 'Boris', 'MORPLAYER'}.issubset(
+            set(boris.get('FactoryOwners.Forbidden', '').split(','))
+        )
+        assert not boris.get('Prerequisite.Negative')
+        assert boris.get('ForbiddenHouses') == original['MORALES'].get(
+            'ForbiddenHouses', installed['MORALES'].get('ForbiddenHouses'),
+        )
+        for team_id in ('01000468', '01000509'):
+            taskforce = original[team_id]['TaskForce']
+            assert sections[team_id]['TaskForce'] == taskforce
+            assert sections[taskforce] == original[taskforce]
+        assert not any(
+            'WARNING: Unauthorized production access' in log
+            or 'WARNING: Duplicate production entry' in log
+            for _error, log in launcher.logs
+        ), (progression, mode, purchased)
+        print(f'Bleed Red: {mode} {progression}, purchased={purchased}; '
+              'locked access and native Boris preserved', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -580,6 +655,8 @@ def main():
     check_hover_infantry_restrictions(missions, _AuditLauncher)
     check_brothers_in_arms(missions, _AuditLauncher)
     check_captured_factory_access(missions, _AuditLauncher)
+    check_ghost_hunt_powerhouses(missions, _AuditLauncher)
+    check_bleed_red_access(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

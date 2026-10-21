@@ -3,6 +3,7 @@
 from randomizer.core.collections import unique_in_order
 from randomizer.ui.cameos import installed_rules_registry
 from randomizer.maps.assets import deploy_superweapon_sidebar_assets
+from randomizer.maps.base import parse_float
 from randomizer.maps.ini import (
     IniLines,
     all_section_value_maps,
@@ -184,7 +185,13 @@ def prepare_hooked_map(self, mission, extra_rules=None):
     fallback_tech_ids = {
         section.upper()
         for section, values in (extra_rules or {}).items()
-        if any(key.lower() == 'techlevel' for key in values)
+        # Incoming launch rules can include access locks as well as grants.
+        # A locked native entry must never unlock its isolated player clone.
+        if any(
+            key.lower() == 'techlevel'
+            and 0 <= parse_float(value, -1) < float(LOCKED_TECH_LEVEL)
+            for key, value in values.items()
+        )
     }
     share_basic_equivalent_buffs = bool(
         (
