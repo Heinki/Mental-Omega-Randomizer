@@ -88,7 +88,7 @@ class FinalFortressController:
         self.final_fortress_help_var = tk.StringVar()
         self.final_fortress_result_var = tk.StringVar(value='Finish a run to see its rewards.')
         self.final_fortress_header_var = tk.StringVar(value='Final Fortress · Survival defense')
-        self.final_fortress_gems_var = tk.StringVar(value='Gems: 0')
+        self.final_fortress_gems_var = tk.StringVar(value='Defensive Points: 0')
         self.progression_mode_var.trace_add('write', self._sync_game_mode_choice)
         try:
             self.final_fortress_config = load_config()
@@ -294,7 +294,7 @@ class FinalFortressController:
             rules.append(f'From {stage["from_seconds"] / 60:g} minutes, faction air attacks replace '
                          f'{stage["percent"]}% of each wave (at least one aircraft where space allows). '
                          'Air and ground attack teams share the existing wave cap.')
-        self.final_fortress_gems_var.set(f'Gems: {state["gems"]}')
+        self.final_fortress_gems_var.set(f'Defensive Points: {state["gems"]}')
         tree = getattr(self, 'final_fortress_perks_tree', None)
         if tree is not None:
             from randomizer.final_fortress.perks import ranks, owned_rank, next_price
@@ -305,7 +305,7 @@ class FinalFortressController:
                 status = ('Enabled' if key in state['selected_perks'] else 'Disabled'
                           if rank else 'Not purchased')
                 price = next_price(perk, rank)
-                values = (perk['display_name'], f'{price} Gems' if price is not None else 'MAX',
+                values = (perk['display_name'], f'{price} Defensive Points' if price is not None else 'MAX',
                           f'{rank}/{len(ranks(perk))} · {status}', perk['description'])
                 if tree.exists(key):
                     tree.item(key, values=values)
@@ -337,13 +337,13 @@ class FinalFortressController:
         milestones = []
         for milestone in sorted(config['milestones'], key=lambda entry: entry['seconds']):
             total += milestone['gems']
-            milestones.append(f'{total} total Gems at {milestone["seconds"] / 60:g} minutes')
+            milestones.append(f'{total} total Defensive Points at {milestone["seconds"] / 60:g} minutes')
         total += settings['completion_gems'] or 0
-        milestones.append(f'{total} total Gems on victory, plus enabled Challenge bonuses')
+        milestones.append(f'{total} total Defensive Points on victory, plus enabled Challenge bonuses')
         rules.extend([
             'Survival rewards: ' + '; '.join(milestones) + '. Balance is provisional and configurable.',
             'Clear stationary enemy camps, then move a player unit onto the camp center. '
-            'Each camp grants Gems and a random credit, squad, or faction special-unit reward. '
+            'Each camp grants Defensive Points and a random credit, squad, or faction special-unit reward. '
             'Only the player receives rewards. Native visual crates can be removed by AI '
             'without consuming the player claim. Crate rewards are frozen for each run.',
             'Perk purchases and upgrades enable that perk automatically for subsequent runs. '
@@ -352,12 +352,12 @@ class FinalFortressController:
             'Enable selected, Disable selected and Max stacks apply to the selected group. '
             'Double-click or Space enables a mixed group, or disables a fully enabled group. '
             'Inline arrows change only their own row; Max stacks does not enable disabled modifiers. '
-            'Each stack adds its configured victory Gems.',
+            'Each stack adds its configured victory Defensive Points.',
         ])
         if config['map'] and config['map']['camps']:
             if config.get('camp_balance'):
                 balance = config['camp_balance']
-                rules.append('Camp Gems are awarded as soon as the guards are cleared; '
+                rules.append('Camp Defensive Points are awarded as soon as the guards are cleared; '
                              'the separate random cash/unit crate requires your own unit to collect it. '
                              f'Outer guards: {balance["guards_by_difficulty"][preferences["difficulty"]]} base × '
                              f'{preferences["wave_multiplier"]}, capped at {balance["max_guards_per_camp"]} '
@@ -370,10 +370,10 @@ class FinalFortressController:
                                  f'{starter["guards_by_difficulty"][preferences["difficulty"]]} base × '
                                  f'{preferences["wave_multiplier"]}, capped at '
                                  f'{starter["max_guards_by_difficulty"][preferences["difficulty"]]} guards. '
-                                 'Their normal Gems and random crate rewards are retained.')
+                                 'Their normal Defensive Points and random crate rewards are retained.')
             rules.append('Camp centers: ' + '; '.join(
                 f'{camp["display_name"]} ({camp["position"]["x"]}, {camp["position"]["y"]}), '
-                f'{camp["gems"]} Gems' for camp in config['map']['camps']
+                f'{camp["gems"]} Defensive Points' for camp in config['map']['camps']
                 if 'position' in camp) + '.')
         if config.get('crate_rewards'):
             weight = sum(entry['weight'] for entry in config['crate_rewards'])
@@ -383,7 +383,7 @@ class FinalFortressController:
         performance = config.get('performance')
         if performance:
             rules.append(f'Native local-player combat kill statistics award '
-                         f'{performance["gems_per_tier"]} Gems per {performance["units_per_tier"]} kills, '
+                         f'{performance["gems_per_tier"]} Defensive Points per {performance["units_per_tier"]} kills, '
                          f'capped at {performance["gems_per_tier"] * performance["max_tiers"]}, '
                          'after a verified victory or defeat. Setup ownership transfers are excluded. '
                          'Closing an unfinished game grants no kill bonus.')
@@ -538,7 +538,7 @@ class FinalFortressController:
                 state, credited = self.final_fortress_repository.record_events(watch.run_id, pending)
                 self._final_fortress_recorded_events.update(pending)
                 if credited:
-                    self.final_fortress_gems_var.set(f'Gems: {state["gems"]}')
+                    self.final_fortress_gems_var.set(f'Defensive Points: {state["gems"]}')
                     self.append_log('Final Fortress receipts: ' + ', '.join(pending) + '.')
                     refresh_results(self, state['run'])
             except (ValueError, FinalFortressPersistenceError) as exc:

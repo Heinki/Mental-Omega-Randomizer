@@ -174,7 +174,7 @@ def _map(value):
             fields.append('guard_positions')
         _object(camp, fields, 'Camp')
         text(camp['display_name'], 'Camp display name')
-        integer(camp['gems'], 'Camp gems')
+        integer(camp['gems'], 'Camp Defensive Points')
         if 'position' in camp:
             _position(camp['position'])
             integer(camp['enemy_index'], 'Camp enemy index')
@@ -348,7 +348,7 @@ def validate_config(sections, path=None):
         if interval >= duration:
             raise ValueError('Wave interval must be shorter than survival time.')
         if settings['completion_gems'] is not None:
-            integer(settings['completion_gems'], 'Completion gems')
+            integer(settings['completion_gems'], 'Completion Defensive Points')
         if settings['max_wave_units'] is not None:
             integer(settings['max_wave_units'], 'Maximum units per wave', 1)
         if sized_waves:
@@ -429,7 +429,7 @@ def validate_config(sections, path=None):
             if time >= duration or time in seconds:
                 raise ValueError('Milestone times must be unique and precede victory.')
             seconds.add(time)
-            integer(milestone['gems'], 'Milestone gems')
+            integer(milestone['gems'], 'Milestone Defensive Points')
         _unique(sections.get('challenges', []), 'Challenge')
         effect_ids = set()
         for challenge in sections.get('challenges', []):
@@ -450,7 +450,7 @@ def validate_config(sections, path=None):
                 if challenge['enemy_effect_id'] in effect_ids:
                     raise ValueError('Each Grid enemy effect may appear only once in Challenge.')
                 effect_ids.add(challenge['enemy_effect_id'])
-                integer(challenge['victory_gems_per_stack'], 'Challenge Gems per stack', 1)
+                integer(challenge['victory_gems_per_stack'], 'Challenge Defensive Points per stack', 1)
                 continue
             _object(challenge, ('id', 'display_name', 'description', 'effect',
                                 'percent', 'victory_gems'), 'Challenge')
@@ -463,7 +463,7 @@ def validate_config(sections, path=None):
                 raise ValueError('Challenge percent must not exceed 100.')
             if challenge['effect'] == 'production' and challenge['percent'] == 100:
                 raise ValueError('Enemy production time must remain positive.')
-            integer(challenge['victory_gems'], 'Challenge completion gems', 1)
+            integer(challenge['victory_gems'], 'Challenge completion Defensive Points', 1)
         _unique(sections['perks'], 'Perk')
         for perk in sections['perks']:
             from .perks import validate_perk
@@ -493,7 +493,7 @@ def configuration_gaps(config, difficulty, wave_multiplier=1):
     if any(not rosters.get(country) for country in SIDE_COUNTRIES):
         gaps.append('Define faction wave rosters and time-based mixed compositions.')
     if config['settings']['completion_gems'] is None:
-        gaps.append('Choose the completion Gem reward (zero is allowed).')
+        gaps.append('Choose the completion Defensive Points reward (zero is allowed).')
     if config['settings']['max_wave_units'] is None:
         gaps.append('Choose the maximum additional units per wave.')
     elif 'wave_pressure' not in config:

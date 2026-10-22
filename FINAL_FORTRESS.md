@@ -114,18 +114,23 @@ The clock resets after the full enemy wave is delivered. At zero it can remain
 pending while capacity is occupied. It disappears after the last scheduled wave
 or when the run ends. Its zero-power, immune hidden provider adds no buildable
 power, damage, cash or usable sidebar ability. Its one setup ownership transfer
-is excluded from performance Gems, and removal has no explosion or loss voice.
+is excluded from performance Defensive Points, and removal has no explosion or loss voice.
 
 The adapter supports eleven waves,
 six distinct types per reinforcement group, six camps, 100 local flags, and
 the native 511-byte action-line limit.
 
-## Gems, perks, and results
+## Defensive Points, perks, and results
 
-Survival grants **25 Gems at minute 25**, another **25 at minute 45**, and
-**50 on victory at one hour**: **25 / 50 / 100 total survival Gems**. Earlier milestones
+Final Fortress uses **Defensive Points** for permanent perk purchases, separate
+from Shop Mode Gems. Existing balances and saved runs keep their values. Internal
+save/configuration keys such as `gems`, `gem_cost`, and `gem_rewards` retain their
+legacy names for compatibility.
+
+Survival grants **25 Defensive Points at minute 25**, another **25 at minute 45**, and
+**50 on victory at one hour**: **25 / 50 / 100 total survival Defensive Points**. Earlier milestones
 remain earned after defeat or quit. Verified native victory or defeat also
-allows **5 Gems per 50 native kill-score points**, capped at **100 Gems**.
+allows **5 Defensive Points per 50 native kill-score points**, capped at **100 Defensive Points**.
 Setup ownership transfers and claimed cash escrows are excluded from that
 score. Native score accounting can include captures; it is not a separate
 combat log. Unfinished quits grant no kill bonus.
@@ -153,13 +158,13 @@ All twenty-two perks are purchased and enabled at maximum rank,
 including both faction superweapons and two helpers. The initial faction is
 Russia, difficulty Normal, wave multiplier x1; Challenge modifiers start off.
 Switch faction or disable individual perks to isolate effects. This profile
-uses `final_fortress_testing_state.json`, with its own Gems and run results.
+uses `final_fortress_testing_state.json`, with its own Defensive Points and run results.
 **Standard** retains normal progression in `final_fortress_state.json`.
 The launcher starts on Standard; profile switching is locked while preparing,
 running or collecting the final game results. Existing testing selections are
 preserved when switching away and back. Newly added perks are unlocked and
 enabled automatically, and purchased testing ranks stay at their configured
-maximum. Existing Gems and frozen runs/results are preserved. A clean source
+maximum. Existing Defensive Points and frozen runs/results are preserved. A clean source
 checkout does not expose or automatically create a testing profile.
 
 ## Ranked permanent perks
@@ -168,7 +173,7 @@ All prices below are provisional and configurable in `configs/final_fortress.jso
 Each rank stores its complete cumulative effect, rather than adding the previous
 rank's effect a second time. Prices are paid once per rank.
 
-| Perk | Rank prices (Gems) | Maximum effect |
+| Perk | Rank prices (Defensive Points) | Maximum effect |
 | --- | --- | --- |
 | Supply cache | 30 / 60 / 120 / 220 / 360 / 540 | Six ranks, +2,000 credits each, up to +12,000 |
 | Production speed | 40 / 80 / 140 / 220 / 340 | 25% shorter infantry, vehicle/naval, aircraft, building and defense production time |
@@ -379,7 +384,7 @@ and reward receipts retain their original prices and effects.
 
 **Run results opens automatically on the Final Fortress tab after victory or
 defeat.** It also reports earned receipts when a run is abandoned. The header
-shows the outcome, map, and total Gems from that run. Rows separately show
+shows the outcome, map, and total Defensive Points from that run. Rows separately show
 survival milestones, completion, each enabled Challenge bonus, camp claims,
 actual crate outcomes, and kill bonuses. Totals come from the committed run's
 claimed events and frozen prices, not the current balance or current JSON.
@@ -414,9 +419,9 @@ usually five; cloak, sensors and the five new Challenge toggles use one.
   remains, two units are added; at the existing 480-unit ceiling, heavies
   replace ordinary units. Their private identities share the existing living
   wave cap and deploy-conversion tracking. This mode has no Shop stage bonuses
-  or additional uncapped companion teams. Victory bonus: 25 Gems.
+  or additional uncapped companion teams. Victory bonus: 25 Defensive Points.
 - **Paratroopers**, **Bloodhounds** and **Moon reinforcements** are independent
-  toggles, worth 20/25/30 victory Gems. Each hostile AI receives an AI-only
+  toggles, worth 20/25/30 victory Defensive Points. Each hostile AI receives an AI-only
   repeating power, with three launches per power, twice the reviewed native or
   portable recharge interval, and no initial ready shot. Paratroopers use the
   enemy faction's basic infantry; Bloodhounds and Moon reinforcements retain
@@ -425,7 +430,7 @@ usually five; cloak, sensors and the five new Challenge toggles use one.
   weapon: Lightning Storm, Tactical Nuke, Psychic Dominator or Great Tempest.
   One toggle covers all factions, including repeated enemy countries. These
   are private AI-only copies with native recharge, no initial ready shot and
-  no player power upgrades. Victory bonus: 60 Gems.
+  no player power upgrades. Victory bonus: 60 Defensive Points.
 
 Enemy powers have owned invisible launch providers and are preloaded before
 house creation. Native powers, human powers and helper powers keep their own
@@ -434,9 +439,9 @@ scripted-wave living cap, but the three-shot budget bounds their lifetime
 reinforcement output: at shipped settings, all three reinforcement toggles
 across all three enemies create at most 261 units over the whole run. Ordinary
 AI production is also outside the scripted-wave cap. Launch counts, recharge
-multipliers and victory Gems are provisional configuration values.
+multipliers and victory Defensive Points are provisional configuration values.
 
-The default victory bonus is **5 Gems per enabled stack**, configurable per
+The default victory bonus is **5 Defensive Points per enabled stack**, configurable per
 entry. Country multipliers affect only private enemy country derivatives.
 Tier calculations reuse `enemy_native_unit_buff_rules`; results are placed on
 private enemy TechnoTypes and weapons. Native human definitions remain intact.
@@ -465,7 +470,7 @@ the configured enemy AI, including its alliances and applicable Challenges.
 The north-east camp at **(107, 66)** is the nearby starter camp. It uses only
 basic faction infantry: **2 / 3 / 4 on Casual / Normal / Mental**, multiplied by
 the wave multiplier but separately capped at **4 / 6 / 8 guards**. Vehicles,
-artillery, advanced troops and heroes cannot roll there. Its normal Gem and
+artillery, advanced troops and heroes cannot roll there. Its normal Defensive Points and
 random crate rewards are retained, providing an attainable early resource goal
 without requiring purchased starting armies or defenses.
 
@@ -474,7 +479,7 @@ of including one faction hero or heavy unit. Counts, limits, starter camp IDs
 and basic faction pools, special-unit pools and chance are configured through
 `camp_balance` and frozen before launch. Each camp has thirty reviewed clear,
 level guard positions rather than extending a formation into nearby terrain.
-Clearing a camp grants **10 Gems immediately**. Private unbuildable guard identities and a complete
+Clearing a camp grants **10 Defensive Points immediately**. Private unbuildable guard identities and a complete
 garrison team isolate guards from ordinary AI task forces. Guards retain normal
 movement speed, with passive acquisition disabled. Their object-attacked trigger wakes a
 native retaliating team at the camp, avoiding a permanent movement freeze or
@@ -483,7 +488,7 @@ bonuses. Normal AI task forces cannot recruit the camp copies.
 
 After all guards disappear, a native visual crate appears. Player entry at the
 cleared camp center claims one frozen random in-game reward, separately from
-the Gems already earned for clearing it:
+the Defensive Points already earned for clearing it:
 
 - **40%:** 2,500 credits.
 - **30%:** 10 Tier 1 units.
@@ -495,7 +500,7 @@ Weights, credit amounts, unit compositions, and counts are configurable.
 Outcomes are seeded independently per camp and saved before launch, so reloads
 or configuration edits cannot reroll a committed reward.
 The results panel distinguishes cleared camps from collected reward crates.
-Plans before version 18 retain their original five guards and pickup-based Gem
+Plans before version 18 retain their original five guards and pickup-based Defensive Points
 rules. Plans 18–20 retain their original camp formations; the easier starter
 camp applies to new runs only.
 
@@ -516,7 +521,7 @@ polling, and cleanup. `perks.py` validates and resolves purchased ranks;
 `player_perks.py` adapts private friendly types, native AI and support powers.
 Shop and Grid gameplay modules are not modified.
 Shared Settings and game speed remain accessible, while Final Fortress
-country, difficulty, multiplier, Challenges, Gems, and perks use separate state.
+country, difficulty, multiplier, Challenges, Defensive Points, and perks use separate state.
 
 The adapter reuses ordered INI helpers, installed rules, the runtime asset
 lease, Syringe/Wine launch, empty native marker teams, and shutdown monitoring.
@@ -542,11 +547,11 @@ until the final log tail is consumed before classifying an unfinished run.
 Active or abandoned saved runs can recover from matching native START and
 terminal markers in the retained debug log. Recovery runs in the background,
 backs up the original save, preserves the frozen reward values and credits only
-missing receipts. Replaying the same evidence cannot award Gems twice.
+missing receipts. Replaying the same evidence cannot award Defensive Points twice.
 
 Normal progression uses `final_fortress_state.json` and its OS lock; the
 optional testing profile uses its separate state file and lock.
-State schemas 1–7 migrate to schema 8 without resetting Gems or ownership.
+State schemas 1–7 migrate to schema 8 without resetting Defensive Points or ownership.
 The former sole offensive-superweapon purchase becomes rank 2, preserving
 that weapon while also granting the new secondary power. New rank-1 purchases
 unlock only the secondary power.
@@ -554,7 +559,7 @@ Version 16 adds reusable enemy wave slots, protected arrival aprons and the
 frozen Mental AI Boost selection. Version 17 adds independent friendly delivery
 chains with shared small groups, centered arrivals and a synchronized wave clock.
 Version 18 freezes scalable faction camp rosters, reviewed guard positions and
-separate camp-clear Gem and crate-claim receipts. Version 19 selects camp
+separate camp-clear Defensive Points and crate-claim receipts. Version 19 selects camp
 rosters independently of enemy countries and guarantees all four faction
 families across the six camps. Version 20 freezes staged wave air support,
 preserving total wave populations and ground identities with separate flying

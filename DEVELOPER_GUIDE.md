@@ -10,7 +10,7 @@ Start here when changing code. Player settings belong in
 
 - `randomizer/final_fortress/`: independent Final Fortress configuration,
   source-map inspection, deterministic time-based mixed wave planning with
-  independent x1–x10 count scaling, atomic Gem/perk state,
+  independent x1–x10 count scaling, atomic Defensive Points/perk state,
   its own UI, multiplayer map/spawn adapter, and fresh native result watcher.
   `challenges.py` reuses Grid buff definitions/calculations for private AI
   production types; `reporting.py` itemizes committed reward receipts.

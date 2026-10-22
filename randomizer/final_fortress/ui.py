@@ -59,7 +59,7 @@ def build_final_fortress_tab(app, notebook):
     app.final_fortress_perks_tree = ttk.Treeview(
         listing, columns=('name', 'cost', 'status', 'effect'),
         displaycolumns=('name', 'cost', 'status'), show='headings', selectmode='browse', height=8)
-    for column, label, width in (('name', 'Perk', 180), ('cost', 'Next rank cost', 105),
+    for column, label, width in (('name', 'Perk', 180), ('cost', 'Next rank cost', 190),
                                   ('status', 'Rank / status', 145), ('effect', 'Effect', 450)):
         app.final_fortress_perks_tree.heading(column, text=label)
         app.final_fortress_perks_tree.column(column, width=width, stretch=column == 'name')
@@ -102,7 +102,7 @@ def build_final_fortress_tab(app, notebook):
         show='headings', selectmode='extended', height=6)
     for key, title_text, width in (('enabled', 'Enabled', 70), ('name', 'Enemy modifier', 210),
                                  ('decrease', '', 38), ('stacks', 'Stacks', 65),
-                                 ('increase', '', 38), ('gems', 'Victory Gems', 100),
+                                 ('increase', '', 38), ('gems', 'Victory Defensive Points', 190),
                                  ('effect', 'Effect at selected stacks', 360)):
         app.final_fortress_challenge_tree.heading(key, text=title_text)
         app.final_fortress_challenge_tree.column(key, width=width, stretch=key == 'name')
@@ -161,7 +161,7 @@ def build_final_fortress_tab(app, notebook):
         row=0, column=0, sticky='w', pady=(0, 8))
     app.final_fortress_results_tree = ttk.Treeview(results,
         columns=('source', 'gems', 'detail'), show='headings', height=6)
-    for key, title_text, width in (('source', 'Reward source', 240), ('gems', 'Gems', 70),
+    for key, title_text, width in (('source', 'Reward source', 240), ('gems', 'Defensive Points', 140),
                                  ('detail', 'Result / crate reward', 450)):
         app.final_fortress_results_tree.heading(key, text=title_text)
         app.final_fortress_results_tree.column(key, width=width, stretch=key == 'detail')

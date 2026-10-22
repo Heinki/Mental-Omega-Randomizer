@@ -636,9 +636,9 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
                                if value.split(',')[2] == 'Camp '+camp['id']+' cleared')
                 clear_actions=parse_action_groups(rows['Actions'][cleared])[1]
                 clear_markers=[effective[a[2]]['Name'] for a in clear_actions if a[0]=='4']
-                require(len(clear_markers)==1 and clear_markers[0].startswith('MFF_'), 'Camp clear has no durable Gem receipt')
+                require(len(clear_markers)==1 and clear_markers[0].startswith('MFF_'), 'Camp clear has no durable Defensive Points receipt')
                 require(plan['gem_rewards']['camp_clear:'+camp['id']]==camp['gems']
-                        and plan['gem_rewards']['camp:'+camp['id']]==0, 'Camp Gems still require crate collection')
+                        and plan['gem_rewards']['camp:'+camp['id']]==0, 'Camp Defensive Points still require crate collection')
                 require(any(a[0]=='108' for a in clear_actions), 'Cleared camp has no random reward crate')
         if plan.get('plan_version', 1) >= 19:
             families = [SIDE_FAMILIES[SIDE_COUNTRIES.index(camp['guard_country'])] for camp in plan['map']['camps']]

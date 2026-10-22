@@ -4,7 +4,8 @@
 - [ ] Confirm the reported visual unit replacement after death during normal gameplay. No original report map/replay exists; the confirmed Powerhouses death-trigger leak is fixed, but the exact Kirov-to-Apocalypse observation remains unverified.
 
 Fortress mode
-- [x] Show a Final Fortress run results screen after victory or defeat, including total Gems and the sources of each reward.
+- [x] Rename Final Fortress currency to Defensive Points throughout the launcher, in-game camp messages and documentation while preserving existing saves and Shop Mode Gems.
+- [x] Show a Final Fortress run results screen after victory or defeat, including total Defensive Points and the sources of each reward.
 
 PERKS
 - [x] Faster production speed which can be improved 5 times and get more expensive with each purchase
@@ -29,10 +30,10 @@ Fortress gameplay review (implementation uses provisional configurable values)
 - [ ] Review actual faction air arrivals, targeting and mixed-wave balance during the user's next normal run; no game windows opened for routine checks.
 - [x] Select camp rosters independently of enemy bases, guaranteeing Allies, Soviets, Epsilon and Foehn across the six camps in every new run.
 - [x] Fix the native-log checkpoint to retain only 64 bytes before the cursor, drain backlog after process exit, and recover verified unfinished outcomes with an original-save backup and deduplicated receipts.
-- [x] Recover the reported Testing victory from the retained native log: both milestones, four logged camp claims and kill tiers; credit 250 missing Gems, bringing the balance to 455.
-- [x] Award camp Gems on clearance independently of random crate collection; show cleared/uncollected camps in results.
+- [x] Recover the reported Testing victory from the retained native log: both milestones, four logged camp claims and kill tiers; credit 250 missing Defensive Points, bringing the balance to 455.
+- [x] Award camp Defensive Points on clearance independently of random crate collection; show cleared/uncollected camps in results.
 - [x] Scale camp guards by difficulty and wave multiplier, using varied owning-faction infantry/vehicle/artillery rosters and occasional heroes/heavies, with configurable per-camp/shared ceilings and thirty reviewed positions per camp.
-- [ ] Confirm new camp formation variety, clearance Gem messages, separate crate collection and complete victory receipts during the user's next normal gameplay session. No game windows opened for routine validation.
+- [ ] Confirm new camp formation variety, clearance Defensive Points messages, separate crate collection and complete victory receipts during the user's next normal gameplay session. No game windows opened for routine validation.
 - [x] Replace whole friendly-arrival reservations with small reusable groups shared across the existing cap, independent human/helper delivery timers and an on-screen capacity-wait notice.
 - [x] Spawn friendly reinforcements at the center of their existing protected 5x3 arrival aprons.
 - [x] Add a separate Next enemy wave countdown that resets with actual deliveries and stops after the final wave/run outcome, preserving Until Victory.

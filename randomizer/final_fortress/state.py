@@ -87,7 +87,7 @@ def normalize_state(document):
             raise ValueError('Legacy preferences contain an unsupported Mental AI Boost field.')
         document['preferences']['mental_ai_boost'] = False
     document['schema_version'] = SCHEMA_VERSION
-    integer(document['gems'], 'Final Fortress gems')
+    integer(document['gems'], 'Final Fortress Defensive Points')
     _ids(document['owned_perks'], 'Owned perks')
     _ids(document['selected_perks'], 'Selected perks')
     if not set(document['selected_perks']).issubset(document['owned_perks']):
@@ -154,7 +154,7 @@ def normalize_state(document):
         if version == 5 and 'initial_transfer_kills' not in plan:
             # Early v5 runs predate the native transfer-score correction.
             # Upgrade only that known missing field, after every other frozen
-            # input and reward matches. Never recalculate existing Gem receipts.
+            # input and reward matches. Never recalculate existing Defensive Points receipts.
             without_correction = {key: value for key, value in rebuilt.items()
                                   if key != 'initial_transfer_kills'}
             if without_correction == plan:

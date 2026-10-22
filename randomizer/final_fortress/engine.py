@@ -369,7 +369,7 @@ def _enemy_challenges(writer, plan, rules):
 def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_aliases=None):
     infantry = set(rules['InfantryTypes'].values())
     if plan['map']['camps']:
-        # Gem claims are player-gated separately. A computer passing through
+        # Defensive Points claims are player-gated separately. A computer passing through
         # the native visual crate must not gain cash or another native bonus.
         writer.put('CrateRules', 'SoloCrateMoney', 0)
         writer.put('CrateRules', 'RandomCrateMoney', 0)
@@ -467,7 +467,7 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
         if plan.get('plan_version', 1) >= 18:
             clear_actions.extend([
                 _action(4, team=marker_teams['camp_clear:' + camp['id']]),
-                ['11', '4', f'NOSTR:{camp["display_name"].replace(",", "")} cleared: {camp["gems"]} Gems. Collect its reward crate.',
+                ['11', '4', f'NOSTR:{camp["display_name"].replace(",", "")} cleared: {camp["gems"]} Defensive Points. Collect its reward crate.',
                  '0', '0', '0', '0', 'A']])
         writer.trigger('Camp ' + camp['id'] + ' cleared',
                        [(13, 0, 2), (37, 0, finished),

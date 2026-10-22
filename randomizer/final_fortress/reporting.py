@@ -41,4 +41,4 @@ def reward_report(run):
     total = sum(plan['gem_rewards'].get(event, 0) for event in claimed)
     outcome = {'active': 'Run in progress', 'victory': 'Victory', 'defeat': 'Defeat',
                'abandoned': 'Run ended without a verified outcome'}[run['status']]
-    return f'{outcome} — {plan["map"]["display_name"]} — {total} Gems earned', rows
+    return f'{outcome} — {plan["map"]["display_name"]} — {total} Defensive Points earned', rows

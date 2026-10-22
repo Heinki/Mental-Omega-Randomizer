@@ -58,7 +58,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   definitions, reward exclusions, and launcher-only mission effects.
 - `final_fortress.json`: independent Final Fortress map, survival timing,
   native AI difficulty, shared faction wave stages with alternative mixed
-  compositions, milestone/camp Gem identities, and permanent perks. The saved
+  compositions, milestone/camp Defensive Points identities, and permanent perks. The saved
   x1–x10 wave multiplier changes additional spawn counts independently of AI
   difficulty selection. Difficulty also supplies first-wave base counts of
   3 / 6 / 9 per active side. The configured unit budget applies after multiplication;
@@ -81,10 +81,10 @@ that overlap only with full reward-plan and 97-map parity coverage.
   Miners in the Sun is the single source;
   human waypoint 3 faces enemy waypoints 0, 1, and 5. The protected Einstein
   Lab (`CALAB`, 3 × 4 foundation) starts at (91, 57).
-  Milestone rewards are incremental: 25 Gems at minute 25 and another 25 at
+  Milestone rewards are incremental: 25 Defensive Points at minute 25 and another 25 at
   minute 45; `completion_gems: 50` brings the victory total to 100 at one hour.
   `survival_seconds: 3600` admits eleven five-minute waves, through minute 55.
-  `performance` defines kills per reward tier, Gems per tier, and a tier cap.
+  `performance` defines kills per reward tier, Defensive Points per tier, and a tier cap.
   Native setup transfers are excluded from the local kill score.
   Each camp defines `position`, `enemy_index` (0–2), installed `guards`, and
   `gems`. Optional `guard_positions` supplies reviewed clear, level cells for
@@ -108,11 +108,11 @@ that overlap only with full reward-plan and 97-map parity coverage.
   Balance settings and resolved formations are frozen with the plan.
   Guards use private copies owned by that enemy AI, with normal speed
   and passive acquisition disabled until an attack wakes their team. The
-  native crate appears after all guard identities disappear and Gems are earned
+  native crate appears after all guard identities disappear and Defensive Points are earned
   immediately on clearance. Only player entry at the camp center claims the
   separate frozen cash/unit reward. AI can remove the physical native crate
   without consuming that player claim. Earlier frozen plans keep pickup-based
-  Gem rewards and their original guard compositions.
+  Defensive Points rewards and their original guard compositions.
   `challenges` references the Grid enemy stat/production, Powerhouse and
   reinforcement-power catalogue through
   `enemy_effect_id`; `victory_gems_per_stack` prices each enabled stack.
@@ -240,7 +240,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   utility row and cannot be built or fired by the player. Its ownership transfer
   is included in the setup score correction; removal is silent.
   Both map rules and early rules preload include the changes; `spawn.ini` also
-  records `MentalAI=Yes/No`. No extra Challenge Gems are awarded for this setting.
+  records `MentalAI=Yes/No`. No extra Challenge Defensive Points are awarded for this setting.
   Six camps now cover the map; guard and claim cells require clear playable
   terrain. Preplaced guards sleep until the existing attacked-team behavior wakes
   them. Preplaced starting-army experience encodes ranks as 100/200, while native
@@ -249,7 +249,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   `periodic_reinforcements`) and migrates the former
   one-rank offensive-superweapon purchase to rank two. Run plan 21 freezes their effects,
   power-upgrade stacks, starting power plants and helper starts with the original balance snapshot, preserving existing
-  Gem receipts when current configuration changes, including special access and
+  Defensive Points receipts when current configuration changes, including special access and
   the complete friendly reinforcement schedule, utility stacks and Powerhouse
   wave identities, four-faction camp rosters, staged air attacks and the revised
   safe layouts/enemy fortifications. Earlier plan versions remain
@@ -258,7 +258,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   The separate **Testing (all unlocks)** profile is available only in a source
   checkout with an existing ignored `final_fortress_testing_state.json` save;
   selecting it also adds newly configured unlocks at maximum rank without
-  resetting Gems, results, frozen runs or previously disabled selections.
+  resetting Defensive Points, results, frozen runs or previously disabled selections.
   Its unlock updates and gameplay receipts never change the Standard save.
   Compiled EXEs expose Standard only and reject all-unlocks initialization.
   See [FINAL_FORTRESS.md](../FINAL_FORTRESS.md) for the configuration contract

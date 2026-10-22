@@ -26,7 +26,7 @@ def validate_perk(perk):
     _object(perk, fields, 'Perk')
     text(perk['display_name'], 'Perk display name')
     text(perk['description'], 'Perk description')
-    integer(perk['gem_cost'], 'Perk gem cost', 1)
+    integer(perk['gem_cost'], 'Perk Defensive Points cost', 1)
     entries = ranks(perk)
     rank_limit = 8 if perk['id'] == 'periodic_reinforcements' else 6
     if not isinstance(entries, list) or not 1 <= len(entries) <= rank_limit:
