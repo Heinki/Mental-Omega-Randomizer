@@ -1,0 +1,132 @@
+"""Describe each cumulative rank using the selected faction's real grants."""
+
+from collections import Counter
+
+from randomizer.rewards.catalogue import BUFF_TARGETS
+from randomizer.ui.cameos import installed_rules_registry
+
+from .perks import ranks
+
+
+def rank_descriptions(perk, country):
+    _, rules = installed_rules_registry()
+
+    def name(kind, count=1):
+        power_names = {'ChronoSphereSpecial': 'Chronosphere', 'IronCurtainSpecial': 'Iron Curtain',
+                       'RageInductorSpecial': 'Rage Inductor', 'NukeSpecial': 'Tactical Nuke',
+                       'PsychicDominatorSpecial': 'Psychic Dominator'}
+        if kind in power_names:
+            return power_names[kind]
+        entry = BUFF_TARGETS.get(kind, {})
+        label = entry.get('label' if count == 1 else 'plural')
+        if label:
+            return label
+        label = rules.get(kind, {}).get('Name', kind)
+        return label + 's' if count != 1 and not label.lower().endswith('s') else label
+
+    def units(entries):
+        amounts = Counter()
+        for entry in entries:
+            amounts[entry['type']] += entry['count']
+        return ', '.join(f'{count} {name(kind, count)}' for kind, count in amounts.items())
+
+    def buildings(entries):
+        return units([{'type': kind, 'count': 1} for kind in entries])
+
+    descriptions = []
+    for index, rank in enumerate(ranks(perk), 1):
+        effect = rank['effects']
+        parts = []
+        if effect.get('starting_credits'):
+            parts.append(f'+{effect["starting_credits"]:,} starting credits')
+        if effect.get('production_percent'):
+            parts.append(f'{effect["production_percent"]}% shorter infantry, vehicle/naval, aircraft, '
+                         'building and defense production time')
+        if effect.get('starting_units'):
+            parts.append(units(effect['starting_units']))
+        if effect.get('starting_units_by_country'):
+            entries = effect['starting_units_by_country']
+            parts.append(units(entries[country]) if country else
+                         f'{sum(unit["count"] for unit in next(iter(entries.values())))} starting faction units')
+        for field, label in (('buildings_by_country', 'starting faction buildings'),
+                             ('defenses_by_country', 'starting faction defenses'),
+                             ('power_buildings_by_country', 'power plants to cover starting demand')):
+            if field in effect:
+                parts.append(buildings(effect[field][country]) if country else label)
+        if effect.get('harvesters_by_country'):
+            parts.append(units(effect['harvesters_by_country'][country]) if country else '1 faction harvester')
+        if effect.get('veterancy'):
+            level = 'Veteran' if effect['veterancy'] == 1 else 'Elite'
+            text = f'All units granted by Starting army begin {level}'
+            if effect['veterancy'] == 2:
+                text += ' (highest veterancy)'
+            fallback = effect.get('fallback_units_by_country', {})
+            if fallback:
+                text += '. Without Starting army: ' + (
+                    units(fallback[country]) if country else '2 faction infantry') + f' instead, also {level}'
+            parts.append(text)
+        if effect.get('defense_veterancy'):
+            parts.append('Starting and newly built defenses begin veteran')
+        if effect.get('defense_percent'):
+            parts.append(f'+{effect["defense_percent"]}% defense damage, fire rate and range')
+        for tier, percent in effect.get('tier_buffs', {}).items():
+            parts.append(f'+{percent}% Tier {tier} unit health, damage and fire rate')
+        for field, label in (('support_powers_by_country', 'Support powers'),
+                             ('superweapons_by_country', 'Superweapons')):
+            if effect.get(field):
+                powers = effect[field]
+                parts.append(label + ': ' + (', '.join(name(kind) for kind in powers[country]) if country
+                                            else f'{len(next(iter(powers.values())))} faction powers'))
+        if effect.get('power_upgrade_stacks'):
+            from .powers import upgrade_description
+            parts.append(upgrade_description(effect['power_upgrade_stacks']))
+        if effect.get('healing_stacks'):
+            parts.append(f'Eligible units and defenses automatically heal {effect["healing_stacks"]}% '
+                         'of maximum HP per native healing tick, including rookie units; '
+                         'existing stronger healing is retained')
+        if effect.get('recon_stacks'):
+            parts.append(f'+{effect["recon_stacks"]} sight for eligible units/defenses; '
+                         'supported types detect nearby cloaked units. Existing longer sensor ranges remain')
+        if effect.get('unique_limit_stacks'):
+            parts.append(f'+{effect["unique_limit_stacks"]} to positive live-unit limits on eligible '
+                         'heroes and unlocked specials; does not unlock additional unit types')
+        if effect.get('income_stacks'):
+            from .utilities import supported_pairs
+            from randomizer.config.tuning import stacking_amount
+            targets = [kind for kind in rules if (kind, 'income') in supported_pairs()
+                       and float(rules[kind].get('ProduceCashAmount', '0')) > 0]
+            parts.append(f'+{stacking_amount("income", effect["income_stacks"]):g} credits per existing '
+                         'payout cycle on eligible special buildings: '
+                         + ', '.join(f'{name(kind)} pays '
+                                     f'{float(rules[kind]["ProduceCashAmount"]) + stacking_amount("income", effect["income_stacks"]):g}'
+                                     for kind in targets)
+                         + ' credits per cycle. Requires constructing the building; '
+                         'captured native copies retain their original payout. Ore-sale percentage is unchanged')
+        if effect.get('special_units_by_country'):
+            table = effect['special_units_by_country']
+            parts.append('Production access: ' + (', '.join(name(kind) for kind in table[country])
+                         if country else f'{index} faction special units'))
+        if effect.get('reinforcements'):
+            reinforcement = effect['reinforcements']
+            table = reinforcement['units_by_country']
+            parts.append((units(table[country]) if country else
+                          f'{sum(unit["count"] for unit in next(iter(table.values())))} faction units')
+                         + f' at base after {reinforcement["first_seconds"] // 60} minutes, then every '
+                         f'{reinforcement["interval_seconds"] // 60} minutes; '
+                         f'{reinforcement["max_active_units"]} living reinforcement units shared with helpers. '
+                         'Walkable arrival tiles are reserved against construction. '
+                         'Small groups wait for shared capacity; each house restarts its timer after delivery')
+            if reinforcement.get('veterancy'):
+                parts.append('Every reinforcement arrives '
+                             + ('Elite (highest veterancy)' if reinforcement['veterancy'] == 2 else 'Veteran'))
+        if effect.get('reveal_map'):
+            parts.append('Reveal the entire map at the start')
+        if effect.get('allied_helpers'):
+            count = effect['allied_helpers']
+            parts.append(f'{count} allied skirmish AI {"helper" if count == 1 else "helpers"}, sharing enabled perks')
+        if effect.get('starting_defenses'):
+            parts.append(buildings([entry['type'] for entry in effect['starting_defenses']]))
+        descriptions.append(f'Rank {index}: ' + '; '.join(parts or [perk['description']]))
+    if not country and any(key.endswith('_by_country') for rank in ranks(perk) for key in rank['effects']):
+        descriptions.insert(0, 'Choose a player faction to see exact units and buildings.')
+    return '\n\n'.join(descriptions)

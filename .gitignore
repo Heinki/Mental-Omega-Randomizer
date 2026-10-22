@@ -17,6 +17,11 @@ shop_run.json
 shop_transaction.json
 shop_coop_run.json
 shop_coop_transaction.json
+final_fortress_state.json
+final_fortress_state.lock
+final_fortress_testing_state.json
+final_fortress_testing_state.lock
+final_fortress*before_recovery*.json
 self_check.json
 RandomizerLauncherData/
 logs/

@@ -58,10 +58,12 @@ from .enemy_scaling import EnemyScalingController
 from .archipelago_controller import ArchipelagoController
 from .coop_controller import CoopController
 from .challenge_controller import ChallengeController
+from .final_fortress_controller import FinalFortressController
 
 
 class LauncherApp(
     UpdateController,
+    FinalFortressController,
     ChallengeController,
     WindowController,
     ShopController,
@@ -564,6 +566,7 @@ class LauncherApp(
         self.ui_queue = queue.Queue()
         self.initialize_challenge_defaults()
         self.initialize_shop_controller()
+        self.initialize_final_fortress_controller()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 

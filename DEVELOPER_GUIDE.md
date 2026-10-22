@@ -8,6 +8,31 @@ Start here when changing code. Player settings belong in
 
 ### Seed and progression
 
+- `randomizer/final_fortress/`: independent Final Fortress configuration,
+  source-map inspection, deterministic time-based mixed wave planning with
+  independent x1–x10 count scaling, atomic Gem/perk state,
+  its own UI, multiplayer map/spawn adapter, and fresh native result watcher.
+  `challenges.py` reuses Grid buff definitions/calculations for private AI
+  production types; `reporting.py` itemizes committed reward receipts.
+  `perks.py` validates cumulative rank effects; `player_perks.py` isolates
+  friendly production types, native helper AI recipes and support powers.
+  `powers.py` adapts the existing power-buff calculations and clone planner
+  for house-gated Fortress powers, including secondary and offensive faction
+  superweapons. `profiles.py` permits an existing all-unlocks testing save only
+  in a local source checkout; compiled EXEs expose Standard progression only.
+  Each new-run power has an owned launch provider; Great Tempest buffs stage
+  their art/animation registry before the Fortress country preload is merged.
+  Plan 10 also keeps Foehn Nanofiber transformations on their buffed private
+  forms using the existing mutation helper and early-art registration.
+  `tools/audit_final_fortress_maps.py` audits faction/difficulty/loadout
+  configurations of the single Miners in the Sun map without opening a window.
+  `application/final_fortress_controller.py` bridges Tk and process lifecycle.
+  [FINAL_FORTRESS.md](FINAL_FORTRESS.md) records current scope and engine
+  contracts, provisional population policy, and remaining gameplay validation.
+  Final Fortress is a standalone mode: keep its settings, UI, saves, RNG, wave
+  rules, and reward lifecycle independent of Shop and Grid. Its controller owns
+  workspace-specific presentation; do not add its gameplay or balance branches
+  to existing mode modules.
 - `randomizer/missions/catalogue.py`: installed mission parsing, filtering, deterministic
   mission ordering.
 - `randomizer/progression/grid.py`: pure Grid topology and unlock state.

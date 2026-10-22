@@ -11,6 +11,33 @@ run in a separate protected manifest.
 
 ## Seed Lifecycle
 
+Choose **Final Fortress** in **Settings → Game Mode** to replace the campaign
+workspace with this standalone survival mode on Miners in the Sun. Its tab is
+hidden when another mode is selected. Use its own **Game Mode** control to
+return to Grid, Mission List, Classic, or Shop. Faction, AI difficulty, and the
+x1–x10 additional-wave multiplier have separate saved settings.
+For gameplay testing, the Fortress header's **Profile** selector offers
+**Testing (all unlocks)** with every perk enabled at maximum rank. It uses a
+separate save; select **Standard** to return to normal progression. Superweapon
+rank 1 grants the faction's secondary power, and rank 2 adds its offensive
+weapon. Production speed affects units, buildings and defenses.
+Settings remains available beside Final Fortress; Advanced and Archipelago are hidden in this mode. Permanent perks use their own Gems, show upgrade ranks and prices, and enable automatically when bought. Ranked perks add faction armies/buildings/defenses, production speed, veteran defenses, capped tier buffs, cloned faction support powers, map reveal, and up to two allied skirmish helpers. Casual / Normal / Mental starts the first
+five-minute wave at 3 / 6 / 9 units per active side before multiplication.
+Later waves add the starting amount (+3/+6/+9) per active side each time.
+Additional waves use one AI side at minute 5, two at minute 10, and all three
+from minute 15. All three AIs attack normally throughout.
+The multiplier leaves native AI production and
+the five-minute wave schedule unchanged. Time-based composition definitions
+support mixed infantry, vehicles, and artillery across tiers. The planner
+grows waves and delays them at a reserved-unit limit. The shared per-wave
+and reserved-wave ceilings are provisionally 480. Each wave keeps its slots
+until all its units are gone; normal AI production is excluded. **Help → Wave forecast**
+shows scheduled counts for the selected settings. Rules and current launch
+details are also in **Help**, keeping the play controls compact. Choose your
+faction, then **Launch Final Fortress**. Installed faction pools now provide
+mixed units across three time stages. Defend Einstein’s Lab beside your MCV while the native countdown runs. Survival awards 25/50/100 total Gems at 25/45/60 minutes; cleared camp claims and verified kill statistics add bonuses. Challenge offers the Grid enemy stat and production catalogue, including tier-specific armor and firepower; enable modifiers individually and choose their stack counts. Enabled stacks add victory Gems. All balance values are configurable. Camp crates randomly grant player-only credits, ten Tier 1 units, five Tier 2 units, or a faction special unit, alongside camp Gems. Native visual crates can be removed by AI without consuming the player reward. After victory or defeat, Run results opens on the Final Fortress tab and itemizes earned Gems and claimed crate rewards. It does not use campaign seeds or Shop progression.
+See [FINAL_FORTRESS.md](FINAL_FORTRESS.md) for the current scope.
+
 - **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan. The Seed name field is optional: a blank field always creates a new identifier, while a typed name is reused intentionally.
 - Seed-generation settings are copied into `randomizer_state.json`. Changing gameplay settings afterward affects the next seed. Dark mode, reward-name privacy, and locked-grid mission privacy apply immediately.
 - Difficulty and game speed are launch settings and may be changed between missions.

@@ -56,6 +56,206 @@ that overlap only with full reward-plan and 97-map parity coverage.
 - `shop_mode.json`: Shop Mode run length, mission choices and class rewards,
   stage difficulty weights, Ore/Gem unit prices, permanent upgrade
   definitions, reward exclusions, and launcher-only mission effects.
+- `final_fortress.json`: independent Final Fortress map, survival timing,
+  native AI difficulty, shared faction wave stages with alternative mixed
+  compositions, milestone/camp Gem identities, and permanent perks. The saved
+  x1–x10 wave multiplier changes additional spawn counts independently of AI
+  difficulty selection. Difficulty also supplies first-wave base counts of
+  3 / 6 / 9 per active side. The configured unit budget applies after multiplication;
+  `wave_pressure` defines growth by the starting amount, one/two/three spawn
+  sides at minutes 5/10/15, and a separate living-wave unit limit. Both shared
+  limits are provisionally 480. New runs split that budget into eight reusable
+  20-unit slots per enemy. Small mixed deliveries reuse empty slots without
+  waiting for an entire earlier wave; each next interval begins after the
+  preceding delivery finishes. Normal AI production is excluded. Help contains the
+  wave forecast. All twelve native country pools include three time stages
+  with four mixed compositions each, including infantry-led columns.
+  `wave_air_support` is an optional ordered list of `from_seconds`, `percent`
+  and `units_by_country` stages. Each country has one to four weighted native
+  flying-vehicle choices (`type` and relative `count`). Shipped stages replace
+  15% of the existing wave budget from minute 15 and 25% from minute 30, adding
+  heavy aircraft to the later choices. Ground identities, infantry and selected
+  Powerhouses retain at least one member. Air and ground use separate attack
+  teams sharing the existing unit slots; no extra population ceiling is added.
+  The frozen run retains the stage table and resolved air types/counts.
+  Miners in the Sun is the single source;
+  human waypoint 3 faces enemy waypoints 0, 1, and 5. The protected Einstein
+  Lab (`CALAB`, 3 × 4 foundation) starts at (91, 57).
+  Milestone rewards are incremental: 25 Gems at minute 25 and another 25 at
+  minute 45; `completion_gems: 50` brings the victory total to 100 at one hour.
+  `survival_seconds: 3600` admits eleven five-minute waves, through minute 55.
+  `performance` defines kills per reward tier, Gems per tier, and a tier cap.
+  Native setup transfers are excluded from the local kill score.
+  Each camp defines `position`, `enemy_index` (0–2), installed `guards`, and
+  `gems`. Optional `guard_positions` supplies reviewed clear, level cells for
+  expanded formations. `camp_balance` defines `guards_by_difficulty` (shipped
+  Casual/Normal/Mental 5/8/12), `max_guards_per_camp` (30),
+  `max_total_guards` (180), `special_chance_percent` (35) and reviewed
+  `special_units_by_country`. New plans multiply the difficulty baseline by the
+  selected wave multiplier before applying both ceilings, then select varied
+  mixed formations from native faction wave rosters. Camp roster factions are
+  independent of the enemy base rolls: Allies, Soviets, Epsilon and Foehn each
+  appear before any family repeats across the six camps. Each camp draws one
+  seeded subfaction roster while retaining its configured enemy AI owner.
+  A special roll replaces one ordinary guard with a faction hero or heavy.
+  Balance settings and resolved formations are frozen with the plan.
+  Guards use private copies owned by that enemy AI, with normal speed
+  and passive acquisition disabled until an attack wakes their team. The
+  native crate appears after all guard identities disappear and Gems are earned
+  immediately on clearance. Only player entry at the camp center claims the
+  separate frozen cash/unit reward. AI can remove the physical native crate
+  without consuming that player claim. Earlier frozen plans keep pickup-based
+  Gem rewards and their original guard compositions.
+  `challenges` references the Grid enemy stat/production, Powerhouse and
+  reinforcement-power catalogue through
+  `enemy_effect_id`; `victory_gems_per_stack` prices each enabled stack.
+  Shared Grid definitions supply labels, eligibility, formulas and stack caps.
+  Fortress also provides the aggregate `faction_superweapons` effect, granting
+  each enemy its own native-recharge offensive power. The five new effects
+  each have one toggle/stack. Reinforcement powers support optional integer
+  `shots` (1–12, shipped 3) and `recharge_multiplier` (1–10, shipped 2).
+  They are not initially charged. Their native-delivered units are outside
+  scripted-wave admission, so finite shots bound lifetime extra populations.
+  Powerhouses use Grid's rotating family heavy pools inside the frozen wave
+  and living-unit budgets, replacing ordinary members when the cap is full.
+  Their wave teams are veteran; this mode does not add Shop-stage companions.
+  `crate_rewards` defines weighted credit/unit outcomes; each unit outcome
+  has `units_by_country` for all twelve playable countries. Reward choices
+  are frozen per camp in the run plan, and only player claims receive them.
+  `perks` specifies permanent purchases and up to six increasing-price `ranks`
+  (eight for `periodic_reinforcements`).
+  Each rank has `gem_cost` and its complete cumulative `effects`; rank one
+  must match the entry's base `gem_cost` and `effects`. Effects are not added
+  again for earlier ranks. Purchases enable the perk automatically; disabling
+  it preserves ownership. Removed perk IDs remain owned in saved state.
+  Supported effects include starting credits, units/defenses and veterancy;
+  `production_percent` (up to 50), `defense_percent` (up to 60), veteran defenses,
+  separate `tier_buffs` for tiers `1`, `2`, `3` (up to 30 each), `reveal_map`,
+  and `allied_helpers` (up to two). The shipped production perk has five ranks
+  capped at 25%. Country-specific `starting_units_by_country`,
+  `buildings_by_country`, `defenses_by_country`, `power_buildings_by_country`, `harvesters_by_country`,
+  `fallback_units_by_country`, and `support_powers_by_country` cover all twelve
+  native countries. These values name installed types, not generated private
+  IDs. A combined starting army cannot exceed 15 units. Fallback infantry are
+  granted only when no other starting army is selected. Army `veterancy`
+  supports 1 (Veteran) and 2 (Elite, the native maximum); the shipped perk has
+  both ranks. `support_powers_by_country` supports up to five cumulative native
+  powers, with one additional unlock per shipped rank. The first two ranks
+  retain their earlier faction-family powers; later ranks use country-specific
+  selections. Native recharge times, use costs and localized names are retained.
+  `superweapons_by_country` has two shipped cumulative ranks: the country's
+  secondary power first, then that power plus its offensive superweapon.
+  `starting_credits` has six shipped ranks at +2,000 per rank, up to +12,000.
+  Production speed covers infantry, vehicle/naval, aircraft, building and
+  defense queues. `power_upgrade_stacks` (0–6) applies that many compatible
+  Grid/Shop power-buff stacks to every enabled perk power and superweapon;
+  capability caps still apply and no power is granted without its unlock.
+  Shared reviewed definitions in `rewards/power_buffs.json` determine which
+  powers support vision, area, payload, duration, damage and other effects.
+  Each unlocked power receives its own owned invisible launch provider in
+  new runs. Great Tempest upgrades and private Foehn Nanofiber mutations also
+  stage animation art and early registry entries before the Fortress country
+  preload is merged.
+  `special_units_by_country` grants cumulative reviewed production access for
+  all twelve countries. Each rank must append exactly one distinct special type
+  to its previous rank's list. The shipped three-rank family sequences use
+  private reviewed Shop/Grid models, ordinary faction-factory prerequisites,
+  and the original credit costs/unique limits, leaving native enemies unchanged.
+  `reinforcements` contains `first_seconds`, `interval_seconds`,
+  `max_active_units`, and `units_by_country`, plus optional `veterancy` (0 Rookie,
+  1 Veteran, 2 Elite). The shipped eight ranks arrive every
+  300 simulation seconds from minute 5 and retain ten basic infantry while
+  improving the 10/14/18/21/24/25-unit roster through rank six. Ranks seven/eight
+  retain that roster and grant Veteran/Elite units, respectively, without
+  changing timing or the cap. Each arrival may contain at most
+  six distinct installed ground infantry/vehicle types and 30 units per house.
+  Units with untracked passengers, aircraft spawns or building deployments are
+  rejected by the native adapter. Helpers receive the same arrival, and a whole
+  coalition arrival must fit within the shared 150-unit reinforcement cap.
+  Plan-17 runs use at most fifteen reusable groups shared across all houses
+  (ten units each with the shipped 150-unit cap). A group is released after all
+  its private identities disappear, including captured/converted units. Partial
+  groups retain their full reservation. Each house has independent timers and
+  resumes its next small delivery when shared capacity returns; the player sees
+  a capacity-wait message. No fixed per-house quota is imposed. Spawn waypoints
+  10–12 use the center of their existing protected 5x3 aprons.
+  Ordinary production, starting grants and enemies are outside this cap. The
+  adapter supports at most eleven friendly arrivals before the survival deadline;
+  reducing intervals or increasing duration must respect that native flag budget.
+  `healing_stacks` (0–6, shipped three ranks) enables rookie self-healing and
+  uses the shared maximum-HP healing calculation. Existing stronger native
+  amounts and native intervals remain. `recon_stacks` (0–6, shipped three)
+  adds sight and supported cloak sensors without shrinking native sensor range.
+  `unique_limit_stacks` (0–6, shipped three) raises eligible positive live-unit
+  limits without granting access or removing production gates. `income_stacks`
+  (0–4) adds five credits per stack to eligible special-building payout amounts,
+  retaining their delay and prerequisites. No buildings or free income sources
+  are granted. All four use private player/helper types, reviewed eligibility
+  and linked-form propagation. Native captured income buildings remain native.
+  `map.allied_waypoints` reserves up to two distinct unused native starts;
+  `map.perk_layouts` covers the human and each configured helper with five
+  building positions, sixteen defense positions, twelve power-plant positions,
+  and a 5-by-3 army staging area. Old snapshots with four defense positions
+  remain readable. Defense ranks give four copies of each cumulative unlocked
+  type, up to sixteen. `power_buildings_by_country` supplies enough native
+  plants for defenses and the five optional starting buildings. It supports
+  up to twelve plants per country; edit their quantities with the power budget
+  in mind. Perk details show cumulative per-rank grants for the selected faction.
+  Audit foundations and terrain before changing these positions. Helpers use
+  the player's faction and the same selected perks. Preplaced refineries have
+  one separately configured harvester to avoid duplicate native free units.
+  Shipped positions now stay within projected playable `LocalSize`, with actual
+  terrain-height/foundation audits. Runtime placement checks conservatively
+  allow for elevation and reject off-map added objects before writing files.
+  `map.enemy_defenses` provides `layouts` for the three enemy waypoints (12–32
+  positions each, shipped 24) and `types_by_country` with three distinct faction
+  turret types. Each successive position cycles basic/anti-air/advanced types.
+  New plans require this setup. Enemy buildings are private immune copies;
+  their country starts with an immune construction yard and their build lists,
+  upgrade links, MCV deployment, refinery free units and docking stay connected.
+  Fixed perimeter turrets are power-independent and unbuildable. Ordinary troops
+  remain damageable. Player/helper buildings retain their separate rules.
+  `map.enemy_wave_positions` supplies three reviewed 5x3 arrival aprons, keyed
+  by enemy start waypoint. Top-left cells are (93,147), (79,168), (142,166).
+  Invisible passable foundations prevent later construction; separate waypoints
+  16–18 spawn units beside construction yards. New enemy wave pools support a
+  shared living ceiling of 3–480; at most eight groups of up to twenty are
+  reserved per enemy, rounding down where the configured ceiling requires it.
+  New protected enemy buildings/MCVs are not legal attack targets; private helper
+  scripts replace building-only assault objectives with legal hostile targets.
+  The saved `preferences.mental_ai_boost` checkbox defaults false and freezes as
+  `plan.mental_ai_boost` for new runs. It loads the installed Mental AI game-option
+  INI before cloning factories, so enemy and helper AI receive the native option.
+  Plan 17 also creates a separate display-only `Next enemy wave` recharge timer,
+  using `wave_interval_seconds`. It resets after each complete enemy delivery,
+  waits at zero during a capacity delay, and is removed after the final wave
+  or objective completion. Its hidden provider at (113,71) uses the reserved
+  utility row and cannot be built or fired by the player. Its ownership transfer
+  is included in the setup score correction; removal is silent.
+  Both map rules and early rules preload include the changes; `spawn.ini` also
+  records `MentalAI=Yes/No`. No extra Challenge Gems are awarded for this setting.
+  Six camps now cover the map; guard and claim cells require clear playable
+  terrain. Preplaced guards sleep until the existing attacked-team behavior wakes
+  them. Preplaced starting-army experience encodes ranks as 100/200, while native
+  TeamType veterancy keeps its existing one-based enumeration.
+  Saved state schema 8 stores purchased ranks up to six (eight only for
+  `periodic_reinforcements`) and migrates the former
+  one-rank offensive-superweapon purchase to rank two. Run plan 20 freezes their effects,
+  power-upgrade stacks, starting power plants and helper starts with the original balance snapshot, preserving existing
+  Gem receipts when current configuration changes, including special access and
+  the complete friendly reinforcement schedule, utility stacks and Powerhouse
+  wave identities, four-faction camp rosters, staged air attacks and the revised
+  safe layouts/enemy fortifications. Earlier plan versions remain
+  readable with their original effects. The former six-unit
+  Reinforcements purchase migrates to army rank two.
+  The separate **Testing (all unlocks)** profile is available only in a source
+  checkout with an existing ignored `final_fortress_testing_state.json` save;
+  selecting it also adds newly configured unlocks at maximum rank without
+  resetting Gems, results, frozen runs or previously disabled selections.
+  Its unlock updates and gameplay receipts never change the Standard save.
+  Compiled EXEs expose Standard only and reject all-unlocks initialization.
+  See [FINAL_FORTRESS.md](../FINAL_FORTRESS.md) for the configuration contract
+  and gameplay validation limits.
 - `ui.json`: difficulties, game speeds, campaign/reward/progression choices,
   EVA announcer tags, reward-count messages, faction colors, and
   light/dark palettes.

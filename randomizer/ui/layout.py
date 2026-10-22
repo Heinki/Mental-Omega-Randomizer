@@ -7,7 +7,6 @@ from ._builder_dependencies import (
     DIFFICULTIES,
     GAME_SPEEDS,
     MAX_REWARDS_PER_CHECK,
-    PROGRESSION_MODES,
     REWARD_MODES,
     TreeTooltip,
     WidgetTooltip,
@@ -496,22 +495,23 @@ def _build_right_panel(self, main_frame):
         'buffs only, target content present in that mission, and never permanently unlock units or powers.',
     )
 
-    ttk.Label(options_row, text='Progression').grid(row=10, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
+    ttk.Label(options_row, text='Game Mode').grid(row=10, column=0, sticky='w', pady=(6, 0), padx=(0, 8))
     self.progression_mode_combo = ttk.Combobox(
         options_row,
         state='readonly',
-        textvariable=self.progression_mode_var,
-        values=PROGRESSION_MODES,
+        textvariable=self.game_mode_var,
+        values=self.game_mode_choices,
         width=12,
     )
     self.progression_mode_combo.grid(row=10, column=1, sticky='ew', pady=(6, 0))
-    self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_progression_mode_changed, add='+')
+    self.progression_mode_combo.bind('<<ComboboxSelected>>', self.on_game_mode_changed, add='+')
     WidgetTooltip(
         self.progression_mode_combo,
         'Classic follows the installed campaign order and opens one mission at a time. '
         'Mission List uses a randomized linear order. Grid Mode uses randomized missions '
         'on an orthogonal-neighbor board. Shop Mode replaces the mission view with its '
-        'roguelike run, loadout, and purchase workspace.',
+        'roguelike run, loadout, and purchase workspace. Final Fortress opens '
+        'its independent survival workspace.',
     )
     # Read-only ttk comboboxes retain focus after selection and their class
     # binding consumes the mouse wheel before bind_all sees it. Bind directly
@@ -572,19 +572,19 @@ def _build_right_panel(self, main_frame):
         wraplength=720,
     ).grid(row=2, column=0, columnspan=2, sticky='ew', pady=(0, 12))
 
-    ttk.Label(shop_settings_frame, text='Progression').grid(
+    ttk.Label(shop_settings_frame, text='Game Mode').grid(
         row=0, column=0, sticky='w', padx=(0, 12)
     )
     self.shop_progression_mode_combo = ttk.Combobox(
         shop_settings_frame,
         state='readonly',
-        textvariable=self.progression_mode_var,
-        values=PROGRESSION_MODES,
+        textvariable=self.game_mode_var,
+        values=self.game_mode_choices,
         width=18,
     )
     self.shop_progression_mode_combo.grid(row=0, column=1, sticky='ew')
     self.shop_progression_mode_combo.bind(
-        '<<ComboboxSelected>>', self.on_progression_mode_changed, add='+'
+        '<<ComboboxSelected>>', self.on_game_mode_changed, add='+'
     )
 
     ttk.Separator(shop_settings_frame, orient='horizontal').grid(

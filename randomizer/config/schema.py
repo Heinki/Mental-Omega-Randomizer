@@ -101,6 +101,12 @@ REQUIRED_SECTIONS = {
         'mission_effects': dict,
         'modifiers': dict,
     },
+    'final_fortress.json': {
+        'settings': dict,
+        'difficulties': dict,
+        'milestones': list,
+        'perks': list,
+    },
     'ui.json': {
         'difficulties': list,
         'game_speeds': list,
@@ -456,6 +462,14 @@ def _validate_missions(sections, path):
 
 def _validate_shop_mode(sections, path):
     validate_shop_mode_config(sections, path, _invalid)
+
+
+def _validate_final_fortress(sections, path):
+    from randomizer.final_fortress.config import validate_config
+    try:
+        validate_config(sections, path)
+    except ValueError as exc:
+        raise StaticConfigError(str(exc)) from exc
 
 
 def _validate_unit_data(sections, path):
@@ -1568,6 +1582,7 @@ CONFIG_VALIDATORS = {
     'default_player_config.json': _validate_default_player_config,
     'missions.json': _validate_missions,
     'shop_mode.json': _validate_shop_mode,
+    'final_fortress.json': _validate_final_fortress,
     'rewards/unit_data.json': _validate_unit_data,
     'rewards/unit_policy.json': _validate_unit_policy,
     'rewards/special_buildings.json': _validate_special_buildings,

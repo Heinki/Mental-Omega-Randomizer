@@ -1,0 +1,187 @@
+"""Deterministic, serializable run inputs, independent of campaign RNG streams."""
+
+from copy import deepcopy
+import hashlib
+import json
+import random
+
+from randomizer.challenges.catalogue import SIDE_COUNTRIES
+
+from . import MODE_ID
+from .config import (
+    DIFFICULTY_IDS, configuration_gaps, text, validate_config, validate_wave_multiplier,
+)
+from .waves import build_wave_schedule
+
+
+PLAN_VERSION = 20
+
+
+def configuration_digest(config):
+    encoded = json.dumps(config, sort_keys=True, separators=(',', ':')).encode('utf-8')
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(),
+                   wave_multiplier=1, plan_version=PLAN_VERSION, selected_challenges=(),
+                   challenge_stacks=None, perk_ranks=None, mental_ai_boost=False):
+    """Freeze approved inputs before the engine adapter creates map bytes.
+
+    Times are simulation seconds. Victory owns the duration boundary, so the
+    periodic wave schedule stops strictly before it. This function consumes
+    no global or campaign random state.
+    """
+    validate_config(config)
+    validate_wave_multiplier(wave_multiplier)
+    if type(mental_ai_boost) is not bool:
+        raise ValueError('Mental AI Boost must be boolean.')
+    if mental_ai_boost and plan_version < 16:
+        raise ValueError('Mental AI Boost requires a new Final Fortress run.')
+    if type(plan_version) is not int or not 1 <= plan_version <= PLAN_VERSION:
+        raise ValueError('Unsupported Final Fortress plan version.')
+    sized_waves = 'wave_pressure' in config
+    if sized_waves and plan_version < 3:
+        raise ValueError('Wave growth requires Final Fortress plan version 3.')
+    if sized_waves and 'spawn_sides' in config['wave_pressure'] and plan_version < 4:
+        raise ValueError('Staged wave sides require Final Fortress plan version 4.')
+    text(seed, 'Final Fortress seed')
+    if difficulty not in DIFFICULTY_IDS:
+        raise ValueError('Unknown Final Fortress difficulty.')
+    if player_country not in SIDE_COUNTRIES:
+        raise ValueError('Choose a playable Mental Omega country.')
+    gaps = configuration_gaps(config, difficulty, wave_multiplier)
+    if gaps:
+        raise ValueError(' '.join(gaps))
+    if plan_version >= 13 and not config['map'].get('enemy_defenses'):
+        raise ValueError('Configure safe enemy base fortification layouts before starting a new Fortress run.')
+    if plan_version >= 16 and not config['map'].get('enemy_wave_positions'):
+        raise ValueError('Configure safe enemy reinforcement aprons before starting a new Fortress run.')
+    catalogue = {perk['id']: perk for perk in config['perks']}
+    selected = tuple(sorted(selected_perks))
+    if len(set(selected)) != len(selected) or any(key not in catalogue for key in selected):
+        raise ValueError('Selected perks must be unique configured IDs.')
+    effects = {
+        'starting_credits': 0, 'starting_units': [],
+        'starting_defenses': [], 'veterancy': 0,
+    }
+    for key in selected if plan_version < 7 else ():
+        perk = catalogue[key]['effects']
+        effects['starting_credits'] += perk['starting_credits']
+        effects['starting_units'].extend(deepcopy(perk['starting_units']))
+        effects['starting_defenses'].extend(deepcopy(perk['starting_defenses']))
+        effects['veterancy'] = max(effects['veterancy'], perk['veterancy'])
+    if plan_version >= 7:
+        from .perks import resolve_effects
+        effects = resolve_effects(config, selected, perk_ranks or {}, player_country,
+                                  include_power=plan_version >= 8, include_power_upgrades=plan_version >= 9,
+                                  include_arsenal=plan_version >= 11, include_utilities=plan_version >= 12)
+    settings = config['settings']
+    enemy_rng = random.Random(f'{seed}:final_fortress:enemy_countries')
+    enemies = [enemy_rng.choice(SIDE_COUNTRIES) for _ in range(3)]
+    wave_schedule = build_wave_schedule(
+        config, difficulty=difficulty, seed=seed, enemies=enemies,
+        wave_multiplier=wave_multiplier, legacy=plan_version == 1,
+        sized_waves=sized_waves,
+    )
+    rewards = {'victory': settings['completion_gems']}
+    rewards.update({f'milestone:{entry["id"]}': entry['gems']
+                    for entry in config['milestones']})
+    rewards.update({f'camp:{entry["id"]}': entry['gems']
+                    for entry in config['map']['camps']})
+    plan = {
+        'mode_id': MODE_ID,
+        'config_digest': configuration_digest(config),
+        'seed': seed,
+        'difficulty': difficulty,
+        'player_country': player_country,
+        'enemy_countries': enemies,
+        'map': deepcopy(config['map']),
+        'survival_seconds': settings['survival_seconds'],
+        'wave_schedule': wave_schedule,
+        'engine_difficulty': config['difficulties'][difficulty]['engine_difficulty'],
+        'max_wave_units': settings['max_wave_units'],
+        'milestones': deepcopy(config['milestones']),
+        'selected_perks': list(selected),
+        'effects': effects,
+        'gem_rewards': rewards,
+    }
+    if plan_version >= 7:
+        plan['perk_ranks'] = {key: (perk_ranks or {}).get(key, 1) for key in selected}
+        # Helpers use the player's faction and share every enabled perk.
+        plan['allied_countries'] = [player_country] * effects['allied_helpers']
+        available = config['map'].get('allied_waypoints', [])
+        if len(available) < effects['allied_helpers']:
+            raise ValueError('This map has no configured allied helper start positions.')
+        plan['allied_waypoints'] = available[:effects['allied_helpers']]
+    if plan_version >= 16:
+        plan['mental_ai_boost'] = mental_ai_boost
+    if plan_version >= 11:
+        from .reinforcements import build_schedule
+        plan['reinforcement_schedule'] = build_schedule(plan)
+    if plan_version >= 2:
+        plan.update(plan_version=plan_version, wave_multiplier=wave_multiplier)
+    if plan_version >= 18:
+        from .camps import resolve_camps
+        resolve_camps(plan, config)
+        for camp in plan['map']['camps']:
+            rewards['camp_clear:' + camp['id']] = rewards['camp:' + camp['id']]
+            rewards['camp:' + camp['id']] = 0
+    if plan_version >= 3:
+        plan.update(wave_pressure=deepcopy(config.get('wave_pressure')),
+                    wave_interval_seconds=settings['wave_interval_seconds'])
+    if plan_version >= 5:
+        # Native Action 14 counts transferred objects in the receiving house's
+        # Kills statistic. Those setup transfers are not combat performance.
+        plan['initial_transfer_kills'] = (1 + sum(unit['count'] for unit in effects['starting_units'])
+                                          + len(effects['starting_defenses'])
+                                          + len(effects.get('starting_buildings', []))
+                                          + len(effects.get('defense_types', [])))
+        if plan_version >= 7:
+            # Refineries are accompanied by their native free harvester.
+            plan['initial_transfer_kills'] += (len(effects['support_powers']) if plan_version >= 9
+                                             else int(bool(effects.get('support_powers'))))
+            plan['initial_transfer_kills'] += sum(unit['count'] for unit in effects['starting_harvesters'])
+        if plan_version >= 8:
+            plan['initial_transfer_kills'] += len(effects['starting_power_buildings'])
+        if plan_version >= 17 and wave_schedule:
+            # The hidden wave-clock provider is transferred to the human once.
+            plan['initial_transfer_kills'] += 1
+        plan['performance'] = deepcopy(config.get('performance'))
+        if plan['performance']:
+            performance = plan['performance']
+            rewards.update({f'kills:{tier * performance["units_per_tier"]}':
+                            performance['gems_per_tier']
+                            for tier in range(1, performance['max_tiers'] + 1)})
+        challenges = {entry['id']: entry for entry in config.get('challenges', [])}
+        chosen = sorted(selected_challenges)
+        if len(chosen) != len(set(chosen)) or any(key not in challenges for key in chosen):
+            raise ValueError('Selected challenges must be unique configured IDs.')
+        plan['challenges'] = [deepcopy(challenges[key]) for key in chosen]
+        if plan_version >= 6:
+            from .challenges import maximum
+            for entry in plan['challenges']:
+                if 'enemy_effect_id' in entry:
+                    stacks = (challenge_stacks or {}).get(entry['id'], 1)
+                    if type(stacks) is not int or not 1 <= stacks <= maximum(entry):
+                        raise ValueError('Challenge stacks exceed the Grid buff limit.')
+                    entry['stacks'] = stacks
+                    entry['victory_gems'] = stacks * entry['victory_gems_per_stack']
+            options = config.get('crate_rewards', [])
+            for camp in plan['map']['camps']:
+                if not options:
+                    continue
+                rng = random.Random(f'{seed}:final_fortress:crate:{camp["id"]}')
+                reward = rng.choices(options, weights=[entry['weight'] for entry in options], k=1)[0]
+                camp['crate_reward'] = {
+                    'id': reward['id'], 'display_name': reward['display_name'],
+                    'credits': reward['credits'],
+                    'units': deepcopy(reward['units_by_country'].get(player_country, [])),
+                }
+        rewards['victory'] += sum(entry['victory_gems'] for entry in plan['challenges'])
+    if plan_version >= 12:
+        from .enemy_powers import add_powerhouses
+        add_powerhouses(plan)
+    if plan_version >= 20:
+        from .waves import add_air_support
+        add_air_support(plan, config)
+    return plan

@@ -102,6 +102,7 @@ Each document has one purpose so the same behavior is not maintained in several 
 |---|---|---|
 | [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) | Contributors | Feature-to-file map, runtime flow, module boundaries, change rules, validation |
 | [README_RANDOMIZER.md](README_RANDOMIZER.md) | Players and future Archipelago option authors | Complete settings tables, reward display, game modes, seed lifecycle, and user-facing limitations |
+| [FINAL_FORTRESS.md](FINAL_FORTRESS.md) | Fortress players and maintainers | Survival rules, perks, Challenges, camp rewards, runtime contracts and validation limits |
 | [CHALLENGES_TESTING.md](CHALLENGES_TESTING.md) | Challenge players and maintainers | Solo/AI/two-human setup, per-match choices, rewards, native results, build and validation scope |
 | [COOP_CONNECTION_GUIDE.md](COOP_CONNECTION_GUIDE.md) | Multiplayer players | Private-network setup, host/guest flow, firewall helper, and connection diagnostics |
 | [TECHNICAL_FINDINGS.md](TECHNICAL_FINDINGS.md) | Developers | Launch architecture, generated-map pipeline, objective/victory hook implementation, reward planning, tech locking, and buff safety |
