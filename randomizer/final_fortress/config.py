@@ -269,8 +269,11 @@ def validate_config(sections, path=None):
         _object(sections, fields, 'Final Fortress sections')
         if 'camp_balance' in sections:
             balance = sections['camp_balance']
-            _object(balance, ('guards_by_difficulty', 'max_guards_per_camp', 'max_total_guards',
-                              'special_chance_percent', 'special_units_by_country'), 'Camp balance')
+            fields = ['guards_by_difficulty', 'max_guards_per_camp', 'max_total_guards',
+                      'special_chance_percent', 'special_units_by_country']
+            if 'starter_camps' in balance:
+                fields.append('starter_camps')
+            _object(balance, fields, 'Camp balance')
             if not isinstance(balance['guards_by_difficulty'], dict) or set(balance['guards_by_difficulty']) != set(DIFFICULTY_IDS):
                 raise ValueError('Camp guard counts must cover all difficulties.')
             for count in balance['guards_by_difficulty'].values():
@@ -289,6 +292,29 @@ def validate_config(sections, path=None):
                     raise ValueError('Camp special pools require distinct installed unit IDs.')
                 for kind in units:
                     _techno(kind)
+            if 'starter_camps' in balance:
+                starter = balance['starter_camps']
+                _object(starter, ('camp_ids', 'guards_by_difficulty', 'max_guards_by_difficulty',
+                                  'units_by_country'), 'Starter camp balance')
+                _list(starter['camp_ids'], 'Starter camp IDs')
+                for key in starter['camp_ids']:
+                    identifier(key, 'Starter camp ID')
+                if not starter['camp_ids'] or len(set(starter['camp_ids'])) != len(starter['camp_ids']):
+                    raise ValueError('Starter camp IDs must be nonempty and distinct.')
+                for field in ('guards_by_difficulty', 'max_guards_by_difficulty'):
+                    _object(starter[field], DIFFICULTY_IDS, 'Starter camp ' + field)
+                    for count in starter[field].values():
+                        integer(count, 'Starter camp guard count', 1)
+                for difficulty in DIFFICULTY_IDS:
+                    if not (starter['guards_by_difficulty'][difficulty]
+                            <= starter['max_guards_by_difficulty'][difficulty] <= balance['max_guards_per_camp']
+                            and starter['guards_by_difficulty'][difficulty] < balance['guards_by_difficulty'][difficulty]):
+                        raise ValueError('Starter camps need lower base populations and valid separate ceilings.')
+                _object(starter['units_by_country'], SIDE_COUNTRIES, 'Starter camp faction pools')
+                for units in starter['units_by_country'].values():
+                    _units(units)
+                    if not units or len(units) > 6 or len({unit['type'] for unit in units}) != len(units):
+                        raise ValueError('Starter camps need one to six distinct basic unit types.')
         if 'crate_rewards' in sections:
             _unique(sections['crate_rewards'], 'Crate reward')
             if not sections['crate_rewards']:
@@ -355,6 +381,9 @@ def validate_config(sections, path=None):
                         or counts != sorted(set(counts)) or counts[0] != 1 or counts[-1] != 3):
                     raise ValueError('Spawn-side stages must cover the first wave and increase from one to three.')
         _map(sections['map'])
+        starter = sections.get('camp_balance', {}).get('starter_camps')
+        if starter and not set(starter['camp_ids']) <= {camp['id'] for camp in (sections['map'] or {}).get('camps', [])}:
+            raise ValueError('Starter camp IDs must refer to configured camps.')
         _object(sections['difficulties'], DIFFICULTY_IDS, 'Difficulties')
         for index, difficulty in enumerate(DIFFICULTY_IDS):
             profile = sections['difficulties'][difficulty]

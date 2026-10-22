@@ -5,6 +5,55 @@ import re
 from randomizer.maps.ini import all_section_value_maps_preserve
 
 
+def validate_enemy_arrivals(writer, plan):
+    """Keep hostile wave placement beside its own base, away from friendlies.
+
+    Validate the emitted action's coordinates, not just the TeamType's label.
+    This also protects frozen plans, which still use their original base starts.
+    """
+    from randomizer.maps.ini import parse_action_groups, section_value_map
+
+    points = {**section_value_map(writer.lines, 'Waypoints'),
+              **writer.sections.get('Waypoints', {})}
+    definition = plan['map']
+
+    def position(waypoint):
+        value = points.get(str(waypoint), '')
+        if not value.isdigit():
+            raise ValueError(f'Missing Final Fortress arrival waypoint {waypoint}.')
+        cell = int(value)
+        return cell % 1000, cell // 1000
+
+    friendly = [position(waypoint) for waypoint in (
+        definition['player_waypoint'], *plan.get('allied_waypoints', []))]
+    expected = {}
+    for index, waypoint in enumerate(definition['enemy_waypoints']):
+        base = position(waypoint)
+        arrival = 16 + index if plan.get('plan_version', 1) >= 16 else waypoint
+        x, y = position(arrival)
+        # The entire 5x3 apron must remain within sixteen cells of its own
+        # start and outside the thirty-two-cell friendly expansion buffer.
+        cells = {(x + dx, y + dy) for dx in range(-2, 3) for dy in range(-1, 2)}
+        if any(max(abs(cx - base[0]), abs(cy - base[1])) > 16
+               or any(max(abs(cx - fx), abs(cy - fy)) < 32 for fx, fy in friendly)
+               for cx, cy in cells):
+            raise ValueError('Final Fortress enemy arrivals must stay beside their own base and away from friendly bases.')
+        expected[f'FFENEMY{index + 1}'] = (chr(65 + waypoint), chr(65 + arrival))
+    for value in writer.sections.get('Actions', {}).values():
+        for action in parse_action_groups(value)[1]:
+            if action[0] not in ('7', '80'):
+                continue
+            team = writer.sections.get(action[2], {})
+            name = team.get('Name', '')
+            if not name.startswith(('Final Fortress wave ', 'Final Fortress AI controller')):
+                continue
+            owner = team.get('House')
+            target = expected.get(owner)
+            waypoint = target[1 if name.startswith('Final Fortress wave ') else 0] if target else None
+            if action[0] != '80' or action[7] != waypoint or team.get('Waypoint') != waypoint:
+                raise ValueError('Final Fortress enemy reinforcement action has no explicit safe spawn waypoint.')
+
+
 class PlayableBounds:
     def __init__(self, section):
         row = {key.lower(): value for key, value in section.items()}

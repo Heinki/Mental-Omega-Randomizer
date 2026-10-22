@@ -99,8 +99,13 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         require(count == len(actions), f'Malformed action list: {key}')
         require(len(value.split(',')) == 1 + 8*count, f'Embedded comma or malformed native action fields: {key}')
         for action in actions:
-            if action[0] in ('4', '5', '7'):
+            if action[0] in ('4', '5', '7', '80'):
                 require(action[2] in rows['TeamTypes'].values(), f'Unknown action team: {action[2]}')
+            if action[0] in ('7', '80'):
+                team = effective[action[2]]
+                if team.get('Name', '').startswith(('Final Fortress wave ', 'Final Fortress AI controller')):
+                    require(action[0] == '80' and action[7] == team['Waypoint'],
+                            'Hostile reinforcements lack an explicit matching spawn waypoint')
     for value in rows.get('AITriggerTypes', {}).values():
         fields = value.split(',')
         if fields[2] not in actors:
@@ -602,9 +607,25 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
             require(rows['Tags'][tag].split(',')[2] == claim, 'Camp crate cell is not connected to reward claim')
             if plan.get('plan_version',1) >= 18:
                 balance=plan['camp_balance']
-                require(count == min(balance['guards_by_difficulty'][plan['difficulty']]*plan['wave_multiplier'],
-                                     balance['max_guards_per_camp'],balance['max_total_guards']//len(plan['map']['camps'])),
+                starter = balance.get('starter_camps') if plan.get('plan_version', 1) >= 21 else None
+                is_starter = bool(starter and camp['id'] in starter['camp_ids'])
+                profile = starter if is_starter else balance
+                ceiling = starter['max_guards_by_difficulty'][plan['difficulty']] if is_starter else balance['max_guards_per_camp']
+                require(count == min(profile['guards_by_difficulty'][plan['difficulty']]*plan['wave_multiplier'],
+                                     ceiling,balance['max_guards_per_camp'],balance['max_total_guards']//len(plan['map']['camps'])),
                         'Camp population ignores difficulty, multiplier or shared limits')
+                if plan.get('plan_version', 1) >= 21:
+                    require(camp['starter_camp'] == is_starter, 'Starter camp classification is not frozen correctly')
+                if is_starter:
+                    require(camp['special_unit'] is None and camp['composition_id'] == 'starter_infantry',
+                            'Starter camp rolled a heavy, hero or advanced wave formation')
+                    pool = {unit['type'] for unit in starter['units_by_country'][camp['guard_country']]}
+                    require(all(unit['type'] in pool and unit['type'] in rules['InfantryTypes'].values()
+                                and int(rules[unit['type']]['TechLevel']) == 1 for unit in camp['guards']),
+                            'Starter camp contains something other than configured basic infantry')
+                    require(count < min(balance['guards_by_difficulty'][plan['difficulty']]*plan['wave_multiplier'],
+                                        balance['max_guards_per_camp'],balance['max_total_guards']//len(plan['map']['camps'])),
+                            'Starter camp is not smaller than outer camps')
                 if plan.get('plan_version', 1) >= 19:
                     require(camp['guard_country'] in SIDE_COUNTRIES, 'Camp uses an unknown faction roster')
                 else:
@@ -811,7 +832,9 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
             require(rows['Triggers'][gate].split(',')[3] == '1', 'Future wave delivery starts early')
             actions = parse_action_groups(rows['Actions'][gate])[1]
             expected = [_action(54, trigger=other[0]) for other in deliveries]
-            expected += [_action(56, int(busy)), _action(7, team=team), _action(53, trigger=following)]
+            expected += [_action(56, int(busy)),
+                         _action(80, team=team, waypoint=effective[team]['Waypoint']),
+                         _action(53, trigger=following)]
             require(actions == expected, 'Wave delivery can double-spawn or fail to advance')
             require(parse_action_groups(rows['Actions'][chunk])[1]
                     == [_action(53, trigger=item[0]) for item in deliveries], 'Missing slot availability gates')
@@ -874,6 +897,13 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
         cells = {(p['x']+dx,p['y']+dy) for dx in range(5) for dy in range(3)}
         require(cells <= placed, 'AI can build over its wave arrival position')
         require(int(rows['Waypoints'][str(16+index)]) == (p['y']+1)*1000+p['x']+2, 'Wrong enemy spawn waypoint')
+        base = int(rows['Waypoints'][str(wp)])
+        friends = [int(rows['Waypoints'][str(point)]) for point in (
+            plan['map']['player_waypoint'], *plan.get('allied_waypoints', []))]
+        require(all(max(abs(x - base % 1000), abs(y - base // 1000)) <= 16
+                    and all(max(abs(x - friend % 1000), abs(y - friend // 1000)) >= 32
+                            for friend in friends) for x, y in cells),
+                'Enemy wave apron is detached from its own base or intrudes into a friendly base')
         if terrain is not None:
             require(terrain.clear(cells), 'Unsafe enemy arrival terrain')
     for team in preloads['ai']['TeamTypes'].values():

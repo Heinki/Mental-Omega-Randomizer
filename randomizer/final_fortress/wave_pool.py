@@ -94,7 +94,7 @@ def apply_wave_pool(writer, plan, rules, overrides, marker_teams, finished, *, w
                 # Reserve before spawning and disable every alternative now;
                 # later gates cannot double-dispatch this same delivery.
                 actions = [*[_action(54, trigger=other) for other, _, _ in alternatives],
-                           _action(56, busy), _action(7, team=team),
+                           _action(56, busy), writer.reinforce(team),
                            _action(53, trigger=relays[n + 1])]
                 writer.put('Actions', gate, str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
         actions = [_action(4, team=marker_teams[f'wave:{index + 1}'])]

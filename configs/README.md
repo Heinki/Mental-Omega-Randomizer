@@ -98,6 +98,13 @@ that overlap only with full reward-plan and 97-map parity coverage.
   appear before any family repeats across the six camps. Each camp draws one
   seeded subfaction roster while retaining its configured enemy AI owner.
   A special roll replaces one ordinary guard with a faction hero or heavy.
+  Optional `camp_balance.starter_camps` names nearby `camp_ids`, lower
+  `guards_by_difficulty`, separate `max_guards_by_difficulty` and basic
+  `units_by_country`. The shipped north-east starter camp uses 2/3/4 infantry
+  on Casual/Normal/Mental before multiplication, capped at 4/6/8. It never
+  receives advanced wave formations or special guards; its normal rewards are
+  retained. Runtime validation restricts starter guards to installed TechLevel-1
+  infantry. The other five camps keep their existing formation/count rules.
   Balance settings and resolved formations are frozen with the plan.
   Guards use private copies owned by that enemy AI, with normal speed
   and passive acquisition disabled until an attack wakes their team. The
@@ -240,7 +247,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   TeamType veterancy keeps its existing one-based enumeration.
   Saved state schema 8 stores purchased ranks up to six (eight only for
   `periodic_reinforcements`) and migrates the former
-  one-rank offensive-superweapon purchase to rank two. Run plan 20 freezes their effects,
+  one-rank offensive-superweapon purchase to rank two. Run plan 21 freezes their effects,
   power-upgrade stacks, starting power plants and helper starts with the original balance snapshot, preserving existing
   Gem receipts when current configuration changes, including special access and
   the complete friendly reinforcement schedule, utility stacks and Powerhouse

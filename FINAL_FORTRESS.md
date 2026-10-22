@@ -84,6 +84,17 @@ Each enemy receives a walkable, unbuildable 5x3 arrival apron beside its base:
 waypoints 16/17/18 at (95,148), (81,169), and (144,167). These replace occupied
 construction-yard spawn points. `map.enemy_wave_positions` stores each apron's
 top-left corner. The native terrain audit checks all fifteen cells.
+Enemy wave deliveries now use native action **80 (reinforcement at waypoint)**,
+with the same explicit waypoint in the action and its TeamType. Previously they
+used generic action 7, which supplies no placement override to the native engine;
+the audit checked the TeamType waypoint but did not check explicit action placement.
+The launcher now rejects an enemy arrival apron more than 16 cells from its own
+base or less than 32 cells from the human or an active helper start, checking the
+entire apron using cell-grid distance. This adapter correction also applies when
+rebuilding an older frozen plan; pre-16 waves retain their original enemy starts
+and receive explicit placement there. Existing native saves need a fresh launch
+to receive regenerated triggers. Live confirmation of the reported misplaced
+waves remains pending; generated-map audits do not simulate native placement.
 Immortal enemy buildings, MCVs and fixed defenses have `LegalTarget=no`; helper
 assault scripts that insisted on buildings/factories/defenses now seek any
 hostile legal target. Their normal production and starting/arrival armies share
@@ -451,8 +462,16 @@ all four are represented across the six camps every run. A seeded subfaction
 choice supplies each camp's infantry, vehicles and artillery; difficulty
 influences the early/mid/late composition selection. Camp ownership still uses
 the configured enemy AI, including its alliances and applicable Challenges.
-Each camp has a configurable **35% chance** of including one faction hero or
-heavy unit. Counts, limits, special-unit pools and chance are configured through
+The north-east camp at **(107, 66)** is the nearby starter camp. It uses only
+basic faction infantry: **2 / 3 / 4 on Casual / Normal / Mental**, multiplied by
+the wave multiplier but separately capped at **4 / 6 / 8 guards**. Vehicles,
+artillery, advanced troops and heroes cannot roll there. Its normal Gem and
+random crate rewards are retained, providing an attainable early resource goal
+without requiring purchased starting armies or defenses.
+
+Outer camps retain their larger formations and a configurable **35% chance**
+of including one faction hero or heavy unit. Counts, limits, starter camp IDs
+and basic faction pools, special-unit pools and chance are configured through
 `camp_balance` and frozen before launch. Each camp has thirty reviewed clear,
 level guard positions rather than extending a formation into nearby terrain.
 Clearing a camp grants **10 Gems immediately**. Private unbuildable guard identities and a complete
@@ -476,7 +495,9 @@ Weights, credit amounts, unit compositions, and counts are configurable.
 Outcomes are seeded independently per camp and saved before launch, so reloads
 or configuration edits cannot reroll a committed reward.
 The results panel distinguishes cleared camps from collected reward crates.
-Older frozen plans retain their original five guards and pickup-based Gem rules.
+Plans before version 18 retain their original five guards and pickup-based Gem
+rules. Plans 18–20 retain their original camp formations; the easier starter
+camp applies to new runs only.
 
 Native visual crates remain physically collectible by AI; their ordinary cash
 is disabled. Only player claims trigger the real cash/unit reward, and AI pickup
@@ -537,7 +558,9 @@ separate camp-clear Gem and crate-claim receipts. Version 19 selects camp
 rosters independently of enemy countries and guarantees all four faction
 families across the six camps. Version 20 freezes staged wave air support,
 preserving total wave populations and ground identities with separate flying
-attack deliveries. Earlier plans retain their original inputs.
+attack deliveries. Version 21 freezes a separate basic-infantry roster and lower
+difficulty-based population ceilings for nearby starter camps. Earlier plans
+retain their original inputs.
 Plans 1–6 retain their original snapshots; version 6 adds stack selections and
 per-camp random reward snapshots, and version 7 freezes purchased perk ranks,
 cumulative effects and allied helper starts. Version 8 adds frozen starting
@@ -562,9 +585,16 @@ configurations cover all twelve countries and
 three difficulties with baseline, helper-only and maximum perk/Challenge
 loadouts. It checks native references, country registration, runtime preload
 coverage, action/flag limits, source terrain preservation, building foundations,
-MCV deployment space, starting unit placement and spawner metadata. It does not
+MCV deployment space, starting unit placement, explicit hostile arrival actions,
+enemy/friendly spawn separation and spawner metadata. It does not
 simulate unit behavior or establish frame-rate limits. No other playable maps
 are introduced or audited by this command.
+
+The explicit enemy-arrival correction passed all 108 baseline/helper/maximum
+configurations with terrain checks across all countries and difficulties. Saved
+plans 7 and 18 also regenerated successfully with explicit hostile spawn actions.
+Python compilation passed. These checks leave the source map and player saves
+unchanged; the reported live placement still needs a fresh-match gameplay check.
 
 For placement changes, use `--profiles maximum defenses --difficulties normal
 --terrain` to check the twelve factions with and without other starting perks.
@@ -580,9 +610,10 @@ promptly; polling slows only after catching up following a terminal result while
 the native score screen remains open. These reduce launcher work during the
 score transition; native score-screen smoothness still needs gameplay review.
 
-The current plan-20 artifacts passed 24 Normal baseline/maximum configurations
-of Miners in the Sun, including four-faction camps, staged air support and
-terrain. Isolated runtime preparations also covered Europeans at Normal/x6 and
+The current plan-21 artifacts passed 72 baseline/maximum configurations across
+Casual, Normal and Mental on Miners in the Sun, including starter-camp limits,
+basic infantry eligibility, four-faction camps, staged air support and terrain.
+Isolated runtime preparations also covered Europeans at Normal/x6 and
 USSR, PsiCorps and Guild1 at Mental/x10 with maximum Challenges and Mental AI
 Boost. Prepared map/spawn output and private rules/AI preload fields matched
 their audited counterparts. Real native-log replay verified result recovery

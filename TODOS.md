@@ -16,6 +16,10 @@ PERKS
 - [x] Add Perk which allows up to two allied helpers, they will just be normal skirmish AI's BUT with the buffs/perks the player also has
 
 Fortress gameplay review (implementation uses provisional configurable values)
+- [x] Bind enemy wave/controller reinforcement actions explicitly to their spawn waypoints; audit the emitted action arguments and reject enemy arrival aprons near friendly bases or detached from their own starts.
+- [ ] Confirm reported enemy waves appearing inside the player base no longer occur during the next normal gameplay session, including ground and flying batches. No game windows opened for routine validation.
+- [x] Give the nearby north-east starter camp a separate basic-infantry pool, smaller difficulty-scaled counts and low multiplier caps while retaining its normal rewards; keep outer camps tougher.
+- [ ] Review early resource access with no starting-army/defense perks on Casual and Normal during the next ordinary gameplay session. No game windows opened for routine validation.
 - [x] Restrict the all-unlocks Testing profile to an existing ignored save in a local source checkout; compiled EXEs expose Standard only and reject testing initialization.
 - [x] Verify infantry in saved wave rosters; expand ground stages to four alternatives and add staged faction air attacks from minutes 15/30 within the existing shared wave budget.
 - [x] Separate flying and ground wave teams, preserving infantry and selected Powerhouse identities and existing slot release tracking.

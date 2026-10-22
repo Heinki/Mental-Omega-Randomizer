@@ -12495,6 +12495,95 @@
           "PROME",
           "TARCHIA"
         ]
+      },
+      "starter_camps": {
+        "camp_ids": [
+          "north_east_camp"
+        ],
+        "guards_by_difficulty": {
+          "easy": 2,
+          "normal": 3,
+          "hard": 4
+        },
+        "max_guards_by_difficulty": {
+          "easy": 4,
+          "normal": 6,
+          "hard": 8
+        },
+        "units_by_country": {
+          "UnitedStates": [
+            {
+              "type": "E1",
+              "count": 1
+            }
+          ],
+          "Europeans": [
+            {
+              "type": "E1",
+              "count": 1
+            }
+          ],
+          "Pacific": [
+            {
+              "type": "E1",
+              "count": 1
+            }
+          ],
+          "USSR": [
+            {
+              "type": "E2",
+              "count": 1
+            }
+          ],
+          "Latin": [
+            {
+              "type": "E2",
+              "count": 1
+            }
+          ],
+          "Chinese": [
+            {
+              "type": "E2",
+              "count": 1
+            }
+          ],
+          "PsiCorps": [
+            {
+              "type": "INIT",
+              "count": 1
+            }
+          ],
+          "ScorpionCell": [
+            {
+              "type": "INIT",
+              "count": 1
+            }
+          ],
+          "Headquaters": [
+            {
+              "type": "INIT",
+              "count": 1
+            }
+          ],
+          "Guild1": [
+            {
+              "type": "KNIGHT",
+              "count": 1
+            }
+          ],
+          "Guild2": [
+            {
+              "type": "KNIGHT",
+              "count": 1
+            }
+          ],
+          "Guild3": [
+            {
+              "type": "KNIGHT",
+              "count": 1
+            }
+          ]
+        }
       }
     },
     "wave_air_support": [

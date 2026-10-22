@@ -182,6 +182,15 @@ class _MapWriter:
                 register(unit['type'])
         return aliases
 
+    def reinforce(self, team):
+        """Use the native explicit-waypoint action for scripted arrivals.
+
+        Action 7 passes -1 as the placement override. Action 80 passes the
+        actual waypoint and enables native placement around that cell. Keep
+        both the action and TeamType anchored to the same arrival location.
+        """
+        return _action(80, team=team, waypoint=self.sections[team]['Waypoint'])
+
     def finish(self):
         for key, value in self.sections.get('Actions', {}).items():
             if len((key + '=' + value).encode('latin-1')) > 511:
@@ -373,6 +382,10 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
         waypoint = 20 + index
         _waypoint(waypoint)
         writer.put('Waypoints', waypoint, position['y'] * 1000 + position['x'])
+        if camp.get('starter_camp') and any(
+                unit['type'] not in infantry or str(rules[unit['type']].get('TechLevel')) != '1'
+                for unit in camp['guards']):
+            raise ValueError('Starter camps require installed basic Tier 1 infantry.')
         aliases = writer.wave_types([{'units': camp['guards']}], rules, overrides)
         units = [{'type': aliases[unit['type']], 'count': unit['count']} for unit in camp['guards']]
         owner_waypoint = plan['map']['enemy_waypoints'][camp['enemy_index']]
@@ -536,7 +549,7 @@ def build_map(game_root, run, rules, *, preloads=None):
         team = writer.team('Final Fortress AI controller',
                            [{'type': controller_type, 'count': 1}], waypoint, attack=False,
                            owner=f'FFENEMY{enemy_index + 1}')
-        startup.append(_action(7, team=team))
+        startup.append(writer.reinforce(team))
     writer.trigger('Final Fortress start', [(13, 0, 1)], startup)
 
     # Use a private copy so other installed buildings retain native behavior.
@@ -649,7 +662,7 @@ def build_map(game_root, run, rules, *, preloads=None):
                                    [{'type': aliases[unit['type']], 'count': unit['count']}
                                     for unit in group['units']], group['waypoint'],
                                    owner=f'FFENEMY{enemy_index + 1}')
-                actions.append(_action(7, team=team))
+                actions.append(writer.reinforce(team))
                 if 'veteran_level' in group:
                     writer.put(team, 'VeteranLevel', group['veteran_level'])
             completed, _ = writer.trigger(f'Wave {index + 1} complete',
@@ -676,6 +689,8 @@ def build_map(game_root, run, rules, *, preloads=None):
     writer.put('Basic', 'Name', 'Final Fortress - ' + definition['display_name'])
     writer.put('Basic', 'IgnoreGlobalAITriggers', 'no')
     writer.put('SpecialFlags', 'FixedAlliance', 'yes')
+    from .placement import validate_enemy_arrivals
+    validate_enemy_arrivals(writer, plan)
     if plan.get('plan_version', 1) >= 13:
         from .placement import validate_placements
         validate_placements(writer, rules)

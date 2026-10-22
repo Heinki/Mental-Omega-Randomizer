@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 20
+PLAN_VERSION = 21
 
 
 def configuration_digest(config):

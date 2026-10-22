@@ -359,11 +359,18 @@ class FinalFortressController:
                 balance = config['camp_balance']
                 rules.append('Camp Gems are awarded as soon as the guards are cleared; '
                              'the separate random cash/unit crate requires your own unit to collect it. '
-                             f'Guards: {balance["guards_by_difficulty"][preferences["difficulty"]]} base × '
+                             f'Outer guards: {balance["guards_by_difficulty"][preferences["difficulty"]]} base × '
                              f'{preferences["wave_multiplier"]}, capped at {balance["max_guards_per_camp"]} '
                              f'per camp and {balance["max_total_guards"]} total. '
                              'Camp rosters cover Allies, Soviets, Epsilon and Foehn independently of enemy bases. '
-                             f'Each group has a {balance["special_chance_percent"]}% chance of a hero or heavy.')
+                             f'Outer groups have a {balance["special_chance_percent"]}% chance of a hero or heavy.')
+                starter = balance.get('starter_camps')
+                if starter:
+                    rules.append('Nearby starter camps use basic infantry only, without vehicles, artillery or heroes: '
+                                 f'{starter["guards_by_difficulty"][preferences["difficulty"]]} base × '
+                                 f'{preferences["wave_multiplier"]}, capped at '
+                                 f'{starter["max_guards_by_difficulty"][preferences["difficulty"]]} guards. '
+                                 'Their normal Gems and random crate rewards are retained.')
             rules.append('Camp centers: ' + '; '.join(
                 f'{camp["display_name"]} ({camp["position"]["x"]}, {camp["position"]["y"]}), '
                 f'{camp["gems"]} Gems' for camp in config['map']['camps']
