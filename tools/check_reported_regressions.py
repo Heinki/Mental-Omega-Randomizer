@@ -641,6 +641,52 @@ def check_bleed_red_access(missions, launcher_type):
               'locked access and native Boris preserved', flush=True)
 
 
+def check_powerhouse_death_triggers(missions, launcher_type):
+    """Audit real tagged defense/replacement teams across campaign modes."""
+    mission = missions['AHAMARTIA']
+    original = all_section_value_maps_preserve(
+        (ROOT / 'extracted_maps' / mission['scenario'].upper()).read_text().splitlines()
+    )
+    # These templates previously gave bonus actors the Irkalla-destroyed and
+    # defense-replacement callbacks, or added heavies to the tagged originals.
+    protected_teams = ('01000779', '01005461', '01005469')
+    for progression, mode in product(
+        ('Grid Mode', 'Mission List', 'Shop Mode'), ('Standard', 'Chaos'),
+    ):
+        launcher = launcher_type(
+            progression_mode=progression, reward_mode=mode,
+            enemy_effect_ids={'powerhouse'}, powerhouse_stage=8,
+        )
+        launcher.player_rewards = []
+        sections = generate(launcher, mission)
+        entries = launcher.enemy_applications[mission['code']]
+        for team_id in protected_teams:
+            for field in ('Tag', 'TaskForce'):
+                assert sections[team_id][field] == original[team_id][field], (
+                    progression, mode, team_id, field,
+                )
+        tagged_factory_templates = 0
+        for entry in entries:
+            kind = entry.get('application_kind')
+            if kind not in {'companion', 'production', 'wave'}:
+                continue
+            source = original[entry['source_team_id']]
+            source_tagged = source.get('Tag', '').strip().lower() not in {
+                '', 'none', '<none>',
+            }
+            if kind == 'wave':
+                assert not source_tagged, (progression, mode, entry)
+                continue
+            team = {key.lower(): value for key, value in sections[entry['target']].items()}
+            assert team.get('tag', '').strip().lower() in {'', 'none', '<none>'}, (
+                progression, mode, entry,
+            )
+            tagged_factory_templates += kind == 'production' and source_tagged
+        assert tagged_factory_templates, (progression, mode, 'tagged factory template not exercised')
+        print(f'Hamartia: {mode} {progression}; bonus teams detached from native death triggers',
+              flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -657,6 +703,7 @@ def main():
     check_captured_factory_access(missions, _AuditLauncher)
     check_ghost_hunt_powerhouses(missions, _AuditLauncher)
     check_bleed_red_access(missions, _AuditLauncher)
+    check_powerhouse_death_triggers(missions, _AuditLauncher)
     print('Reported mission and unit generation regressions passed.')
 
 

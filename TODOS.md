@@ -1,5 +1,8 @@
 ## BUGS AND IMPROVEMENTS
 
+- [x] Prevent Enemy Powerhouses from copying authored object/death tags to bonus teams or expanding tagged story teams; audit the real Hamartia replacement/Irkalla callbacks across campaign modes and enforce the same rule in co-op audits.
+- [ ] Confirm the reported visual unit replacement after death during normal gameplay. No original report map/replay exists; the confirmed Powerhouses death-trigger leak is fixed, but the exact Kirov-to-Apocalypse observation remains unverified.
+
 Fortress mode
 - [x] Show a Final Fortress run results screen after victory or defeat, including total Gems and the sources of each reward.
 

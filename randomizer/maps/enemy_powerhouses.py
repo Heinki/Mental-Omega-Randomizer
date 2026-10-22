@@ -176,6 +176,12 @@ def enemy_powerhouse_rules(
                 and str(values.get('reinforce', '')).casefold() not in _TRUE_VALUES)
         ):
             continue
+        if str(values.get('tag', '')).strip().casefold() not in {'', 'none', '<none>'}:
+            # A TeamType tag is attached to every member. Adding heavies also
+            # makes their deaths/attacks count toward the mission's scripted
+            # replacement, retaliation or objective trigger.
+            skipped.append(f'{team_id}: attached mission trigger')
+            continue
         if any(str(values.get(key, '')).casefold() in _TRUE_VALUES for key in (
             'droppod', 'isontransonly',
         )) or str(values.get('transportwaypoint', '')).strip() not in {'', '-1'}:

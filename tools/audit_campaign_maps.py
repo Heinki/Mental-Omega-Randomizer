@@ -1468,6 +1468,8 @@ def _assert_powerhouse_waves(source_path, generated_path, mission, applications)
                 raise AssertionError(f'{mission["code"]}: special team overwrites an authored team')
             if team['house'] != template['house']:
                 raise AssertionError(f'{mission["code"]}: special team has wrong house')
+            if team.get('tag', '').strip().lower() not in {'', 'none', '<none>'}:
+                raise AssertionError(f'{mission["code"]}: special team inherited a mission trigger')
             if generated[team['script'].lower()].get('0') != '11,15':
                 raise AssertionError(f'{mission["code"]}: special team lacks Hunt orders')
             counts = members(generated[team['taskforce'].lower()])
@@ -1499,6 +1501,8 @@ def _assert_powerhouse_waves(source_path, generated_path, mission, applications)
             continue
         original_team = source[team_id]
         team = generated[team_id]
+        if original_team.get('tag', '').strip().lower() not in {'', 'none', '<none>'}:
+            raise AssertionError(f'{mission["code"]}/{team_id}: expanded a tagged story team')
         original_id = original_team['taskforce'].lower()
         clone_id = team['taskforce'].lower()
         if clone_id == original_id or not clone_id.startswith('moretf'):
@@ -1685,11 +1689,14 @@ def main():
         _assert_nanofiber_mutation_damage(missions)
         _assert_taciturn_tier_three_weapon_clone(missions)
         _assert_reality_engineering_team_clone(missions)
-        from tools.check_reported_regressions import check_bottleneck, check_noise, check_units
+        from tools.check_reported_regressions import (
+            check_bottleneck, check_noise, check_powerhouse_death_triggers, check_units,
+        )
         mission_by_code = {mission['code']: mission for mission in missions}
         check_noise(mission_by_code, _AuditLauncher)
         check_units(mission_by_code, _AuditLauncher)
         check_bottleneck(mission_by_code, _AuditLauncher)
+        check_powerhouse_death_triggers(mission_by_code, _AuditLauncher)
         if not any(
             'Applied composed Shop run clone modifiers:' in message
             for _error, message in launcher.logs

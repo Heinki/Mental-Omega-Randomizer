@@ -373,6 +373,7 @@ def main():
                 assert mission['build_classification'] == 'base_build'
                 assert team['house'] not in {'<Player @ A>', '<Player @ B>'}
                 assert team['max'] == '1'
+                assert team.get('tag', '').strip().lower() in {'', 'none', '<none>'}
                 assert section(wave_map, team['script'])['0'] == '11,15'
                 production = team['reinforce'] == 'no'
                 for key, raw in wave_sections[team['taskforce']].items():
@@ -405,6 +406,7 @@ def main():
             if base_force == wave_force:
                 continue
             assert wave_force.startswith('MORETF') and wave_force in registry
+            assert base_team.get('Tag', '').strip().lower() in {'', 'none', '<none>'}
             assert mission['build_classification'] == 'base_build'
             assert wave_team['House'] not in {'<Player @ A>', '<Player @ B>'}
             assert int(wave_team['VeteranLevel']) >= 2

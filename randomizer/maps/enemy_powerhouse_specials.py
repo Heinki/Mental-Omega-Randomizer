@@ -204,6 +204,9 @@ def special_powerhouse_rules(
         rules[force_id] = {'Name': 'Enemy Powerhouses', 'Group': '-1',
                            **{str(index): f'1,{actor}' for index, actor in enumerate(actor_ids)}}
         values = _fold(by_lower.get(source_team_id.lower(), {}))
+        # Bonus actors must never inherit an authored team's object callbacks.
+        # In particular, their deaths must not fire its replacement-wave tag.
+        values['tag'] = '<none>'
         values.update({
             'name': 'Enemy Powerhouses', 'taskforce': force_id, 'script': script_id,
             'house': values.get('house') or house, 'max': '1', 'full': 'yes',
