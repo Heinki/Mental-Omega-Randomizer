@@ -28,6 +28,7 @@ def needs_countries(plan):
                 or effects.get('defense_veterancy') or effects.get('support_powers')
                 or effects.get('special_access') or effects.get('reinforcements')
                 or effects.get('lab_reserve_units')
+                or effects.get('generator_power_percent')
                 or any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                                         'unique_limit_stacks', 'income_stacks')))
 
@@ -289,7 +290,8 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
                 _register_map_type(writer.sections, writer.lines, rules, 'WeaponTypes', clone)
                 weapons[weapon_key] = clone
             row[field] = weapons[weapon_key]
-        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass', 'FreeUnit'):
+        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass', 'FreeUnit',
+                      'PowersUpBuilding'):
             if row.get(field) in aliases:
                 row[field] = aliases[row[field]]
         writer.sections[alias] = row
@@ -334,7 +336,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
             writer.put('General', field, ','.join([current, *(aliases[unit] for unit in native if unit in aliases)]))
     for name, _, _ in friends:
         for field, value in tuple(writer.sections[name].items()):
-            if field.startswith('Veteran') or field == 'ParaDrop.Types':
+            if field.startswith('Veteran') or field in ('ParaDrop.Types', 'AI.PowerPlants'):
                 writer.sections[name][field] = ','.join(aliases.get(unit, unit) for unit in value.split(','))
     if mutation_sources:
         from randomizer.maps.ini import IniLines, merge_ini_section_values

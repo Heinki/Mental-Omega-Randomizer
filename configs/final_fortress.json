@@ -11996,6 +11996,53 @@
         ]
       },
       {
+        "id": "more_power",
+        "display_name": "More power!",
+        "description": "Increase power output from starting generators and all generators built during the run. Friendly helpers share the bonus. Each rank adds 25%, up to +150%.",
+        "gem_cost": 10,
+        "effects": {
+          "generator_power_percent": 25
+        },
+        "ranks": [
+          {
+            "gem_cost": 10,
+            "effects": {
+              "generator_power_percent": 25
+            }
+          },
+          {
+            "gem_cost": 15,
+            "effects": {
+              "generator_power_percent": 50
+            }
+          },
+          {
+            "gem_cost": 20,
+            "effects": {
+              "generator_power_percent": 75
+            }
+          },
+          {
+            "gem_cost": 25,
+            "effects": {
+              "generator_power_percent": 100
+            }
+          },
+          {
+            "gem_cost": 30,
+            "effects": {
+              "generator_power_percent": 125
+            }
+          },
+          {
+            "gem_cost": 40,
+            "effects": {
+              "generator_power_percent": 150
+            }
+          }
+        ]
+      },
+      {
         "id": "power_upgrades",
         "display_name": "Power upgrades",
         "description": "Improve every enabled perk support power and faction superweapon. Each rank adds supported Grid/Shop buffs, including scouting sight, duration, payload and effect area. Existing capability caps apply; this perk does not unlock powers.",
@@ -14376,7 +14423,7 @@
     "performance": {
       "units_per_tier": 50,
       "gems_per_tier": 5,
-      "max_tiers": 20
+      "max_tiers": 100
     },
     "challenges": [
       {

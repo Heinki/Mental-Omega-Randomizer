@@ -394,8 +394,8 @@ def validate_config(sections, path=None):
             _object(performance, ('units_per_tier', 'gems_per_tier', 'max_tiers'), 'Performance')
             for key, value in performance.items():
                 integer(value, 'Performance ' + key, 1)
-            if performance['max_tiers'] > 20:
-                raise ValueError('Performance rewards support at most 20 tiers.')
+            if performance['max_tiers'] * performance['units_per_tier'] > 5000:
+                raise ValueError('Performance reward thresholds cannot exceed 5,000 kills per run.')
         settings = sections['settings']
         _object(settings, ('survival_seconds', 'wave_interval_seconds',
                            'completion_gems', 'max_wave_units'), 'Settings')

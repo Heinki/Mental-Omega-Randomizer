@@ -5,7 +5,7 @@ from textwrap import wrap
 
 def message_actions(text):
     """Reserve six bytes for NOSTR: and one for the native terminator."""
-    text = ' '.join(text.replace(',', ' ').split())
+    text = ' '.join(text.replace(',', ' ').replace(';', '.').split())
     return [['11', '4', 'NOSTR:' + line, '0', '0', '0', '0', 'A']
             for line in wrap(text, width=25)]
 

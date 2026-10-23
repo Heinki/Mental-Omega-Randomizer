@@ -41,7 +41,9 @@ def power_rewards(plan, rules):
                       **{key: '' for key in ('SW.AuxBuildings', 'SW.NegBuildings',
                                             'SW.RequiredHouses', 'SW.ForbiddenHouses', 'SW.Designators')})
         if plan.get('plan_version', 1) >= 31:
-            values.update({'EVA.Detected': 'none', 'Message.Detected': 'none'})
+            # CSF text uses an empty literal; "none" is a missing label, and
+            # a blank INI value would retain any inherited detection message.
+            values.update({'EVA.Detected': 'none', 'Message.Detected': 'NOSTR:'})
         if original == 'AmericanParaDropSpecial' and plan['effects']['starting_units']:
             army = plan['effects']['starting_units'][:2]
             values['ParaDrop.Types'] = ','.join(unit['type'] for unit in army)

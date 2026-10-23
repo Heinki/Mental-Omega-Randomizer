@@ -228,6 +228,7 @@ class FortressCoopLaunchController:
         self._final_fortress_shutdown = shutdown
         self._final_fortress_logged_waves = 0
         self._final_fortress_recorded_events = set()
+        self._final_fortress_recorded_kills = None
         self._final_fortress_preparing = False
         self._fortress_last_run = run['id']
         if self._fortress_role == 'host':

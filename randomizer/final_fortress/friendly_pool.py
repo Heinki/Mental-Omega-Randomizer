@@ -40,15 +40,21 @@ def apply_friendly_pool(writer, plan, rules, overrides, finished, *, friendly_cl
             relays = [writer.trigger(f'Friendly arrival {index + 1} {owner} delivery {n + 1}',
                         [(13, 0, 0), (37, 0, finished)], [], disabled=True)[0]
                       for n in range(len(batches) + 1)]
-            warning = None
-            if owner == 'FFPLAYER':
-                warning, _ = writer.trigger(f'Friendly arrival {index + 1} capacity notice',
-                    [(37, 0, finished), *((36, 0, busy) for _, busy, _ in slots)],
-                    message_actions(f'Reinforcements waiting. Shared limit: {limit} units.'),
-                    disabled=True)
+            warning = reminder = None
+            if human_actor(plan, owner):
+                prefix = f'Player {actor_index + 1}: ' if plan.get('coop_players') else ''
+                notice = message_actions(prefix + 'Allied arrival waiting for capacity. '
+                                         f'Shared reinforcement cap: {limit}. '
+                                         'Countdown resumes after delivery.')
+                waiting = [(37, 0, finished), *((36, 0, busy) for _, busy, _ in slots)]
+                warning, _ = writer.trigger(f'Friendly arrival {index + 1} {owner} capacity notice',
+                    waiting, notice, disabled=True)
+                reminder, _ = writer.trigger(f'Friendly arrival {index + 1} {owner} capacity reminder',
+                    [(13, 0, 30), *waiting], notice, disabled=True, persistence=2)
             actions = [_action(53, trigger=relays[0])]
             if warning:
                 actions.append(_action(53, trigger=warning))
+                actions.append(_action(53, trigger=reminder))
             writer.put('Actions', timers[index], str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
             for n, units in enumerate(batches):
                 alternatives = []
@@ -71,7 +77,7 @@ def apply_friendly_pool(writer, plan, rules, overrides, finished, *, friendly_cl
                     actions = [*[_action(54, trigger=other) for other, _, _ in alternatives],
                                _action(56, busy), writer.reinforce(team), _action(53, trigger=relays[n + 1])]
                     writer.put('Actions', gate, str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
-            actions = [_action(54, trigger=warning)] if warning else []
+            actions = [_action(54, trigger=key) for key in (warning, reminder) if key]
             if plan.get('plan_version', 1) >= 29 and human_actor(plan, owner):
                 count = sum(unit['count'] for unit in group['units'])
                 level = ('Rookie', 'Veteran', 'Elite')[effect.get('veterancy', 0)]

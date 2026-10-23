@@ -130,6 +130,8 @@ def build_final_fortress_tab(app, notebook):
         app.final_fortress_challenge_tree.bind(gesture,
             lambda event: app.on_final_fortress_challenge_click(event, additive=True))
     app.final_fortress_challenge_tree.bind('<space>', app.toggle_final_fortress_challenge)
+    app.final_fortress_challenge_tree.bind('<Return>', app.toggle_final_fortress_challenge)
+    app.final_fortress_challenge_tree.bind('<Escape>', app.clear_final_fortress_challenge_selection)
     challenge_details = ttk.LabelFrame(challenge_panes, text='Effect at selected stacks', padding=(10, 4))
     challenge_details.columnconfigure(0, weight=1)
     challenge_details.rowconfigure(0, weight=1)
@@ -143,6 +145,8 @@ def build_final_fortress_tab(app, notebook):
     controls = ttk.Frame(challenges)
     controls.grid(row=1, column=0, sticky='ew', pady=(8, 0))
     ttk.Button(controls, text='Select all', command=app.select_all_final_fortress_challenges).pack(side='left')
+    ttk.Button(controls, text='Clear selection', command=app.clear_final_fortress_challenge_selection).pack(
+        side='left', padx=(8, 0))
     app.final_fortress_challenge_enable_button = ttk.Button(
         controls, text='Enable selected', state='disabled',
         command=lambda: app.set_final_fortress_challenges_enabled(True))

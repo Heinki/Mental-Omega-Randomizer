@@ -41,10 +41,26 @@ def reward_report(run):
                     break
         rows.append((camp['display_name'], plan['gem_rewards'][clear_event] if clear_event in claimed else 0, detail))
     tiers = [event for event in claimed if event.startswith('kills:')]
-    rows.append(('Coalition enemy kill score' if plan.get('coalition_scores') else 'Enemy kill score',
+    counts = run.get('kill_counts', {})
+    actors = {entry['actor']: entry for entry in plan.get('coalition_scores', [])}
+    players = plan.get('coop_players', ['Player'])
+    missing_scores = ('Available after victory or defeat' if run['status'] == 'active' else
+                      'Run ended without final scores' if run['status'] == 'abandoned' else
+                      'Final scores missing from native log')
+    for index, actor in enumerate(('FFPLAYER', 'FFALLY1', 'FFALLY2')):
+        entry = actors.get(actor)
+        name = (entry['name'] if entry and entry['name'] is not None else
+                players[index] if index < len(players) else f'Helper AI {index}')
+        count = counts.get(actor)
+        detail = ('0 combat kills (not in this run)' if plan.get('coalition_scores') and actor not in actors else
+                  f'{count} combat kills' if count is not None else
+                  missing_scores)
+        rows.append((f'{name} kills', '', detail))
+    rows.append(('Kill reward',
                  sum(plan['gem_rewards'][event] for event in tiers),
                  f'{max(int(event.split(":")[1]) for event in tiers)}-kill threshold reached'
-                 if tiers else 'No kill-reward threshold reached'))
+                 if tiers else 'No verified final scores; kill bonus unavailable' if not counts else
+                 'No kill-reward threshold reached'))
     total = sum(plan['gem_rewards'].get(event, 0) for event in claimed)
     outcome = {'active': 'Run in progress', 'victory': 'Victory', 'defeat': 'Defeat',
                'abandoned': 'Run ended without a verified outcome'}[run['status']]

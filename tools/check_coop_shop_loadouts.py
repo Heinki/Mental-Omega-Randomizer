@@ -21,6 +21,7 @@ from randomizer.core.paths import GAME_ROOT
 from randomizer.maps.ini import section_value_map_preserve
 from randomizer.maps.production import PLAYER_ORIGINAL_PRODUCTION_GATE_ID
 from randomizer.rewards.catalogue import REWARD_POOL
+from randomizer.rewards.power_buff_definitions import power_buff_stack_limit
 from randomizer.shop.modifiers import stage_production_restrictions
 from randomizer.shop.model import BuffPurchase, PurchaseRecord, RunStatus, ShopProfile, ShopRun
 from randomizer.ui.cameos import installed_rules_registry
@@ -68,6 +69,41 @@ def main():
     )
     personal['power_reward_ids'] = ['Airborne Power']
     ordinary = {**host, 'power_reward_ids': ['Airborne Power']}
+
+    # Permanent power buffs are transmitted once per stack. A legal loadout
+    # with six powers exceeds the former 150-entry transport validation cap.
+    permanent_powers = (
+        'Airborne Power', 'Bloodhounds Power', 'Zephyrobot Power',
+        'Kingsnakes Power', 'Tank Drop Power', 'Terror Drop Power',
+    )
+    power_ids = {
+        item['superweapon'] for item in REWARD_POOL
+        if item.get('kind') == 'superweapon' and item['name'] in permanent_powers
+    }
+    permanent_run = replace(
+        host_run,
+        permanent_power_unlocks_snapshot=permanent_powers,
+        permanent_buffs_snapshot=tuple(
+            BuffPurchase(item['name'], power_buff_stack_limit(item))
+            for item in REWARD_POOL
+            if item.get('power_buff_type') and item.get('superweapon') in power_ids
+        ),
+    )
+    permanent = shop_unit_loadout(permanent_run)
+    assert len(permanent['power_reward_ids']) > 150
+    permanent_manifest, permanent_map = build_shop_manifest(
+        GAME_ROOT, 'COOP-SHOP-PERMANENT-POWERS', 'coop_sthunder',
+        permanent, permanent,
+    )
+    assert permanent_manifest['player_loadouts'] == {'host': permanent, 'guest': permanent}
+    assert rebuild_from_manifest(GAME_ROOT, permanent_manifest) == permanent_map
+    for country in (permanent_manifest['player_country'], permanent_manifest['guest_country']):
+        granted = [
+            section(permanent_map, power)
+            for power in section(permanent_map, 'SuperWeaponTypes').values()
+            if section(permanent_map, power).get('SW.RequiredHouses') == country
+        ]
+        assert len(granted) >= len(permanent_powers)
 
     missions = discover_coop_missions(GAME_ROOT)
     assert len(missions) == 36
@@ -251,7 +287,7 @@ def main():
         else:
             raise AssertionError('Modified guest country was accepted.')
     print('Shop private clones, sides, production/combat/aid modifiers on 36 maps; '
-          'reversible install; Grid shared clone unchanged')
+          'stacked permanent powers; reversible install; Grid shared clone unchanged')
 
 
 if __name__ == '__main__':

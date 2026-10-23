@@ -1,6 +1,7 @@
 """Player-only utility perks using established reward eligibility and math."""
 
 from functools import lru_cache
+from math import ceil
 
 from randomizer.config.tuning import stacked_self_heal_amount
 from randomizer.maps.buff_values import apply_unit_buff_value, resolved_safe_strength
@@ -21,15 +22,20 @@ def supported_pairs():
 
 def utility_updates(original, row, effects, *, building=False, defense=False):
     """Preserve live baselines and exclusions rather than broad native overrides."""
+    power = effects.get('generator_power_percent', 0)
+    generation = {field: str(ceil(float(row[field]) * (1 + power / 100)))
+                  for field in ('Power', 'ExtraPower')
+                  if building and power and float(row.get('Power', '0')) > 0
+                  and float(row.get(field, '0')) > 0}
+    updates = dict(generation)
     if not any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                               'unique_limit_stacks', 'income_stacks')):
-        return {}
+        return updates
     metadata = BUFF_TARGETS.get(original)
     if not metadata:
-        return {}
+        return updates
     pairs = supported_pairs()
     target = _target_with_effective_unit_stats(metadata, row)
-    updates = {}
     mobile_or_defense = not building or defense
     healing = effects.get('healing_stacks', 0)
     if mobile_or_defense and healing and any(
@@ -61,4 +67,5 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
     if building and income and (original, 'income') in pairs:
         if float(row.get('ProduceCashAmount', '0')) > 0:
             apply_unit_buff_value(updates, target, 'income', income)
+    updates.update(generation)
     return {key: value for key, value in updates.items() if row.get(key) != value}

@@ -76,7 +76,8 @@ def rewards_for(plan, country):
         if plan.get('plan_version', 1) >= 31:
             # Hidden providers are not newly discovered silos or Dominators.
             # Preserve genuine readiness/launch notifications and the power.
-            values.update({'EVA.Detected': 'none', 'Message.Detected': 'none'})
+            # Empty CSF literal clears native text without resolving "none".
+            values.update({'EVA.Detected': 'none', 'Message.Detected': 'NOSTR:'})
         if key == 'ai_paratroopers':
             # Explicit portable payload avoids native General defaults choosing
             # another faction's infantry for an isolated derivative country.

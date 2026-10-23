@@ -60,6 +60,7 @@ class FinalFortressController(FortressCoopController):
         self._final_fortress_shutdown = None
         self._final_fortress_logged_waves = 0
         self._final_fortress_recorded_events = set()
+        self._final_fortress_recorded_kills = None
         self._final_fortress_recovery_checked = set()
         self._final_fortress_launch_blockers = []
         self._fortress_lobbies = {}
@@ -312,7 +313,7 @@ class FinalFortressController(FortressCoopController):
             'It disappears after the last scheduled wave.',
             'Friendly reinforcements use a separate shared cap. They arrive in small groups; '
             'each house has its own timer, and a message explains capacity waits. '
-            'Their protected arrival tiles cannot be built over.',
+            'Their scorched arrival tiles cannot be built over.',
         ]
         if pressure is not None and pressure['growth_per_wave'] is not None:
             rules.append(f'Growth: +{wave_growth(config, preferences["difficulty"])} base units '
@@ -363,6 +364,7 @@ class FinalFortressController(FortressCoopController):
             self.select_final_fortress_perk()
         challenge_tree = getattr(self, 'final_fortress_challenge_tree', None)
         if challenge_tree is not None:
+            initial = not challenge_tree.get_children()
             for entry in config.get('challenges', []):
                 key = entry['id']
                 stacks = min(preferences['challenge_stacks'].get(key, 1), maximum(entry))
@@ -377,7 +379,7 @@ class FinalFortressController(FortressCoopController):
                     challenge_tree.item(key, values=values)
                 else:
                     challenge_tree.insert('', 'end', iid=key, values=values)
-            if not challenge_tree.selection() and challenge_tree.get_children():
+            if initial and challenge_tree.get_children():
                 challenge_tree.selection_set(challenge_tree.get_children()[0])
             self.select_final_fortress_challenge()
         total = 0
@@ -396,13 +398,14 @@ class FinalFortressController(FortressCoopController):
             'Survival rewards: ' + '; '.join(milestones) + '. Balance is provisional and configurable.',
             'Clear stationary enemy camps, then move a player unit onto the camp center. '
             'Each camp grants Defensive Points and a random credit, squad, or faction special-unit reward. '
-            'Only the player receives rewards. Native visual crates can be removed by AI '
-            'without consuming the player claim. Crate rewards are frozen for each run.',
+            'Helpers collect for the player; in co-op, helper pickups deliver cash/squads to the host. '
+            'Enemy AI cannot claim these rewards. Crate rewards are frozen for each run.',
             'Perk purchases and upgrades enable that perk automatically for subsequent runs. '
             'Challenge uses Grid enemy stat and production buffs. Drag or Shift-click to select a range; '
             'Ctrl/Alt-click adds or removes individual rows; Select all or Ctrl+A selects every modifier. '
             'Enable selected, Disable selected and Max stacks apply to the selected group. '
-            'Double-click or Space enables a mixed group, or disables a fully enabled group. '
+            'Clear selection or Escape deselects all rows. '
+            'Double-click, Space or Enter enables a mixed group, or disables a fully enabled group. '
             'Inline arrows change only their own row; Max stacks does not enable disabled modifiers. '
             'Each stack adds its configured victory Defensive Points.',
         ])
@@ -436,7 +439,8 @@ class FinalFortressController(FortressCoopController):
         if performance:
             rules.append(f'Combined player and allied combat kills award '
                          f'{performance["gems_per_tier"]} Defensive Points per {performance["units_per_tier"]} kills, '
-                         f'capped at {performance["gems_per_tier"] * performance["max_tiers"]}, '
+                         f'capped at {performance["gems_per_tier"] * performance["max_tiers"]} Defensive Points '
+                         f'({performance["units_per_tier"] * performance["max_tiers"]:,} kills), '
                          'after a verified victory or defeat. Setup ownership transfers are excluded. '
                          'Closing an unfinished game grants no kill bonus.')
         self.final_fortress_help_var.set('\n\n'.join(rules))
@@ -472,7 +476,8 @@ class FinalFortressController(FortressCoopController):
         if hasattr(self, 'final_fortress_launch_button'):
             self.final_fortress_launch_button.configure(state='disabled' if busy or blockers else 'normal')
             self.refresh_fortress_coop_controls()
-            if (run and run['status'] in ('active', 'abandoned') and not busy
+            if (run and (run['status'] in ('active', 'abandoned') or 'kill_counts' not in run)
+                    and not busy
                     and self._final_fortress_watch is None
                     and run['id'] not in self._final_fortress_recovery_checked):
                 self._final_fortress_recovery_checked.add(run['id'])
@@ -554,6 +559,7 @@ class FinalFortressController(FortressCoopController):
             self._final_fortress_shutdown = shutdown
             self._final_fortress_logged_waves = 0
             self._final_fortress_recorded_events = set()
+            self._final_fortress_recorded_kills = None
             self._final_fortress_preparing = False
             self.append_log(f'Final Fortress started: run {run_id}; map {digest}.')
             self.refresh_game_speed_controls()
@@ -591,13 +597,17 @@ class FinalFortressController(FortressCoopController):
             pending.append(outcome)
         pending.extend(event for event in watch.events
                        if event not in self._final_fortress_recorded_events and event.startswith('kills:'))
-        if pending:
+        counts = watch.kill_counts if outcome in ('victory', 'defeat') else None
+        if pending or counts != self._final_fortress_recorded_kills:
             try:
-                state, credited = self.final_fortress_repository.record_events(watch.run_id, pending)
+                state, credited = self.final_fortress_repository.record_events(
+                    watch.run_id, pending, kill_counts=counts)
                 self._final_fortress_recorded_events.update(pending)
+                self._final_fortress_recorded_kills = counts
                 if credited:
                     self.final_fortress_gems_var.set(f'Defensive Points: {state["gems"]}')
-                    self.append_log('Final Fortress receipts: ' + ', '.join(pending) + '.')
+                    self.append_log('Final Fortress receipts: ' + ', '.join(pending) + '.' if pending
+                                    else 'Final Fortress kill statistics saved.')
                     refresh_results(self, state['run'])
             except (ValueError, FinalFortressPersistenceError) as exc:
                 self.append_log('Final Fortress reward save failed: ' + str(exc), error=True)
@@ -608,6 +618,7 @@ class FinalFortressController(FortressCoopController):
             self.append_log(text, error=error)
         if (running and watch.ready_to_close and shutdown.caught_up
                 and outcome in self._final_fortress_recorded_events
+                and counts == self._final_fortress_recorded_kills
                 and all(event in self._final_fortress_recorded_events for event in watch.events)):
             shutdown.request_result_close()
         if running or shutdown.recovery_pending or not watch.caught_up:
@@ -744,17 +755,20 @@ class FinalFortressController(FortressCoopController):
                 anchor or key, selected if extending else (),
                 extending and key in selected, False)
             if additive:
+                self._final_fortress_challenge_click_selection = None
                 tree.selection_toggle(key)
-            elif key not in selected or len(selected) < 2 or event.state & 5:
-                # Keep native Shift/Ctrl and keyboard selection behavior. A
-                # plain press inside a group must not collapse it before the
-                # double-click binding can toggle that group.
+            else:
+                # Let a normal click reduce even an all-row selection. Save
+                # the group so a subsequent double-click can still toggle it.
+                self._final_fortress_challenge_click_selection = (
+                    (key, selected) if key in selected and not event.state & 5 else None)
                 return
             tree.focus(key)
             tree.focus_set()
             return 'break'
         if key not in selected:
             tree.selection_set(key)
+        self._final_fortress_challenge_click_selection = None
         tree.focus(key)
         tree.focus_set()
         self._set_final_fortress_challenge_stacks(
@@ -777,6 +791,7 @@ class FinalFortressController(FortressCoopController):
             if key == anchor and not moved:
                 return 'break'
             self._final_fortress_challenge_drag = (anchor, previous, removing, True)
+            self._final_fortress_challenge_click_selection = None
             first, last = sorted((children.index(anchor), children.index(key)))
             span = children[first:last + 1]
             chosen = set(previous) - set(span) if removing else set(previous) | set(span)
@@ -789,15 +804,25 @@ class FinalFortressController(FortressCoopController):
 
     def select_all_final_fortress_challenges(self, _event=None):
         tree = self.final_fortress_challenge_tree
+        self._final_fortress_challenge_click_selection = None
         children = tree.get_children()
         tree.selection_set(children)
         if children and not tree.focus():
             tree.focus(children[0])
         tree.focus_set()
+        self.select_final_fortress_challenge()
         return 'break'
 
     def set_final_fortress_challenges_enabled(self, enabled):
         self._update_final_fortress_challenges(enabled=enabled)
+
+    def clear_final_fortress_challenge_selection(self, _event=None):
+        tree = self.final_fortress_challenge_tree
+        tree.selection_remove(tree.selection())
+        self._final_fortress_challenge_drag = None
+        self._final_fortress_challenge_click_selection = None
+        self.select_final_fortress_challenge()
+        return 'break'
 
     def change_final_fortress_challenge_stacks(self, delta):
         self._set_final_fortress_challenge_stacks(delta=delta)
@@ -842,6 +867,10 @@ class FinalFortressController(FortressCoopController):
             key = tree.identify_row(event.y)
             if not key:
                 return 'break'
+            previous = getattr(self, '_final_fortress_challenge_click_selection', None)
+            if previous and previous[0] == key:
+                tree.selection_set(previous[1])
+            self._final_fortress_challenge_click_selection = None
             if key not in tree.selection():
                 tree.selection_set(key)
         if not tree.selection() or self.final_fortress_state is None:

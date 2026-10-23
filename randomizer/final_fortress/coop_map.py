@@ -1,6 +1,6 @@
-"""Native multiplayer camp entry: one shared pickup, awarded to its collector."""
+"""Shared camp pickups: human collectors keep rewards; helpers deliver to host."""
 
-from .player_perks import coalition
+from .player_perks import coalition, human_actor, needs_countries
 
 
 def escrow_cell(writer, plan, rules, spare_cell):
@@ -54,20 +54,29 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
     claimed = writer.flag('Camp ' + camp['id'] + ' reward claimed')
     claims = []
     linked = '<none>'
-    for slot, (actor, _, start) in enumerate(coalition(plan)[:len(plan['coop_players'])]):
+    friends = coalition(plan)
+    collectors = friends if plan.get('plan_version', 1) >= 32 else friends[:len(plan['coop_players'])]
+    for slot, (actor, _, start) in enumerate(collectors):
+        # Helpers collect for the host. Human co-op collectors retain their
+        # own cash/squad ownership; the shared Defensive Points receipt pays once.
+        recipient_slot = slot if human_actor(plan, actor) else 0
+        recipient, _, recipient_start = friends[recipient_slot]
+        recipient_name = (plan['coop_players'][recipient_slot] if plan.get('coop_players') else 'Commander')
         actions = [_action(56, claimed),
                    _action(4, team=marker_teams['camp:' + camp['id']]),
-                   _action(4, team=marker_teams[f'camp_pick:{slot}:{camp["id"]}']),
-                   *message_actions('Reward for ' + plan['coop_players'][slot]),
+                   *([_action(4, team=marker_teams[f'camp_pick:{recipient_slot}:{camp["id"]}'])]
+                     if plan.get('coop_players') else []),
+                   *message_actions('Reward for ' + recipient_name),
                    *message_actions('Reward: ' + reward.get('display_name', 'Collected'))]
         if pickup:
             actions.extend(message_actions(f'+{camp["gems"]} Defensive Points'))
         if reward.get('credits'):
             selector = writer.flag(f'Camp {camp["id"]} collector {slot}')
-            _cash_reward(writer, plan, rules, camp, selector, index, waypoint=start)
+            _cash_reward(writer, plan, rules, camp, selector, index, waypoint=recipient_start)
             actions.insert(1, _action(56, selector))
         if reward.get('units'):
-            actions.extend(_camp_squad(writer, plan, camp, waypoint, start, actor, player_aliases))
+            owner = recipient if needs_countries(plan) else plan['player_country']
+            actions.extend(_camp_squad(writer, plan, camp, waypoint, recipient_start, owner, player_aliases))
         trigger, tag = writer.trigger(f'Camp {camp["id"]} claim {actor}',
             [(1, 0, 4475 + start), (36, 0, cleared), (37, 0, finished), (37, 0, claimed)],
             actions, disabled=True)

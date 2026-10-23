@@ -85,6 +85,17 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     for registry in registries:
         require(all(value.casefold() in ids for value in effective[registry].values()),
                 f'Unresolved {registry} definition')
+    power_bonus = plan['effects'].get('generator_power_percent', 0)
+    if power_bonus:
+        from math import ceil
+        for original, alias in rows.get('FFPlayerTypes', {}).items():
+            base = rules[original]
+            if original in rules['BuildingTypes'].values() and float(base.get('Power', '0')) > 0:
+                require(effective[alias]['Power'] == str(ceil(float(base['Power']) * (1 + power_bonus / 100))),
+                        'Generator power bonus does not match the purchased rank')
+                if float(base.get('ExtraPower', '0')) > 0:
+                    require(effective[alias]['ExtraPower'] == str(ceil(float(base['ExtraPower']) * (1 + power_bonus / 100))),
+                            'Bio Reactor passenger power missed the generator bonus')
     technos = {unit for registry in registries[:4] for unit in effective[registry].values()}
     if plan.get('plan_version', 1) >= 23:
         audit_feedback_fixes(rows, effective, plan, rules, preloads)
@@ -109,6 +120,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         require(count == len(actions), f'Malformed action list: {key}')
         require(len(value.split(',')) == 1 + 8*count, f'Embedded comma or malformed native action fields: {key}')
         for action in actions:
+            require(not any(';' in field for field in action), 'INI comment truncates a native action')
             if action[0] == '11' and action[2].startswith('NOSTR:'):
                 require(len(action[2].encode('latin-1')) <= 31, 'Native trigger message will be truncated')
             if action[0] in ('4', '5', '7', '80'):
@@ -118,6 +130,11 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 if team.get('Name', '').startswith(('Final Fortress wave ', 'Final Fortress AI controller')):
                     require(action[0] == '80' and action[7] == team['Waypoint'],
                             'Hostile reinforcements lack an explicit matching spawn waypoint')
+    for key, value in rows['Triggers'].items():
+        if value.split(',')[2].startswith('Cash reward '):
+            tags = [tag.split(',') for tag in rows['Tags'].values() if tag.split(',')[2] == key]
+            require(tags and all(tag[0] == '0' for tag in tags),
+                    'Persistent cash reward can hang native TeamLeavesMap cleanup after payment')
     for value in rows.get('AITriggerTypes', {}).values():
         fields = value.split(',')
         if fields[2] not in actors:
@@ -179,7 +196,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             require(action[0] == '34', f'Non-repeatable support power grant for {actor}')
             power = effective[registered_powers[int(action[2])]]
             if plan.get('plan_version', 1) >= 31:
-                require(power.get('EVA.Detected') == power.get('Message.Detected') == 'none',
+                require(power.get('EVA.Detected') == 'none' and power.get('Message.Detected') == 'NOSTR:',
                         'Hidden friendly provider announces a newly discovered superweapon building')
             require(power['Name'] == 'Fortress ' + rules[original].get('Name', original),
                     f'Wrong cloned support unlock for {actor}: {original}')
@@ -496,7 +513,7 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
             require(owner == actor and original in expected_powers[actor], 'Enemy faction received another power')
             power = effective[alias]
             if plan.get('plan_version', 1) >= 31:
-                require(power.get('EVA.Detected') == power.get('Message.Detected') == 'none',
+                require(power.get('EVA.Detected') == 'none' and power.get('Message.Detected') == 'NOSTR:',
                         'Hidden hostile provider announces a newly discovered superweapon building')
             require(alias in preloads['rules'], 'Enemy power not preloaded')
             require(power['SW.RequiredHouses'] == actor and power['SW.AllowPlayer'] == 'no'
@@ -675,11 +692,17 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
                     == {(v['x'],v['y']) for v in guard_positions(camp)}, 'Camp ignores reviewed guard positions')
             if not plan.get('coop_players'):
                 claim = next(key for key, value in rows['Triggers'].items()
-                             if value.split(',')[2] == 'Camp ' + camp['id'] + ' claim')
+                             if value.split(',')[2] == 'Camp ' + camp['id'] + ' claim'
+                             + (' FFPLAYER' if plan.get('plan_version', 1) >= 32 else ''))
                 require(f'1,0,{4475 + plan["map"]["player_waypoint"]}' in rows['Events'][claim],
                         'Camp reward is not restricted to the human start house')
                 tag = rows['CellTags'][str(p['y'] * 1000 + p['x'])]
-                require(rows['Tags'][tag].split(',')[2] == claim, 'Camp crate cell is not connected to reward claim')
+                linked = rows['Tags'][tag].split(',')[2]
+                chain = set()
+                while linked in rows['Triggers'] and linked not in chain:
+                    chain.add(linked)
+                    linked = rows['Triggers'][linked].split(',')[1]
+                require(claim in chain, 'Camp crate cell is not connected to reward claim')
             if plan.get('plan_version',1) >= 18:
                 balance=plan['camp_balance']
                 starter = balance.get('starter_camps') if plan.get('plan_version', 1) >= 21 else None
@@ -1036,6 +1059,9 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
             and effective[pad]['LegalTarget'] == 'no', 'Enemy spawn apron is obstructed or targetable')
     placed = {(int(v.split(',')[3]),int(v.split(',')[4])) for v in rows['Structures'].values()
               if v.split(',')[1] == pad}
+    marked = {(int(fields[1]), int(fields[2])) for value in rows.get('Smudge', {}).values()
+              if (fields := value.split(','))[0] == 'BURNT01'}
+    require(placed <= marked, 'Reserved arrival cells have no visible ground marking')
     for index,wp in enumerate(plan['map']['enemy_waypoints']):
         p = plan['map']['enemy_wave_positions'][str(wp)]
         cells = {(p['x']+dx,p['y']+dy) for dx in range(5) for dy in range(3)}
@@ -1167,10 +1193,25 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
             require(starts == ([triggers[f'Friendly arrival {index+1} {owner} interval']]
                                if index<len(plan['reinforcement_schedule']) else []),
                     'Helper capacity controls the human timer or later arrivals are unreachable')
-            if owner=='FFPLAYER':
-                notice=triggers[f'Friendly arrival {index} capacity notice']
-                require(any(a[0]=='53' and a[2]==notice for a in parse_action_groups(rows['Actions'][timer])[1])
-                        and any(a[0]=='54' and a[2]==notice for a in actions), 'Missing friendly cap notice lifecycle')
+            if human_actor(plan, owner):
+                notice=triggers[f'Friendly arrival {index} {owner} capacity notice']
+                reminder=triggers[f'Friendly arrival {index} {owner} capacity reminder']
+                timer_actions=parse_action_groups(rows['Actions'][timer])[1]
+                for key in (notice, reminder):
+                    require(_action(53,trigger=key) in timer_actions
+                            and _action(54,trigger=key) in actions, 'Missing friendly cap notice lifecycle')
+                waiting=['37','0',str(finished), *[token for v in pools.values()
+                         for token in ('36','0',v.split(',')[2])]]
+                require(rows['Events'][notice] == ','.join([str(len(pools)+1),*waiting])
+                        and rows['Events'][reminder] == ','.join([str(len(pools)+2),'13','0','30',*waiting]),
+                        'Capacity notices do not reflect the shared pool')
+                require(any(v == f'2,Friendly arrival {index} {owner} capacity reminder,{reminder}'
+                            for v in rows['Tags'].values()), 'Capacity reminder does not repeat')
+                notice_actions=parse_action_groups(rows['Actions'][notice])[1]
+                require(notice_actions == parse_action_groups(rows['Actions'][reminder])[1]
+                        and any(a[0]=='11' and 'capacity' in a[2] for a in notice_actions)
+                        and any(a[0]=='11' and str(effect['max_active_units']) in a[2] for a in notice_actions),
+                        'Capacity notice omits its reason or shared limit')
             if plan.get('plan_version', 1) >= 29 and human_actor(plan, owner):
                 require(any(a[0] == '11' and a[2].startswith('NOSTR:Player ') for a in actions)
                         and any(a[0] == '11' and 'reinforcements' in a[2] for a in actions),
@@ -1180,11 +1221,6 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
                 flag = clock['Restart' if index < len(plan['reinforcement_schedule']) else 'Finished']
                 require(_action(56, int(flag)) in actions,
                         'Allied countdown advances before full delivery or stays after its last arrival')
-            if owner=='FFPLAYER':
-                slots=[v.split(',')[2] for v in pools.values()]
-                require(rows['Events'][notice] == ','.join([str(len(slots)+1),'37','0',str(finished),
-                            *[token for busy in slots for token in ('36','0',busy)]]),
-                        'Capacity notice does not reflect the human pool')
 
 
 def audit_wave_clock(rows, effective, plan, preloads):
@@ -1245,7 +1281,7 @@ def audit_allied_clocks(rows, effective, plan, preloads):
             'Type': 'GenericWarhead', 'SW.ShowCameo': 'no', 'SW.AutoFire': 'yes',
             'SW.ManualFire': 'no', 'SW.AITargeting': 'None', 'SW.Damage': '0',
             'EVA.Ready': 'none', 'EVA.Activated': 'none', 'EVA.Detected': 'none',
-            'Message.Detected': 'none', 'SW.ActivationSound': 'none'}.items()),
+            'Message.Detected': 'NOSTR:', 'SW.ActivationSound': 'none'}.items()),
             'Allied display clock causes combat, alerts or a sidebar button')
         require(powers[int(clock['Index'])] == power, 'Allied clock reset addresses another power')
         actions = parse_action_groups(rows['Actions'][clock['Reset']])[1]
@@ -1274,24 +1310,42 @@ def audit_allied_clocks(rows, effective, plan, preloads):
 
 
 def audit_pickup_reward(rows, effective, plan, camp, ready):
-    """Inspect each human's actual pickup and complete frozen reward composition."""
+    """Inspect every collector's pickup and complete frozen reward composition."""
     from collections import Counter
-    from randomizer.final_fortress.engine import _waypoint
+    from randomizer.final_fortress.engine import _action, _waypoint
     startup = parse_action_groups(rows['Actions'][ready])[1]
     require(not any(a[0] in ('4', '7', '80', '11') for a in startup),
             'Camp startup delivers a reward or announces a false clearance')
     enabled = {a[2] for a in startup if a[0] == '53'}
-    actors = coalition(plan)[:len(plan.get('coop_players', [])) or 1]
+    actors = (coalition(plan) if plan.get('plan_version', 1) >= 32 else
+              coalition(plan)[:len(plan.get('coop_players', [])) or 1])
     expected = Counter({rows.get('FFPlayerTypes', {}).get(unit['type'], unit['type']): unit['count']
                         for unit in camp['crate_reward']['units']})
     waypoint = _waypoint(20 + plan['map']['camps'].index(camp))
+    shared_claim = None
     for actor, _, start in actors:
-        name = 'Camp ' + camp['id'] + ' claim' + (' ' + actor if plan.get('coop_players') else '')
+        chain = plan.get('coop_players') or plan.get('plan_version', 1) >= 32
+        name = 'Camp ' + camp['id'] + ' claim' + (' ' + actor if chain else '')
         claim = next(key for key, value in rows['Triggers'].items() if value.split(',')[2] == name)
         require(claim in enabled and rows['Triggers'][claim].split(',')[3] == '1',
                 'Camp pickup is not enabled exactly by its startup gate')
-        require(f'1,0,{4475 + start}' in rows['Events'][claim], 'Camp pickup accepts an AI collector')
+        require(f'1,0,{4475 + start}' in rows['Events'][claim], 'Camp pickup belongs to another collector')
         actions = parse_action_groups(rows['Actions'][claim])[1]
+        if plan.get('plan_version', 1) >= 32:
+            shared = actions[0][2]
+            require(actions[0][0] == '56' and f'37,0,{shared}' in rows['Events'][claim],
+                    'Friendly pickup can repeat its reward')
+            if shared_claim is None:
+                shared_claim = shared
+            require(shared == shared_claim, 'Friendly collectors can claim the same camp more than once')
+            if camp['crate_reward']['credits']:
+                selectors = {a[2] for a in actions if a[0] == '56' and a[2] != shared}
+                recipient_start = start if human_actor(plan, actor) else plan['map']['player_waypoint']
+                cash = [key for key, value in rows['Events'].items()
+                        if any(value == '1,36,0,' + flag for flag in selectors)]
+                require(len(cash) == 1 and parse_action_groups(rows['Actions'][cash[0]])[1]
+                        == [_action(14, 4475 + recipient_start)],
+                        'Crate cash is delivered to the helper or another player')
         require(any(a[0] == '4' and effective[a[2]]['Name'].startswith('MFF_') for a in actions),
                 'Camp pickup has no durable receipt')
         require(not any(a[0] in ('7', '108') for a in actions),
@@ -1301,7 +1355,8 @@ def audit_pickup_reward(rows, effective, plan, camp, ready):
             if action[0] != '80':
                 continue
             team = effective[action[2]]
-            require(team['House'] == (actor if needs_countries(plan) else plan['player_country']),
+            recipient = actor if human_actor(plan, actor) else 'FFPLAYER'
+            require(team['House'] == (recipient if needs_countries(plan) else plan['player_country']),
                     'Camp squad belongs to another player')
             require(action[7] == team['Waypoint'] == waypoint, 'Camp squad has no explicit arrival cell')
             units = [value.split(',') for key, value in effective[team['TaskForce']].items() if key.isdigit()]
@@ -1519,7 +1574,7 @@ def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
                 'SW.RequiredHouses': 'FFPLAYER', 'SW.AllowAI': 'no', 'SW.AllowPlayer': 'yes',
                 'SW.Damage': '0', 'SW.Warhead': warhead, 'IsPowered': 'no', 'ShowTimer': 'no',
                 'DisableableFromShell': 'no', 'EVA.Ready': 'none', 'EVA.Activated': 'none',
-                'EVA.Detected': 'none', 'Message.Detected': 'none', 'SW.Sound': 'none',
+                'EVA.Detected': 'none', 'Message.Detected': 'NOSTR:', 'SW.Sound': 'none',
                 'SW.ActivationSound': 'none', 'SW.CreateRadarEvent': 'no',
             }.items()), 'Lab shield has unsafe targeting, alerts, repeat shots or player controls')
             require(float(shield['RechargeTime']) * 60 > plan['survival_seconds'],

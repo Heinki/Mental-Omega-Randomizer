@@ -11,6 +11,7 @@ def reserve_staging(writer, plan, rules):
     Passable, invisible 1x1 buildings prevent construction without obstructing
     arriving units. They remain passive Neutral objects, require no ownership
     transfers and cannot grant cash, score, build adjacency or survival credit.
+    Existing scorch decals identify the reserved cells without changing terrain.
     """
     friendly = plan.get('plan_version', 1) >= 14 and bool(
         plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'))
@@ -52,6 +53,7 @@ def reserve_staging(writer, plan, rules):
             for dy in range(height):
                 _place(writer, 'Structures', f'Neutral,{kind},256,{position["x"] + dx},'
                        f'{position["y"] + dy},64,None,1,0,1,0,0,None,None,None,0,0')
+                _place(writer, 'Smudge', f'BURNT01,{position["x"] + dx},{position["y"] + dy},0')
 
 
 def build_schedule(plan):

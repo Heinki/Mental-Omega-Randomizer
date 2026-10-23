@@ -245,7 +245,8 @@ legacy names for compatibility.
 Survival grants **25 Defensive Points at minute 25**, another **25 at minute 45**, and
 **50 on victory at one hour**: **25 / 50 / 100 total survival Defensive Points**. Earlier milestones
 remain earned after defeat or quit. Verified native victory or defeat also
-allows **5 Defensive Points per 50 native kill-score points**, capped at **100 Defensive Points**.
+allows **5 Defensive Points per 50 native kill-score points**, capped at **500 Defensive Points**
+after 5,000 combined player and helper kills. The three kill counters remain separate.
 Setup ownership transfers and claimed cash escrows are excluded from that
 score. Native score accounting can include captures; it is not a separate
 combat log. Unfinished quits grant no kill bonus.

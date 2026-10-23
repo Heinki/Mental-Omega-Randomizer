@@ -62,7 +62,8 @@ def _shield_activation(writer, plan, rules, warhead):
         'SW.AITargeting.Constraints': 'none', 'SW.AITargeting.Preference': 'none',
         'SW.Damage': '0', 'SW.Warhead': warhead, 'SW.CreateRadarEvent': 'no',
         'EVA.Ready': 'none', 'EVA.Activated': 'none', 'EVA.Detected': 'none',
-        'Message.Detected': 'none', 'SW.Sound': 'none', 'SW.ActivationSound': 'none',
+        # "none" is a CSF label, not a way to disable text.
+        'Message.Detected': 'NOSTR:', 'SW.Sound': 'none', 'SW.ActivationSound': 'none',
     }
     _register_map_type(writer.sections, writer.lines, rules, 'SuperWeaponTypes', power)
     registered = list(dict.fromkeys([

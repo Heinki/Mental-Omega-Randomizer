@@ -8,6 +8,7 @@ from .engine import marker_names
 
 
 _CREATED = re.compile(r"Creating a new team named '([^']+)'\.")
+FRIENDLY_ACTORS = ('FFPLAYER', 'FFALLY1', 'FFALLY2')
 
 
 class FinalFortressResultWatch:
@@ -36,6 +37,7 @@ class FinalFortressResultWatch:
         self._performance_credited = False
         self._score_record = None
         self._coalition_records = {}
+        self.kill_counts = None
         self.result = None
         self.error = ''
         self.started = False
@@ -77,6 +79,7 @@ class FinalFortressResultWatch:
                     self._performance_credited = False
                     self._score_record = None
                     self._coalition_records = {}
+                    self.kill_counts = None
                 handle.seek(self._offset)
                 # Bound Tk-thread work even when native logging grows quickly.
                 if data := handle.read(262_144):
@@ -140,6 +143,12 @@ class FinalFortressResultWatch:
                                            else 'camp:') + camp['id']) in self.events)
                 combat_kills = (self._kills if (self.plan or {}).get('coalition_scores') else
                                 max(0, self._kills - self.initial_transfers - cash_transfers))
+                if not (self.plan or {}).get('coalition_scores'):
+                    # Legacy receipts used only the local player's score. Do
+                    # not invent helper statistics or reprice frozen rewards.
+                    self.kill_counts = dict.fromkeys(FRIENDLY_ACTORS)
+                    actor = FRIENDLY_ACTORS[self.coop_slot or 0]
+                    self.kill_counts[actor] = combat_kills
                 for event in (self.plan or {}).get('gem_rewards', {}):
                     if event.startswith('kills:') and combat_kills >= int(event.split(':')[1]):
                         if event not in self.events:
@@ -183,14 +192,17 @@ class FinalFortressResultWatch:
                 self._coalition_records.setdefault(actor['actor'], record['Kills'])
         if len(self._coalition_records) != len(self.plan['coalition_scores']):
             return
-        self._kills = 0
+        self.kill_counts = dict.fromkeys(FRIENDLY_ACTORS, 0)
         for actor in self.plan['coalition_scores']:
             # Cash escrow ownership is another setup transfer, credited only
-            # to its actual collector. AI helpers cannot collect these gifts.
+            # to the human recipient, including gifts collected by a helper.
             cash = sum(1 for camp in self.plan['map']['camps']
                        if actor['name'] is not None and camp.get('crate_reward', {}).get('credits')
                        and ((f'camp_pick:{actor["camp_slot"]}:' if self.plan.get('coop_players')
                              else 'camp:') + camp['id']) in self.events)
-            self._kills += max(0, self._coalition_records[actor['actor']]
-                               - actor['initial_transfers'] - cash)
+            self.kill_counts[actor['actor']] = max(
+                0, self._coalition_records[actor['actor']] - actor['initial_transfers'] - cash)
+        # Preserve the existing shared thresholds and cap. Keep each house's
+        # combat count independently for reporting and co-op attribution.
+        self._kills = sum(self.kill_counts.values())
         self._scores_read = True

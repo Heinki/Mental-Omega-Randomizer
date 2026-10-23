@@ -148,6 +148,8 @@ def normalize_state(document):
         }
         if isinstance(run, dict) and 'coop_player' in run:
             fields.add('coop_player')
+        if isinstance(run, dict) and 'kill_counts' in run:
+            fields.add('kill_counts')
         if not isinstance(run, dict) or set(run) != fields:
             raise ValueError('Invalid Final Fortress run fields.')
         text(run['id'], 'Run ID')
@@ -191,6 +193,14 @@ def normalize_state(document):
             guest = slot > 0
         elif 'coop_player' in run:
             raise ValueError('Solo runs cannot contain a co-op player.')
+        if 'kill_counts' in run:
+            from .results import FRIENDLY_ACTORS
+            counts = run['kill_counts']
+            if (not isinstance(counts, dict) or set(counts) != set(FRIENDLY_ACTORS)
+                    or run['status'] not in {'victory', 'defeat'}
+                    or any(value is not None and (type(value) is not int or value < 0)
+                           for value in counts.values())):
+                raise ValueError('Invalid Final Fortress kill counters.')
         if not guest and not set(plan['selected_perks']).issubset(document['owned_perks']):
             raise ValueError('Run plan contains unowned perks.')
         if not guest and any(rank > document['perk_ranks'].get(key, 0)

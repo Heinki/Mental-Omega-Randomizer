@@ -56,7 +56,7 @@ def validate_perk(perk):
                      'special_units_by_country', 'reinforcements', 'healing_stacks',
                      'recon_stacks', 'unique_limit_stacks', 'income_stacks',
                      'lab_emergency_repair', 'lab_reserve_units_by_country', 'lab_reserve_shield_seconds',
-                     'lab_health_percent', 'lab_reserve_veterancy'}
+                     'lab_health_percent', 'lab_reserve_veterancy', 'generator_power_percent'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
         if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
@@ -70,7 +70,7 @@ def validate_perk(perk):
                            ('defense_percent', 60), ('allied_helpers', 2), ('power_upgrade_stacks', 6),
                            ('healing_stacks', 6), ('recon_stacks', 6),
                            ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100),
-                           ('lab_reserve_veterancy', 2)):
+                           ('lab_reserve_veterancy', 2), ('generator_power_percent', 150)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -147,7 +147,7 @@ def validate_perk(perk):
 def resolve_effects(config, selected, purchased, country, *, include_power=False,
                     include_power_upgrades=False, include_arsenal=False, include_utilities=False,
                     include_lab_support=False, include_lab_shield=False, include_lab_health=False,
-                    include_lab_veterancy=False):
+                    include_lab_veterancy=False, include_generator_power=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -170,6 +170,8 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         effects['lab_health_percent'] = 0
     if include_lab_veterancy:
         effects['lab_reserve_veterancy'] = 0
+    if include_generator_power:
+        effects['generator_power_percent'] = 0
     catalogue = {entry['id']: entry for entry in config['perks']}
     fallback = []
     for key in selected:
@@ -178,6 +180,9 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_generator_power:
+            effects['generator_power_percent'] = max(
+                effects['generator_power_percent'], current.get('generator_power_percent', 0))
         if include_lab_veterancy:
             effects['lab_reserve_veterancy'] = max(
                 effects['lab_reserve_veterancy'], current.get('lab_reserve_veterancy', 0))

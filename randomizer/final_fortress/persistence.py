@@ -308,7 +308,8 @@ class FinalFortressRepository:
             if run['status'] not in ('active', 'abandoned', watch.result):
                 raise ValueError('Verified result conflicts with an existing final result.')
             missing = [event for event in events if event not in run['claimed_events']]
-            if not missing and run['status'] == watch.result:
+            counts_changed = watch.kill_counts is not None and run.get('kill_counts') != watch.kill_counts
+            if not missing and not counts_changed and run['status'] == watch.result:
                 return False
             backup = self.path.with_name(self.path.stem + '.before_recovery.' + run['id'] + '.json')
             if self.path.exists() and not backup.exists():
@@ -320,10 +321,12 @@ class FinalFortressRepository:
             run['claimed_events'].extend(event for event in nonterminal if event.startswith('kills:'))
             state['gems'] += sum(run['plan']['gem_rewards'].get(event, 0) for event in missing)
             run['status'] = watch.result
+            if watch.kill_counts is not None:
+                run['kill_counts'] = deepcopy(watch.kill_counts)
             return True
         return self._update(change)
 
-    def record_events(self, run_id, event_ids):
+    def record_events(self, run_id, event_ids, *, kill_counts=None):
         """Save a verified poll's receipts together, with one atomic write."""
         events = list(dict.fromkeys(event_ids))
 
@@ -346,6 +349,11 @@ class FinalFortressRepository:
                 run['claimed_events'].append(event_id)
                 if event_id in {'victory', 'defeat', 'abandoned'}:
                     run['status'] = event_id
+                changed = True
+            if kill_counts is not None and run.get('kill_counts') != kill_counts:
+                if run['status'] not in {'victory', 'defeat'}:
+                    raise ValueError('Kill counters require a verified final result.')
+                run['kill_counts'] = deepcopy(kill_counts)
                 changed = True
             return changed
         return self._update(change)

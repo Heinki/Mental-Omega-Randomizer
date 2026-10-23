@@ -119,7 +119,8 @@ def audit_camp_claims(rows, effective, plan):
             require(trigger not in chain, 'Camp claim trigger cycle')
             chain.append(trigger)
             trigger = rows['Triggers'][trigger].split(',')[1]
-        require(len(chain) == human_count, 'One camp pickup cell does not cover every human')
+        expected_collectors = len(coalition(plan)) if plan.get('plan_version', 1) >= 32 else human_count
+        require(len(chain) == expected_collectors, 'Camp pickup does not cover every friendly collector')
         clear = names['Camp ' + camp['id'] + (' ready' if plan.get('plan_version', 1) >= 25 else ' cleared')]
         enabled = {action[2] for action in parse_action_groups(rows['Actions'][clear])[1] if action[0] == '53'}
         require(enabled == set(chain), 'Camp clearance does not enable every human pickup')

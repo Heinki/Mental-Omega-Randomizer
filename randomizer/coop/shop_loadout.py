@@ -9,8 +9,9 @@ from pathlib import Path
 from randomizer.coop.archipelago import received_rewards
 from randomizer.maps.ini import all_section_value_maps
 from randomizer.rewards.arsenal import arsenal_unit_type
-from randomizer.rewards.catalogue import BUFF_TARGETS, canonical_reward
+from randomizer.rewards.catalogue import BUFF_TARGETS, REWARD_POOL, canonical_reward
 from randomizer.rewards.display import starting_credit_bonus
+from randomizer.rewards.power_buff_definitions import power_buff_stack_limit
 from randomizer.rewards.roster import randomizer_unit_roster
 from randomizer.rewards.rules import tech_ids_for_rewards
 from randomizer.shop.config import SHOP_CONFIG
@@ -30,6 +31,14 @@ SHOP_MULTIPLIER_FIELDS = (
 UNSUPPORTED_SHOP_MODIFIERS = frozenset({
     'demolition_charges', 'melee_fighters', 'one_shot_one_kill',
 })
+# The wire list contains one entry per buff stack, not per distinct power.
+# Size it for the full supported catalogue, including permanent loadouts.
+MAX_SHOP_POWER_REWARDS = sum(
+    power_buff_stack_limit(reward) or 1
+    for reward in REWARD_POOL
+    if reward.get('kind') == 'superweapon'
+    or reward.get('kind') == 'buff' and reward.get('power_buff_type')
+)
 
 
 def validate_shop_modifiers(modifiers):
@@ -124,16 +133,26 @@ def _validate_shop_loadout(source: Path, loadout: dict, *, allow_empty=False,
     if type(credit_bonus) is not int or not -10000 <= credit_bonus <= 50000:
         raise ValueError('Invalid co-op Shop starting credit bonus.')
     power_reward_ids = loadout.get('power_reward_ids', [])
-    if (not isinstance(power_reward_ids, list) or len(power_reward_ids) > 150
-            or any(not isinstance(item, str) or len(item) > 120
-                   or canonical_reward({'name': item}).get('kind') not in {
-                       'superweapon', 'buff',
-                   }
-                   or canonical_reward({'name': item}).get('kind') == 'buff'
-                   and not canonical_reward({'name': item}).get('power_buff_type')
-                   for item in power_reward_ids)
-            or power_reward_ids != sorted(power_reward_ids)):
-        raise ValueError('Invalid co-op Shop power rewards.')
+    if not isinstance(power_reward_ids, list):
+        raise ValueError('Invalid co-op Shop power rewards: expected a list.')
+    if len(power_reward_ids) > MAX_SHOP_POWER_REWARDS:
+        raise ValueError(
+            f'Invalid co-op Shop power rewards: {len(power_reward_ids)} entries '
+            f'exceed catalogue limit {MAX_SHOP_POWER_REWARDS}.'
+        )
+    for item in power_reward_ids:
+        if not isinstance(item, str) or len(item) > 120:
+            raise ValueError('Invalid co-op Shop power rewards: invalid reward name.')
+        reward = canonical_reward({'name': item})
+        if (reward.get('kind') != 'superweapon'
+                and not (reward.get('kind') == 'buff' and reward.get('power_buff_type'))):
+            raise ValueError(
+                f'Invalid co-op Shop power rewards: {item!r} is not a supported '
+                'power or power buff. Both players must use matching launcher '
+                'versions and reward configs.'
+            )
+    if power_reward_ids != sorted(power_reward_ids):
+        raise ValueError('Invalid co-op Shop power rewards: reward list is not sorted.')
     enemy_reward_ids = loadout.get('enemy_reward_ids', [])
     if (not isinstance(enemy_reward_ids, list) or len(enemy_reward_ids) > 150
             or any(not isinstance(item, str) or len(item) > 120

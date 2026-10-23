@@ -58,7 +58,8 @@ def _create_clock(writer, plan, rules, finished, *, owner, waypoint, name, label
         'EVA.Detected': 'none', 'SW.ActivationSound': 'none',
     }
     if plan.get('plan_version', 1) >= 31:
-        writer.sections[power]['Message.Detected'] = 'none'
+        # Unlike sound IDs, CSF text needs an explicit empty literal.
+        writer.sections[power]['Message.Detected'] = 'NOSTR:'
     _register_map_type(writer.sections, writer.lines, rules, 'SuperWeaponTypes', power)
     registered = list(dict.fromkeys([
         *rules['SuperWeaponTypes'].values(),

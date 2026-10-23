@@ -140,7 +140,8 @@ def rank_descriptions(perk, country):
                          f'{reinforcement["max_active_units"]} living reinforcement units shared with helpers. '
                          'Walkable arrival tiles are reserved against construction. '
                          'Small groups wait for shared capacity; each house restarts its timer after delivery. '
-                         'Each human sees a Next allied reinforcements countdown; zero means an arrival is pending')
+                         'Each human sees a Next allied reinforcements countdown; '
+                         'at zero, capacity-wait messages repeat until the arrival can finish')
             if reinforcement.get('veterancy'):
                 parts.append('Every reinforcement arrives '
                              + ('Elite (highest veterancy)' if reinforcement['veterancy'] == 2 else 'Veteran'))
@@ -149,6 +150,9 @@ def rank_descriptions(perk, country):
         if effect.get('allied_helpers'):
             count = effect['allied_helpers']
             parts.append(f'{count} allied skirmish AI {"helper" if count == 1 else "helpers"}, sharing enabled perks')
+        if effect.get('generator_power_percent'):
+            parts.append(f'+{effect["generator_power_percent"]}% power from starting and future generators '
+                         'for every friendly house; power consumption is unchanged')
         if effect.get('starting_defenses'):
             parts.append(buildings([entry['type'] for entry in effect['starting_defenses']]))
         descriptions.append(f'Rank {index}: ' + '; '.join(parts or [perk['description']]))

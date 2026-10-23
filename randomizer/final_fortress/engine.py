@@ -438,7 +438,7 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
                     section = 'Units'
                 _place(writer, section, value)
                 ordinal += 1
-        if plan.get('coop_players'):
+        if plan.get('coop_players') or plan.get('plan_version', 1) >= 32:
             from .coop_map import camp_claims
             camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
                         marker_teams, finished, clear, player_aliases or {})
@@ -510,16 +510,18 @@ def _cash_reward(writer, plan, rules, camp, claimed, index, *, waypoint=None):
     _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', alias)
     _, tag = writer.trigger('Cash reward ' + camp['id'], [(36, 0, claimed)],
                             [_action(14, 4475 + (plan['map']['player_waypoint']
-                                                if waypoint is None else waypoint))], persistence=2)
-    # An unused skirmish start keeps the invisible, passable escrow away from
-    # the fight. Ownership transfer pays once; repeated same-owner calls do not.
+                                                if waypoint is None else waypoint))])
+    # A persistent tag with a latched Local Set event can keep the native
+    # TeamLeavesMap cleanup loop on this same tag forever after payment.
+    # Consume the default one-shot tag after its single ownership transfer.
+    # An unused skirmish start keeps the passable escrow away from the fight.
     points = section_value_map(writer.lines, 'Waypoints')
     unused = next(number for number in range(8) if number not in {
         plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
         *plan.get('allied_waypoints', [])})
     cell = int(points[str(unused)])
     x, y = cell % 1000 + index, cell // 1000
-    if plan.get('coop_players'):
+    if plan.get('coop_players') or plan.get('plan_version', 1) >= 32:
         from .coop_map import escrow_cell
         x, y = escrow_cell(writer, plan, rules, cell)
     _place(writer, 'Structures', f'Neutral,{alias},256,{x},{y},'
@@ -678,7 +680,7 @@ def build_map(game_root, run, rules, *, preloads=None):
                     'Actions', 'VariableNames', 'CellTags', 'Waypoints', 'TaskForces', 'TeamTypes',
                     'ScriptTypes', 'AITriggerTypes', 'AITriggerTypesEnable', 'FFSpecialAccess', 'FFEnemyPowers',
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
-                    'FFEnemyStartingYards',
+                    'FFEnemyStartingYards', 'Smudge',
                     'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
                     'FFCampTracking', 'FFLabSupport'}
         changed = {section: {key: value for key, value in values.items()
