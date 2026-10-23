@@ -23,9 +23,11 @@ def reward_report(run):
                      entry['victory_gems'] if victory else 0, 'Victory bonus' if victory else 'Requires victory'))
     for camp in plan['map']['camps']:
         event = 'camp:' + camp['id']
-        clear_event = 'camp_clear:' + camp['id'] if plan.get('plan_version', 1) >= 18 else event
+        pickup = plan.get('plan_version', 1) >= 25
+        clear_event = 'camp_clear:' + camp['id'] if 18 <= plan.get('plan_version', 1) < 25 else event
         reward = camp.get('crate_reward')
-        detail = ('Cleared; reward crate not collected' if clear_event in claimed else
+        detail = ('Crate not collected' if pickup else
+                  'Cleared; reward crate not collected' if clear_event in claimed else
                   'Not cleared' if plan.get('plan_version', 1) >= 18 else 'Not claimed')
         if event in claimed:
             detail = reward['display_name'] if reward else 'Claimed'
@@ -39,7 +41,8 @@ def reward_report(run):
                     break
         rows.append((camp['display_name'], plan['gem_rewards'][clear_event] if clear_event in claimed else 0, detail))
     tiers = [event for event in claimed if event.startswith('kills:')]
-    rows.append(('Enemy kill score', sum(plan['gem_rewards'][event] for event in tiers),
+    rows.append(('Coalition enemy kill score' if plan.get('coalition_scores') else 'Enemy kill score',
+                 sum(plan['gem_rewards'][event] for event in tiers),
                  f'{max(int(event.split(":")[1]) for event in tiers)}-kill threshold reached'
                  if tiers else 'No kill-reward threshold reached'))
     total = sum(plan['gem_rewards'].get(event, 0) for event in claimed)

@@ -117,3 +117,27 @@ def apply_powers(writer, plan, rules, country_aliases):
                    f'{cell // 1000 + actor_index + 1},64,{tag},1,0,1,0,0,None,None,None,0,0')
         if actions:
             writer.trigger('Fortress perk powers ' + actor, [(13, 0, 2)], actions, owner=actor)
+
+
+def apply_drakuv_power(writer, plan, rules, aliases):
+    """Bind the Field Bureau to its coalition's reviewed, early-loaded payload.
+
+    This remains a building-provided power with its installed price, recharge,
+    power and targeting gates. It is not an additional action-granted perk.
+    """
+    from .player_perks import coalition
+    prison, payload = aliases.get('NAPRIS'), aliases.get('RAVA')
+    if not prison or not payload:
+        return
+    power = writer.key()
+    row = deepcopy(rules['DrakuvSpecial'])
+    row.update({'Deliver.Types': payload,
+                'SW.RequiredHouses': ','.join(actor for actor, _, _ in coalition(plan)),
+                'SW.Designators': ','.join(dict.fromkeys([
+                    *row.get('SW.Designators', '').split(','), prison]))})
+    writer.sections[power] = row
+    _register_map_type(writer.sections, writer.lines, rules, 'SuperWeaponTypes', power)
+    writer.put(prison, 'SuperWeapon2', power)
+    writer.put('FFDrakuvPower', 'Power', power)
+    writer.put('FFDrakuvPower', 'Provider', prison)
+    writer.put('FFDrakuvPower', 'Payload', payload)

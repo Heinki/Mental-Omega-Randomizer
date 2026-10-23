@@ -6,6 +6,7 @@ from .wave_pool import _batches
 
 def apply_friendly_pool(writer, plan, rules, overrides, finished):
     from .engine import _action, _waypoint
+    from .messages import message_actions
 
     effect = plan['effects']['reinforcements']
     actors = coalition(plan)
@@ -43,8 +44,7 @@ def apply_friendly_pool(writer, plan, rules, overrides, finished):
             if owner == 'FFPLAYER':
                 warning, _ = writer.trigger(f'Friendly arrival {index + 1} capacity notice',
                     [(37, 0, finished), *((36, 0, busy) for _, busy, _ in slots)],
-                    [['11', '4', f'NOSTR:Reinforcements waiting for room under the shared {limit}-unit cap.',
-                      '0', '0', '0', '0', 'A']],
+                    message_actions(f'Reinforcements waiting. Shared limit: {limit} units.'),
                     disabled=True)
             actions = [_action(53, trigger=relays[0])]
             if warning:

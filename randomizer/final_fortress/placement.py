@@ -107,7 +107,27 @@ def installed_art():
         ART_CACHE_PATH.read_text(encoding='latin-1').splitlines()).items()}
 
 
-def validate_placements(writer, rules):
+def deployment_cells(x, y):
+    """Reserve the 4x4 yard plus room for native deployment and unit exits."""
+    return {(x + dx, y + dy) for dx in range(-3, 4) for dy in range(-3, 4)}
+
+
+def validate_camp_access(writer, plan):
+    """Keep crates and their complete guard formations outside hostile bases."""
+    if plan.get('plan_version', 1) < 24:
+        return
+    from .camps import guard_positions
+    from randomizer.maps.ini import section_value_map
+    points = section_value_map(writer.lines, 'Waypoints')
+    starts = [int(points[str(waypoint)]) for waypoint in plan['map']['enemy_waypoints']]
+    for camp in plan['map']['camps']:
+        for point in [camp['position'], *guard_positions(camp)]:
+            if any(max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) < 40
+                   for cell in starts):
+                raise ValueError('Final Fortress camp overlaps a protected enemy base: ' + camp['id'])
+
+
+def validate_placements(writer, rules, plan=None):
     """Reject off-map added objects before any runtime files are written.
 
     Evaluate ground level and a conservative 14-level terrain allowance to keep
@@ -117,6 +137,13 @@ def validate_placements(writer, rules):
     from randomizer.maps.ini import section_value_map
     bounds = PlayableBounds(section_value_map(writer.lines, 'Map'))
     art = installed_art()
+    reserved = set()
+    if plan and plan.get('plan_version', 1) >= 23:
+        points = section_value_map(writer.lines, 'Waypoints')
+        for waypoint in (plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
+                         *plan.get('allied_waypoints', [])):
+            cell = int(points[str(waypoint)])
+            reserved.update(deployment_cells(cell % 1000, cell // 1000))
     for category in ('Structures', 'Infantry', 'Units'):
         for value in writer.sections.get(category, {}).values():
             fields = value.split(',')
@@ -128,3 +155,5 @@ def validate_placements(writer, rules):
             cells = {(x + dx, y + dy) for dx, dy in offsets} or {(x, y)}
             if not bounds.contains(cells, maximum_height=14):
                 raise ValueError(f'Final Fortress {kind} at ({x}, {y}) extends outside playable map bounds.')
+            if cells & reserved:
+                raise ValueError(f'Final Fortress {kind} at ({x}, {y}) blocks an MCV deployment area.')

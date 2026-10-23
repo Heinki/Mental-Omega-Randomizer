@@ -135,7 +135,7 @@ class _MapWriter:
             self.put(team, key, value)
         return team
 
-    def wave_types(self, groups, rules, overrides=None):
+    def wave_types(self, groups, rules, overrides=None, *, aliases=None):
         """Private native copies let absence checks survive AI team disbanding.
 
         Native AI team removal strips member tags before some death callbacks.
@@ -144,10 +144,11 @@ class _MapWriter:
         """
         infantry = set(rules['InfantryTypes'].values())
         vehicles = set(rules['VehicleTypes'].values())
-        aliases = {}
+        aliases = {} if aliases is None else aliases
+        visited = set()
 
         def register(original):
-            if original in aliases:
+            if original in visited:
                 return aliases[original]
             category = ('InfantryTypes' if original in infantry else
                         'VehicleTypes' if original in vehicles else None)
@@ -163,8 +164,9 @@ class _MapWriter:
                 raise ValueError(f'Wave type {original} creates unbudgeted aircraft; choose another unit.')
             if row.get('DeploysInto', '').lower() not in ('', 'none'):
                 raise ValueError(f'Wave type {original} deploys into a building; tracking is not configured.')
-            alias = self.key()
+            alias = aliases.get(original) or self.key()
             aliases[original] = alias
+            visited.add(original)
             _register_map_type(self.sections, self.lines, rules, category, alias)
             row.update({'Image': row.get('Image', original), 'TechLevel': '-1',
                         'BuildLimit': '0', 'Crewed': 'no',
@@ -366,8 +368,10 @@ def _enemy_challenges(writer, plan, rules):
         writer.sections[alias] = row
 
 
-def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_aliases=None):
+def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_aliases=None,
+           guard_types=None):
     infantry = set(rules['InfantryTypes'].values())
+    pickup = plan.get('plan_version', 1) >= 25
     if plan['map']['camps']:
         # Defensive Points claims are player-gated separately. A computer passing through
         # the native visual crate must not gain cash or another native bonus.
@@ -386,50 +390,46 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
                 unit['type'] not in infantry or str(rules[unit['type']].get('TechLevel')) != '1'
                 for unit in camp['guards']):
             raise ValueError('Starter camps require installed basic Tier 1 infantry.')
-        aliases = writer.wave_types([{'units': camp['guards']}], rules, overrides)
-        units = [{'type': aliases[unit['type']], 'count': unit['count']} for unit in camp['guards']]
+        aliases = writer.wave_types([{'units': camp['guards']}], rules, overrides,
+                                    aliases=guard_types[index] if guard_types is not None else None)
         owner_waypoint = plan['map']['enemy_waypoints'][camp['enemy_index']]
         country = f'FFENEMY{camp["enemy_index"] + 1}'
-        active = writer.team('Camp ' + camp['id'] + ' retaliate', units, owner_waypoint, owner=country)
-        writer.put(active, 'Recruiter', 'yes')
-        writer.put(active, 'Full', 'no')
-        writer.put(active, 'Waypoint', _waypoint(waypoint))
-        dormant = writer.team('Camp ' + camp['id'] + ' garrison', units, owner_waypoint,
-                              attack=False, owner=country)
-        writer.put(dormant, 'Recruiter', 'yes')
-        writer.put(dormant, 'Aggressive', 'no')
-        writer.put(dormant, 'Waypoint', _waypoint(waypoint))
-        script = writer.sections[dormant]['Script']
-        writer.put(script, 0, '11,0')
-        writer.put(script, 1, '6,1')
-        attacked, tag = writer.trigger('Camp ' + camp['id'] + ' attacked', [(6, 0, 0)],
-                                       [_action(4, team=active)], owner=country, persistence=2)
-        writer.put('Actions', attacked, '3,' + ','.join(
-            _action(54, trigger=attacked) + _action(5, team=dormant) + _action(4, team=active)))
-        transfer, _ = writer.trigger('Camp ' + camp['id'] + ' ownership', [(13, 0, 0)],
-                                     [_action(14, 4475 + owner_waypoint)])
-        writer.put('Actions', transfer, '2,' + ','.join(
-            _action(14, 4475 + owner_waypoint) + _action(54, trigger=transfer)))
-        # Use the unique enemy country for recruitment, and keep the attack
-        # event on both the placed objects and their garrison. Full=yes keeps
-        # the hold script from finishing before all guards are recruited.
-        writer.put(dormant, 'Tag', tag)
-        writer.trigger('Camp ' + camp['id'] + ' hold', [(13, 0, 2)],
-                       [_action(4, team=dormant)], owner=country)
-        writer.put('Triggers', attacked,
-                   f'{country},{transfer},Camp {camp["id"]} attacked,0,1,1,1,0')
+        cleared = writer.flag('Camp ' + camp['id'] + (' ready' if pickup else ' cleared'))
+        if pickup:
+            # Crates and claims become available at startup. Guard death events
+            # have fired prematurely in live games; only player entry pays out.
+            clear, _ = writer.trigger('Camp ' + camp['id'] + ' ready', [(13, 0, 0)], [])
+            tag = _transfer_tag(writer, owner_waypoint, 'Camp ' + camp['id'] + ' ownership')
+            transfer = writer.sections['Tags'][tag].split(',')[2]
+        else:
+            clear, tag = writer.trigger('Camp ' + camp['id'] + ' cleared',
+                                       [(37, 0, finished), (48, 0, 0)], [],
+                                       owner=country, persistence=1)
+            # Preserve death-based receipts for frozen plans through version 24.
+            transfer, _ = writer.trigger('Camp ' + camp['id'] + ' ownership',
+                                        [(0, 0, 0)], [_action(14, 4475 + owner_waypoint)])
+            # Action 14 visits every object whose tag contains this linked trigger.
+            writer.trigger('Camp ' + camp['id'] + ' ownership start',
+                           [(13, 0, 0)], [_action(22, trigger=transfer)])
+            writer.put('Triggers', clear,
+                       f'{country},{transfer},Camp {camp["id"]} cleared,0,1,1,1,0')
+        writer.put('FFCampTracking', camp['id'],
+                   f'{clear},{tag},{transfer},{sum(unit["count"] for unit in camp["guards"])}')
+        for alias in aliases.values():
+            writer.sections[alias].update({
+                'CanPassiveAquire': 'yes', 'CanRetaliate': 'yes',
+                'OpportunityFire': 'no', 'GuardRange': '6', 'DefaultToGuardArea': 'yes',
+                'ImmuneToPsionics': 'yes', 'ImmuneToAbduction': 'yes', 'CanBeReversed': 'no',
+                'VehicleThief.Allowed': 'no',
+                'Convert.Deploy': 'none', 'Convert.Land': 'none', 'Convert.Water': 'none'})
         ordinal = 0
         positions = guard_positions(camp)
         for unit in camp['guards']:
             alias = aliases[unit['type']]
-            writer.sections[alias].update({
-                'CanPassiveAquire': 'no', 'CanRetaliate': 'yes',
-                'OpportunityFire': 'no', 'GuardRange': '0', 'DefaultToGuardArea': 'no',
-                'ImmuneToPsionics': 'yes', 'CanBeReversed': 'no'})
             for _ in range(unit['count']):
                 # Leave the center cell free for the reward crate and claim.
                 x, y = positions[ordinal]['x'], positions[ordinal]['y']
-                mission = 'Sleep' if plan.get('plan_version', 1) >= 13 else 'Guard'
+                mission = 'Area Guard'
                 if unit['type'] in infantry:
                     value = f'Neutral,{alias},256,{x},{y},0,{mission},64,{tag},0,-1,0,0,0'
                     section = 'Infantry'
@@ -438,46 +438,61 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
                     section = 'Units'
                 _place(writer, section, value)
                 ordinal += 1
-        cleared = writer.flag('Camp ' + camp['id'] + ' cleared')
         if plan.get('coop_players'):
             from .coop_map import camp_claims
             camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
-                        marker_teams, finished, aliases, player_aliases or {})
+                        marker_teams, finished, clear, player_aliases or {})
             continue
         reward = camp.get('crate_reward', {})
         claim_actions = [_action(4, team=marker_teams['camp:' + camp['id']])]
         if plan.get('plan_version', 1) >= 18:
-            claim_actions.append(['11', '4', 'NOSTR:Camp reward: ' + reward.get('display_name', 'Collected').replace(',', ''),
-                                  '0', '0', '0', '0', 'A'])
+            from .messages import message_actions
+            if pickup:
+                claim_actions.extend(message_actions(camp['display_name'] + ' collected!'))
+                claim_actions.extend(message_actions(f'+{camp["gems"]} Defensive Points'))
+            claim_actions.extend(message_actions('Reward: ' + reward.get('display_name', 'Collected')))
         if reward.get('credits'):
             claimed = writer.flag('Camp ' + camp['id'] + ' reward claimed')
             claim_actions.append(_action(56, claimed))
             _cash_reward(writer, plan, rules, camp, claimed, index)
         if reward.get('units'):
             from .player_perks import needs_countries
-            units = [{'type': (player_aliases or {}).get(unit['type'], unit['type']), 'count': unit['count']}
-                     for unit in reward['units']]
-            team = writer.team('Player camp reward ' + camp['id'], units,
-                               plan['map']['player_waypoint'], attack=False,
-                               owner='FFPLAYER' if needs_countries(plan) else plan['player_country'])
-            writer.put(team, 'Waypoint', _waypoint(waypoint))
-            claim_actions.append(_action(7, team=team))
+            claim_actions.extend(_camp_squad(writer, plan, camp, waypoint,
+                plan['map']['player_waypoint'],
+                'FFPLAYER' if needs_countries(plan) else plan['player_country'], player_aliases or {}))
         claim, claim_tag = writer.trigger('Camp ' + camp['id'] + ' claim',
                             [(1, 0, 4475 + plan['map']['player_waypoint']),
                              (36, 0, cleared), (37, 0, finished)],
                             claim_actions, disabled=True)
         writer.put('CellTags', position['y'] * 1000 + position['x'], claim_tag)
-        clear_actions = [_action(56, cleared), _action(108, 0, waypoint=_waypoint(waypoint)),
+        clear_actions = [_action(54, trigger=clear), _action(56, cleared),
+                         _action(108, 0, waypoint=_waypoint(waypoint)),
                          _action(53, trigger=claim)]
-        if plan.get('plan_version', 1) >= 18:
-            clear_actions.extend([
-                _action(4, team=marker_teams['camp_clear:' + camp['id']]),
-                ['11', '4', f'NOSTR:{camp["display_name"].replace(",", "")} cleared: {camp["gems"]} Defensive Points. Collect its reward crate.',
-                 '0', '0', '0', '0', 'A']])
-        writer.trigger('Camp ' + camp['id'] + ' cleared',
-                       [(13, 0, 2), (37, 0, finished),
-                        *((61, 2, 0, alias) for alias in aliases.values())],
-                       clear_actions)
+        if 18 <= plan.get('plan_version', 1) < 25:
+            from .messages import camp_clear_actions
+            clear_actions.append(_action(4, team=marker_teams['camp_clear:' + camp['id']]))
+            clear_actions.extend(camp_clear_actions(camp))
+        writer.put('Actions', clear, str(len(clear_actions)) + ',' + ','.join(
+            token for action in clear_actions for token in action))
+
+
+def _camp_squad(writer, plan, camp, waypoint, start, owner, aliases):
+    """Deliver every frozen reward type with explicit native cell placement."""
+    units = [{'type': aliases.get(unit['type'], unit['type']), 'count': unit['count']}
+             for unit in camp['crate_reward']['units']]
+    pickup = plan.get('plan_version', 1) >= 25
+    groups = [[unit] for unit in units] if pickup else [units]
+    actions = []
+    for index, group in enumerate(groups):
+        name = 'Player camp reward ' + camp['id']
+        if plan.get('coop_players'):
+            name += ' ' + owner
+        if pickup:
+            name += f' group {index + 1}'
+        team = writer.team(name, group, start, attack=False, owner=owner)
+        writer.put(team, 'Waypoint', _waypoint(waypoint))
+        actions.append(writer.reinforce(team) if pickup else _action(7, team=team))
+    return actions
 
 
 def _cash_reward(writer, plan, rules, camp, claimed, index, *, waypoint=None):
@@ -612,6 +627,17 @@ def build_map(game_root, run, rules, *, preloads=None):
     has_unit_challenges = any('enemy_effect_id' in entry and entry['enemy_effect_id'].startswith('tier')
                               for entry in plan.get('challenges', []))
     ai_rules = load_ai_rules()
+    reserved_player_types = {}
+    if plan['player_country'] in ('USSR', 'Latin', 'Chinese'):
+        from .player_perks import needs_countries
+        if needs_countries(plan):
+            reserved_player_types = writer.wave_types([{'units': [{'type': 'RAVA', 'count': 1}]}], rules)
+    # Native house ownership counters hold only 512 entries per category.
+    # Reserve camps before the large player/challenge/pool registries so their
+    # Event 61 checks never read an untracked high-index vehicle. Preload these
+    # identities before houses are constructed, then refresh challenge stats.
+    guard_types = [writer.wave_types([{'units': camp['guards']}], rules)
+                   for camp in definition['camps']]
     enemy_aliases = {}
     overrides = apply_units(writer, plan, rules, ai_rules, route_ai=False,
                             aliases_out=enemy_aliases) if has_unit_challenges else {}
@@ -622,12 +648,14 @@ def build_map(game_root, run, rules, *, preloads=None):
         additions = [enemy_aliases[unit] for unit in native if unit in enemy_aliases]
         if additions:
             writer.put('General', field, ','.join([*native, *additions]))
-    player_aliases = apply_player_types(writer, plan, rules)
+    player_aliases = apply_player_types(writer, plan, rules, reserved_aliases=reserved_player_types)
     from .reinforcements import reserve_staging
     reserve_staging(writer, plan, rules)
     place_fortifications(writer, plan, rules, enemy_aliases)
     _starting_perks(writer, plan, rules, player_aliases)
     support_powers(writer, plan, rules, player_aliases)
+    from .powers import apply_drakuv_power
+    apply_drakuv_power(writer, plan, rules, player_aliases)
     from .enemy_powers import apply_enemy_powers
     apply_enemy_powers(writer, plan, rules, enemy_aliases)
     from .wave_clock import create_wave_clock
@@ -635,20 +663,22 @@ def build_map(game_root, run, rules, *, preloads=None):
     if plan['effects'].get('reveal_map') and not plan.get('coop_players'):
         writer.trigger('Final Fortress satellite intelligence', [(13, 0, 1)], [_action(16)])
     ai_sections = route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases)
+    _camps(writer, plan, rules, marker_teams, finished, overrides, player_aliases,
+           guard_types=guard_types)
     gate_prerequisite_overrides(writer, plan, rules)
     if preloads is not None:
         map_only = {'Structures', 'Units', 'Infantry', 'Aircraft', 'Triggers', 'Tags', 'Events',
                     'Actions', 'VariableNames', 'CellTags', 'Waypoints', 'TaskForces', 'TeamTypes',
                     'ScriptTypes', 'AITriggerTypes', 'AITriggerTypesEnable', 'FFSpecialAccess', 'FFEnemyPowers',
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
-                    'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock'}
+                    'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
+                    'FFCampTracking'}
         changed = {section: {key: value for key, value in values.items()
                             if before_perk_rules.get(section, {}).get(key) != value}
                    for section, values in writer.sections.items() if section not in map_only
                    and section not in ai_sections}
         preloads['rules'] = {key: row for key, row in changed.items() if row}
         preloads['ai'] = ai_sections
-    _camps(writer, plan, rules, marker_teams, finished, overrides, player_aliases)
     from .reinforcements import apply_reinforcements
     apply_reinforcements(writer, plan, rules, player_aliases, finished)
 
@@ -700,11 +730,12 @@ def build_map(game_root, run, rules, *, preloads=None):
     writer.put('Basic', 'Name', 'Final Fortress - ' + definition['display_name'])
     writer.put('Basic', 'IgnoreGlobalAITriggers', 'no')
     writer.put('SpecialFlags', 'FixedAlliance', 'yes')
-    from .placement import validate_enemy_arrivals
+    from .placement import validate_camp_access, validate_enemy_arrivals
     validate_enemy_arrivals(writer, plan)
+    validate_camp_access(writer, plan)
     if plan.get('plan_version', 1) >= 13:
         from .placement import validate_placements
-        validate_placements(writer, rules)
+        validate_placements(writer, rules, plan)
     return writer.finish()
 
 

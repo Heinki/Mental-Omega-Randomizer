@@ -27,6 +27,8 @@ class FinalFortressResultWatch:
         self._kills = None
         self._scores_read = False
         self._performance_credited = False
+        self._score_record = None
+        self._coalition_records = {}
         self.result = None
         self.error = ''
         self.started = False
@@ -66,6 +68,8 @@ class FinalFortressResultWatch:
                     self._kills = None
                     self._scores_read = False
                     self._performance_credited = False
+                    self._score_record = None
+                    self._coalition_records = {}
                 handle.seek(self._offset)
                 # Bound Tk-thread work even when native logging grows quickly.
                 if data := handle.read(262_144):
@@ -109,7 +113,9 @@ class FinalFortressResultWatch:
                 self._local_record = False
             if self._in_scores and not self._scores_read:
                 result_row = re.fullmatch(r'([^:]+): (Winner|Loser)\s*', line)
-                if result_row:
+                if (self.plan or {}).get('coalition_scores'):
+                    self._read_coalition_score(line, result_row)
+                elif result_row:
                     self._local_record = result_row.group(1) == self.player_name
                 elif self._local_record:
                     kills = re.fullmatch(r'\s+Kills = (\d+)\s*', line)
@@ -125,8 +131,8 @@ class FinalFortressResultWatch:
                                      if camp.get('crate_reward', {}).get('credits')
                                      and ((f'camp_pick:{self.coop_slot}:' if self.coop_slot is not None
                                            else 'camp:') + camp['id']) in self.events)
-                combat_kills = max(0, self._kills - self.initial_transfers
-                                   - cash_transfers)
+                combat_kills = (self._kills if (self.plan or {}).get('coalition_scores') else
+                                max(0, self._kills - self.initial_transfers - cash_transfers))
                 for event in (self.plan or {}).get('gem_rewards', {}):
                     if event.startswith('kills:') and combat_kills >= int(event.split(':')[1]):
                         if event not in self.events:
@@ -148,3 +154,36 @@ class FinalFortressResultWatch:
                     ('milestone:', 'camp:', 'camp_clear:', 'camp_pick:')):
                 if event not in self.events:
                     self.events.append(event)
+
+    def _read_coalition_score(self, line, result_row):
+        """Read every friendly house once; enemies never contribute currency."""
+        if result_row:
+            self._score_record = {'name': result_row.group(1)}
+            return
+        if self._score_record is None:
+            return
+        field = re.fullmatch(r'\s+(Scheme|Kills|Score)(?: =|:) (-?\d+)\s*', line)
+        if not field:
+            return
+        key, value = field.groups()
+        self._score_record[key] = int(value)
+        if key != 'Score':
+            return
+        record, self._score_record = self._score_record, None
+        for actor in self.plan['coalition_scores']:
+            if (record.get('Scheme') == actor['scheme'] and 'Kills' in record
+                    and (actor['name'] is None or record['name'] == actor['name'])):
+                self._coalition_records.setdefault(actor['actor'], record['Kills'])
+        if len(self._coalition_records) != len(self.plan['coalition_scores']):
+            return
+        self._kills = 0
+        for actor in self.plan['coalition_scores']:
+            # Cash escrow ownership is another setup transfer, credited only
+            # to its actual collector. AI helpers cannot collect these gifts.
+            cash = sum(1 for camp in self.plan['map']['camps']
+                       if actor['name'] is not None and camp.get('crate_reward', {}).get('credits')
+                       and ((f'camp_pick:{actor["camp_slot"]}:' if self.plan.get('coop_players')
+                             else 'camp:') + camp['id']) in self.events)
+            self._kills += max(0, self._coalition_records[actor['actor']]
+                               - actor['initial_transfers'] - cash)
+        self._scores_read = True

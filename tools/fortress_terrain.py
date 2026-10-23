@@ -91,7 +91,7 @@ class Terrain:
             cell = int(key)
             self.objects.add((cell % 1000, cell // 1000))
 
-    def clear(self, cells):
+    def clear(self, cells, *, allowed_overlays=()):
         if not self.bounds.contains(cells, heights=self.heights):
             return False
         heights = set()
@@ -99,7 +99,10 @@ class Terrain:
             tile, height = self.cells.get((x, y), (-1, -1))
             if tile not in {0, 65535, 534, *range(464, 510)} or (x, y) in self.objects:
                 return False
-            if not (0 <= x < 512 and 0 <= y < 512) or self.overlays[y * 512 + x] != 255:
+            if not (0 <= x < 512 and 0 <= y < 512):
+                return False
+            overlay = self.overlays[y * 512 + x]
+            if overlay != 255 and overlay not in allowed_overlays:
                 return False
             heights.add(height)
         return len(heights) == 1

@@ -35,12 +35,16 @@ reinforcements. Human armies and reinforcements remain under human control.
 Guest-owned perks do not stack onto the host's loadout. Each player's permanent
 perks and selections remain their own for future solo or hosted runs.
 
-Survival milestones, camp-clear Defensive Points and victory/Challenge bonuses
-are awarded independently to every player's local Fortress profile. Native kill
-bonuses use each player's own named score row, excluding their setup transfers.
-Any human can collect a cleared camp's single cash/unit crate; its collector
-receives that in-game reward, and results name the collector. Clearing the camp
-earns points for everyone even if its crate remains uncollected.
+Survival milestones, camp-pickup Defensive Points and victory/Challenge bonuses
+are awarded independently to every player's local Fortress profile. New runs
+combine combat kills from every friendly human and AI helper for the kill bonus.
+Native score records are matched to the frozen friendly roster by remap scheme
+and human name; hostile AI records are excluded. Each house's setup transfers
+and its collected cash escrow are deducted before the totals are combined.
+Existing run snapshots retain their original local-player scoring.
+Camp crates are available from the start, surrounded by their guards. Any human
+can collect a camp's single cash/unit crate; its collector receives that in-game
+reward, and results name the collector. Collection awards points to everyone.
 
 The host freezes the run before preparation. Guests replay it locally, compare
 the exact map digest and acknowledge readiness before the host starts the games.
@@ -498,15 +502,27 @@ when both sides selected the same parent country. Country-scoped copies of nativ
 the appropriate enemy or helper counterparts. Scripted waves
 and camp guards receive the same applicable stat changes.
 
+The Soviet Field Bureau's building-provided Drakuv power now uses a private,
+early-preloaded power and the reviewed RAVA player template. Its provider and
+designator reference the private Field Bureau, and its payload retains
+`Image=RAVA`, normal build timing and valid training behavior. The native
+Field Bureau, recharge, credit cost and power requirements are preserved.
+This does not grant an extra perk power or unlock Drakuv factory production.
+Native delivery at the reported freeze still needs a fresh-match gameplay check.
+
 ## Camps and random crates
 
-Six camps span the playable map: north-west **(32, 129)**, north-east **(107, 66)**,
-west **(127, 151)**, east **(179, 79)**, south-west **(105, 199)** and south-east
-**(202, 113)**. Guard positions and crate claim cells use clear, level playable
-terrain and avoid base deployment areas and fixed building foundations. Guards
-start with the native Sleep mission before their garrison team is recruited,
-preventing an initial Guard interval from letting them wander. Crates still
-appear only after the camp's guards are cleared.
+Six camps span the playable map: north-west **(32, 129)**, western approach **(72, 96)**,
+central **(153, 128)**, east **(179, 79)**, northern pass **(134, 105)** and
+south-east **(202, 113)**. Guard positions and crate claim cells use clear, level playable
+terrain and avoid base deployment areas and fixed building foundations. The
+former west and south-west camps were inside protected enemy base approaches;
+new runs move both onto the accessible battlefield. Every crate and guard
+position is at least 40 cells from each hostile start. Guard formations can
+stand on walkable ore/gem overlays; crate cells always remain overlay-free.
+Guards use native Area Guard with a six-cell acquisition radius, keeping their
+fight local rather than sending survivors on a global hunt. Each camp's crate
+is available from the start; destroying its guards is optional for collection.
 New runs use **5 / 8 / 12 guards on Casual / Normal / Mental**, multiplied by
 the wave multiplier and capped at **30 per camp / 180 across all six camps**.
 Camp rosters are selected independently of the three enemy base factions.
@@ -515,28 +531,35 @@ all four are represented across the six camps every run. A seeded subfaction
 choice supplies each camp's infantry, vehicles and artillery; difficulty
 influences the early/mid/late composition selection. Camp ownership still uses
 the configured enemy AI, including its alliances and applicable Challenges.
-The north-east camp at **(107, 66)** is the nearby starter camp. It uses only
-basic faction infantry: **2 / 3 / 4 on Casual / Normal / Mental**, multiplied by
-the wave multiplier but separately capped at **4 / 6 / 8 guards**. Vehicles,
-artillery, advanced troops and heroes cannot roll there. Its normal Defensive Points and
-random crate rewards are retained, providing an attainable early resource goal
-without requiring purchased starting armies or defenses.
+The former nearby starter camp now occupies the western approach at **(72, 96)**.
+Every guard position is at least 32 cells from all active friendly starts. It
+uses the same mixed faction formations, **5 / 8 / 12** base counts and
+**30-guard** ceiling as the other camps. Every camp has a configurable **35%
+chance** of including one faction hero or heavy unit. Last Bastion uses Uragan
+for its starting-army hero, special-unit crate and camp hero pool.
+Counts, limits, special pools and chance are configured through `camp_balance`
+and frozen before launch. Each camp has thirty reviewed clear, level guard
+positions rather than extending a formation into nearby terrain.
+Collecting a camp crate grants **10 Defensive Points immediately**, together
+with its frozen cash or unit reward. New plans (version 25) create all six crates
+at startup, independently of guard deaths. Startup emits no clearance messages,
+reward receipts or points. Each ready trigger disables itself, creates one
+crate and enables the human-only pickup. Co-op collectors share a claimed flag
+so the first human receives the in-game reward exactly once.
 
-Outer camps retain their larger formations and a configurable **35% chance**
-of including one faction hero or heavy unit. Counts, limits, starter camp IDs
-and basic faction pools, special-unit pools and chance are configured through
-`camp_balance` and frozen before launch. Each camp has thirty reviewed clear,
-level guard positions rather than extending a formation into nearby terrain.
-Clearing a camp grants **10 Defensive Points immediately**. Private unbuildable guard identities and a complete
-garrison team isolate guards from ordinary AI task forces. Guards retain normal
-movement speed, with passive acquisition disabled. Their object-attacked trigger wakes a
-native retaliating team at the camp, avoiding a permanent movement freeze or
-an order to assemble at the enemy's main base. They share the owning AI's alliances and Challenge
-bonuses. Normal AI task forces cannot recruit the camp copies.
+Guard ownership uses the existing timed Action 14 transfer, stopped after one
+second. Guards retain their local Area Guard orders, Challenge bonuses and kill
+scoring. No garrison or retaliation TeamType recruits these private copies.
+Guard deaths no longer determine crate availability or Defensive Points: live
+feedback showed both premature clearance and missing crates with death tags.
 
-After all guards disappear, a native visual crate appears. Player entry at the
-cleared camp center claims one frozen random in-game reward, separately from
-the Defensive Points already earned for clearing it:
+Messages use short literal text chunks, each at most **31 bytes including
+`NOSTR:`**, to fit the native 32-byte trigger field. Camp names, awarded points,
+crate instructions, collected rewards and co-op collector names are split
+before serialization instead of being silently truncated.
+
+Player entry at a camp's crate cell claims its Defensive Points and one frozen
+random in-game reward:
 
 - **40%:** 2,500 credits.
 - **30%:** 10 Tier 1 units.
@@ -547,18 +570,23 @@ Squads and special units use the chosen player's installed faction rosters.
 Weights, credit amounts, unit compositions, and counts are configurable.
 Outcomes are seeded independently per camp and saved before launch, so reloads
 or configuration edits cannot reroll a committed reward.
-The results panel distinguishes cleared camps from collected reward crates.
+The results panel shows uncollected crates and each collected reward.
 Plans before version 18 retain their original five guards and pickup-based Defensive Points
-rules. Plans 18–20 retain their original camp formations; the easier starter
-camp applies to new runs only.
+rules. Plans 18–24 retain their original death-based Defensive Points rules,
+camp positions and frozen formations,
+including the smaller infantry-only starter camp in plans 21–22. The relocated
+mixed camp applies to new runs.
 
 Native visual crates remain physically collectible by AI; their ordinary cash
 is disabled. Only player claims trigger the real cash/unit reward, and AI pickup
-does not consume that claim. A player already parked at the center before
-clearance may need to leave and re-enter. Cash uses a passable, invisible,
+does not consume that claim. Cash uses a passable, invisible,
 immune building escrow at an unused start: its one-time transfer pays only the
-player. Unit rewards arrive through player-owned native reinforcement teams at
-the camp. Escrows are not combat units and have no production or recurring income.
+player. Unit rewards arrive at the camp through separate player-owned teams for
+each frozen unit type. Each uses native Action 80 with the explicit camp waypoint,
+replacing the implicit Action 7 mixed-squad delivery that produced partial live
+rewards. The emitted teams preserve the complete configured composition (ten
+Tier 1 units or five Tier 2 units). Escrows are not combat units and have no
+production or recurring income.
 
 ## Persistence, runtime files, and isolation
 
@@ -604,6 +632,16 @@ Schema 9 adds durable co-op run IDs and a local player index on co-op runs;
 guest run snapshots can contain host-owned perks without granting their ownership
 to the guest's permanent profile. Plan 22 freezes the human roster, fills only
 unused friendly seats with helpers, and records each human's setup-score correction.
+Plan 23 freezes the full friendly score roster and each house's transfer
+correction. Its revised layouts reserve a conservative 7x7 deployment/exit
+area around every active MCV. Starting buildings, power plants, friendly army
+staging and the affected enemy arrival apron were moved outside that area;
+launch validation rejects new overlaps.
+Plan 24 relocates the two base-overlapping camps and validates the complete
+40-cell hostile-base exclusion at launch. Plan 25 replaces death-based camp
+clearance with startup crates and pickup-based points. It also uses separate
+per-type reward teams with explicit camp arrival waypoints. Plans through 24
+keep their frozen death-based receipts.
 The former sole offensive-superweapon purchase becomes rank 2, preserving
 that weapon while also granting the new secondary power. New rank-1 purchases
 unlock only the secondary power.
@@ -684,7 +722,42 @@ Boost. Prepared map/spawn output and private rules/AI preload fields matched
 their audited counterparts. Real native-log replay verified result recovery
 and receipt deduplication. These checks do not simulate live movement or combat.
 
-Review camp retaliation/clearance, air targeting and reinforcement behavior
+The feedback fixes passed **144 terrain-audited configurations**: 108 solo
+baseline/helper/maximum variants across every country and difficulty, 24
+three-human baseline/maximum variants, and 12 two-human maximum variants.
+Isolated Mental/x10 launch preparations for USSR and Last Bastion also passed;
+the USSR runtime rules preload contains the actual Drakuv power, provider and
+payload. Replaying a retained native victory log counted 1,196 friendly combat
+kills after transfer/cash exclusions and reached the 100-point kill cap, while
+the original frozen run retained its 35-point local-player bonus. Python
+compilation and whitespace checks passed. No player saves or installed source
+maps were changed. The full launcher self-check still stops at its existing
+RAVA `self_healing_rate` expected-buff mismatch. Native Drakuv delivery, camp
+clearance and the relocated camp balance still require ordinary gameplay.
+
+The camp follow-up passed **96 terrain-audited variants**: 72 solo
+baseline/maximum variants across all countries and difficulties, plus 24
+three-human baseline/maximum variants on Mental. These checks inspect every
+actual guard attachment, AND-tag persistence, separate forced ownership,
+exactly one crate action, complete hostile-base clearance and serialized
+message lengths. Isolated launch preparation also passed with the actual
+Pacific and Euro Alliance run settings, both with Mental AI Boost enabled.
+Existing version-23 saves still normalize unchanged. The installed native
+dispatch was reviewed directly; live combat remains a
+separate gameplay check.
+
+The plan-25 pickup changes passed **48 terrain-audited variants**: 24 solo
+baseline/maximum variants on Normal and 24 three-human baseline/maximum variants
+on Mental, across all twelve countries. These checks verify six independent
+startup crate actions, no startup point receipts or clearance messages, human-only
+pickup and every reward team's complete frozen unit composition and explicit
+arrival waypoint. Isolated launch preparation passed with the saved Pacific and
+Euro Alliance settings, including Mental AI Boost. Version-23/24 saved profiles
+normalize unchanged and were not edited. Python compilation and whitespace
+checks passed. Actual crate pickup and complete native squad arrival still
+require a fresh-match gameplay check.
+
+Review camp Area Guard combat/pickups, air targeting and reinforcement behavior
 during ordinary gameplay. Keep pending manual checks in [TODOS.md](TODOS.md);
 do not open game or launcher windows for routine validation.
 

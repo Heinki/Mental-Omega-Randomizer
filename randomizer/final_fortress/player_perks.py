@@ -22,7 +22,8 @@ def human_actor(plan, actor):
 
 def needs_countries(plan):
     effects = plan['effects']
-    return bool(plan.get('allied_countries') or effects.get('production_percent')
+    return bool(plan.get('plan_version', 1) >= 23 and plan['player_country'] in ('USSR', 'Latin', 'Chinese')
+                or plan.get('allied_countries') or effects.get('production_percent')
                 or effects.get('tier_buffs') or effects.get('defense_percent')
                 or effects.get('defense_veterancy') or effects.get('support_powers')
                 or effects.get('special_access') or effects.get('reinforcements')
@@ -91,7 +92,7 @@ def gate_prerequisite_overrides(writer, plan, rules):
             writer.put(kind, 'PrerequisiteOverride', 'none')
 
 
-def apply_player_types(writer, plan, rules):
+def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     """Isolate playable unit/defense copies from enemy and native country stats.
 
     Percentages describe a linear improvement from installed values, capped by
@@ -106,6 +107,9 @@ def apply_player_types(writer, plan, rules):
     access = set(effects.get('special_access', []))
     special_deliveries = {unit['type'] for unit in (effects.get('reinforcements') or {}).get('units', [])
                           if unit['type'] in SPECIAL_REWARD_UNIT_IDS}
+    native_drakuv = plan['player_country'] in ('USSR', 'Latin', 'Chinese') and private_player
+    if native_drakuv:
+        special_deliveries.add('RAVA')
     rules, special_forms = reviewed_rules(rules, access | special_deliveries)
     friends = coalition(plan) if private_player else []
     for alias, country, _ in friends:
@@ -161,24 +165,27 @@ def apply_player_types(writer, plan, rules):
     delivered.update(effects.get('defense_types', []))
     delivered.update(unit['type'] for unit in effects['starting_defenses'])
     delivered.update(unit['type'] for unit in (effects.get('reinforcements') or {}).get('units', []))
+    if native_drakuv:
+        delivered.add('RAVA')
     aliases = {}
     for original, category in categories.items():
         row = rules.get(original, {})
         defense = category == 'BuildingTypes' and row.get('IsBaseDefense', 'no').lower() == 'yes'
         utilities = utility_updates(original, row, effects, building=category == 'BuildingTypes', defense=defense)
-        if category == 'BuildingTypes' and not defense and not utilities:
+        prison = native_drakuv and original == 'NAPRIS'
+        if category == 'BuildingTypes' and not defense and not utilities and not prison:
             continue
         eligible = [alias for alias, country, _ in friends if _eligible(row, country)]
         if original in delivered or original in special_forms:
             eligible = [alias for alias, _, _ in friends]
         tier = _authored_tech_tier(row)
         percent = effects.get('defense_percent', 0) if defense else effects.get('tier_buffs', {}).get(str(tier), 0)
-        if not eligible or not (percent or utilities or original in special_forms
+        if not eligible or not (percent or utilities or original in special_forms or prison
                                  or (defense and effects.get('defense_veterancy'))):
             continue
         # Include conversion-only counterparts when reachable from a playable
         # source below; they may have TechLevel=-1 and no ownership declaration.
-        aliases[original] = writer.key()
+        aliases[original] = (reserved_aliases or {}).get(original) or writer.key()
 
     # A newly built refinery's FreeUnit must be the same buffed harvester that
     # the factory produces; enemy refineries retain their native free units.

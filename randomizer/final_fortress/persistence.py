@@ -140,7 +140,7 @@ class FinalFortressRepository:
             if price is None:
                 raise ValueError('This permanent perk is already at maximum rank.')
             if state['gems'] < price:
-                raise ValueError(f'Need {price} Defensive Points for rank {rank + 1}; you have {state["gems"]}. Earn Defensive Points by surviving or clearing camps.')
+                raise ValueError(f'Need {price} Defensive Points for rank {rank + 1}; you have {state["gems"]}. Earn Defensive Points by surviving or collecting camp crates.')
             state['gems'] -= price
             state['perk_ranks'][perk_id] = rank + 1
             if perk_id not in state['owned_perks']:

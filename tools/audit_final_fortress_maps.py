@@ -24,7 +24,7 @@ from randomizer.final_fortress.challenges import load_ai_rules, maximum
 from randomizer.final_fortress.config import DIFFICULTY_IDS, load_config
 from randomizer.final_fortress.engine import build_map, spawn_data
 from randomizer.final_fortress.perks import ranks
-from randomizer.final_fortress.player_perks import coalition, human_actor
+from randomizer.final_fortress.player_perks import coalition, human_actor, needs_countries
 from randomizer.final_fortress.planning import build_run_plan
 from randomizer.maps.ini import all_section_value_maps_preserve, parse_action_groups
 from randomizer.ui.cameos import ART_CACHE_PATH, extract_mix_files_sync, installed_rules_registry
@@ -37,6 +37,11 @@ def read_sections(data):
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def resource_overlay_indices(rules):
+    return {int(key) for key, kind in rules.get('OverlayTypes', {}).items()
+            if key.isdigit() and rules.get(kind, {}).get('Tiberium', 'no').lower() in ('yes', 'true')}
 
 
 def footprint(row, art):
@@ -55,6 +60,8 @@ def footprint(row, art):
 
 def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None):
     rows = read_sections(data)
+    resource_overlays = resource_overlay_indices(rules)
+    camp_guard_tags = {value.split(',')[1] for value in rows.get('FFCampTracking', {}).values()}
     effective = deepcopy(rules)
     for section, values in ai.items():
         effective.setdefault(section, {}).update(values)
@@ -78,6 +85,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         require(all(value.casefold() in ids for value in effective[registry].values()),
                 f'Unresolved {registry} definition')
     technos = {unit for registry in registries[:4] for unit in effective[registry].values()}
+    if plan.get('plan_version', 1) >= 23:
+        audit_feedback_fixes(rows, effective, plan, rules, preloads)
     for force in rows.get('TaskForces', {}).values():
         for key, value in effective[force].items():
             if key.isdigit():
@@ -99,6 +108,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         require(count == len(actions), f'Malformed action list: {key}')
         require(len(value.split(',')) == 1 + 8*count, f'Embedded comma or malformed native action fields: {key}')
         for action in actions:
+            if action[0] == '11' and action[2].startswith('NOSTR:'):
+                require(len(action[2].encode('latin-1')) <= 31, 'Native trigger message will be truncated')
             if action[0] in ('4', '5', '7', '80'):
                 require(action[2] in rows['TeamTypes'].values(), f'Unknown action team: {action[2]}')
             if action[0] in ('7', '80'):
@@ -225,9 +236,10 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     for waypoint in starts:
         cell = int(points[str(waypoint)])
         x, y = cell % 1000, cell // 1000
-        for dx in range(-2, 2):
-            for dy in range(-1, 2):
-                require((x + dx, y + dy) not in occupied, f'MCV deployment overlap: waypoint {waypoint}')
+        from randomizer.final_fortress.placement import deployment_cells
+        deployment = (deployment_cells(x, y) if plan.get('plan_version', 1) >= 23 else
+                      {(x + dx, y + dy) for dx in range(-2, 2) for dy in range(-1, 2)})
+        require(not deployment & occupied.keys(), f'MCV deployment overlap: waypoint {waypoint}')
     for category in ('Infantry', 'Units'):
         for key, value in rows.get(category, {}).items():
             if key in source.get(category, {}):
@@ -239,7 +251,10 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                     f'Starting unit overlaps a building at {(x, y)}')
             require(fields[0] == 'Neutral', 'Private starting objects must use native ownership transfers')
             if terrain is not None:
-                require(terrain.clear({(x, y)}), f'Unit outside playable clear terrain at {(x, y)}')
+                tag = fields[8 if category == 'Infantry' else 7]
+                overlays = resource_overlays if tag in camp_guard_tags else ()
+                require(terrain.clear({(x, y)}, allowed_overlays=overlays),
+                        f'Unit outside playable walkable terrain at {(x, y)}')
 
     for actor, _, waypoint in coalition(plan):
         layout = plan['map'].get('perk_layouts', {}).get(str(waypoint))
@@ -589,19 +604,17 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
             p = camp['position']
             count = sum(unit['count'] for unit in camp['guards'])
             cells = {(p['x'], p['y']), *((v['x'], v['y']) for v in guard_positions(camp))}
-            require(terrain.clear(cells), f'Camp guards/crate are inaccessible or outside bounds: {camp["id"]}')
+            require(terrain.clear({(p['x'], p['y'])}), f'Camp crate cell is obstructed: {camp["id"]}')
+            require(terrain.clear(cells, allowed_overlays=resource_overlay_indices(rules)),
+                    f'Camp guards/crate are inaccessible or outside bounds: {camp["id"]}')
             locations.append(terrain.bounds.project(p['x'], p['y'], terrain.heights[(p['x'], p['y'])]))
-            garrison = next(effective[key] for key in rows['TeamTypes'].values()
-                            if effective[key].get('Name') == 'Camp ' + camp['id'] + ' garrison')
-            force = effective[garrison['TaskForce']]
-            kinds = {value.split(',')[1] for key, value in force.items() if key.isdigit()}
-            guards = [value.split(',') for category in ('Infantry', 'Units')
-                      for value in rows.get(category, {}).values() if value.split(',')[1] in kinds]
-            require(len(guards) == count and all(guard[6] == 'Sleep' for guard in guards),
-                    'Camp garrison is missing or can wander before ownership/recruitment')
+            _, tag, _, _ = rows['FFCampTracking'][camp['id']].split(',')
+            guards = [value.split(',') for category, field in (('Infantry', 8), ('Units', 7))
+                      for value in rows.get(category, {}).values() if value.split(',')[field] == tag]
+            require(len(guards) == count and all(guard[6] == 'Area Guard' for guard in guards),
+                    'Camp garrison is missing or has global attack orders')
             require({(int(g[3]),int(g[4])) for g in guards}
                     == {(v['x'],v['y']) for v in guard_positions(camp)}, 'Camp ignores reviewed guard positions')
-            require(garrison['AreTeamMembersRecruitable'] == 'no', 'Normal enemy AI can recruit the camp garrison')
             if not plan.get('coop_players'):
                 claim = next(key for key, value in rows['Triggers'].items()
                              if value.split(',')[2] == 'Camp ' + camp['id'] + ' claim')
@@ -636,14 +649,21 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
                     require(camp['guard_country'] == plan['enemy_countries'][camp['enemy_index']], 'Camp uses foreign faction guards')
                 require(camp['special_unit'] is None or any(u['type']==camp['special_unit'] for u in camp['guards']),
                         'Camp lost its selected special unit')
+                pickup = plan.get('plan_version', 1) >= 25
                 cleared = next(key for key,value in rows['Triggers'].items()
-                               if value.split(',')[2] == 'Camp '+camp['id']+' cleared')
+                               if value.split(',')[2] == 'Camp '+camp['id']+(' ready' if pickup else ' cleared'))
                 clear_actions=parse_action_groups(rows['Actions'][cleared])[1]
                 clear_markers=[effective[a[2]]['Name'] for a in clear_actions if a[0]=='4']
-                require(len(clear_markers)==1 and clear_markers[0].startswith('MFF_'), 'Camp clear has no durable Defensive Points receipt')
-                require(plan['gem_rewards']['camp_clear:'+camp['id']]==camp['gems']
-                        and plan['gem_rewards']['camp:'+camp['id']]==0, 'Camp Defensive Points still require crate collection')
-                require(any(a[0]=='108' for a in clear_actions), 'Cleared camp has no random reward crate')
+                if pickup:
+                    require(not clear_markers and 'camp_clear:'+camp['id'] not in plan['gem_rewards'],
+                            'Camp startup awards points before player pickup')
+                    require(plan['gem_rewards']['camp:'+camp['id']]==camp['gems'],
+                            'Camp pickup does not award its Defensive Points')
+                else:
+                    require(len(clear_markers)==1 and clear_markers[0].startswith('MFF_'), 'Camp clear has no durable Defensive Points receipt')
+                    require(plan['gem_rewards']['camp_clear:'+camp['id']]==camp['gems']
+                            and plan['gem_rewards']['camp:'+camp['id']]==0, 'Camp Defensive Points still require crate collection')
+                require(any(a[0]=='108' for a in clear_actions), 'Camp has no random reward crate')
         if plan.get('plan_version', 1) >= 19:
             families = [SIDE_FAMILIES[SIDE_COUNTRIES.index(camp['guard_country'])] for camp in plan['map']['camps']]
             require(len(set(families[:4])) == 4 and max(families.count(family) for family in set(families)) <= 2,
@@ -1067,6 +1087,140 @@ def audit_wave_clock(rows, effective, plan, preloads):
                 == [_action(54,trigger=clock['Remove']),_action(32)]
             and rows['Tags'][placed[0][6]] == f'2,Wave clock remove,{clock["Remove"]}',
             'Wave countdown remains after the final wave')
+
+
+def audit_pickup_reward(rows, effective, plan, camp, ready):
+    """Inspect each human's actual pickup and complete frozen reward composition."""
+    from collections import Counter
+    from randomizer.final_fortress.engine import _waypoint
+    startup = parse_action_groups(rows['Actions'][ready])[1]
+    require(not any(a[0] in ('4', '7', '80', '11') for a in startup),
+            'Camp startup delivers a reward or announces a false clearance')
+    enabled = {a[2] for a in startup if a[0] == '53'}
+    actors = coalition(plan)[:len(plan.get('coop_players', [])) or 1]
+    expected = Counter({rows.get('FFPlayerTypes', {}).get(unit['type'], unit['type']): unit['count']
+                        for unit in camp['crate_reward']['units']})
+    waypoint = _waypoint(20 + plan['map']['camps'].index(camp))
+    for actor, _, start in actors:
+        name = 'Camp ' + camp['id'] + ' claim' + (' ' + actor if plan.get('coop_players') else '')
+        claim = next(key for key, value in rows['Triggers'].items() if value.split(',')[2] == name)
+        require(claim in enabled and rows['Triggers'][claim].split(',')[3] == '1',
+                'Camp pickup is not enabled exactly by its startup gate')
+        require(f'1,0,{4475 + start}' in rows['Events'][claim], 'Camp pickup accepts an AI collector')
+        actions = parse_action_groups(rows['Actions'][claim])[1]
+        require(any(a[0] == '4' and effective[a[2]]['Name'].startswith('MFF_') for a in actions),
+                'Camp pickup has no durable receipt')
+        require(not any(a[0] in ('7', '108') for a in actions),
+                'Camp pickup uses implicit placement or creates a second crate')
+        delivered = Counter()
+        for action in actions:
+            if action[0] != '80':
+                continue
+            team = effective[action[2]]
+            require(team['House'] == (actor if needs_countries(plan) else plan['player_country']),
+                    'Camp squad belongs to another player')
+            require(action[7] == team['Waypoint'] == waypoint, 'Camp squad has no explicit arrival cell')
+            units = [value.split(',') for key, value in effective[team['TaskForce']].items() if key.isdigit()]
+            require(len(units) == 1, 'Camp reward still relies on a mixed reinforcement team')
+            for count, kind in units:
+                delivered[kind] += int(count)
+        require(delivered == expected, 'Camp squad omits part of its frozen reward')
+
+
+def audit_feedback_fixes(rows, effective, plan, rules, preloads):
+    """Review emitted camp pickups and the actual building-bound Drakuv power."""
+    runtime = {category: list(dict.fromkeys([
+        *rules[category].values(), *preloads['rules'].get(category, {}).values(),
+        *rows.get(category, {}).values()])) for category in ('InfantryTypes', 'VehicleTypes')}
+    from randomizer.final_fortress.engine import _action
+    for camp in plan['map']['camps']:
+        pickup = plan.get('plan_version', 1) >= 25
+        key = next(key for key, value in rows['Triggers'].items()
+                   if value.split(',')[2] == 'Camp ' + camp['id'] + (' ready' if pickup else ' cleared'))
+        clear, tag, transfer, count = rows['FFCampTracking'][camp['id']].split(',')
+        finished = next(index for index, value in rows['VariableNames'].items()
+                        if value == 'Final Fortress finished,0')
+        if pickup:
+            require(clear == key and rows['Events'][clear] == '1,13,0,0',
+                    'Camp crate does not become available at startup')
+            require(rows['Tags'][tag].split(',') == ['2', 'Camp ' + camp['id'] + ' ownership', transfer]
+                    and rows['Events'][transfer] == '1,13,0,0',
+                    'Camp guard ownership still depends on a destruction event')
+            require(rows['Triggers'][clear].split(',')[1] == '<none>',
+                    'Camp startup is attached to guard ownership')
+            stops = [trigger for trigger, actions in rows['Actions'].items()
+                     if _action(54, trigger=transfer) in parse_action_groups(actions)[1]]
+            require(len(stops) == 1 and rows['Events'][stops[0]] == '1,13,0,1',
+                    'Camp ownership keeps transferring guards after startup')
+            audit_pickup_reward(rows, effective, plan, camp, clear)
+        else:
+            require(clear == key and rows['Events'][clear] == f'2,37,0,{finished},48,0,0',
+                'Camp clearance does not observe attached-object destruction')
+            require(rows['Tags'][tag].split(',') == ['1', 'Camp ' + camp['id'] + ' cleared', clear],
+                'Camp reward fires before every guard is destroyed')
+            require(rows['Triggers'][clear].split(',')[1] == transfer
+                and rows['Events'][transfer] == '1,0,0,0',
+                'Camp ownership consumes its destruction tag before combat')
+        require(parse_action_groups(rows['Actions'][transfer])[1]
+                == [_action(14, 4475 + plan['map']['enemy_waypoints'][camp['enemy_index']])],
+                'Camp ownership changes unrelated objects or belongs to another enemy')
+        if not pickup:
+            starts = [trigger for trigger, actions in rows['Actions'].items()
+                      if _action(22, trigger=transfer) in parse_action_groups(actions)[1]]
+            require(len(starts) == 1 and rows['Events'][starts[0]] == '1,13,0,0',
+                'Camp ownership is not forced once independently of its AND destruction tag')
+        guards = [value.split(',') for category, field in (('Infantry', 8), ('Units', 7))
+                  for value in rows.get(category, {}).values() if value.split(',')[field] == tag]
+        require(len(guards) == int(count) == sum(unit['count'] for unit in camp['guards']),
+                'Camp destruction tag omits guards or includes unrelated attachments')
+        aliases = {guard[1] for guard in guards}
+        for force in rows.get('TaskForces', {}).values():
+            require(not any(key.isdigit() and value.split(',')[1] in aliases
+                            for key, value in effective[force].items()),
+                    'Team recruitment can strip a camp guard destruction tag')
+        for alias in aliases:
+            require(alias in preloads['rules'], 'Camp guard definition is not loaded before houses')
+            category = next(category for category, kinds in runtime.items() if alias in kinds)
+            require(runtime[category].index(alias) < 512, 'Camp guard exceeds native ownership counter capacity')
+            require(effective[alias]['DontScore'] == 'no', 'Camp guard no longer awards combat score')
+            require(effective[alias]['DefaultToGuardArea'] == 'yes'
+                    and effective[alias]['GuardRange'] == '6', 'Camp guards can pursue a global attack')
+            require(all(effective[alias].get(field, 'none').lower() == 'none'
+                        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water')),
+                    'Camp conversion can replace a tagged guard without a death')
+        clear_actions = parse_action_groups(rows['Actions'][clear])[1]
+        require(clear_actions[0] == _action(54, trigger=clear), 'Camp clearance can repeat its reward')
+        require(sum(action[0] == '108' for action in clear_actions) == 1,
+                'Camp clearance does not create exactly one crate')
+        if plan.get('plan_version', 1) >= 24:
+            from randomizer.final_fortress.camps import guard_positions
+            for point in [camp['position'], *guard_positions(camp)]:
+                for waypoint in plan['map']['enemy_waypoints']:
+                    cell = int(rows['Waypoints'][str(waypoint)])
+                    require(max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) >= 40,
+                            'Camp lies inside a protected enemy base')
+        friends = [plan['map']['player_waypoint'], *plan.get('allied_waypoints', [])]
+        if camp['id'] == 'north_east_camp':
+            from randomizer.final_fortress.camps import guard_positions
+            for point in guard_positions(camp):
+                for waypoint in friends:
+                    cell = int(rows['Waypoints'][str(waypoint)])
+                    require(max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) >= 32,
+                            'Western approach camp intrudes on a friendly start')
+    drakuv = rows.get('FFDrakuvPower')
+    if drakuv:
+        power, provider, payload = (drakuv[field] for field in ('Power', 'Provider', 'Payload'))
+        require(all(kind in preloads['rules'] for kind in (power, provider, payload)),
+                'Drakuv power/provider/payload is not loaded before the scenario')
+        require(effective[provider]['SuperWeapon2'] == power and effective[power]['Deliver.Types'] == payload,
+                'Field Bureau bypasses its reviewed Drakuv delivery')
+        require(effective[payload]['Image'] == 'RAVA' and effective[payload]['Trainable'] == 'yes'
+                and effective[payload]['BuildTimeMultiplier'] == '1', 'Unsafe Drakuv payload template')
+        require(runtime['VehicleTypes'].index(payload) < 512, 'Drakuv payload exceeds native counter capacity')
+        require(provider in effective[power]['SW.Designators'].split(','), 'Private Field Bureau cannot target Drakuv')
+        require(effective[power]['RechargeTime'] == rules['DrakuvSpecial']['RechargeTime']
+                and effective[power]['Money.Amount'] == rules['DrakuvSpecial']['Money.Amount'],
+                'Building-bound Drakuv lost native recharge or price')
 
 
 def main():

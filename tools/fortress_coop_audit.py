@@ -120,7 +120,7 @@ def audit_camp_claims(rows, effective, plan):
             chain.append(trigger)
             trigger = rows['Triggers'][trigger].split(',')[1]
         require(len(chain) == human_count, 'One camp pickup cell does not cover every human')
-        clear = names['Camp ' + camp['id'] + ' cleared']
+        clear = names['Camp ' + camp['id'] + (' ready' if plan.get('plan_version', 1) >= 25 else ' cleared')]
         enabled = {action[2] for action in parse_action_groups(rows['Actions'][clear])[1] if action[0] == '53'}
         require(enabled == set(chain), 'Camp clearance does not enable every human pickup')
         shared = set()
@@ -133,7 +133,7 @@ def audit_camp_claims(rows, effective, plan):
             require(actions[0][0] == '56' and f'37,0,{actions[0][2]}' in rows['Events'][claim],
                     'Camp pickup can be claimed repeatedly or by two players')
             for action in actions:
-                if action[0] == '7':
+                if action[0] in ('7', '80'):
                     require(effective[action[2]]['House'] == actor, 'Camp squad went to another player')
             require(plan['gem_rewards'][f'camp_pick:{slot}:{camp["id"]}'] == 0,
                     'Camp crate pickup duplicates shared Defensive Points')

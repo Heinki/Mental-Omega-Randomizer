@@ -277,7 +277,8 @@ class FinalFortressController(FortressCoopController):
             'the host selects the human count, faction, difficulty and enabled perks. '
             'All teammates share those perks. Two humans leave at most one perk-enabled AI helper; '
             'three humans leave none. Every human earns their own Defensive Points and buys '
-            'their own permanent perks. Any human can collect a cleared camp’s single reward crate.',
+            'their own permanent perks. Camp crates are present from the start. Any human can collect '
+            'one; collection awards Defensive Points to everyone and the cash or units to its collector.',
             'Defend Einstein’s Lab beside your starting MCV for '
             f'{settings["survival_seconds"] / 60:g} in-game minutes against three enemy AIs.',
             f'Additional waves start after {settings["wave_interval_seconds"] / 60:g} minutes '
@@ -399,7 +400,7 @@ class FinalFortressController(FortressCoopController):
                 for entry in config['crate_rewards']) + '.')
         performance = config.get('performance')
         if performance:
-            rules.append(f'Native local-player combat kill statistics award '
+            rules.append(f'Combined player and allied combat kills award '
                          f'{performance["gems_per_tier"]} Defensive Points per {performance["units_per_tier"]} kills, '
                          f'capped at {performance["gems_per_tier"] * performance["max_tiers"]}, '
                          'after a verified victory or defeat. Setup ownership transfers are excluded. '

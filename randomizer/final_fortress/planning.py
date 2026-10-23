@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 22
+PLAN_VERSION = 25
 
 
 def configuration_digest(config):
@@ -137,9 +137,10 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
     if plan_version >= 18:
         from .camps import resolve_camps
         resolve_camps(plan, config)
-        for camp in plan['map']['camps']:
-            rewards['camp_clear:' + camp['id']] = rewards['camp:' + camp['id']]
-            rewards['camp:' + camp['id']] = 0
+        if plan_version < 25:
+            for camp in plan['map']['camps']:
+                rewards['camp_clear:' + camp['id']] = rewards['camp:' + camp['id']]
+                rewards['camp:' + camp['id']] = 0
     if plan_version >= 3:
         plan.update(wave_pressure=deepcopy(config.get('wave_pressure')),
                     wave_interval_seconds=settings['wave_interval_seconds'])
@@ -210,4 +211,25 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                            + int(not powers) - host_proxy)
         plan['coop_initial_transfer_kills'] = [plan['initial_transfer_kills'],
                                               *[guest_transfers] * (len(coop_players) - 1)]
+    if plan_version >= 23:
+        from .player_perks import coalition
+        # Native score records identify computer houses by remap scheme, not
+        # their repeated "Computer" name. These are the fixed friendly colors
+        # used by both solo and co-op spawners (0, 4 and 5).
+        humans = len(coop_players) or 1
+        grants = (sum(unit['count'] for unit in effects['starting_units'])
+                  + sum(unit['count'] for unit in effects['starting_defenses'])
+                  + len(effects.get('starting_buildings', []))
+                  + len(effects.get('defense_types', []))
+                  + sum(unit['count'] for unit in effects.get('starting_harvesters', []))
+                  + len(effects.get('starting_power_buildings', [])))
+        powers = effects.get('support_powers', [])
+        helper_transfers = grants + (len(powers) or int(bool(coop_players or effects['starting_credits'])))
+        plan['coalition_scores'] = [
+            {'actor': actor, 'scheme': (1, 11, 13)[index],
+             'name': (coop_players[index] if coop_players else 'Commander') if index < humans else None,
+             'initial_transfers': (plan['coop_initial_transfer_kills'][index] if coop_players
+                                   else plan['initial_transfer_kills']) if index < humans else helper_transfers,
+             'camp_slot': index if coop_players and index < humans else None}
+            for index, (actor, _, _) in enumerate(coalition(plan))]
     return plan

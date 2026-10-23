@@ -1332,3 +1332,54 @@ registered in the installed global rules. Portable templates and generation
 policy now use installed `brute` armor; mandatory runtime overrides repair old
 editable roster files preserved across upgrades. Authored Time Capsule native
 unit and armor definitions stay unchanged.
+
+
+## Fortress camp attachment tracking and trigger text (plans through 24)
+
+A cleared visual area did not reliably satisfy the old global Event 61 checks:
+retaliation teams could send surviving guards elsewhere, and native ownership
+counters were an unnecessary dependency. Plan 24 used one shared
+Event 48 tag with persistence 1 (AND one time), attached only to its preplaced
+guards. No TeamType recruits those copies, and conversions/abduction/theft
+cannot replace their tags. Area Guard keeps the formation local.
+
+The installed `gamemd.exe` confirms the relevant native behavior without
+opening a game window. `TagClass::RaiseEvent` at `0x6E53A0` branches on tag
+persistence; its persistence-1 branch at `0x6E5442` executes actions only when
+`InstanceCount == 1`, detaching earlier triggering objects. Persistence 2
+would execute on the first death and is incorrect for a complete camp clear.
+Do not put an automatic ownership event on that AND destruction tag.
+
+Action 22's dispatch at `0x6DF0E7` directly calls `TriggerClass::Execute` and
+bypasses tag springing. Action 14 at `0x6E0AA0` scans live objects and transfers
+those whose tag contains its triggering linked trigger. Each camp therefore
+links a No Event ownership trigger to the destruction tag, then forces that
+ownership trigger once from an independent elapsed-time trigger. This preserves
+all guard attachments while assigning their skirmish start-location owner.
+
+The native trigger text field truncates long NOSTR literals. Generated message
+actions now reserve six bytes for `NOSTR:` and one terminator byte, wrapping
+visible text to 25 characters per action. The existing map audit checks every
+literal's serialized length, all guard attachments, tag persistence, independent
+ownership dispatch, absence of recruiting teams, single crate action and the
+new 40-cell hostile-base exclusion. Guard cells may contain walkable resource
+overlays; crate and building cells still require empty overlays.
+
+## Fortress pickup rewards (plan 25)
+
+Live feedback still showed premature camp-clear messages at startup and missing
+Central/East reward crates with the attached destruction tags. The user approved
+simplifying camps: all six crates are created at startup, with their guards
+around them, and collection determines both Defensive Points and the in-game
+reward. New plans omit `camp_clear:` receipts entirely and pay `camp:` on human
+entry. Readiness has an independent elapsed-time trigger; guard tags only assign
+enemy ownership. Startup has no point receipts or clearance messages. Existing
+frozen plans keep their original scoring contract.
+
+The reported ten-unit reward produced only two Archons. Its generated TaskForce
+contained all ten configured units but still used implicit Action 7 and a mixed
+infantry/vehicle team. New pickup rewards use a separate TaskForce per unit type
+and explicit Action 80 at the camp waypoint. The existing map audit now compares
+every emitted delivery count/type against the frozen reward for each possible
+human collector. Native placement and collection still require ordinary gameplay
+verification; static audits cannot establish that units actually arrived.

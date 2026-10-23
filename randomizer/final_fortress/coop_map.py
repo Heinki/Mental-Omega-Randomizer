@@ -42,10 +42,12 @@ def escrow_cell(writer, plan, rules, spare_cell):
 
 
 def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
-                marker_teams, finished, guard_aliases, player_aliases):
-    from .engine import _action, _cash_reward, _waypoint
+                marker_teams, finished, clear, player_aliases):
+    from .engine import _action, _cash_reward, _camp_squad, _waypoint
+    from .messages import camp_clear_actions, message_actions
 
     reward = camp.get('crate_reward', {})
+    pickup = plan.get('plan_version', 1) >= 25
     claimed = writer.flag('Camp ' + camp['id'] + ' reward claimed')
     claims = []
     linked = '<none>'
@@ -53,20 +55,16 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
         actions = [_action(56, claimed),
                    _action(4, team=marker_teams['camp:' + camp['id']]),
                    _action(4, team=marker_teams[f'camp_pick:{slot}:{camp["id"]}']),
-                   ['11', '4', 'NOSTR:Camp reward for ' + plan['coop_players'][slot] + ': '
-                    + reward.get('display_name', 'Collected').replace(',', ''),
-                    '0', '0', '0', '0', 'A']]
+                   *message_actions('Reward for ' + plan['coop_players'][slot]),
+                   *message_actions('Reward: ' + reward.get('display_name', 'Collected'))]
+        if pickup:
+            actions.extend(message_actions(f'+{camp["gems"]} Defensive Points'))
         if reward.get('credits'):
             selector = writer.flag(f'Camp {camp["id"]} collector {slot}')
             _cash_reward(writer, plan, rules, camp, selector, index, waypoint=start)
             actions.insert(1, _action(56, selector))
         if reward.get('units'):
-            team = writer.team(f'Player camp reward {camp["id"]} {actor}',
-                               [{'type': player_aliases.get(unit['type'], unit['type']),
-                                 'count': unit['count']} for unit in reward['units']],
-                               start, attack=False, owner=actor)
-            writer.put(team, 'Waypoint', _waypoint(waypoint))
-            actions.append(_action(7, team=team))
+            actions.extend(_camp_squad(writer, plan, camp, waypoint, start, actor, player_aliases))
         trigger, tag = writer.trigger(f'Camp {camp["id"]} claim {actor}',
             [(1, 0, 4475 + start), (36, 0, cleared), (37, 0, finished), (37, 0, claimed)],
             actions, disabled=True)
@@ -76,12 +74,11 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
         claims.append(trigger)
     position = camp['position']
     writer.put('CellTags', position['y'] * 1000 + position['x'], tag)
-    actions = [_action(56, cleared), _action(108, 0, waypoint=_waypoint(waypoint)),
-               *[_action(53, trigger=trigger) for trigger in claims],
-               _action(4, team=marker_teams['camp_clear:' + camp['id']]),
-               ['11', '4', f'NOSTR:{camp["display_name"].replace(",", "")} cleared: '
-                f'{camp["gems"]} Defensive Points for every player. Collect its reward crate.',
-                '0', '0', '0', '0', 'A']]
-    writer.trigger('Camp ' + camp['id'] + ' cleared',
-                   [(13, 0, 2), (37, 0, finished),
-                    *((61, 2, 0, alias) for alias in guard_aliases.values())], actions)
+    actions = [_action(54, trigger=clear), _action(56, cleared),
+               _action(108, 0, waypoint=_waypoint(waypoint)),
+               *[_action(53, trigger=trigger) for trigger in claims]]
+    if not pickup:
+        actions.extend([_action(4, team=marker_teams['camp_clear:' + camp['id']]),
+                        *camp_clear_actions(camp, coop=True)])
+    writer.put('Actions', clear, str(len(actions)) + ',' + ','.join(
+        token for action in actions for token in action))
