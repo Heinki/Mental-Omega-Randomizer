@@ -4,7 +4,7 @@ from .player_perks import coalition, human_actor
 from .wave_pool import _batches
 
 
-def apply_friendly_pool(writer, plan, rules, overrides, finished):
+def apply_friendly_pool(writer, plan, rules, overrides, finished, *, friendly_clocks=None):
     from .engine import _action, _waypoint
     from .messages import message_actions
 
@@ -69,11 +69,18 @@ def apply_friendly_pool(writer, plan, rules, overrides, finished):
                 writer.put('Actions', relays[n], str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
                 for gate, busy, team in alternatives:
                     actions = [*[_action(54, trigger=other) for other, _, _ in alternatives],
-                               _action(56, busy), _action(7, team=team), _action(53, trigger=relays[n + 1])]
+                               _action(56, busy), writer.reinforce(team), _action(53, trigger=relays[n + 1])]
                     writer.put('Actions', gate, str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
             actions = [_action(54, trigger=warning)] if warning else []
+            if plan.get('plan_version', 1) >= 29 and human_actor(plan, owner):
+                count = sum(unit['count'] for unit in group['units'])
+                level = ('Rookie', 'Veteran', 'Elite')[effect.get('veterancy', 0)]
+                actions.extend(message_actions(f'Player {actor_index + 1}: +{count} units'))
+                actions.extend(message_actions(f'{level} reinforcements ready'))
             if index + 1 < len(timers):
                 actions.append(_action(53, trigger=timers[index + 1]))
+            if friendly_clocks and owner in friendly_clocks:
+                actions.append(_action(56, friendly_clocks[owner][0 if index + 1 < len(timers) else 1]))
             if not actions:
                 # An event-guarded no-op keeps the native action list valid.
                 actions = [_action(54, trigger=relays[-1])]

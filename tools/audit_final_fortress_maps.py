@@ -1,4 +1,4 @@
-"""Audit configurations of the single Fortress map without launching a game.
+"""Audit configurations of a selected Fortress map without launching a game.
 
 Produces reviewable map variants, spawn files and a manifest for every native country
 and difficulty. Baseline, helper-only and maximum-perk/Challenge loadouts cover
@@ -23,6 +23,7 @@ from randomizer.core.paths import GAME_ROOT
 from randomizer.final_fortress.challenges import load_ai_rules, maximum
 from randomizer.final_fortress.config import DIFFICULTY_IDS, load_config
 from randomizer.final_fortress.engine import build_map, spawn_data
+from randomizer.final_fortress.maps import select_map, source_lines
 from randomizer.final_fortress.perks import ranks
 from randomizer.final_fortress.player_perks import coalition, human_actor, needs_countries
 from randomizer.final_fortress.planning import build_run_plan
@@ -140,6 +141,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain)
     audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain)
     audit_wave_clock(rows, effective, plan, preloads)
+    audit_allied_clocks(rows, effective, plan, preloads)
     audit_lab_support(rows, effective, plan, rules, preloads, terrain)
 
     # Every purchased support unlock must be registered and granted to each
@@ -149,8 +151,10 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     blueprints = ({entry['superweapon']: entry for entry in power_rewards(plan, rules)}
                   if plan.get('plan_version', 1) >= 9 else {})
     if plan['effects'].get('power_upgrade_stacks') and not powers:
-        clock = rows.get('FFWaveClock', {}).get('Power')
-        require({k:v for k,v in rows.get('SuperWeaponTypes', {}).items() if v != clock}
+        clocks = {rows.get('FFWaveClock', {}).get('Power'),
+                  rows.get('FFLabSupport', {}).get('ShieldPower'),
+                  *[rows[section]['Power'] for section in rows.get('FFAlliedClocks', {}).values()]}
+        require({k:v for k,v in rows.get('SuperWeaponTypes', {}).items() if v not in clocks}
                 == source.get('SuperWeaponTypes', {}),
                 'Power upgrades granted an unpurchased power')
     registered_powers = list(dict.fromkeys(effective['SuperWeaponTypes'].values()))
@@ -174,6 +178,9 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             native = {**rules[original], **blueprint.get('superweapon_rules', {})}
             require(action[0] == '34', f'Non-repeatable support power grant for {actor}')
             power = effective[registered_powers[int(action[2])]]
+            if plan.get('plan_version', 1) >= 31:
+                require(power.get('EVA.Detected') == power.get('Message.Detected') == 'none',
+                        'Hidden friendly provider announces a newly discovered superweapon building')
             require(power['Name'] == 'Fortress ' + rules[original].get('Name', original),
                     f'Wrong cloned support unlock for {actor}: {original}')
             for field in ('Type', 'UIName', 'RechargeTime', 'Money.Amount', 'SidebarPCX'):
@@ -197,7 +204,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 require(power.get('SW.RequiredHouses') == actor, f'Power escapes friendly house: {original}')
                 require(power.get('SW.AllowAI') == ('no' if human_actor(plan, actor) else 'yes'),
                         f'Wrong helper power access for {actor}')
-                require(any(effective[value.split(',')[1]].get('SuperWeapon')
+                require(any(effective.get(value.split(',')[1], {}).get('SuperWeapon')
                             == registered_powers[int(action[2])]
                             for value in rows['Structures'].values()),
                         f'Power has no owned launch provider: {original}')
@@ -219,7 +226,10 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     for key, value in rows.get('Structures', {}).items():
         fields = value.split(',')
         original = fields[1]
-        row = dict(effective[original])
+        require(original in effective or key in native_structures, f'Unknown added structure: {original}')
+        # Some shipped scenery IDs are absent from the extracted rules. Keep
+        # source objects and use their art foundations where available.
+        row = dict(effective.get(original, {}))
         row.setdefault('Image', original)
         x, y = map(int, fields[3:5])
         cells = {(x + dx, y + dy) for dx, dy in footprint(row, art)}
@@ -296,6 +306,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                               + (len(powers) if plan.get('plan_version', 1) >= 9 else int(bool(powers))))
         if rows.get('FFWaveClock'):
             required_transfers += 1
+        if rows.get('FFAlliedClocks'):
+            required_transfers += 1
         if plan.get('coop_players') and plan['effects'].get('reveal_map') and not powers:
             required_transfers += 1
         require(plan['initial_transfer_kills'] == required_transfers, 'Starting power transfers counted as combat kills')
@@ -353,7 +365,7 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         prefix = f'Friendly arrival {index}'
         spawn = triggers[prefix + ' spawn']
         _, actions = parse_action_groups(rows['Actions'][spawn])
-        teams = [effective[action[2]] for action in actions if action[0] == '7']
+        teams = [effective[action[2]] for action in actions if action[0] == '80']
         require(len(teams) == len(coalition(plan)), 'Reinforcement arrival lost a friendly house')
         count = 0
         identities = set()
@@ -483,6 +495,9 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
             owner, original = rows['FFEnemyPowers'][alias].split(',')
             require(owner == actor and original in expected_powers[actor], 'Enemy faction received another power')
             power = effective[alias]
+            if plan.get('plan_version', 1) >= 31:
+                require(power.get('EVA.Detected') == power.get('Message.Detected') == 'none',
+                        'Hidden hostile provider announces a newly discovered superweapon building')
             require(alias in preloads['rules'], 'Enemy power not preloaded')
             require(power['SW.RequiredHouses'] == actor and power['SW.AllowPlayer'] == 'no'
                     and power['SW.AllowAI'] == 'yes', 'Enemy power leaked to human/helper')
@@ -497,7 +512,7 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
             for field in ('Deliver.Types', 'ParaDrop.Types', 'DropPod.Types'):
                 for kind in power.get(field, '').split(','):
                     require(not kind or kind in effective, f'Unresolved enemy payload: {kind}')
-            require(any(effective[value.split(',')[1]].get('SuperWeapon') == alias
+            require(any(effective.get(value.split(',')[1], {}).get('SuperWeapon') == alias
                         for value in rows['Structures'].values()), 'Enemy power has no real launch provider')
     require(len(rows.get('FFEnemyPowers', {})) == sum(map(len, expected_powers.values())),
             'Unexpected hostile power without a selected Challenge')
@@ -516,6 +531,10 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
                 teams = [effective[key] for key in rows['TeamTypes'].values()
                          if effective[key].get('Name', '').startswith(name + ' batch ')
                          and effective[key]['Name'].endswith(' slot ' + first_slot)]
+                if plan.get('wave_priorities'):
+                    early = {value.split(',')[1] for value in rows['FFWaveDispatches'].values()
+                             if value.split(',')[-1] in ('early', 'fixed')}
+                    teams = [effective[key] for key in early if effective[key] in teams]
             else:
                 teams = [effective[key] for key in rows['TeamTypes'].values() if effective[key].get('Name') == name]
             require(teams and all(t['VeteranLevel'] == '2' for t in teams), 'Powerhouse team is not veteran')
@@ -537,12 +556,19 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
     from randomizer.final_fortress.enemy_bases import IMMUTABLE
     from randomizer.final_fortress.player_perks import _eligible
     enemies = {f'FFENEMY{i + 1}' for i in range(3)}
+    starting_only = plan.get('plan_version', 1) >= 30
+    protected_yards = set(rows.get('FFEnemyStartingYards', {}).values())
+    damage_fields = (*IMMUTABLE, 'LegalTarget', 'ThreatPosed', 'SpecialThreatValue')
     for original, alias in rows.get('FFEnemyBuildings', {}).items():
         require(alias in preloads['rules'], f'Enemy building missing early preload: {original}')
-        require(all(effective[alias].get(key) == value for key, value in IMMUTABLE.items()),
-                f'Enemy building can be destroyed/captured: {original}')
-        if plan.get('plan_version', 1) >= 16:
-            require(effective[alias].get('LegalTarget') == 'no', 'Immortal building can absorb helper attacks')
+        if starting_only:
+            require(all(effective[alias].get(key) == rules[original].get(key) for key in damage_fields),
+                    f'Ordinary enemy construction gained immunity or lost normal targeting: {original}')
+        else:
+            require(all(effective[alias].get(key) == value for key, value in IMMUTABLE.items()),
+                    f'Enemy building can be destroyed/captured: {original}')
+            if plan.get('plan_version', 1) >= 16:
+                require(effective[alias].get('LegalTarget') == 'no', 'Immortal building can absorb helper attacks')
         require(set(effective[alias]['RequiredHouses'].split(',')) <= enemies,
                 f'Protected enemy building leaked to player: {original}')
         require(effective[original].get('Immune') == rules[original].get('Immune'),
@@ -553,27 +579,58 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
                         f'AI cannot request protected {original} through {field}')
     for original, alias in rows.get('FFEnemyBaseUnits', {}).items():
         yard = rules.get(rules[original].get('DeploysInto'), {})
-        if yard.get('ConstructionYard', 'no').lower() != 'yes':
-            require(effective[alias].get('Immune') == rules[original].get('Immune'),
-                    f'Ordinary enemy docking/deploying unit became immortal: {original}')
+        if starting_only or yard.get('ConstructionYard', 'no').lower() != 'yes':
+            require(all(effective[alias].get(key) == rules[original].get(key) for key in damage_fields),
+                    f'Ordinary enemy docking/deploying unit gained immunity or lost targeting: {original}')
+        if starting_only:
+            require(effective[alias].get('DeploysInto') not in protected_yards,
+                    'Produced enemy MCV can deploy into a protected starting yard')
     for actor, country in zip(sorted(enemies), plan['enemy_countries']):
         require(effective[actor].get('StartInMultiplayer.WithConst') == 'yes',
                 'Enemy does not start with a protected construction yard')
         starting_yard = next(kind for kind in effective['AI']['BuildConst'].split(',')
                              if _eligible(effective[kind], actor))
-        require(starting_yard in rows['FFEnemyBuildings'].values() and effective[starting_yard]['Immune'] == 'yes',
+        require(starting_yard in (protected_yards if starting_only else rows['FFEnemyBuildings'].values())
+                and effective[starting_yard]['Immune'] == 'yes',
                 'Enemy construction-yard start can select a destructible native yard')
         native = next(kind for kind in rules['VehicleTypes'].values() if _eligible(rules[kind], country)
                       and rules.get(rules[kind].get('DeploysInto'), {}).get('ConstructionYard', 'no').lower() == 'yes')
         alias = rows['FFEnemyBaseUnits'][native]
-        require(effective[alias]['Immune'] == 'yes' and actor in effective[alias]['RequiredHouses'].split(','),
-                'Enemy MCV is destructible or belongs to the wrong country')
+        require(actor in effective[alias]['RequiredHouses'].split(','), 'Enemy MCV belongs to the wrong country')
+        if starting_only:
+            require(effective[alias].get('Immune', 'no').lower() == 'no'
+                    and effective[alias].get('LegalTarget', 'yes').lower() == 'yes',
+                    'Produced enemy MCV is invincible or cannot be targeted')
+        else:
+            require(effective[alias]['Immune'] == 'yes', 'Legacy enemy MCV lost its frozen immunity')
         yard = effective[alias]['DeploysInto']
-        require(effective[yard]['Immune'] == 'yes' and yard in rows['FFEnemyBuildings'].values(),
-                'Enemy MCV deploys into a destructible yard')
+        require(yard in rows['FFEnemyBuildings'].values(), 'Enemy MCV lost its own expansion yard')
+        if starting_only:
+            require(yard not in protected_yards and effective[yard].get('Immune', 'no').lower() == 'no'
+                    and effective[yard].get('LegalTarget', 'yes').lower() == 'yes',
+                    'Produced enemy MCV deploys into an invincible or untargetable expansion yard')
+        else:
+            require(effective[yard]['Immune'] == 'yes', 'Legacy enemy MCV lost its frozen yard immunity')
         for power in effective[actor].get('AI.PowerPlants', '').split(','):
             if power:
                 require(power in rows['FFEnemyBuildings'].values(), 'Enemy AI requests a native unprotected power plant')
+    if starting_only:
+        require(protected_yards and not protected_yards & set(rows['FFEnemyBuildings'].values()),
+                'Starting yards share identities with ordinary produced yards')
+        require('FFEnemyStartingYards' not in preloads['rules'], 'Starting-yard audit metadata leaked into rules')
+        for alias in protected_yards:
+            row = effective[alias]
+            require(alias in preloads['rules'] and all(row.get(key) == value for key, value in IMMUTABLE.items())
+                    and row['LegalTarget'] == 'no' and row['TechLevel'] == '-1' and row['BuildLimit'] == '1'
+                    and row['AIBuildThis'] == 'no'
+                    and row['UndeploysInto'].lower() == 'none',
+                    'Protected starting yard can be produced, packed up, targeted or destroyed')
+        for original, yard in rows['FFEnemyStartingYards'].items():
+            for kind, alias in rows['FFEnemyBuildings'].items():
+                if original in rules[kind].get('Prerequisite', '').split(','):
+                    require(any(yard in value.split(',') for field, value in effective[alias].items()
+                                if field == 'Prerequisite' or field.startswith('Prerequisite.List')),
+                            f'Protected starting yard cannot unlock normal construction: {kind}')
     fortifications = set(rows.get('FFEnemyFortifications', {}).values())
     placed = [value for value in rows['Structures'].values() if value.split(',')[1] in fortifications]
     expected = sum(len(values) for values in plan['map']['enemy_defenses']['layouts'].values())
@@ -669,10 +726,24 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
             families = [SIDE_FAMILIES[SIDE_COUNTRIES.index(camp['guard_country'])] for camp in plan['map']['camps']]
             require(len(set(families[:4])) == 4 and max(families.count(family) for family in set(families)) <= 2,
                     'Camp roster selection omits or overrepresents a faction')
-        require(len(locations) == 6 and max(x for x, y in locations) - min(x for x, y in locations)
-                > .65 * terrain.bounds.width_local
-                and max(y for x, y in locations) - min(y for x, y in locations) > .6 * terrain.bounds.height_local,
-                'Camps do not span the playable map')
+        anchor = plan['map'].get('camps_below_waypoint')
+        if anchor is not None:
+            cell = int(rows['Waypoints'][str(anchor)])
+            x, y = cell % 1000, cell // 1000
+            u, v = terrain.bounds.project(x, y, terrain.heights[(x, y)])
+            require(len(locations) == 6 and all(cy > v and abs(cx - u) < terrain.bounds.width_local / 4
+                                                for cx, cy in locations),
+                    'Camps are not below the configured reference start')
+        elif plan['map'].get('camp_minimum_spacing'):
+            require(len(locations) == 6
+                    and max(x for x, y in locations) - min(x for x, y in locations) > .6 * terrain.bounds.width_local
+                    and max(y for x, y in locations) - min(y for x, y in locations) > .3 * terrain.bounds.height_local,
+                    'Southern camps are not spread across the playable approaches')
+        else:
+            require(len(locations) == 6 and max(x for x, y in locations) - min(x for x, y in locations)
+                    > .65 * terrain.bounds.width_local
+                    and max(y for x, y in locations) - min(y for x, y in locations) > .6 * terrain.bounds.height_local,
+                    'Camps do not span the playable map')
 
 
 def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
@@ -687,7 +758,7 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
             layout = plan['map']['perk_layouts'][str(waypoint)]
             require(all(hypot(p['x'] - center[0], p['y'] - center[1]) >= 20
                         for p in layout['defenses']), f'Defense still occupies the central base: {actor}')
-            if actor == 'FFPLAYER':
+            if actor == 'FFPLAYER' and plan['map']['id'] == 'miners_in_the_sun':
                 require(all(p['x'] >= center[0] + 16 and center[1] - 10 <= p['y'] <= center[1] + 34
                             for p in layout['defenses']), 'Human defenses left the marked outer approach arc')
     for registry in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes'):
@@ -847,15 +918,18 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
                 'Wave slot releases only once')
     by_chunk = defaultdict(list)
     for gate, value in rows['FFWaveDispatches'].items():
-        slot, team, chunk, following = value.split(',')
-        by_chunk[chunk].append((gate, slot, team, following))
+        slot, team, chunk, following, *phase = value.split(',')
+        by_chunk[chunk].append((gate, slot, team, following, phase[0] if phase else 'early'))
     actual = defaultdict(Counter)
     for chunk, deliveries in by_chunk.items():
         wave, house, count = rows['FFWaveChunks'][chunk].split(',')
-        expected_units = None
-        for gate, slot, team, following in deliveries:
+        expected_units = {}
+        for gate, slot, team, following, phase in deliveries:
             owner, capacity, busy, _ = pools[slot].split(',')
-            require(rows['Events'][gate] == f'2,37,0,{busy},37,0,{finished}', 'Dispatch ignores occupancy or run end')
+            event = f'2,37,0,{busy},37,0,{finished}'
+            if plan.get('wave_priorities') and phase != 'fixed':
+                event = f'3,37,0,{busy},37,0,{finished},{36 if phase == "late" else 37},0,{rows["FFWavePriority"]["Late"]}'
+            require(rows['Events'][gate] == event, 'Dispatch ignores occupancy, elapsed priority phase or run end')
             require(rows['Triggers'][gate].split(',')[3] == '1', 'Future wave delivery starts early')
             actions = parse_action_groups(rows['Actions'][gate])[1]
             expected = [_action(54, trigger=other[0]) for other in deliveries]
@@ -880,14 +954,57 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
                 require(not (any(rules[kind].get('MovementZone') == 'Fly' for kind in units)
                              and any(rules[kind].get('MovementZone') != 'Fly' for kind in units)),
                         'Flying and ground deliveries share a movement team')
-            if expected_units is None:
-                expected_units = units
-            require(units == expected_units, 'Available slot changes the wave roster')
-        actual[(int(wave), house)].update(expected_units)
+            if phase not in expected_units:
+                expected_units[phase] = units
+            require(units == expected_units[phase], 'Available slot changes the wave roster')
+        actual[(int(wave), house)].update(expected_units['early' if 'early' in expected_units else 'fixed'])
+        if plan.get('wave_priorities'):
+            from randomizer.final_fortress.wave_priority import priority
+            policy = plan['wave_priorities']
+            if plan['wave_schedule'][int(wave) - 1]['seconds'] >= policy['late_seconds']:
+                require(set(expected_units) == {'fixed'}, 'Already-late delivery has redundant phase copies')
+            else:
+                require(set(expected_units) == {'early', 'late'}, 'Queued delivery has no elapsed-time upgrade path')
+            if 'late' in expected_units and int(count) >= 10:
+                # Late replacements must favor advanced/special units even
+                # when the queue is still delivering the opening wave.
+                require(sum(n for kind, n in expected_units['late'].items() if priority(kind, policy)) >= int(count) // 2,
+                        'Capacity-delayed delivery is still dominated by low-tier units')
+    if plan.get('wave_priorities'):
+        policy = plan['wave_priorities']
+        late = rows['FFWavePriority']['Late']
+        triggers = [k for k, v in rows['Triggers'].items() if v.split(',')[2] == 'Late enemy delivery priorities']
+        require(len(triggers) == 1 and rows['Events'][triggers[0]] == f'1,13,0,{policy["late_seconds"]}'
+                and rows['Triggers'][triggers[0]].split(',')[3] == '0'
+                and parse_action_groups(rows['Actions'][triggers[0]])[1] == [_action(56, int(late))],
+                'Late priorities depend on queue progress instead of absolute simulation time')
     for index,wave in enumerate(plan['wave_schedule'],1):
         for group in wave['groups']:
             require(actual[(index,group['house'])] == Counter({u['type']:u['count'] for u in group['units']}),
                     'Chunked wave lost or duplicated configured units')
+            if plan.get('wave_priorities'):
+                policy = plan['wave_priorities']
+                stage = next((s for s in reversed(policy['stages']) if s['from_seconds'] <= wave['seconds']), None)
+                if stage:
+                    ground = [u for u in group['units'] if u['type'] not in group.get('air_types', [])]
+                    low = [u for u in ground if not priority(u['type'], policy)]
+                    high = [u for u in ground if priority(u['type'], policy)]
+                    if high:
+                        total = sum(u['count'] for u in ground)
+                        minimum = min(total - len(low), total * (stage['advanced_percent'] + stage['special_percent']) // 100)
+                        require(sum(u['count'] for u in high) >= minimum, 'Late wave lost its advanced-unit share')
+                if wave['seconds'] >= policy['late_seconds']:
+                    # Actual serialized ground batches must place every heavy
+                    # before weaker units, so a full cap cannot admit T1 first.
+                    sequence = []
+                    for chunk, deliveries in by_chunk.items():
+                        if rows['FFWaveChunks'][chunk].split(',')[:2] != [str(index), group['house']]:
+                            continue
+                        _, slot, team, _, _ = next(d for d in deliveries if d[-1] == 'fixed')
+                        inverse = {v: k for k, v in rows['FFWavePoolTypes.' + slot].items()}
+                        kinds = [inverse[v.split(',')[1]] for k, v in effective[effective[team]['TaskForce']].items() if k.isdigit()]
+                        sequence.extend(priority(kind, policy) for kind in kinds if kind not in group.get('air_types', []))
+                    require(sequence == sorted(sequence, reverse=True), 'Low-tier deliveries precede waiting heavy units')
     timers = {int(v.split(',')[2].split()[1]): key for key,v in rows['Triggers'].items()
               if re.fullmatch(r'Wave \d+ interval', v.split(',')[2])}
     for index in range(1,len(plan['wave_schedule'])+1):
@@ -996,7 +1113,9 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
                     'Friendly dispatch ignores owner, occupancy or survival end')
             require(rows['Triggers'][gate].split(',')[3] == '1', 'Friendly dispatch starts before its timer')
             expected = [_action(54,trigger=d[0]) for d in deliveries]
-            expected += [_action(56,int(busy)),_action(7,team=team),_action(53,trigger=following)]
+            expected += [_action(56,int(busy)),
+                         _action(80,team=team,waypoint=effective[team]['Waypoint']),
+                         _action(53,trigger=following)]
             require(parse_action_groups(rows['Actions'][gate])[1] == expected, 'Friendly group can double-spawn')
             require(parse_action_groups(rows['Actions'][chunk])[1] == [_action(53,trigger=d[0]) for d in deliveries],
                     'Friendly relay omits available pool slots')
@@ -1052,6 +1171,16 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
                 notice=triggers[f'Friendly arrival {index} capacity notice']
                 require(any(a[0]=='53' and a[2]==notice for a in parse_action_groups(rows['Actions'][timer])[1])
                         and any(a[0]=='54' and a[2]==notice for a in actions), 'Missing friendly cap notice lifecycle')
+            if plan.get('plan_version', 1) >= 29 and human_actor(plan, owner):
+                require(any(a[0] == '11' and a[2].startswith('NOSTR:Player ') for a in actions)
+                        and any(a[0] == '11' and 'reinforcements' in a[2] for a in actions),
+                        'Friendly deliveries have no visible arrival confirmation')
+            if owner in rows.get('FFAlliedClocks', {}):
+                clock = rows[rows['FFAlliedClocks'][owner]]
+                flag = clock['Restart' if index < len(plan['reinforcement_schedule']) else 'Finished']
+                require(_action(56, int(flag)) in actions,
+                        'Allied countdown advances before full delivery or stays after its last arrival')
+            if owner=='FFPLAYER':
                 slots=[v.split(',')[2] for v in pools.values()]
                 require(rows['Events'][notice] == ','.join([str(len(slots)+1),'37','0',str(finished),
                             *[token for busy in slots for token in ('36','0',busy)]]),
@@ -1082,12 +1211,66 @@ def audit_wave_clock(rows, effective, plan, preloads):
     require(effective[provider]['EVA.Lost']=='none' and effective[provider]['Explosion']=='none',
             'Removing the display-only clock creates a false combat notification')
     placed=[v.split(',') for v in rows['Structures'].values() if v.split(',')[1]==provider]
-    require(len(placed)==1 and placed[0][3:5]==['113','71'], 'Wave clock provider overlaps another reserved area')
+    position = plan['map'].get('wave_clock_position', {'x': 113, 'y': 71})
+    require(len(placed)==1 and placed[0][3:5]==[str(position['x']), str(position['y'])],
+            'Wave clock provider overlaps another reserved area')
     require(rows['Events'][clock['Remove']] == f'1,36,0,{clock["Finished"]}'
             and parse_action_groups(rows['Actions'][clock['Remove']])[1]
                 == [_action(54,trigger=clock['Remove']),_action(32)]
             and rows['Tags'][placed[0][6]] == f'2,Wave clock remove,{clock["Remove"]}',
             'Wave countdown remains after the final wave')
+
+
+def audit_allied_clocks(rows, effective, plan, preloads):
+    """Review owner-local display clocks and their native ownership/removal paths."""
+    from randomizer.final_fortress.engine import _action
+    clocks = rows.get('FFAlliedClocks', {})
+    expected = {actor: start for actor, _, start in coalition(plan)
+                if human_actor(plan, actor)} if plan.get('plan_version', 1) >= 31 and plan['reinforcement_schedule'] else {}
+    require(set(clocks) == set(expected), 'Allied countdown missing, unpurchased, or granted to an AI helper')
+    powers = list(dict.fromkeys(effective['SuperWeaponTypes'].values()))
+    for owner, metadata in clocks.items():
+        require(metadata not in preloads['rules'] and 'FFAlliedClocks' not in preloads['rules'],
+                'Allied clock metadata leaked into early rules')
+        clock = rows[metadata]
+        power, provider = clock['Power'], clock['Provider']
+        require(power in preloads['rules'] and provider in preloads['rules'], 'Allied countdown lacks early registration')
+        row = effective[power]
+        require(row['UIName'] == 'NOSTR:Next allied reinforcements'
+                and float(row['RechargeTime']) * 60 == plan['effects']['reinforcements']['first_seconds']
+                and row['ShowTimer'] == 'yes' and row['SW.TimerVisibility'] == 'owner'
+                and row['SW.RequiredHouses'] == owner and clock['Owner'] == owner,
+                'Allied countdown has wrong timing, visibility or owner')
+        require(all(row.get(field) == value for field, value in {
+            'Type': 'GenericWarhead', 'SW.ShowCameo': 'no', 'SW.AutoFire': 'yes',
+            'SW.ManualFire': 'no', 'SW.AITargeting': 'None', 'SW.Damage': '0',
+            'EVA.Ready': 'none', 'EVA.Activated': 'none', 'EVA.Detected': 'none',
+            'Message.Detected': 'none', 'SW.ActivationSound': 'none'}.items()),
+            'Allied display clock causes combat, alerts or a sidebar button')
+        require(powers[int(clock['Index'])] == power, 'Allied clock reset addresses another power')
+        actions = parse_action_groups(rows['Actions'][clock['Reset']])[1]
+        expected_reset = []
+        effect = plan['effects']['reinforcements']
+        if effect['first_seconds'] != effect['interval_seconds']:
+            expected_reset.append(['132', '11', clock['Index'], '0', '0', '0', '0', str(effect['interval_seconds'] * 15)])
+        require(actions == [*expected_reset, _action(134, int(clock['Index'])), _action(57, int(clock['Restart']))]
+                and rows['Triggers'][clock['Reset']].split(',')[0] == owner,
+                'Allied countdown reset changes another player or ignores its interval')
+        placed = [value.split(',') for value in rows['Structures'].values() if value.split(',')[1] == provider]
+        require(len(placed) == 1 and effective[provider]['SuperWeapon'] == power
+                and effective[provider]['Immune'] == effective[provider]['IsPassable'] == 'yes'
+                and effective[provider]['Power'] == '0' and effective[provider]['EVA.Lost'] == 'none',
+                'Allied countdown has no harmless, independent provider')
+        tag = placed[0][6]
+        require(rows['Tags'][tag].split(',')[-1] == clock['Remove']
+                and rows['Events'][clock['Remove']] == f'1,36,0,{clock["Finished"]}'
+                and parse_action_groups(rows['Actions'][clock['Remove']])[1]
+                == [_action(54, trigger=clock['Remove']), _action(32)],
+                'Allied countdown outlives final delivery or survival end')
+        transfer = rows['Triggers'][clock['Remove']].split(',')[1]
+        require(parse_action_groups(rows['Actions'][transfer])[1]
+                == [_action(14, 4475 + expected[owner]), _action(54, trigger=transfer)],
+                'Allied countdown is transferred to the wrong player')
 
 
 def audit_pickup_reward(rows, effective, plan, camp, ready):
@@ -1317,15 +1500,47 @@ def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
         require(actions[2:] == fallback[2:], 'Large-hit reserve fallback changes its grant')
         if shield_seconds:
             weapon, warhead, armor = (info[k] for k in ('ShieldWeapon', 'ShieldWarhead', 'Armor'))
-            registry = list(dict.fromkeys([*rules['WeaponTypes'].values(),
-                *preloads['rules'].get('WeaponTypes', {}).values(), *rows.get('WeaponTypes', {}).values()]))
+            registry = list(dict.fromkeys(effective['SuperWeaponTypes'].values()))
             require(plan['plan_version'] >= 27 and info['ShieldFrames'] == str(shield_seconds * 15),
                     'Lab shield has the wrong native frame duration or changed an older frozen plan')
-            require(actions[2][0] == '42' and registry[int(actions[2][2])] == weapon
-                    and actions[2][7] == _waypoint(19),
-                    'Lab shield does not activate before reserve units spawn')
-            require(all(kind in preloads['rules'] for kind in (weapon, warhead)),
+            power = info['ShieldPower']
+            require(registry[int(info['ShieldIndex'])] == power
+                    and actions[2] == ['129', '11', info['ShieldIndex'], '0', '0', '0', '0', '100']
+                    and not any(action[0] == '42' for action in actions),
+                    'Lab shield bypasses the Ares effect path or is not readied before reserve deployment')
+            require(all(kind in preloads['rules'] for kind in (weapon, warhead, power)),
                     'Lab shield weapon/warhead is missing its early preload')
+            shield = effective[power]
+            require(all(shield.get(field) == value for field, value in {
+                'Type': 'GenericWarhead', 'SW.AITargeting': 'Self', 'SW.AIRequiresTarget': 'none',
+                'SW.AITargeting.Constraints': 'none', 'SW.AITargeting.Preference': 'none',
+                'SW.UseAITargeting': 'yes', 'SW.AutoFire': 'yes', 'SW.ManualFire': 'no',
+                'SW.ShowCameo': 'no', 'SW.InitialReady': 'no', 'SW.Shots': '1',
+                'SW.RequiredHouses': 'FFPLAYER', 'SW.AllowAI': 'no', 'SW.AllowPlayer': 'yes',
+                'SW.Damage': '0', 'SW.Warhead': warhead, 'IsPowered': 'no', 'ShowTimer': 'no',
+                'DisableableFromShell': 'no', 'EVA.Ready': 'none', 'EVA.Activated': 'none',
+                'EVA.Detected': 'none', 'Message.Detected': 'none', 'SW.Sound': 'none',
+                'SW.ActivationSound': 'none', 'SW.CreateRadarEvent': 'no',
+            }.items()), 'Lab shield has unsafe targeting, alerts, repeat shots or player controls')
+            require(float(shield['RechargeTime']) * 60 > plan['survival_seconds'],
+                    'Lab shield can activate naturally before the health threshold')
+            require(info['ShieldOwner'] == 'FFPLAYER'
+                    and all(rows['Triggers'][info[field]].split(',')[0] == 'FFPLAYER'
+                            for field in ('Reserve', 'ReserveFallback')),
+                    'Health trigger charges another house or has no owning house')
+            activated = info['ShieldActivated']
+            require(rows['Triggers'][activated].split(',')[0] == 'FFPLAYER'
+                    and rows['Events'][activated]
+                    == f'3,37,0,{finished},36,0,{info["ReserveUsed"]},75,0,{info["ShieldIndex"]}'
+                    and any(action[0] == '11' and action[2] == f'NOSTR:Lab shield active: {shield_seconds}s'
+                            for action in parse_action_groups(rows['Actions'][activated])[1])
+                    and not any(action[0] == '11' and 'Lab shield' in action[2] for action in actions),
+                    'Lab shield is announced before its actual power activation')
+            require(effective['FFOBJECTIVE'][info['ShieldSlot']] == power
+                    and preloads['rules']['FFOBJECTIVE'][info['ShieldSlot']] == power
+                    and [kind for kind in effective['BuildingTypes'].values()
+                         if power in (effective[kind].get('SuperWeapon'), effective[kind].get('SuperWeapon2'))]
+                    == ['FFOBJECTIVE'], 'Lab is not the unique early-loaded shield provider and self target')
             require(effective[weapon]['Damage'] == '0' and effective[weapon]['Warhead'] == warhead,
                     'Lab shield deals conventional damage or healing')
             require(preloads['rules']['ArmorTypes'][armor] == rules[plan['map']['protected_building']['type']]['Armor']
@@ -1350,7 +1565,26 @@ def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
             require(chain.index(info['ReserveFallback']) < chain.index(info['Repair']),
                     'Emergency healing can swallow the large-hit reserve fallback')
             require(info['ReserveUsed'] != info['RepairUsed'], 'Repair and reserve consume each other')
-        teams = [a for a in actions if a[0] == '80']
+        deliveries = list(actions)
+        if plan.get('plan_version', 1) >= 29:
+            relay = info['ReserveDeploy']
+            require(any(a == _action(53, trigger=relay) for a in actions),
+                    'Lab reserve never enables its delivery relay')
+            visited = set()
+            while relay:
+                require(relay not in visited and rows['Events'][relay] == f'1,37,0,{finished}'
+                        and rows['Triggers'][relay].split(',')[3] == '1',
+                        'Lab reserve relay loops, starts early, or ignores survival end')
+                visited.add(relay)
+                batch = parse_action_groups(rows['Actions'][relay])[1]
+                require(1 <= sum(a[0] == '80' for a in batch) <= 6
+                        and all(a[0] in ('80', '53') for a in batch),
+                        'Lab reserve delivery batch is oversized or has unrelated actions')
+                deliveries.extend(batch)
+                following = [a[2] for a in batch if a[0] == '53']
+                require(len(following) <= 1, 'Lab reserve relay forks or repeats a delivery')
+                relay = following[0] if following else None
+        teams = [a for a in deliveries if a[0] == '80']
         require(len(teams) == len(reserve) * len(coalition(plan)), 'Reserve omits a friendly roster')
         for index, (actor, _, start) in enumerate(coalition(plan)):
             actual = Counter()
@@ -1361,6 +1595,8 @@ def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
                     continue
                 require(team['Waypoint'] == action[7] == _waypoint(10 + index),
                         'Lab reserve arrives at an occupied MCV or another house')
+                require(team['VeteranLevel'] == str(plan['effects'].get('lab_reserve_veterancy', 0) + 1),
+                        'Lab reserve loses its purchased Veteran/Elite rank')
                 require(effective[team['Script']]['0'] == ('11,5' if human_actor(plan, actor) else '0,1'),
                         'Lab reserve takes control away from a human or strands an AI helper')
                 force = effective[team['TaskForce']]
@@ -1379,6 +1615,9 @@ def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True, help='Directory for generated audit artifacts')
+    parser.add_argument('--map', dest='map_id', help='Fortress map ID (default: configured original map)')
+    parser.add_argument('--lab-reserve-rank', type=int, choices=range(1, 11),
+                        help='Override the emergency squad rank for selected reserve profiles')
     parser.add_argument('--profiles', nargs='+', choices=(
                         'baseline', 'helpers', 'maximum', 'defenses', 'powers', 'upgrades', 'secondary',
                         'arsenal', 'reinforcements', 'arsenal-first', 'reinforcements-first',
@@ -1394,10 +1633,11 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     config = load_config()
+    config = select_map(config, args.map_id or config['map']['id'])
     _, rules = installed_rules_registry(synchronous=True)
     source_path = GAME_ROOT / config['map']['source']
     source_data = source_path.read_bytes()
-    source = read_sections(source_data)
+    source = all_section_value_maps_preserve(source_lines(GAME_ROOT, config['map']))
     terrain = None
     if args.terrain:
         from fortress_terrain import Terrain
@@ -1441,7 +1681,9 @@ def main():
                 plan = build_run_plan(
                     config, difficulty=difficulty, seed='FF-MAP-AUDIT-' + name,
                     player_country=country, selected_perks=selected,
-                    perk_ranks={entry['id']: (1 if (profile == 'secondary' and entry['id'] == 'faction_superweapon'
+                    perk_ranks={entry['id']: (args.lab_reserve_rank if args.lab_reserve_rank is not None
+                                                  and entry['id'] == 'lab_reserve_squad'
+                                             else 1 if (profile == 'secondary' and entry['id'] == 'faction_superweapon'
                                                   or profile == 'arsenal-first' and entry['id'] == 'special_unit_access'
                                                   or profile == 'reinforcements-first' and entry['id'] == 'periodic_reinforcements'
                                                   or profile == 'utilities-first' and entry['id'] in utilities
@@ -1475,7 +1717,7 @@ def main():
                                                        if unit['type'] in group.get('air_types', []))}
                                            for wave in plan['wave_schedule']],
                                  'bytes': len(data), 'registries': counts})
-        print(f'{profile}: {len(SIDE_COUNTRIES) * len(args.difficulties)} Miners in the Sun configurations audited', flush=True)
+        print(f'{profile}: {len(SIDE_COUNTRIES) * len(args.difficulties)} {config["map"]["display_name"]} configurations audited', flush=True)
     require(source_path.read_bytes() == source_data, 'Installed source map changed during audit')
     (args.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     print(f'PASS: one map, {len(manifest)} configurations; artifacts: {args.output}')

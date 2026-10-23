@@ -406,8 +406,9 @@ def route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases):
                 script_row = deepcopy(ai_rules.get(script, {}))
                 changed = False
                 for field, value in tuple(script_row.items()):
-                    # Native assault recipes often insist on buildings,
-                    # factories or base defenses. Those cannot die here.
+                    # Native assault recipes often insist on buildings or
+                    # defenses. Protected starting yards and fixed turrets
+                    # must not trap helpers in attacks against immortal targets.
                     if field.isdigit() and value in ('0,2', '0,6', '0,7'):
                         script_row[field] = '0,1'
                         changed = True

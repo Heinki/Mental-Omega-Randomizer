@@ -103,6 +103,13 @@ class FinalFortressRepository:
                 atomic_write_json(self.path, normalized)
             return normalized, result
 
+    def set_map(self, config, map_id):
+        from .maps import select_map
+        select_map(config, map_id)
+        def change(state):
+            state['preferences']['map_id'] = map_id
+        return self._update(change)[0]
+
     def set_difficulty(self, difficulty):
         if difficulty not in DIFFICULTY_IDS:
             raise ValueError('Unknown Final Fortress difficulty.')

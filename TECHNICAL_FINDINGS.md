@@ -256,6 +256,25 @@ Granting missed objective checks on victory is intentional. The objective/action
 
 ### Watcher shutdown and failure behavior
 
+Final Fortress additionally closes its completed native score screen after a
+2.5-second delay, armed only after a fresh run-specific result, the full friendly
+score roster and every resulting reward receipt have been saved. Native score
+UI remains enabled because it produces the kill records used for Defensive
+Points. The shutdown worker targets the captured Windows process tree or the
+POSIX process group created with `start_new_session=True`; it never uses an
+executable-name search or stops the user's shared wineserver. Existing local
+Quit recovery also operates on POSIX. Both native-log readers cap work at
+256 KiB per poll, retaining only a 64-byte checkpoint before the read cursor.
+This avoids draining an unbounded log on Tk during the score transition.
+Other controllers do not opt into the Fortress result-close policy.
+
+In the reported Fortress defeat, native logging finished at 14:48:16 and Syringe
+exited at 14:48:50 after the result and kill receipts had already been saved.
+The Wine COM release warnings and GetCurrentPackageId stub do not independently
+prove the cause of the black window or rendering lag. Retained-log replay
+confirmed closure readiness and the saved kill tiers; a separate windowed native
+probe failed during initialization, leaving live ending behavior unverified.
+
 Polling continues while the spawned process is alive. On exit the launcher records marker counts, clears the active process/hook, removes generated root maps, and removes any launcher-generated loose `rulesmo.ini` file.
 
 If map extraction or hook preparation throws, the launcher logs the traceback, cleans generated root maps, and can still start the mission without automatic objective detection. If no victory candidate exists, the mission remains playable but automatic victory progress is unavailable; the hidden debug completion control is the recovery path. Shop has no shared mission-tree selection, so its log-only recovery control includes a picker populated from the current mission choices. Completing an uncommitted choice first selects and commits that exact mission, then uses the normal idempotent Shop victory transaction and stage advancement.
@@ -1408,17 +1427,44 @@ every emitted delivery count/type against the frozen reward for each possible
 human collector. Native placement and collection still require ordinary gameplay
 verification; static audits cannot establish that units actually arrived.
 
-## Fortress Lab reserve protection (plan 27)
+## Fortress Lab reserve protection (plans 27+; corrected activation)
 
-The reserve's existing one-use half-health/red-health triggers now apply a
-Lab-only Iron Curtain before creating any reinforcement teams. A registered
-zero-damage weapon uses native Action 42 at the objective waypoint. Its warhead
+The reserve's existing one-use half-health/red-health triggers request a
+Lab-only Iron Curtain. The original zero-damage Action 42 implementation did
+not activate this effect in gameplay, although conventional healing and reserve
+reinforcements worked. The installed `TActionClass::FireWeaponAtWP`
+(`0x6E2390`) calls damage-animation/flash routines and `DamageArea`
+(`0x489280`); it does not create/detonate a projectile. The installed Ares hook
+table places `BulletClass_Detonate` at `0x46920B`, where Iron Curtain is applied.
+Thus validating the Action-42 weapon/warhead settings alone was insufficient.
+
+The corrected activation uses a hidden `Type=GenericWarhead` power. Its Ares
+implementation explicitly calls `applyIronCurtain`, before conventional damage:
+[GenericWarhead source](https://github.com/Ares-Developers/Ares/blob/master/src/Misc/SWTypes/GenericWarhead.cpp),
+[projectile effect hook](https://github.com/Ares-Developers/Ares/blob/master/src/Ext/WarheadType/Hooks.cpp).
+The Lab is its unique provider; `SW.AITargeting=Self` selects that building's
+center without changing the host's preferred target cell. The threshold/fallback
+triggers explicitly belong to `FFPLAYER` and use native Action 129 with argument
+type 11 and charge percent 100 to ready the effect. Native `0x6E42D0` checks the
+trigger's owning house and granted superweapon; `0x6CC1E0` marks 100% ready.
+The power starts unready, takes longer than survival to recharge, has one shot,
+no manual control, no cameo/timer/alerts, and no power requirement. It executes
+on the next automatic-power update; it does not claim synchronous protection
+inside the health-event callback. There is no additional provider or transfer.
+The on-screen shield confirmation is now attached to Ares Event 75 for this
+exact power and owning house, guarded by the reserve-used and finish flags.
+Requesting the effect no longer falsely announces that protection is active.
+This adapter correction applies when regenerating any shield-enabled plan,
+while unshielded plan 26 retains its prior behavior. Existing native saves and
+running matches cannot receive the correction.
+
+The shield warhead
 sets `IronCurtain.Duration=150`, `IronCurtain.Cap=150`, `AllowZeroDamage=yes`,
 `EffectsRequireDamage=no`, and `EffectsRequireVerses=yes`. All base verses are
 zero; only private `FFLABARMOR` has 100% verses. That armor inherits the original
 Lab armor, so normal attacks retain their native effectiveness. The Lab's own
 `IronCurtain.Modifier=1` gives ten simulation seconds without changing global
-Iron Curtain settings. The shared reserve-used flag is set before the effect,
+Iron Curtain settings. The shared reserve-used flag is set before the charge action,
 so repeated callbacks cannot refresh the shield or grant another squad.
 See [Ares Iron Curtain warheads](https://ares-developers.github.io/Ares-docs/new/warheads/ironcurtain.html)
 and [zero-damage warheads](https://ares-developers.github.io/Ares-docs/new/warheads/general.html).

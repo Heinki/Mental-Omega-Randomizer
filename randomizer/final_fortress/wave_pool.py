@@ -25,6 +25,24 @@ def _batches(units, capacity):
                for unit, count in zip(units, counts) if count]
 
 
+def _priority_batches(units, capacity, policy):
+    """Admit special and advanced units before filling capacity with lower tiers."""
+    from .wave_priority import priority
+    batch, available = [], capacity
+    for unit in sorted(units, key=lambda u: -priority(u['type'], policy)):
+        remaining = unit['count']
+        while remaining:
+            count = min(available, remaining)
+            batch.append({'type': unit['type'], 'count': count})
+            remaining -= count
+            available -= count
+            if not available:
+                yield batch
+                batch, available = [], capacity
+    if batch:
+        yield batch
+
+
 def apply_wave_pool(writer, plan, rules, overrides, marker_teams, finished, *, wave_clock=None):
     from .engine import _action, _waypoint
 
@@ -38,6 +56,12 @@ def apply_wave_pool(writer, plan, rules, overrides, marker_teams, finished, *, w
     if capacity < 1:
         raise ValueError('The wave population ceiling must allow at least one unit per enemy.')
     slots_per_enemy = min(8, limit // (3 * capacity))
+    policy = plan.get('wave_priorities')
+    late = None
+    if policy:
+        late = writer.flag('Late enemy delivery priorities')
+        writer.trigger('Late enemy delivery priorities', [(13, 0, policy['late_seconds'])], [_action(56, late)])
+        writer.put('FFWavePriority', 'Late', late)
     pools = {}
     for enemy, waypoint in enumerate(plan['map']['enemy_waypoints'], 1):
         groups = [group for wave in schedule for group in wave['groups'] if group['waypoint'] == waypoint]
@@ -67,6 +91,13 @@ def apply_wave_pool(writer, plan, rules, overrides, marker_teams, finished, *, w
             ground_units = [unit for unit in group['units'] if unit['type'] not in air]
             air_units = [unit for unit in group['units'] if unit['type'] in air]
             chunks = [*_batches(ground_units, capacity), *_batches(air_units, capacity)]
+            if policy and wave['seconds'] >= policy['late_seconds']:
+                # Air support must not sit behind every ground batch at a full cap.
+                ground_chunks = list(_priority_batches(ground_units, capacity, policy))
+                air_chunks = list(_priority_batches(air_units, capacity, policy))
+                chunks = [chunk for i in range(max(len(ground_chunks), len(air_chunks)))
+                          for chunk in ([air_chunks[i]] if i < len(air_chunks) else [])
+                          + ([ground_chunks[i]] if i < len(ground_chunks) else [])]
             grouped.append((group, chunks))
         # Alternate active fronts instead of exhausting one before the others.
         batches = [(group, chunks[n]) for n in range(max(len(chunks) for _, chunks in grouped))
@@ -77,16 +108,25 @@ def apply_wave_pool(writer, plan, rules, overrides, marker_teams, finished, *, w
         writer.put('Actions', timers[index], '1,' + ','.join(_action(53, trigger=relays[0])))
         for n, (group, units) in enumerate(batches):
             alternatives = []
-            for slot, busy, aliases in pools[group['waypoint']]:
-                team = writer.team(f'Final Fortress wave {index + 1} {group["house"]} batch {n + 1} slot {slot}',
-                    [{'type': aliases[unit['type']], 'count': unit['count']} for unit in units],
-                    group['waypoint'], owner=f'FFENEMY{plan["map"]["enemy_waypoints"].index(group["waypoint"]) + 1}')
-                writer.put(team, 'VeteranLevel', group.get('veteran_level', 1))
-                writer.put(team, 'Waypoint', _waypoint(16 + plan['map']['enemy_waypoints'].index(group['waypoint'])))
-                gate, _ = writer.trigger(f'Wave {index + 1} slot dispatch',
-                    [(37, 0, busy), (37, 0, finished)], [], disabled=True)
-                alternatives.append((gate, busy, team))
-                writer.put('FFWaveDispatches', gate, f'{slot},{team},{relays[n]},{relays[n + 1]}')
+            variants = [(None, units)]
+            if policy:
+                from .wave_priority import late_delivery
+                variants = ([('early', units), ('late', late_delivery(plan, wave, group, units))]
+                            if wave['seconds'] < policy['late_seconds'] else [('fixed', units)])
+            for phase, roster in variants:
+                for slot, busy, aliases in pools[group['waypoint']]:
+                    team = writer.team(f'Final Fortress wave {index + 1} {group["house"]} batch {n + 1} slot {slot}',
+                        [{'type': aliases[unit['type']], 'count': unit['count']} for unit in roster],
+                        group['waypoint'], owner=f'FFENEMY{plan["map"]["enemy_waypoints"].index(group["waypoint"]) + 1}')
+                    writer.put(team, 'VeteranLevel', group.get('veteran_level', 1))
+                    writer.put(team, 'Waypoint', _waypoint(16 + plan['map']['enemy_waypoints'].index(group['waypoint'])))
+                    events = [(37, 0, busy), (37, 0, finished)]
+                    if phase in ('early', 'late'):
+                        events.append((36 if phase == 'late' else 37, 0, late))
+                    gate, _ = writer.trigger(f'Wave {index + 1} slot dispatch', events, [], disabled=True)
+                    alternatives.append((gate, busy, team))
+                    writer.put('FFWaveDispatches', gate, f'{slot},{team},{relays[n]},{relays[n + 1]}'
+                               + (',' + phase if phase else ''))
             writer.put('FFWaveChunks', relays[n], f'{index + 1},{group["house"]},{sum(u["count"] for u in units)}')
             actions = [_action(53, trigger=gate) for gate, _, _ in alternatives]
             writer.put('Actions', relays[n], str(len(actions)) + ',' + ','.join(t for a in actions for t in a))

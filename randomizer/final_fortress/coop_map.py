@@ -7,7 +7,7 @@ def escrow_cell(writer, plan, rules, spare_cell):
     """Keep passable cash proxies clear of all granted defenses and camp guards."""
     from randomizer.maps.ini import section_value_map
     from .camps import guard_positions
-    from .placement import PlayableBounds, foundation, installed_art
+    from .placement import PlayableBounds, deployment_cells, foundation, installed_art
     if not hasattr(writer, '_coop_escrow_cells'):
         occupied = set()
         art = installed_art()
@@ -28,8 +28,11 @@ def escrow_cell(writer, plan, rules, spare_cell):
         for waypoint in [plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
                          *plan['allied_waypoints']]:
             cell = int(points[str(waypoint)])
-            occupied.update((cell % 1000 + dx, cell // 1000 + dy)
-                            for dx in range(-2, 2) for dy in range(-1, 2))
+            if plan.get('plan_version', 1) >= 31:
+                occupied.update(deployment_cells(cell % 1000, cell // 1000))
+            else:
+                occupied.update((cell % 1000 + dx, cell // 1000 + dy)
+                                for dx in range(-2, 2) for dy in range(-1, 2))
         bounds = PlayableBounds(section_value_map(writer.lines, 'Map'))
         x, y = spare_cell % 1000, spare_cell // 1000
         writer._coop_escrow_cells = iter((x + dx, y + dy) for dy in range(5, 30)

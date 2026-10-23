@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Independent Miners in the Sun survival, random player crate rewards, persistent perks and Grid enemy buff stacks.",
+  "description": "Independent Fortress survival maps, random player crate rewards, persistent perks and Grid enemy buff stacks.",
   "sections": {
     "settings": {
       "survival_seconds": 3600,
@@ -5393,7 +5393,7 @@
       {
         "id": "lab_reserve_squad",
         "display_name": "Lab reserve squad",
-        "description": "Once per run below 50% Lab health, protect Einstein's Lab with Iron Curtain for 10 in-game seconds while each friendly house receives 3 faction infantry and 1 basic vehicle at its reserved base arrival tiles. Separate from periodic reinforcements.",
+        "description": "Ten permanent ranks improve the one-use emergency squad from 4 faction units to 25, adding advanced troops, artillery, heavy and special units. Rank 9 arrives Veteran; rank 10 arrives Elite. Activates below 50% Lab health with 10 seconds of Lab-only Iron Curtain. Shared host rank in co-op; separate from periodic reinforcements.",
         "gem_cost": 15,
         "effects": {
           "lab_reserve_units_by_country": {
@@ -5519,7 +5519,2443 @@
             ]
           },
           "lab_reserve_shield_seconds": 10
-        }
+        },
+        "ranks": [
+          {
+            "gem_cost": 15,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 3
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 3
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 3
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 3
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 3
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 3
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 3
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 3
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 3
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 3
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 3
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 3
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 25,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 4
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 2
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 4
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 2
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 4
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 2
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 4
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 2
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 4
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 2
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 4
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 2
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 4
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 2
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 4
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 2
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 4
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 2
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 4
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 2
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 4
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 2
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 4
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 2
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 40,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 5
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 5
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 5
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 5
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 5
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 5
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 5
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 5
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 5
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 5
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 5
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 5
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 60,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 6
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 6
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 6
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 6
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 6
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 6
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 6
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 6
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 6
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 3
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 6
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 6
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 6
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 3
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 85,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 7
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 7
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 7
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 2
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 7
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 7
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 7
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 2
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 7
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 7
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 7
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 2
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 7
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 7
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 7
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 2
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 115,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 8
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 8
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 8
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 8
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 8
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 8
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 8
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 8
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 8
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 8
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 8
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 8
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 150,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 9
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 2
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 9
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 2
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 9
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 3
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 2
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 2
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 9
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 2
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 9
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 2
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 9
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 3
+                  },
+                  {
+                    "type": "V3",
+                    "count": 2
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 2
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 9
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 2
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 9
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 2
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 9
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 3
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 2
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 2
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 9
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 2
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 9
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 2
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 9
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 3
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 2
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 2
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 200,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10
+            }
+          },
+          {
+            "gem_cost": 260,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10,
+              "lab_reserve_veterancy": 1
+            }
+          },
+          {
+            "gem_cost": 330,
+            "effects": {
+              "lab_reserve_units_by_country": {
+                "UnitedStates": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "ETNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Europeans": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "MTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "Pacific": [
+                  {
+                    "type": "E1",
+                    "count": 10
+                  },
+                  {
+                    "type": "KTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "ENFO",
+                    "count": 4
+                  },
+                  {
+                    "type": "HOWI",
+                    "count": 3
+                  },
+                  {
+                    "type": "ABRM",
+                    "count": 3
+                  },
+                  {
+                    "type": "PANTHER",
+                    "count": 1
+                  }
+                ],
+                "USSR": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "HTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Latin": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "JTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "Chinese": [
+                  {
+                    "type": "E2",
+                    "count": 10
+                  },
+                  {
+                    "type": "CTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "FLAMER",
+                    "count": 4
+                  },
+                  {
+                    "type": "V3",
+                    "count": 3
+                  },
+                  {
+                    "type": "APOC",
+                    "count": 3
+                  },
+                  {
+                    "type": "MAMM",
+                    "count": 1
+                  }
+                ],
+                "PsiCorps": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "LTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "ScorpionCell": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "QTNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Headquaters": [
+                  {
+                    "type": "INIT",
+                    "count": 10
+                  },
+                  {
+                    "type": "STNK",
+                    "count": 4
+                  },
+                  {
+                    "type": "BRUTE",
+                    "count": 4
+                  },
+                  {
+                    "type": "TELE",
+                    "count": 3
+                  },
+                  {
+                    "type": "DEVO",
+                    "count": 3
+                  },
+                  {
+                    "type": "WORMQ",
+                    "count": 1
+                  }
+                ],
+                "Guild1": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild2": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "JACKAL",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ],
+                "Guild3": [
+                  {
+                    "type": "COVE",
+                    "count": 10
+                  },
+                  {
+                    "type": "ROACH",
+                    "count": 4
+                  },
+                  {
+                    "type": "HUNTR",
+                    "count": 4
+                  },
+                  {
+                    "type": "TARCHIA",
+                    "count": 3
+                  },
+                  {
+                    "type": "MEGA",
+                    "count": 3
+                  },
+                  {
+                    "type": "PHNT",
+                    "count": 1
+                  }
+                ]
+              },
+              "lab_reserve_shield_seconds": 10,
+              "lab_reserve_veterancy": 2
+            }
+          }
+        ]
       },
       {
         "id": "supply_cache",
@@ -12871,6 +15307,1785 @@
           ]
         }
       }
-    ]
+    ],
+    "additional_maps": [
+      {
+        "id": "the_sky_mountain",
+        "display_name": "The Sky Mountain",
+        "source": "MapsMO/Standard/f_skymountain.map",
+        "player_waypoint": 0,
+        "enemy_waypoints": [
+          4,
+          6,
+          7
+        ],
+        "allied_waypoints": [
+          1,
+          3
+        ],
+        "clear_source_scripts": true,
+        "start_positions": {
+          "1": {
+            "x": 101,
+            "y": 122
+          },
+          "3": {
+            "x": 118,
+            "y": 95
+          }
+        },
+        "wave_clock_position": {
+          "x": 114,
+          "y": 100
+        },
+        "protected_building": {
+          "type": "CALAB",
+          "position": {
+            "x": 119,
+            "y": 110
+          }
+        },
+        "perk_layouts": {
+          "0": {
+            "units": {
+              "x": 116,
+              "y": 120
+            },
+            "buildings": [
+              {
+                "x": 108,
+                "y": 118
+              },
+              {
+                "x": 121,
+                "y": 119
+              },
+              {
+                "x": 124,
+                "y": 115
+              },
+              {
+                "x": 111,
+                "y": 102
+              },
+              {
+                "x": 115,
+                "y": 125
+              }
+            ],
+            "power": [
+              {
+                "x": 124,
+                "y": 119
+              },
+              {
+                "x": 124,
+                "y": 126
+              },
+              {
+                "x": 108,
+                "y": 101
+              },
+              {
+                "x": 108,
+                "y": 121
+              },
+              {
+                "x": 120,
+                "y": 108
+              },
+              {
+                "x": 101,
+                "y": 111
+              },
+              {
+                "x": 102,
+                "y": 108
+              },
+              {
+                "x": 128,
+                "y": 115
+              },
+              {
+                "x": 115,
+                "y": 131
+              },
+              {
+                "x": 130,
+                "y": 117
+              },
+              {
+                "x": 118,
+                "y": 114
+              },
+              {
+                "x": 118,
+                "y": 117
+              }
+            ],
+            "defenses": [
+              {
+                "x": 126,
+                "y": 131
+              },
+              {
+                "x": 130,
+                "y": 103
+              },
+              {
+                "x": 130,
+                "y": 127
+              },
+              {
+                "x": 134,
+                "y": 115
+              },
+              {
+                "x": 94,
+                "y": 116
+              },
+              {
+                "x": 105,
+                "y": 133
+              },
+              {
+                "x": 97,
+                "y": 126
+              },
+              {
+                "x": 107,
+                "y": 96
+              },
+              {
+                "x": 109,
+                "y": 95
+              },
+              {
+                "x": 132,
+                "y": 104
+              },
+              {
+                "x": 134,
+                "y": 122
+              },
+              {
+                "x": 92,
+                "y": 114
+              },
+              {
+                "x": 121,
+                "y": 136
+              },
+              {
+                "x": 117,
+                "y": 137
+              },
+              {
+                "x": 119,
+                "y": 137
+              },
+              {
+                "x": 129,
+                "y": 132
+              }
+            ]
+          },
+          "1": {
+            "units": {
+              "x": 105,
+              "y": 123
+            },
+            "buildings": [
+              {
+                "x": 102,
+                "y": 127
+              },
+              {
+                "x": 99,
+                "y": 114
+              },
+              {
+                "x": 110,
+                "y": 126
+              },
+              {
+                "x": 106,
+                "y": 129
+              },
+              {
+                "x": 94,
+                "y": 113
+              }
+            ],
+            "power": [
+              {
+                "x": 101,
+                "y": 135
+              },
+              {
+                "x": 106,
+                "y": 134
+              },
+              {
+                "x": 104,
+                "y": 137
+              },
+              {
+                "x": 99,
+                "y": 126
+              },
+              {
+                "x": 90,
+                "y": 116
+              },
+              {
+                "x": 95,
+                "y": 133
+              },
+              {
+                "x": 116,
+                "y": 133
+              },
+              {
+                "x": 106,
+                "y": 140
+              },
+              {
+                "x": 87,
+                "y": 135
+              },
+              {
+                "x": 116,
+                "y": 135
+              },
+              {
+                "x": 101,
+                "y": 116
+              },
+              {
+                "x": 108,
+                "y": 126
+              }
+            ],
+            "defenses": [
+              {
+                "x": 81,
+                "y": 122
+              },
+              {
+                "x": 81,
+                "y": 121
+              },
+              {
+                "x": 81,
+                "y": 123
+              },
+              {
+                "x": 102,
+                "y": 102
+              },
+              {
+                "x": 121,
+                "y": 123
+              },
+              {
+                "x": 81,
+                "y": 120
+              },
+              {
+                "x": 103,
+                "y": 102
+              },
+              {
+                "x": 110,
+                "y": 104
+              },
+              {
+                "x": 116,
+                "y": 108
+              },
+              {
+                "x": 119,
+                "y": 133
+              },
+              {
+                "x": 109,
+                "y": 143
+              },
+              {
+                "x": 111,
+                "y": 143
+              },
+              {
+                "x": 117,
+                "y": 139
+              },
+              {
+                "x": 119,
+                "y": 139
+              },
+              {
+                "x": 125,
+                "y": 129
+              },
+              {
+                "x": 107,
+                "y": 97
+              }
+            ]
+          },
+          "3": {
+            "units": {
+              "x": 121,
+              "y": 105
+            },
+            "buildings": [
+              {
+                "x": 125,
+                "y": 97
+              },
+              {
+                "x": 118,
+                "y": 106
+              },
+              {
+                "x": 130,
+                "y": 106
+              },
+              {
+                "x": 132,
+                "y": 110
+              },
+              {
+                "x": 98,
+                "y": 104
+              }
+            ],
+            "power": [
+              {
+                "x": 126,
+                "y": 100
+              },
+              {
+                "x": 109,
+                "y": 89
+              },
+              {
+                "x": 135,
+                "y": 91
+              },
+              {
+                "x": 136,
+                "y": 96
+              },
+              {
+                "x": 137,
+                "y": 101
+              },
+              {
+                "x": 135,
+                "y": 106
+              },
+              {
+                "x": 133,
+                "y": 116
+              },
+              {
+                "x": 134,
+                "y": 118
+              },
+              {
+                "x": 131,
+                "y": 122
+              },
+              {
+                "x": 132,
+                "y": 124
+              },
+              {
+                "x": 121,
+                "y": 99
+              },
+              {
+                "x": 111,
+                "y": 96
+              }
+            ],
+            "defenses": [
+              {
+                "x": 102,
+                "y": 107
+              },
+              {
+                "x": 130,
+                "y": 111
+              },
+              {
+                "x": 138,
+                "y": 95
+              },
+              {
+                "x": 109,
+                "y": 113
+              },
+              {
+                "x": 127,
+                "y": 113
+              },
+              {
+                "x": 136,
+                "y": 104
+              },
+              {
+                "x": 121,
+                "y": 115
+              },
+              {
+                "x": 138,
+                "y": 98
+              },
+              {
+                "x": 107,
+                "y": 114
+              },
+              {
+                "x": 105,
+                "y": 113
+              },
+              {
+                "x": 107,
+                "y": 116
+              },
+              {
+                "x": 97,
+                "y": 108
+              },
+              {
+                "x": 140,
+                "y": 109
+              },
+              {
+                "x": 118,
+                "y": 123
+              },
+              {
+                "x": 120,
+                "y": 126
+              },
+              {
+                "x": 135,
+                "y": 124
+              }
+            ]
+          }
+        },
+        "enemy_defenses": {
+          "layouts": {
+            "4": [
+              {
+                "x": 153,
+                "y": 269
+              },
+              {
+                "x": 153,
+                "y": 273
+              },
+              {
+                "x": 151,
+                "y": 274
+              },
+              {
+                "x": 149,
+                "y": 279
+              },
+              {
+                "x": 146,
+                "y": 281
+              },
+              {
+                "x": 144,
+                "y": 282
+              },
+              {
+                "x": 139,
+                "y": 283
+              },
+              {
+                "x": 137,
+                "y": 282
+              },
+              {
+                "x": 132,
+                "y": 276
+              },
+              {
+                "x": 131,
+                "y": 276
+              },
+              {
+                "x": 129,
+                "y": 274
+              },
+              {
+                "x": 128,
+                "y": 272
+              },
+              {
+                "x": 126,
+                "y": 269
+              },
+              {
+                "x": 126,
+                "y": 265
+              },
+              {
+                "x": 129,
+                "y": 261
+              },
+              {
+                "x": 131,
+                "y": 258
+              },
+              {
+                "x": 132,
+                "y": 258
+              },
+              {
+                "x": 134,
+                "y": 257
+              },
+              {
+                "x": 140,
+                "y": 255
+              },
+              {
+                "x": 143,
+                "y": 255
+              },
+              {
+                "x": 145,
+                "y": 255
+              },
+              {
+                "x": 150,
+                "y": 259
+              },
+              {
+                "x": 151,
+                "y": 262
+              },
+              {
+                "x": 152,
+                "y": 265
+              }
+            ],
+            "6": [
+              {
+                "x": 263,
+                "y": 186
+              },
+              {
+                "x": 263,
+                "y": 190
+              },
+              {
+                "x": 260,
+                "y": 191
+              },
+              {
+                "x": 258,
+                "y": 194
+              },
+              {
+                "x": 254,
+                "y": 198
+              },
+              {
+                "x": 253,
+                "y": 196
+              },
+              {
+                "x": 248,
+                "y": 200
+              },
+              {
+                "x": 244,
+                "y": 200
+              },
+              {
+                "x": 242,
+                "y": 197
+              },
+              {
+                "x": 239,
+                "y": 196
+              },
+              {
+                "x": 237,
+                "y": 194
+              },
+              {
+                "x": 233,
+                "y": 190
+              },
+              {
+                "x": 234,
+                "y": 186
+              },
+              {
+                "x": 235,
+                "y": 183
+              },
+              {
+                "x": 236,
+                "y": 178
+              },
+              {
+                "x": 239,
+                "y": 176
+              },
+              {
+                "x": 242,
+                "y": 174
+              },
+              {
+                "x": 242,
+                "y": 172
+              },
+              {
+                "x": 249,
+                "y": 171
+              },
+              {
+                "x": 253,
+                "y": 172
+              },
+              {
+                "x": 256,
+                "y": 174
+              },
+              {
+                "x": 258,
+                "y": 176
+              },
+              {
+                "x": 262,
+                "y": 179
+              },
+              {
+                "x": 265,
+                "y": 180
+              }
+            ],
+            "7": [
+              {
+                "x": 286,
+                "y": 141
+              },
+              {
+                "x": 287,
+                "y": 144
+              },
+              {
+                "x": 285,
+                "y": 147
+              },
+              {
+                "x": 283,
+                "y": 151
+              },
+              {
+                "x": 278,
+                "y": 152
+              },
+              {
+                "x": 277,
+                "y": 154
+              },
+              {
+                "x": 273,
+                "y": 154
+              },
+              {
+                "x": 270,
+                "y": 154
+              },
+              {
+                "x": 264,
+                "y": 151
+              },
+              {
+                "x": 263,
+                "y": 150
+              },
+              {
+                "x": 261,
+                "y": 145
+              },
+              {
+                "x": 263,
+                "y": 147
+              },
+              {
+                "x": 261,
+                "y": 141
+              },
+              {
+                "x": 261,
+                "y": 138
+              },
+              {
+                "x": 265,
+                "y": 132
+              },
+              {
+                "x": 264,
+                "y": 132
+              },
+              {
+                "x": 267,
+                "y": 129
+              },
+              {
+                "x": 272,
+                "y": 128
+              },
+              {
+                "x": 272,
+                "y": 127
+              },
+              {
+                "x": 274,
+                "y": 129
+              },
+              {
+                "x": 276,
+                "y": 132
+              },
+              {
+                "x": 278,
+                "y": 133
+              },
+              {
+                "x": 281,
+                "y": 136
+              },
+              {
+                "x": 281,
+                "y": 138
+              }
+            ]
+          },
+          "types_by_country": {
+            "UnitedStates": [
+              "GAPILL",
+              "NASAM",
+              "ATESLA"
+            ],
+            "Europeans": [
+              "GAPILL",
+              "NASAM",
+              "ATESLA"
+            ],
+            "Pacific": [
+              "GAPILL",
+              "NASAM",
+              "ATESLA"
+            ],
+            "USSR": [
+              "NALASR",
+              "NAFLAK",
+              "TESLA"
+            ],
+            "Latin": [
+              "NALASR",
+              "NAFLAK",
+              "TESLA"
+            ],
+            "Chinese": [
+              "NALASR",
+              "NAFLAK",
+              "TESLA"
+            ],
+            "PsiCorps": [
+              "YAGGUN",
+              "YARAIL",
+              "YAHADE"
+            ],
+            "ScorpionCell": [
+              "YAGGUN",
+              "YARAIL",
+              "YAHADE"
+            ],
+            "Headquaters": [
+              "YAGGUN",
+              "YARAIL",
+              "YAHADE"
+            ],
+            "Guild1": [
+              "FASONI",
+              "FAGUAR",
+              "FARAIL"
+            ],
+            "Guild2": [
+              "FASONI",
+              "FAGUAR",
+              "FARAIL"
+            ],
+            "Guild3": [
+              "FASONI",
+              "FAGUAR",
+              "FARAIL"
+            ]
+          }
+        },
+        "enemy_wave_positions": {
+          "4": {
+            "x": 128,
+            "y": 265
+          },
+          "6": {
+            "x": 241,
+            "y": 176
+          },
+          "7": {
+            "x": 265,
+            "y": 136
+          }
+        },
+        "camps": [
+          {
+            "id": "south_camp_1",
+            "display_name": "Southwest ridge camp",
+            "position": {
+              "x": 97,
+              "y": 220
+            },
+            "enemy_index": 0,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 96,
+                "y": 220
+              },
+              {
+                "x": 97,
+                "y": 221
+              },
+              {
+                "x": 96,
+                "y": 219
+              },
+              {
+                "x": 95,
+                "y": 220
+              },
+              {
+                "x": 96,
+                "y": 222
+              },
+              {
+                "x": 94,
+                "y": 220
+              },
+              {
+                "x": 94,
+                "y": 219
+              },
+              {
+                "x": 96,
+                "y": 223
+              },
+              {
+                "x": 94,
+                "y": 218
+              },
+              {
+                "x": 97,
+                "y": 224
+              },
+              {
+                "x": 98,
+                "y": 224
+              },
+              {
+                "x": 101,
+                "y": 219
+              },
+              {
+                "x": 94,
+                "y": 223
+              },
+              {
+                "x": 93,
+                "y": 218
+              },
+              {
+                "x": 93,
+                "y": 222
+              },
+              {
+                "x": 95,
+                "y": 224
+              },
+              {
+                "x": 92,
+                "y": 220
+              },
+              {
+                "x": 93,
+                "y": 217
+              },
+              {
+                "x": 93,
+                "y": 223
+              },
+              {
+                "x": 94,
+                "y": 224
+              },
+              {
+                "x": 92,
+                "y": 219
+              },
+              {
+                "x": 92,
+                "y": 222
+              },
+              {
+                "x": 95,
+                "y": 225
+              },
+              {
+                "x": 93,
+                "y": 224
+              },
+              {
+                "x": 91,
+                "y": 220
+              },
+              {
+                "x": 97,
+                "y": 226
+              },
+              {
+                "x": 96,
+                "y": 226
+              },
+              {
+                "x": 98,
+                "y": 226
+              },
+              {
+                "x": 91,
+                "y": 222
+              },
+              {
+                "x": 91,
+                "y": 223
+              }
+            ]
+          },
+          {
+            "id": "south_camp_2",
+            "display_name": "Western valley camp",
+            "position": {
+              "x": 144,
+              "y": 192
+            },
+            "enemy_index": 1,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 144,
+                "y": 190
+              },
+              {
+                "x": 142,
+                "y": 190
+              },
+              {
+                "x": 144,
+                "y": 189
+              },
+              {
+                "x": 143,
+                "y": 189
+              },
+              {
+                "x": 140,
+                "y": 190
+              },
+              {
+                "x": 146,
+                "y": 188
+              },
+              {
+                "x": 140,
+                "y": 189
+              },
+              {
+                "x": 147,
+                "y": 188
+              },
+              {
+                "x": 139,
+                "y": 190
+              },
+              {
+                "x": 146,
+                "y": 187
+              },
+              {
+                "x": 140,
+                "y": 188
+              },
+              {
+                "x": 148,
+                "y": 188
+              },
+              {
+                "x": 139,
+                "y": 189
+              },
+              {
+                "x": 147,
+                "y": 187
+              },
+              {
+                "x": 146,
+                "y": 186
+              },
+              {
+                "x": 139,
+                "y": 188
+              },
+              {
+                "x": 140,
+                "y": 187
+              },
+              {
+                "x": 148,
+                "y": 187
+              },
+              {
+                "x": 149,
+                "y": 188
+              },
+              {
+                "x": 141,
+                "y": 186
+              },
+              {
+                "x": 147,
+                "y": 186
+              },
+              {
+                "x": 139,
+                "y": 187
+              },
+              {
+                "x": 145,
+                "y": 185
+              },
+              {
+                "x": 149,
+                "y": 187
+              },
+              {
+                "x": 151,
+                "y": 191
+              },
+              {
+                "x": 138,
+                "y": 188
+              },
+              {
+                "x": 140,
+                "y": 186
+              },
+              {
+                "x": 150,
+                "y": 188
+              },
+              {
+                "x": 146,
+                "y": 185
+              },
+              {
+                "x": 151,
+                "y": 190
+              }
+            ]
+          },
+          {
+            "id": "south_camp_3",
+            "display_name": "Central approach camp",
+            "position": {
+              "x": 178,
+              "y": 153
+            },
+            "enemy_index": 2,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 177,
+                "y": 153
+              },
+              {
+                "x": 178,
+                "y": 152
+              },
+              {
+                "x": 179,
+                "y": 153
+              },
+              {
+                "x": 179,
+                "y": 152
+              },
+              {
+                "x": 178,
+                "y": 151
+              },
+              {
+                "x": 180,
+                "y": 153
+              },
+              {
+                "x": 177,
+                "y": 151
+              },
+              {
+                "x": 180,
+                "y": 152
+              },
+              {
+                "x": 180,
+                "y": 154
+              },
+              {
+                "x": 180,
+                "y": 151
+              },
+              {
+                "x": 178,
+                "y": 150
+              },
+              {
+                "x": 177,
+                "y": 150
+              },
+              {
+                "x": 179,
+                "y": 150
+              },
+              {
+                "x": 181,
+                "y": 154
+              },
+              {
+                "x": 176,
+                "y": 150
+              },
+              {
+                "x": 180,
+                "y": 150
+              },
+              {
+                "x": 177,
+                "y": 149
+              },
+              {
+                "x": 182,
+                "y": 154
+              },
+              {
+                "x": 181,
+                "y": 150
+              },
+              {
+                "x": 176,
+                "y": 149
+              },
+              {
+                "x": 180,
+                "y": 149
+              },
+              {
+                "x": 182,
+                "y": 155
+              },
+              {
+                "x": 173,
+                "y": 153
+              },
+              {
+                "x": 174,
+                "y": 150
+              },
+              {
+                "x": 175,
+                "y": 149
+              },
+              {
+                "x": 181,
+                "y": 149
+              },
+              {
+                "x": 173,
+                "y": 152
+              },
+              {
+                "x": 183,
+                "y": 154
+              },
+              {
+                "x": 180,
+                "y": 148
+              },
+              {
+                "x": 183,
+                "y": 155
+              }
+            ]
+          },
+          {
+            "id": "south_camp_4",
+            "display_name": "Southeast ridge camp",
+            "position": {
+              "x": 212,
+              "y": 129
+            },
+            "enemy_index": 0,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 211,
+                "y": 129
+              },
+              {
+                "x": 212,
+                "y": 128
+              },
+              {
+                "x": 212,
+                "y": 130
+              },
+              {
+                "x": 211,
+                "y": 130
+              },
+              {
+                "x": 213,
+                "y": 130
+              },
+              {
+                "x": 210,
+                "y": 129
+              },
+              {
+                "x": 212,
+                "y": 127
+              },
+              {
+                "x": 212,
+                "y": 131
+              },
+              {
+                "x": 210,
+                "y": 130
+              },
+              {
+                "x": 211,
+                "y": 131
+              },
+              {
+                "x": 213,
+                "y": 127
+              },
+              {
+                "x": 213,
+                "y": 131
+              },
+              {
+                "x": 214,
+                "y": 128
+              },
+              {
+                "x": 214,
+                "y": 127
+              },
+              {
+                "x": 212,
+                "y": 126
+              },
+              {
+                "x": 212,
+                "y": 132
+              },
+              {
+                "x": 209,
+                "y": 128
+              },
+              {
+                "x": 211,
+                "y": 132
+              },
+              {
+                "x": 213,
+                "y": 126
+              },
+              {
+                "x": 213,
+                "y": 132
+              },
+              {
+                "x": 215,
+                "y": 130
+              },
+              {
+                "x": 209,
+                "y": 131
+              },
+              {
+                "x": 214,
+                "y": 132
+              },
+              {
+                "x": 215,
+                "y": 131
+              },
+              {
+                "x": 212,
+                "y": 133
+              },
+              {
+                "x": 208,
+                "y": 128
+              },
+              {
+                "x": 211,
+                "y": 133
+              },
+              {
+                "x": 213,
+                "y": 133
+              },
+              {
+                "x": 209,
+                "y": 126
+              },
+              {
+                "x": 209,
+                "y": 132
+              }
+            ]
+          },
+          {
+            "id": "south_camp_5",
+            "display_name": "Southern valley camp",
+            "position": {
+              "x": 183,
+              "y": 218
+            },
+            "enemy_index": 1,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 182,
+                "y": 218
+              },
+              {
+                "x": 183,
+                "y": 219
+              },
+              {
+                "x": 182,
+                "y": 217
+              },
+              {
+                "x": 182,
+                "y": 219
+              },
+              {
+                "x": 184,
+                "y": 219
+              },
+              {
+                "x": 181,
+                "y": 218
+              },
+              {
+                "x": 183,
+                "y": 220
+              },
+              {
+                "x": 185,
+                "y": 218
+              },
+              {
+                "x": 181,
+                "y": 217
+              },
+              {
+                "x": 181,
+                "y": 219
+              },
+              {
+                "x": 182,
+                "y": 220
+              },
+              {
+                "x": 181,
+                "y": 220
+              },
+              {
+                "x": 180,
+                "y": 218
+              },
+              {
+                "x": 183,
+                "y": 221
+              },
+              {
+                "x": 180,
+                "y": 217
+              },
+              {
+                "x": 180,
+                "y": 219
+              },
+              {
+                "x": 182,
+                "y": 221
+              },
+              {
+                "x": 184,
+                "y": 221
+              },
+              {
+                "x": 180,
+                "y": 220
+              },
+              {
+                "x": 181,
+                "y": 221
+              },
+              {
+                "x": 185,
+                "y": 221
+              },
+              {
+                "x": 186,
+                "y": 220
+              },
+              {
+                "x": 183,
+                "y": 222
+              },
+              {
+                "x": 179,
+                "y": 219
+              },
+              {
+                "x": 184,
+                "y": 222
+              },
+              {
+                "x": 187,
+                "y": 219
+              },
+              {
+                "x": 180,
+                "y": 221
+              },
+              {
+                "x": 186,
+                "y": 221
+              },
+              {
+                "x": 179,
+                "y": 220
+              },
+              {
+                "x": 181,
+                "y": 222
+              }
+            ]
+          },
+          {
+            "id": "south_camp_6",
+            "display_name": "Far south camp",
+            "position": {
+              "x": 203,
+              "y": 250
+            },
+            "enemy_index": 2,
+            "guards": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 2
+              }
+            ],
+            "gems": 10,
+            "guard_positions": [
+              {
+                "x": 202,
+                "y": 251
+              },
+              {
+                "x": 202,
+                "y": 248
+              },
+              {
+                "x": 200,
+                "y": 251
+              },
+              {
+                "x": 200,
+                "y": 248
+              },
+              {
+                "x": 200,
+                "y": 252
+              },
+              {
+                "x": 199,
+                "y": 250
+              },
+              {
+                "x": 199,
+                "y": 251
+              },
+              {
+                "x": 200,
+                "y": 253
+              },
+              {
+                "x": 199,
+                "y": 252
+              },
+              {
+                "x": 199,
+                "y": 253
+              },
+              {
+                "x": 198,
+                "y": 251
+              },
+              {
+                "x": 198,
+                "y": 252
+              },
+              {
+                "x": 199,
+                "y": 254
+              },
+              {
+                "x": 198,
+                "y": 253
+              },
+              {
+                "x": 197,
+                "y": 250
+              },
+              {
+                "x": 197,
+                "y": 251
+              },
+              {
+                "x": 197,
+                "y": 248
+              },
+              {
+                "x": 197,
+                "y": 252
+              },
+              {
+                "x": 198,
+                "y": 254
+              },
+              {
+                "x": 197,
+                "y": 253
+              },
+              {
+                "x": 203,
+                "y": 243
+              },
+              {
+                "x": 196,
+                "y": 251
+              },
+              {
+                "x": 202,
+                "y": 243
+              },
+              {
+                "x": 204,
+                "y": 243
+              },
+              {
+                "x": 197,
+                "y": 254
+              },
+              {
+                "x": 196,
+                "y": 248
+              },
+              {
+                "x": 196,
+                "y": 252
+              },
+              {
+                "x": 201,
+                "y": 243
+              },
+              {
+                "x": 205,
+                "y": 243
+              },
+              {
+                "x": 196,
+                "y": 253
+              }
+            ]
+          }
+        ],
+        "remove_source_units": [
+          "CYCOM",
+          "CYBO"
+        ],
+        "camp_minimum_spacing": 32
+      }
+    ],
+    "wave_priorities": {
+      "late_seconds": 1800,
+      "advanced_units": [
+        "ABRM",
+        "AHVYBOT",
+        "AITHOR",
+        "APOC",
+        "ARCH",
+        "BASIL",
+        "BASS",
+        "BLZZ",
+        "BURA",
+        "COYO",
+        "DEVO",
+        "EMPR",
+        "MAMM",
+        "MEGA",
+        "PROME",
+        "SHRAY",
+        "SREF",
+        "TARCHIA",
+        "TELE",
+        "TTNK",
+        "V3",
+        "VIPER",
+        "WOLF",
+        "ZEP"
+      ],
+      "special_units": [
+        "AHVYBOT",
+        "ARCH",
+        "BLZZ",
+        "DEVO",
+        "EMPR",
+        "MAMM",
+        "PROME",
+        "SREF",
+        "TARCHIA",
+        "TELE",
+        "TTNK"
+      ],
+      "infantry_units": [
+        "BRUTE",
+        "COVE",
+        "E1",
+        "E2",
+        "ENFO",
+        "FLAKT",
+        "FLAMER",
+        "GGI",
+        "HARP",
+        "HUNTR",
+        "INIT",
+        "KNIGHT"
+      ],
+      "stages": [
+        {
+          "from_seconds": 900,
+          "advanced_percent": 30,
+          "special_percent": 10
+        },
+        {
+          "from_seconds": 1800,
+          "advanced_percent": 45,
+          "special_percent": 20
+        },
+        {
+          "from_seconds": 2700,
+          "advanced_percent": 55,
+          "special_percent": 30
+        }
+      ]
+    }
   }
 }

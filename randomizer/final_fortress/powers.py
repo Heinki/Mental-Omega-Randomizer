@@ -40,6 +40,8 @@ def power_rewards(plan, rules):
                       IsPowered='no', DisableableFromShell='no', ShowTimer='no',
                       **{key: '' for key in ('SW.AuxBuildings', 'SW.NegBuildings',
                                             'SW.RequiredHouses', 'SW.ForbiddenHouses', 'SW.Designators')})
+        if plan.get('plan_version', 1) >= 31:
+            values.update({'EVA.Detected': 'none', 'Message.Detected': 'none'})
         if original == 'AmericanParaDropSpecial' and plan['effects']['starting_units']:
             army = plan['effects']['starting_units'][:2]
             values['ParaDrop.Types'] = ','.join(unit['type'] for unit in army)

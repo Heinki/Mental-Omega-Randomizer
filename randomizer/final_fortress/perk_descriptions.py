@@ -58,6 +58,9 @@ def rank_descriptions(perk, country):
             if effect.get('lab_reserve_shield_seconds'):
                 parts.append(f'The same activation immediately protects only the Lab with Iron Curtain '
                              f'for {effect["lab_reserve_shield_seconds"]} in-game seconds while squads arrive')
+            level = effect.get('lab_reserve_veterancy', 0)
+            if level:
+                parts.append('Reserve units arrive ' + ('Veteran' if level == 1 else 'Elite (highest veterancy)'))
         if effect.get('starting_credits'):
             parts.append(f'+{effect["starting_credits"]:,} starting credits')
         if effect.get('production_percent'):
@@ -136,7 +139,8 @@ def rank_descriptions(perk, country):
                          f'{reinforcement["interval_seconds"] // 60} minutes; '
                          f'{reinforcement["max_active_units"]} living reinforcement units shared with helpers. '
                          'Walkable arrival tiles are reserved against construction. '
-                         'Small groups wait for shared capacity; each house restarts its timer after delivery')
+                         'Small groups wait for shared capacity; each house restarts its timer after delivery. '
+                         'Each human sees a Next allied reinforcements countdown; zero means an arrival is pending')
             if reinforcement.get('veterancy'):
                 parts.append('Every reinforcement arrives '
                              + ('Elite (highest veterancy)' if reinforcement['veterancy'] == 2 else 'Veteran'))

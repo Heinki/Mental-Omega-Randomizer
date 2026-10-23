@@ -6,7 +6,7 @@ from randomizer.maps.ini import all_section_value_maps_preserve
 
 
 def validate_enemy_arrivals(writer, plan):
-    """Keep hostile wave placement beside its own base, away from friendlies.
+    """Keep hostile waves beside their bases and friendly deliveries on their aprons.
 
     Validate the emitted action's coordinates, not just the TeamType's label.
     This also protects frozen plans, which still use their original base starts.
@@ -27,6 +27,9 @@ def validate_enemy_arrivals(writer, plan):
     friendly = [position(waypoint) for waypoint in (
         definition['player_waypoint'], *plan.get('allied_waypoints', []))]
     expected = {}
+    from .player_perks import coalition
+    friendly_arrivals = {actor: chr(65 + 10 + index)
+                         for index, (actor, _, _) in enumerate(coalition(plan))}
     for index, waypoint in enumerate(definition['enemy_waypoints']):
         base = position(waypoint)
         arrival = 16 + index if plan.get('plan_version', 1) >= 16 else waypoint
@@ -45,6 +48,11 @@ def validate_enemy_arrivals(writer, plan):
                 continue
             team = writer.sections.get(action[2], {})
             name = team.get('Name', '')
+            if name.startswith('Fortress friendly arrival '):
+                waypoint = friendly_arrivals.get(team.get('House'))
+                if action[0] != '80' or waypoint is None or action[7] != waypoint or team.get('Waypoint') != waypoint:
+                    raise ValueError('Final Fortress friendly reinforcement has no explicit owned arrival waypoint.')
+                continue
             if not name.startswith(('Final Fortress wave ', 'Final Fortress AI controller')):
                 continue
             owner = team.get('House')
@@ -120,8 +128,20 @@ def validate_camp_access(writer, plan):
     from randomizer.maps.ini import section_value_map
     points = section_value_map(writer.lines, 'Waypoints')
     starts = [int(points[str(waypoint)]) for waypoint in plan['map']['enemy_waypoints']]
+    friendly = [int(points[str(waypoint)]) for waypoint in (
+        plan['map']['player_waypoint'], *plan.get('allied_waypoints', []))]
+    centers = []
     for camp in plan['map']['camps']:
+        center = camp['position']
+        minimum = plan['map'].get('camp_minimum_spacing', 0)
+        if any(max(abs(center['x'] - x), abs(center['y'] - y)) < minimum for x, y in centers):
+            raise ValueError('Final Fortress camp centers are too close: ' + camp['id'])
+        centers.append((center['x'], center['y']))
         for point in [camp['position'], *guard_positions(camp)]:
+            if minimum and plan.get('plan_version', 1) >= 29 and any(
+                    max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) < 32
+                    for cell in friendly):
+                raise ValueError('Final Fortress camp overlaps a friendly base: ' + camp['id'])
             if any(max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) < 40
                    for cell in starts):
                 raise ValueError('Final Fortress camp overlaps a protected enemy base: ' + camp['id'])

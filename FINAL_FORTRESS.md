@@ -16,7 +16,7 @@ The campaign **Include challenge maps** option is disabled and
 unchecked here; switching modes restores the campaign's saved choices. This
 option is separate from Fortress's own enemy Challenge modifiers.
 
-Open **Co-op…** in the Fortress header. The host connects using the human count
+In **Settings**, enable **Co-op**, then open **Co-op Connection…**. The host connects using the human count
 from Settings, then shares their ZeroTier Managed IPv4 and pairing code.
 Each guest selects **Join**, enters those details and uses a distinct player
 name. Guest player numbers are assigned automatically in arrival order. Every PC needs a
@@ -64,7 +64,29 @@ firewall helper includes these ports; see [connection setup](COOP_CONNECTION_GUI
 
 ## Map and objective
 
-The only offered map is **Miners in the Sun**,
+Choose **Miners in the Sun** or **The Sky Mountain** in **Defense setup → Map**.
+The selection is saved per profile and frozen into each run. In co-op the host
+chooses the map; guests validate and play that same map with the host's perks.
+
+**The Sky Mountain** uses `MapsMO/Standard/f_skymountain.map`, **150 × 160**.
+The player keeps screenshot position **1**, native waypoint **0**, at **(114, 115)**.
+Both friendly seats move onto the same northern plateau: waypoint **1** at
+**(101, 122)** and waypoint **3** at **(118, 95)**. These seats hold AI helpers or
+the second/third co-op humans. Three enemies keep southern screenshot positions
+**5, 7, and 8**, native waypoints **4, 6, and 7**. Position 6 remains unused.
+Six guarded camp crates are spread across the southern approaches, with at least
+32 cells between centers. Their full guard formations stay away from friendly
+starts and protected enemy bases. The Lab starts beside the host at **(119, 110)**.
+Separate layouts cover every friendly house's buildings, sixteen defenses,
+twelve power plants, starting army, harvesters and reinforcement apron. Enemy
+arrival aprons and twenty-four defenses per base use their own southern layouts.
+The original map's fifty ambient triggers and fifty-three local variables are
+removed from generated Fortress bytes, with their object tags detached. The
+authored Cyborg Commando and six Cyborgs beside the player are also removed;
+they otherwise attack the new base after their original scripts are detached. Terrain,
+resources, scenery and the installed source file remain intact.
+
+**Miners in the Sun** remains the default,
 `MapsMO/Standard/minersinthesun.map`, **120 × 110**. The human starts at
 **waypoint 3, (87, 59)**. Three random, mutually allied enemy countries start at
 **waypoints 0, 1, and 5**, at **(94, 152), (83, 175), (143, 175)**. Repeated
@@ -74,8 +96,9 @@ Defend Einstein's Lab for **3,600 simulation seconds (one hour)**. The native co
 is labeled **Until Victory** in game; launcher wall time never awards survival rewards. The
 objective is a private installed `CALAB` copy (SteinsTech Lab), with native
 1,200 base strength and native armor. Lab durability can raise its maximum
-health to 1,500 / 1,800 / 2,400 HP. Its **3 × 4 foundation at (91, 57)** is next to the
-initial MCV and does not overlap its deployment area. It cannot be sold,
+health to 1,500 / 1,800 / 2,400 HP. Its **3 × 4 foundation** starts at **(91, 57)**
+on Miners in the Sun or **(119, 110)** on The Sky Mountain, beside the host's
+initial MCV without overlapping deployment space. It cannot be sold,
 captured, occupied, or chronoshifted. Destroying it causes defeat; surviving
 60 minutes causes victory. Three inert, immune AI controllers prevent premature
 skirmish elimination victory without producing or participating in combat.
@@ -90,10 +113,21 @@ off-map added objects before writing launch files.
 
 Enemies start with **indestructible construction yards**, using Ares' per-country
 construction-yard start; the player and helpers keep their normal MCV start.
-Enemy construction, power-plant variants, upgrades and deployed building forms
-use private immune copies. Enemy MCVs deploy into those same copies, and AI
-production lists, prerequisites, refineries and docks recognize them. These
-protections do not apply to the player's buildings or ordinary enemy troops.
+In new plan-30 runs, only those **original construction yards** and the fixed
+starting defenses are protected. Enemy-produced MCVs, their deployed expansion
+yards, power plants, factories, upgrades and other constructed buildings use
+normal native damage and targeting rules. Ordinary MCVs can be destroyed both
+while moving and after deployment, including near the player.
+
+The starting yard has a separate private type selected first by Ares'
+[`StartInMultiplayer.WithConst`](https://ares-developers.github.io/Ares-docs/new/sidescountries/startinmultiplayer.html).
+It cannot undeploy, is unavailable to normal
+production, and has a one-per-house limit. No produced MCV deploys into that
+protected type. AI production lists, prerequisites, refineries and docks stay
+connected to the ordinary expansion types; the starting yard is also registered
+as a valid construction prerequisite. This needs no Iron Curtain provider or
+periodic area effect. Earlier frozen plans retain their original broad enemy
+immunity; start a new run to use the split.
 Each enemy additionally starts with **24 indestructible defenses**: eight basic,
 eight anti-air and eight advanced faction turrets, around its playable base
 perimeter. They require no power and cannot be captured or sold. Base centers
@@ -125,6 +159,22 @@ and weapon rules without requiring an aircraft docking/rearming arrangement.
 Native attack scripts seek hostile targets immediately;
 they do not first move onto an MCV waypoint that a construction yard may occupy.
 
+New plan-31 runs reserve increasing ground-wave shares for advanced and special
+units: 40% from minute 15, 65% from minute 30, and 85% from minute 45 where
+the selected roster contains those units. `wave_priorities` freezes the type
+classification and stage percentages. Ordinary infantry/support identities keep
+at least one member when the budget permits. Powerhouse selection preserves
+advanced identities instead of retaining only the four most numerous types.
+From minute 30, ground deliveries admit specials, then advanced units, then
+lower tiers; air batches alternate with ground batches. The existing population
+budget is unchanged.
+
+Capacity-delayed opening waves also use advanced replacement rosters once
+**30 minutes of simulation time** have elapsed, independent of the delivery
+queue's progress. Only pending batches change, at the same size and using the
+same tracked pool. Already living units remain intact. This prevents a full cap
+from keeping the game on opening infantry/tank rosters at minute 50.
+
 Provisional ceilings remain **480 per wave and 480 reserved wave units**.
 New plan-16 runs divide that living budget into eight reusable 20-unit slots
 per enemy (160 each, 480 shared). Waves are delivered as mixed groups of up to
@@ -136,7 +186,7 @@ that enemy's slots are occupied; the next five-minute interval starts after the
 entire wave has been delivered. Victory/defeat stops pending deliveries.
 Older frozen plans retain their whole-wave reservation policy.
 
-Each enemy receives a walkable, unbuildable 5x3 arrival apron beside its base:
+On Miners in the Sun, each enemy receives a walkable, unbuildable 5x3 arrival apron beside its base:
 waypoints 16/17/18 at (95,148), (81,169), and (144,167). These replace occupied
 construction-yard spawn points. `map.enemy_wave_positions` stores each apron's
 top-left corner. The native terrain audit checks all fifteen cells.
@@ -151,7 +201,7 @@ rebuilding an older frozen plan; pre-16 waves retain their original enemy starts
 and receive explicit placement there. Existing native saves need a fresh launch
 to receive regenerated triggers. Live confirmation of the reported misplaced
 waves remains pending; generated-map audits do not simulate native placement.
-Immortal enemy buildings, MCVs and fixed defenses have `LegalTarget=no`; helper
+Protected starting yards and fixed defenses have `LegalTarget=no`; helper
 assault scripts that insisted on buildings/factories/defenses now seek any
 hostile legal target. Their normal production and starting/arrival armies share
 this restriction.
@@ -171,6 +221,15 @@ pending while capacity is occupied. It disappears after the last scheduled wave
 or when the run ends. Its zero-power, immune hidden provider adds no buildable
 power, damage, cash or usable sidebar ability. Its one setup ownership transfer
 is excluded from performance Defensive Points, and removal has no explosion or loss voice.
+
+New plan-31 games also display **Next allied reinforcements** when the periodic
+reinforcement perk is enabled. Each human, including co-op guests, sees only
+their own arrival countdown. AI helpers still receive their separate arrivals
+under the shared friendly cap. A clock restarts only after its human's complete
+arrival, so a capacity wait does not begin the next interval early. The first
+delay and repeat interval follow the purchased rank; the display disappears
+after the final arrival or when survival ends. These display providers are
+silent, harmless and excluded from setup kill rewards like the enemy clock.
 
 The adapter supports eleven waves,
 six distinct types per reinforcement group, six camps, 100 local flags, and
@@ -233,7 +292,7 @@ rank's effect a second time. Prices are paid once per rank.
 | --- | --- | --- |
 | Lab durability | 5 / 10 / 20 | +25% / +50% / +100% Lab maximum health: 1,500 / 1,800 / 2,400 HP, starting full and retaining the upgraded maximum for emergency repair |
 | Emergency Lab repair | 10 | One automatic full repair per run below the native red-health threshold (35% in Mental Omega), shared by the coalition |
-| Lab reserve squad | 15 | Once per run below 50% Lab health: immediately shield only the Lab with Iron Curtain for 10 in-game seconds while 3 faction infantry and 1 basic vehicle arrive per friendly house, outside the periodic reinforcement cap |
+| Lab reserve squad | 15 / 25 / 40 / 60 / 85 / 115 / 150 / 200 / 260 / 330 | Ten cumulative ranks: 4 / 6 / 9 / 12 / 15 / 18 / 21 / 25 / 25 / 25 units per friendly house, with advanced infantry, artillery, heavy and special units at later ranks. Rank 9 is Veteran; rank 10 is Elite. Once below 50% Lab health, with 10 seconds of Lab-only Iron Curtain, outside the periodic cap |
 | Supply cache | 30 / 60 / 120 / 220 / 360 / 540 | Six ranks, +2,000 credits each, up to +12,000 |
 | Production speed | 40 / 80 / 140 / 220 / 340 | 25% shorter infantry, vehicle/naval, aircraft, building and defense production time |
 | Starting army | 40 / 80 / 140 / 220 / 340 | 3 / 6 / 9 / 12 / 15 faction units; advanced infantry, artillery, T3 vehicles, one faction hero at rank 5 |
@@ -280,6 +339,15 @@ starting armies and periodic arrivals receive explicit attack-team orders;
 their unique tracked arrival types cannot rely on ordinary AI recruitment.
 Human arrivals remain under the player's control.
 
+Friendly periodic deliveries now use native action **80**, with the same explicit
+waypoint in both the action and TeamType. The earlier action **7** supplied no
+native placement override even when its TeamType named the protected apron.
+The runtime adapter and map audit now reject that mismatch. New plan-29 runs
+show a per-human unit count and Rookie/Veteran/Elite confirmation after each
+full delivery. The first arrival is at five in-game minutes; a full living-unit
+pool can delay later arrivals. Native debug logs record the named friendly
+arrival teams when created. These generation checks do not simulate live spawning.
+
 Lab durability provides three cheap permanent ranks in new plan-28 runs.
 Each rank's percentage replaces the previous bonus: +25%, +50%, then +100%
 of the original Lab health. The upgrade costs are 5, 10 and 20 Defensive Points
@@ -290,7 +358,13 @@ other SteinsTech Labs retain their installed health. Co-op uses the host's
 rank once for the shared objective, without multiplying it by human/helper
 count. Disable the owned perk to return new runs to base Lab health.
 
-Emergency repair and the reserve have one purchase rank and replenish their
+Emergency repair has one purchase rank; the reserve has ten in new plan-29 runs.
+Reserve ranks replace the prior roster rather than adding earlier ranks again.
+Rank 1 retains its original 3 faction infantry and 1 basic vehicle. Rank 8 reaches
+the same 25-unit full roster as the periodic perk; ranks 9/10 make it Veteran/Elite.
+Large co-op reserves use finish-guarded one-use relays of at most six type/house
+teams, keeping native action lines below 511 bytes. Each house receives its own
+complete squad at its protected apron. Both perks replenish their
 single use with each new run. All three Lab perks use the installed Ares engine;
 Phobos is not required.
 The Lab keeps its original ownership and defeat trigger. Its persistent linked
@@ -302,17 +376,31 @@ preventing repeated damage, healing or linked callbacks from granting another us
 In co-op, the host's enabled perks provide one shared Lab repair and one reserve
 deployment for the whole coalition, with each human retaining their own squad.
 
-New plan-27 runs include **10 in-game seconds of Iron Curtain** in the reserve
-activation, with no additional purchase cost. The Lab is protected before the
-first reserve team is created. A zero-damage native weapon explosion applies
-the 150-frame effect only to its private objective armor; nearby infantry,
+Shield-enabled plans (27 and later) include **10 in-game seconds of Iron Curtain**
+in the reserve activation, with no additional purchase cost. The health trigger
+readies a hidden, one-shot `GenericWarhead` power provided only by the Lab.
+Automatic `Self` targeting applies the 150-frame effect through Ares' complete
+warhead path on its next automatic-power update. Only private objective armor
+can receive the effect; nearby infantry,
 vehicles, other buildings and enemies receive no protection or damage. The
 shield and reserve share the same used flag and cannot refresh on repeated
 hits. Its non-stacking 150-frame cap preserves an existing longer Iron Curtain.
+The shield has no timer, cameo or EVA announcements, is independent of power
+and shell superweapon settings, and cannot finish charging naturally during
+the survival period. The Lab itself supplies it, adding no utility object or
+setup kill transfer.
+The "Lab shield active: 10s" confirmation comes from the actual power-activation
+event, rather than from merely requesting protection at the health threshold.
 Emergency repair remains a separate purchase/use and its negative healing
 damage bypasses native Iron Curtain immunity. Global Iron Curtain settings
 remain unchanged. Existing frozen plan-26 runs retain their original unshielded
 reserve behavior.
+
+The original Action-42 shield implementation was defective: it runs conventional
+`DamageArea` without the projectile detonation hook that applies Ares Iron Curtain.
+This explains why emergency healing and reserve squads worked while protection
+did not. Regenerating a shield-enabled run now uses the corrected power path;
+an already running game or native save retains its old generated rules.
 
 The editor calls Event 43 "quarter health", but the installed executable uses
 `AudioVisual.ConditionRed`, currently **35%**, rather than a fixed 25%.
@@ -547,6 +635,13 @@ across all three enemies create at most 261 units over the whole run. Ordinary
 AI production is also outside the scripted-wave cap. Launch counts, recharge
 multipliers and victory Defensive Points are provisional configuration values.
 
+In plan-31 runs, hidden enemy/friendly perk providers suppress only
+`EVA.Detected` and `Message.Detected`: discovering an invisible provider must
+not announce a visible silo or Dominator. Their actual powers, recharge and
+launch notifications remain enabled. The Faction offensive superweapons
+Challenge grants real attacks even without visible buildings; disable that
+Challenge before a new run to remove those enemy powers.
+
 The default victory bonus is **5 Defensive Points per enabled stack**, configurable per
 entry. Country multipliers affect only private enemy country derivatives.
 Tier calculations reuse `enemy_native_unit_buff_rules`; results are placed on
@@ -681,7 +776,8 @@ missing receipts. Replaying the same evidence cannot award Defensive Points twic
 
 Normal progression uses `final_fortress_state.json` and its OS lock; the
 optional testing profile uses its separate state file and lock.
-State schemas 1–8 migrate to schema 9 without resetting Defensive Points or ownership.
+State schemas 1–9 migrate to schema 10 without resetting Defensive Points or ownership.
+Schema 10 adds the selected map ID; existing profiles keep Miners in the Sun.
 Schema 9 adds durable co-op run IDs and a local player index on co-op runs;
 guest run snapshots can contain host-owned perks without granting their ownership
 to the guest's permanent profile. Plan 22 freezes the human roster, fills only
@@ -696,6 +792,10 @@ Plan 24 relocates the two base-overlapping camps and validates the complete
 clearance with startup crates and pickup-based points. It also uses separate
 per-type reward teams with explicit camp arrival waypoints. Plans through 24
 keep their frozen death-based receipts.
+Plan 31 adds owner-local allied countdowns, silent discovery of hidden power
+providers, frozen late-wave priorities and elapsed-time upgrades for delayed
+opening deliveries. Earlier frozen runs retain their previous balance and
+power notifications; start a fresh run after restarting the launcher.
 The former sole offensive-superweapon purchase becomes rank 2, preserving
 that weapon while also granting the new secondary power. New rank-1 purchases
 unlock only the secondary power.
@@ -729,6 +829,11 @@ map audits, and actual launcher/native gameplay checks. No unit tests.
 
 `python3 tools/audit_final_fortress_maps.py --output /tmp/fortress-map-audit`
 
+Add `--map the_sky_mountain` to audit the new map; omit it to audit the original.
+Use `--profiles lab-support --lab-reserve-rank 1` (or any rank through 10) to
+review a particular emergency roster and veterancy. Default reserve profiles
+use the highest configured rank.
+
 Use `--humans 2` or `--humans 3` to audit co-op maps and emit every human's
 native spawn file. `tools/fortress_coop_audit.py` also reviews house/peer ordering,
 AI seat limits, shared camp pickup guards, human control, native satellite reveal
@@ -736,7 +841,7 @@ and actual per-house setup transfers. Add `--terrain` for placement/ground check
 Live two/three-PC ZeroTier gameplay, synchronized objectives and disconnect
 behavior still require manual multiplayer verification; these audits never open
 game windows or change player saves.
-generates reviewable variants of **Miners in the Sun only**, plus spawn files,
+The command generates reviewable variants of the selected map, plus spawn files,
 without opening the game or changing player progression. The default 108
 configurations cover all twelve countries and
 three difficulties with baseline, helper-only and maximum perk/Challenge
@@ -761,11 +866,16 @@ The current perimeter layouts pass all 24 configurations, including the
 starting power budget and transfer-score correction.
 
 Result handling batches verified receipts into one atomic save per poll,
-redraws result rows only when they change, calculates kill bonuses once, and
-limits native-log reads per poll. A backlog schedules another bounded read
-promptly; polling slows only after catching up following a terminal result while
-the native score screen remains open. These reduce launcher work during the
-score transition; native score-screen smoothness still needs gameplay review.
+redraws result rows only when they change, and calculates kill bonuses once.
+Both result and shutdown watchers limit native-log reads to 256 KiB per poll;
+a backlog schedules another bounded read promptly. Once a matching terminal
+marker, complete friendly score records and every resulting reward receipt have
+been saved, Final Fortress schedules closure after 2.5 seconds. The native score
+screen is still entered so its kill records are generated. Closure runs on a
+worker against only the captured Windows process tree or isolated Wine launch
+group; it never stops a shared wineserver. The same policy applies to local
+co-op games. A timer, a generic Winner row or a disconnect cannot arm it.
+Native score-screen smoothness and closure still need gameplay confirmation.
 
 The current plan-21 artifacts passed 72 baseline/maximum configurations across
 Casual, Normal and Mental on Miners in the Sun, including starter-camp limits,
@@ -830,17 +940,26 @@ unchanged; no personal progression was edited. Compilation and whitespace
 checks passed. These checks do not execute native combat; the Lab gameplay
 checks remain in TODOS.md.
 
-The plan-27 reserve shield passed **96 terrain-audited variants** across all
+The original plan-27 reserve shield passed **96 terrain-audited variants** across all
 twelve countries: 48 solo Normal repair/reserve/helper/maximum variants,
 24 two-human Normal reserve/helper variants, and 24 three-human Mental
 reserve/maximum variants. Audits verify Lab-only zero-damage targeting,
-150-frame duration/cap, activation before squad creation, early rules loading
+150-frame duration/cap, action ordering, early rules loading
 and unchanged global Iron Curtain duration. Three isolated runtime preparations
 passed: USA reserve-only, USSR with repair, and Last Bastion with three humans
 and repair. The USA plan-26 repair-only, reserve-only and combined generated
 maps remain byte-identical; existing version-23/25 saves normalize unchanged.
 Compilation and whitespace checks passed. Live shield timing, expiry and
-emergency repair during protection remain manual gameplay checks.
+emergency repair during protection remain manual gameplay checks. The later
+gameplay report confirmed emergency repair but exposed the missing shield:
+these earlier structural audits did not establish that Action 42 executes Ares
+effects. The corrected audit requires the GenericWarhead/self-provider path,
+an explicitly owned 100% charge action and prevention of natural activation.
+The corrected activation and confirmation passed 48 final map/terrain variants
+across all twelve factions on Normal: Sky Mountain reserve-only/combined support,
+three-human maximum perks/challenges with Mental AI Boost, and combined support
+on Miners in the Sun. Compilation and whitespace checks passed. Native shield
+appearance, timing, expiry and repair interaction still need a fresh gameplay run.
 
 The plan-28 durability perk passed **108 terrain-audited variants** across all
 twelve countries: 72 solo Normal baseline/rank-1/rank-2/rank-3/combined-support/

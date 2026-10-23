@@ -85,9 +85,31 @@ def _map(value):
     fields = ['id', 'display_name', 'source', 'player_waypoint', 'enemy_waypoints',
               'protected_building', 'camps']
     fields.extend(key for key in ('allied_waypoints', 'perk_layouts', 'enemy_defenses',
-                                 'enemy_wave_positions') if key in value)
+                                 'enemy_wave_positions', 'start_positions', 'clear_source_scripts',
+                                 'wave_clock_position', 'camps_below_waypoint',
+                                 'camp_minimum_spacing', 'remove_source_units') if key in value)
     _object(value, fields, 'Map')
     identifier(value['id'], 'Map ID')
+    if 'remove_source_units' in value:
+        _list(value['remove_source_units'], 'Removed source units')
+        for kind in value['remove_source_units']:
+            _techno(kind)
+    if 'camp_minimum_spacing' in value:
+        integer(value['camp_minimum_spacing'], 'Minimum camp spacing', 1)
+    if 'clear_source_scripts' in value and type(value['clear_source_scripts']) is not bool:
+        raise ValueError('Map clear_source_scripts must be boolean.')
+    if 'wave_clock_position' in value:
+        _position(value['wave_clock_position'])
+    if 'camps_below_waypoint' in value:
+        anchor = integer(value['camps_below_waypoint'], 'Camp reference waypoint')
+        if anchor > 7:
+            raise ValueError('Camp reference must be a native start waypoint 0–7.')
+    if 'start_positions' in value:
+        positions = value['start_positions']
+        if not isinstance(positions, dict) or set(positions) - set(map(str, range(8))):
+            raise ValueError('Map start overrides must use native waypoints 0–7.')
+        for position in positions.values():
+            _position(position)
     text(value['display_name'], 'Map display name')
     source = text(value['source'], 'Map source')
     path = PurePosixPath(source)
@@ -250,6 +272,10 @@ def validate_config(sections, path=None):
         shared_waves = isinstance(sections, dict) and 'wave_rosters' in sections
         sized_waves = isinstance(sections, dict) and 'wave_pressure' in sections
         fields = ['settings', 'map', 'difficulties', 'milestones', 'perks']
+        if isinstance(sections, dict) and 'wave_priorities' in sections:
+            fields.append('wave_priorities')
+        if isinstance(sections, dict) and 'additional_maps' in sections:
+            fields.append('additional_maps')
         if isinstance(sections, dict) and 'challenges' in sections:
             fields.append('challenges')
         if isinstance(sections, dict) and 'performance' in sections:
@@ -267,6 +293,36 @@ def validate_config(sections, path=None):
             if not shared_waves:
                 raise ValueError('Wave growth requires shared faction wave rosters.')
         _object(sections, fields, 'Final Fortress sections')
+        if 'wave_priorities' in sections:
+            priority = sections['wave_priorities']
+            _object(priority, ('late_seconds', 'advanced_units', 'special_units', 'infantry_units', 'stages'), 'Wave priorities')
+            integer(priority['late_seconds'], 'Late wave time', 1)
+            for field in ('advanced_units', 'special_units', 'infantry_units'):
+                _list(priority[field], field)
+                if len(set(priority[field])) != len(priority[field]):
+                    raise ValueError('Wave priority types must be distinct.')
+                for kind in priority[field]:
+                    _techno(kind)
+            _list(priority['stages'], 'Wave priority stages')
+            times = []
+            for stage in priority['stages']:
+                _object(stage, ('from_seconds', 'advanced_percent', 'special_percent'), 'Wave priority stage')
+                times.append(integer(stage['from_seconds'], 'Wave priority start', 1))
+                for field in ('advanced_percent', 'special_percent'):
+                    integer(stage[field], field)
+                if stage['advanced_percent'] + stage['special_percent'] > 95:
+                    raise ValueError('Wave priority must leave room for ordinary infantry/support.')
+            if not times or times != sorted(set(times)):
+                raise ValueError('Wave priority stages must be nonempty and ordered.')
+        if 'additional_maps' in sections:
+            _unique(sections['additional_maps'], 'Additional map')
+            for definition in sections['additional_maps']:
+                _map(definition)
+            from .maps import map_definitions
+            maps = map_definitions(sections)
+            for field in ('id', 'display_name'):
+                if len({entry[field] for entry in maps}) != len(maps):
+                    raise ValueError('Fortress maps require distinct ' + field + ' values.')
         if 'camp_balance' in sections:
             balance = sections['camp_balance']
             fields = ['guards_by_difficulty', 'max_guards_per_camp', 'max_total_guards',
@@ -345,6 +401,8 @@ def validate_config(sections, path=None):
                            'completion_gems', 'max_wave_units'), 'Settings')
         duration = integer(settings['survival_seconds'], 'Survival seconds', 1)
         interval = integer(settings['wave_interval_seconds'], 'Wave interval', 1)
+        if 'wave_priorities' in sections and not interval <= sections['wave_priorities']['late_seconds'] < duration:
+            raise ValueError('Late delivery upgrades must begin during the survival schedule.')
         if interval >= duration:
             raise ValueError('Wave interval must be shorter than survival time.')
         if settings['completion_gems'] is not None:

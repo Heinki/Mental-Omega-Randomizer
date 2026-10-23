@@ -31,7 +31,16 @@ def add_powerhouses(plan):
             total = sum(unit['count'] for unit in group['units']) + extra
             if total < 3:
                 raise ValueError('Powerhouse waves need room for two heavies and one ordinary unit.')
-            base = sorted(group['units'], key=lambda unit: -unit['count'])[:4]
+            if plan.get('wave_priorities'):
+                from .wave_priority import priority
+                policy = plan['wave_priorities']
+                ordered = sorted(group['units'], key=lambda u: (-priority(u['type'], policy), -u['count']))
+                base = ordered[:4]
+                infantry = next((u for u in ordered if u['type'] in policy['infantry_units']), None)
+                if infantry and not any(u['type'] in policy['infantry_units'] for u in base):
+                    base[-1] = infantry
+            else:
+                base = sorted(group['units'], key=lambda unit: -unit['count'])[:4]
             units = size_composition(base, base_units=total - 2, seed=plan['seed'],
                                      house=side + 2, seconds=wave['seconds'])
             counts = Counter({unit['type']: unit['count'] for unit in units})
@@ -64,6 +73,10 @@ def rewards_for(plan, country):
         values.update(**{'SW.InitialReady': 'no', 'SW.AutoFire': 'yes',
                          'SW.Shots': '-1' if offensive else str(challenge.get('shots', 3)),
                          'ShowTimer': 'no', 'DisableableFromShell': 'no'})
+        if plan.get('plan_version', 1) >= 31:
+            # Hidden providers are not newly discovered silos or Dominators.
+            # Preserve genuine readiness/launch notifications and the power.
+            values.update({'EVA.Detected': 'none', 'Message.Detected': 'none'})
         if key == 'ai_paratroopers':
             # Explicit portable payload avoids native General defaults choosing
             # another faction's infantry for an isolated derivative country.

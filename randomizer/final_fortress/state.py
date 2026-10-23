@@ -7,9 +7,10 @@ from randomizer.challenges.catalogue import SIDE_COUNTRIES
 
 from . import MODE_ID
 from .config import DIFFICULTY_IDS, identifier, integer, text, validate_wave_multiplier
+from .perks import rank_limit
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 
 def new_state():
@@ -18,7 +19,7 @@ def new_state():
         'gems': 0, 'owned_perks': [], 'selected_perks': [], 'perk_ranks': {},
         'preferences': {'difficulty': 'normal', 'player_country': None, 'wave_multiplier': 1,
                         'workspace_selected': False, 'selected_challenges': [], 'challenge_stacks': {},
-                        'mental_ai_boost': False},
+                        'mental_ai_boost': False, 'map_id': None},
         'run': None, 'coop_run_ids': [],
     }
 
@@ -37,7 +38,7 @@ def normalize_state(document):
     if not isinstance(document, dict):
         raise ValueError('Final Fortress state must be an object.')
     if (type(document.get('schema_version')) is not int
-            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION)
+            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION)
             or document.get('mode_id') != MODE_ID):
         raise ValueError('Unsupported Final Fortress state schema or mode ID.')
     document = deepcopy(document)
@@ -91,6 +92,10 @@ def normalize_state(document):
         if 'mental_ai_boost' in document['preferences']:
             raise ValueError('Legacy preferences contain an unsupported Mental AI Boost field.')
         document['preferences']['mental_ai_boost'] = False
+    if document['schema_version'] < 10:
+        if 'map_id' in document['preferences']:
+            raise ValueError('Legacy preferences contain an unsupported map selection.')
+        document['preferences']['map_id'] = None
     document['schema_version'] = SCHEMA_VERSION
     integer(document['gems'], 'Final Fortress Defensive Points')
     receipts = document['coop_run_ids']
@@ -107,7 +112,7 @@ def normalize_state(document):
         raise ValueError('Purchased ranks must match owned perks.')
     for key, rank in rank_table.items():
         integer(rank, 'Purchased perk rank', 1)
-        if rank > (8 if key == 'periodic_reinforcements' else 6):
+        if rank > rank_limit(key):
             raise ValueError('Invalid purchased perk rank.')
     if migrate_primary_weapon and rank_table.get('faction_superweapon') == 1:
         # The former single rank bought the offensive weapon. Keep that
@@ -117,7 +122,7 @@ def normalize_state(document):
     if (not isinstance(preferences, dict)
             or set(preferences) != {'difficulty', 'player_country', 'wave_multiplier',
                                     'workspace_selected', 'selected_challenges', 'challenge_stacks',
-                                    'mental_ai_boost'}
+                                    'mental_ai_boost', 'map_id'}
             or preferences['difficulty'] not in DIFFICULTY_IDS
             or preferences['player_country'] not in (None, *SIDE_COUNTRIES)):
         raise ValueError('Invalid Final Fortress preferences.')
@@ -125,6 +130,8 @@ def normalize_state(document):
         raise ValueError('Final Fortress workspace selection must be boolean.')
     if type(preferences['mental_ai_boost']) is not bool:
         raise ValueError('Mental AI Boost must be boolean.')
+    if preferences['map_id'] is not None:
+        identifier(preferences['map_id'], 'Selected map ID')
     validate_wave_multiplier(preferences['wave_multiplier'])
     _ids(preferences['selected_challenges'], 'Selected challenges')
     if not isinstance(preferences['challenge_stacks'], dict):

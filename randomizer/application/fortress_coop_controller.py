@@ -228,7 +228,8 @@ class FortressCoopController(FortressCoopLaunchController):
                  *[sessions[i].peer if sessions[i].connected else '(waiting)' for i in sorted(sessions)]]
         state = self.final_fortress_state
         preferences = state['preferences']
-        setup = (f'{preferences["player_country"] or "Choose faction"}, {preferences["difficulty"]}, '
+        setup = (f'{self.final_fortress_config["map"]["display_name"]}, '
+                 f'{preferences["player_country"] or "Choose faction"}, {preferences["difficulty"]}, '
                  f'x{preferences["wave_multiplier"]}; host perks shared')
         status = ' / '.join(names) + ' — ' + setup
         if len({name.casefold() for name in names if name != '(waiting)'}) != len(
@@ -241,7 +242,8 @@ class FortressCoopController(FortressCoopLaunchController):
         self.fortress_coop_status_var.set(status)
         for slot, lobby in sessions.items():
             if lobby.connected:
-                lobby.send({'type': 'fortress_roster', 'players': names, 'slot': slot, 'setup': setup})
+                lobby.send({'type': 'fortress_roster', 'players': names, 'slot': slot, 'setup': setup,
+                            'map_id': self.final_fortress_config['map']['id']})
 
     def _poll_fortress_lobby(self, generation):
         sessions = getattr(self, '_fortress_lobbies', {})

@@ -1,7 +1,8 @@
-"""Recover a spawned Windows game that stalls after its game loop has ended.
+"""Close a completed spawned game and recover stalled native teardown.
 
-This watches native lifecycle messages only. It never determines mission results
-and never closes a game merely because a player won, lost, or disconnected.
+This never determines results. Automatic result closure requires an explicit
+request from the owning controller after its verified receipts have been saved.
+Other callers retain native quit/lifecycle recovery without a score-screen timer.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import os
 from pathlib import Path
 import queue
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -28,7 +30,8 @@ class GameShutdownWatch:
     runs on a worker, targets only the captured Syringe process tree, and gives
     normal native teardown three seconds before intervening. A local quit event
     must be both submitted and processed before the terminal game-loop message;
-    an ordinary victory's score screen does not arm recovery.
+    an ordinary victory's score screen does not arm recovery unless its owning
+    controller explicitly requests closure after saving the completed result.
     """
 
     def __init__(self, path: Path, *, scenario: str = 'spawnmap.ini',
@@ -43,6 +46,8 @@ class GameShutdownWatch:
         self._anchor = b''
         self._unarmed = False
         self._attempted = False
+        self._result_close_requested = False
+        self._result_close_at = None
         self._cancelled = threading.Event()
         self._recovering = threading.Event()
         self._messages = queue.SimpleQueue()
@@ -72,6 +77,24 @@ class GameShutdownWatch:
         """Disarm when the tracked process exits or its launch is abandoned."""
         self._cancelled.set()
 
+    def request_result_close(self, *, delay_seconds: float = 2.5) -> bool:
+        """Arm once after the caller has saved this game's result and scores.
+
+        A controller must check its fresh result watcher, saved receipts and
+        captured process before calling. Neither an elapsed match timer nor
+        a native Winner/Loser label alone is enough to request this closure.
+        """
+        if (self.process is None or self._cancelled.is_set() or self._unarmed
+                or self._result_close_requested or self.process.poll() is not None):
+            return False
+        self._result_close_requested = True
+        self._result_close_at = time.monotonic() + delay_seconds
+        self._messages.put((
+            'Verified game result and score rewards are saved. Closing only this spawned '
+            f'game in {delay_seconds:g} seconds (PID={self.process.pid}).', False,
+        ))
+        return True
+
     @property
     def recovery_pending(self) -> bool:
         """Keep polling long enough to deliver the worker's final log message."""
@@ -87,6 +110,10 @@ class GameShutdownWatch:
         self._local_exit_added = False
         self._local_exit_processed = False
         self._finished_at = None
+        # A new scenario invalidates a scheduled close. Keep the once guard:
+        # a stale completed result must not re-arm against a restarted game.
+        self._result_close_at = None
+        self.caught_up = False
 
     def _feed(self, text: str) -> None:
         lines = (self._remainder + text).splitlines(keepends=True)
@@ -107,6 +134,7 @@ class GameShutdownWatch:
                 self._local_exit_added = False
                 self._local_exit_processed = False
                 self._finished_at = None
+                self._result_close_at = None
             elif self._scenario_seen and line.strip() == 'Capture_Mouse()':
                 self._game_started = True
                 # A resumed/restarted game must not inherit an old deadline.
@@ -139,21 +167,26 @@ class GameShutdownWatch:
                     offset = 0
                     self._reset_session()
                 handle.seek(offset)
-                while data := handle.read(1_048_576):
+                # The lifecycle watcher runs beside the result watcher on Tk.
+                # Bound both readers instead of draining an arbitrarily large log.
+                if data := handle.read(262_144):
                     self._feed(data.decode('latin-1'))
                 self._offset = handle.tell()
                 handle.seek(max(0, self._offset - 64))
-                self._anchor = handle.read()
+                self._anchor = handle.read(min(64, self._offset))
                 self._file_id = identity
+                self.caught_up = self._offset >= os.fstat(handle.fileno()).st_size
         except FileNotFoundError:
             # A missing or unreadable log cannot confirm it is still safe to act.
             self._finished_at = None
+            self.caught_up = True
             return False
         except OSError as exc:
             if self.error != str(exc):
                 self._messages.put(('Game shutdown recovery could not read the log: ' + str(exc), True))
             self.error = str(exc)
             self._finished_at = None
+            self.caught_up = True
             return False
         self.error = ''
         return True
@@ -165,15 +198,18 @@ class GameShutdownWatch:
         elif (not self._cancelled.is_set() and not self._unarmed
               and self.process is not None and self.process.poll() is None):
             read_ok = self._read_log()
-            if (sys.platform == 'win32' and read_ok and not self._attempted
-                    and self._finished_at is not None
-                    and time.monotonic() - self._finished_at >= self.grace_seconds):
+            now = time.monotonic()
+            result_due = self._result_close_at is not None and now >= self._result_close_at
+            teardown_due = (self._finished_at is not None
+                            and now - self._finished_at >= self.grace_seconds)
+            if read_ok and self.caught_up and not self._attempted and (result_due or teardown_due):
                 self._attempted = True
-                self._messages.put((
-                    'The game loop ended, but the game did not close after '
-                    f'{self.grace_seconds:g} seconds. Recovering only this spawned game '
-                    f'(PID={self.process.pid}).', False,
-                ))
+                if not result_due:
+                    self._messages.put((
+                        'The game loop ended, but the game did not close after '
+                        f'{self.grace_seconds:g} seconds. Recovering only this spawned game '
+                        f'(PID={self.process.pid}).', False,
+                    ))
                 self._recovering.set()
                 threading.Thread(target=self._recover, daemon=True,
                                  name='game-shutdown-recovery').start()
@@ -194,6 +230,9 @@ class GameShutdownWatch:
         process = self.process
         if self._cancelled.is_set() or process is None or process.poll() is not None:
             return
+        if sys.platform != 'win32':
+            self._close_wine_group(process)
+            return
         detail = ''
         try:
             result = subprocess.run(
@@ -213,7 +252,9 @@ class GameShutdownWatch:
             except subprocess.TimeoutExpired:
                 pass
             if process.poll() is not None:
-                self._messages.put((f'Recovered the stalled game shutdown (PID={process.pid}).', False))
+                action = ('Closed the completed game' if self._result_close_requested
+                          else 'Recovered the stalled game shutdown')
+                self._messages.put((f'{action} (PID={process.pid}).', False))
                 return
         except (OSError, subprocess.SubprocessError) as exc:
             detail = str(exc)
@@ -234,3 +275,39 @@ class GameShutdownWatch:
             self._messages.put((
                 f'Game shutdown recovery failed for PID={process.pid}: {exc}', True,
             ))
+
+    def _close_wine_group(self, process: subprocess.Popen) -> None:
+        """Terminate only the session created by spawn_game_process on POSIX.
+
+        Never stop wineserver or search by executable name: the user's other
+        Wine applications and games may share the same prefix/server.
+        """
+        try:
+            if self._cancelled.is_set() or process.poll() is not None:
+                return
+            # A group leader is guaranteed by start_new_session=True.
+            # Refuse a changed/shared group, including the launcher's own.
+            group = process.pid
+            if os.getpgid(group) != group or group == os.getpgrp():
+                raise OSError('The captured Wine process no longer owns its launch group.')
+            os.killpg(group, signal.SIGTERM)
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                pass
+            if self._cancelled.is_set():
+                return
+            # Syringe can exit before its game child. Finish the captured group
+            # even when Popen.wait has already reaped that launch's leader.
+            try:
+                os.killpg(group, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait(timeout=3)
+            self._messages.put((f'Closed the captured Wine game group (PID={group}).', False))
+        except ProcessLookupError:
+            # The exact captured process exited between the liveness check
+            # and the group operation. No unrelated process needs recovery.
+            return
+        except (OSError, subprocess.SubprocessError) as exc:
+            self._messages.put((f'Could not close the captured Wine game (PID={process.pid}): {exc}', True))

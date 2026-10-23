@@ -38,6 +38,51 @@ def _objective_blast(writer, plan, rules, damage, *, extra_warhead=None):
     return _action(42, registered.index(weapon), waypoint=_waypoint(waypoint)), armor, warhead, weapon
 
 
+def _shield_activation(writer, plan, rules, warhead):
+    """Charge a hidden self-targeted effect through Ares' complete warhead path.
+
+    Native action 42 calls DamageArea directly, bypassing the projectile hook
+    that applies Iron Curtain. GenericWarhead explicitly applies that effect.
+    The Lab itself is the sole provider and target; no nearby unit is selected.
+    """
+    from .engine import _action
+
+    owner, power = 'FFPLAYER', writer.key()
+    writer.sections[power] = {
+        'Name': 'Final Fortress emergency Lab shield', 'UIName': 'NOSTR:Emergency Lab shield',
+        'Type': 'GenericWarhead', 'Action': 'None',
+        # It cannot become ready naturally during this run. The health trigger
+        # charges it once, and Shots=1 prevents any subsequent activation.
+        'RechargeTime': f'{plan["survival_seconds"] / 60 + 1:g}',
+        'IsPowered': 'no', 'ShowTimer': 'no', 'DisableableFromShell': 'no',
+        'SW.RequiredHouses': owner, 'SW.AllowPlayer': 'yes', 'SW.AllowAI': 'no',
+        'SW.InitialReady': 'no', 'SW.Shots': '1', 'SW.AutoFire': 'yes',
+        'SW.ManualFire': 'no', 'SW.ShowCameo': 'no', 'SW.UseAITargeting': 'yes',
+        'SW.AITargeting': 'Self', 'SW.AIRequiresTarget': 'none',
+        'SW.AITargeting.Constraints': 'none', 'SW.AITargeting.Preference': 'none',
+        'SW.Damage': '0', 'SW.Warhead': warhead, 'SW.CreateRadarEvent': 'no',
+        'EVA.Ready': 'none', 'EVA.Activated': 'none', 'EVA.Detected': 'none',
+        'Message.Detected': 'none', 'SW.Sound': 'none', 'SW.ActivationSound': 'none',
+    }
+    _register_map_type(writer.sections, writer.lines, rules, 'SuperWeaponTypes', power)
+    registered = list(dict.fromkeys([
+        *rules['SuperWeaponTypes'].values(),
+        *section_value_map(writer.lines, 'SuperWeaponTypes').values(),
+        *writer.sections['SuperWeaponTypes'].values()]))
+    slot = next((field for field in ('SuperWeapon', 'SuperWeapon2')
+                 if writer.sections['FFOBJECTIVE'].get(field, 'none').lower() in ('', 'none', '<none>')), None)
+    if slot is None:
+        raise ValueError('The Fortress Lab has no free slot for its emergency shield.')
+    writer.put('FFOBJECTIVE', slot, power)
+    index = registered.index(power)
+    charge = _action(129, index, waypoint='100')
+    charge[1] = '11'  # Native SuperWeapon argument type; P7 is charge percent.
+    for field, value in dict(ShieldPower=power, ShieldIndex=index, ShieldOwner=owner,
+                             ShieldSlot=slot).items():
+        writer.put('FFLabSupport', field, value)
+    return charge, owner
+
+
 def apply_lab_support(writer, plan, rules, aliases, finished, loss_trigger):
     from .engine import _action, _waypoint
     from .messages import message_actions
@@ -55,11 +100,11 @@ def apply_lab_support(writer, plan, rules, aliases, finished, loss_trigger):
     head = writer.sections['Triggers'][loss_trigger].split(',')
     linked = head[1]
 
-    def attach(name, event, used, actions):
+    def attach(name, event, used, actions, *, owner='<none>'):
         nonlocal linked
         key, _ = writer.trigger(name,
             [(37, 0, finished), (37, 0, used), (event, 0, 0)], [])
-        writer.put('Triggers', key, f'<none>,{linked},{name},0,1,1,1,0')
+        writer.put('Triggers', key, f'{owner},{linked},{name},0,1,1,1,0')
         actions = [_action(56, used), _action(54, trigger=key), *actions]
         writer.put('Actions', key, str(len(actions)) + ',' + ','.join(t for a in actions for t in a))
         linked = key
@@ -85,23 +130,31 @@ def apply_lab_support(writer, plan, rules, aliases, finished, loss_trigger):
     if units:
         used = writer.flag('Lab reserve squad used')
         actions = []
+        shield_owner = '<none>'
         seconds = effects.get('lab_reserve_shield_seconds', 0)
         if plan.get('plan_version', 1) >= 27 and seconds:
             frames = seconds * 15
-            blast, armor, warhead, weapon = _objective_blast(writer, plan, rules, 0, extra_warhead={
+            _, armor, warhead, weapon = _objective_blast(writer, plan, rules, 0, extra_warhead={
                 'IronCurtain.Duration': str(frames), 'IronCurtain.Cap': str(frames),
                 'AllowZeroDamage': 'yes', 'EffectsRequireDamage': 'no', 'EffectsRequireVerses': 'yes',
                 'Malicious': 'no',
             })
             writer.put('FFOBJECTIVE', 'IronCurtain.Modifier', 1)
-            # Protect the objective before creating any squads. The used flag
-            # is set by attach() before this blast, so linked damage callbacks
-            # cannot refresh it. Negative healing bypasses native Iron Curtain
-            # damage immunity, preserving emergency repair on the same hit.
-            actions.append(blast)
+            # The once flag is set before charging. Self targeting follows the
+            # Lab even if emergency repair heals it during the same callback.
+            # Negative healing bypasses native Iron Curtain damage immunity.
+            activation, shield_owner = _shield_activation(writer, plan, rules, warhead)
+            actions.append(activation)
+            # Confirm the real activation, rather than claiming protection
+            # merely because the health event requested it.
+            activated, _ = writer.trigger('Lab shield activated',
+                [(37, 0, finished), (36, 0, used), (75, 0, writer.sections['FFLabSupport']['ShieldIndex'])],
+                message_actions(f'Lab shield active: {seconds}s'), owner=shield_owner)
+            writer.put('FFLabSupport', 'ShieldActivated', activated)
             for field, value in dict(Armor=armor, ShieldWarhead=warhead, ShieldWeapon=weapon,
                                      ShieldFrames=frames).items():
                 writer.put('FFLabSupport', field, value)
+        deliveries = []
         for index, (actor, _, start) in enumerate(coalition(plan)):
             position = plan['map']['perk_layouts'][str(start)]['units']
             waypoint = 10 + index
@@ -113,15 +166,31 @@ def apply_lab_support(writer, plan, rules, aliases, finished, loss_trigger):
                     [{'type': aliases.get(unit['type'], unit['type']), 'count': unit['count']}],
                     start, attack=not human_actor(plan, actor), owner=actor)
                 writer.put(team, 'Waypoint', _waypoint(waypoint))
+                writer.put(team, 'VeteranLevel', effects.get('lab_reserve_veterancy', 0) + 1)
                 writer.put(team, 'AreTeamMembersRecruitable', 'yes' if human_actor(plan, actor) else 'no')
-                actions.append(writer.reinforce(team))
+                deliveries.append(writer.reinforce(team))
+        if plan.get('plan_version', 1) >= 29:
+            # Up to eighteen type/house teams exceed the native 511-byte
+            # action limit. Deliver once through small, finish-guarded relays.
+            following = None
+            for offset in reversed(range(0, len(deliveries), 6)):
+                batch = deliveries[offset:offset + 6]
+                if following is not None:
+                    batch = [*batch, _action(53, trigger=following)]
+                following, _ = writer.trigger(f'Lab reserve deployment {offset // 6 + 1}',
+                    [(37, 0, finished)], batch, disabled=True)
+            writer.put('FFLabSupport', 'ReserveDeploy', following)
+            actions.append(_action(53, trigger=following))
+        else:
+            actions.extend(deliveries)
         actions.extend(message_actions('Lab reserve squad deployed!'))
-        if seconds:
-            actions.extend(message_actions(f'Lab shield: {seconds} seconds!'))
+        if plan.get('plan_version', 1) >= 29:
+            level = ('Rookie', 'Veteran', 'Elite')[effects.get('lab_reserve_veterancy', 0)]
+            actions.extend(message_actions(f'{sum(u["count"] for u in units)} {level} units per base'))
         # A single hit can skip the half-health damage state entirely. Event
         # 43 is a fallback; both paths share a flag set before spawning units.
-        fallback = attach('Lab reserve red-health fallback', 43, used, actions)
-        trigger = attach('Lab reserve squad', 42, used, actions)
+        fallback = attach('Lab reserve red-health fallback', 43, used, actions, owner=shield_owner)
+        trigger = attach('Lab reserve squad', 42, used, actions, owner=shield_owner)
         for field, value in dict(Reserve=trigger, ReserveFallback=fallback, ReserveUsed=used).items():
             writer.put('FFLabSupport', field, value)
     head[1] = linked

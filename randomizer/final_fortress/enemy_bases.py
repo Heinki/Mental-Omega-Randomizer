@@ -1,4 +1,4 @@
-"""Indestructible enemy construction and fixed anti-rush base perimeters."""
+"""Protected starting yards and defenses, with ordinary destructible expansions."""
 
 from copy import deepcopy
 
@@ -13,10 +13,11 @@ IMMUTABLE = dict(Immune='yes', ImmuneToPsionics='yes', ImmuneToSaboteurs='yes',
 
 
 def protect_enemy_buildings(writer, plan, rules, aliases):
-    """Clone hostile buildings, MCV deployment and harvester docking together."""
+    """Route production separately from the protected initial construction yards."""
     from .player_perks import _eligible, register_building_equivalent
     if plan.get('plan_version', 1) < 13:
         return
+    starting_only = plan.get('plan_version', 1) >= 30
     countries = list(zip((f'FFENEMY{i + 1}' for i in range(3)), plan['enemy_countries']))
     categories = {kind: category for category in ('BuildingTypes', 'VehicleTypes', 'InfantryTypes', 'AircraftTypes')
                   for kind in rules[category].values()}
@@ -63,7 +64,7 @@ def protect_enemy_buildings(writer, plan, rules, aliases):
         row.update(Image=row.get('Image', original), Owner=','.join([
             rules[original].get('Owner', ''), *eligible]), RequiredHouses=','.join(eligible) or 'Neutral',
             ForbiddenHouses='', AllowedToStartInMultiplayer='no')
-        if original in buildings or original in mcvs:
+        if not starting_only and (original in buildings or original in mcvs):
             row.update(IMMUTABLE)
             if plan.get('plan_version', 1) >= 16:
                 # Immortal structures must not absorb helper attack orders.
@@ -85,15 +86,34 @@ def protect_enemy_buildings(writer, plan, rules, aliases):
     for original in buildings:
         register_building_equivalent(writer, rules, original, aliases[original], aliases,
                                      preserve_native=plan.get('plan_version', 1) >= 14)
+    native_yards = rules['AI']['BuildConst'].split(',')
+    starting_yards = []
+    if starting_only:
+        for original in native_yards:
+            if original not in buildings:
+                continue
+            alias = writer.key()
+            row = deepcopy(writer.sections[aliases[original]])
+            row.update(IMMUTABLE)
+            # These types exist only for WithConst startup. No vehicle deploys
+            # into them, and they cannot pack up into a mobile invincible MCV.
+            row.update(TechLevel='-1', BuildLimit='1', AIBuildThis='no', UndeploysInto='none',
+                       LegalTarget='no', ThreatPosed='0', SpecialThreatValue='0')
+            writer.sections[alias] = row
+            _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', alias)
+            writer.put('FFEnemyStartingYards', original, alias)
+            register_building_equivalent(writer, rules, original, alias, aliases, preserve_native=True)
+            starting_yards.append(alias)
     for actor, _ in countries:
         writer.put(actor, 'StartInMultiplayer.WithConst', 'yes')
         for field, value in tuple(writer.sections[actor].items()):
             writer.put(actor, field, ','.join(aliases.get(kind, kind) for kind in value.split(',')))
     # Ares chooses the first buildable BuildConst entry for WithConst starts.
-    # Native yards forbid the private enemies; their own immutable copies are
-    # the only eligible candidates. This avoids relying on MCV startup ordering.
-    native_yards = rules['AI']['BuildConst'].split(',')
-    writer.put('AI', 'BuildConst', ','.join([*native_yards, *(aliases[kind] for kind in native_yards if kind in aliases)]))
+    # The private protected starts precede ordinary expansion yards. Native
+    # yards forbid private enemies, so WithConst chooses a protected start;
+    # production and MCV DeploysInto still use the normal vulnerable aliases.
+    writer.put('AI', 'BuildConst', ','.join([
+        *native_yards, *starting_yards, *(aliases[kind] for kind in native_yards if kind in aliases)]))
     for field, value in rules['AI'].items():
         additions = [aliases[kind] for kind in value.split(',') if kind in aliases]
         if additions:
@@ -125,6 +145,8 @@ def place_fortifications(writer, plan, rules, aliases):
                 row = deepcopy(writer.sections[aliases[original]])
                 row.update(IMMUTABLE)
                 row.update(Powered='no', Power='0', TechLevel='-1', BuildLimit='0', AIBuildThis='no')
+                if plan.get('plan_version', 1) >= 16:
+                    row.update(LegalTarget='no', ThreatPosed='0', SpecialThreatValue='0')
                 writer.sections[alias] = row
                 _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', alias)
                 writer.put('FFEnemyFortifications', original, alias)

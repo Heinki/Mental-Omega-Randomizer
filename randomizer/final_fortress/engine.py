@@ -20,7 +20,7 @@ from randomizer.maps.ini import (
     next_numeric_section_index, section_value_map,
 )
 
-from .maps import inspect_map
+from .maps import inspect_map, source_lines
 
 
 MAX_SCRIPTED_WAVES = 11
@@ -516,7 +516,7 @@ def _cash_reward(writer, plan, rules, camp, claimed, index, *, waypoint=None):
     points = section_value_map(writer.lines, 'Waypoints')
     unused = next(number for number in range(8) if number not in {
         plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
-        *(plan.get('allied_waypoints', []) if plan.get('coop_players') else [])})
+        *plan.get('allied_waypoints', [])})
     cell = int(points[str(unused)])
     x, y = cell % 1000 + index, cell // 1000
     if plan.get('coop_players'):
@@ -530,10 +530,10 @@ def build_map(game_root, run, rules, *, preloads=None):
     """Generate bytes only; never modify the original installed map."""
     plan = run['plan']
     definition = plan['map']
-    source = inspect_map(game_root, definition)
+    inspect_map(game_root, definition)
     if len(plan['wave_schedule']) > MAX_SCRIPTED_WAVES:
         raise ValueError(f'The engine adapter supports at most {MAX_SCRIPTED_WAVES} waves.')
-    lines = IniLines(Path(source['source']).read_text(encoding='latin-1').splitlines())
+    lines = source_lines(game_root, definition)
     if any(section_value_map(lines, section) for section in ('Triggers', 'VariableNames')):
         raise ValueError('Final Fortress requires a source without authored triggers or variables.')
     writer = _MapWriter(lines, definition['player_waypoint'])
@@ -664,8 +664,9 @@ def build_map(game_root, run, rules, *, preloads=None):
     apply_drakuv_power(writer, plan, rules, player_aliases)
     from .enemy_powers import apply_enemy_powers
     apply_enemy_powers(writer, plan, rules, enemy_aliases)
-    from .wave_clock import create_wave_clock
+    from .wave_clock import create_wave_clock, create_friendly_clocks
     wave_clock = create_wave_clock(writer, plan, rules, finished)
+    friendly_clocks = create_friendly_clocks(writer, plan, rules, finished)
     if plan['effects'].get('reveal_map') and not plan.get('coop_players'):
         writer.trigger('Final Fortress satellite intelligence', [(13, 0, 1)], [_action(16)])
     ai_sections = route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases)
@@ -677,16 +678,17 @@ def build_map(game_root, run, rules, *, preloads=None):
                     'Actions', 'VariableNames', 'CellTags', 'Waypoints', 'TaskForces', 'TeamTypes',
                     'ScriptTypes', 'AITriggerTypes', 'AITriggerTypesEnable', 'FFSpecialAccess', 'FFEnemyPowers',
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
+                    'FFEnemyStartingYards',
                     'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
                     'FFCampTracking', 'FFLabSupport'}
         changed = {section: {key: value for key, value in values.items()
                             if before_perk_rules.get(section, {}).get(key) != value}
                    for section, values in writer.sections.items() if section not in map_only
-                   and section not in ai_sections}
+                   and not section.startswith('FFAlliedClock') and section not in ai_sections}
         preloads['rules'] = {key: row for key, row in changed.items() if row}
         preloads['ai'] = ai_sections
     from .reinforcements import apply_reinforcements
-    apply_reinforcements(writer, plan, rules, player_aliases, finished)
+    apply_reinforcements(writer, plan, rules, player_aliases, finished, friendly_clocks=friendly_clocks)
 
     if plan.get('plan_version', 1) >= 16:
         from .wave_pool import apply_wave_pool

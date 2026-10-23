@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 28
+PLAN_VERSION = 31
 
 
 def configuration_digest(config):
@@ -86,7 +86,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                                   include_power=plan_version >= 8, include_power_upgrades=plan_version >= 9,
                                   include_arsenal=plan_version >= 11, include_utilities=plan_version >= 12,
                                   include_lab_support=plan_version >= 26, include_lab_shield=plan_version >= 27,
-                                  include_lab_health=plan_version >= 28)
+                                  include_lab_health=plan_version >= 28,
+                                  include_lab_veterancy=plan_version >= 29)
     settings = config['settings']
     enemy_rng = random.Random(f'{seed}:final_fortress:enemy_countries')
     enemies = [enemy_rng.choice(SIDE_COUNTRIES) for _ in range(3)]
@@ -163,6 +164,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
         if plan_version >= 17 and wave_schedule:
             # The hidden wave-clock provider is transferred to the human once.
             plan['initial_transfer_kills'] += 1
+        if plan_version >= 31 and effects.get('reinforcements'):
+            plan['initial_transfer_kills'] += 1
         plan['performance'] = deepcopy(config.get('performance'))
         if plan['performance']:
             performance = plan['performance']
@@ -197,10 +200,15 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
         rewards['victory'] += sum(entry['victory_gems'] for entry in plan['challenges'])
     if plan_version >= 12:
         from .enemy_powers import add_powerhouses
+        if plan_version >= 31 and config.get('wave_priorities'):
+            plan['wave_priorities'] = deepcopy(config['wave_priorities'])
         add_powerhouses(plan)
     if plan_version >= 20:
         from .waves import add_air_support
         add_air_support(plan, config)
+    if plan_version >= 31 and config.get('wave_priorities'):
+        from .wave_priority import apply_priorities
+        apply_priorities(plan, config['wave_priorities'])
     if coop_players:
         for slot in range(len(coop_players)):
             for camp in plan['map']['camps']:

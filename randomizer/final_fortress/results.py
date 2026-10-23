@@ -11,6 +11,13 @@ _CREATED = re.compile(r"Creating a new team named '([^']+)'\.")
 
 
 class FinalFortressResultWatch:
+    @property
+    def ready_to_close(self):
+        """The fresh result and complete friendly scores have all been parsed."""
+        return (self.started and self.result in ('victory', 'defeat')
+                and self._scores_read and self._performance_credited
+                and self.caught_up and not self.error)
+
     def __init__(self, path, run_id, plan=None, *, from_start=False,
                  player_name='Commander', initial_transfers=None, coop_slot=None):
         self.path = Path(path)

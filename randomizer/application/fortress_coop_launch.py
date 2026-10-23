@@ -118,8 +118,14 @@ class FortressCoopLaunchController:
             self._fortress_local_slot = assigned_slot
             self._fortress_lobbies = {assigned_slot: lobby}
             self._fortress_roster = players
+            map_id = message.get('map_id')
+            if map_id is not None:
+                from randomizer.final_fortress.maps import select_map
+                select_map(self.final_fortress_map_catalogue, map_id)
+            self._fortress_host_map_id = map_id
             self._fortress_coop_count_var.set(str(len(players)))
             self.fortress_coop_status_var.set(' / '.join(players) + ' — ' + str(message.get('setup', '')))
+            self.refresh_final_fortress()
             return
         if kind == 'fortress_prepare':
             try:

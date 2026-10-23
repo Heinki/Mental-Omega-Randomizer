@@ -11,7 +11,7 @@ from randomizer.final_fortress import DISPLAY_NAME
 from randomizer.final_fortress.config import (
     DIFFICULTY_IDS, WAVE_MULTIPLIERS, configuration_gaps, load_config,
 )
-from randomizer.final_fortress.maps import inspect_map
+from randomizer.final_fortress.maps import inspect_map, map_definitions, select_map
 from randomizer.final_fortress.engine import prepare_game, cleanup_ai_preload
 from randomizer.final_fortress.results import FinalFortressResultWatch
 from randomizer.final_fortress.pressure import wave_growth
@@ -97,10 +97,12 @@ class FinalFortressController(FortressCoopController):
         self.final_fortress_gems_var = tk.StringVar(value='Defensive Points: 0')
         self.progression_mode_var.trace_add('write', self._sync_game_mode_choice)
         try:
-            self.final_fortress_config = load_config()
+            self.final_fortress_map_catalogue = load_config()
+            self.final_fortress_config = self.final_fortress_map_catalogue
             definition = self.final_fortress_config['map']
+            self.final_fortress_map_choices = tuple(
+                entry['display_name'] for entry in map_definitions(self.final_fortress_map_catalogue))
             if definition is not None:
-                self.final_fortress_map_choices = (definition['display_name'],)
                 self.final_fortress_map_var.set(definition['display_name'])
             self.final_fortress_state = self.final_fortress_repository.load()
             if self.final_fortress_state['preferences']['workspace_selected']:
@@ -262,6 +264,19 @@ class FinalFortressController(FortressCoopController):
             return
         self.final_fortress_state = state
         preferences = state['preferences']
+        catalogue = self.final_fortress_map_catalogue
+        map_id = preferences['map_id'] or (catalogue['map'] or {}).get('id')
+        if self.fortress_coop_guest():
+            map_id = getattr(self, '_fortress_host_map_id', None) or map_id
+        try:
+            self.final_fortress_config = select_map(catalogue, map_id) if map_id else catalogue
+        except ValueError as exc:
+            self._final_fortress_launch_blockers = [str(exc)]
+            self.final_fortress_status_var.set(str(exc))
+            if hasattr(self, 'final_fortress_launch_button'):
+                self.final_fortress_launch_button.configure(state='disabled')
+            return
+        self.final_fortress_map_var.set((self.final_fortress_config['map'] or {}).get('display_name', ''))
         self.final_fortress_country_var.set(COUNTRY_LABELS.get(preferences['player_country'], ''))
         self.final_fortress_difficulty_var.set(next(
             label for label, key in self.final_fortress_difficulty_choices.items()
@@ -272,7 +287,8 @@ class FinalFortressController(FortressCoopController):
         settings = config['settings']
         pressure = config.get('wave_pressure')
         rules = [
-            'Co-op supports two or three humans over ZeroTier. Open Co-op in the header; '
+            'Co-op supports two or three humans over ZeroTier. In Settings, enable Co-op '
+            'and open Co-op Connection; '
             'the host selects the human count, faction, difficulty and enabled perks. '
             'All teammates share those perks. Two humans leave at most one perk-enabled AI helper; '
             'three humans leave none. Every human earns their own Defensive Points and buys '
@@ -282,8 +298,9 @@ class FinalFortressController(FortressCoopController):
             f'{settings["survival_seconds"] / 60:g} in-game minutes against three enemy AIs.',
             'Lab durability increases the Lab’s maximum health for the whole run. '
             'Emergency Lab repair restores that full maximum once per run below '
-            '35% health. Lab reserve squad deploys 3 infantry plus 1 faction vehicle '
-            'per friendly house once below 50%, with 10 seconds of Iron Curtain on the Lab '
+            '35% health. Lab reserve squad has ten ranks, growing from 4 to 25 faction units '
+            'per friendly house once below 50%; ranks 9 and 10 arrive Veteran and Elite. '
+            'It grants 10 seconds of Iron Curtain on the Lab '
             'while squads arrive. Each human controls their own reserve; '
             'both perks reset for the next run.',
             f'Additional waves start after {settings["wave_interval_seconds"] / 60:g} minutes '
@@ -306,7 +323,7 @@ class FinalFortressController(FortressCoopController):
                     for stage in pressure['spawn_sides']) + '.')
             rules.append(f'Provisional shared limits: {settings["max_wave_units"]} per wave; '
                          f'{pressure["max_active_units"]} reserved wave units. '
-                         'Waves arrive in mixed groups of up to twenty; each enemy has one third of the living limit. '
+                         'Waves arrive in groups of up to twenty; each enemy has one third of the living limit. '
                          'Empty group slots are reused without waiting for an entire earlier wave to die. '
                          'Five minutes separate a completed delivery and the next wave. '
                          'Normal AI production is excluded. These limits need gameplay balance review.')
@@ -317,6 +334,13 @@ class FinalFortressController(FortressCoopController):
             rules.append(f'From {stage["from_seconds"] / 60:g} minutes, faction air attacks replace '
                          f'{stage["percent"]}% of each wave (at least one aircraft where space allows). '
                          'Air and ground attack teams share the existing wave cap.')
+        if config.get('wave_priorities'):
+            priorities = config['wave_priorities']
+            rules.append('Advanced/special ground-wave shares, where available: ' + '; '.join(
+                f'{stage["advanced_percent"] + stage["special_percent"]}% from {stage["from_seconds"] / 60:g} minutes'
+                for stage in priorities['stages'])
+                + f'. From {priorities["late_seconds"] / 60:g} minutes, pending early-wave deliveries also '
+                  'upgrade and later ground waves send stronger units first. The living-unit limit remains unchanged.')
         self.final_fortress_gems_var.set(f'Defensive Points: {state["gems"]}')
         tree = getattr(self, 'final_fortress_perks_tree', None)
         if tree is not None:
@@ -364,6 +388,11 @@ class FinalFortressController(FortressCoopController):
         total += settings['completion_gems'] or 0
         milestones.append(f'{total} total Defensive Points on victory, plus enabled Challenge bonuses')
         rules.extend([
+            'The periodic reinforcement perk adds a Next allied reinforcements countdown for each human. '
+            'Its next interval starts after that player receives the complete arrival; capacity can delay delivery.',
+            'The Faction offensive superweapons Challenge grants real enemy powers through hidden launch providers. '
+            'No visible silo is required. Disable that Challenge before a new run to remove those powers. '
+            'Hidden providers no longer announce newly discovered superweapon buildings.',
             'Survival rewards: ' + '; '.join(milestones) + '. Balance is provisional and configurable.',
             'Clear stationary enemy camps, then move a player unit onto the camp center. '
             'Each camp grants Defensive Points and a random credit, squad, or faction special-unit reward. '
@@ -577,8 +606,12 @@ class FinalFortressController(FortressCoopController):
         self._final_fortress_logged_waves = len(watch.waves)
         for text, error in shutdown.poll(process):
             self.append_log(text, error=error)
+        if (running and watch.ready_to_close and shutdown.caught_up
+                and outcome in self._final_fortress_recorded_events
+                and all(event in self._final_fortress_recorded_events for event in watch.events)):
+            shutdown.request_result_close()
         if running or shutdown.recovery_pending or not watch.caught_up:
-            self.after(10 if not watch.caught_up else 2000 if outcome else 500,
+            self.after(10 if not watch.caught_up or not shutdown.caught_up else 500,
                        self._poll_final_fortress_game)
             return
         if not outcome:
@@ -610,6 +643,18 @@ class FinalFortressController(FortressCoopController):
         except (ValueError, FinalFortressPersistenceError) as exc:
             messagebox.showerror(DISPLAY_NAME, str(exc), parent=self)
         self.refresh_final_fortress()
+
+    def on_final_fortress_map_changed(self, _event=None):
+        if self.fortress_coop_guest():
+            self.refresh_final_fortress()
+            return
+        selected = self.final_fortress_map_var.get()
+        definition = next(entry for entry in map_definitions(self.final_fortress_map_catalogue)
+                          if entry['display_name'] == selected)
+        self._final_fortress_action(lambda: self.final_fortress_repository.set_map(
+            self.final_fortress_map_catalogue, definition['id']))
+        if self._fortress_lobbies:
+            self._publish_fortress_roster()
 
     def on_final_fortress_country_changed(self, _event=None):
         country = self.final_fortress_country_choices[self.final_fortress_country_var.get()]

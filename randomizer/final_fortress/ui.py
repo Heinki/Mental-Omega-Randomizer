@@ -40,11 +40,9 @@ def build_final_fortress_tab(app, notebook):
     help_button.grid(row=0, column=2, sticky='e')
     from randomizer.coop import feature
     if feature.COOP_FEATURE_ENABLED:
-        ttk.Button(title, text='Co-op…', command=app.open_fortress_coop_dialog).grid(
-            row=0, column=3, sticky='e', padx=(8, 0))
         ttk.Label(title, textvariable=app.fortress_coop_status_var,
                   wraplength=900, justify='left', style='Muted.TLabel').grid(
-            row=1, column=0, columnspan=4, sticky='w', pady=(6, 0))
+            row=1, column=0, columnspan=3, sticky='w', pady=(6, 0))
 
     progression = ttk.Notebook(tab)
     app.final_fortress_progression_tabs = progression
@@ -183,7 +181,7 @@ def build_final_fortress_tab(app, notebook):
     app.final_fortress_setup_combos = []
     for row, (label, variable, values, handler) in enumerate((
         ('Game Mode', app.game_mode_var, app.game_mode_choices, app.on_game_mode_changed),
-        ('Map', app.final_fortress_map_var, app.final_fortress_map_choices, None),
+        ('Map', app.final_fortress_map_var, app.final_fortress_map_choices, app.on_final_fortress_map_changed),
         ('Player faction', app.final_fortress_country_var,
          tuple(app.final_fortress_country_choices), app.on_final_fortress_country_changed),
         ('AI difficulty', app.final_fortress_difficulty_var,

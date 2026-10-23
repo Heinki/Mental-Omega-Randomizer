@@ -72,7 +72,7 @@ def build_schedule(plan):
     return [{'seconds': seconds, 'groups': deepcopy(groups)} for seconds in times]
 
 
-def apply_reinforcements(writer, plan, rules, player_aliases, finished):
+def apply_reinforcements(writer, plan, rules, player_aliases, finished, *, friendly_clocks=None):
     """Reserve a complete arrival until all its private unit types disappear.
 
     Native type-absence checks remain valid after team disbanding, capture and
@@ -95,7 +95,7 @@ def apply_reinforcements(writer, plan, rules, player_aliases, finished):
         overrides[original] = row
     if plan.get('plan_version', 1) >= 17:
         from .friendly_pool import apply_friendly_pool
-        apply_friendly_pool(writer, plan, rules, overrides, finished)
+        apply_friendly_pool(writer, plan, rules, overrides, finished, friendly_clocks=friendly_clocks)
         return
     ready = [writer.flag(f'Friendly arrival {i + 1} ready') for i in range(len(schedule))]
     spawned = [writer.flag(f'Friendly arrival {i + 1} spawned') for i in range(len(schedule))]
@@ -126,7 +126,7 @@ def apply_reinforcements(writer, plan, rules, player_aliases, finished):
             # and available for selection. Do not let native AI steal partial
             # helper teams and strand the remainder of a capped batch.
             writer.put(team, 'AreTeamMembersRecruitable', 'no' if helper else 'yes')
-            actions.append(_action(7, team=team))
+            actions.append(writer.reinforce(team))
         completed, _ = writer.trigger(f'Friendly arrival {index + 1} complete',
                                      [(13, 0, 0), (36, 0, spawned[index]),
                                       *((61, 2, 0, alias) for alias in aliases.values())],

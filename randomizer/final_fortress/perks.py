@@ -9,6 +9,10 @@ def ranks(perk):
     return perk.get('ranks', [{'gem_cost': perk['gem_cost'], 'effects': perk['effects']}])
 
 
+def rank_limit(perk_id):
+    return {'periodic_reinforcements': 8, 'lab_reserve_squad': 10}.get(perk_id, 6)
+
+
 def owned_rank(state, key):
     return state.get('perk_ranks', {}).get(key, int(key in state['owned_perks']))
 
@@ -28,9 +32,9 @@ def validate_perk(perk):
     text(perk['description'], 'Perk description')
     integer(perk['gem_cost'], 'Perk Defensive Points cost', 1)
     entries = ranks(perk)
-    rank_limit = 8 if perk['id'] == 'periodic_reinforcements' else 6
-    if not isinstance(entries, list) or not 1 <= len(entries) <= rank_limit:
-        raise ValueError(f'This perk requires one to {rank_limit} ranks.')
+    maximum = rank_limit(perk['id'])
+    if not isinstance(entries, list) or not 1 <= len(entries) <= maximum:
+        raise ValueError(f'This perk requires one to {maximum} ranks.')
     if entries[0] != {'gem_cost': perk['gem_cost'], 'effects': perk['effects']}:
         raise ValueError('The first perk rank must match its displayed base price and effects.')
     previous = 0
@@ -52,7 +56,7 @@ def validate_perk(perk):
                      'special_units_by_country', 'reinforcements', 'healing_stacks',
                      'recon_stacks', 'unique_limit_stacks', 'income_stacks',
                      'lab_emergency_repair', 'lab_reserve_units_by_country', 'lab_reserve_shield_seconds',
-                     'lab_health_percent'}
+                     'lab_health_percent', 'lab_reserve_veterancy'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
         if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
@@ -65,7 +69,8 @@ def validate_perk(perk):
                            ('production_percent', 50), ('defense_veterancy', 1),
                            ('defense_percent', 60), ('allied_helpers', 2), ('power_upgrade_stacks', 6),
                            ('healing_stacks', 6), ('recon_stacks', 6),
-                           ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100)):
+                           ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100),
+                           ('lab_reserve_veterancy', 2)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -89,11 +94,11 @@ def validate_perk(perk):
                 if key in ('starting_units_by_country', 'harvesters_by_country', 'fallback_units_by_country',
                            'lab_reserve_units_by_country'):
                     _units(values)
-                    if key == 'lab_reserve_units_by_country' and (
-                            not values or len(values) > 6 or sum(unit['count'] for unit in values) > 6
-                            or len({unit['type'] for unit in values}) != len(values)):
-                        raise ValueError('Lab reserves require 1–6 units with unique types per house.')
-                    if sum(unit['count'] for unit in values) > 15:
+                    if key == 'lab_reserve_units_by_country':
+                        if (not values or len(values) > 6 or sum(unit['count'] for unit in values) > 30
+                                or len({unit['type'] for unit in values}) != len(values)):
+                            raise ValueError('Lab reserves require 1–30 units in at most six unique types per house.')
+                    elif sum(unit['count'] for unit in values) > 15:
                         raise ValueError('Starting armies are limited to 15 units.')
                 else:
                     maximum = {'defenses_by_country': 16, 'support_powers_by_country': 5,
@@ -141,7 +146,8 @@ def validate_perk(perk):
 
 def resolve_effects(config, selected, purchased, country, *, include_power=False,
                     include_power_upgrades=False, include_arsenal=False, include_utilities=False,
-                    include_lab_support=False, include_lab_shield=False, include_lab_health=False):
+                    include_lab_support=False, include_lab_shield=False, include_lab_health=False,
+                    include_lab_veterancy=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -162,6 +168,8 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         effects['lab_reserve_shield_seconds'] = 0
     if include_lab_health:
         effects['lab_health_percent'] = 0
+    if include_lab_veterancy:
+        effects['lab_reserve_veterancy'] = 0
     catalogue = {entry['id']: entry for entry in config['perks']}
     fallback = []
     for key in selected:
@@ -170,6 +178,9 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_lab_veterancy:
+            effects['lab_reserve_veterancy'] = max(
+                effects['lab_reserve_veterancy'], current.get('lab_reserve_veterancy', 0))
         if include_lab_health:
             effects['lab_health_percent'] = max(effects['lab_health_percent'], current.get('lab_health_percent', 0))
         if include_lab_shield:
