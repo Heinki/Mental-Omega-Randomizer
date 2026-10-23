@@ -37,7 +37,8 @@ def power_rewards(plan, rules):
         reward['_runtime_canonical'] = True
         values = reward.setdefault('superweapon_rules', {})
         values.update(Name='Fortress ' + rules[original].get('Name', original),
-                      IsPowered='no', DisableableFromShell='no', ShowTimer='no',
+                      IsPowered='no', DisableableFromShell='no',
+                      ShowTimer=rules[original].get('ShowTimer', 'no'),
                       **{key: '' for key in ('SW.AuxBuildings', 'SW.NegBuildings',
                                             'SW.RequiredHouses', 'SW.ForbiddenHouses', 'SW.Designators')})
         if plan.get('plan_version', 1) >= 31:

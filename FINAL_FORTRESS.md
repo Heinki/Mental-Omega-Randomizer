@@ -231,6 +231,11 @@ delay and repeat interval follow the purchased rank; the display disappears
 after the final arrival or when survival ends. These display providers are
 silent, harmless and excluded from setup kill rewards like the enemy clock.
 
+Player and helper perk superweapons retain their installed countdown settings.
+Enemy faction-superweapon challenges also show their normal countdowns. These
+timers appear alongside the Fortress arrival and survival timers, using the
+native visibility rules and each owning house's color.
+
 The adapter supports eleven waves,
 six distinct types per reinforcement group, six camps, 100 local flags, and
 the native 511-byte action-line limit.

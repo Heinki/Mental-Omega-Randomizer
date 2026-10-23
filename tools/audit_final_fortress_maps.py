@@ -195,6 +195,9 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             native = {**rules[original], **blueprint.get('superweapon_rules', {})}
             require(action[0] == '34', f'Non-repeatable support power grant for {actor}')
             power = effective[registered_powers[int(action[2])]]
+            require(power.get('ShowTimer', 'no') == rules[original].get('ShowTimer', 'no')
+                    and power.get('SW.TimerVisibility', 'all') == rules[original].get('SW.TimerVisibility', 'all'),
+                    f'Friendly power lost its native countdown visibility: {actor}.{original}')
             if plan.get('plan_version', 1) >= 31:
                 require(power.get('EVA.Detected') == 'none' and power.get('Message.Detected') == 'NOSTR:',
                         'Hidden friendly provider announces a newly discovered superweapon building')
@@ -512,6 +515,9 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
             owner, original = rows['FFEnemyPowers'][alias].split(',')
             require(owner == actor and original in expected_powers[actor], 'Enemy faction received another power')
             power = effective[alias]
+            require(power.get('ShowTimer', 'no') == rules[original].get('ShowTimer', 'no')
+                    and power.get('SW.TimerVisibility', 'all') == rules[original].get('SW.TimerVisibility', 'all'),
+                    f'Hostile power lost its native countdown visibility: {actor}.{original}')
             if plan.get('plan_version', 1) >= 31:
                 require(power.get('EVA.Detected') == 'none' and power.get('Message.Detected') == 'NOSTR:',
                         'Hidden hostile provider announces a newly discovered superweapon building')

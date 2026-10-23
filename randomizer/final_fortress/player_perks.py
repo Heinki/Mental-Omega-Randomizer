@@ -472,7 +472,7 @@ def support_powers(writer, plan, rules, country_aliases):
             for field in ('SW.AuxBuildings', 'SW.NegBuildings', 'SW.RequiredHouses',
                           'SW.ForbiddenHouses', 'SW.Designators'):
                 row.pop(field, None)
-            row.update(IsPowered='no', DisableableFromShell='no', ShowTimer='no')
+            row.update(IsPowered='no', DisableableFromShell='no')
             if original == 'AmericanParaDropSpecial':
                 native = plan['effects']['starting_units']
                 if native:

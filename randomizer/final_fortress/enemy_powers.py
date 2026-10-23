@@ -72,7 +72,7 @@ def rewards_for(plan, country):
         values = converted['superweapon_rules']
         values.update(**{'SW.InitialReady': 'no', 'SW.AutoFire': 'yes',
                          'SW.Shots': '-1' if offensive else str(challenge.get('shots', 3)),
-                         'ShowTimer': 'no', 'DisableableFromShell': 'no'})
+                         'ShowTimer': 'yes' if offensive else 'no', 'DisableableFromShell': 'no'})
         if plan.get('plan_version', 1) >= 31:
             # Hidden providers are not newly discovered silos or Dominators.
             # Preserve genuine readiness/launch notifications and the power.
