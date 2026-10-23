@@ -316,6 +316,9 @@ rank's effect a second time. Prices are paid once per rank.
 | Unique-unit capacity | 150 / 300 / 550 | +1 / +2 / +3 to eligible positive live-unit production limits, including unlocked specials; no new access |
 | Special building income | 120 / 240 / 420 / 650 | +5 / +10 / +15 / +20 credits per existing payout cycle on eligible special buildings |
 
+At Starting army rank 5, PsiCorps receives Libra, Scorpion Cell receives Malver,
+and Epsilon HQ receives Rahn.
+
 Utility perks reuse reward-catalogue eligibility, exclusions and calculations,
 including linked deploy/mutation forms. They affect private player/helper
 copies. Healing starts at rookie rank and uses the unit's actual buffed HP and

@@ -28599,13 +28599,6 @@
       "id": 81067409
     },
     {
-      "name": "Thor Gunship Ammo Reserves I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067410
-    },
-    {
       "name": "Thor Gunship Armor Plating I",
       "classification": "useful",
       "category": "unit_buffs",
@@ -34484,7 +34477,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "79566ef9bf1b98422d46848e2f65586a57a7441692044d9c3bff6a596300108b",
+  "catalogue_checksum": "b755f29a3c8efc8553d46185c3833f34a873fab4389ee405594224e881c2eaaa",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",
