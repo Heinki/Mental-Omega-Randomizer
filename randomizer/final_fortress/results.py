@@ -11,11 +11,16 @@ _CREATED = re.compile(r"Creating a new team named '([^']+)'\.")
 
 
 class FinalFortressResultWatch:
-    def __init__(self, path, run_id, plan=None, *, from_start=False):
+    def __init__(self, path, run_id, plan=None, *, from_start=False,
+                 player_name='Commander', initial_transfers=None, coop_slot=None):
         self.path = Path(path)
         self.run_id = run_id
         self.markers = {name: event for event, name in marker_names(run_id, plan).items()}
         self.plan = plan
+        self.player_name = player_name
+        self.initial_transfers = ((plan or {}).get('initial_transfer_kills', 0)
+                                  if initial_transfers is None else initial_transfers)
+        self.coop_slot = coop_slot
         self.events = []
         self._in_scores = False
         self._local_record = False
@@ -82,9 +87,9 @@ class FinalFortressResultWatch:
         return self.result
 
     @classmethod
-    def read_completed_log(cls, path, run_id, plan):
+    def read_completed_log(cls, path, run_id, plan, **identity):
         """Replay real native evidence on a worker, requiring this run's START."""
-        watch = cls(path, run_id, plan, from_start=True)
+        watch = cls(path, run_id, plan, from_start=True, **identity)
         while not watch.caught_up:
             watch.poll()
             if watch.error:
@@ -103,8 +108,9 @@ class FinalFortressResultWatch:
                 self._in_scores = True
                 self._local_record = False
             if self._in_scores and not self._scores_read:
-                if re.fullmatch(r'Commander: (Winner|Loser)\s*', line):
-                    self._local_record = True
+                result_row = re.fullmatch(r'([^:]+): (Winner|Loser)\s*', line)
+                if result_row:
+                    self._local_record = result_row.group(1) == self.player_name
                 elif self._local_record:
                     kills = re.fullmatch(r'\s+Kills = (\d+)\s*', line)
                     if kills:
@@ -117,8 +123,9 @@ class FinalFortressResultWatch:
                 self._performance_credited = True
                 cash_transfers = sum(1 for camp in (self.plan or {}).get('map', {}).get('camps', [])
                                      if camp.get('crate_reward', {}).get('credits')
-                                     and 'camp:' + camp['id'] in self.events)
-                combat_kills = max(0, self._kills - (self.plan or {}).get('initial_transfer_kills', 0)
+                                     and ((f'camp_pick:{self.coop_slot}:' if self.coop_slot is not None
+                                           else 'camp:') + camp['id']) in self.events)
+                combat_kills = max(0, self._kills - self.initial_transfers
                                    - cash_transfers)
                 for event in (self.plan or {}).get('gem_rewards', {}):
                     if event.startswith('kills:') and combat_kills >= int(event.split(':')[1]):
@@ -137,6 +144,7 @@ class FinalFortressResultWatch:
                 wave = int(event.split(':')[1])
                 if wave not in self.waves:
                     self.waves.append(wave)
-            elif self.started and not self.result and event and event.startswith(('milestone:', 'camp:', 'camp_clear:')):
+            elif self.started and not self.result and event and event.startswith(
+                    ('milestone:', 'camp:', 'camp_clear:', 'camp_pick:')):
                 if event not in self.events:
                     self.events.append(event)

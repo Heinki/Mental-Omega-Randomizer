@@ -72,6 +72,7 @@ class Lobby:
         self._closed = threading.Event()
         self.connected = False
         self.peer = ''
+        self.peer_installation = None
 
     def start(self):
         threading.Thread(target=self._run, name='CoopLobby', daemon=True).start()
@@ -95,6 +96,12 @@ class Lobby:
             raise ValueError('Co-op lobby message is too large.')
         with self._send_lock:
             self._socket.sendall(data)
+
+    def ipv4_pair(self):
+        """Authenticated connection route used by the native UDP game spawner."""
+        if not self.connected or self._socket is None:
+            raise ConnectionError('Co-op peer is not connected.')
+        return self._socket.getsockname()[0], self._socket.getpeername()[0]
 
     def _connect_to_host(self):
         """Retry transient refusal or timeout within one cancellable 30-second window."""
@@ -154,6 +161,7 @@ class Lobby:
             if self.peer == self.name:
                 raise ValueError('Both players need distinct names.')
             _check_separate_install(_installation(self.game_root), hello.get('installation'))
+            self.peer_installation = hello.get('installation')
             peer_nonce = hello.get('nonce')
             if (not isinstance(peer_nonce, str) or not re.fullmatch(r'[0-9a-f]{32}', peer_nonce)
                     or bool(self.pairing_code) != bool(hello.get('paired'))):
@@ -187,6 +195,9 @@ class Lobby:
                 if message.get('type') not in {
                     'state', 'select', 'suggest', 'launch', 'player_options', 'challenge_victory',
                     'shop_stage', 'shop_ready', 'shop_victory', 'shop_failure',
+                    'fortress_roster', 'fortress_prepare', 'fortress_ready',
+                    'fortress_start', 'fortress_abort',
+                    'fortress_idle',
                 }:
                     raise ValueError('Invalid co-op lobby message.')
                 self.events.put(('message', message))

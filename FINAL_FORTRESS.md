@@ -7,6 +7,54 @@ Help uses the launcher's themed combobox and contains only **How to play** and
 **Wave forecast**. The former Launch status menu/window is removed. The launch
 row reports concise readiness or an actual blocking error.
 
+## Co-op over ZeroTier
+
+In **Settings**, the **Final Fortress co-op** section has its own Co-op toggle
+and **Co-op players** selector (**2** or **3**), shown only in Final Fortress.
+The player count is shared with the Fortress connection dialog and locks while
+connected. The campaign **Include challenge maps** option is disabled and
+unchecked here; switching modes restores the campaign's saved choices. This
+option is separate from Fortress's own enemy Challenge modifiers.
+
+Open **Co-op…** in the Fortress header. The host selects **2** or **3** human
+players and connects, then shares their ZeroTier Managed IPv4 and pairing code.
+Each guest selects **Join**, enters those details, chooses a different guest
+player number (**2** or **3**) and uses a distinct player name. Every PC needs a
+separate game installation and matching launcher/game files. The host launches
+after the full roster connects. Disconnect the lobby to return to solo play.
+
+There are three friendly seats. With two humans, the host's allied-helper perk
+can fill the remaining seat with one AI. With three humans, no AI helper is
+spawned, regardless of the purchased helper rank. The three hostile AIs keep
+their existing starts and wave rules. Co-op does not automatically multiply
+enemy populations; the host still selects difficulty and wave multiplier.
+
+Everyone uses the host's faction and enabled perk ranks for that run, including
+starting grants, production/unit/defense bonuses, support powers and periodic
+reinforcements. Human armies and reinforcements remain under human control.
+Guest-owned perks do not stack onto the host's loadout. Each player's permanent
+perks and selections remain their own for future solo or hosted runs.
+
+Survival milestones, camp-clear Defensive Points and victory/Challenge bonuses
+are awarded independently to every player's local Fortress profile. Native kill
+bonuses use each player's own named score row, excluding their setup transfers.
+Any human can collect a cleared camp's single cash/unit crate; its collector
+receives that in-game reward, and results name the collector. Clearing the camp
+earns points for everyone even if its crate remains uncollected.
+
+The host freezes the run before preparation. Guests replay it locally, compare
+the exact map digest and acknowledge readiness before the host starts the games.
+Each machine watches that run's native markers and saves its own rewards; the
+host never replaces a guest's wallet or purchases. Durable joined-run IDs prevent
+rejoining an old run from paying twice. Disconnects, mismatched maps and failed
+preparations cancel a pending launch without awarding completion points.
+There is no mid-game join or reconnect; reconnect all players between runs.
+
+Fortress uses host TCP **19420** for guest 2 and **19422** for guest 3. Native
+game UDP ports are **1234**, **1235**, and **1236** for players 1–3, respectively.
+All players must be able to reach one another over ZeroTier. The private-network
+firewall helper includes these ports; see [connection setup](COOP_CONNECTION_GUIDE.md).
+
 ## Map and objective
 
 The only offered map is **Miners in the Sun**,
@@ -551,7 +599,11 @@ missing receipts. Replaying the same evidence cannot award Defensive Points twic
 
 Normal progression uses `final_fortress_state.json` and its OS lock; the
 optional testing profile uses its separate state file and lock.
-State schemas 1–7 migrate to schema 8 without resetting Defensive Points or ownership.
+State schemas 1–8 migrate to schema 9 without resetting Defensive Points or ownership.
+Schema 9 adds durable co-op run IDs and a local player index on co-op runs;
+guest run snapshots can contain host-owned perks without granting their ownership
+to the guest's permanent profile. Plan 22 freezes the human roster, fills only
+unused friendly seats with helpers, and records each human's setup-score correction.
 The former sole offensive-superweapon purchase becomes rank 2, preserving
 that weapon while also granting the new secondary power. New rank-1 purchases
 unlock only the secondary power.
@@ -584,6 +636,14 @@ Follow `AGENTS.md`: compilation, existing installation/domain checks, source
 map audits, and actual launcher/native gameplay checks. No unit tests.
 
 `python3 tools/audit_final_fortress_maps.py --output /tmp/fortress-map-audit`
+
+Use `--humans 2` or `--humans 3` to audit co-op maps and emit every human's
+native spawn file. `tools/fortress_coop_audit.py` also reviews house/peer ordering,
+AI seat limits, shared camp pickup guards, human control, native satellite reveal
+and actual per-house setup transfers. Add `--terrain` for placement/ground checks.
+Live two/three-PC ZeroTier gameplay, synchronized objectives and disconnect
+behavior still require manual multiplayer verification; these audits never open
+game windows or change player saves.
 generates reviewable variants of **Miners in the Sun only**, plus spawn files,
 without opening the game or changing player progression. The default 108
 configurations cover all twelve countries and

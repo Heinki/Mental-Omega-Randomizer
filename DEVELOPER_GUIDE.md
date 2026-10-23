@@ -27,6 +27,12 @@ Start here when changing code. Player settings belong in
   `tools/audit_final_fortress_maps.py` audits faction/difficulty/loadout
   configurations of the single Miners in the Sun map without opening a window.
   `application/final_fortress_controller.py` bridges Tk and process lifecycle.
+  `application/fortress_coop_controller.py` and `fortress_coop_launch.py` own
+  the independent 2–3-human lobby and map/readiness agreement, reusing the
+  authenticated `coop/lobby.py` transport. `final_fortress/coop.py` owns roster,
+  spawner house order and local score identity; `coop_map.py` owns linked
+  one-time camp pickups. Human guests occupy existing friendly seats, share the
+  host's frozen perks and retain independent wallets and purchase ownership.
   [FINAL_FORTRESS.md](FINAL_FORTRESS.md) records current scope and engine
   contracts, provisional population policy, and remaining gameplay validation.
   Final Fortress is a standalone mode: keep its settings, UI, saves, RNG, wave

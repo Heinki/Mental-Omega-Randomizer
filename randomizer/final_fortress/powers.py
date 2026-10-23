@@ -55,10 +55,11 @@ def power_rewards(plan, rules):
 def apply_powers(writer, plan, rules, country_aliases):
     """Grant private powers, with an owned launch source for every power."""
     from .engine import _place, _transfer_tag
-    from .player_perks import coalition
+    from .player_perks import coalition, human_actor
 
     powers = plan['effects']['support_powers']
-    if not powers and not (plan.get('allied_countries') and plan['effects']['starting_credits']):
+    if (not powers and not (plan.get('allied_countries') and plan['effects']['starting_credits'])
+            and not plan.get('coop_players')):
         return
     # Native payload templates inherit the coalition's already isolated unit
     # buffs before the shared power planner applies its own compatible effects.
@@ -72,14 +73,15 @@ def apply_powers(writer, plan, rules, country_aliases):
     spare = next(number for number in range(8) if number not in occupied)
     cell = int(points[str(spare)])
     for actor_index, (actor, _, waypoint) in enumerate(coalition(plan)):
-        if actor == 'FFPLAYER' and not powers:
+        reveal = bool(plan.get('coop_players') and plan['effects'].get('reveal_map'))
+        if actor == 'FFPLAYER' and not powers and not reveal:
             continue
         current = IniLines(list(writer.lines))
         merge_ini_section_values(current, writer.sections)
         sections, actions, clones, startup, static, missing = cloned_superweapon_plan(
             current, rewards, tuple(rules['SuperWeaponTypes'].values()), templates,
             superweapon_required_houses=(actor,), force_required_houses=True,
-            allow_player=actor == 'FFPLAYER', allow_ai=actor != 'FFPLAYER')
+            allow_player=human_actor(plan, actor), allow_ai=not human_actor(plan, actor))
         if missing or startup or static:
             raise ValueError('Unsupported Fortress power dependencies: '
                              + ', '.join([*missing, *startup, *static]))
@@ -107,6 +109,8 @@ def apply_powers(writer, plan, rules, country_aliases):
                        ProduceCashAmount='0', ProduceCashDelay='0')
             if power:
                 row['SuperWeapon'] = power
+            if reveal:
+                row['SpySat'] = 'yes'
             writer.sections[provider] = row
             _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', provider)
             _place(writer, 'Structures', f'Neutral,{provider},256,{cell % 1000 + index},'

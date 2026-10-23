@@ -1,6 +1,7 @@
 """Strict persisted state; damaged progression is never silently reset."""
 
 from copy import deepcopy
+import re
 
 from randomizer.challenges.catalogue import SIDE_COUNTRIES
 
@@ -8,7 +9,7 @@ from . import MODE_ID
 from .config import DIFFICULTY_IDS, identifier, integer, text, validate_wave_multiplier
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 
 def new_state():
@@ -18,7 +19,7 @@ def new_state():
         'preferences': {'difficulty': 'normal', 'player_country': None, 'wave_multiplier': 1,
                         'workspace_selected': False, 'selected_challenges': [], 'challenge_stacks': {},
                         'mental_ai_boost': False},
-        'run': None,
+        'run': None, 'coop_run_ids': [],
     }
 
 
@@ -36,10 +37,14 @@ def normalize_state(document):
     if not isinstance(document, dict):
         raise ValueError('Final Fortress state must be an object.')
     if (type(document.get('schema_version')) is not int
-            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, SCHEMA_VERSION)
+            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, 8, SCHEMA_VERSION)
             or document.get('mode_id') != MODE_ID):
         raise ValueError('Unsupported Final Fortress state schema or mode ID.')
     document = deepcopy(document)
+    if document['schema_version'] < 9:
+        if 'coop_run_ids' in document:
+            raise ValueError('Legacy state contains unsupported co-op receipts.')
+        document['coop_run_ids'] = []
     if document['schema_version'] < 6:
         if 'perk_ranks' in document:
             raise ValueError('Legacy Final Fortress state contains unsupported rank fields.')
@@ -88,6 +93,11 @@ def normalize_state(document):
         document['preferences']['mental_ai_boost'] = False
     document['schema_version'] = SCHEMA_VERSION
     integer(document['gems'], 'Final Fortress Defensive Points')
+    receipts = document['coop_run_ids']
+    if (not isinstance(receipts, list)
+            or any(not isinstance(key, str) or not re.fullmatch('[0-9a-f]{32}', key) for key in receipts)
+            or len(receipts) != len(set(receipts))):
+        raise ValueError('Invalid Fortress co-op run receipts.')
     _ids(document['owned_perks'], 'Owned perks')
     _ids(document['selected_perks'], 'Selected perks')
     if not set(document['selected_perks']).issubset(document['owned_perks']):
@@ -126,9 +136,12 @@ def normalize_state(document):
             raise ValueError('Invalid saved challenge stack count.')
     run = document['run']
     if run is not None:
-        if not isinstance(run, dict) or set(run) != {
+        fields = {
             'id', 'status', 'config', 'plan', 'claimed_events',
-        }:
+        }
+        if isinstance(run, dict) and 'coop_player' in run:
+            fields.add('coop_player')
+        if not isinstance(run, dict) or set(run) != fields:
             raise ValueError('Invalid Final Fortress run fields.')
         text(run['id'], 'Run ID')
         if run['status'] not in {'active', 'defeat', 'victory', 'abandoned'}:
@@ -150,6 +163,7 @@ def normalize_state(document):
             selected_challenges=[entry['id'] for entry in plan.get('challenges', [])],
             challenge_stacks={entry['id']: entry.get('stacks', 1) for entry in plan.get('challenges', [])},
             mental_ai_boost=plan.get('mental_ai_boost', False),
+            coop_players=plan.get('coop_players', ()),
         )
         if version == 5 and 'initial_transfer_kills' not in plan:
             # Early v5 runs predate the native transfer-score correction.
@@ -161,9 +175,18 @@ def normalize_state(document):
                 plan['initial_transfer_kills'] = rebuilt['initial_transfer_kills']
         if rebuilt != plan:
             raise ValueError('Final Fortress run plan does not match its configuration.')
-        if not set(plan['selected_perks']).issubset(document['owned_perks']):
+        guest = False
+        if plan.get('coop_players'):
+            slot = run.get('coop_player')
+            if (type(slot) is not int or not 0 <= slot < len(plan['coop_players'])
+                    or run['id'] not in document['coop_run_ids']):
+                raise ValueError('Invalid Fortress co-op player or run receipt.')
+            guest = slot > 0
+        elif 'coop_player' in run:
+            raise ValueError('Solo runs cannot contain a co-op player.')
+        if not guest and not set(plan['selected_perks']).issubset(document['owned_perks']):
             raise ValueError('Run plan contains unowned perks.')
-        if any(rank > document['perk_ranks'].get(key, 0)
+        if not guest and any(rank > document['perk_ranks'].get(key, 0)
                for key, rank in plan.get('perk_ranks', {}).items()):
             raise ValueError('Run plan contains unpurchased perk ranks.')
         claimed = run['claimed_events']

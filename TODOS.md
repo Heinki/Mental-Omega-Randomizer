@@ -4,6 +4,9 @@
 - [ ] Confirm the reported visual unit replacement after death during normal gameplay. No original report map/replay exists; the confirmed Powerhouses death-trigger leak is fixed, but the exact Kirov-to-Apocalypse observation remains unverified.
 
 Fortress mode
+- [x] Disable campaign challenge-map inclusion in Final Fortress Settings and show a Fortress-only 2/3-player selector shared with its connection dialog, keeping campaign co-op preferences separate.
+- [x] Add two/three-human Fortress co-op over the authenticated ZeroTier lobby, shared host perks, individual Defensive Points/purchases and human-first friendly seat allocation (2 humans + at most 1 AI; 3 humans + no AI).
+- [ ] Verify two/three-PC ZeroTier Fortress gameplay, shared objective victory/defeat, guest point persistence, human camp pickups and disconnect behavior during the next normal multiplayer session. No game windows opened for routine validation.
 - [x] Rename Final Fortress currency to Defensive Points throughout the launcher, in-game camp messages and documentation while preserving existing saves and Shop Mode Gems.
 - [x] Show a Final Fortress run results screen after victory or defeat, including total Defensive Points and the sources of each reward.
 

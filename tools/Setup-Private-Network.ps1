@@ -72,8 +72,8 @@ try {
 }
 $group = 'Mental Omega Challenges private network'
 $definitions = @(
-    @{ Suffix = 'lobby'; Label = 'Lobby and preparation'; Program = $launcherPath; Protocol = 'TCP'; Ports = @(19420, 19421) },
-    @{ Suffix = 'game'; Label = 'Game'; Program = $engine; Protocol = 'UDP'; Ports = @(1234) }
+    @{ Suffix = 'lobby'; Label = 'Lobby and preparation'; Program = $launcherPath; Protocol = 'TCP'; Ports = @(19420, 19421, 19422) },
+    @{ Suffix = 'game'; Label = 'Game'; Program = $engine; Protocol = 'UDP'; Ports = @(1234, 1235, 1236) }
 )
 foreach ($definition in $definitions) {
     $name = 'MORChallenges-' + $folderId + '-' + $definition.Suffix
@@ -106,6 +106,6 @@ if ($WhatIfPreference) {
 } else {
     Write-Host ('Game firewall setup complete, restricted to ' + $aliases.Count + ' private VPN adapter(s).')
 }
-Write-Host 'Host lobby/preparation: TCP 19420 and 19421. Game on both PCs: UDP 1234.'
+Write-Host 'Host lobby/preparation: TCP 19420-19422. Game: UDP 1234-1236 (Fortress uses one port per human slot).'
 Write-Host 'Run this again if you move the game folder or install another private VPN.'
 if (-not $WhatIfPreference) { Stop-Transcript | Out-Null }

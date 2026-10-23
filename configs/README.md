@@ -58,8 +58,13 @@ that overlap only with full reward-plan and 97-map parity coverage.
   definitions, reward exclusions, and launcher-only mission effects.
 - `final_fortress.json`: independent Final Fortress map, survival timing,
   native AI difficulty, shared faction wave stages with alternative mixed
-  compositions, milestone/camp Defensive Points identities, and permanent perks. The saved
-  x1–x10 wave multiplier changes additional spawn counts independently of AI
+  compositions, milestone/camp Defensive Points identities, and permanent perks.
+  Two/three-human co-op uses the existing friendly waypoints and host loadout.
+  Humans consume friendly seats before the allied-helper perk: at most one AI
+  with two humans, none with three. Plan 22 freezes names and per-human setup
+  score corrections; state schema 9 stores local co-op participation receipts
+  without copying the host's permanent perk ownership to guests.
+  The saved x1–x10 wave multiplier changes additional spawn counts independently of AI
   difficulty selection. Difficulty also supplies first-wave base counts of
   3 / 6 / 9 per active side. The configured unit budget applies after multiplication;
   `wave_pressure` defines growth by the starting amount, one/two/three spawn
@@ -245,7 +250,7 @@ that overlap only with full reward-plan and 97-map parity coverage.
   terrain. Preplaced guards sleep until the existing attacked-team behavior wakes
   them. Preplaced starting-army experience encodes ranks as 100/200, while native
   TeamType veterancy keeps its existing one-based enumeration.
-  Saved state schema 8 stores purchased ranks up to six (eight only for
+  Saved state schema 9 stores purchased ranks up to six (eight only for
   `periodic_reinforcements`) and migrates the former
   one-rank offensive-superweapon purchase to rank two. Run plan 21 freezes their effects,
   power-upgrade stacks, starting power plants and helper starts with the original balance snapshot, preserving existing

@@ -38,6 +38,13 @@ def build_final_fortress_tab(app, notebook):
         app.show_final_fortress_help(page)
     help_button.bind('<<ComboboxSelected>>', open_help)
     help_button.grid(row=0, column=2, sticky='e')
+    from randomizer.coop import feature
+    if feature.COOP_FEATURE_ENABLED:
+        ttk.Button(title, text='Co-op…', command=app.open_fortress_coop_dialog).grid(
+            row=0, column=3, sticky='e', padx=(8, 0))
+        ttk.Label(title, textvariable=app.fortress_coop_status_var,
+                  wraplength=900, justify='left', style='Muted.TLabel').grid(
+            row=1, column=0, columnspan=4, sticky='w', pady=(6, 0))
 
     progression = ttk.Notebook(tab)
     app.final_fortress_progression_tabs = progression
@@ -173,6 +180,7 @@ def build_final_fortress_tab(app, notebook):
     setup = ttk.LabelFrame(tab, text='Defense setup', padding=12)
     setup.grid(row=1, column=0, sticky='new')
     setup.columnconfigure(1, weight=1)
+    app.final_fortress_setup_combos = []
     for row, (label, variable, values, handler) in enumerate((
         ('Game Mode', app.game_mode_var, app.game_mode_choices, app.on_game_mode_changed),
         ('Map', app.final_fortress_map_var, app.final_fortress_map_choices, None),
@@ -188,14 +196,16 @@ def build_final_fortress_tab(app, notebook):
     )):
         ttk.Label(setup, text=label).grid(row=row, column=0, sticky='w', padx=(0, 12), pady=5)
         combo = ttk.Combobox(setup, textvariable=variable, values=values, state='readonly')
+        app.final_fortress_setup_combos.append(combo)
         combo.grid(row=row, column=1, sticky='ew', pady=5)
         if handler is not None:
             combo.bind('<<ComboboxSelected>>', handler)
 
-    ttk.Checkbutton(setup, text='Mental AI Boost (enemy and allied AI)',
+    app.final_fortress_mental_ai_boost_check = ttk.Checkbutton(
+                    setup, text='Mental AI Boost (enemy and allied AI)',
                     variable=app.final_fortress_mental_ai_boost_var,
-                    command=app.on_final_fortress_mental_ai_boost_changed).grid(
-                        row=6, column=1, sticky='w', pady=5)
+                    command=app.on_final_fortress_mental_ai_boost_changed)
+    app.final_fortress_mental_ai_boost_check.grid(row=6, column=1, sticky='w', pady=5)
 
     launch = ttk.Frame(tab)
     launch.grid(row=3, column=0, sticky='ew', pady=(12, 0))

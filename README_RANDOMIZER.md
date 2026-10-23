@@ -38,6 +38,14 @@ faction, then **Launch Final Fortress**. Installed faction pools now provide
 mixed units across three time stages. Defend Einstein’s Lab beside your MCV while the native countdown runs. Survival awards 25/50/100 total Defensive Points at 25/45/60 minutes; cleared camp claims and verified kill statistics add bonuses. Challenge offers the Grid enemy stat and production catalogue, including tier-specific armor and firepower; enable modifiers individually and choose their stack counts. Enabled stacks add victory Defensive Points. All balance values are configurable. Camp crates randomly grant player-only credits, ten Tier 1 units, five Tier 2 units, or a faction special unit, alongside camp Defensive Points. Native visual crates can be removed by AI without consuming the player reward. After victory or defeat, Run results opens on the Final Fortress tab and itemizes earned Defensive Points and claimed crate rewards. It does not use campaign seeds or Shop progression.
 See [FINAL_FORTRESS.md](FINAL_FORTRESS.md) for the current scope.
 
+**Fortress co-op:** open **Co-op…** in its header. The host chooses 2 or 3 humans;
+guests join over ZeroTier with the host's IPv4 and pairing code, distinct names
+and guest player numbers. The host launches once everyone connects. All players
+share the host's faction and enabled perks while earning their own Defensive
+Points for their own permanent purchases. Two humans leave at most one perk-enabled
+AI helper; three humans leave none. Any human can collect a camp crate once.
+Disconnect the Fortress lobby to return to solo play.
+
 - **Generate New Seed** replaces the active run, creates a new seed identifier, mission order, objective/victory checks, and complete reward plan. The Seed name field is optional: a blank field always creates a new identifier, while a typed name is reused intentionally.
 - Seed-generation settings are copied into `randomizer_state.json`. Changing gameplay settings afterward affects the next seed. Dark mode, reward-name privacy, and locked-grid mission privacy apply immediately.
 - Difficulty and game speed are launch settings and may be changed between missions.

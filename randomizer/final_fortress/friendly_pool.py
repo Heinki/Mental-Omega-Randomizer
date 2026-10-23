@@ -1,6 +1,6 @@
 """Independent friendly arrivals using small reusable population reservations."""
 
-from .player_perks import coalition
+from .player_perks import coalition, human_actor
 from .wave_pool import _batches
 
 
@@ -53,7 +53,7 @@ def apply_friendly_pool(writer, plan, rules, overrides, finished):
             for n, units in enumerate(batches):
                 alternatives = []
                 for slot, busy, aliases in slots:
-                    helper = owner != 'FFPLAYER'
+                    helper = not human_actor(plan, owner)
                     team = writer.team(f'Fortress friendly arrival {index + 1} {owner} batch {n + 1} slot {slot}',
                         [{'type': aliases[u['type']], 'count': u['count']} for u in units],
                         waypoint, attack=helper, owner=owner)

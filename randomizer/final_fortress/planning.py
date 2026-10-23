@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 21
+PLAN_VERSION = 22
 
 
 def configuration_digest(config):
@@ -24,7 +24,8 @@ def configuration_digest(config):
 
 def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(),
                    wave_multiplier=1, plan_version=PLAN_VERSION, selected_challenges=(),
-                   challenge_stacks=None, perk_ranks=None, mental_ai_boost=False):
+                   challenge_stacks=None, perk_ranks=None, mental_ai_boost=False,
+                   coop_players=()):
     """Freeze approved inputs before the engine adapter creates map bytes.
 
     Times are simulation seconds. Victory owns the duration boundary, so the
@@ -39,6 +40,15 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
         raise ValueError('Mental AI Boost requires a new Final Fortress run.')
     if type(plan_version) is not int or not 1 <= plan_version <= PLAN_VERSION:
         raise ValueError('Unsupported Final Fortress plan version.')
+    if coop_players:
+        from randomizer.coop.direct import _name
+        if (plan_version < 22 or not isinstance(coop_players, (list, tuple))
+                or not 2 <= len(coop_players) <= 3):
+            raise ValueError('Fortress co-op requires two or three human players and a new run.')
+        for name in coop_players:
+            _name(name)
+        if len({name.casefold() for name in coop_players}) != len(coop_players):
+            raise ValueError('Every Fortress player needs a different name.')
     sized_waves = 'wave_pressure' in config
     if sized_waves and plan_version < 3:
         raise ValueError('Wave growth requires Final Fortress plan version 3.')
@@ -108,11 +118,15 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
     if plan_version >= 7:
         plan['perk_ranks'] = {key: (perk_ranks or {}).get(key, 1) for key in selected}
         # Helpers use the player's faction and share every enabled perk.
-        plan['allied_countries'] = [player_country] * effects['allied_helpers']
+        allies = (min(2, len(coop_players) - 1 + effects['allied_helpers'])
+                  if coop_players else effects['allied_helpers'])
+        plan['allied_countries'] = [player_country] * allies
         available = config['map'].get('allied_waypoints', [])
-        if len(available) < effects['allied_helpers']:
+        if len(available) < allies:
             raise ValueError('This map has no configured allied helper start positions.')
-        plan['allied_waypoints'] = available[:effects['allied_helpers']]
+        plan['allied_waypoints'] = available[:allies]
+    if coop_players:
+        plan['coop_players'] = list(coop_players)
     if plan_version >= 16:
         plan['mental_ai_boost'] = mental_ai_boost
     if plan_version >= 11:
@@ -184,4 +198,16 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
     if plan_version >= 20:
         from .waves import add_air_support
         add_air_support(plan, config)
+    if coop_players:
+        for slot in range(len(coop_players)):
+            for camp in plan['map']['camps']:
+                rewards[f'camp_pick:{slot}:{camp["id"]}'] = 0
+        # Guests have the same grants, but neither the objective nor wave clock.
+        powers = effects.get('support_powers', [])
+        host_proxy = int(bool(effects.get('reveal_map')) and not powers)
+        plan['initial_transfer_kills'] += host_proxy
+        guest_transfers = (plan['initial_transfer_kills'] - 1 - int(bool(wave_schedule))
+                           + int(not powers) - host_proxy)
+        plan['coop_initial_transfer_kills'] = [plan['initial_transfer_kills'],
+                                              *[guest_transfers] * (len(coop_players) - 1)]
     return plan

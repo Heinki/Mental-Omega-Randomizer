@@ -33,6 +33,10 @@ def reward_report(run):
                 detail += ': ' + ', '.join(
                     f'{unit["count"]} {BUFF_TARGETS.get(unit["type"], {}).get("label" if unit["count"] == 1 else "plural", unit["type"])}'
                     for unit in reward['units'])
+            for slot, name in enumerate(plan.get('coop_players', [])):
+                if f'camp_pick:{slot}:{camp["id"]}' in claimed:
+                    detail = name + ': ' + detail
+                    break
         rows.append((camp['display_name'], plan['gem_rewards'][clear_event] if clear_event in claimed else 0, detail))
     tiers = [event for event in claimed if event.startswith('kills:')]
     rows.append(('Enemy kill score', sum(plan['gem_rewards'][event] for event in tiers),

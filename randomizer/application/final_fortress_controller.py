@@ -23,9 +23,10 @@ from randomizer.final_fortress.profiles import PROFILE_PATHS, STANDARD_PROFILE, 
 from randomizer.final_fortress.challenges import label, description, maximum
 from randomizer.ui.config import DIFFICULTIES, PROGRESSION_MODES
 from randomizer.ui.cameos import installed_rules_registry
+from .fortress_coop_controller import FortressCoopController
 
 
-class FinalFortressController:
+class FinalFortressController(FortressCoopController):
     def apply_color_mode(self):
         super().apply_color_mode()
         for name in ('final_fortress_perk_details', 'final_fortress_challenge_details'):
@@ -61,6 +62,12 @@ class FinalFortressController:
         self._final_fortress_recorded_events = set()
         self._final_fortress_recovery_checked = set()
         self._final_fortress_launch_blockers = []
+        self._fortress_lobbies = {}
+        self.final_fortress_coop_var = tk.BooleanVar(value=False)
+        self._fortress_coop_count_var = tk.StringVar(value='2')
+        self._fortress_challenge_maps_var = tk.BooleanVar(value=False)
+        self.fortress_coop_status_var = tk.StringVar(
+            value='Solo play. Co-op supports 2–3 humans over ZeroTier.')
         self.final_fortress_repository = FinalFortressRepository()
         self._final_fortress_profile = STANDARD_PROFILE
         self.final_fortress_profile_var = tk.StringVar(value=STANDARD_PROFILE)
@@ -109,7 +116,7 @@ class FinalFortressController:
     def on_final_fortress_profile_changed(self, _event=None):
         selected = self.final_fortress_profile_var.get()
         process = getattr(self, 'active_game_process', None)
-        if (selected not in PROFILE_PATHS or self._final_fortress_preparing
+        if (selected not in PROFILE_PATHS or self._final_fortress_preparing or self._fortress_lobbies
                 or self._final_fortress_watch is not None
                 or (process is not None and process.poll() is None)):
             self.final_fortress_profile_var.set(self._final_fortress_profile)
@@ -139,6 +146,7 @@ class FinalFortressController:
         final_fortress = selected == DISPLAY_NAME
         process = getattr(self, 'active_game_process', None)
         if (getattr(self, '_coop_lobby', None) or getattr(self, '_coop_busy', False)
+                or self._fortress_lobbies
                 or self._final_fortress_preparing
                 or (process is not None and process.poll() is None)):
             self.game_mode_var.set(
@@ -156,14 +164,17 @@ class FinalFortressController:
         if final_fortress:
             # Never pass this standalone mode into campaign seed generation.
             self.sync_shop_workspace()
+            self.refresh_coop_controls()
             return
         self.progression_mode_var.set(selected)
         self.on_progression_mode_changed(event)
         self._sync_game_mode_choice()
         self.update_header_summary()
+        self.refresh_coop_controls()
 
     def refresh_challenge_support_controls(self):
         result = super().refresh_challenge_support_controls()
+        self.refresh_fortress_settings_controls()
         for name in ('progression_mode_combo', 'shop_progression_mode_combo'):
             widget = getattr(self, name, None)
             if widget is not None:
@@ -201,6 +212,7 @@ class FinalFortressController:
         return super().sync_shop_workspace()
 
     def on_workspace_tab_changed(self, _event=None):
+        self.refresh_challenge_support_controls()
         if self.final_fortress_mode_selected():
             self._final_fortress_workspace_active = True
             self.subtitle_label.configure(textvariable=self.final_fortress_header_var)
@@ -261,6 +273,11 @@ class FinalFortressController:
         settings = config['settings']
         pressure = config.get('wave_pressure')
         rules = [
+            'Co-op supports two or three humans over ZeroTier. Open Co-op in the header; '
+            'the host selects the human count, faction, difficulty and enabled perks. '
+            'All teammates share those perks. Two humans leave at most one perk-enabled AI helper; '
+            'three humans leave none. Every human earns their own Defensive Points and buys '
+            'their own permanent perks. Any human can collect a cleared camp’s single reward crate.',
             'Defend Einstein’s Lab beside your starting MCV for '
             f'{settings["survival_seconds"] / 60:g} in-game minutes against three enemy AIs.',
             f'Additional waves start after {settings["wave_interval_seconds"] / 60:g} minutes '
@@ -419,6 +436,7 @@ class FinalFortressController:
         refresh_results(self, run)
         if hasattr(self, 'final_fortress_launch_button'):
             self.final_fortress_launch_button.configure(state='disabled' if busy or blockers else 'normal')
+            self.refresh_fortress_coop_controls()
             if (run and run['status'] in ('active', 'abandoned') and not busy
                     and self._final_fortress_watch is None
                     and run['id'] not in self._final_fortress_recovery_checked):
@@ -448,13 +466,18 @@ class FinalFortressController:
                                lambda: repository.recover_finished_run(DEBUG_LOG), finish, failed)
 
     def close_launcher(self):
-        if getattr(self, '_final_fortress_preparing', False):
+        if (getattr(self, '_final_fortress_preparing', False)
+                or getattr(self, '_final_fortress_watch', None) is not None):
             self._close_after_game = True
             self.withdraw()
             return
         return super().close_launcher()
 
     def launch_final_fortress(self):
+        if self._fortress_lobbies:
+            return self.launch_fortress_coop()
+        if self.final_fortress_coop_var.get():
+            return self.open_fortress_coop_dialog()
         self.refresh_final_fortress()
         process = getattr(self, 'active_game_process', None)
         if (self._final_fortress_launch_blockers or self._final_fortress_preparing
@@ -562,6 +585,7 @@ class FinalFortressController:
         self._final_fortress_watch = None
         self._final_fortress_shutdown = None
         self.disable_generated_rules_for_client()
+        self.fortress_coop_game_finished(watch.run_id)
         self.refresh_game_speed_controls()
         self.refresh_final_fortress()
         if getattr(self, '_close_after_game', False):

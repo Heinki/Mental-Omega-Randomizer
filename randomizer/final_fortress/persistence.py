@@ -207,7 +207,7 @@ class FinalFortressRepository:
         return self._update(change)[0]
 
     def begin_run(self, config, *, difficulty, seed, player_country, wave_multiplier=None,
-                  mental_ai_boost=None):
+                  mental_ai_boost=None, coop_players=()):
         """Commit the exact run snapshot before starting its game process."""
         snapshot = deepcopy(config)
 
@@ -226,13 +226,44 @@ class FinalFortressRepository:
                 challenge_stacks=state['preferences']['challenge_stacks'],
                 mental_ai_boost=(state['preferences']['mental_ai_boost']
                                  if mental_ai_boost is None else mental_ai_boost),
+                coop_players=coop_players,
             )
             state['run'] = {
                 'id': uuid.uuid4().hex, 'status': 'active',
                 'config': snapshot, 'plan': plan, 'claimed_events': [],
             }
+            if coop_players:
+                state['run']['coop_player'] = 0
+                state['coop_run_ids'].append(state['run']['id'])
             return state['run']['id']
         return self._update(change)
+
+    def join_coop_run(self, run, player_name):
+        """Import only the frozen run; keep this player's wallet and purchases."""
+        from randomizer.coop.direct import _name
+        from .state import new_state
+        _name(player_name)
+        snapshot = deepcopy(run)
+        players = snapshot.get('plan', {}).get('coop_players', [])
+        if player_name not in players or players.index(player_name) == 0:
+            raise ValueError('This player is not a guest in the Fortress roster.')
+        if snapshot.get('status') != 'active' or snapshot.get('claimed_events') != []:
+            raise ValueError('Only a fresh Fortress co-op run can be joined.')
+        snapshot['coop_player'] = players.index(player_name)
+        # Validate host input independently before touching local progression.
+        candidate = new_state()
+        candidate['run'] = snapshot
+        candidate['coop_run_ids'].append(snapshot['id'])
+        normalize_state(candidate)
+
+        def change(state):
+            if snapshot['id'] in state['coop_run_ids']:
+                raise ValueError('This Fortress co-op run was already joined; rewards cannot be replayed.')
+            if state['run'] is not None and state['run']['status'] == 'active':
+                raise ValueError('Finish or recover the previous Fortress run before joining.')
+            state['coop_run_ids'].append(snapshot['id'])
+            state['run'] = snapshot
+        return self._update(change)[0]
 
     def record_event(self, run_id, event_id):
         """Apply only a verified engine event, once, against its committed run.
@@ -254,7 +285,11 @@ class FinalFortressRepository:
         snapshot = self.load()['run']
         if snapshot is None:
             return self.load(), False
-        watch = FinalFortressResultWatch.read_completed_log(log_path, snapshot['id'], snapshot['plan'])
+        from .coop import result_identity
+        name, transfers, slot = result_identity(snapshot)
+        watch = FinalFortressResultWatch.read_completed_log(
+            log_path, snapshot['id'], snapshot['plan'], player_name=name,
+            initial_transfers=transfers, coop_slot=slot)
         if not watch.started or watch.result not in ('victory', 'defeat'):
             return self.load(), False
         events = list(dict.fromkeys([*watch.events, watch.result]))

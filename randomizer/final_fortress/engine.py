@@ -235,7 +235,7 @@ def _place(writer, section, value):
 
 def _starting_perks(writer, plan, rules, aliases=None):
     """Place faction-native grants for the human and each enabled helper."""
-    from .player_perks import coalition
+    from .player_perks import coalition, human_actor
     effects = plan['effects']
     aliases = aliases or {}
     if not any(effects.get(key) for key in ('starting_units', 'starting_defenses',
@@ -300,7 +300,7 @@ def _starting_perks(writer, plan, rules, aliases=None):
                 _place(writer, kind, value)
                 if not is_harvester:
                     ordinal += 1
-        if plan.get('plan_version', 1) >= 14 and name != 'FFPLAYER':
+        if plan.get('plan_version', 1) >= 14 and not human_actor(plan, name):
             army = effects['starting_units']
             for index in range(0, len(army), 6):
                 team = writer.team(f'Fortress helper starting army {name} {index // 6 + 1}',
@@ -439,6 +439,11 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
                 _place(writer, section, value)
                 ordinal += 1
         cleared = writer.flag('Camp ' + camp['id'] + ' cleared')
+        if plan.get('coop_players'):
+            from .coop_map import camp_claims
+            camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
+                        marker_teams, finished, aliases, player_aliases or {})
+            continue
         reward = camp.get('crate_reward', {})
         claim_actions = [_action(4, team=marker_teams['camp:' + camp['id']])]
         if plan.get('plan_version', 1) >= 18:
@@ -475,7 +480,7 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
                        clear_actions)
 
 
-def _cash_reward(writer, plan, rules, camp, claimed, index):
+def _cash_reward(writer, plan, rules, camp, claimed, index, *, waypoint=None):
     """Player-gated cash without allowing native AI crate pickups to profit."""
     alias = writer.key()
     row = deepcopy(rules['CABHUT'])
@@ -489,14 +494,20 @@ def _cash_reward(writer, plan, rules, camp, claimed, index):
     writer.sections[alias] = row
     _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', alias)
     _, tag = writer.trigger('Cash reward ' + camp['id'], [(36, 0, claimed)],
-                            [_action(14, 4475 + plan['map']['player_waypoint'])], persistence=2)
+                            [_action(14, 4475 + (plan['map']['player_waypoint']
+                                                if waypoint is None else waypoint))], persistence=2)
     # An unused skirmish start keeps the invisible, passable escrow away from
     # the fight. Ownership transfer pays once; repeated same-owner calls do not.
     points = section_value_map(writer.lines, 'Waypoints')
     unused = next(number for number in range(8) if number not in {
-        plan['map']['player_waypoint'], *plan['map']['enemy_waypoints']})
+        plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
+        *(plan.get('allied_waypoints', []) if plan.get('coop_players') else [])})
     cell = int(points[str(unused)])
-    _place(writer, 'Structures', f'Neutral,{alias},256,{cell % 1000 + index},{cell // 1000},'
+    x, y = cell % 1000 + index, cell // 1000
+    if plan.get('coop_players'):
+        from .coop_map import escrow_cell
+        x, y = escrow_cell(writer, plan, rules, cell)
+    _place(writer, 'Structures', f'Neutral,{alias},256,{x},{y},'
            f'64,{tag},1,0,1,0,0,None,None,None,0,0')
 
 
@@ -621,7 +632,7 @@ def build_map(game_root, run, rules, *, preloads=None):
     apply_enemy_powers(writer, plan, rules, enemy_aliases)
     from .wave_clock import create_wave_clock
     wave_clock = create_wave_clock(writer, plan, rules, finished)
-    if plan['effects'].get('reveal_map'):
+    if plan['effects'].get('reveal_map') and not plan.get('coop_players'):
         writer.trigger('Final Fortress satellite intelligence', [(13, 0, 1)], [_action(16)])
     ai_sections = route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases)
     gate_prerequisite_overrides(writer, plan, rules)
@@ -752,11 +763,16 @@ def spawn_data(plan, map_data, *, game_speed=2):
                        for line in (f'[{section}]', *(f'{key}={value}' for key, value in values.items()), '')).encode('latin-1')
 
 
-def prepare_game(game_root, run, rules, *, game_speed=2):
+def prepare_game(game_root, run, rules, *, game_speed=2, coop_slot=None, endpoints=None):
     """Write leased runtime files only after the player requests launch."""
     preloads = {}
     map_data = build_map(game_root, run, rules, preloads=preloads)
-    spawn = spawn_data(run['plan'], map_data, game_speed=game_speed)
+    if coop_slot is None:
+        spawn = spawn_data(run['plan'], map_data, game_speed=game_speed)
+    else:
+        from .coop import spawn_data as coop_spawn_data
+        spawn = coop_spawn_data(run['plan'], map_data, slot=coop_slot,
+                                endpoints=endpoints, game_speed=game_speed)
     root = Path(game_root)
     atomic_write_text(root / 'spawnmap.ini', map_data.decode('latin-1'), encoding='latin-1')
     # Tempest damage/radius and Nanofiber mutations need the same early art

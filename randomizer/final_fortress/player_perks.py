@@ -14,6 +14,12 @@ def coalition(plan):
                 zip(plan.get('allied_countries', []), plan.get('allied_waypoints', [])))]]
 
 
+def human_actor(plan, actor):
+    """Human guests occupy the first friendly start positions."""
+    count = len(plan.get('coop_players', [])) or 1
+    return actor in [entry[0] for entry in coalition(plan)[:count]]
+
+
 def needs_countries(plan):
     effects = plan['effects']
     return bool(plan.get('allied_countries') or effects.get('production_percent')
@@ -348,7 +354,8 @@ def route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases):
     ai_sections = {}
     section_ids = {key.casefold(): key for key in ai_rules}
     actors = [(f'FFENEMY{i + 1}', country, enemy_aliases) for i, country in enumerate(plan['enemy_countries'])]
-    actors.extend((name, country, player_aliases) for name, country, _ in coalition(plan)[1:])
+    actors.extend((name, country, player_aliases) for name, country, _ in coalition(plan)[1:]
+                  if not human_actor(plan, name))
     sides = list(rules['Sides'])
     for original, value in ai_rules.get('AITriggerTypes', {}).items():
         fields = value.split(',')

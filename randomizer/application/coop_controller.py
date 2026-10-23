@@ -166,6 +166,9 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
     def _connect_coop(self, role, name, address, *, pairing_code=''):
         if not feature.COOP_FEATURE_ENABLED:
             return
+        if getattr(self, '_fortress_lobbies', None):
+            messagebox.showwarning('Co-op', 'Disconnect the Fortress lobby before connecting another mode.')
+            return
         if getattr(self, '_coop_lobby', None):
             return
         if getattr(self, '_coop_busy', False):

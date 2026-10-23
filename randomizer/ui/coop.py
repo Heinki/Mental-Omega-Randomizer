@@ -20,7 +20,7 @@ def build_coop_controls(self, parent, row, *, shop=False):
         command=self.on_coop_checkbox_changed,
     )
     toggle.grid(row=0, column=0, columnspan=3, sticky='w')
-    WidgetTooltip(toggle, 'Off: solo campaign missions. On: two-player co-op missions.')
+    toggle_tooltip = WidgetTooltip(toggle, 'Off: solo campaign missions. On: two-player co-op missions.')
     include = ttk.Checkbutton(
         frame, text='Include challenge maps',
         variable=self.include_challenge_missions_var,
@@ -40,6 +40,15 @@ def build_coop_controls(self, parent, row, *, shop=False):
     )
     count.grid(row=2, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
+    fortress_label = ttk.Label(frame, text='Co-op players')
+    fortress_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
+    fortress_count = ttk.Combobox(
+        frame, textvariable=self._fortress_coop_count_var, values=('2', '3'),
+        state='readonly', width=3,
+    )
+    fortress_count.grid(row=2, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
+    fortress_label.grid_remove()
+    fortress_count.grid_remove()
     local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
     local.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(8, 0))
     local.columnconfigure(1, weight=1)
@@ -104,6 +113,9 @@ def build_coop_controls(self, parent, row, *, shop=False):
     )
     availability.grid(row=5, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
+    setattr(self, prefix + 'fortress_player_count_fields', (fortress_label, fortress_count))
+    setattr(self, prefix + 'fortress_player_count_combo', fortress_count)
+    setattr(self, prefix + 'coop_mode_tooltip', toggle_tooltip)
     setattr(self, prefix + 'challenge_availability_label', availability)
     setattr(self, prefix + 'include_challenge_missions_check', include)
     setattr(self, prefix + 'challenge_local_frame', local)

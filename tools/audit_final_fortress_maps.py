@@ -24,7 +24,7 @@ from randomizer.final_fortress.challenges import load_ai_rules, maximum
 from randomizer.final_fortress.config import DIFFICULTY_IDS, load_config
 from randomizer.final_fortress.engine import build_map, spawn_data
 from randomizer.final_fortress.perks import ranks
-from randomizer.final_fortress.player_perks import coalition
+from randomizer.final_fortress.player_perks import coalition, human_actor
 from randomizer.final_fortress.planning import build_run_plan
 from randomizer.maps.ini import all_section_value_maps_preserve, parse_action_groups
 from randomizer.ui.cameos import ART_CACHE_PATH, extract_mix_files_sync, installed_rules_registry
@@ -183,7 +183,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                         f'Unavailable standalone power: {original}.{field}')
             if plan.get('plan_version', 1) >= 9:
                 require(power.get('SW.RequiredHouses') == actor, f'Power escapes friendly house: {original}')
-                require(power.get('SW.AllowAI') == ('no' if actor == 'FFPLAYER' else 'yes'),
+                require(power.get('SW.AllowAI') == ('no' if human_actor(plan, actor) else 'yes'),
                         f'Wrong helper power access for {actor}')
                 require(any(effective[value.split(',')[1]].get('SuperWeapon')
                             == registered_powers[int(action[2])]
@@ -257,12 +257,13 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 f'Wrong starting army veterancy for {actor}')
 
     spawn_rows = read_sections(spawn)
-    friendly_slots = [0, *range(4, 4 + len(plan['allied_countries']))]
+    humans = len(plan.get('coop_players', [])) or 1
+    friendly_slots = [*range(humans), *range(humans + 3, 4 + len(plan['allied_countries']))]
     for slot in friendly_slots:
         allies = set(map(int, spawn_rows[f'Multi{slot + 1}_Alliances'].values()))
         require(allies == set(friendly_slots) - {slot},
                 'Coalition alliances do not protect helpers/player during unrestricted hostile targeting')
-    require(int(spawn_rows['Settings']['AIPlayers']) == 3 + len(plan['allied_countries']), 'Wrong AI count')
+    require(int(spawn_rows['Settings']['AIPlayers']) == 4 + len(plan['allied_countries']) - humans, 'Wrong AI count')
     require(spawn_rows['Settings']['MapSHA1'] == hashlib.sha1(data).hexdigest(), 'Wrong scenario digest')
     for value in [spawn_rows['Settings']['Side'], *spawn_rows['HouseCountries'].values()]:
         require(int(value) in indices, f'Unresolved spawner country {value}')
@@ -278,6 +279,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                               + len(buildings) + len(plan['effects']['starting_defenses'])
                               + (len(powers) if plan.get('plan_version', 1) >= 9 else int(bool(powers))))
         if rows.get('FFWaveClock'):
+            required_transfers += 1
+        if plan.get('coop_players') and plan['effects'].get('reveal_map') and not powers:
             required_transfers += 1
         require(plan['initial_transfer_kills'] == required_transfers, 'Starting power transfers counted as combat kills')
     return {registry: len(set(effective[registry].values())) for registry in registries}
@@ -342,7 +345,7 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
             require(team['House'] == group['owner'], 'Wrong reinforcement owner')
             require(team['VeteranLevel'] == str(effect.get('veterancy', 0) + 1),
                     'Wrong Rookie/Veteran/Elite reinforcement rank')
-            helper = plan.get('plan_version', 1) >= 14 and group['owner'] != 'FFPLAYER'
+            helper = plan.get('plan_version', 1) >= 14 and not human_actor(plan, group['owner'])
             require(effective[team['Script']]['0'] == ('0,1' if helper else '11,5'),
                     'Friendly arrival has the wrong human/helper orders')
             require(team['AreTeamMembersRecruitable'] == ('no' if helper else 'yes'),
@@ -599,12 +602,13 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
             require({(int(g[3]),int(g[4])) for g in guards}
                     == {(v['x'],v['y']) for v in guard_positions(camp)}, 'Camp ignores reviewed guard positions')
             require(garrison['AreTeamMembersRecruitable'] == 'no', 'Normal enemy AI can recruit the camp garrison')
-            claim = next(key for key, value in rows['Triggers'].items()
-                         if value.split(',')[2] == 'Camp ' + camp['id'] + ' claim')
-            require(f'1,0,{4475 + plan["map"]["player_waypoint"]}' in rows['Events'][claim],
-                    'Camp reward is not restricted to the human start house')
-            tag = rows['CellTags'][str(p['y'] * 1000 + p['x'])]
-            require(rows['Tags'][tag].split(',')[2] == claim, 'Camp crate cell is not connected to reward claim')
+            if not plan.get('coop_players'):
+                claim = next(key for key, value in rows['Triggers'].items()
+                             if value.split(',')[2] == 'Camp ' + camp['id'] + ' claim')
+                require(f'1,0,{4475 + plan["map"]["player_waypoint"]}' in rows['Events'][claim],
+                        'Camp reward is not restricted to the human start house')
+                tag = rows['CellTags'][str(p['y'] * 1000 + p['x'])]
+                require(rows['Tags'][tag].split(',')[2] == claim, 'Camp crate cell is not connected to reward claim')
             if plan.get('plan_version',1) >= 18:
                 balance=plan['camp_balance']
                 starter = balance.get('starter_camps') if plan.get('plan_version', 1) >= 21 else None
@@ -735,6 +739,8 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
         require(not pads, 'Disabled reinforcements still reserve player building space')
 
     for actor, _, waypoint in coalition(plan)[1:]:
+        if human_actor(plan, actor):
+            continue
         teams = [(key, effective[key]) for key in rows['TeamTypes'].values()
                  if effective[key].get('Name', '').startswith('Fortress helper starting army ' + actor + ' ')]
         army = plan['effects']['starting_units']
@@ -976,7 +982,7 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
             row = effective[team]
             require(row['House'] == owner and row['VeteranLevel'] == str(effect.get('veterancy',0)+1),
                     'Wrong friendly ownership or Veteran/Elite rank')
-            helper = owner != 'FFPLAYER'
+            helper = not human_actor(plan, owner)
             require(effective[row['Script']]['0'] == ('0,1' if helper else '11,5')
                     and row['AreTeamMembersRecruitable'] == ('no' if helper else 'yes'), 'Wrong friendly orders')
             actor_index = next(i for i,(a,_,_) in enumerate(coalition(plan)) if a == owner)
@@ -1074,6 +1080,7 @@ def main():
                         default=['baseline', 'helpers', 'maximum'])
     parser.add_argument('--difficulties', nargs='+', choices=DIFFICULTY_IDS, default=list(DIFFICULTY_IDS))
     parser.add_argument('--mental-ai-boost', action='store_true', help='Audit the installed Mental AI Boost option')
+    parser.add_argument('--humans', type=int, choices=(1, 2, 3), default=1, help='Emit solo or co-op native maps/spawns')
     parser.add_argument('--terrain', action='store_true', help='Check flat ground/resources; requires the system LZO2 library')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -1115,7 +1122,7 @@ def main():
                                or profile == 'powerhouses' and entry['enemy_effect_id'] == 'powerhouse']
         for country in SIDE_COUNTRIES:
             for difficulty in args.difficulties:
-                name = f'{profile}-{country}-{difficulty}'
+                name = f'{profile}-{country}-{difficulty}' + (f'-coop{args.humans}' if args.humans > 1 else '')
                 plan = build_run_plan(
                     config, difficulty=difficulty, seed='FF-MAP-AUDIT-' + name,
                     player_country=country, selected_perks=selected,
@@ -1129,13 +1136,18 @@ def main():
                                              else len(ranks(entry))) for entry in config['perks']},
                     selected_challenges=selected_challenges,
                     challenge_stacks={entry['id']: maximum(entry) for entry in config['challenges']},
-                    wave_multiplier=10 if profile == 'maximum' else 1, mental_ai_boost=args.mental_ai_boost)
+                    wave_multiplier=10 if profile == 'maximum' else 1, mental_ai_boost=args.mental_ai_boost,
+                    coop_players=[f'Fortress{i + 1}' for i in range(args.humans)] if args.humans > 1 else ())
                 preloads = {}
                 data = build_map(GAME_ROOT, {'id': hashlib.md5(name.encode()).hexdigest(), 'plan': plan},
                                  rules, preloads=preloads)
-                spawn = spawn_data(plan, data)
-                counts = audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain)
                 (args.output / (name + '.map')).write_bytes(data)
+                if args.humans > 1:
+                    from fortress_coop_audit import audit_coop_artifacts
+                    spawn = audit_coop_artifacts(args.output, name, plan, data, preloads, rules)
+                else:
+                    spawn = spawn_data(plan, data)
+                counts = audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain)
                 (args.output / (name + '.spawn.ini')).write_bytes(spawn)
                 manifest.append({'name': name, 'map_sha256': hashlib.sha256(data).hexdigest(),
                                  'camp_countries': [camp['guard_country'] for camp in plan['map']['camps']],
