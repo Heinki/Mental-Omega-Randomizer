@@ -70,6 +70,7 @@ def grid_state(rewards):
 
 
 def main():
+    check_rainbow_delivery()
     state = grid_state([{'name': 'Chronolift Power'}, {'name': 'Time Freeze Power'}])
     missions = discover_coop_missions(GAME_ROOT)
     for mission in missions:
@@ -107,6 +108,43 @@ def main():
     print(f'Shared Chronolift/Time Freeze on {len(missions)} maps; '
           f'all {len(powers)} earned powers, equal grants, AI exclusion, '
           'map parity, no Behind marker in any difficulty: passed')
+
+
+def check_rainbow_delivery():
+    """Audit real Rainbow payloads across native solo/co-op difficulty setups."""
+    from randomizer.maps.ini import all_section_value_maps_preserve
+
+    state = grid_state([{'name': 'Instant Shelter Power'}, {'name': 'Paladin Aid Power'}])
+    state['mission_category'] = 'challenge'
+    for players in (1, 2):
+        for difficulty in range(3):
+            manifest, data = build_manifest(
+                GAME_ROOT, state, 'c_regenbogen', country='USSR',
+                guest_country='UnitedStates' if players == 2 else '',
+                player_count=players, difficulty=difficulty,
+            )
+            sections = all_section_value_maps_preserve(data.decode('latin-1').splitlines())
+            delivered = []
+            for values in sections.values():
+                if values.get('Name') == 'Paladin Aid' and values.get('UIDescription'):
+                    assert values['NoCursor'] == 'NoCanDo'
+                if values.get('Name') != 'Instant Shelter' or 'Deliver.Types' not in values:
+                    continue
+                assert values['Deliver.Owner'] == 'invoker'
+                for type_id in values['Deliver.Types'].split(','):
+                    bunker = sections[type_id]
+                    assert bunker['TechLevel'] == '11'
+                    assert bunker['BuildLimit'] == '0'
+                    assert bunker['CanBeOccupied'] == 'yes'
+                    assert bunker['InitialPayload.Nums'] == '2'
+                    occupant = sections[bunker['InitialPayload.Types']]
+                    assert occupant['Occupier'] == 'yes'
+                    assert occupant['Owner'] == bunker['Owner']
+                    delivered.append(type_id)
+            assert delivered, (players, difficulty)
+            assert rebuild_from_manifest(GAME_ROOT, manifest) == data
+    print('Rainbow bunker ownership, garrison, production lock, Paladin cursor '
+          'and replay parity: solo/co-op, all difficulties passed', flush=True)
 
 
 if __name__ == '__main__':

@@ -136,6 +136,7 @@ class SeedGeneration:
             grid=grid,
             starting_rewards=starting_rewards,
             progress=progress,
+            restrict_final_mission_rewards=bool(options.get('restrict_final_mission_rewards', True)),
         )
         enemy_reward_plan = plan_enemy_check_rewards(
             seed,
@@ -172,6 +173,7 @@ class SeedGeneration:
                 use_act_based_reward_multipliers
             ),
             'unlock_all_rewards_after_final_grid_mission': unlock_all_grid_rewards,
+            'restrict_final_mission_rewards': bool(options.get('restrict_final_mission_rewards', True)),
             'starting_unlocked_missions': min(
                 1 if progression_mode == 'Classic' else STARTING_UNLOCKED_MISSIONS,
                 len(mission_codes),

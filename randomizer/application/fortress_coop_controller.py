@@ -4,14 +4,13 @@ import queue
 import json
 import time
 import zlib
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 
 from randomizer.coop import feature
-from randomizer.coop.lobby import Lobby
 from randomizer.coop.privacy import redact_connection_details
 from randomizer.core.paths import GAME_ROOT
-from randomizer.final_fortress.coop import lobby_port
-from randomizer.final_fortress.coop_ui import connection_dialog
+from randomizer.final_fortress.coop_ui import connection_dialog, refresh_connection_dialog
+from randomizer.final_fortress.lobby import FortressHost, FortressLobby
 
 from .fortress_coop_launch import FortressCoopLaunchController
 
@@ -125,17 +124,16 @@ class FortressCoopController(FortressCoopLaunchController):
         sessions = {}
         try:
             name = self._fortress_coop_name_var.get().strip()
-            count = int(self._fortress_coop_count_var.get())
-            seat = int(self._fortress_coop_seat_var.get()) - 1
-            if count not in (2, 3):
+            count = int(self._fortress_coop_count_var.get()) if role == 'host' else None
+            if role == 'host' and count not in (2, 3):
                 raise ValueError('Choose two or three human players.')
-            slots = range(1, count) if role == 'host' else (seat,)
+            slots = range(1, count) if role == 'host' else (0,)
             code = (self._fortress_coop_host_code if role == 'host'
                     else self._fortress_coop_guest_code).get().strip()
             for slot in slots:
-                sessions[slot] = Lobby(
+                sessions[slot] = FortressLobby(
                     GAME_ROOT, role, name, address=self._fortress_coop_address_var.get().strip(),
-                    port=lobby_port(slot), pairing_code=code)
+                    pairing_code=code)
         except (ValueError, OSError) as exc:
             messagebox.showerror('Fortress co-op', self._fortress_safe_message(exc), parent=self)
             return
@@ -143,15 +141,18 @@ class FortressCoopController(FortressCoopLaunchController):
         self.final_fortress_coop_var.set(True)
         self._fortress_role = role
         self._fortress_humans = count if role == 'host' else None
-        self._fortress_local_slot = 0 if role == 'host' else seat
+        self._fortress_local_slot = 0 if role == 'host' else None
         self._fortress_pending = None
         self._fortress_worker_active = False
         self._fortress_roster = []
         self._fortress_peer_runs = {}
         generation = self._fortress_lobby_generation = object()
         self.fortress_coop_status_var.set('Waiting for all Fortress players…')
-        for lobby in sessions.values():
-            lobby.start()
+        self._fortress_host = FortressHost(sessions) if role == 'host' else None
+        if self._fortress_host is not None:
+            self._fortress_host.start()
+        else:
+            sessions[0].start()
         self.refresh_final_fortress()
         self.refresh_game_speed_controls()
         self.after(100, lambda: self._poll_fortress_lobby(generation))
@@ -161,6 +162,10 @@ class FortressCoopController(FortressCoopLaunchController):
         if (getattr(self, '_final_fortress_preparing', False)
                 or (process is not None and process.poll() is None)):
             return
+        host = getattr(self, '_fortress_host', None)
+        if host is not None:
+            host.close()
+            self._fortress_host = None
         for lobby in getattr(self, '_fortress_lobbies', {}).values():
             lobby.close()
         self._fortress_lobbies = {}
@@ -168,7 +173,7 @@ class FortressCoopController(FortressCoopLaunchController):
             self.final_fortress_coop_var.set(False)
         self._fortress_pending = None
         if hasattr(self, 'fortress_coop_status_var'):
-            self.fortress_coop_status_var.set('Solo play. Co-op supports 2–3 humans over ZeroTier.')
+            self.fortress_coop_status_var.set('Disconnected')
         if hasattr(self, 'final_fortress_launch_button'):
             self.refresh_final_fortress()
             self.refresh_game_speed_controls()
@@ -190,11 +195,7 @@ class FortressCoopController(FortressCoopLaunchController):
         busy = self._final_fortress_preparing or (process is not None and process.poll() is None)
         dialog = getattr(self, '_fortress_coop_dialog', None)
         if dialog is not None and dialog.winfo_exists():
-            for index, widget in enumerate(self._fortress_connection_widgets):
-                widget.configure(state='disabled' if sessions else 'readonly'
-                                 if index == 5 or isinstance(widget, ttk.Combobox) else 'normal')
-            self._fortress_connect_button.configure(state='disabled' if sessions or busy else 'normal')
-            self._fortress_disconnect_button.configure(state='normal' if sessions and not busy else 'disabled')
+            refresh_connection_dialog(self, connected=bool(sessions), busy=busy)
         if not hasattr(self, 'final_fortress_launch_button'):
             return
         guest = self.fortress_coop_guest()
@@ -238,9 +239,9 @@ class FortressCoopController(FortressCoopLaunchController):
         if len(installations) != len(set(installations)):
             status = 'Each Fortress player needs a separate game installation. Disconnect before reconnecting.'
         self.fortress_coop_status_var.set(status)
-        for lobby in sessions.values():
+        for slot, lobby in sessions.items():
             if lobby.connected:
-                lobby.send({'type': 'fortress_roster', 'players': names, 'setup': setup})
+                lobby.send({'type': 'fortress_roster', 'players': names, 'slot': slot, 'setup': setup})
 
     def _poll_fortress_lobby(self, generation):
         sessions = getattr(self, '_fortress_lobbies', {})
@@ -254,11 +255,14 @@ class FortressCoopController(FortressCoopLaunchController):
                     break
                 try:
                     if kind == 'connected':
-                        self.append_log(f'Fortress player {slot + 1} connected: {lobby.peer}.')
+                        self.append_log(f'Fortress player {slot + 1} connected: {lobby.peer}.'
+                                        if self._fortress_role == 'host'
+                                        else f'Fortress host connected: {lobby.peer}.')
                         self._publish_fortress_roster()
                         self.refresh_final_fortress()
                     elif kind == 'message':
-                        self._handle_fortress_message(slot, lobby, value)
+                        local_slot = self._fortress_local_slot if self._fortress_role == 'guest' else slot
+                        self._handle_fortress_message(local_slot, lobby, value)
                     elif kind in ('error', 'disconnected'):
                         detail = self._fortress_safe_message(value)
                         self.fortress_coop_status_var.set('Fortress connection ended. Disconnect before reconnecting. ' + detail)

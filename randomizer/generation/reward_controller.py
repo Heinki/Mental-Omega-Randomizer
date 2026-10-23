@@ -13,6 +13,25 @@ from randomizer.rewards.rules import tech_ids_for_rewards
 
 
 class RewardGeneration:
+    def final_mission_buff_only_codes(self, mission_codes, progression_mode, grid, enabled=None):
+        """Use the seed's frozen policy, preserving legacy reward plans."""
+        context = self.__dict__.get('_seed_generation_context') or {}
+        state = self.state or {}
+        if enabled is None:
+            enabled = context.get(
+                'restrict_final_mission_rewards',
+                state.get('restrict_final_mission_rewards', False) if state else
+                getattr(self, 'config', {}).get('restrict_final_mission_rewards', True),
+            )
+        if not enabled or not mission_codes:
+            return ()
+        if progression_mode == 'Grid Mode':
+            goal = (grid or {}).get('goal')
+            return (goal,) if goal else ()
+        if progression_mode == 'Mission List':
+            return (mission_codes[-1],)
+        return ()
+
     def native_challenge_rewards_enabled(self):
         context = self.__dict__.get('_seed_generation_context') or {}
         category = context.get('mission_category') or (self.state or {}).get('mission_category')
@@ -546,7 +565,11 @@ class RewardGeneration:
         grid=None,
         starting_rewards=None,
         progress=None,
+        restrict_final_mission_rewards=None,
     ):
+        buffs_only_codes = self.final_mission_buff_only_codes(
+            mission_codes, progression_mode, grid, restrict_final_mission_rewards,
+        )
         templates_by_code = {code: self.objective_templates_for_code(code) for code in mission_codes}
         reward_check_ids_by_code = {
             code: (
@@ -626,6 +649,7 @@ class RewardGeneration:
             initial_rewards=starting_rewards + earned_rewards,
             avoid_unlocked_access=bool(starting_rewards),
             reserved_rewards=(),
+            buffs_only_codes=buffs_only_codes,
         )
         if progress is not None:
             progress('Planning mission multiplier rewards.', 0, 1)
@@ -649,6 +673,7 @@ class RewardGeneration:
             initial_rewards=starting_rewards + earned_rewards,
             reserved_rewards=(),
             progress=progress,
+            buffs_only_codes=buffs_only_codes,
         )
 
         for code in mission_codes:
@@ -747,6 +772,7 @@ class RewardGeneration:
         initial_rewards=(),
         reserved_rewards=(),
         progress=None,
+        buffs_only_codes=(),
     ):
         """Plan valid completion bonuses without changing base assignments."""
         bonus_plan = {code: [] for code in mission_codes}
@@ -793,6 +819,7 @@ class RewardGeneration:
                 avoid_unlocked_access=True,
                 rng_namespace=f'mission-reward-multiplier:{code}',
                 reserved_rewards=reserved,
+                buffs_only_codes=buffs_only_codes,
             )
             bonus_plan[code] = plan.get(code, [])
             prior_bonus_rewards.extend(bonus_plan[code])
@@ -809,6 +836,7 @@ class RewardGeneration:
         avoid_unlocked_access=False,
         rng_namespace='seed-rewards',
         reserved_rewards=(),
+        buffs_only_codes=(),
     ):
         if progression_mode is None:
             progression_mode = (
@@ -858,6 +886,7 @@ class RewardGeneration:
             blocked_reward_names=self.active_starting_unlock_names(),
             rng_namespace=rng_namespace,
             reserved_rewards=reserved_rewards,
+            buffs_only_codes=buffs_only_codes,
             access_limits=(
                 None
                 if (

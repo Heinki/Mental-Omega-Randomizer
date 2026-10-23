@@ -661,6 +661,9 @@ class StateController(GenerationSettings):
         self.config['unlock_all_rewards_after_final_grid_mission'] = bool(
             self.unlock_all_grid_rewards_var.get()
         )
+        self.config['restrict_final_mission_rewards'] = bool(
+            self.restrict_final_mission_rewards_var.get()
+        )
         self.config['rewards_per_objective'] = rewards_per_check
         self.config['rewards_on_victory_only'] = bool(
             self.rewards_on_victory_only_var.get()
@@ -891,6 +894,9 @@ class StateController(GenerationSettings):
         ))
         self.unlock_all_grid_rewards_var.set(bool(
             self.config.get('unlock_all_rewards_after_final_grid_mission', False)
+        ))
+        self.restrict_final_mission_rewards_var.set(bool(
+            self.config.get('restrict_final_mission_rewards', True)
         ))
         self.rewards_per_check_var.set(max(1, min(
             MAX_REWARDS_PER_CHECK,

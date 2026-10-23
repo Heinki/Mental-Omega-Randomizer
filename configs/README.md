@@ -23,7 +23,10 @@ that overlap only with full reward-plan and 97-map parity coverage.
 
 - `default_player_config.json`: fallback player, generation, launch, privacy,
   reward-weight, and future Archipelago settings used when active YAML keys are
-  absent. `generation.reward_weights` stores bounded `0`–`100` main,
+  absent. `restrict_final_mission_rewards` defaults to `true` for new seeds
+  and restricts every Grid-goal/final Mission List check to buffs, including
+  multiplier bonuses. Existing saves without the field keep their plans.
+  `generation.reward_weights` stores bounded `0`–`100` main,
   unit-buff, and power-buff selection weights; absent legacy keys use `100`.
   `generation.starting_reward_count` and `starting_reward_types` control the
   separately seeded pre-mission unlock grant; allowed families are access,

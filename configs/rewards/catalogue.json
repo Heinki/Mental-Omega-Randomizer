@@ -1834,6 +1834,7 @@
           "SW.FireIntoShroud": "no",
           "SW.RequiresTarget": "land",
           "Cursor": "Shift",
+          "NoCursor": "NoCanDo",
           "SW.RequiredHouses": "",
           "SW.AuxBuildings": ""
         }
@@ -1857,7 +1858,8 @@
         "superweapon": "InstantShelterSpecial",
         "values": {
           "UIDescription": "NOSTR:* Granted by Randomizer",
-          "IsPowered": "false"
+          "IsPowered": "false",
+          "Deliver.Owner": "invoker"
         }
       },
       {

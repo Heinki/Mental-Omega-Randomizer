@@ -205,9 +205,9 @@ MANDATORY_EXCLUDED_BUFF_TYPE_IDS = {
     # Keep this mandatory so retry assistance and externally supplied legacy
     # rewards cannot bypass the editable catalogue exclusion.
     'range': SUICIDE_RANGE_EXCLUDED_UNIT_IDS,
-    # Rejuvenator's requested benefit is stronger repair shots. Replace its
-    # former ammo reward and migrate earned stacks to healing output.
-    'ammo': frozenset({'REJU'}),
+    # Rejuvenator needs healing output; Thor uses ammo for ability cooldowns.
+    # Legacy stacks migrate to useful same-unit rewards below.
+    'ammo': frozenset({'REJU', 'THOR', 'STHOR'}),
     # Yuri's permanent control does not consume simultaneous-control nodes.
     'mind_control': frozenset({'YURIX2'}),
     # Gunner=yes transports use their sole passenger as an IFV weapon/driver,
@@ -1067,6 +1067,13 @@ SECONDARY_SUPERWEAPON_UNLOCK_REWARDS = _REWARD_CATALOGUE_CONFIG['secondary_super
 
 AID_POWER_MAP_CONFIGS = _REWARD_CATALOGUE_CONFIG['aid_power_map_configs']
 
+# Replay corrections for preserved editable catalogues in packaged upgrades.
+for aid_config in AID_POWER_MAP_CONFIGS:
+    if aid_config.get('superweapon') == 'PaladinAidSpecial':
+        aid_config.setdefault('values', {})['NoCursor'] = 'NoCanDo'
+    if aid_config.get('superweapon') == 'InstantShelterSpecial':
+        aid_config.setdefault('values', {})['Deliver.Owner'] = 'invoker'
+
 # The portable power must not reuse a mission-mutated native SUNB identity.
 # Keep old editable catalogue files on the same installed-template clone path.
 for aid_config in AID_POWER_MAP_CONFIGS:
@@ -1540,6 +1547,10 @@ REWARD_ALIASES = {
     # Keep existing earned ammo stacks useful as direct weapon ROF buffs.
     'Mastodon Ammo Reserves I': 'Mastodon Weapon Tuning I',
     'Mastodon Prototype Ammo Reserves I': 'Mastodon Prototype Weapon Tuning I',
+    # Thor ammunition gates its ability cooldown, not its gun. Preserve old
+    # earned stacks as useful weapon tuning without changing that cooldown.
+    'Thor Gunship Ammo Reserves I': 'Thor Gunship Weapon Tuning I',
+    'Super Thor Gunship Ammo Reserves I': 'Super Thor Gunship Weapon Tuning I',
     # Old M.A.D. Tank deploy-fire cadence is not a useful adjustable stat.
     # Keep serialized stacks useful without retaining any fire-rate UI/effect.
     'Old M.A.D. Tank Weapon Tuning I': 'Old M.A.D. Tank Reinforced Frames I',

@@ -141,9 +141,14 @@ def close_reward_power_references(lines, rules, installed, countries):
     processed = set()
 
     def own_actor(values):
+        # TechLevel=-1 makes an occupiable building civilian: delivery/buildup
+        # can return it to Neutral. Keep military bunker ownership semantics
+        # and use BuildLimit=0 to prevent production of the payload-only type.
+        occupiable = str(_value(values, 'CanBeOccupied')).lower() in {'yes', 'true', '1'}
         for field, value in {
             'Owner': owners, 'RequiredHouses': owners, 'ForbiddenHouses': 'none',
-            'TechLevel': '-1', 'BuildLimit': None, 'Prerequisite': None,
+            'TechLevel': '11' if occupiable else '-1',
+            'BuildLimit': '0' if occupiable else None, 'Prerequisite': None,
             'PrerequisiteOverride': None, 'Prerequisite.Negative': None,
             'FactoryOwners': None, 'FactoryOwners.Forbidden': None,
             'AllowedToStartInMultiplayer': 'no',

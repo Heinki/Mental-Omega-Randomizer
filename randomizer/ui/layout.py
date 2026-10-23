@@ -551,6 +551,22 @@ def _build_right_panel(self, main_frame):
         'and hidden locked missions remain active.',
     )
 
+    self.restrict_final_mission_rewards_check = ttk.Checkbutton(
+        options_row,
+        text='Only buff rewards on final Grid / Mission List mission',
+        variable=self.restrict_final_mission_rewards_var,
+    )
+    self.restrict_final_mission_rewards_check.grid(
+        row=12, column=0, columnspan=2, sticky='w', pady=(6, 0),
+    )
+    WidgetTooltip(
+        self.restrict_final_mission_rewards_check,
+        'For new seeds, exclude unit, building and power unlocks from every '
+        'reward on the Grid goal or last Mission List entry, including victory '
+        'bonuses. Only enabled buffs remain; exhausted pools grant no reward. '
+        'Existing saves keep their reward plans. Classic and Shop are unchanged.',
+    )
+
     shop_settings_frame = ttk.LabelFrame(
         settings_frame,
         text='Shop Mode Setup',

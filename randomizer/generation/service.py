@@ -101,6 +101,7 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
             'reward_mode': reward_mode,
             'progression_mode': mode,
             'use_act_based_reward_multipliers': bool(config['use_act_based_reward_multipliers']),
+            'restrict_final_mission_rewards': bool(config.get('restrict_final_mission_rewards', True)),
         }
         settings = self.config_reward_settings()
         if reward_mode == ARSENAL_MODE:

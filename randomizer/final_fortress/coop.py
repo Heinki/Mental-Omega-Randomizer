@@ -3,16 +3,9 @@
 import ipaddress
 
 from randomizer.coop.direct import _name, _port
-from randomizer.coop.lobby import LOBBY_PORT
 from randomizer.maps.ini import IniLines, all_section_value_maps_preserve, section_value_map
 
 from .player_perks import coalition
-
-
-def lobby_port(slot):
-    if type(slot) is not int or slot not in (1, 2):
-        raise ValueError('Choose guest player 2 or 3.')
-    return LOBBY_PORT + (slot - 1) * 2
 
 
 def validate_endpoints(plan, endpoints):

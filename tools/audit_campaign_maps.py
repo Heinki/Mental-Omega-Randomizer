@@ -629,8 +629,8 @@ def _assert_targeted_contracts(generated_paths):
             ),
             '',
         )
-        if str(cloneable).lower() != 'no':
-            raise AssertionError(f'{path.name} has cloneable MORPYURIPR')
+        if str(cloneable).lower() == 'no':
+            raise AssertionError(f'{path.name} blocks cloning MORPYURIPR')
     if not yuri_prime_maps:
         raise AssertionError('No generated map contained MORPYURIPR')
 
@@ -1591,6 +1591,7 @@ def _assert_powerhouse_progression(missions):
 def main():
     _assert_hook_restart_race()
     missions = parse_missions(BATTLE_CLIENT_INI)
+    audit_final_mission_rewards(missions)
     if len(missions) != 97:
         raise AssertionError(f'Expected 97 campaign maps, found {len(missions)}')
 
@@ -1736,6 +1737,62 @@ def _assert_demolition_death_weapons(paths):
             assert warhead.get('Temporal', 'no') != 'yes', (path.name, unit, death)
             assert weapon.get('Spawner', 'no') != 'yes', (path.name, unit, death)
     print('All 97 generated maps: safe Demolition Charges death-weapon fallback', flush=True)
+
+
+def audit_final_mission_rewards(missions):
+    """Audit complete seed plans against the installed campaign catalogue."""
+    from randomizer.generation.service import RunGenerator
+    from randomizer.rewards.catalogue import check_rewards
+
+    for mode in ('Grid Mode', 'Mission List', 'Classic'):
+        for reward_mode in ('Standard', 'Chaos', 'Randomizer Arsenal'):
+            for weighted in (False, True):
+                settings = {
+                    'progression_mode': mode, 'mission_goal': 15,
+                    'generation': {'reward_mode': reward_mode},
+                }
+                if weighted:
+                    settings['generation']['reward_weights'] = {
+                        'main': {'unit_unlocks': 25, 'unit_buffs': 80},
+                    }
+                for restricted in (False, True):
+                    settings['restrict_final_mission_rewards'] = restricted
+                    generator = RunGenerator(settings, missions)
+                    state = generator.generate('HEINKI-V144')
+                    goal = (state['grid']['goal'] if mode == 'Grid Mode'
+                            else state['mission_order'][-1])
+                    rewards = [reward for check in state['mission_checks'][goal]
+                               for reward in check_rewards(check)]
+                    assert rewards, (mode, reward_mode, weighted)
+                    if restricted and mode != 'Classic':
+                        assert all(reward.get('kind') in {'buff', 'message'}
+                                   for reward in rewards), (mode, reward_mode, weighted)
+                    elif reward_mode != 'Randomizer Arsenal':
+                        assert any(reward.get('kind') not in {'buff', 'message'}
+                                   for reward in rewards), (mode, reward_mode, weighted)
+                    # Frozen save policy overrides changed next-seed controls.
+                    generator.state = state
+                    generator._seed_generation_context = None
+                    generator.config['restrict_final_mission_rewards'] = not restricted
+                    assert bool(generator.final_mission_buff_only_codes(
+                        state['mission_order'], mode, state.get('grid'),
+                    )) == (restricted and mode != 'Classic')
+                    # A legacy save with no flag must retain its existing policy.
+                    state.pop('restrict_final_mission_rewards')
+                    assert not generator.final_mission_buff_only_codes(
+                        state['mission_order'], mode, state.get('grid'),
+                    )
+    for mode in ('Grid Mode', 'Mission List'):
+        state = RunGenerator({
+            'progression_mode': mode, 'mission_goal': 1,
+            'generation': {'include_buff_rewards': False, 'include_power_buff_rewards': False},
+        }, missions).generate('HEINKI-V144-ACCESS-ONLY')
+        assert state['restrict_final_mission_rewards'] is True
+        assert all(reward.get('max_rewards_achieved')
+                   for checks in state['mission_checks'].values()
+                   for check in checks for reward in check_rewards(check))
+    print('Final mission rewards: default/weighted draws, Standard/Chaos/Arsenal, '
+          'Grid/List/Classic, empty buff pools, disabled and frozen/legacy save policies passed', flush=True)
 
 
 if __name__ == '__main__':

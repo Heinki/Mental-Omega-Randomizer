@@ -108,10 +108,15 @@ class FortressCoopLaunchController:
             if self._fortress_role != 'guest':
                 raise ValueError('Only the host may publish a Fortress roster.')
             players = message.get('players')
+            assigned_slot = message.get('slot')
             if (not isinstance(players, list) or not 2 <= len(players) <= 3
                     or not all(isinstance(name, str) for name in players)
-                    or slot >= len(players) or players[slot] != lobby.name or players[0] != lobby.peer):
+                    or type(assigned_slot) is not int or not 0 < assigned_slot < len(players)
+                    or (slot is not None and assigned_slot != slot)
+                    or players[assigned_slot] != lobby.name or players[0] != lobby.peer):
                 raise ValueError('The host Fortress roster does not include this player.')
+            self._fortress_local_slot = assigned_slot
+            self._fortress_lobbies = {assigned_slot: lobby}
             self._fortress_roster = players
             self._fortress_coop_count_var.set(str(len(players)))
             self.fortress_coop_status_var.set(' / '.join(players) + ' — ' + str(message.get('setup', '')))
@@ -148,7 +153,8 @@ class FortressCoopLaunchController:
 
     def _prepare_fortress_guest(self, slot, lobby, message):
         process = getattr(self, 'active_game_process', None)
-        if (self._fortress_role != 'guest' or self._final_fortress_preparing
+        if (self._fortress_role != 'guest' or type(slot) is not int or slot not in (1, 2)
+                or self._final_fortress_preparing
                 or self._final_fortress_watch is not None
                 or (process is not None and process.poll() is None)):
             raise ValueError('Cannot replace an active Fortress game.')

@@ -28,6 +28,12 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    'YURIPR': {'Cloneable': None},
+    'YURIX': {
+        'Insignia.Rookie': 'herostcr',
+        'Insignia.Veteran': 'herostbr',
+        'Insignia.Elite': 'herostar',
+    },
     # Boss Brute armor aliases exist only in Time Capsule's map-local rules.
     # Older editable rosters survive upgrades; correct their portable copies.
     **{source_id: {'Armor': 'brute'} for source_id in ('BRUTM', 'BRUTS', 'BRUTV')},
@@ -156,6 +162,9 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'OpenTransportWeapon': None,
         'BuildLimit': '1',
         'BuildTimeMultiplier': '2',
+        'Insignia.Rookie': 'herostcr',
+        'Insignia.Veteran': 'herostbr',
+        'Insignia.Elite': 'herostar',
         'AttachEffect.Animation': None,
         'AttachEffect.Duration': None,
     },
@@ -732,6 +741,15 @@ def validate_unit_buff_application_contracts():
         (str(reward.get('unit') or '').upper(), reward.get('buff_type'))
         for reward in UNIT_BUFF_REWARDS
     }
+    for unit_id in ('THOR', 'STHOR'):
+        if (unit_id, 'ammo') in reward_pairs:
+            errors.append(f'{unit_id} still offers cooldown ammo')
+        legacy = canonical_reward({
+            'name': f'{BUFF_TARGETS[unit_id]["label"]} Ammo Reserves I',
+            'kind': 'buff', 'unit': unit_id, 'buff_type': 'ammo',
+        })
+        if legacy.get('buff_type') != 'reload' or legacy.get('unit') != unit_id:
+            errors.append(f'{unit_id} legacy ammo does not migrate to weapon tuning')
     forced_suicide_range_rewards = []
     for unit_id in sorted(SUICIDE_RANGE_EXCLUDED_UNIT_IDS):
         if (unit_id, 'range') in reward_pairs:
@@ -957,8 +975,8 @@ def validate_limited_hero_build_limits():
     _key, yuri_prime_cloneable = _case_insensitive_item(
         templates.get('YURIPR', {}), 'Cloneable'
     )
-    if str(yuri_prime_cloneable or '').lower() != 'no':
-        errors.append('YURIPR must be Cloneable=no to protect its build queue')
+    if str(yuri_prime_cloneable or '').lower() == 'no':
+        errors.append('YURIPR must allow Cloning Vats copies')
     if errors:
         raise ValueError(
             'Limited hero build-limit validation failed: ' + '; '.join(errors)
@@ -967,7 +985,7 @@ def validate_limited_hero_build_limits():
         'types': len(LIMITED_HERO_BUILD_LIMITS),
         'unit_ids': sorted(LIMITED_HERO_BUILD_LIMITS),
         'command_capacity_rewards': len(LIMITED_HERO_BUILD_LIMITS),
-        'unclonable_limited_ids': ['YURIPR'],
+        'cloneable_limited_ids': ['YURIPR'],
     }
 
 
@@ -1175,6 +1193,9 @@ def validate_special_roster_contracts():
         'Secondary': 'SuperPsiWave',
         'BuildLimit': '1',
         'BuildTimeMultiplier': '2',
+        'Insignia.Rookie': 'herostcr',
+        'Insignia.Veteran': 'herostbr',
+        'Insignia.Elite': 'herostar',
     }
     for key, expected in yuri_required.items():
         _actual_key, actual = _case_insensitive_item(yuri, key)

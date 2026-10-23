@@ -2,6 +2,31 @@
 
 This document is the authoritative implementation reference. Player-facing option semantics are intentionally kept in [README_RANDOMIZER.md](README_RANDOMIZER.md#settings-reference) so they are not duplicated here.
 
+## Heinki v1.44 reward and roster corrections (23 October 2026)
+
+Final-mission reward restrictions are frozen as `restrict_final_mission_rewards`
+on new seeds. Planning filters the Grid goal or last Mission List entry before
+canonical pool caching, with a separate cache key for restricted pools. Base,
+weighted, fallback and victory-bonus draws share that restriction. Legacy saves
+without the field retain their planned checks and unrestricted regeneration;
+no check-schema migration or reward-history rewrite is needed.
+
+Thor and Super Thor exclude ammo buffs in both editable and mandatory policy.
+Old ammo rewards canonicalize to same-unit weapon tuning. Real Yuri's two roster
+identities (`YURIX`/`YURIX2`) receive all three Hero-Star insignias in committed,
+generated and preserved packaged templates. Paladin Aid's portable definition
+explicitly supplies `NoCursor=NoCanDo`, including preserved catalogues.
+
+Rainbow uses the multiplayer power-payload closure. That closure changed native
+Instant Shelter's occupiable `NABNKRR` from `TechLevel=11` to `-1`, discarding its
+military bunker behavior. Owned occupiable payloads now use `TechLevel=11` and
+`BuildLimit=0`: production remains blocked without civilian garrison behavior.
+Instant Shelter also explicitly uses `Deliver.Owner=invoker`; its two Conscripts
+still use private infantry with matching owners. Native map objects and enemy
+definitions remain untouched. The generated solo/co-op maps and deterministic
+replay are audited at all three difficulties; live ownership after delivery and
+unloading still requires gameplay confirmation.
+
 ## Reported BiA cloning and Archipelago release regressions
 
 Brothers in Arms (`SARMS`) deliberately changes native `NAFIST` to
@@ -991,11 +1016,10 @@ not its random unit target. New runs no longer generate draft buffs, and the
 upgrade is hidden and unpurchasable. Its stable config ID and serialized run
 field remain accepted so old profiles and active runs do not become invalid.
 
-Yuri Prime's player clone is build-limited but was cloneable. A mission-owned
-Cloning Vats could create the free copy while the paid copy was still queued;
-the hero cap then left the infantry queue blocked. `MORPYURIPR` now uses
-`Cloneable=no`, generated from the same roster override as its static template.
-Its installed `BuildTimeMultiplier=1.2` is unrelated to this cap transition.
+Epsilon Elite (`MORPYURIPR`) allows the intended Cloning Vats copy. The Heinki
+v1.44 correction removes the earlier `Cloneable=no` policy from the static
+roster and template generator, and clears it from preserved packaged templates.
+Its existing build limit and `BuildTimeMultiplier=1.2` are unchanged.
 
 Shipwrecked places Airborne Humvees under the hostile UnitedStates House during
 the Engineer/MCV opening. Tier 1 enemy firepower cloned `HumveeGun`, allowing

@@ -72,6 +72,7 @@ def plan_seed_rewards(
     blocked_reward_names=(),
     reserved_rewards=(),
     access_limits=None,
+    buffs_only_codes=(),
 ):
     """Assign rewards without reading GUI or mutable launcher state.
 
@@ -79,6 +80,7 @@ def plan_seed_rewards(
     and planner state isolated. Callers may therefore test planning without Tk.
     """
     rng = random.Random(f'{seed}:{rng_namespace}')
+    buffs_only_codes = frozenset(buffs_only_codes)
     used_access_names = set()
     normalized_access_limits = normalize_access_limits(access_limits)
     access_limits_enabled = normalized_access_limits['enabled']
@@ -294,11 +296,15 @@ def plan_seed_rewards(
             if reward_pool_cache_key_for_code is not None
             else tuple(sorted(reward_factions_for_code(code)))
         )
+        # A restricted goal must never reuse its faction's unrestricted pool.
+        if code in buffs_only_codes:
+            pool_key = ('buffs-only', pool_key)
         if pool_key not in pool_cache:
             canonical_pool = tuple(
                 reward
                 for reward in map(canonical_reward, reward_pool_for_code(code))
                 if reward.get('name') not in blocked_names
+                and (code not in buffs_only_codes or reward.get('kind') == 'buff')
             )
             access_template = tuple(
                 reward

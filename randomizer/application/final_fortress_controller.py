@@ -66,8 +66,7 @@ class FinalFortressController(FortressCoopController):
         self.final_fortress_coop_var = tk.BooleanVar(value=False)
         self._fortress_coop_count_var = tk.StringVar(value='2')
         self._fortress_challenge_maps_var = tk.BooleanVar(value=False)
-        self.fortress_coop_status_var = tk.StringVar(
-            value='Solo play. Co-op supports 2–3 humans over ZeroTier.')
+        self.fortress_coop_status_var = tk.StringVar(value='Disconnected')
         self.final_fortress_repository = FinalFortressRepository()
         self._final_fortress_profile = STANDARD_PROFILE
         self.final_fortress_profile_var = tk.StringVar(value=STANDARD_PROFILE)

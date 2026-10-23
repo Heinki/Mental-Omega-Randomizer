@@ -64,6 +64,9 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Image': 'YURIX',
         'BuildLimit': '1',
         'BuildTimeMultiplier': '2',
+        'Insignia.Rookie': 'herostcr',
+        'Insignia.Veteran': 'herostbr',
+        'Insignia.Elite': 'herostar',
     },
     'MAMUP': {
         # Soviet Arms Race uses MAMU for the Apocalypse Prototype. Give the
@@ -175,11 +178,9 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'YURIX': {
         'BuildTimeMultiplier': '2',
-    },
-    'YURIPR': {
-        # A free Cloning Vats copy can satisfy the hero BuildLimit while the
-        # paid copy remains queued forever. Keep this limited hero unclonable.
-        'Cloneable': 'no',
+        'Insignia.Rookie': 'herostcr',
+        'Insignia.Veteran': 'herostbr',
+        'Insignia.Elite': 'herostar',
     },
     'GHTNKP': {
         'Name': 'Gharial Prototype',
@@ -461,6 +462,7 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
 }
 TEMPLATE_VALUE_REMOVALS = {
+    'YURIPR': frozenset({'cloneable'}),
     'MAMUP': frozenset({
         'operator',
         'initialpayload.types',

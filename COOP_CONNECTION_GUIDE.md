@@ -61,15 +61,18 @@ existing profiles and purchases are retained.
 ## Ports and optional Windows firewall helper
 
 Final Fortress has its own **Co-op…** button in the Fortress header. The host
-chooses two or three humans. Guests select different player numbers (2 or 3),
-enter the host's ZeroTier IPv4 and pairing code, and use distinct names. The
+chooses two or three humans in Settings. Guests enter the host's ZeroTier IPv4
+and pairing code and use distinct names. Player numbers are assigned automatically:
+the first guest gets player 2 and the next guest gets player 3. The
 host launches after the full roster connects. All human players share the host's
 faction and enabled perks, but earn and spend Defensive Points in their own
 profiles. Two humans allow at most one perk-enabled AI helper; three allow none.
-Fortress uses TCP **19420** for guest 2 and TCP **19422** for guest 3, with UDP
+All Fortress guests connect through host TCP **19420**, with UDP
 **1234**, **1235**, and **1236** for human players 1–3. Every player must be able
 to reach every other player on the private network. Mid-game joining is not
 supported. Disconnect the Fortress lobby before switching modes.
+All players need the updated launcher; older launchers with manual player numbers
+cannot join this lobby.
 
 For Grid/Shop/challenges, the automatic ports are host TCP **19420** for the lobby, host TCP **19421** for
 map preparation, and UDP **1234** on both PCs for the game. Permit this traffic

@@ -200,6 +200,7 @@ class SeedController(SeedGeneration):
             'mission_category': category,
             'campaign_filter': self.campaign_var.get(),
             'reward_mode': self.reward_mode_var.get(),
+            'restrict_final_mission_rewards': bool(self.restrict_final_mission_rewards_var.get()),
             'use_act_based_reward_multipliers': (
                 use_act_based_reward_multipliers
             ),

@@ -44,6 +44,7 @@ GAMEPLAY_CONFIG_KEYS = (
     "progression_mode",
     "grid_two_start_positions",
     "unlock_all_rewards_after_final_grid_mission",
+    "restrict_final_mission_rewards",
     "rewards_per_objective",
     "rewards_on_victory_only",
     "use_act_based_reward_multipliers",
@@ -350,6 +351,8 @@ def _launcher_snapshot_for_state(state, config):
         "use_act_based_reward_multipliers": bool(
             state.get("use_act_based_reward_multipliers", True)
         ),
+        **({"restrict_final_mission_rewards": bool(state["restrict_final_mission_rewards"])}
+           if "restrict_final_mission_rewards" in state else {}),
         "generation": {
             "reward_mode": state.get("reward_mode"),
             **deepcopy(state.get("mission_pool_settings") or {}),

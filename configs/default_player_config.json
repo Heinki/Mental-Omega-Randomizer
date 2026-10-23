@@ -25,6 +25,7 @@
       "progression_mode": "Mission List",
       "grid_two_start_positions": false,
       "unlock_all_rewards_after_final_grid_mission": false,
+      "restrict_final_mission_rewards": true,
       "rewards_per_objective": 4,
       "rewards_on_victory_only": false,
       "use_act_based_reward_multipliers": true,

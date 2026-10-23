@@ -396,6 +396,12 @@ class LauncherApp(
                 self.config.get('unlock_all_rewards_after_final_grid_mission', False),
             ))
         )
+        self.restrict_final_mission_rewards_var = tk.BooleanVar(
+            value=bool(self.state.get(
+                'restrict_final_mission_rewards',
+                self.config.get('restrict_final_mission_rewards', True),
+            ))
+        )
         self.include_challenge_missions_var = tk.BooleanVar(
             value=bool(generation_config.get('include_challenge_missions', False))
         )

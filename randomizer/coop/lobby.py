@@ -45,6 +45,8 @@ def decode_state(encoded: str) -> dict:
 
 
 class Lobby:
+    protocol = PROTOCOL
+
     def __init__(self, game_root, role: str, name: str, *, address='', port=LOBBY_PORT,
                  pairing_code=''):
         if role not in ('host', 'guest'):
@@ -74,7 +76,13 @@ class Lobby:
         self.peer = ''
         self.peer_installation = None
 
-    def start(self):
+    def start(self, *, connection=None):
+        """Start the channel, optionally using a socket accepted by a shared host."""
+        if connection is not None:
+            self._socket = connection
+            if self._closed.is_set():
+                connection.close()
+                return
         threading.Thread(target=self._run, name='CoopLobby', daemon=True).start()
 
     def close(self):
@@ -124,7 +132,7 @@ class Lobby:
         try:
             runtime = installation_details(self.game_root)
             self.events.put(('diagnostic', ('coop_local_runtime', runtime)))
-            if self.role == 'host':
+            if self.role == 'host' and self._socket is None:
                 phase = f'opening the host lobby (TCP {self.port})'
                 self._listener = socket.create_server(('0.0.0.0', self.port), backlog=1)
                 self.events.put(('listening', self.port))
@@ -139,7 +147,7 @@ class Lobby:
                     return
                 self._listener.close()
                 self._listener = None
-            else:
+            elif self.role == 'guest':
                 phase = f'connecting to the host over ZeroTier (TCP {self.port})'
                 self.events.put(('status', f'Connecting to host (TCP {self.port})…'))
                 self._connect_to_host()
@@ -150,12 +158,12 @@ class Lobby:
             local_nonce = secrets.token_hex(16)
             phase = 'waiting for the peer greeting'
             self.events.put(('status', 'Peer reached; checking runtime and pairing code…'))
-            self._send_raw({'type': 'hello', 'protocol': PROTOCOL,
+            self._send_raw({'type': 'hello', 'protocol': self.protocol,
                             'name': self.name, 'installation': _installation(self.game_root),
                             'runtime': runtime,
                             'nonce': local_nonce, 'paired': bool(self.pairing_code)})
             hello = self._receive(stream)
-            if hello.get('type') != 'hello' or hello.get('protocol') != PROTOCOL:
+            if hello.get('type') != 'hello' or hello.get('protocol') != self.protocol:
                 raise ValueError('Co-op protocol differs. Update both launchers to the same build.')
             self.peer = _name(hello.get('name', ''))
             if self.peer == self.name:

@@ -11,15 +11,15 @@ row reports concise readiness or an actual blocking error.
 
 In **Settings**, the **Final Fortress co-op** section has its own Co-op toggle
 and **Co-op players** selector (**2** or **3**), shown only in Final Fortress.
-The player count is shared with the Fortress connection dialog and locks while
-connected. The campaign **Include challenge maps** option is disabled and
+The player count is selected only in Settings and locks while connected.
+The campaign **Include challenge maps** option is disabled and
 unchecked here; switching modes restores the campaign's saved choices. This
 option is separate from Fortress's own enemy Challenge modifiers.
 
-Open **Co-op…** in the Fortress header. The host selects **2** or **3** human
-players and connects, then shares their ZeroTier Managed IPv4 and pairing code.
-Each guest selects **Join**, enters those details, chooses a different guest
-player number (**2** or **3**) and uses a distinct player name. Every PC needs a
+Open **Co-op…** in the Fortress header. The host connects using the human count
+from Settings, then shares their ZeroTier Managed IPv4 and pairing code.
+Each guest selects **Join**, enters those details and uses a distinct player
+name. Guest player numbers are assigned automatically in arrival order. Every PC needs a
 separate game installation and matching launcher/game files. The host launches
 after the full roster connects. Disconnect the lobby to return to solo play.
 
@@ -54,7 +54,10 @@ rejoining an old run from paying twice. Disconnects, mismatched maps and failed
 preparations cancel a pending launch without awarding completion points.
 There is no mid-game join or reconnect; reconnect all players between runs.
 
-Fortress uses host TCP **19420** for guest 2 and **19422** for guest 3. Native
+Choose two or three humans once in Settings. Fortress guests connect through
+host TCP **19420** and receive player numbers in arrival order: first guest is
+player 2, next guest is player 3. The connection dialog has no player-count or
+player-number selectors. All players need the updated launcher. Native
 game UDP ports are **1234**, **1235**, and **1236** for players 1–3, respectively.
 All players must be able to reach one another over ZeroTier. The private-network
 firewall helper includes these ports; see [connection setup](COOP_CONNECTION_GUIDE.md).
