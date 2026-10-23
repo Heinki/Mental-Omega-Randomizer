@@ -50,14 +50,22 @@ def validate_perk(perk):
                      'harvesters_by_country', 'fallback_units_by_country', 'power_buildings_by_country',
                      'superweapons_by_country', 'power_upgrade_stacks',
                      'special_units_by_country', 'reinforcements', 'healing_stacks',
-                     'recon_stacks', 'unique_limit_stacks', 'income_stacks'}
+                     'recon_stacks', 'unique_limit_stacks', 'income_stacks',
+                     'lab_emergency_repair', 'lab_reserve_units_by_country', 'lab_reserve_shield_seconds',
+                     'lab_health_percent'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
+        if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
+            raise ValueError('Lab emergency repair must be boolean.')
+        if 'lab_reserve_shield_seconds' in effects:
+            integer(effects['lab_reserve_shield_seconds'], 'Lab reserve shield seconds', 1)
+            if effects['lab_reserve_shield_seconds'] > 30 or 'lab_reserve_units_by_country' not in effects:
+                raise ValueError('Lab reserve shields require a reserve squad and last at most 30 seconds.')
         for key, limit in (('starting_credits', 100000), ('veterancy', 2),
                            ('production_percent', 50), ('defense_veterancy', 1),
                            ('defense_percent', 60), ('allied_helpers', 2), ('power_upgrade_stacks', 6),
                            ('healing_stacks', 6), ('recon_stacks', 6),
-                           ('unique_limit_stacks', 6), ('income_stacks', 4)):
+                           ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -71,15 +79,20 @@ def validate_perk(perk):
         for key in ('starting_units_by_country', 'buildings_by_country',
                     'defenses_by_country', 'support_powers_by_country', 'harvesters_by_country',
                     'fallback_units_by_country', 'power_buildings_by_country', 'superweapons_by_country',
-                    'special_units_by_country'):
+                    'special_units_by_country', 'lab_reserve_units_by_country'):
             if key not in effects:
                 continue
             table = effects[key]
             if not isinstance(table, dict) or set(table) != set(SIDE_COUNTRIES):
                 raise ValueError(f'{key} must cover all playable countries.')
             for country, values in table.items():
-                if key in ('starting_units_by_country', 'harvesters_by_country', 'fallback_units_by_country'):
+                if key in ('starting_units_by_country', 'harvesters_by_country', 'fallback_units_by_country',
+                           'lab_reserve_units_by_country'):
                     _units(values)
+                    if key == 'lab_reserve_units_by_country' and (
+                            not values or len(values) > 6 or sum(unit['count'] for unit in values) > 6
+                            or len({unit['type'] for unit in values}) != len(values)):
+                        raise ValueError('Lab reserves require 1–6 units with unique types per house.')
                     if sum(unit['count'] for unit in values) > 15:
                         raise ValueError('Starting armies are limited to 15 units.')
                 else:
@@ -127,7 +140,8 @@ def validate_perk(perk):
 
 
 def resolve_effects(config, selected, purchased, country, *, include_power=False,
-                    include_power_upgrades=False, include_arsenal=False, include_utilities=False):
+                    include_power_upgrades=False, include_arsenal=False, include_utilities=False,
+                    include_lab_support=False, include_lab_shield=False, include_lab_health=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -142,6 +156,12 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
     utility_fields = ('healing_stacks', 'recon_stacks', 'unique_limit_stacks', 'income_stacks')
     if include_utilities:
         effects.update({field: 0 for field in utility_fields})
+    if include_lab_support:
+        effects.update(lab_emergency_repair=False, lab_reserve_units=[])
+    if include_lab_shield:
+        effects['lab_reserve_shield_seconds'] = 0
+    if include_lab_health:
+        effects['lab_health_percent'] = 0
     catalogue = {entry['id']: entry for entry in config['perks']}
     fallback = []
     for key in selected:
@@ -150,6 +170,17 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_lab_health:
+            effects['lab_health_percent'] = max(effects['lab_health_percent'], current.get('lab_health_percent', 0))
+        if include_lab_shield:
+            effects['lab_reserve_shield_seconds'] = max(
+                effects['lab_reserve_shield_seconds'], current.get('lab_reserve_shield_seconds', 0))
+        if include_lab_support:
+            effects['lab_emergency_repair'] |= current.get('lab_emergency_repair', False)
+            if 'lab_reserve_units_by_country' in current:
+                if effects['lab_reserve_units']:
+                    raise ValueError('Choose only one Lab reserve squad perk.')
+                effects['lab_reserve_units'] = deepcopy(current['lab_reserve_units_by_country'][country])
         if include_utilities:
             for field in utility_fields:
                 effects[field] = max(effects[field], current.get(field, 0))

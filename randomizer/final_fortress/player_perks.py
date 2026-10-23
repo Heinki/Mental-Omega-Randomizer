@@ -27,6 +27,7 @@ def needs_countries(plan):
                 or effects.get('tier_buffs') or effects.get('defense_percent')
                 or effects.get('defense_veterancy') or effects.get('support_powers')
                 or effects.get('special_access') or effects.get('reinforcements')
+                or effects.get('lab_reserve_units')
                 or any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                                         'unique_limit_stacks', 'income_stacks')))
 
@@ -165,6 +166,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     delivered.update(effects.get('defense_types', []))
     delivered.update(unit['type'] for unit in effects['starting_defenses'])
     delivered.update(unit['type'] for unit in (effects.get('reinforcements') or {}).get('units', []))
+    delivered.update(unit['type'] for unit in effects.get('lab_reserve_units', []))
     if native_drakuv:
         delivered.add('RAVA')
     aliases = {}

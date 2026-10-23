@@ -280,6 +280,12 @@ class FinalFortressController(FortressCoopController):
             'one; collection awards Defensive Points to everyone and the cash or units to its collector.',
             'Defend Einstein’s Lab beside your starting MCV for '
             f'{settings["survival_seconds"] / 60:g} in-game minutes against three enemy AIs.',
+            'Lab durability increases the Lab’s maximum health for the whole run. '
+            'Emergency Lab repair restores that full maximum once per run below '
+            '35% health. Lab reserve squad deploys 3 infantry plus 1 faction vehicle '
+            'per friendly house once below 50%, with 10 seconds of Iron Curtain on the Lab '
+            'while squads arrive. Each human controls their own reserve; '
+            'both perks reset for the next run.',
             f'Additional waves start after {settings["wave_interval_seconds"] / 60:g} minutes '
             'and repeat at the same interval. Normal AI attacks continue throughout.',
             'AI difficulty sets the opening wave count. The wave multiplier applies only '

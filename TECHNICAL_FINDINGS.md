@@ -1407,3 +1407,44 @@ and explicit Action 80 at the camp waypoint. The existing map audit now compares
 every emitted delivery count/type against the frozen reward for each possible
 human collector. Native placement and collection still require ordinary gameplay
 verification; static audits cannot establish that units actually arrived.
+
+## Fortress Lab reserve protection (plan 27)
+
+The reserve's existing one-use half-health/red-health triggers now apply a
+Lab-only Iron Curtain before creating any reinforcement teams. A registered
+zero-damage weapon uses native Action 42 at the objective waypoint. Its warhead
+sets `IronCurtain.Duration=150`, `IronCurtain.Cap=150`, `AllowZeroDamage=yes`,
+`EffectsRequireDamage=no`, and `EffectsRequireVerses=yes`. All base verses are
+zero; only private `FFLABARMOR` has 100% verses. That armor inherits the original
+Lab armor, so normal attacks retain their native effectiveness. The Lab's own
+`IronCurtain.Modifier=1` gives ten simulation seconds without changing global
+Iron Curtain settings. The shared reserve-used flag is set before the effect,
+so repeated callbacks cannot refresh the shield or grant another squad.
+See [Ares Iron Curtain warheads](https://ares-developers.github.io/Ares-docs/new/warheads/ironcurtain.html)
+and [zero-damage warheads](https://ares-developers.github.io/Ares-docs/new/warheads/general.html).
+
+The installed executable's `TechnoClass::ReceiveDamage` stores the negative
+damage sign at `0x70191F–0x701927`. Its Iron Curtain branch at
+`0x701A3B–0x701A5A` skips damage immunity for negative damage. The separate
+emergency repair can therefore still heal the Lab during the reserve shield,
+including the linked red-health callbacks from the same hit. Generated-map
+audits and isolated launch preparation verify the emitted wiring and early
+armor/weapon/warhead registration; ordinary gameplay must confirm timing,
+shield expiry and the combined repair behavior. Frozen plan-26 maps retain
+their byte-identical unshielded behavior.
+
+## Fortress Lab durability (plan 28)
+
+The `lab_durability` perk adds cumulative `lab_health_percent` ranks of
+25/50/100 at upgrade prices of 5/10/20 Defensive Points. New plans freeze the
+selected rank's percentage once. The engine copies the installed Lab type
+and changes only `FFOBJECTIVE.Strength` to the original Strength multiplied
+by `(100 + percentage) / 100`, using integer arithmetic. The shipped 1,200 HP
+base becomes 1,500/1,800/2,400 HP. Its preplaced health remains 256 (full health).
+Native `CALAB` and unrelated buildings retain their installed Strength.
+
+Scaling happens before objective support is built, so the existing emergency
+repair weapon uses the increased Strength directly and the native half/red
+health events retain their percentage semantics. The co-op host supplies one
+shared objective bonus; human/helper count does not multiply it. Version-gated
+effect resolution preserves older frozen plans and their original HP.

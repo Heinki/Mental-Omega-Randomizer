@@ -16,6 +16,14 @@ Start here when changing code. Player settings belong in
   production types; `reporting.py` itemizes committed reward receipts.
   `perks.py` validates cumulative rank effects; `player_perks.py` isolates
   friendly production types, native helper AI recipes and support powers.
+  `lab_support.py` attaches plan-26 one-use Lab repair/reserve triggers without
+  replacing objective ownership or defeat logic. Its repair follows the native
+  35% red-health event; reserves use half health with a red-health fallback.
+  Plan 27 adds the reserve's Lab-only 150-frame Iron Curtain before squad
+  creation, sharing its one-use guard and leaving global Iron Curtain unchanged.
+  Plan 28 resolves the permanent `lab_health_percent` rank once and scales
+  only `FFOBJECTIVE.Strength` before support effects are built; emergency
+  repair consequently uses the upgraded maximum without a separate HP formula.
   `powers.py` adapts the existing power-buff calculations and clone planner
   for house-gated Fortress powers, including secondary and offensive faction
   superweapons. `profiles.py` permits an existing all-unlocks testing save only

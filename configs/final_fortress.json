@@ -5353,6 +5353,175 @@
     ],
     "perks": [
       {
+        "id": "lab_durability",
+        "display_name": "Lab durability",
+        "description": "Three early, low-cost ranks give Einstein's Lab +25% / +50% / +100% maximum health for the whole run (1,500 / 1,800 / 2,400 HP). Emergency repair restores the upgraded maximum; the shared objective bonus does not stack per friendly house.",
+        "gem_cost": 5,
+        "effects": {
+          "lab_health_percent": 25
+        },
+        "ranks": [
+          {
+            "gem_cost": 5,
+            "effects": {
+              "lab_health_percent": 25
+            }
+          },
+          {
+            "gem_cost": 10,
+            "effects": {
+              "lab_health_percent": 50
+            }
+          },
+          {
+            "gem_cost": 20,
+            "effects": {
+              "lab_health_percent": 100
+            }
+          }
+        ]
+      },
+      {
+        "id": "lab_emergency_repair",
+        "display_name": "Emergency Lab repair",
+        "description": "Automatically restore Einstein's Lab to full health once per run when it falls below 35% health (Mental Omega's native red-health threshold). One repair shared by the whole coalition.",
+        "gem_cost": 10,
+        "effects": {
+          "lab_emergency_repair": true
+        }
+      },
+      {
+        "id": "lab_reserve_squad",
+        "display_name": "Lab reserve squad",
+        "description": "Once per run below 50% Lab health, protect Einstein's Lab with Iron Curtain for 10 in-game seconds while each friendly house receives 3 faction infantry and 1 basic vehicle at its reserved base arrival tiles. Separate from periodic reinforcements.",
+        "gem_cost": 15,
+        "effects": {
+          "lab_reserve_units_by_country": {
+            "UnitedStates": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "ETNK",
+                "count": 1
+              }
+            ],
+            "Europeans": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "MTNK",
+                "count": 1
+              }
+            ],
+            "Pacific": [
+              {
+                "type": "E1",
+                "count": 3
+              },
+              {
+                "type": "KTNK",
+                "count": 1
+              }
+            ],
+            "USSR": [
+              {
+                "type": "E2",
+                "count": 3
+              },
+              {
+                "type": "HTNK",
+                "count": 1
+              }
+            ],
+            "Latin": [
+              {
+                "type": "E2",
+                "count": 3
+              },
+              {
+                "type": "JTNK",
+                "count": 1
+              }
+            ],
+            "Chinese": [
+              {
+                "type": "E2",
+                "count": 3
+              },
+              {
+                "type": "CTNK",
+                "count": 1
+              }
+            ],
+            "PsiCorps": [
+              {
+                "type": "INIT",
+                "count": 3
+              },
+              {
+                "type": "LTNK",
+                "count": 1
+              }
+            ],
+            "ScorpionCell": [
+              {
+                "type": "INIT",
+                "count": 3
+              },
+              {
+                "type": "QTNK",
+                "count": 1
+              }
+            ],
+            "Headquaters": [
+              {
+                "type": "INIT",
+                "count": 3
+              },
+              {
+                "type": "STNK",
+                "count": 1
+              }
+            ],
+            "Guild1": [
+              {
+                "type": "COVE",
+                "count": 3
+              },
+              {
+                "type": "JACKAL",
+                "count": 1
+              }
+            ],
+            "Guild2": [
+              {
+                "type": "COVE",
+                "count": 3
+              },
+              {
+                "type": "JACKAL",
+                "count": 1
+              }
+            ],
+            "Guild3": [
+              {
+                "type": "COVE",
+                "count": 3
+              },
+              {
+                "type": "ROACH",
+                "count": 1
+              }
+            ]
+          },
+          "lab_reserve_shield_seconds": 10
+        }
+      },
+      {
         "id": "supply_cache",
         "display_name": "Supply cache",
         "description": "Six ranks: +2,000 starting credits per rank, up to +12,000.",

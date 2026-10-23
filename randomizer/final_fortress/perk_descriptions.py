@@ -37,6 +37,27 @@ def rank_descriptions(perk, country):
     for index, rank in enumerate(ranks(perk), 1):
         effect = rank['effects']
         parts = []
+        if effect.get('lab_health_percent'):
+            percent = effect['lab_health_percent']
+            base = int(rules['CALAB']['Strength'])
+            health = base * (100 + percent) // 100
+            parts.append(f"+{percent}% maximum health for Einstein's Lab ({health:,} HP from {base:,}). "
+                         'Starts at full health; emergency repair restores the upgraded maximum. '
+                         'One shared objective bonus in co-op')
+        if effect.get('lab_emergency_repair'):
+            parts.append("Automatically restore Einstein's Lab to full health once per run when it "
+                         'falls below the native red-health threshold (35% in Mental Omega). '
+                         'The whole coalition shares one repair')
+        if effect.get('lab_reserve_units_by_country'):
+            table = effect['lab_reserve_units_by_country']
+            parts.append((units(table[country]) if country else
+                          f'{sum(unit["count"] for unit in next(iter(table.values())))} faction units')
+                         + ' per friendly house once per run when the Lab falls below 50% health. '
+                         'Arrivals use reserved base tiles; human squads remain controllable. '
+                         'This is a separate one-time reserve, outside the periodic reinforcement cap')
+            if effect.get('lab_reserve_shield_seconds'):
+                parts.append(f'The same activation immediately protects only the Lab with Iron Curtain '
+                             f'for {effect["lab_reserve_shield_seconds"]} in-game seconds while squads arrive')
         if effect.get('starting_credits'):
             parts.append(f'+{effect["starting_credits"]:,} starting credits')
         if effect.get('production_percent'):

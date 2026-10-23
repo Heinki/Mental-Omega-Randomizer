@@ -12,7 +12,8 @@ def reserve_staging(writer, plan, rules):
     arriving units. They remain passive Neutral objects, require no ownership
     transfers and cannot grant cash, score, build adjacency or survival credit.
     """
-    friendly = plan.get('plan_version', 1) >= 14 and bool(plan.get('reinforcement_schedule'))
+    friendly = plan.get('plan_version', 1) >= 14 and bool(
+        plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'))
     enemy = plan.get('plan_version', 1) >= 16
     if not friendly and not enemy:
         return

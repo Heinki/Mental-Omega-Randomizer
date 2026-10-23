@@ -73,7 +73,8 @@ countries are supported. The player chooses any native playable country.
 Defend Einstein's Lab for **3,600 simulation seconds (one hour)**. The native countdown
 is labeled **Until Victory** in game; launcher wall time never awards survival rewards. The
 objective is a private installed `CALAB` copy (SteinsTech Lab), with native
-1,200 strength and armor. Its **3 × 4 foundation at (91, 57)** is next to the
+1,200 base strength and native armor. Lab durability can raise its maximum
+health to 1,500 / 1,800 / 2,400 HP. Its **3 × 4 foundation at (91, 57)** is next to the
 initial MCV and does not overlap its deployment area. It cannot be sold,
 captured, occupied, or chronoshifted. Destroying it causes defeat; surviving
 60 minutes causes victory. Three inert, immune AI controllers prevent premature
@@ -209,7 +210,7 @@ Compiled EXEs always use Standard progression, hide the profile selector and
 reject all-unlocks initialization, even if a testing save is copied beside
 their ordinary data. Personal progression files are not included by the EXE
 build's explicit asset/config packaging rules.
-All twenty-two perks are purchased and enabled at maximum rank,
+All twenty-five perks are purchased and enabled at maximum rank,
 including both faction superweapons and two helpers. The initial faction is
 Russia, difficulty Normal, wave multiplier x1; Challenge modifiers start off.
 Switch faction or disable individual perks to isolate effects. This profile
@@ -230,6 +231,9 @@ rank's effect a second time. Prices are paid once per rank.
 
 | Perk | Rank prices (Defensive Points) | Maximum effect |
 | --- | --- | --- |
+| Lab durability | 5 / 10 / 20 | +25% / +50% / +100% Lab maximum health: 1,500 / 1,800 / 2,400 HP, starting full and retaining the upgraded maximum for emergency repair |
+| Emergency Lab repair | 10 | One automatic full repair per run below the native red-health threshold (35% in Mental Omega), shared by the coalition |
+| Lab reserve squad | 15 | Once per run below 50% Lab health: immediately shield only the Lab with Iron Curtain for 10 in-game seconds while 3 faction infantry and 1 basic vehicle arrive per friendly house, outside the periodic reinforcement cap |
 | Supply cache | 30 / 60 / 120 / 220 / 360 / 540 | Six ranks, +2,000 credits each, up to +12,000 |
 | Production speed | 40 / 80 / 140 / 220 / 340 | 25% shorter infantry, vehicle/naval, aircraft, building and defense production time |
 | Starting army | 40 / 80 / 140 / 220 / 340 | 3 / 6 / 9 / 12 / 15 faction units; advanced infantry, artillery, T3 vehicles, one faction hero at rank 5 |
@@ -271,10 +275,57 @@ the actual total payout for each eligible building.
 New runs reserve the reviewed 5x3 reinforcement apron beside each friendly
 base using passive, invisible, indestructible 1x1 foundations. Infantry and
 vehicles can walk over them, but buildings cannot occupy the arrival cells.
-Reservations exist only when periodic reinforcements are enabled. Helpers'
+Reservations exist when periodic reinforcements or the Lab reserve are enabled. Helpers'
 starting armies and periodic arrivals receive explicit attack-team orders;
 their unique tracked arrival types cannot rely on ordinary AI recruitment.
 Human arrivals remain under the player's control.
+
+Lab durability provides three cheap permanent ranks in new plan-28 runs.
+Each rank's percentage replaces the previous bonus: +25%, +50%, then +100%
+of the original Lab health. The upgrade costs are 5, 10 and 20 Defensive Points
+(35 total to buy all ranks). The Lab starts at its upgraded full health, and
+emergency repair restores that new maximum. Reserve and repair still trigger
+at their native health percentages. Only the private objective changes;
+other SteinsTech Labs retain their installed health. Co-op uses the host's
+rank once for the shared objective, without multiplying it by human/helper
+count. Disable the owned perk to return new runs to base Lab health.
+
+Emergency repair and the reserve have one purchase rank and replenish their
+single use with each new run. All three Lab perks use the installed Ares engine;
+Phobos is not required.
+The Lab keeps its original ownership and defeat trigger. Its persistent linked
+tag also observes native half-health (Event 42) and red-health (Event 43)
+damage events. The reserve also listens for red health, so a hit that skips the
+half-health damage state still deploys it. Both reserve paths share a local
+used flag; the repair has its own flag. Flags are set before effects execute,
+preventing repeated damage, healing or linked callbacks from granting another use.
+In co-op, the host's enabled perks provide one shared Lab repair and one reserve
+deployment for the whole coalition, with each human retaining their own squad.
+
+New plan-27 runs include **10 in-game seconds of Iron Curtain** in the reserve
+activation, with no additional purchase cost. The Lab is protected before the
+first reserve team is created. A zero-damage native weapon explosion applies
+the 150-frame effect only to its private objective armor; nearby infantry,
+vehicles, other buildings and enemies receive no protection or damage. The
+shield and reserve share the same used flag and cannot refresh on repeated
+hits. Its non-stacking 150-frame cap preserves an existing longer Iron Curtain.
+Emergency repair remains a separate purchase/use and its negative healing
+damage bypasses native Iron Curtain immunity. Global Iron Curtain settings
+remain unchanged. Existing frozen plan-26 runs retain their original unshielded
+reserve behavior.
+
+The editor calls Event 43 "quarter health", but the installed executable uses
+`AudioVisual.ConditionRed`, currently **35%**, rather than a fixed 25%.
+These perks leave global health thresholds unchanged. Emergency repair uses an
+instant native weapon explosion (Action 42) with negative damage equal to the
+Lab's full strength. A private armor inheriting its original `passif_b` armor
+limits healing to this objective, with no damage falloff or base-wide repair.
+Reserve units inherit applicable faction unit perks, arrive as rookie units,
+and do not consume periodic reinforcement capacity. At the shipped roster size,
+the one-time reserve adds at most twelve units across the three friendly seats.
+Existing frozen plans retain their previous behavior; start a new run
+to use the current perks. Generated-map audits verify wiring and placement; native
+combat timing, exact-boundary hits and full-health restoration still need gameplay review.
 
 Native and private production types use ordinary alternative prerequisite
 lists for shortcut buildings. This retains those shortcuts while enforcing
@@ -763,6 +814,46 @@ require a fresh-match gameplay check.
 Review camp Area Guard combat/pickups, air targeting and reinforcement behavior
 during ordinary gameplay. Keep pending manual checks in [TODOS.md](TODOS.md);
 do not open game or launcher windows for routine validation.
+
+The plan-26 Lab support changes passed **120 terrain-audited variants** across
+all twelve countries: 60 solo Normal variants (repair only, reserve only, both,
+both with helpers, and maximum perks/Challenges), 36 two-human Mental variants
+(repair only, reserve only, both with the remaining helper), and 24 three-human
+Mental variants (both perks and maximum loadouts). Another 12 solo baseline
+Normal maps passed the standard audit. The audits inspect the actual linked
+objective tag, separate once-per-run guards, large-hit reserve fallback, native
+repair weapon index and early armor/weapon/warhead loading, unchanged global
+thresholds, faction/buff routing and reserved arrival terrain. Isolated USSR
+solo and Last Bastion three-human launch preparation also passed with periodic
+reinforcements and unit perks enabled. Version-23/25 player saves normalize
+unchanged; no personal progression was edited. Compilation and whitespace
+checks passed. These checks do not execute native combat; the Lab gameplay
+checks remain in TODOS.md.
+
+The plan-27 reserve shield passed **96 terrain-audited variants** across all
+twelve countries: 48 solo Normal repair/reserve/helper/maximum variants,
+24 two-human Normal reserve/helper variants, and 24 three-human Mental
+reserve/maximum variants. Audits verify Lab-only zero-damage targeting,
+150-frame duration/cap, activation before squad creation, early rules loading
+and unchanged global Iron Curtain duration. Three isolated runtime preparations
+passed: USA reserve-only, USSR with repair, and Last Bastion with three humans
+and repair. The USA plan-26 repair-only, reserve-only and combined generated
+maps remain byte-identical; existing version-23/25 saves normalize unchanged.
+Compilation and whitespace checks passed. Live shield timing, expiry and
+emergency repair during protection remain manual gameplay checks.
+
+The plan-28 durability perk passed **108 terrain-audited variants** across all
+twelve countries: 72 solo Normal baseline/rank-1/rank-2/rank-3/combined-support/
+maximum variants, 12 two-human Normal combined-support variants, and 24
+three-human Mental combined-support/maximum variants. Audits verify full
+starting HP, exact cumulative rank scaling, unchanged native Lab health,
+upgraded full-repair damage and one shared co-op bonus. Actual purchases in an
+isolated temporary profile charged 5/10/20 points and enabled each new rank.
+Three isolated launch preparations passed at 1,500 HP (USA alone) and 2,400 HP
+(USSR with support, Last Bastion with three humans and support). A frozen
+plan-27 combined-support map remains byte-identical; existing saved profiles
+normalize unchanged. Compilation and whitespace checks passed. Native health
+display, damage thresholds and upgraded repair still require gameplay review.
 
 A complete 60-minute balance run, all tactical AI situations, long-term frame
 rate, and conservative wave-slot release after ordinary mixed combat still need

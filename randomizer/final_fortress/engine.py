@@ -582,6 +582,10 @@ def build_map(game_root, run, rules, *, preloads=None):
     building_type = 'FFOBJECTIVE'
     building = definition['protected_building']
     objective = deepcopy(rules[building['type']])
+    if plan.get('plan_version', 1) >= 28 and plan['effects'].get('lab_health_percent'):
+        # Change only this private objective. Its initial health stays full;
+        # native damage thresholds and emergency repair use the new Strength.
+        objective['Strength'] = str(int(objective['Strength']) * (100 + plan['effects']['lab_health_percent']) // 100)
     objective.update({'Image': building['type'], 'Name': 'Final Fortress',
                       'Insignificant': 'no', 'Selectable': 'yes',
                       'Capturable': 'no', 'CanBeOccupied': 'no', 'Unsellable': 'yes',
@@ -654,6 +658,8 @@ def build_map(game_root, run, rules, *, preloads=None):
     place_fortifications(writer, plan, rules, enemy_aliases)
     _starting_perks(writer, plan, rules, player_aliases)
     support_powers(writer, plan, rules, player_aliases)
+    from .lab_support import apply_lab_support
+    apply_lab_support(writer, plan, rules, player_aliases, finished, loss_trigger)
     from .powers import apply_drakuv_power
     apply_drakuv_power(writer, plan, rules, player_aliases)
     from .enemy_powers import apply_enemy_powers
@@ -672,7 +678,7 @@ def build_map(game_root, run, rules, *, preloads=None):
                     'ScriptTypes', 'AITriggerTypes', 'AITriggerTypesEnable', 'FFSpecialAccess', 'FFEnemyPowers',
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
                     'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
-                    'FFCampTracking'}
+                    'FFCampTracking', 'FFLabSupport'}
         changed = {section: {key: value for key, value in values.items()
                             if before_perk_rules.get(section, {}).get(key) != value}
                    for section, values in writer.sections.items() if section not in map_only

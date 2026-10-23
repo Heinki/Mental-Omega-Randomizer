@@ -140,6 +140,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain)
     audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain)
     audit_wave_clock(rows, effective, plan, preloads)
+    audit_lab_support(rows, effective, plan, rules, preloads, terrain)
 
     # Every purchased support unlock must be registered and granted to each
     # friendly house, including ranks beyond the proxy's two building slots.
@@ -725,7 +726,7 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
                 'Native and private Harrier can share a production slot')
 
     pads = rows.get('FFReinforcementPads', {})
-    if plan.get('reinforcement_schedule'):
+    if plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'):
         kind = pads.get('Type')
         require(kind in preloads['rules'], 'Reserved reinforcement ground missing early rules preload')
         row = effective[kind]
@@ -1223,6 +1224,158 @@ def audit_feedback_fixes(rows, effective, plan, rules, preloads):
                 'Building-bound Drakuv lost native recharge or price')
 
 
+def audit_lab_support(rows, effective, plan, rules, preloads, terrain):
+    """Review objective attachment, single-use guards and isolated native healing."""
+    from collections import Counter
+    from randomizer.final_fortress.engine import _action, _waypoint
+
+    info = rows.get('FFLabSupport', {})
+    health_percent = plan['effects'].get('lab_health_percent', 0)
+    original = plan['map']['protected_building']['type']
+    base_health = int(rules[original]['Strength'])
+    require(int(effective['FFOBJECTIVE']['Strength']) == base_health * (100 + health_percent) // 100,
+            'Lab durability is missing, compounded across ranks, or multiplied by friendly houses')
+    require(effective[original]['Strength'] == rules[original]['Strength'],
+            'Lab durability changed the native building type')
+    require(not health_percent or plan['plan_version'] >= 28, 'Lab durability changed an older frozen plan')
+    objectives = [v.split(',') for v in rows['Structures'].values() if v.split(',')[1] == 'FFOBJECTIVE']
+    require(len(objectives) == 1 and objectives[0][2] == '256', 'Upgraded Lab does not start at full health')
+    repair = plan['effects'].get('lab_emergency_repair', False)
+    reserve = plan['effects'].get('lab_reserve_units', [])
+    require(bool(info) == bool(repair or reserve), 'Lab support differs from the purchased loadout')
+    if not info:
+        return
+    require('FFLabSupport' not in preloads['rules'], 'Lab audit metadata leaked into early rules')
+    flags = {value.rsplit(',', 1)[0]: key for key, value in rows['VariableNames'].items()}
+    finished = flags['Final Fortress finished']
+    lab = [value.split(',') for value in rows['Structures'].values()
+           if value.split(',')[1] == 'FFOBJECTIVE']
+    require(len(lab) == 1, 'Lab support creates a second objective')
+    tag = rows['Tags'][lab[0][6]].split(',')
+    require(tag[0] == '2', 'Lab support lost the persistent objective tag')
+    chain, current = [], tag[2]
+    while current in rows['Triggers']:
+        require(current not in chain, 'Lab support contains a linked trigger cycle')
+        chain.append(current)
+        current = rows['Triggers'][current].split(',')[1]
+    names = {rows['Triggers'][key].split(',')[2]: key for key in chain}
+    loss = names['Final Fortress objective destroyed']
+    ownership = names['Final Fortress objective ownership']
+    require(rows['Events'][loss] == '1,48,0,0'
+            and _action(68) in parse_action_groups(rows['Actions'][loss])[1],
+            'Emergency support removed native objective defeat')
+    require(rows['Events'][ownership] == '1,13,0,0'
+            and _action(14, 4475 + plan['map']['player_waypoint'])
+            in parse_action_groups(rows['Actions'][ownership])[1],
+            'Emergency support changed Lab ownership routing')
+
+    def actions_for(field, event, used_field):
+        key, used = info[field], info[used_field]
+        require(key in chain, 'Lab health trigger is not attached to the objective')
+        require(rows['Events'][key] == f'3,37,0,{finished},37,0,{used},{event},0,0',
+                'Lab support lacks finish/once guards or uses the wrong health event')
+        actions = parse_action_groups(rows['Actions'][key])[1]
+        require(actions[:2] == [_action(56, int(used)), _action(54, trigger=key)],
+                'Lab support consumes its use after applying effects and can recurse')
+        require(rows['Triggers'][key].split(',')[3] == '0', 'Lab health support starts disabled')
+        require(not any(a == _action(57, int(used)) for value in rows['Actions'].values()
+                        for a in parse_action_groups(value)[1]), 'Lab support can recharge during a run')
+        return actions
+
+    require(effective['AudioVisual']['ConditionRed'] == rules['AudioVisual']['ConditionRed']
+            and effective['AudioVisual']['ConditionYellow'] == rules['AudioVisual']['ConditionYellow'],
+            'Lab support changes global health thresholds')
+    shield_seconds = plan['effects'].get('lab_reserve_shield_seconds', 0)
+    require(bool(info.get('ShieldWeapon')) == bool(shield_seconds and reserve),
+            'Lab reserve shield differs from the frozen loadout')
+    if repair:
+        actions = actions_for('Repair', 43, 'RepairUsed')
+        weapon, warhead, armor = (info[k] for k in ('Weapon', 'Warhead', 'Armor'))
+        require(all(kind in preloads['rules'] for kind in (weapon, warhead)),
+                'Emergency repair weapon or warhead is missing its early preload')
+        require(preloads['rules']['ArmorTypes'][armor] == rules[plan['map']['protected_building']['type']]['Armor']
+                and effective['FFOBJECTIVE']['Armor'] == armor,
+                'Lab repair changes native armor behavior or heals shared building armor')
+        require(effective[weapon]['Damage'] == '-' + effective['FFOBJECTIVE']['Strength']
+                and effective[weapon]['Warhead'] == warhead, 'Emergency repair does not restore full health')
+        require(effective[warhead]['Verses'] == ','.join(['0%'] * 11)
+                and effective[warhead]['Versus.' + armor] == '100%'
+                and effective[warhead]['PercentAtMax'] == '1', 'Lab healing leaks to other armor or loses HP to falloff')
+        require({key for key in effective[warhead] if key.startswith('Versus.')} == {'Versus.' + armor},
+                'Emergency repair targets another custom armor')
+        registry = list(dict.fromkeys([*rules['WeaponTypes'].values(),
+            *preloads['rules'].get('WeaponTypes', {}).values(), *rows.get('WeaponTypes', {}).values()]))
+        blasts = [a for a in actions if a[0] == '42']
+        require(len(blasts) == 1 and registry[int(blasts[0][2])] == weapon
+                and blasts[0][7] == _waypoint(19), 'Repair explosion has the wrong native weapon index/waypoint')
+        p = plan['map']['protected_building']['position']
+        require(rows['Waypoints']['19'] == str((p['y'] + 1) * 1000 + p['x'] + 1),
+                'Emergency repair misses the Lab foundation')
+    if reserve:
+        actions = actions_for('Reserve', 42, 'ReserveUsed')
+        fallback = actions_for('ReserveFallback', 43, 'ReserveUsed')
+        require(actions[2:] == fallback[2:], 'Large-hit reserve fallback changes its grant')
+        if shield_seconds:
+            weapon, warhead, armor = (info[k] for k in ('ShieldWeapon', 'ShieldWarhead', 'Armor'))
+            registry = list(dict.fromkeys([*rules['WeaponTypes'].values(),
+                *preloads['rules'].get('WeaponTypes', {}).values(), *rows.get('WeaponTypes', {}).values()]))
+            require(plan['plan_version'] >= 27 and info['ShieldFrames'] == str(shield_seconds * 15),
+                    'Lab shield has the wrong native frame duration or changed an older frozen plan')
+            require(actions[2][0] == '42' and registry[int(actions[2][2])] == weapon
+                    and actions[2][7] == _waypoint(19),
+                    'Lab shield does not activate before reserve units spawn')
+            require(all(kind in preloads['rules'] for kind in (weapon, warhead)),
+                    'Lab shield weapon/warhead is missing its early preload')
+            require(effective[weapon]['Damage'] == '0' and effective[weapon]['Warhead'] == warhead,
+                    'Lab shield deals conventional damage or healing')
+            require(preloads['rules']['ArmorTypes'][armor] == rules[plan['map']['protected_building']['type']]['Armor']
+                    and effective['FFOBJECTIVE']['Armor'] == armor
+                    and effective['FFOBJECTIVE']['IronCurtain.Modifier'] == '1',
+                    'Reserve-only shield loses its Lab armor or changes its duration multiplier')
+            require(effective[warhead]['Verses'] == ','.join(['0%'] * 11)
+                    and {k: v for k, v in effective[warhead].items() if k.startswith('Versus.')}
+                    == {'Versus.' + armor: '100%'}, 'Lab shield can protect nearby enemies or infantry')
+            require(all(effective[warhead].get(field) == value for field, value in {
+                'IronCurtain.Duration': str(shield_seconds * 15), 'IronCurtain.Cap': str(shield_seconds * 15),
+                'AllowZeroDamage': 'yes', 'EffectsRequireDamage': 'no', 'EffectsRequireVerses': 'yes',
+            }.items()), 'Lab shield stacks, skips zero damage, or misses its armor filter')
+            require(effective['CombatDamage']['IronCurtainDuration'] == rules['CombatDamage']['IronCurtainDuration'],
+                    'Reserve shield changes every native Iron Curtain duration')
+            require(all(effective[kind].get('Armor') != armor for kind in effective['BuildingTypes'].values()
+                        if kind != 'FFOBJECTIVE'), 'Reserve shield armor leaked to another building')
+            p = plan['map']['protected_building']['position']
+            require(rows['Waypoints']['19'] == str((p['y'] + 1) * 1000 + p['x'] + 1),
+                    'Reserve-only shield misses the Lab foundation')
+        if repair:
+            require(chain.index(info['ReserveFallback']) < chain.index(info['Repair']),
+                    'Emergency healing can swallow the large-hit reserve fallback')
+            require(info['ReserveUsed'] != info['RepairUsed'], 'Repair and reserve consume each other')
+        teams = [a for a in actions if a[0] == '80']
+        require(len(teams) == len(reserve) * len(coalition(plan)), 'Reserve omits a friendly roster')
+        for index, (actor, _, start) in enumerate(coalition(plan)):
+            actual = Counter()
+            expected = Counter({rows.get('FFPlayerTypes', {}).get(u['type'], u['type']): u['count'] for u in reserve})
+            for action in teams:
+                team = effective[action[2]]
+                if team['House'] != actor:
+                    continue
+                require(team['Waypoint'] == action[7] == _waypoint(10 + index),
+                        'Lab reserve arrives at an occupied MCV or another house')
+                require(effective[team['Script']]['0'] == ('11,5' if human_actor(plan, actor) else '0,1'),
+                        'Lab reserve takes control away from a human or strands an AI helper')
+                force = effective[team['TaskForce']]
+                roster = [v.split(',') for k, v in force.items() if k.isdigit()]
+                require(len(roster) == 1, 'Lab reserve uses partial-placement-prone mixed teams')
+                for count, kind in roster:
+                    actual[kind] += int(count)
+            require(actual == expected, 'Lab reserve has the wrong faction units, buffs or owner')
+            p = plan['map']['perk_layouts'][str(start)]['units']
+            require(rows['FFReinforcementPads'][actor] == str(p['y'] * 1000 + p['x']),
+                    'Lab reserve has no protected arrival apron')
+            if terrain is not None:
+                require(terrain.clear({(p['x'] + 2, p['y'] + 1)}), 'Lab reserve arrival terrain is blocked')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True, help='Directory for generated audit artifacts')
@@ -1230,7 +1383,9 @@ def main():
                         'baseline', 'helpers', 'maximum', 'defenses', 'powers', 'upgrades', 'secondary',
                         'arsenal', 'reinforcements', 'arsenal-first', 'reinforcements-first',
                         'healing', 'recon', 'limits', 'income', 'enemy-powers', 'powerhouses', 'utilities-first',
-                        'veteran', 'elite', 'reinforcements-veteran', 'reinforcements-rookie'),
+                        'veteran', 'elite', 'reinforcements-veteran', 'reinforcements-rookie',
+                        'lab-repair', 'lab-reserve', 'lab-support', 'lab-support-helpers',
+                        'lab-health-first', 'lab-health-middle', 'lab-health', 'lab-health-support'),
                         default=['baseline', 'helpers', 'maximum'])
     parser.add_argument('--difficulties', nargs='+', choices=DIFFICULTY_IDS, default=list(DIFFICULTY_IDS))
     parser.add_argument('--mental-ai-boost', action='store_true', help='Audit the installed Mental AI Boost option')
@@ -1267,6 +1422,12 @@ def main():
         'enemy-powers': [], 'powerhouses': [], 'utilities-first': [*utilities, 'allied_helpers'],
         'veteran': ['reinforcements', 'veteran_escort', 'allied_helpers'],
         'elite': ['reinforcements', 'veteran_escort', 'allied_helpers'],
+        'lab-repair': ['lab_emergency_repair'], 'lab-reserve': ['lab_reserve_squad'],
+        'lab-support': ['lab_emergency_repair', 'lab_reserve_squad'],
+        'lab-support-helpers': ['lab_emergency_repair', 'lab_reserve_squad', 'allied_helpers'],
+        'lab-health-first': ['lab_durability'], 'lab-health-middle': ['lab_durability'],
+        'lab-health': ['lab_durability'],
+        'lab-health-support': ['lab_durability', 'lab_emergency_repair', 'lab_reserve_squad', 'allied_helpers'],
     }
     from randomizer.final_fortress.challenges import definition
     for profile in args.profiles:
@@ -1283,7 +1444,9 @@ def main():
                     perk_ranks={entry['id']: (1 if (profile == 'secondary' and entry['id'] == 'faction_superweapon'
                                                   or profile == 'arsenal-first' and entry['id'] == 'special_unit_access'
                                                   or profile == 'reinforcements-first' and entry['id'] == 'periodic_reinforcements'
-                                                  or profile == 'utilities-first' and entry['id'] in utilities)
+                                                  or profile == 'utilities-first' and entry['id'] in utilities
+                                                  or profile == 'lab-health-first' and entry['id'] == 'lab_durability')
+                                             else 2 if profile == 'lab-health-middle' and entry['id'] == 'lab_durability'
                                              else 1 if profile == 'veteran' and entry['id'] == 'veteran_escort'
                                              else 7 if profile == 'reinforcements-veteran' and entry['id'] == 'periodic_reinforcements'
                                              else 6 if profile == 'reinforcements-rookie' and entry['id'] == 'periodic_reinforcements'
