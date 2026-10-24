@@ -127,6 +127,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 require(action[2] in rows['TeamTypes'].values(), f'Unknown action team: {action[2]}')
             if action[0] in ('7', '80'):
                 team = effective[action[2]]
+                require(team.get('Full') == 'no',
+                        'Scripted reinforcements can spawn nested inside transports')
                 if team.get('Name', '').startswith(('Final Fortress wave ', 'Final Fortress AI controller')):
                     require(action[0] == '80' and action[7] == team['Waypoint'],
                             'Hostile reinforcements lack an explicit matching spawn waypoint')

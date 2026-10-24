@@ -159,6 +159,21 @@ and weapon rules without requiring an aircraft docking/rearming arrangement.
 Native attack scripts seek hostile targets immediately;
 they do not first move onto an MCV waypoint that a construction yard may occupy.
 
+Scripted reinforcement teams use `Full=no` so every roster member arrives as
+an independent unit. `Full=yes` makes native reinforcement creation pack team
+members into transports before placement, bypassing normal passenger size and
+capacity checks; even tanks can be hidden inside an IFV. `Loadable=no` does not
+prevent that initial packing. This is separate from the attack-script fix.
+The installed engine checks `TeamType.Full` at `0x65DEF5` and `0x65DF73` before
+building and loading its transport chain; the same condition is visible in the
+[Phobos reinforcement hook](https://github.com/Phobos-developers/Phobos/blob/develop/src/Ext/Team/Hooks.cpp).
+The shared team writer applies this correction to enemy waves, friendly
+deliveries and Lab reserves, including regenerated older plans. Transport
+passenger capacity, weapons and wave population budgets remain unchanged.
+The map audit checks every scripted reinforcement team for `Full=no`.
+Existing native saves require a fresh launch to receive regenerated teams;
+live gameplay confirmation remains pending.
+
 New plan-31 runs reserve increasing ground-wave shares for advanced and special
 units: 40% from minute 15, 65% from minute 30, and 85% from minute 45 where
 the selected roster contains those units. `wave_priorities` freezes the type

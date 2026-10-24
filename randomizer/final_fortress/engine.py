@@ -123,7 +123,11 @@ class _MapWriter:
             'Max': '1', 'Priority': '50', 'Group': '-1', 'TechLevel': '0',
             'Autocreate': 'no', 'Prebuild': 'no', 'Recruiter': 'no',
             'AreTeamMembersRecruitable': 'no', 'Reinforce': 'no',
-            'LooseRecruit': 'no', 'Full': 'yes', 'Whiner': 'no',
+            # Full=yes packs reinforcement teammates into transports before
+            # placement, bypassing normal passenger size/capacity checks.
+            # Loadable=no only blocks later boarding; Full=no keeps every
+            # scripted arrival outside transports, including tanks beside IFVs.
+            'LooseRecruit': 'no', 'Full': 'no', 'Whiner': 'no',
             'Suicide': 'yes' if attack else 'no', 'Aggressive': 'yes',
             # Scripted gifts must consider all hostile houses, just like the
             # installed AI teams. A helper's primary-enemy selection can be
