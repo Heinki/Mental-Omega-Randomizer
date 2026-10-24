@@ -286,9 +286,12 @@ without a second scrollbar. Prices appear only in **Next rank cost**. Use
 Purchases remain available after restarting. An active run keeps its frozen
 loadout; perks can be changed once that run finishes.
 
-For local source-checkout gameplay testing, choose **Profile → Testing (all
-unlocks)** in the Fortress header. This selector is available only when the
-checkout already has its ignored `final_fortress_testing_state.json` save.
+For local source-checkout gameplay testing, set
+`RANDOMIZER_FINAL_FORTRESS_DEBUG=1` in the launcher's environment, then choose
+**Profile → Testing (all unlocks)** in the Fortress header. This toggle is off by
+default. The selector also requires the checkout's existing ignored
+`final_fortress_testing_state.json` save. Unset the variable or set it to `0`
+and restart the launcher to hide the testing profile again.
 Compiled EXEs always use Standard progression, hide the profile selector and
 reject all-unlocks initialization, even if a testing save is copied beside
 their ordinary data. Personal progression files are not included by the EXE

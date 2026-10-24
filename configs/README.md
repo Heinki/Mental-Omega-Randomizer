@@ -339,8 +339,10 @@ that overlap only with full reward-plan and 97-map parity coverage.
   readable with their original effects. The former six-unit
   Reinforcements purchase migrates to army rank two.
   The separate **Testing (all unlocks)** profile is available only in a source
-  checkout with an existing ignored `final_fortress_testing_state.json` save;
-  selecting it also adds newly configured unlocks at maximum rank without
+  checkout with `RANDOMIZER_FINAL_FORTRESS_DEBUG=1` in the launcher's environment
+  and an existing ignored `final_fortress_testing_state.json` save. The toggle
+  is off by default. Selecting the testing profile also adds newly configured
+  unlocks at maximum rank without
   resetting Defensive Points, results, frozen runs or previously disabled selections.
   Its unlock updates and gameplay receipts never change the Standard save.
   Compiled EXEs expose Standard only and reject all-unlocks initialization.

@@ -16,8 +16,11 @@ workspace with this standalone survival mode on Miners in the Sun. Its tab is
 hidden when another mode is selected. Use its own **Game Mode** control to
 return to Grid, Mission List, Classic, or Shop. Faction, AI difficulty, and the
 x1–x10 additional-wave multiplier have separate saved settings.
-For gameplay testing, the Fortress header's **Profile** selector offers
-**Testing (all unlocks)** with every perk enabled at maximum rank. It uses a
+For local source-checkout gameplay testing, set
+`RANDOMIZER_FINAL_FORTRESS_DEBUG=1` before starting the launcher. With an existing
+ignored `final_fortress_testing_state.json` save, the Fortress header's **Profile**
+selector offers **Testing (all unlocks)** with every perk enabled at maximum rank.
+This option is off by default and always unavailable in compiled EXEs. It uses a
 separate save; select **Standard** to return to normal progression. Superweapon
 rank 1 grants the faction's secondary power, and rank 2 adds its offensive
 weapon. Production speed affects units, buildings and defenses.

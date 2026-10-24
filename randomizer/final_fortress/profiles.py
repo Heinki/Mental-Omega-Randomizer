@@ -1,4 +1,6 @@
-"""Normal progression and an existing, source-only local testing profile."""
+"""Normal progression and an opt-in, source-only local testing profile."""
+
+import os
 
 from randomizer.core.paths import APP_DIR, FROZEN
 
@@ -9,7 +11,11 @@ from .state import new_state, normalize_state
 
 STANDARD_PROFILE = 'Standard'
 ALL_UNLOCKS_PROFILE = 'Testing (all unlocks)'
-LOCAL_TESTING_ENABLED = not FROZEN and (APP_DIR / 'final_fortress_testing_state.json').is_file()
+LOCAL_TESTING_ENABLED = (
+    not FROZEN
+    and os.environ.get('RANDOMIZER_FINAL_FORTRESS_DEBUG') == '1'
+    and (APP_DIR / 'final_fortress_testing_state.json').is_file()
+)
 PROFILE_PATHS = {
     STANDARD_PROFILE: APP_DIR / 'final_fortress_state.json',
 }
@@ -20,7 +26,10 @@ if LOCAL_TESTING_ENABLED:
 def require_local_testing():
     """Compiled builds cannot create or upgrade all-unlocks profiles."""
     if not LOCAL_TESTING_ENABLED:
-        raise ValueError('Testing profiles require an existing local source-checkout testing save.')
+        raise ValueError(
+            'Testing profiles require a source checkout, RANDOMIZER_FINAL_FORTRESS_DEBUG=1, '
+            'and an existing local testing save.'
+        )
 
 
 def all_unlocks_state(config):
