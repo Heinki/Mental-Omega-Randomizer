@@ -378,8 +378,8 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
     infantry = set(rules['InfantryTypes'].values())
     pickup = plan.get('plan_version', 1) >= 25
     if plan['map']['camps']:
-        # Defensive Points claims are player-gated separately. A computer passing through
-        # the native visual crate must not gain cash or another native bonus.
+        # Scripted claims deliver the frozen reward to the human recipient.
+        # Suppress native crate money so collecting it cannot pay twice.
         writer.put('CrateRules', 'SoloCrateMoney', 0)
         writer.put('CrateRules', 'RandomCrateMoney', 0)
         writer.put('Powerups', 'Money', '0,MONEY,yes,0')
@@ -402,7 +402,7 @@ def _camps(writer, plan, rules, marker_teams, finished, overrides=None, player_a
         cleared = writer.flag('Camp ' + camp['id'] + (' ready' if pickup else ' cleared'))
         if pickup:
             # Crates and claims become available at startup. Guard death events
-            # have fired prematurely in live games; only player entry pays out.
+            # have fired prematurely in live games; collection alone pays out.
             clear, _ = writer.trigger('Camp ' + camp['id'] + ' ready', [(13, 0, 0)], [])
             tag = _transfer_tag(writer, owner_waypoint, 'Camp ' + camp['id'] + ' ownership')
             transfer = writer.sections['Tags'][tag].split(',')[2]

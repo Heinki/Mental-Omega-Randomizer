@@ -15,10 +15,12 @@ OFFENSIVE_DEFINITION = {
 }
 
 
-def definitions():
+def definitions(*, include_retired=False):
     return tuple(entry for entry in ENEMY_BUFF_DEFINITIONS
-                 if entry['effect'] in {'armor', 'production', 'unit', 'powerhouse'}
-                 or entry['id'] in {'ai_paratroopers', 'ai_bloodhounds', 'ai_moon_reinforcements'}) + (OFFENSIVE_DEFINITION,)
+                 if (entry['effect'] in {'armor', 'production', 'unit', 'powerhouse'}
+                     or entry['id'] in {'ai_paratroopers', 'ai_bloodhounds', 'ai_moon_reinforcements'})
+                 and (include_retired or (entry.get('country_suffix') != 'Defenses'
+                      and entry.get('unit_buff_type') not in {'sight', 'sensors'}))) + (OFFENSIVE_DEFINITION,)
 
 
 def definition(entry):

@@ -1482,6 +1482,19 @@ def audit_pickup_reward(rows, effective, plan, camp, ready):
     enabled = {a[2] for a in startup if a[0] == '53'}
     actors = (coalition(plan) if plan.get('plan_version', 1) >= 32 else
               coalition(plan)[:len(plan.get('coop_players', [])) or 1])
+    if plan.get('plan_version', 1) >= 39:
+        actors = [*actors, *[(f'FFENEMY{i + 1}', country, start)
+                  for i, (country, start) in enumerate(zip(
+                      plan['enemy_countries'], plan['map']['enemy_waypoints']))]]
+    tag = rows['CellTags'][str(camp['position']['y'] * 1000 + camp['position']['x'])]
+    linked = rows['Tags'][tag].split(',')[2]
+    chain = set()
+    while linked in rows['Triggers']:
+        require(linked not in chain, 'Camp pickup trigger cycle')
+        chain.add(linked)
+        linked = rows['Triggers'][linked].split(',')[1]
+    require(chain == enabled and len(chain) == len(actors),
+            'Camp cell does not enable and link every eligible collector exactly once')
     expected = Counter({rows.get('FFPlayerTypes', {}).get(unit['type'], unit['type']): unit['count']
                         for unit in camp['crate_reward']['units']})
     waypoint = _waypoint(20 + plan['map']['camps'].index(camp))
@@ -1497,10 +1510,10 @@ def audit_pickup_reward(rows, effective, plan, camp, ready):
         if plan.get('plan_version', 1) >= 32:
             shared = actions[0][2]
             require(actions[0][0] == '56' and f'37,0,{shared}' in rows['Events'][claim],
-                    'Friendly pickup can repeat its reward')
+                    'Camp pickup can repeat its reward')
             if shared_claim is None:
                 shared_claim = shared
-            require(shared == shared_claim, 'Friendly collectors can claim the same camp more than once')
+            require(shared == shared_claim, 'Collectors can claim the same camp more than once')
             if camp['crate_reward']['credits']:
                 selectors = {a[2] for a in actions if a[0] == '56' and a[2] != shared}
                 recipient_start = start if human_actor(plan, actor) else plan['map']['player_waypoint']
@@ -1511,6 +1524,18 @@ def audit_pickup_reward(rows, effective, plan, camp, ready):
                         'Crate cash is delivered to the helper or another player')
         require(any(a[0] == '4' and effective[a[2]]['Name'].startswith('MFF_') for a in actions),
                 'Camp pickup has no durable receipt')
+        # The durable camp receipt drives the existing collection total and
+        # Defensive Points. AI pickups must emit that same receipt once.
+        run_prefix = next(effective[a[2]]['Name'].split('_E')[0] for a in actions if a[0] == '4')
+        receipt = run_prefix + '_E' + hashlib.sha256(('camp:' + camp['id']).encode()).hexdigest()[:8]
+        require(sum(a[0] == '4' and effective[a[2]]['Name'] == receipt for a in actions) == 1,
+                'Camp pickup omits or duplicates its collection/Defensive Points receipt')
+        if plan.get('coop_players'):
+            slot = next(i for i, friend in enumerate(coalition(plan)) if friend[0] == actor) if human_actor(plan, actor) else 0
+            recipient_receipt = run_prefix + '_E' + hashlib.sha256(
+                f'camp_pick:{slot}:{camp["id"]}'.encode()).hexdigest()[:8]
+            require(sum(a[0] == '4' and effective[a[2]]['Name'] == recipient_receipt for a in actions) == 1,
+                    'Camp pickup omits or duplicates its human recipient receipt')
         require(not any(a[0] in ('7', '108') for a in actions),
                 'Camp pickup uses implicit placement or creates a second crate')
         delivered = Counter()

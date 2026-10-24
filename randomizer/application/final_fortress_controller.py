@@ -295,7 +295,8 @@ class FinalFortressController(FortressCoopController):
             'Two humans leave at most one perk-enabled AI helper; '
             'three humans leave none. Every human earns their own Defensive Points and buys '
             'their own permanent perks. Camp crates are present from the start. Any human can collect '
-            'one; collection awards Defensive Points to everyone and the cash or units to its collector.',
+            'one; collection awards Defensive Points to everyone and the cash or units to its collector. '
+            'Enemy and helper AI pickups award the host the contents and collection credit.',
             'Defend Einstein’s Lab beside your starting MCV for '
             f'{settings["survival_seconds"] / 60:g} in-game minutes against three enemy AIs.',
             'Lab durability increases the Lab’s maximum health for the whole run. '
@@ -401,12 +402,13 @@ class FinalFortressController(FortressCoopController):
             'No visible silo is required. Disable that Challenge before a new run to remove those powers. '
             'Hidden providers no longer announce newly discovered superweapon buildings.',
             'Survival rewards: ' + '; '.join(milestones) + '. Balance is provisional and configurable.',
-            'Clear stationary enemy camps, then move a player unit onto the camp center. '
+            'Collect crates at stationary enemy camp centers; defeating their guards is optional. '
             'Each camp grants Defensive Points and a random credit, squad, or faction special-unit reward. '
-            'Helpers collect for the player; in co-op, helper pickups deliver cash/squads to the host. '
-            'Enemy AI cannot claim these rewards. Crate rewards are frozen for each run.',
+            'Enemy and helper AI collect for the player; in co-op, AI pickups deliver cash/squads to the host. '
+            'Each crate awards its reward and Defensive Points once. Crate rewards are frozen for each run.',
             'Perk purchases and upgrades enable that perk automatically for subsequent runs. '
-            'Challenge uses Grid enemy stat and production buffs. Drag or Shift-click to select a range; '
+            'Challenge uses Grid enemy stat and production buffs, excluding vision, sensors and defense buffs. '
+            'Drag or Shift-click to select a range; '
             'Ctrl/Alt-click adds or removes individual rows; Select all or Ctrl+A selects every modifier. '
             'Enable selected, Disable selected and Max stacks apply to the selected group. '
             'Clear selection or Escape deselects all rows. '
@@ -417,8 +419,8 @@ class FinalFortressController(FortressCoopController):
         if config['map'] and config['map']['camps']:
             if config.get('camp_balance'):
                 balance = config['camp_balance']
-                rules.append('Camp Defensive Points are awarded as soon as the guards are cleared; '
-                             'the separate random cash/unit crate requires your own unit to collect it. '
+                rules.append('Camp Defensive Points and cash/unit rewards are awarded when any unit collects '
+                             'the crate; enemy and helper AI pickups count for the player. '
                              f'Outer guards: {balance["guards_by_difficulty"][preferences["difficulty"]]} base × '
                              f'{preferences["wave_multiplier"]}, capped at {balance["max_guards_per_camp"]} '
                              f'per camp and {balance["max_total_guards"]} total. '

@@ -284,7 +284,7 @@ def _validate_rosters(rosters, settings, *, sized_waves=False):
         raise ValueError('Maximum wave units must cover three faction groups at x1.')
 
 
-def validate_config(sections, path=None):
+def validate_config(sections, path=None, *, allow_retired_challenges=False):
     """Validate pending defaults and populated definitions without guessing data."""
     try:
         shared_waves = isinstance(sections, dict) and 'wave_rosters' in sections
@@ -514,7 +514,8 @@ def validate_config(sections, path=None):
                 fields = ['id', 'enemy_effect_id', 'victory_gems_per_stack']
                 fields.extend(key for key in ('shots', 'recharge_multiplier') if key in challenge)
                 _object(challenge, fields, 'Challenge')
-                if challenge['enemy_effect_id'] not in {entry['id'] for entry in definitions()}:
+                if challenge['enemy_effect_id'] not in {
+                        entry['id'] for entry in definitions(include_retired=allow_retired_challenges)}:
                     raise ValueError('Challenge must reference a supported Fortress enemy effect.')
                 for field, maximum in (('shots', 12), ('recharge_multiplier', 10)):
                     if field in challenge:

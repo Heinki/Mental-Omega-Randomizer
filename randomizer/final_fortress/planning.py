@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 38
+PLAN_VERSION = 39
 
 
 def configuration_digest(config):
@@ -32,7 +32,9 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
     periodic wave schedule stops strictly before it. This function consumes
     no global or campaign random state.
     """
-    validate_config(config)
+    # Historical snapshots must remain reproducible without admitting retired
+    # Challenge effects to the current configuration or new runs.
+    validate_config(config, allow_retired_challenges=type(plan_version) is int and plan_version < 39)
     validate_wave_multiplier(wave_multiplier)
     if type(mental_ai_boost) is not bool:
         raise ValueError('Mental AI Boost must be boolean.')

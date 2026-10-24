@@ -47,6 +47,8 @@ Existing run snapshots retain their original local-player scoring.
 Camp crates are available from the start, surrounded by their guards. Any human
 can collect a camp's single cash/unit crate; its collector receives that in-game
 reward, and results name the collector. Collection awards points to everyone.
+Enemy and helper AI pickups deliver the same reward to the host and count as
+the host's collection, including the shared Defensive Points. Each camp pays once.
 
 The host freezes the run before preparation. Guests replay it locally, compare
 the exact map digest and acknowledge readiness before the host starts the games.
@@ -718,7 +720,7 @@ The latest result remains available after restarting the launcher.
 
 ## Challenge stacks
 
-Challenge offers **46 modifiers**: the 41 Grid enemy stat/production definitions,
+Challenge offers **38 modifiers**: 33 Grid enemy stat/production definitions,
 Powerhouses, three reinforcement powers, and a faction offensive-superweapon
 toggle. Grid effects come through
 `randomizer.rewards.enemy_scaling`. Drag across rows or Shift-click to select a
@@ -736,9 +738,11 @@ single-line effects or horizontal scrollbars. **Max stacks** sets each selected
 modifier to its own actual cap. Editing stacks preserves enabled/disabled status;
 there is no Apply button or small enable checkbox. **T1 Unit Armor ×3**, for example, uses the same
 Grid formula and eligibility rules. Country armor/production and T1/T2/T3
-health, armor, mobility, vision, firepower, fire rate, range, ammo, healing,
-cloaking, and sensors are available. Grid's individual stack limits apply:
-usually five; cloak, sensors and the five new Challenge toggles use one.
+health, armor, mobility, firepower, fire rate, range, ammo, healing,
+and cloaking are available. Vision, sensors, Defense Armor and Defense Production
+are excluded from the pool and cannot be selected for new runs. Grid's individual
+stack limits apply: usually five; cloak and the five Challenge toggles use one.
+Historical run snapshots retain their frozen Challenge definitions and rewards.
 
 - **Powerhouses** gives each active wave side two rotating faction heavies and
   upgrades that wave team to veteran. It uses Grid's heavy pools. When room
@@ -825,8 +829,10 @@ Collecting a camp crate grants **10 Defensive Points immediately**, together
 with its frozen cash or unit reward. New plans (version 25) create all six crates
 at startup, independently of guard deaths. Startup emits no clearance messages,
 reward receipts or points. Each ready trigger disables itself, creates one
-crate and enables the human-only pickup. Co-op collectors share a claimed flag
-so the first human receives the in-game reward exactly once.
+crate and enables its pickups. All collectors share a claimed flag, so the
+first pickup awards the in-game reward and collection receipt exactly once.
+Plans from version 39 include every enemy and helper AI: their pickups award
+the player (the host in co-op) the same frozen contents and Defensive Points.
 
 Guard ownership uses the existing timed Action 14 transfer, stopped after one
 second. Guards retain their local Area Guard orders, Challenge bonuses and kill
@@ -839,7 +845,7 @@ Messages use short literal text chunks, each at most **31 bytes including
 crate instructions, collected rewards and co-op collector names are split
 before serialization instead of being silently truncated.
 
-Player entry at a camp's crate cell claims its Defensive Points and one frozen
+Unit entry at a camp's crate cell claims its Defensive Points and one frozen
 random in-game reward:
 
 - **40%:** 2,500 credits.
@@ -858,9 +864,11 @@ camp positions and frozen formations,
 including the smaller infantry-only starter camp in plans 21–22. The relocated
 mixed camp applies to new runs.
 
-Native visual crates remain physically collectible by AI; their ordinary cash
-is disabled. Only player claims trigger the real cash/unit reward, and AI pickup
-does not consume that claim. Cash uses a passable, invisible,
+Native visual crates have their ordinary cash disabled to prevent duplicate
+payouts. Human collectors receive the real cash/unit reward themselves; enemy
+and helper AI collectors deliver it to the player, or the host in co-op. The same
+collection receipt credits the results and Defensive Points for either path.
+Cash uses a passable, invisible,
 immune building escrow at an unused start: its one-time transfer pays only the
 player. Unit rewards arrive at the camp through separate player-owned teams for
 each frozen unit type. Each uses native Action 80 with the explicit camp waypoint,

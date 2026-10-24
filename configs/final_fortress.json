@@ -20150,11 +20150,6 @@
         "victory_gems_per_stack": 5
       },
       {
-        "id": "defense_armor",
-        "enemy_effect_id": "defense_armor",
-        "victory_gems_per_stack": 5
-      },
-      {
         "id": "infantry_production",
         "enemy_effect_id": "infantry_production",
         "victory_gems_per_stack": 5
@@ -20170,11 +20165,6 @@
         "victory_gems_per_stack": 5
       },
       {
-        "id": "defense_production",
-        "enemy_effect_id": "defense_production",
-        "victory_gems_per_stack": 5
-      },
-      {
         "id": "tier1_health",
         "enemy_effect_id": "tier1_health",
         "victory_gems_per_stack": 5
@@ -20187,11 +20177,6 @@
       {
         "id": "tier1_speed",
         "enemy_effect_id": "tier1_speed",
-        "victory_gems_per_stack": 5
-      },
-      {
-        "id": "tier1_sight",
-        "enemy_effect_id": "tier1_sight",
         "victory_gems_per_stack": 5
       },
       {
@@ -20225,11 +20210,6 @@
         "victory_gems_per_stack": 5
       },
       {
-        "id": "tier1_sensors",
-        "enemy_effect_id": "tier1_sensors",
-        "victory_gems_per_stack": 5
-      },
-      {
         "id": "tier2_health",
         "enemy_effect_id": "tier2_health",
         "victory_gems_per_stack": 5
@@ -20242,11 +20222,6 @@
       {
         "id": "tier2_speed",
         "enemy_effect_id": "tier2_speed",
-        "victory_gems_per_stack": 5
-      },
-      {
-        "id": "tier2_sight",
-        "enemy_effect_id": "tier2_sight",
         "victory_gems_per_stack": 5
       },
       {
@@ -20280,11 +20255,6 @@
         "victory_gems_per_stack": 5
       },
       {
-        "id": "tier2_sensors",
-        "enemy_effect_id": "tier2_sensors",
-        "victory_gems_per_stack": 5
-      },
-      {
         "id": "tier3_health",
         "enemy_effect_id": "tier3_health",
         "victory_gems_per_stack": 5
@@ -20297,11 +20267,6 @@
       {
         "id": "tier3_speed",
         "enemy_effect_id": "tier3_speed",
-        "victory_gems_per_stack": 5
-      },
-      {
-        "id": "tier3_sight",
-        "enemy_effect_id": "tier3_sight",
         "victory_gems_per_stack": 5
       },
       {
@@ -20332,11 +20297,6 @@
       {
         "id": "tier3_cloak",
         "enemy_effect_id": "tier3_cloak",
-        "victory_gems_per_stack": 5
-      },
-      {
-        "id": "tier3_sensors",
-        "enemy_effect_id": "tier3_sensors",
         "victory_gems_per_stack": 5
       },
       {

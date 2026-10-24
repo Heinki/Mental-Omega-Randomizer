@@ -1,4 +1,4 @@
-"""Shared camp pickups: human collectors keep rewards; helpers deliver to host."""
+"""Shared camp pickups: humans keep rewards; AI collectors deliver to the host."""
 
 from .player_perks import coalition, human_actor, needs_countries
 
@@ -56,8 +56,13 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
     linked = '<none>'
     friends = coalition(plan)
     collectors = friends if plan.get('plan_version', 1) >= 32 else friends[:len(plan['coop_players'])]
+    if plan.get('plan_version', 1) >= 39:
+        collectors = [*collectors, *[(f'FFENEMY{i + 1}', country, start)
+                      for i, (country, start) in enumerate(zip(
+                          plan['enemy_countries'], plan['map']['enemy_waypoints']))]]
+    cash_selectors = {}
     for slot, (actor, _, start) in enumerate(collectors):
-        # Helpers collect for the host. Human co-op collectors retain their
+        # All AI collect for the host. Human co-op collectors retain their
         # own cash/squad ownership; the shared Defensive Points receipt pays once.
         recipient_slot = slot if human_actor(plan, actor) else 0
         recipient, _, recipient_start = friends[recipient_slot]
@@ -71,8 +76,14 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
         if pickup:
             actions.extend(message_actions(f'+{camp["gems"]} Defensive Points'))
         if reward.get('credits'):
-            selector = writer.flag(f'Camp {camp["id"]} collector {slot}')
-            _cash_reward(writer, plan, rules, camp, selector, index, waypoint=recipient_start)
+            # Every AI routes to the same host escrow. Sharing its selector
+            # keeps six-collector maps within the native 100-local limit.
+            selector_key = recipient_slot if plan.get('plan_version', 1) >= 39 else slot
+            if selector_key not in cash_selectors:
+                cash_selectors[selector_key] = writer.flag(f'Camp {camp["id"]} collector {slot}')
+                _cash_reward(writer, plan, rules, camp, cash_selectors[selector_key], index,
+                             waypoint=recipient_start)
+            selector = cash_selectors[selector_key]
             actions.insert(1, _action(56, selector))
         if reward.get('units'):
             owner = recipient if needs_countries(plan) else plan['player_country']
