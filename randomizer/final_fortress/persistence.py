@@ -214,7 +214,7 @@ class FinalFortressRepository:
         return self._update(change)[0]
 
     def begin_run(self, config, *, difficulty, seed, player_country, wave_multiplier=None,
-                  mental_ai_boost=None, coop_players=()):
+                  mental_ai_boost=None, coop_players=(), fundraising_ranks=None):
         """Commit the exact run snapshot before starting its game process."""
         snapshot = deepcopy(config)
 
@@ -234,6 +234,7 @@ class FinalFortressRepository:
                 mental_ai_boost=(state['preferences']['mental_ai_boost']
                                  if mental_ai_boost is None else mental_ai_boost),
                 coop_players=coop_players,
+                fundraising_ranks=fundraising_ranks,
             )
             state['run'] = {
                 'id': uuid.uuid4().hex, 'status': 'active',

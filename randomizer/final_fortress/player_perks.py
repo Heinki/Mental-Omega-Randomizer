@@ -29,6 +29,9 @@ def needs_countries(plan):
                 or effects.get('special_access') or effects.get('reinforcements')
                 or effects.get('lab_reserve_units')
                 or effects.get('generator_power_percent')
+                or effects.get('construction_discount_percent') or effects.get('unit_discount_percent')
+                or effects.get('special_building_limit_stacks')
+                or any(plan.get('fundraising_ranks', []))
                 or any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                                         'unique_limit_stacks', 'income_stacks')))
 
@@ -120,6 +123,11 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         for suffix in ('Infantry', 'Units', 'Aircraft', 'Buildings', 'Defenses'):
             field = f'BuildTime{suffix}Mult'
             row[field] = str(float(row.get(field, '1')) * (1 - effects.get('production_percent', 0) / 100))
+            discount = effects.get('construction_discount_percent' if suffix in ('Buildings', 'Defenses')
+                                   else 'unit_discount_percent', 0)
+            if discount:
+                field = f'Cost{suffix}Mult'
+                row[field] = str(float(row.get(field, '1')) * (1 - discount / 100))
         writer.sections[alias] = row
         indices = [int(key) for row in (rules['Countries'], writer.sections.get('Countries', {}))
                    for key in row if key.isdigit()]

@@ -7,8 +7,8 @@ from randomizer.coop.lobby import LOBBY_PORT, Lobby
 
 
 class FortressLobby(Lobby):
-    # Reject older Fortress clients that still choose their own player number.
-    protocol = 'fortress-auto-1'
+    # Every guest must advertise its personal Fundraising rank before launch.
+    protocol = 'fortress-auto-2'
 
 
 class FortressHost:

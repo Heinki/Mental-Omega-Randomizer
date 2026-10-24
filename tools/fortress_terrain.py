@@ -97,7 +97,13 @@ class Terrain:
         heights = set()
         for x, y in cells:
             tile, height = self.cells.get((x, y), (-1, -1))
-            if tile not in {0, 65535, 534, *range(464, 510)} or (x, y) in self.objects:
+            # Native TEMPERATMD flat LAT surfaces and their transitions:
+            # dark grass (131–147), rough grass (418–434), pavement/sand
+            # (463–509), and clear pavement (534). Slopes and cliffs remain
+            # excluded; treating flat grass transitions as cliffs needlessly
+            # forced reviewed utility layouts far outside their own bases.
+            if tile not in {0, 65535, 534, *range(131, 148), *range(418, 435),
+                            *range(463, 510)} or (x, y) in self.objects:
                 return False
             if not (0 <= x < 512 and 0 <= y < 512):
                 return False

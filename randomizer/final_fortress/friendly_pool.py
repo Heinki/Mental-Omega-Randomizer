@@ -4,22 +4,40 @@ from .player_perks import coalition, human_actor
 from .wave_pool import _batches
 
 
-def apply_friendly_pool(writer, plan, rules, overrides, finished, *, friendly_clocks=None):
+def pool_shape(plan):
+    limit = plan['effects']['reinforcements']['max_active_units']
+    maximum = 10 if plan.get('plan_version', 1) >= 36 else 15
+    capacity = (limit + maximum - 1) // maximum
+    return capacity, min(maximum, limit // capacity)
+
+
+def reserve_pool_types(writer, plan, rules):
+    """Reserve tracked identities before the large player/enemy clone graphs."""
+    _, count = pool_shape(plan)
+    groups = [{'units': plan['effects']['reinforcements']['units']}]
+    return [writer.wave_types(groups, rules) for _ in range(count)]
+
+
+def apply_friendly_pool(writer, plan, rules, overrides, finished, *, friendly_clocks=None,
+                        reserved_types=None):
     from .engine import _action, _waypoint
     from .messages import message_actions
 
     effect = plan['effects']['reinforcements']
     actors = coalition(plan)
     limit = effect['max_active_units']
-    # At most fifteen alternatives keep every native action line below 511
-    # bytes. Sharing the slots lets the human use capacity released by helpers.
-    capacity = (limit + 14) // 15
-    slot_count = min(15, limit // capacity)
+    # Ten larger reservations accommodate richer rosters without exhausting
+    # native type counters. Every individual TaskForce still has at most six
+    # types. Older plans keep their original fifteen-slot layout.
+    capacity, slot_count = pool_shape(plan)
     slots = []
-    for _ in range(slot_count):
+    for index in range(slot_count):
         slot = writer.key()
         busy = writer.flag('Friendly pool occupied ' + slot)
-        aliases = writer.wave_types([{'units': effect['units']}], rules, overrides)
+        aliases = writer.wave_types([{'units': effect['units']}], rules, overrides,
+                                    aliases=reserved_types[index] if reserved_types else None)
+        if len(aliases) > 30:
+            raise ValueError('Friendly reinforcement roster exceeds the native release-event limit.')
         release, _ = writer.trigger('Friendly pool release ' + slot,
             [(36, 0, busy), *((61, 2, 0, alias) for alias in aliases.values())],
             [_action(57, busy)], persistence=2)

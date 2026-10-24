@@ -146,6 +146,8 @@ class FortressCoopController(FortressCoopLaunchController):
         self._fortress_worker_active = False
         self._fortress_roster = []
         self._fortress_peer_runs = {}
+        self._fortress_fundraising_ranks = {}
+        self._fortress_sent_fundraising_rank = None
         generation = self._fortress_lobby_generation = object()
         self.fortress_coop_status_var.set('Waiting for all Fortress players…')
         self._fortress_host = FortressHost(sessions) if role == 'host' else None
@@ -186,6 +188,7 @@ class FortressCoopController(FortressCoopLaunchController):
         installations = [json.dumps(lobby.peer_installation, sort_keys=True) for lobby in sessions.values()]
         return (len(names) == len({name.casefold() for name in names})
                 and len(installations) == len(set(installations))
+                and set(getattr(self, '_fortress_fundraising_ranks', {})) == set(sessions)
                 and not getattr(self, '_fortress_peer_runs', {}))
 
     def refresh_fortress_coop_controls(self):
@@ -209,7 +212,7 @@ class FortressCoopController(FortressCoopLaunchController):
             self.final_fortress_launch_button.configure(state='disabled')
         if guest and not busy:
             self.final_fortress_status_var.set(
-                'Waiting for the host. Host perks are shared; your Defensive Points and purchases remain personal.')
+                'Waiting for host. Host perks shared; Fundraising uses your own enabled rank.')
         for widget in getattr(self, 'final_fortress_setup_combos', ()):
             widget.configure(state='disabled' if busy or guest else 'readonly')
         if sessions:
@@ -230,7 +233,7 @@ class FortressCoopController(FortressCoopLaunchController):
         preferences = state['preferences']
         setup = (f'{self.final_fortress_config["map"]["display_name"]}, '
                  f'{preferences["player_country"] or "Choose faction"}, {preferences["difficulty"]}, '
-                 f'x{preferences["wave_multiplier"]}; host perks shared')
+                 f'x{preferences["wave_multiplier"]}; host perks shared; Fundraising personal')
         status = ' / '.join(names) + ' — ' + setup
         if len({name.casefold() for name in names if name != '(waiting)'}) != len(
                 [name for name in names if name != '(waiting)']):
@@ -249,6 +252,16 @@ class FortressCoopController(FortressCoopLaunchController):
         sessions = getattr(self, '_fortress_lobbies', {})
         if not sessions or generation is not self._fortress_lobby_generation:
             return
+        if self._fortress_role == 'guest' and not self._final_fortress_preparing:
+            from randomizer.final_fortress.economy import selected_fundraising_rank
+            rank = selected_fundraising_rank(self.final_fortress_state)
+            lobby = next(iter(sessions.values()))
+            if lobby.connected and rank != self._fortress_sent_fundraising_rank:
+                try:
+                    lobby.send({'type': 'fortress_fundraising', 'rank': rank})
+                    self._fortress_sent_fundraising_rank = rank
+                except (OSError, ConnectionError):
+                    self.fortress_coop_status_var.set('Fortress connection ended. Reconnect before launching.')
         for slot, lobby in list(sessions.items()):
             for _ in range(24):
                 try:

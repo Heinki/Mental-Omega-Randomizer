@@ -291,7 +291,8 @@ class FinalFortressController(FortressCoopController):
             'Co-op supports two or three humans over ZeroTier. In Settings, enable Co-op '
             'and open Co-op Connection; '
             'the host selects the human count, faction, difficulty and enabled perks. '
-            'All teammates share those perks. Two humans leave at most one perk-enabled AI helper; '
+            'All teammates share those perks except Fundraising: each human uses their own enabled rank. '
+            'Two humans leave at most one perk-enabled AI helper; '
             'three humans leave none. Every human earns their own Defensive Points and buys '
             'their own permanent perks. Camp crates are present from the start. Any human can collect '
             'one; collection awards Defensive Points to everyone and the cash or units to its collector.',
@@ -304,6 +305,10 @@ class FinalFortressController(FortressCoopController):
             'It grants 10 seconds of Iron Curtain on the Lab '
             'while squads arrive. Each human controls their own reserve; '
             'both perks reset for the next run.',
+            'Cheaper Construction and Cheaper Production separately reduce building/defense and unit costs '
+            'by 5% per rank, up to 25%. Special Building Limit adds up to three to special-building caps. '
+            'Fundraising automatically deposits 1,000 credits per rank every five in-game minutes, '
+            'up to 4,000; no collection required. AI helpers use the host Fundraising rank.',
             f'Additional waves start after {settings["wave_interval_seconds"] / 60:g} minutes '
             'and repeat at the same interval. Normal AI attacks continue throughout.',
             'AI difficulty sets the opening wave count. The wave multiplier applies only '

@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 32
+PLAN_VERSION = 38
 
 
 def configuration_digest(config):
@@ -25,7 +25,7 @@ def configuration_digest(config):
 def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(),
                    wave_multiplier=1, plan_version=PLAN_VERSION, selected_challenges=(),
                    challenge_stacks=None, perk_ranks=None, mental_ai_boost=False,
-                   coop_players=()):
+                   coop_players=(), fundraising_ranks=None):
     """Freeze approved inputs before the engine adapter creates map bytes.
 
     Times are simulation seconds. Victory owns the duration boundary, so the
@@ -88,7 +88,9 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                                   include_lab_support=plan_version >= 26, include_lab_shield=plan_version >= 27,
                                   include_lab_health=plan_version >= 28,
                                   include_lab_veterancy=plan_version >= 29,
-                                  include_generator_power=plan_version >= 32)
+                                  include_generator_power=plan_version >= 32,
+                                  include_economy=plan_version >= 34,
+                                  share_starting_power=plan_version >= 38)
     settings = config['settings']
     enemy_rng = random.Random(f'{seed}:final_fortress:enemy_countries')
     enemies = [enemy_rng.choice(SIDE_COUNTRIES) for _ in range(3)]
@@ -131,6 +133,17 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
         plan['allied_waypoints'] = available[:allies]
     if coop_players:
         plan['coop_players'] = list(coop_players)
+    if plan_version >= 34:
+        from .economy import validate_fundraising_ranks
+        count = len(coop_players) or 1
+        personal = ([effects['fundraising_stacks']] * count
+                    if fundraising_ranks is None else fundraising_ranks)
+        validate_fundraising_ranks(personal, count)
+        if personal[0] != effects['fundraising_stacks']:
+            raise ValueError('Host Fundraising rank differs from the selected loadout.')
+        plan['fundraising_ranks'] = list(personal)
+    elif fundraising_ranks is not None:
+        raise ValueError('Personal Fundraising ranks require a new Fortress run.')
     if plan_version >= 16:
         plan['mental_ai_boost'] = mental_ai_boost
     if plan_version >= 11:

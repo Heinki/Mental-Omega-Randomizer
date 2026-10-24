@@ -169,7 +169,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
   has `units_by_country` for all twelve playable countries. Reward choices
   are frozen per camp in the run plan, and only player claims receive them.
   `perks` specifies permanent purchases and up to six increasing-price `ranks`
-  (eight for `periodic_reinforcements`, ten for `lab_reserve_squad`).
+  (eight for Starting army, twelve for `periodic_reinforcements`,
+  ten for `lab_reserve_squad`).
   Each rank has `gem_cost` and its complete cumulative `effects`; rank one
   must match the entry's base `gem_cost` and `effects`. Effects are not added
   again for earlier ranks. Purchases enable the perk automatically; disabling
@@ -182,7 +183,9 @@ that overlap only with full reward-plan and 97-map parity coverage.
   `buildings_by_country`, `defenses_by_country`, `power_buildings_by_country`, `harvesters_by_country`,
   `fallback_units_by_country`, and `support_powers_by_country` cover all twelve
   native countries. These values name installed types, not generated private
-  IDs. A combined starting army cannot exceed 15 units. Fallback infantry are
+  IDs. Starting army has eight shipped ranks and a combined starting army
+  cannot exceed 15 units. Later ranks add support infantry, specialist armor,
+  heavy aircraft and faction roles while retaining a faction hero. Fallback infantry are
   granted only when no other starting army is selected. Army `veterancy`
   supports 1 (Veteran) and 2 (Elite, the native maximum); the shipped perk has
   both ranks. `support_powers_by_country` supports up to five cumulative native
@@ -209,17 +212,21 @@ that overlap only with full reward-plan and 97-map parity coverage.
   and the original credit costs/unique limits, leaving native enemies unchanged.
   `reinforcements` contains `first_seconds`, `interval_seconds`,
   `max_active_units`, and `units_by_country`, plus optional `veterancy` (0 Rookie,
-  1 Veteran, 2 Elite). The shipped eight ranks arrive every
-  300 simulation seconds from minute 5 and retain ten basic infantry while
-  improving the 10/14/18/21/24/25-unit roster through rank six. Ranks seven/eight
-  retain that roster and grant Veteran/Elite units, respectively, without
-  changing timing or the cap. Each arrival may contain at most
-  six distinct installed ground infantry/vehicle types and 30 units per house.
+  1 Veteran, 2 Elite). The shipped twelve ranks arrive every
+  300 simulation seconds from minute 5 with support infantry from rank one.
+  Counts reach 10/14/18/21/24/25 through rank six; rank seven is Veteran and
+  rank eight onward is Elite. Ranks nine through eleven add specialist armor,
+  heavy aircraft and support within 25 units; rank twelve reaches 30 units.
+  Each arrival may contain at most ten distinct installed infantry/vehicle
+  types, including vehicle-based gunships, and 30 units per house.
   Units with untracked passengers, aircraft spawns or building deployments are
   rejected by the native adapter. Helpers receive the same arrival, and a whole
   coalition arrival must fit within the shared 150-unit reinforcement cap.
-  Plan-17 runs use at most fifteen reusable groups shared across all houses
-  (ten units each with the shipped 150-unit cap). A group is released after all
+  Plan-36 runs use at most ten reusable groups shared across all houses
+  (fifteen units each with the shipped 150-unit cap); older plans retain fifteen
+  ten-unit groups. Delivery batches stay within six types per native TaskForce.
+  Tracked identities and conversion forms are reserved and preloaded before
+  player/enemy clone graphs to stay below native counter limits. A group is released after all
   its private identities disappear, including captured/converted units. Partial
   groups retain their full reservation. Each house has independent timers and
   resumes its next small delivery when shared capacity returns; the player sees
@@ -257,12 +264,26 @@ that overlap only with full reward-plan and 97-map parity coverage.
   and linked-form propagation. Native captured income buildings remain native.
   `map.allied_waypoints` reserves up to two distinct unused native starts;
   `map.perk_layouts` covers the human and each configured helper with five
-  building positions, sixteen defense positions, twelve power-plant positions,
-  and a 5-by-3 army staging area. Old snapshots with four defense positions
-  remain readable. Defense ranks give four copies of each cumulative unlocked
-  type, up to sixteen. `power_buildings_by_country` supplies enough native
-  plants for defenses and the five optional starting buildings. It supports
-  up to twelve plants per country; edit their quantities with the power budget
+  building positions, thirty-two defense positions and a 5-by-3 army staging
+  area. Optional `faction_layouts` covers `allies`, `soviets`, `epsilon` and
+  `foehn`. Each entry supplies a `generator` position for Starting buildings
+  rank 1 and a `power` list for the defense perk's native generators. These
+  override only the first building and defense-power positions; production
+  buildings, defense rings and staging remain shared. Shipped layouts cluster
+  all generators near their own MCV, leave one cell around production buildings
+  and two around arrival aprons. The legacy shared `power` list remains valid
+  for frozen snapshots and custom layouts. Each consecutive eight defense positions
+  forms a complete ring for one unlocked type; ranks grant 8/16/24/32 defenses.
+  Old snapshots with four or sixteen defense positions
+  remain readable. Defense ranks give eight copies of each cumulative unlocked
+  type, up to thirty-two. `power_buildings_by_country` supplies enough native
+  plants for defenses and the five optional starting buildings. Starting buildings
+  ranks 4–5 also use this field for their independent native power top-ups;
+  an empty country list means that faction already has enough power. Plan 38
+  shares the larger per-type generator allowance between Starting buildings
+  and Starting defenses, whose supply already covers the production base.
+  Other perks' power grants remain additive. It supports
+  up to twenty-four plants per country; edit their quantities with the power budget
   in mind. Perk details show cumulative per-rank grants for the selected faction.
   Audit foundations and terrain before changing these positions. Helpers use
   the player's faction and the same selected perks. Preplaced refineries have
@@ -307,8 +328,8 @@ that overlap only with full reward-plan and 97-map parity coverage.
   terrain. Preplaced guards sleep until the existing attacked-team behavior wakes
   them. Preplaced starting-army experience encodes ranks as 100/200, while native
   TeamType veterancy keeps its existing one-based enumeration.
-  Saved state schema 10 stores purchased ranks up to six (eight for
-  `periodic_reinforcements`, ten for `lab_reserve_squad`) and migrates the former
+  Saved state schema 10 stores purchased ranks up to six (eight for Starting army,
+  twelve for `periodic_reinforcements`, ten for `lab_reserve_squad`) and migrates the former
   one-rank offensive-superweapon purchase to rank two. Run plan 21 freezes their effects,
   power-upgrade stacks, starting power plants and helper starts with the original balance snapshot, preserving existing
   Defensive Points receipts when current configuration changes, including special access and

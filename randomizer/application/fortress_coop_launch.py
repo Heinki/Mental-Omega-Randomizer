@@ -34,6 +34,9 @@ class FortressCoopLaunchController:
         preferences = dict(self.final_fortress_state['preferences'])
         repository = self.final_fortress_repository
         config = deepcopy(self.final_fortress_config)
+        from randomizer.final_fortress.economy import selected_fundraising_rank
+        fundraising_ranks = [selected_fundraising_rank(self.final_fortress_state),
+                             *[self._fortress_fundraising_ranks[i] for i in sorted(sessions)]]
         speed = self.get_selected_game_speed_value()
         pending = self._new_fortress_preparation(secrets.token_hex(24), sessions)
         pending['endpoints'] = endpoints
@@ -47,7 +50,8 @@ class FortressCoopLaunchController:
                 config, difficulty=preferences['difficulty'], seed='FF-' + secrets.token_hex(8),
                 player_country=preferences['player_country'],
                 wave_multiplier=preferences['wave_multiplier'],
-                mental_ai_boost=preferences['mental_ai_boost'], coop_players=players)
+                mental_ai_boost=preferences['mental_ai_boost'], coop_players=players,
+                fundraising_ranks=fundraising_ranks)
             pending['run_id'] = run_id
             run = state['run']
             digest = prepare_game(GAME_ROOT, run, rules, game_speed=speed,
@@ -97,6 +101,15 @@ class FortressCoopLaunchController:
 
     def _handle_fortress_message(self, slot, lobby, message):
         kind = message.get('type')
+        if kind == 'fortress_fundraising':
+            from randomizer.final_fortress.economy import validate_fundraising_ranks
+            if self._fortress_role != 'host' or slot not in self._fortress_lobbies:
+                raise ValueError('Only a connected guest may advertise a Fundraising rank.')
+            rank = message.get('rank')
+            validate_fundraising_ranks([rank], 1)
+            self._fortress_fundraising_ranks[slot] = rank
+            self.refresh_final_fortress()
+            return
         if kind == 'fortress_idle' and self._fortress_role == 'host':
             if getattr(self, '_fortress_peer_runs', {}).get(slot) == message.get('run_id'):
                 del self._fortress_peer_runs[slot]
@@ -176,6 +189,11 @@ class FortressCoopLaunchController:
         if (players != self._fortress_roster or slot >= len(players)
                 or players[slot] != lobby.name or players[0] != lobby.peer):
             raise ValueError('Fortress launch differs from the connected roster.')
+        from randomizer.final_fortress.economy import selected_fundraising_rank, validate_fundraising_ranks
+        personal = plan.get('fundraising_ranks')
+        validate_fundraising_ranks(personal, len(players))
+        if personal[slot] != selected_fundraising_rank(self.final_fortress_state):
+            raise ValueError('Your Fundraising selection changed. Ask the host to launch again.')
         validate_endpoints(plan, payload['endpoints'])
         if (payload['endpoints'][0]['address'] != lobby.ipv4_pair()[1]
                 or payload['endpoints'][slot]['address'] != lobby.ipv4_pair()[0]):

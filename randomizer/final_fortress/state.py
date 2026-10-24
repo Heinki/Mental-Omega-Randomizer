@@ -173,6 +173,7 @@ def normalize_state(document):
             challenge_stacks={entry['id']: entry.get('stacks', 1) for entry in plan.get('challenges', [])},
             mental_ai_boost=plan.get('mental_ai_boost', False),
             coop_players=plan.get('coop_players', ()),
+            fundraising_ranks=plan.get('fundraising_ranks'),
         )
         if version == 5 and 'initial_transfer_kills' not in plan:
             # Early v5 runs predate the native transfer-score correction.

@@ -23,7 +23,7 @@ from randomizer.core.paths import GAME_ROOT
 from randomizer.final_fortress.challenges import load_ai_rules, maximum
 from randomizer.final_fortress.config import DIFFICULTY_IDS, load_config
 from randomizer.final_fortress.engine import build_map, spawn_data
-from randomizer.final_fortress.maps import select_map, source_lines
+from randomizer.final_fortress.maps import perk_layout, select_map, source_lines
 from randomizer.final_fortress.perks import ranks
 from randomizer.final_fortress.player_perks import coalition, human_actor, needs_countries
 from randomizer.final_fortress.planning import build_run_plan
@@ -59,6 +59,14 @@ def footprint(row, art):
     return cells
 
 
+def reserved_arrival_cells(rows, effective, art, types):
+    """Inspect complete footprints of invisible reservations and visible pads."""
+    return {(int(fields[3]) + dx, int(fields[4]) + dy)
+            for value in rows.get('Structures', {}).values()
+            if (fields := value.split(','))[1] in types
+            for dx, dy in footprint(effective[fields[1]], art)}
+
+
 def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None):
     rows = read_sections(data)
     resource_overlays = resource_overlay_indices(rules)
@@ -70,9 +78,29 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         effective.setdefault(section, {}).update(values)
     ids = {section.casefold(): section for section in effective}
 
-    # Packed map sections must stay byte-for-byte equivalent as INI values.
-    for section in ('IsoMapPack5', 'OverlayPack', 'OverlayDataPack', 'Terrain'):
+    # Only reserved arrival tiles may change; overlays and scenery stay exact.
+    for section in ('OverlayPack', 'OverlayDataPack', 'Terrain'):
         require(rows.get(section) == source.get(section), f'Source terrain changed: {section}')
+    if plan.get('plan_version', 1) < 33:
+        require(rows.get('IsoMapPack5') == source.get('IsoMapPack5'), 'Source terrain changed: IsoMapPack5')
+    elif terrain is not None:
+        # Independent native LZO decoding also validates the portable writer.
+        import struct
+        from fortress_terrain import _unpack
+        expected = bytearray(_unpack(source['IsoMapPack5'], lzo=True))
+        positions = list(plan['map']['enemy_wave_positions'].values())
+        if plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'):
+            positions.extend(plan['map']['perk_layouts'][str(w)]['units'] for _, _, w in coalition(plan))
+        cells = {(p['x'] + dx, p['y'] + dy) for p in positions for dx in range(5) for dy in range(3)}
+        found = set()
+        for offset in range(0, len(expected), 11):
+            x, y = struct.unpack_from('<HH', expected, offset)
+            if (x, y) in cells:
+                struct.pack_into('<IB', expected, offset + 4, 534, 0)
+                found.add((x, y))
+        require(found == cells, 'Spawn pavement has missing map cells')
+        require(_unpack(rows['IsoMapPack5'], lzo=True) == expected,
+                'Spawn pavement is missing or terrain outside arrivals changed')
     countries = list(effective['Countries'].values())
     indices = sorted(int(key) for key in effective['Countries'])
     require(indices == list(range(len(indices))), 'Country indices are not contiguous')
@@ -162,6 +190,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     audit_wave_clock(rows, effective, plan, preloads)
     audit_allied_clocks(rows, effective, plan, preloads)
     audit_lab_support(rows, effective, plan, rules, preloads, terrain)
+    from fortress_economy_audit import audit_economy
+    audit_economy(rows, effective, plan, rules, preloads)
 
     # Every purchased support unlock must be registered and granted to each
     # friendly house, including ranks beyond the proxy's two building slots.
@@ -279,8 +309,9 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 continue
             fields = value.split(',')
             x, y = map(int, fields[3:5])
-            pad = rows.get('FFReinforcementPads', {}).get('Type')
-            require((x, y) not in occupied or occupied[(x, y)] == pad,
+            pads = rows.get('FFReinforcementPads', {})
+            pad_types = {pads.get('Type'), pads.get('MarkerType')}
+            require((x, y) not in occupied or occupied[(x, y)] in pad_types,
                     f'Starting unit overlaps a building at {(x, y)}')
             require(fields[0] == 'Neutral', 'Private starting objects must use native ownership transfers')
             if terrain is not None:
@@ -318,9 +349,12 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     if plan.get('plan_version', 1) >= 7:
         buildings = [*plan['effects']['starting_buildings'], *plan['effects']['defense_types'],
                      *plan['effects'].get('starting_power_buildings', [])]
-    if plan['effects'].get('starting_power_buildings'):
-        require(sum(int(rules[kind].get('Power', '0')) for kind in buildings) >= 0,
+    if plan['effects'].get('starting_power_buildings') or plan.get('plan_version', 1) >= 38:
+        balance = sum(int(rules[kind].get('Power', '0')) for kind in buildings)
+        require(balance >= 0,
                 'Granted buildings start with insufficient power')
+        if plan.get('plan_version', 1) >= 38 and plan['effects'].get('starting_buildings'):
+            require(balance > 0, 'Starting buildings have no spare power')
     if plan.get('plan_version', 1) >= 7:
         required_transfers = (1 + sum(unit['count'] for unit in plan['effects']['starting_units'])
                               + sum(unit['count'] for unit in plan['effects']['starting_harvesters'])
@@ -377,7 +411,7 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         return
     effect = plan['effects']['reinforcements']
     if plan.get('plan_version', 1) >= 17:
-        audit_friendly_pools(rows, effective, plan, finished_name='Final Fortress finished')
+        audit_friendly_pools(rows, effective, plan, finished_name='Final Fortress finished', preloads=preloads)
         return
     triggers = {value.split(',')[2]: key for key, value in rows['Triggers'].items()}
     flags = {value.rsplit(',', 1)[0]: int(key) for key, value in rows['VariableNames'].items()}
@@ -777,19 +811,117 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
                     'Camps do not span the playable map')
 
 
+def audit_generator_access(rows, effective, plan, terrain):
+    """Review actual native utility foundations, exits and flat arrival routes."""
+    if plan.get('plan_version', 1) < 37:
+        return
+    # Inspect emitted foundations and transfer ownership independently of
+    # the launch-time clearance validation and configured generator list.
+    from randomizer.final_fortress.placement import installed_art
+    art = installed_art()
+    access = set()
+    friendly_generators = []
+    for actor, country, waypoint in coalition(plan):
+        layout = perk_layout(plan['map'], waypoint, country)
+        p = layout['units']
+        access.update((p['x'] + dx, p['y'] + dy)
+                      for dx in range(-2, 7) for dy in range(-2, 5))
+        production = {(p['x'], p['y']) for p in layout['buildings'][1:
+                      len(plan['effects'].get('starting_buildings', []))]}
+        triggers = {key for key, value in rows['Triggers'].items()
+                    if value.split(',')[2] == 'Starting perks ' + actor}
+        tags = {key for key, value in rows['Tags'].items() if value.split(',')[2] in triggers}
+        start = int(rows['Waypoints'][str(waypoint)])
+        for value in rows['Structures'].values():
+            fields = value.split(',')
+            if fields[6] not in tags:
+                continue
+            row = effective[fields[1]]
+            x, y = map(int, fields[3:5])
+            cells = {(x + dx, y + dy) for dx, dy in footprint(row, art)}
+            if int(row.get('Power', '0')) > 0:
+                friendly_generators.append((actor, cells))
+                require((x - start % 1000) ** 2 + (y - start // 1000) ** 2 <= 19 ** 2,
+                        f'Generator detached from its MCV: {actor} at {(x, y)}')
+            elif (x, y) in production:
+                access.update((cx + dx, cy + dy) for cx, cy in cells
+                              for dx in range(-1, 2) for dy in range(-1, 2))
+    require(all(not cells & access for actor, cells in friendly_generators),
+            'Friendly generator blocks a production exit or reinforcement apron')
+    if terrain is not None:
+        from collections import deque
+        blocked = set()
+        for value in rows['Structures'].values():
+            fields = value.split(',')
+            row = dict(effective.get(fields[1], {}))
+            if row.get('IsPassable', 'no').lower() == 'yes':
+                continue
+            row.setdefault('Image', fields[1])
+            x, y = map(int, fields[3:5])
+            blocked.update((x + dx, y + dy) for dx, dy in footprint(row, art))
+        for actor, country, waypoint in coalition(plan):
+            p = perk_layout(plan['map'], waypoint, country)['units']
+            start = int(rows['Waypoints'][str(waypoint)])
+            cx, cy = start % 1000, start // 1000
+            pending = deque([(p['x'] + 2, p['y'] + 1)])
+            visited = set(pending)
+            escaped = False
+            while pending:
+                x, y = pending.popleft()
+                if (x - cx) ** 2 + (y - cy) ** 2 > 22 ** 2:
+                    escaped = True
+                    break
+                for cell in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if (cell not in visited and cell not in blocked and terrain.clear({cell})
+                            and terrain.heights[cell] == terrain.heights[(x, y)]):
+                        visited.add(cell)
+                        pending.append(cell)
+            require(escaped, f'Reinforcement apron has no walkable exit beyond generators: {actor}')
+
+
 def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
     """Inspect production shortcuts, reserved ground and explicit helper orders."""
     if plan.get('plan_version', 1) < 14:
         return
+    audit_generator_access(rows, effective, plan, terrain)
     if plan.get('plan_version', 1) >= 15:
-        from math import hypot
+        from math import atan2, hypot, pi, tau
         for actor, _, waypoint in coalition(plan):
             cell = int(rows['Waypoints'][str(waypoint)])
             center = (cell % 1000, cell // 1000)
-            layout = plan['map']['perk_layouts'][str(waypoint)]
-            require(all(hypot(p['x'] - center[0], p['y'] - center[1]) >= 20
-                        for p in layout['defenses']), f'Defense still occupies the central base: {actor}')
-            if actor == 'FFPLAYER' and plan['map']['id'] == 'miners_in_the_sun':
+            layout = perk_layout(plan['map'], waypoint, plan['player_country'])
+            if plan.get('plan_version', 1) >= 33:
+                count = 8 if len(layout['defenses']) == 32 else 4
+                if plan.get('plan_version', 1) >= 35:
+                    require(count == 8, f'Defense layout still has four-turret batteries: {actor}')
+                for index in range(0, len(layout['defenses']), count):
+                    group = layout['defenses'][index:index + count]
+                    angles = sorted(atan2(p['y'] - center[1], p['x'] - center[0]) % tau for p in group)
+                    gap = max(b - a for a, b in zip(angles, [*angles[1:], angles[0] + tau]))
+                    require(len(group) == count and (gap <= pi / 2 if count == 8 else gap < pi),
+                            f'Defense rank {index // count + 1} does not cover the full perimeter of {actor}')
+                    require(all((6 if count == 8 else 8) <= hypot(p['x'] - center[0], p['y'] - center[1]) <= 32 for p in group),
+                            f'Defense ring is inside deployment space or detached from {actor}')
+                if plan.get('plan_version', 1) >= 35:
+                    kinds = plan['effects'].get('defense_types', [])
+                    rank = plan.get('perk_ranks', {}).get('starting_defenses', 0)
+                    require(len(kinds) == rank * 8, f'Wrong unlocked defense density for {actor}')
+                    positions = {(p['x'], p['y']) for p in layout['defenses']}
+                    actual = [value.split(',') for value in rows['Structures'].values()
+                              if tuple(map(int, value.split(',')[3:5])) in positions]
+                    expected = {(rows.get('FFPlayerTypes', {}).get(kind, kind), p['x'], p['y'])
+                                for kind, p in zip(kinds, layout['defenses'])}
+                    require(len(actual) == len(kinds)
+                            and {(f[1], int(f[3]), int(f[4])) for f in actual} == expected,
+                            f'Placed defenses do not match unlocked full rings for {actor}')
+                    transfers = {key for key, value in rows['Triggers'].items()
+                                 if value.split(',')[2] == 'Starting perks ' + actor}
+                    tags = {key for key, value in rows['Tags'].items() if value.split(',')[2] in transfers}
+                    require(all(f[6] in tags for f in actual), f'Defense ring has incorrect ownership: {actor}')
+            else:
+                require(all(hypot(p['x'] - center[0], p['y'] - center[1]) >= 20
+                            for p in layout['defenses']), f'Defense still occupies the central base: {actor}')
+            if plan.get('plan_version', 1) < 33 and actor == 'FFPLAYER' and plan['map']['id'] == 'miners_in_the_sun':
                 require(all(p['x'] >= center[0] + 16 and center[1] - 10 <= p['y'] <= center[1] + 34
                             for p in layout['defenses']), 'Human defenses left the marked outer approach arc')
     for registry in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes'):
@@ -838,6 +970,10 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
                              'DontScore': 'yes', 'ProduceCashAmount': '0'}.items():
             require(row.get(field) == value, f'Unsafe reinforcement reservation {field}')
         actual = [value.split(',') for value in rows['Structures'].values() if value.split(',')[1] == kind]
+        marker = pads.get('MarkerType')
+        markers = [value.split(',') for value in rows['Structures'].values() if value.split(',')[1] == marker]
+        if plan.get('plan_version', 1) >= 33:
+            require(marker is None, 'Spawn visibility still depends on a building graphic')
         expected = set()
         for actor, _, waypoint in coalition(plan):
             p = plan['map']['perk_layouts'][str(waypoint)]['units']
@@ -846,9 +982,11 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
         if plan.get('plan_version', 1) >= 16:
             for p in plan['map']['enemy_wave_positions'].values():
                 expected.update((p['x'] + dx, p['y'] + dy) for dx in range(5) for dy in range(3))
-        require(len(actual) == len(expected) and {(int(v[3]), int(v[4])) for v in actual} == expected,
+        from randomizer.final_fortress.placement import installed_art
+        art = installed_art()
+        require(reserved_arrival_cells(rows, effective, art, {kind, marker}) == expected,
                 'Reinforcement apron can be built over')
-        require(all(v[0] == 'Neutral' and v[6] == 'None' for v in actual),
+        require(all(v[0] == 'Neutral' and v[6] == 'None' for v in [*actual, *markers]),
                 'Reserved ground changes ownership/score accounting')
         if terrain is not None:
             # Each friendly apron is flat; different bases may have different
@@ -1065,11 +1203,19 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
     pad = rows['FFEnemyWavePads']['Type']
     require(pad in preloads['rules'] and effective[pad]['IsPassable'] == 'yes'
             and effective[pad]['LegalTarget'] == 'no', 'Enemy spawn apron is obstructed or targetable')
-    placed = {(int(v.split(',')[3]),int(v.split(',')[4])) for v in rows['Structures'].values()
-              if v.split(',')[1] == pad}
-    marked = {(int(fields[1]), int(fields[2])) for value in rows.get('Smudge', {}).values()
-              if (fields := value.split(','))[0] == 'BURNT01'}
-    require(placed <= marked, 'Reserved arrival cells have no visible ground marking')
+    from randomizer.final_fortress.placement import installed_art
+    art = installed_art()
+    marker = rows['FFEnemyWavePads'].get('MarkerType')
+    placed = reserved_arrival_cells(rows, effective, art, {pad, marker})
+    if plan.get('plan_version', 1) >= 33:
+        require(marker is None, 'Spawn visibility still depends on a building graphic')
+        scorch = {(int(fields[1]), int(fields[2])) for value in rows.get('Smudge', {}).values()
+                  if (fields := value.split(','))[0] == 'BURNT01'}
+        require(not placed & scorch, 'Spawn markers still use scorch decals')
+    else:
+        marked = {(int(fields[1]), int(fields[2])) for value in rows.get('Smudge', {}).values()
+                  if (fields := value.split(','))[0] == 'BURNT01'}
+        require(placed <= marked, 'Reserved arrival cells have no visible ground marking')
     for index,wp in enumerate(plan['map']['enemy_waypoints']):
         p = plan['map']['enemy_wave_positions'][str(wp)]
         cells = {(p['x']+dx,p['y']+dy) for dx in range(5) for dy in range(3)}
@@ -1104,7 +1250,7 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
                             require(effective[alias].get(key) == value, 'Private factory missed Mental AI Boost')
 
 
-def audit_friendly_pools(rows, effective, plan, *, finished_name):
+def audit_friendly_pools(rows, effective, plan, *, finished_name, preloads):
     """Review actual friendly deliveries without requiring complete cohort deaths."""
     from collections import Counter, defaultdict
     from randomizer.final_fortress.engine import _action, _waypoint
@@ -1129,6 +1275,15 @@ def audit_friendly_pools(rows, effective, plan, *, finished_name):
                 'Friendly slot cannot be reused repeatedly')
         for alias in aliases:
             row = effective[alias]
+            if plan.get('plan_version', 1) >= 36:
+                category = 'InfantryTypes' if alias in effective['InfantryTypes'].values() else 'VehicleTypes'
+                registered = list(dict.fromkeys(effective[category].values()))
+                require(registered.index(alias) < 512, 'Friendly survivor counter exceeds native type capacity')
+                require(alias in preloads['rules'], 'Friendly survivor identity is not preloaded')
+                for field in ('Image', 'Strength', 'Primary', 'Secondary',
+                              'Convert.Deploy', 'Convert.Land', 'Convert.Water'):
+                    require(preloads['rules'][alias].get(field) == row.get(field),
+                            f'Friendly reinforcement buff/conversion was not preloaded: {alias}.{field}')
             require(row['BuildLimit'] == '0' and row['TechLevel'] == '-1'
                     and row['DontScore'] == 'no' and row['Insignificant'] == 'no', 'Untracked friendly gift')
             for field in ('Convert.Deploy','Convert.Land','Convert.Water'):
@@ -1681,13 +1836,24 @@ def main():
     parser.add_argument('--map', dest='map_id', help='Fortress map ID (default: configured original map)')
     parser.add_argument('--lab-reserve-rank', type=int, choices=range(1, 11),
                         help='Override the emergency squad rank for selected reserve profiles')
+    parser.add_argument('--starting-army-rank', type=int, choices=range(1, 9),
+                        help='Override the Starting army rank for selected army profiles')
+    parser.add_argument('--reinforcement-rank', type=int, choices=range(1, 13),
+                        help='Override the periodic reinforcement rank for selected arrival profiles')
+    parser.add_argument('--starting-buildings-rank', type=int, choices=range(1, 6),
+                        help='Override the Starting buildings rank for selected building profiles')
     parser.add_argument('--profiles', nargs='+', choices=(
-                        'baseline', 'helpers', 'maximum', 'defenses', 'powers', 'upgrades', 'secondary',
-                        'arsenal', 'reinforcements', 'arsenal-first', 'reinforcements-first',
+                        'baseline', 'helpers', 'maximum', 'defenses', 'defenses-first', 'defenses-second',
+                        'defenses-third', 'powers', 'upgrades', 'secondary',
+                        'arsenal', 'starting-army', 'combined-armies', 'starting-buildings', 'buildings-and-defenses',
+                        'reinforcements', 'arsenal-first', 'reinforcements-first',
                         'healing', 'recon', 'limits', 'income', 'enemy-powers', 'powerhouses', 'utilities-first',
                         'veteran', 'elite', 'reinforcements-veteran', 'reinforcements-rookie',
                         'lab-repair', 'lab-reserve', 'lab-support', 'lab-support-helpers',
-                        'lab-health-first', 'lab-health-middle', 'lab-health', 'lab-health-support'),
+                        'lab-health-first', 'lab-health-middle', 'lab-health', 'lab-health-support',
+                        'construction', 'production', 'building-limits', 'economy-first',
+                        'fundraising-1', 'fundraising-2', 'fundraising-3', 'fundraising-4',
+                        'fundraising-mixed', 'fundraising-guest'),
                         default=['baseline', 'helpers', 'maximum'])
     parser.add_argument('--difficulties', nargs='+', choices=DIFFICULTY_IDS, default=list(DIFFICULTY_IDS))
     parser.add_argument('--mental-ai-boost', action='store_true', help='Audit the installed Mental AI Boost option')
@@ -1705,6 +1871,8 @@ def main():
     if args.terrain:
         from fortress_terrain import Terrain
         terrain = Terrain(source)
+        require(max(terrain.heights.values()) <= config['map'].get('maximum_terrain_height', 14),
+                'Configured maximum terrain height understates the source map')
     if not ART_CACHE_PATH.exists():
         require(extract_mix_files_sync([('ARTMO.INI', ART_CACHE_PATH)]), 'Installed art unavailable')
     art = {key.casefold(): value for key, value in read_sections(ART_CACHE_PATH.read_bytes()).items()}
@@ -1713,6 +1881,10 @@ def main():
     utilities = ['automatic_healing', 'reconnaissance', 'unique_unit_capacity', 'special_building_income']
     loadouts = {
         'baseline': [], 'helpers': ['allied_helpers'], 'maximum': [entry['id'] for entry in config['perks']],
+        'starting-army': ['reinforcements', 'allied_helpers'],
+        'combined-armies': ['reinforcements', 'periodic_reinforcements', 'allied_helpers', 'veteran_escort'],
+        'starting-buildings': ['starting_buildings', 'allied_helpers'],
+        'buildings-and-defenses': ['starting_buildings', 'starting_defenses', 'allied_helpers'],
         'powers': ['support_powers', 'faction_superweapon', 'allied_helpers'],
         'upgrades': ['power_upgrades'], 'arsenal': ['special_unit_access'], 'arsenal-first': ['special_unit_access'],
         'reinforcements': ['periodic_reinforcements'], 'reinforcements-first': ['periodic_reinforcements', 'allied_helpers'],
@@ -1720,7 +1892,11 @@ def main():
         'reinforcements-rookie': ['periodic_reinforcements', 'allied_helpers'],
         'secondary': ['faction_superweapon', 'allied_helpers', 'power_upgrades',
                       'tier_1_training', 'tier_2_training', 'tier_3_training'],
-        'defenses': ['starting_defenses'], 'healing': ['automatic_healing'], 'recon': ['reconnaissance'],
+        'defenses': ['starting_defenses', 'allied_helpers'],
+        'defenses-first': ['starting_defenses', 'allied_helpers'],
+        'defenses-second': ['starting_defenses', 'allied_helpers'],
+        'defenses-third': ['starting_defenses', 'allied_helpers'],
+        'healing': ['automatic_healing'], 'recon': ['reconnaissance'],
         'limits': ['unique_unit_capacity', 'special_unit_access'], 'income': ['special_building_income'],
         'enemy-powers': [], 'powerhouses': [], 'utilities-first': [*utilities, 'allied_helpers'],
         'veteran': ['reinforcements', 'veteran_escort', 'allied_helpers'],
@@ -1731,6 +1907,12 @@ def main():
         'lab-health-first': ['lab_durability'], 'lab-health-middle': ['lab_durability'],
         'lab-health': ['lab_durability'],
         'lab-health-support': ['lab_durability', 'lab_emergency_repair', 'lab_reserve_squad', 'allied_helpers'],
+        'construction': ['cheaper_construction'], 'production': ['cheaper_production'],
+        'building-limits': ['special_building_limit'],
+        'economy-first': ['cheaper_construction', 'cheaper_production', 'special_building_limit', 'fundraising'],
+        **{f'fundraising-{rank}': ['fundraising'] for rank in range(1, 5)},
+        'fundraising-mixed': ['fundraising', 'allied_helpers'],
+        'fundraising-guest': ['allied_helpers'],
     }
     from randomizer.final_fortress.challenges import definition
     for profile in args.profiles:
@@ -1744,7 +1926,16 @@ def main():
                 plan = build_run_plan(
                     config, difficulty=difficulty, seed='FF-MAP-AUDIT-' + name,
                     player_country=country, selected_perks=selected,
-                    perk_ranks={entry['id']: (args.lab_reserve_rank if args.lab_reserve_rank is not None
+                    perk_ranks={entry['id']: (args.starting_buildings_rank if args.starting_buildings_rank is not None
+                                                  and entry['id'] == 'starting_buildings'
+                                             else args.starting_army_rank if args.starting_army_rank is not None
+                                                  and entry['id'] == 'reinforcements'
+                                             else args.reinforcement_rank if args.reinforcement_rank is not None
+                                                  and entry['id'] == 'periodic_reinforcements'
+                                             else {'defenses-first': 1, 'defenses-second': 2, 'defenses-third': 3}[profile]
+                                                  if profile in ('defenses-first', 'defenses-second', 'defenses-third')
+                                                  and entry['id'] == 'starting_defenses'
+                                             else args.lab_reserve_rank if args.lab_reserve_rank is not None
                                                   and entry['id'] == 'lab_reserve_squad'
                                              else 1 if (profile == 'secondary' and entry['id'] == 'faction_superweapon'
                                                   or profile == 'arsenal-first' and entry['id'] == 'special_unit_access'
@@ -1755,11 +1946,16 @@ def main():
                                              else 1 if profile == 'veteran' and entry['id'] == 'veteran_escort'
                                              else 7 if profile == 'reinforcements-veteran' and entry['id'] == 'periodic_reinforcements'
                                              else 6 if profile == 'reinforcements-rookie' and entry['id'] == 'periodic_reinforcements'
+                                             else 1 if profile == 'economy-first'
+                                             else int(profile[-1]) if profile.startswith('fundraising-')
+                                                  and profile[-1].isdigit() and entry['id'] == 'fundraising'
                                              else len(ranks(entry))) for entry in config['perks']},
                     selected_challenges=selected_challenges,
                     challenge_stacks={entry['id']: maximum(entry) for entry in config['challenges']},
                     wave_multiplier=10 if profile == 'maximum' else 1, mental_ai_boost=args.mental_ai_boost,
-                    coop_players=[f'Fortress{i + 1}' for i in range(args.humans)] if args.humans > 1 else ())
+                    coop_players=[f'Fortress{i + 1}' for i in range(args.humans)] if args.humans > 1 else (),
+                    fundraising_ranks=([4, 1, 0][:args.humans] if profile == 'fundraising-mixed'
+                                       else [0, 4, 2][:args.humans] if profile == 'fundraising-guest' else None))
                 preloads = {}
                 data = build_map(GAME_ROOT, {'id': hashlib.md5(name.encode()).hexdigest(), 'plan': plan},
                                  rules, preloads=preloads)

@@ -147,16 +147,55 @@ def validate_camp_access(writer, plan):
                 raise ValueError('Final Fortress camp overlaps a protected enemy base: ' + camp['id'])
 
 
+def generator_access(plan, rules, art):
+    """Return actual generator footprints and reserved production/arrival space."""
+    from .maps import perk_layout
+    from .player_perks import coalition
+    generators = []
+    reserved = set()
+    effects = plan['effects']
+    for actor, country, waypoint in coalition(plan):
+        layout = perk_layout(plan['map'], waypoint, country)
+        if not layout:
+            continue
+        p = layout['units']
+        # Two cells around every side let arrivals turn and leave their apron.
+        reserved.update((p['x'] + dx, p['y'] + dy)
+                        for dx in range(-2, 7) for dy in range(-2, 5))
+        placements = [(kind, layout['buildings'][i]) for i, kind in
+                      enumerate(effects.get('starting_buildings', []))]
+        placements.extend((kind, layout['power'][i]) for i, kind in
+                          enumerate(effects.get('starting_power_buildings', [])))
+        for kind, p in placements:
+            row = dict(rules[kind])
+            row.setdefault('Image', kind)
+            cells = {(p['x'] + dx, p['y'] + dy) for dx, dy in foundation(row, art)}
+            if int(row.get('Power', '0')) > 0:
+                generators.append((actor, kind, p, cells))
+            else:
+                # Keep native exits and refinery docking edges free on all sides.
+                reserved.update((x + dx, y + dy) for x, y in cells
+                                for dx in range(-1, 2) for dy in range(-1, 2))
+    return generators, reserved
+
+
 def validate_placements(writer, rules, plan=None):
     """Reject off-map added objects before any runtime files are written.
 
-    Evaluate ground level and a conservative 14-level terrain allowance to keep
-    elevated foundations inside the visible rectangle without a platform-
-    specific LZO dependency at launch. The terrain audit checks actual heights.
+    Evaluate ground level and the map's audited maximum terrain height (or a
+    conservative 14-level allowance) without a platform-specific LZO dependency
+    at launch. The terrain audit verifies the configured height bound.
     """
     from randomizer.maps.ini import section_value_map
     bounds = PlayableBounds(section_value_map(writer.lines, 'Map'))
+    maximum_height = (plan['map'].get('maximum_terrain_height', 14)
+                      if plan and plan.get('plan_version', 1) >= 33 else 14)
     art = installed_art()
+    if plan and plan.get('plan_version', 1) >= 37:
+        generators, access = generator_access(plan, rules, art)
+        for actor, kind, position, cells in generators:
+            if cells & access:
+                raise ValueError(f'Final Fortress {kind} for {actor} blocks a building exit or reinforcement apron.')
     reserved = set()
     if plan and plan.get('plan_version', 1) >= 23:
         points = section_value_map(writer.lines, 'Waypoints')
@@ -173,7 +212,7 @@ def validate_placements(writer, rules, plan=None):
             row.setdefault('Image', kind)
             offsets = foundation(row, art) if category == 'Structures' else {(0, 0)}
             cells = {(x + dx, y + dy) for dx, dy in offsets} or {(x, y)}
-            if not bounds.contains(cells, maximum_height=14):
+            if not bounds.contains(cells, maximum_height=maximum_height):
                 raise ValueError(f'Final Fortress {kind} at ({x}, {y}) extends outside playable map bounds.')
             if cells & reserved:
                 raise ValueError(f'Final Fortress {kind} at ({x}, {y}) blocks an MCV deployment area.')

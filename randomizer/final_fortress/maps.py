@@ -7,6 +7,24 @@ from pathlib import Path
 from randomizer.maps.ini import IniLines, section_value_map, merge_ini_section_values
 
 
+def perk_layout(definition, waypoint, country):
+    """Resolve the native faction's utility and production footprints.
+
+    Arrival aprons stay common to every faction. Frozen older runs retain
+    their original shared layout when no faction overrides are present.
+    """
+    from randomizer.challenges.catalogue import SIDE_COUNTRIES, SIDE_FAMILIES
+    layout = definition.get('perk_layouts', {}).get(str(waypoint))
+    if layout is None:
+        return None
+    family = dict(zip(SIDE_COUNTRIES, SIDE_FAMILIES))[country]
+    utility = layout.get('faction_layouts', {}).get(family)
+    if utility is None:
+        return layout
+    return {**layout, 'power': utility['power'],
+            'buildings': [utility['generator'], *layout['buildings'][1:]]}
+
+
 def map_definitions(config):
     return [entry for entry in (config['map'], *config.get('additional_maps', [])) if entry is not None]
 

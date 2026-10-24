@@ -1,6 +1,7 @@
 """Ranked, opt-in survival perks; no campaign reward or purchase state."""
 
 from copy import deepcopy
+from collections import Counter
 
 from randomizer.challenges.catalogue import SIDE_COUNTRIES
 
@@ -10,7 +11,9 @@ def ranks(perk):
 
 
 def rank_limit(perk_id):
-    return {'periodic_reinforcements': 8, 'lab_reserve_squad': 10}.get(perk_id, 6)
+    return {'reinforcements': 8, 'periodic_reinforcements': 12, 'lab_reserve_squad': 10,
+            'cheaper_construction': 5, 'cheaper_production': 5,
+            'special_building_limit': 3, 'fundraising': 4}.get(perk_id, 6)
 
 
 def owned_rank(state, key):
@@ -56,7 +59,9 @@ def validate_perk(perk):
                      'special_units_by_country', 'reinforcements', 'healing_stacks',
                      'recon_stacks', 'unique_limit_stacks', 'income_stacks',
                      'lab_emergency_repair', 'lab_reserve_units_by_country', 'lab_reserve_shield_seconds',
-                     'lab_health_percent', 'lab_reserve_veterancy', 'generator_power_percent'}
+                     'lab_health_percent', 'lab_reserve_veterancy', 'generator_power_percent',
+                     'construction_discount_percent', 'unit_discount_percent',
+                     'special_building_limit_stacks', 'fundraising_stacks'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
         if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
@@ -70,7 +75,9 @@ def validate_perk(perk):
                            ('defense_percent', 60), ('allied_helpers', 2), ('power_upgrade_stacks', 6),
                            ('healing_stacks', 6), ('recon_stacks', 6),
                            ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100),
-                           ('lab_reserve_veterancy', 2), ('generator_power_percent', 150)):
+                           ('lab_reserve_veterancy', 2), ('generator_power_percent', 150),
+                           ('construction_discount_percent', 25), ('unit_discount_percent', 25),
+                           ('special_building_limit_stacks', 3), ('fundraising_stacks', 4)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -101,10 +108,11 @@ def validate_perk(perk):
                     elif sum(unit['count'] for unit in values) > 15:
                         raise ValueError('Starting armies are limited to 15 units.')
                 else:
-                    maximum = {'defenses_by_country': 16, 'support_powers_by_country': 5,
-                               'power_buildings_by_country': 12, 'special_units_by_country': 6}.get(key, 5)
-                    if not isinstance(values, list) or not 1 <= len(values) <= maximum:
-                        raise ValueError(f'{key} requires one to {maximum} native types.')
+                    maximum = {'defenses_by_country': 32, 'support_powers_by_country': 5,
+                               'power_buildings_by_country': 24, 'special_units_by_country': 6}.get(key, 5)
+                    minimum = 0 if key == 'power_buildings_by_country' else 1
+                    if not isinstance(values, list) or not minimum <= len(values) <= maximum:
+                        raise ValueError(f'{key} requires {minimum} to {maximum} native types.')
                     for value in values:
                         _techno(value)
                     if key == 'special_units_by_country':
@@ -128,8 +136,8 @@ def validate_perk(perk):
                 raise ValueError('Reinforcements must cover all playable countries.')
             for units in table.values():
                 _units(units)
-                if not 1 <= len(units) <= 6 or sum(unit['count'] for unit in units) > 30:
-                    raise ValueError('Reinforcements require 1–6 types and at most 30 units per house.')
+                if not 1 <= len(units) <= 10 or sum(unit['count'] for unit in units) > 30:
+                    raise ValueError('Reinforcements require 1–10 types and at most 30 units per house.')
                 if len({unit['type'] for unit in units}) != len(units):
                     raise ValueError('Reinforcement types must be unique within each arrival.')
         if 'tier_buffs' in effects:
@@ -147,7 +155,8 @@ def validate_perk(perk):
 def resolve_effects(config, selected, purchased, country, *, include_power=False,
                     include_power_upgrades=False, include_arsenal=False, include_utilities=False,
                     include_lab_support=False, include_lab_shield=False, include_lab_health=False,
-                    include_lab_veterancy=False, include_generator_power=False):
+                    include_lab_veterancy=False, include_generator_power=False,
+                    include_economy=False, share_starting_power=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -172,14 +181,22 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         effects['lab_reserve_veterancy'] = 0
     if include_generator_power:
         effects['generator_power_percent'] = 0
+    economy_fields = ('construction_discount_percent', 'unit_discount_percent',
+                      'special_building_limit_stacks', 'fundraising_stacks')
+    if include_economy:
+        effects.update({field: 0 for field in economy_fields})
     catalogue = {entry['id']: entry for entry in config['perks']}
     fallback = []
+    shared_power = Counter()
     for key in selected:
         rank = purchased.get(key, 1)
         entries = ranks(catalogue[key])
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_economy:
+            for field in economy_fields:
+                effects[field] = max(effects[field], current.get(field, 0))
         if include_generator_power:
             effects['generator_power_percent'] = max(
                 effects['generator_power_percent'], current.get('generator_power_percent', 0))
@@ -219,7 +236,14 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
                                ('support_powers_by_country', 'support_powers')):
             effects[target].extend(current.get(source, {}).get(country, []))
         if include_power:
-            effects['starting_power_buildings'].extend(current.get('power_buildings_by_country', {}).get(country, []))
+            power = current.get('power_buildings_by_country', {}).get(country, [])
+            if share_starting_power and key in ('starting_buildings', 'starting_defenses'):
+                # Defense grants already budget for the complete optional
+                # production base. Reuse that allowance when both are selected;
+                # building-only loadouts retain their own native power top-up.
+                shared_power |= Counter(power)
+            else:
+                effects['starting_power_buildings'].extend(power)
         if include_power_upgrades:
             effects['support_powers'].extend(current.get('superweapons_by_country', {}).get(country, []))
             effects['power_upgrade_stacks'] = max(effects['power_upgrade_stacks'], current.get('power_upgrade_stacks', 0))
@@ -230,6 +254,8 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
             effects['tier_buffs'][tier] = max(effects['tier_buffs'].get(tier, 0), value)
     if not effects['starting_units']:
         effects['starting_units'] = fallback
+    if include_power:
+        effects['starting_power_buildings'].extend(shared_power.elements())
     if include_power_upgrades:
         effects['support_powers'] = list(dict.fromkeys(effects['support_powers']))
     if sum(unit['count'] for unit in effects['starting_units']) > 15:

@@ -11,7 +11,9 @@ def reserve_staging(writer, plan, rules):
     Passable, invisible 1x1 buildings prevent construction without obstructing
     arriving units. They remain passive Neutral objects, require no ownership
     transfers and cannot grant cash, score, build adjacency or survival credit.
-    Existing scorch decals identify the reserved cells without changing terrain.
+    Native pavement tiles visibly mark the complete arrival area. The visual
+    is terrain, independent of the invisible construction reservations.
+    Plans older than 33 retain their scorch decals.
     """
     friendly = plan.get('plan_version', 1) >= 14 and bool(
         plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'))
@@ -33,6 +35,7 @@ def reserve_staging(writer, plan, rules):
                ProduceCashAmount='0', ProduceCashDelay='0')
     writer.sections[kind] = row
     _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', kind)
+    pavement = plan.get('plan_version', 1) >= 33
     aprons = []
     if friendly:
         writer.put('FFReinforcementPads', 'Type', kind)
@@ -48,12 +51,18 @@ def reserve_staging(writer, plan, rules):
             writer.put('FFEnemyWavePads', f'FFENEMY{index + 1}', cell)
             writer.put('Waypoints', 16 + index, cell + 1002)
             aprons.append((position, 5, 3))
+    if pavement:
+        from .ground import pave_spawn_areas
+        pave_spawn_areas(writer.lines, {(position['x'] + dx, position['y'] + dy)
+                                       for position, width, height in aprons
+                                       for dx in range(width) for dy in range(height)})
     for position, width, height in aprons:
         for dx in range(width):
             for dy in range(height):
                 _place(writer, 'Structures', f'Neutral,{kind},256,{position["x"] + dx},'
                        f'{position["y"] + dy},64,None,1,0,1,0,0,None,None,None,0,0')
-                _place(writer, 'Smudge', f'BURNT01,{position["x"] + dx},{position["y"] + dy},0')
+                if not pavement:
+                    _place(writer, 'Smudge', f'BURNT01,{position["x"] + dx},{position["y"] + dy},0')
 
 
 def build_schedule(plan):
@@ -74,7 +83,20 @@ def build_schedule(plan):
     return [{'seconds': seconds, 'groups': deepcopy(groups)} for seconds in times]
 
 
-def apply_reinforcements(writer, plan, rules, player_aliases, finished, *, friendly_clocks=None):
+def reinforcement_overrides(writer, player_aliases):
+    """Resolve friendly buffs and conversion links back to original identities."""
+    inverse = {alias: original for original, alias in player_aliases.items()}
+    overrides = {}
+    for original, alias in player_aliases.items():
+        row = deepcopy(writer.sections[alias])
+        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water'):
+            row[field] = inverse.get(row.get(field), row.get(field, 'none'))
+        overrides[original] = row
+    return overrides
+
+
+def apply_reinforcements(writer, plan, rules, player_aliases, finished, *, friendly_clocks=None,
+                         reserved_types=None):
     """Reserve a complete arrival until all its private unit types disappear.
 
     Native type-absence checks remain valid after team disbanding, capture and
@@ -88,16 +110,11 @@ def apply_reinforcements(writer, plan, rules, player_aliases, finished, *, frien
     if not schedule:
         return
     effect = plan['effects']['reinforcements']
-    inverse = {alias: original for original, alias in player_aliases.items()}
-    overrides = {}
-    for original, alias in player_aliases.items():
-        row = deepcopy(writer.sections[alias])
-        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water'):
-            row[field] = inverse.get(row.get(field), row.get(field, 'none'))
-        overrides[original] = row
+    overrides = reinforcement_overrides(writer, player_aliases)
     if plan.get('plan_version', 1) >= 17:
         from .friendly_pool import apply_friendly_pool
-        apply_friendly_pool(writer, plan, rules, overrides, finished, friendly_clocks=friendly_clocks)
+        apply_friendly_pool(writer, plan, rules, overrides, finished, friendly_clocks=friendly_clocks,
+                            reserved_types=reserved_types)
         return
     ready = [writer.flag(f'Friendly arrival {i + 1} ready') for i in range(len(schedule))]
     spawned = [writer.flag(f'Friendly arrival {i + 1} spawned') for i in range(len(schedule))]

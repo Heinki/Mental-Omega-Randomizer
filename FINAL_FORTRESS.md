@@ -29,10 +29,12 @@ spawned, regardless of the purchased helper rank. The three hostile AIs keep
 their existing starts and wave rules. Co-op does not automatically multiply
 enemy populations; the host still selects difficulty and wave multiplier.
 
-Everyone uses the host's faction and enabled perk ranks for that run, including
+Everyone uses the host's faction and enabled perk ranks for that run, except
+Fundraising, which uses each human's own enabled purchased rank. Shared perks include
 starting grants, production/unit/defense bonuses, support powers and periodic
 reinforcements. Human armies and reinforcements remain under human control.
-Guest-owned perks do not stack onto the host's loadout. Each player's permanent
+Guest-owned perks do not stack onto the host's loadout. AI helpers use the host's
+Fundraising rank. Each player's permanent
 perks and selections remain their own for future solo or hosted runs.
 
 Survival milestones, camp-pickup Defensive Points and victory/Challenge bonuses
@@ -66,7 +68,8 @@ firewall helper includes these ports; see [connection setup](COOP_CONNECTION_GUI
 
 Choose **Miners in the Sun** or **The Sky Mountain** in **Defense setup → Map**.
 The selection is saved per profile and frozen into each run. In co-op the host
-chooses the map; guests validate and play that same map with the host's perks.
+chooses the map; guests validate and play that same map with the host's shared
+perks and their own Fundraising ranks.
 
 **The Sky Mountain** uses `MapsMO/Standard/f_skymountain.map`, **150 × 160**.
 The player keeps screenshot position **1**, native waypoint **0**, at **(114, 115)**.
@@ -77,8 +80,8 @@ the second/third co-op humans. Three enemies keep southern screenshot positions
 Six guarded camp crates are spread across the southern approaches, with at least
 32 cells between centers. Their full guard formations stay away from friendly
 starts and protected enemy bases. The Lab starts beside the host at **(119, 110)**.
-Separate layouts cover every friendly house's buildings, sixteen defenses,
-twelve power plants, starting army, harvesters and reinforcement apron. Enemy
+Separate layouts cover every friendly house's buildings, thirty-two defenses,
+twenty-two power plants, starting army, harvesters and reinforcement apron. Enemy
 arrival aprons and twenty-four defenses per base use their own southern layouts.
 The original map's fifty ambient triggers and fifty-three local variables are
 removed from generated Fortress bytes, with their object tags detached. The
@@ -290,7 +293,7 @@ Compiled EXEs always use Standard progression, hide the profile selector and
 reject all-unlocks initialization, even if a testing save is copied beside
 their ordinary data. Personal progression files are not included by the EXE
 build's explicit asset/config packaging rules.
-All twenty-five perks are purchased and enabled at maximum rank,
+All configured perks are purchased and enabled at maximum rank,
 including both faction superweapons and two helpers. The initial faction is
 Russia, difficulty Normal, wave multiplier x1; Challenge modifiers start off.
 Switch faction or disable individual perks to isolate effects. This profile
@@ -316,10 +319,14 @@ rank's effect a second time. Prices are paid once per rank.
 | Lab reserve squad | 15 / 25 / 40 / 60 / 85 / 115 / 150 / 200 / 260 / 330 | Ten cumulative ranks: 4 / 6 / 9 / 12 / 15 / 18 / 21 / 25 / 25 / 25 units per friendly house, with advanced infantry, artillery, heavy and special units at later ranks. Rank 9 is Veteran; rank 10 is Elite. Once below 50% Lab health, with 10 seconds of Lab-only Iron Curtain, outside the periodic cap |
 | Supply cache | 30 / 60 / 120 / 220 / 360 / 540 | Six ranks, +2,000 credits each, up to +12,000 |
 | Production speed | 40 / 80 / 140 / 220 / 340 | 25% shorter infantry, vehicle/naval, aircraft, building and defense production time |
-| Starting army | 40 / 80 / 140 / 220 / 340 | 3 / 6 / 9 / 12 / 15 faction units; advanced infantry, artillery, T3 vehicles, one faction hero at rank 5 |
+| Cheaper Construction | 40 / 80 / 140 / 220 / 340 | 5% lower building and defense costs per rank, up to 25% |
+| Cheaper Production | 40 / 80 / 140 / 220 / 340 | Separately purchased 5% lower infantry, vehicle/naval and aircraft costs per rank, up to 25% |
+| Special Building Limit | 150 / 300 / 550 | +1 / +2 / +3 to positive special-building limits; normal access requirements remain |
+| Fundraising | 120 / 240 / 420 / 650 | Automatically deposit 1,000 / 2,000 / 3,000 / 4,000 credits every 300 in-game seconds, starting at five minutes |
+| Starting army | 40 / 80 / 140 / 220 / 340 / 500 / 750 / 1,100 | Eight ranks: 3 / 6 / 9 / 12 / 15 / 15 / 15 / 15 units, with up to nine types; support infantry, specialist armor, faction heroes and heavy aircraft |
 | Veteran army | 60 / 120 | Veteran, then Elite (highest veterancy); two infantry at that rank instead if Starting army is disabled |
-| Starting buildings | 50 / 90 / 150 / 230 / 350 | Power plant, barracks, refinery with harvester, radar, war factory |
-| Starting defenses | 40 / 80 / 150 / 260 | Four of every unlocked defense type through T3, plus starting power plants |
+| Starting buildings | 50 / 90 / 150 / 230 / 350 | Power plant, barracks, refinery with harvester, radar, war factory; extra native generators where needed for spare starting power |
+| Starting defenses | 40 / 80 / 150 / 260 | Eight of every unlocked defense type through T3, plus enough starting power plants |
 | Veteran defenses | 120 | Starting and subsequently built defenses begin veteran |
 | Defense firepower | 100 / 200 / 360 / 560 / 820 / 1,160 | Six ranks, +10% damage, fire rate and range each, up to +60% |
 | Tier 1 units | 200 / 300 / 450 / 650 / 900 / 1,250 | Six ranks, +5% health, damage and fire rate each, up to +30% |
@@ -331,7 +338,7 @@ rank's effect a second time. Prices are paid once per rank.
 | Satellite intelligence | 150 | Reveal the entire map immediately |
 | Allied helpers | 300 / 600 | Up to two normal skirmish AIs sharing the player's faction and enabled perks |
 | Special unit access | 300 / 600 / 1,000 | One additional faction special production unlock per rank, retaining earlier unlocks |
-| Periodic reinforcements | 80 / 160 / 280 / 440 / 650 / 900 / 1,200 / 1,600 | Every five minutes: 10 / 14 / 18 / 21 / 24 / 25 units; rank 7 makes the full roster Veteran, rank 8 Elite. Shared 150-unit living cap |
+| Periodic reinforcements | 80 / 160 / 280 / 440 / 650 / 900 / 1,200 / 1,600 / 2,100 / 2,700 / 3,400 / 4,200 | Twelve ranks, every five minutes: 10 / 14 / 18 / 21 / 24 / 25 / 25 / 25 / 25 / 25 / 25 / 30 units; up to ten types. Rank 7 is Veteran, rank 8 onward Elite. Shared 150-unit living cap |
 | Automatic healing | 100 / 220 / 400 | Eligible rookie units and defenses heal 1% / 2% / 3% of maximum HP per native healing tick; stronger existing healing remains |
 | Sight and stealth detection | 80 / 160 / 280 | +1 / +2 / +3 sight, plus supported cloak sensors; existing longer sensor ranges remain |
 | Unique-unit capacity | 150 / 300 / 550 | +1 / +2 / +3 to eligible positive live-unit production limits, including unlocked specials; no new access |
@@ -339,6 +346,43 @@ rank's effect a second time. Prices are paid once per rank.
 
 At Starting army rank 5, PsiCorps receives Libra, Scorpion Cell receives Malver,
 and Epsilon HQ receives Rahn.
+
+The two cost perks multiply the existing friendly country cost modifiers, so
+they apply to all purchased types, including private perk copies and defenses.
+They do not alter enemy costs. Special Building Limit affects private copies of
+the normally capped Ore Purifier, Industrial Plant, Cloning Vats and Reprocessor;
+it is separate from Unique-unit capacity and does not unlock extra buildings.
+
+Fundraising deposits credits directly through Ares `Money.Amount` on a hidden,
+automatically fired one-shot superweapon. One native repeating elapsed-time
+trigger per recipient grants one payment every 300 simulation seconds. Higher
+ranks change only the amount: they never add timers or reset the interval.
+There are no money crates, units, buildings or collection steps. A private
+zero-damage warhead has no animations or physical effects. The run-finished
+flag blocks further payments after victory or objective destruction.
+
+In co-op, each guest advertises their personal enabled Fundraising rank before
+launch; the host freezes all recipients' ranks into the shared run. Each house
+has its own timer, power and payout; disabled recipients have none.
+All players need the updated Fortress lobby protocol. Buff selections and ranks
+remain fixed during a run, as with other Fortress perks. Disabling Fundraising
+before the next run generates no income power or timer for that player.
+The mechanism uses documented Ares [superweapon credit deposits](https://ares-developers.github.io/Ares-docs/new/superweapons/cost.html)
+and [automatic targeting](https://ares-developers.github.io/Ares-docs/new/superweapons/targeting.html),
+plus native FinalAlert Event 13 and Action 33. No Lua or Phobos features are required.
+The existing Special building income perk continues to improve constructed
+buildings' native payouts independently.
+
+For gameplay verification, start a fresh run with only Fundraising enabled and
+observe the credit balance at 300 and 600 simulation seconds without spending
+or harvesting around either boundary. Repeat for ranks 1–4; each payment must
+be exactly 1,000 / 2,000 / 3,000 / 4,000 credits. In co-op, use different personal
+ranks, including a disabled host and an enabled guest, and verify each balance
+independently. End the run before the next boundary to check cleanup. Check
+building/defense and unit sidebar prices separately with each discount enabled,
+then construct capped special buildings through the upgraded limit. Generated
+map audits verify the emitted rules and trigger wiring; they do not simulate
+native gameplay or prove that deposits actually occurred.
 
 Utility perks reuse reward-catalogue eligibility, exclusions and calculations,
 including linked deploy/mutation forms. They affect private player/helper
@@ -363,6 +407,18 @@ starting armies and periodic arrivals receive explicit attack-team orders;
 their unique tracked arrival types cannot rely on ordinary AI recruitment.
 Human arrivals remain under the player's control.
 
+Generated plan-33-and-later maps mark friendly and enemy arrival aprons with
+actual native pavement across the complete 5x3 area. The earlier attempt to
+use a Tech Reinforcement Pad building graphic did not render reliably in game.
+Pavement now lives in the map's ground tiles and remains visible without a
+building or placement cursor. Invisible, passable 1x1 reservations keep all
+fifteen arrival cells free of construction without affecting ownership or score.
+Only these cells' tile and subtile values change; heights, resources, scenery
+and surrounding terrain are preserved, and installed source maps are never
+rewritten. The portable terrain writer needs no system LZO library at launch.
+This visual correction also applies when regenerating a frozen plan 33 or 34;
+plans older than 33 retain their original scorch decals.
+
 Friendly periodic deliveries now use native action **80**, with the same explicit
 waypoint in both the action and TeamType. The earlier action **7** supplied no
 native placement override even when its TeamType named the protected apron.
@@ -385,7 +441,7 @@ count. Disable the owned perk to return new runs to base Lab health.
 Emergency repair has one purchase rank; the reserve has ten in new plan-29 runs.
 Reserve ranks replace the prior roster rather than adding earlier ranks again.
 Rank 1 retains its original 3 faction infantry and 1 basic vehicle. Rank 8 reaches
-the same 25-unit full roster as the periodic perk; ranks 9/10 make it Veteran/Elite.
+its own 25-unit full roster; ranks 9/10 make it Veteran/Elite.
 Large co-op reserves use finish-guarded one-use relays of at most six type/house
 teams, keeping native action lines below 511 bytes. Each house receives its own
 complete squad at its protected apron. Both perks replenish their
@@ -460,14 +516,33 @@ special copies. All three countries within each faction family currently share
 this configurable sequence. Helper AI receives the same access, but its native
 production recipes still decide which units it builds.
 
+Starting army now has eight ranks. The first five grant 3/6/9/12/15 units;
+ranks 6–8 keep fifteen units while replacing basic troops with more advanced
+roles. Support infantry stay in every rank from rank 2 onward. Specialist armor
+appears at rank 4, a faction hero at rank 5, heavy aircraft at rank 6, advanced
+support at rank 7 and another specialist role at rank 8. Every friendly house
+receives the same selected roster, and the existing 5x3 staging area remains
+sufficient. New runs use these compositions; frozen runs keep their snapshots.
+
+| Faction family | Support infantry | Specialist armor | Heavy aircraft | Later support / extra role |
+| --- | --- | --- | --- | --- |
+| Allies | Guardian G.I. | Prism Tank | Thor Gunship | Aeroblaze / Warhawk |
+| Soviets | Flak Trooper | Tesla Cruiser | Wolfhound | Nuwa Cannon / Sentinel |
+| Epsilon | Archer | Tyrant | Basilisk | Virus / Gatling Tank |
+| Foehn | Lancer | Shadray Torch Tank | Alanqa Skystation | Giantsbane / Mastodon |
+
+All twelve countries retain their own basic tanks and starting heroes. These
+additional native roles share existing player/helper unit buffs and training;
+they do not grant foreign production access.
+
 Periodic reinforcements first arrive at minute 5, then every five minutes through
-minute 55, strictly before victory. Rank 1 gives ten basic faction infantry.
-Higher ranks retain them and add four basic vehicles, four advanced infantry,
-three artillery, three T3 vehicles, then one special unit, respectively. Exact
-country rosters appear in the rank descriptions. Rank 7 retains the complete
-25-unit roster and grants Veteran arrivals; rank 8 makes them Elite, the highest
-native veterancy. Counts, five-minute timing and the living cap do not increase
-for those last two ranks. Units spawn at reviewed army staging points near each
+minute 55, strictly before victory. Plan 36 gives rank 1 six basic infantry and
+four faction support infantry. Ranks 2–6 add tanks, advanced infantry, artillery,
+heavy armor and a special unit, reaching 25 units. Rank 7 grants Veteran arrivals;
+rank 8 onward grants Elite arrivals. New ranks 9–11 retain 25 units while adding
+specialist armor, heavy aircraft and advanced support, replacing some basic
+infantry. Rank 12 adds another role and reaches 30 units in ten types. Exact
+country rosters appear in the rank descriptions. Units spawn at reviewed army staging points near each
 friendly base. Human arrivals guard for player commands; helper arrivals and
 starting armies receive explicit attack teams. Those teams consider every
 hostile house, matching native AI targeting, rather than restricting themselves
@@ -476,12 +551,16 @@ starting-army bonus. Reinforcement rank is native TeamType.VeteranLevel 1/2/3
 for Rookie/Veteran/Elite and does not promote ordinary factory production.
 
 Reinforcements have a separate **150 living-unit cap shared across the player
-and helpers**, excluding starting grants, production and enemy waves. New plan-17
-runs share fifteen reusable ten-unit groups across the entire coalition; there
+and helpers**, excluding starting grants, production and enemy waves. Plan 36
+runs share ten reusable fifteen-unit groups across the entire coalition; there
 is no fixed per-house quota. Each group remains reserved until its private types,
 including captured/converted units, disappear. A few survivors therefore hold
-at most ten slots rather than an entire 75-unit coalition arrival. Partial final
-groups still reserve ten, so this remains a conservative ceiling.
+at most fifteen slots rather than an entire coalition arrival. Partial final
+groups still reserve fifteen, so this remains a conservative ceiling. Older
+plans retain their fifteen ten-unit reservations. Rich rosters split into native
+TaskForces of at most six types. Their identities and conversion forms are
+registered and preloaded before the large clone graphs, keeping friendly
+survivor counters below the native 512-type bound and preserving unit buffs.
 
 Each house delivers its own complete roster in mixed groups and starts its next
 five-minute timer independently. A helper's incomplete arrival no longer holds
@@ -522,20 +601,46 @@ object experience values: **100 for Veteran, 200 for Elite**. TeamType ranks use
 a different representation and are unchanged. Older frozen runs keep their
 original snapshots; start a new run to apply the corrected layouts and ranks.
 
-The defense perk starts with four basic turrets in outer approach batteries.
-Each upgrade adds four of the next defense type while retaining the earlier
-groups, for **4 / 8 / 12 / 16 defenses**. New plan-15 positions are at least
-twenty map cells from their starting MCV, leaving the central expansion area
-free. Human batteries follow the marked front/right approach arc outside the
-starting structures; helper batteries also cover outer approaches. Terrain,
-whole foundations and playable edges are checked for every country. All three
-friendly starts have sixteen defense slots and twelve power-plant slots.
+Plan 35 starts the defense perk with eight basic turrets around each friendly
+base, matching the enemy's eight positions per defense type. Each upgrade adds
+another complete eight-turret ring of the next type while retaining earlier
+rings, for **8 / 16 / 24 / 32 defenses per base**. Both Fortress maps use these
+layouts for the player, AI helpers and co-op humans. Each unlocked type covers
+all eight directions, with no angular gap greater than ninety degrees between
+adjacent defenses of that type. The rings follow safe terrain
+and preserve deployment space, starting buildings, power plants and arrival
+aprons. Miners in the Sun uses its audited maximum terrain height of six
+levels for edge checks; the former fourteen-level allowance unnecessarily
+excluded the rear of the player's base. Start positions and the Lab stay in
+their original locations. Terrain, whole foundations and playable edges are
+checked for every country. All three friendly starts have thirty-two defense
+slots. Plan 37 uses separate native-faction utility layouts: thirteen Allied,
+eighteen Soviet, twenty-two Epsilon or six Foehn defense-power slots, plus
+the optional Starting buildings perk's first generator. Both sources of power
+stay close to their own MCV, including helper and co-op starts. Native
+foundations stay at least one cell from optional production buildings and two
+cells from the reinforcement apron. Other starting buildings and the complete
+defense rings retain their positions. The native terrain audit includes flat
+dark/rough grass transitions rather than incorrectly excluding those safe
+building surfaces. It also checks a walkable route from every friendly arrival
+apron beyond the utility cluster.
 Power grants use the selected faction's normal plant and cover all granted
 defenses plus the demand of the five optional starting buildings, without
 relying on that other perk's power plant. For the current Soviet values,
-ranks supply **3 / 4 / 6 / 10 Tesla Reactors**. Quantities and positions remain
-configurable. Existing committed runs retain their frozen layouts; create a new
-run to use the revised outer batteries.
+ranks supply **3 / 6 / 10 / 18 Tesla Reactors**. Quantities and positions remain
+configurable. Existing committed runs retain their frozen quantities and layouts;
+create a new run to use the denser rings and expanded power grants.
+
+Starting buildings also supplies its own power in plan 38, without requiring
+Starting defenses, a deployed Construction Yard, reactor passengers or a
+generator upgrade. Rank 4 adds one extra Allied, Soviet or Epsilon plant;
+rank 5 includes one extra Allied plant or two extra Soviet/Epsilon plants.
+Foehn's Windtrap already covers all five buildings with spare output. Lower
+ranks already have spare power and keep their original grants. Extra plants
+use the same compact utility positions around every player/helper MCV.
+When both perks are selected, they share the larger native power allowance:
+the defense perk already budgets for the entire production base. This keeps
+the combined loadout powered within the existing reviewed utility footprint.
 
 The first two support ranks remain **Airborne / Repair Drone** for Allies,
 **Spy Plane / Instant Shelter** for Soviets, **Scout Raven / Vision** for
@@ -882,12 +987,79 @@ plans 7 and 18 also regenerated successfully with explicit hostile spawn actions
 Python compilation passed. These checks leave the source map and player saves
 unchanged; the reported live placement still needs a fresh-match gameplay check.
 
-For placement changes, use `--profiles maximum defenses --difficulties normal
+For placement changes, use `--profiles maximum defenses-first defenses-second
+defenses-third defenses --difficulties normal
 --terrain` to check the twelve factions with and without other starting perks.
 This optional check decodes the source's packed terrain using the system LZO2
 library, avoiding resources, trees, invalid foundations and uneven ground.
-The current perimeter layouts pass all 24 configurations, including the
-starting power budget and transfer-score correction.
+The defense profiles include both AI helpers and cover ranks 1–4 separately.
+The audit also checks that each rank surrounds its start and the configured
+terrain height covers the complete source map. With `--terrain`, independent
+native LZO decoding verifies that every arrival cell has pavement, with all
+other terrain bytes and every height preserved.
+
+Plan 33 passed 192 terrain-audited configurations: 72 solo variants per map,
+24 three-human Miners variants and 24 two-human Sky Mountain variants. These
+cover all twelve countries, all four defense ranks, baseline and maximum solo
+loadouts. A saved plan-32 run also regenerated and passed the map audit without
+changing its profile. Python compilation passed. The full launcher self-check
+still fails the unrelated Drakuv/RAVA unit-buff contract; live gameplay has not
+been verified for these placement changes.
+
+The pavement correction passed 60 further terrain-audited configurations:
+24 solo variants on each map and 12 three-human Miners variants, covering all
+twelve countries with and without friendly arrival reservations. Independent
+native LZO decoding confirmed the paved cells and exact preservation of all
+other terrain bytes. An existing saved plan-33 Sky Mountain run also regenerated
+and passed the terrain audit without changing its profile. Compilation passed;
+the corrected ground texture still needs an in-game appearance check.
+
+Plan 35's denser rings passed 156 terrain-audited configurations: 60 solo
+variants per map covering all four defense ranks and maximum loadouts,
+24 three-human Miners variants and 12 two-human Sky Mountain variants. All
+twelve countries passed complete-foundation, power-budget, eight-direction,
+exact defense-count and ownership checks for every friendly house. Expanded
+generator positions avoid camp guards and fixed hidden support providers.
+Existing plan-23 and plan-33 profiles still load without modification. Python
+compilation passed; live gameplay has not been checked for this density change.
+
+Plan 36's expanded armies passed 156 terrain-audited configurations across
+all twelve countries: starting ranks 3/4/6/8, periodic ranks 1/6/9/10/11/12,
+maximum loadouts on both maps and a three-human combined-army loadout.
+Checks cover exact delivered compositions, helper orders, Veteran/Elite ranks,
+six-type TaskForces, conversion tracking, early rules/buff preloads and native
+friendly survivor-counter indices below 512. Saved plans 23 and 33 still load;
+the saved plan-33 roster also regenerated and passed the terrain audit without
+changing its profile. Compilation passed. These are
+map-generation audits, not live gameplay verification.
+
+Plan 37's compact utility layouts passed 144 native terrain-audited
+configurations: all twelve countries, all four defense ranks and maximum
+loadouts on both maps, plus maximum two-human Sky Mountain and three-human
+Miners loadouts. The audit checks actual emitted generator foundations,
+ownership, proximity to the correct MCV, production-edge clearance and the
+two-cell arrival buffer. All 48 maximum-loadout artifacts additionally passed
+the level-ground path audit from each friendly apron beyond the utility
+cluster. Compilation passed; saved plan-23 and plan-33 profiles normalize
+unchanged. Start a new run to use the new utility layouts. Live gameplay has
+not been verified.
+
+Plan 38's independent starting-building power passed 96 native terrain-audited
+configurations across all twelve countries: building ranks 4 and 5 on both
+maps, rank 5 combined with all defense ranks unlocked on both maps, and rank 5
+in three-human Miners and two-human Sky Mountain. The audit requires positive
+spare power for every granted building loadout and retains foundation,
+ownership, production-exit, arrival-buffer and level-ground route checks.
+The existing map layouts and saved plan-23/plan-33 profiles remain unchanged.
+Compilation passed; live gameplay has not been verified. Start a new run to
+receive the extra generators. Use `--profiles starting-buildings
+--starting-buildings-rank 4` or `--profiles buildings-and-defenses` to inspect
+these loadouts with the map audit.
+
+Use `--profiles starting-army --starting-army-rank 6` or
+`--profiles reinforcements-first --reinforcement-rank 10` with the existing
+map-audit command to review individual roster upgrades. `combined-armies`
+enables both army perks, helpers and starting-army veterancy.
 
 Result handling batches verified receipts into one atomic save per poll,
 redraws result rows only when they change, and calculates kill bonuses once.

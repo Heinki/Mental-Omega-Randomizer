@@ -66,6 +66,17 @@ def rank_descriptions(perk, country):
         if effect.get('production_percent'):
             parts.append(f'{effect["production_percent"]}% shorter infantry, vehicle/naval, aircraft, '
                          'building and defense production time')
+        if effect.get('construction_discount_percent'):
+            parts.append(f'{effect["construction_discount_percent"]}% lower cost for all buildings and defenses')
+        if effect.get('unit_discount_percent'):
+            parts.append(f'{effect["unit_discount_percent"]}% lower infantry, vehicle/naval and aircraft costs')
+        if effect.get('special_building_limit_stacks'):
+            parts.append(f'+{effect["special_building_limit_stacks"]} to positive special-building limits; '
+                         'normal technology and ownership requirements remain')
+        if effect.get('fundraising_stacks'):
+            parts.append(f'{effect["fundraising_stacks"] * 1000:,} credits deposited automatically every '
+                         '300 in-game seconds, first payment at 5 minutes. Each human uses their own '
+                         'enabled Fundraising rank; AI helpers share the host rank. No collection required')
         if effect.get('starting_units'):
             parts.append(units(effect['starting_units']))
         if effect.get('starting_units_by_country'):
@@ -75,8 +86,17 @@ def rank_descriptions(perk, country):
         for field, label in (('buildings_by_country', 'starting faction buildings'),
                              ('defenses_by_country', 'starting faction defenses'),
                              ('power_buildings_by_country', 'power plants to cover starting demand')):
+            if field == 'power_buildings_by_country' and 'buildings_by_country' in effect:
+                continue
             if field in effect:
-                parts.append(buildings(effect[field][country]) if country else label)
+                if country:
+                    entries = list(effect[field][country])
+                    if field == 'buildings_by_country':
+                        entries.extend(effect.get('power_buildings_by_country', {}).get(country, []))
+                    if entries:
+                        parts.append(buildings(entries))
+                elif any(effect[field].values()):
+                    parts.append(label)
         if effect.get('harvesters_by_country'):
             parts.append(units(effect['harvesters_by_country'][country]) if country else '1 faction harvester')
         if effect.get('veterancy'):

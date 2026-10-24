@@ -28,6 +28,12 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
                   if building and power and float(row.get('Power', '0')) > 0
                   and float(row.get(field, '0')) > 0}
     updates = dict(generation)
+    limit = effects.get('special_building_limit_stacks', 0)
+    metadata = BUFF_TARGETS.get(original, {})
+    if building and limit and metadata.get('category') == 'special_buildings':
+        native = int(row.get('BuildLimit', '0'))
+        if native > 0 and (original, 'building_limit') in supported_pairs():
+            updates['BuildLimit'] = str(native + min(limit, 3))
     if not any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                               'unique_limit_stacks', 'income_stacks')):
         return updates

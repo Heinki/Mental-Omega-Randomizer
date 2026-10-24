@@ -241,6 +241,7 @@ def _place(writer, section, value):
 
 def _starting_perks(writer, plan, rules, aliases=None):
     """Place faction-native grants for the human and each enabled helper."""
+    from .maps import perk_layout
     from .player_perks import coalition, human_actor
     effects = plan['effects']
     aliases = aliases or {}
@@ -269,7 +270,7 @@ def _starting_perks(writer, plan, rules, aliases=None):
         tag = _transfer_tag(writer, waypoint, 'Starting perks ' + name)
         cell = int(points[str(waypoint)])
         start = {'x': cell % 1000, 'y': cell // 1000}
-        layout = plan['map'].get('perk_layouts', {}).get(str(waypoint))
+        layout = perk_layout(plan['map'], waypoint, country)
         if (effects.get('starting_buildings') or effects.get('defense_types')
                 or effects.get('starting_power_buildings')) and not layout:
             raise ValueError('Configure safe starting-building and defense positions for this map.')
@@ -648,6 +649,10 @@ def build_map(game_root, run, rules, *, preloads=None):
     # identities before houses are constructed, then refresh challenge stats.
     guard_types = [writer.wave_types([{'units': camp['guards']}], rules)
                    for camp in definition['camps']]
+    reserved_friendly_types = None
+    if plan.get('plan_version', 1) >= 36 and plan.get('reinforcement_schedule'):
+        from .friendly_pool import reserve_pool_types
+        reserved_friendly_types = reserve_pool_types(writer, plan, rules)
     enemy_aliases = {}
     overrides = apply_units(writer, plan, rules, ai_rules, route_ai=False,
                             aliases_out=enemy_aliases) if has_unit_challenges else {}
@@ -664,6 +669,8 @@ def build_map(game_root, run, rules, *, preloads=None):
     place_fortifications(writer, plan, rules, enemy_aliases)
     _starting_perks(writer, plan, rules, player_aliases)
     support_powers(writer, plan, rules, player_aliases)
+    from .economy import apply_fundraising
+    apply_fundraising(writer, plan, rules, finished)
     from .lab_support import apply_lab_support
     apply_lab_support(writer, plan, rules, player_aliases, finished, loss_trigger)
     from .powers import apply_drakuv_power
@@ -679,6 +686,12 @@ def build_map(game_root, run, rules, *, preloads=None):
     _camps(writer, plan, rules, marker_teams, finished, overrides, player_aliases,
            guard_types=guard_types)
     gate_prerequisite_overrides(writer, plan, rules)
+    if reserved_friendly_types:
+        from .reinforcements import reinforcement_overrides
+        friendly_overrides = reinforcement_overrides(writer, player_aliases)
+        for aliases in reserved_friendly_types:
+            writer.wave_types([{'units': plan['effects']['reinforcements']['units']}],
+                               rules, friendly_overrides, aliases=aliases)
     if preloads is not None:
         map_only = {'Structures', 'Units', 'Infantry', 'Aircraft', 'Triggers', 'Tags', 'Events',
                     'Actions', 'VariableNames', 'CellTags', 'Waypoints', 'TaskForces', 'TeamTypes',
@@ -686,7 +699,7 @@ def build_map(game_root, run, rules, *, preloads=None):
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
                     'FFEnemyStartingYards', 'Smudge',
                     'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
-                    'FFCampTracking', 'FFLabSupport'}
+                    'FFCampTracking', 'FFLabSupport', 'FFFundraising'}
         changed = {section: {key: value for key, value in values.items()
                             if before_perk_rules.get(section, {}).get(key) != value}
                    for section, values in writer.sections.items() if section not in map_only
@@ -694,7 +707,8 @@ def build_map(game_root, run, rules, *, preloads=None):
         preloads['rules'] = {key: row for key, row in changed.items() if row}
         preloads['ai'] = ai_sections
     from .reinforcements import apply_reinforcements
-    apply_reinforcements(writer, plan, rules, player_aliases, finished, friendly_clocks=friendly_clocks)
+    apply_reinforcements(writer, plan, rules, player_aliases, finished, friendly_clocks=friendly_clocks,
+                         reserved_types=reserved_friendly_types)
 
     if plan.get('plan_version', 1) >= 16:
         from .wave_pool import apply_wave_pool

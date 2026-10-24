@@ -3,7 +3,7 @@
 from pathlib import PurePosixPath
 import re
 
-from randomizer.challenges.catalogue import SIDE_COUNTRIES
+from randomizer.challenges.catalogue import SIDE_COUNTRIES, SIDE_FAMILIES
 
 DIFFICULTY_IDS = ('easy', 'normal', 'hard')
 WAVE_MULTIPLIERS = tuple(range(1, 11))
@@ -87,9 +87,14 @@ def _map(value):
     fields.extend(key for key in ('allied_waypoints', 'perk_layouts', 'enemy_defenses',
                                  'enemy_wave_positions', 'start_positions', 'clear_source_scripts',
                                  'wave_clock_position', 'camps_below_waypoint',
-                                 'camp_minimum_spacing', 'remove_source_units') if key in value)
+                                 'camp_minimum_spacing', 'remove_source_units',
+                                 'maximum_terrain_height') if key in value)
     _object(value, fields, 'Map')
     identifier(value['id'], 'Map ID')
+    if 'maximum_terrain_height' in value:
+        height = integer(value['maximum_terrain_height'], 'Maximum terrain height')
+        if height > 14:
+            raise ValueError('Maximum terrain height must be between 0 and 14.')
     if 'remove_source_units' in value:
         _list(value['remove_source_units'], 'Removed source units')
         for kind in value['remove_source_units']:
@@ -142,17 +147,30 @@ def _map(value):
             fields = ['buildings', 'defenses', 'units']
             if 'power' in layout:
                 fields.append('power')
+            if 'faction_layouts' in layout:
+                fields.append('faction_layouts')
             _object(layout, fields, 'Perk layout')
-            for field, counts in (('buildings', (5,)), ('defenses', (4, 16))):
+            for field, counts in (('buildings', (5,)), ('defenses', (4, 16, 32))):
                 if not isinstance(layout[field], list) or len(layout[field]) not in counts:
                     raise ValueError(f'Perk layout requires {counts} {field} positions.')
                 for position in layout[field]:
                     _position(position)
             if 'power' in layout:
-                if not isinstance(layout['power'], list) or not 1 <= len(layout['power']) <= 12:
-                    raise ValueError('Perk layout requires 1–12 power plant positions.')
+                if not isinstance(layout['power'], list) or not 1 <= len(layout['power']) <= 24:
+                    raise ValueError('Perk layout requires 1–24 power plant positions.')
                 for position in layout['power']:
                     _position(position)
+            if 'faction_layouts' in layout:
+                overrides = layout['faction_layouts']
+                if not isinstance(overrides, dict) or set(overrides) != set(SIDE_FAMILIES):
+                    raise ValueError('Faction layouts must cover all four native factions.')
+                for override in overrides.values():
+                    _object(override, ('generator', 'power'), 'Faction utility layout')
+                    _position(override['generator'])
+                    if not isinstance(override['power'], list) or not 1 <= len(override['power']) <= 24:
+                        raise ValueError('Faction utility layout requires 1–24 power plant positions.')
+                    for position in override['power']:
+                        _position(position)
             _position(layout['units'])
     if 'enemy_defenses' in value:
         defense = value['enemy_defenses']

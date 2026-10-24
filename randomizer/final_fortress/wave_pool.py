@@ -10,12 +10,13 @@ from copy import deepcopy
 
 
 def _batches(units, capacity):
-    """Keep each delivery mixed while preserving every frozen roster count."""
+    """Keep deliveries mixed within the native six-type TaskForce limit."""
     remaining = deepcopy(units)
     while any(unit['count'] for unit in remaining):
         counts = [0] * len(remaining)
         for _ in range(capacity):
-            available = [i for i, unit in enumerate(remaining) if unit['count']]
+            available = [i for i, unit in enumerate(remaining) if unit['count']
+                         and (counts[i] or sum(count > 0 for count in counts) < 6)]
             if not available:
                 break
             index = min(available, key=lambda i: (counts[i], i))
