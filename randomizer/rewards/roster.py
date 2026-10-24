@@ -653,7 +653,7 @@ def validate_drakuv_contracts():
     )
     expected_unit_buffs = {
         'ammo', 'armor', 'cloak', 'cost', 'damage', 'health', 'production',
-        'range', 'reload', 'sensors', 'sight', 'speed', 'veteran',
+        'range', 'reload', 'self_healing_rate', 'sensors', 'sight', 'speed', 'veteran',
     }
     clone_registrations = sum(
         1

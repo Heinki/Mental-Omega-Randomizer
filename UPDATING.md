@@ -28,6 +28,27 @@ The matching APWorld is placed beside the launcher. Players must install it in
 their separate Archipelago installation before generating a new multiworld.
 Do not mix launcher/APWorld releases within an existing multiworld.
 
+## Publishing with GitHub Actions
+
+Update `APP_VERSION` in `randomizer/core/version.py` and the setup guide before
+creating the release tag. Commit and push these changes first: Actions builds
+the tagged commit, so an uncommitted version bump cannot fix a tagged build.
+
+From the project root, check the intended tag before creating and pushing it:
+
+```sh
+python tools/write_release_manifest.py --verify-tag-only --tag V1.45
+```
+
+Use the tag that matches the intended `APP_VERSION`. CI checks this match before
+installing build dependencies, then verifies the complete built bundle before
+uploading assets and preparing a draft release.
+
+If a tag already points to a commit with the wrong version, rerunning that job
+still builds the same incorrect source. A failed, unpublished tag must point to
+the corrected commit, or use a new version and matching tag. Do not move a tag
+for an already published release.
+
 ## Publishing manually
 
 1. Increment `APP_VERSION` in `randomizer/core/version.py`. Use a dotted numeric

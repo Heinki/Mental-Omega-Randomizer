@@ -15,7 +15,7 @@ copies.
 Native Mental Omega challenges support randomized rewards, an optional local AI
 teammate, and synchronized two-human play. Choose houses and colors before each
 match without resetting the run. See the [challenge guide](CHALLENGES_TESTING.md)
-for setup, supported modes, and validation limits in version 1.44.5.
+for setup, supported modes, and validation limits in version 1.45.
 
 ## Disclaimer
 

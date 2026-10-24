@@ -31,6 +31,15 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-build.txt
 
+      - name: Verify source release version tag
+        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')
+        shell: powershell
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          python tools/write_release_manifest.py --verify-tag-only
+          --tag "$env:RELEASE_TAG"
+
       - name: Install pinned build dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-build.txt
 

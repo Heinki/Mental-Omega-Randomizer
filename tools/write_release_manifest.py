@@ -24,10 +24,16 @@ def apworld_manifest(path):
         return json.loads(archive.read(f'{Path(APWORLD_NAME).stem}/archipelago.json'))
 
 
+def verify_release_tag(tag):
+    """Check the source version before installing dependencies or building assets."""
+    if version_key(tag) != version_key(version.APP_VERSION):
+        raise ValueError(f'Release tag {tag!r} does not match APP_VERSION {version.APP_VERSION!r}.')
+
+
 def verify_release(output, tag=None):
     """Reject incomplete, mismatched, or damaged bundles before uploading them."""
-    if tag is not None and version_key(tag) != version_key(version.APP_VERSION):
-        raise ValueError(f'Release tag {tag!r} does not match APP_VERSION {version.APP_VERSION!r}.')
+    if tag is not None:
+        verify_release_tag(tag)
     manifest = read_json_object(output / 'release_manifest.json')
     if (manifest.get('format') != 1
             or version_key(manifest.get('launcher_version')) != version_key(version.APP_VERSION)
@@ -68,9 +74,22 @@ def main():
     parser.add_argument('--launcher', type=Path)
     parser.add_argument('--apworld', type=Path)
     parser.add_argument('--output-directory', type=Path)
-    parser.add_argument('--verify-only', action='store_true')
+    verification = parser.add_mutually_exclusive_group()
+    verification.add_argument('--verify-only', action='store_true')
+    verification.add_argument('--verify-tag-only', action='store_true',
+                              help='Check --tag against APP_VERSION without requiring release assets.')
     parser.add_argument('--tag', help='Require this GitHub tag to match APP_VERSION.')
     arguments = parser.parse_args()
+    if arguments.tag is not None:
+        try:
+            verify_release_tag(arguments.tag)
+        except ValueError as error:
+            parser.error(str(error))
+    if arguments.verify_tag_only:
+        if arguments.tag is None:
+            parser.error('--verify-tag-only requires --tag')
+        print(f'Verified release tag {arguments.tag}: APP_VERSION {version.APP_VERSION}')
+        return
     if arguments.verify_only:
         if arguments.output_directory is None:
             parser.error('--verify-only requires --output-directory')
@@ -78,8 +97,6 @@ def main():
         return
     if arguments.launcher is None or arguments.apworld is None:
         parser.error('creating release metadata requires --launcher and --apworld')
-    if arguments.tag is not None and version_key(arguments.tag) != version_key(version.APP_VERSION):
-        parser.error('--tag must match APP_VERSION')
     output = (arguments.output_directory or arguments.launcher.parent).resolve()
     output.mkdir(parents=True, exist_ok=True)
     for source, name in ((arguments.launcher, EXECUTABLE_NAME), (arguments.apworld, APWORLD_NAME)):
