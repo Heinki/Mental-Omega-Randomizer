@@ -1867,6 +1867,8 @@ def main():
                         help='Override the periodic reinforcement rank for selected arrival profiles')
     parser.add_argument('--starting-buildings-rank', type=int, choices=range(1, 6),
                         help='Override the Starting buildings rank for selected building profiles')
+    parser.add_argument('--special-building-limit-rank', type=int, choices=range(1, 4),
+                        help='Override the Special Building Limit rank for selected capacity profiles')
     parser.add_argument('--profiles', nargs='+', choices=(
                         'baseline', 'helpers', 'maximum', 'defenses', 'defenses-first', 'defenses-second',
                         'defenses-third', 'powers', 'upgrades', 'secondary',
@@ -1951,7 +1953,9 @@ def main():
                 plan = build_run_plan(
                     config, difficulty=difficulty, seed='FF-MAP-AUDIT-' + name,
                     player_country=country, selected_perks=selected,
-                    perk_ranks={entry['id']: (args.starting_buildings_rank if args.starting_buildings_rank is not None
+                    perk_ranks={entry['id']: (args.special_building_limit_rank if args.special_building_limit_rank is not None
+                                                  and entry['id'] == 'special_building_limit'
+                                             else args.starting_buildings_rank if args.starting_buildings_rank is not None
                                                   and entry['id'] == 'starting_buildings'
                                              else args.starting_army_rank if args.starting_army_rank is not None
                                                   and entry['id'] == 'reinforcements'

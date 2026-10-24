@@ -71,7 +71,7 @@ def rank_descriptions(perk, country):
         if effect.get('unit_discount_percent'):
             parts.append(f'{effect["unit_discount_percent"]}% lower infantry, vehicle/naval and aircraft costs')
         if effect.get('special_building_limit_stacks'):
-            parts.append(f'+{effect["special_building_limit_stacks"]} to positive special-building limits; '
+            parts.append(f'+{effect["special_building_limit_stacks"]} to supported special-building and capped-defense limits; '
                          'normal technology and ownership requirements remain')
         if effect.get('fundraising_stacks'):
             parts.append(f'{effect["fundraising_stacks"] * 1000:,} credits deposited automatically every '

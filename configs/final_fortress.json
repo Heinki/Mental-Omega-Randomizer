@@ -8936,7 +8936,7 @@
       {
         "id": "special_building_limit",
         "display_name": "Special Building Limit",
-        "description": "Raise positive special-building limits by 1 per rank, up to +3. Does not unlock buildings or change unit limits.",
+        "description": "Raise supported special-building and capped-defense limits by 1 per rank, up to +3, including Ultra Dome and both War Rig forms. Normal technology and faction requirements remain.",
         "gem_cost": 150,
         "effects": {
           "special_building_limit_stacks": 1

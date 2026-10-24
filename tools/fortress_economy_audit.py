@@ -31,9 +31,12 @@ def audit_economy(rows, effective, plan, rules, preloads):
 
     limit = effects['special_building_limit_stacks']
     if limit:
+        buildings = set(rules['BuildingTypes'].values())
         for kind, metadata in BUFF_TARGETS.items():
             base = rules.get(kind, {})
-            if (metadata.get('category') != 'special_buildings'
+            # Check the declared capacity contract independently of the runtime
+            # reward-pair filter, including defenses and linked mobile forms.
+            if (not metadata.get('building_limit')
                     or int(base.get('BuildLimit', '0')) <= 0
                     or not any(_eligible(base, country) for _, country, _ in coalition(plan))):
                 continue
@@ -45,6 +48,27 @@ def audit_economy(rows, effective, plan, rules, preloads):
                     f'Capacity perk changed building technology: {kind}')
             require(effective[alias].get('Prerequisite') == base.get('Prerequisite'),
                     f'Capacity perk changed building prerequisites: {kind}')
+            require(effective[kind].get('BuildLimit') == base.get('BuildLimit'),
+                    f'Capacity perk leaked onto native type: {kind}')
+            allowed = {actor for actor, country, _ in coalition(plan) if _eligible(base, country)}
+            require(set(effective[alias]['RequiredHouses'].split(',')) == allowed,
+                    f'Capacity perk changed faction access: {kind}')
+            for field in ('DeploysInto', 'UndeploysInto'):
+                target = base.get(field)
+                if not BUFF_TARGETS.get(target, {}).get('building_limit'):
+                    continue
+                target_alias = rows.get('FFPlayerTypes', {}).get(target)
+                require(target_alias in preloads['rules'] and effective[alias].get(field) == target_alias,
+                        f'Capacity transformation returns to native type: {kind}.{field}')
+                require(int(effective[target_alias]['BuildLimit']) == int(rules[target]['BuildLimit']) + limit,
+                        f'Linked form lost special-building capacity: {target}')
+        for kind in buildings:
+            alias = rows.get('FFPlayerTypes', {}).get(kind)
+            if (not alias or BUFF_TARGETS.get(kind, {}).get('building_limit')
+                    or int(effective[alias].get('TechLevel', '-1')) < 0):
+                continue
+            require(int(effective[alias].get('BuildLimit', '0')) == int(rules[kind].get('BuildLimit', '0')),
+                    f'Capacity perk changed an unsupported building limit: {kind}')
 
     personal = plan['fundraising_ranks']
     expected = {actor: personal[slot] if slot < len(personal) else personal[0]

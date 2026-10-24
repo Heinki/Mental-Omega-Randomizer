@@ -29,10 +29,11 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
                   and float(row.get(field, '0')) > 0}
     updates = dict(generation)
     limit = effects.get('special_building_limit_stacks', 0)
-    metadata = BUFF_TARGETS.get(original, {})
-    if building and limit and metadata.get('category') == 'special_buildings':
+    # Structure Capacity also covers capped defenses and their linked mobile
+    # forms (War Rig). Combat category does not determine capacity eligibility.
+    if limit and (original, 'building_limit') in supported_pairs():
         native = int(row.get('BuildLimit', '0'))
-        if native > 0 and (original, 'building_limit') in supported_pairs():
+        if native > 0:
             updates['BuildLimit'] = str(native + min(limit, 3))
     if not any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                               'unique_limit_stacks', 'income_stacks')):
@@ -46,7 +47,9 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
     healing = effects.get('healing_stacks', 0)
     if mobile_or_defense and healing and any(
             (original, kind) in pairs for kind in ('self_healing', 'self_healing_rate')):
-        updates.update(row)
+        # Healing needs the full native baseline without erasing capacity or
+        # generator improvements already accumulated above.
+        updates = {**row, **updates}
         apply_unit_buff_value(updates, target, 'self_healing', max(2, healing))
         apply_unit_buff_value(updates, target, 'self_healing_cap', 1)
         # Rookie healing is intentional from rank one. Already stronger

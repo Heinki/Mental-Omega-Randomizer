@@ -106,7 +106,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     """
     private_player = needs_countries(plan)
     effects = plan['effects']
-    from .utilities import utility_updates
+    from .utilities import supported_pairs, utility_updates
     from .arsenal import production_access, reviewed_rules
     from randomizer.rewards.catalogue import SPECIAL_REWARD_UNIT_IDS
     access = set(effects.get('special_access', []))
@@ -212,9 +212,16 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         mutation_targets = {source: target for source, variants in LINKED_BUFF_VARIANTS.items()
                             for target, entry in variants.items() if entry.get('nanofiber_stage')}
     mutation_sources = {}
+    capacity_pairs = supported_pairs() if effects.get('special_building_limit_stacks') else ()
+
+    def conversion_fields(original):
+        fields = ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass')
+        if (original, 'building_limit') in capacity_pairs:
+            fields += ('DeploysInto', 'UndeploysInto')
+        return fields
 
     def include_conversions(original):
-        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass'):
+        for field in conversion_fields(original):
             target = rules[original].get(field, '')
             if target in categories and target not in aliases:
                 aliases[target] = writer.key()
@@ -298,8 +305,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
                 _register_map_type(writer.sections, writer.lines, rules, 'WeaponTypes', clone)
                 weapons[weapon_key] = clone
             row[field] = weapons[weapon_key]
-        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass', 'FreeUnit',
-                      'PowersUpBuilding'):
+        for field in (*conversion_fields(original), 'FreeUnit', 'PowersUpBuilding'):
             if row.get(field) in aliases:
                 row[field] = aliases[row[field]]
         writer.sections[alias] = row

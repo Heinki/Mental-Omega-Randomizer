@@ -326,7 +326,7 @@ rank's effect a second time. Prices are paid once per rank.
 | Production speed | 40 / 80 / 140 / 220 / 340 | 25% shorter infantry, vehicle/naval, aircraft, building and defense production time |
 | Cheaper Construction | 40 / 80 / 140 / 220 / 340 | 5% lower building and defense costs per rank, up to 25% |
 | Cheaper Production | 40 / 80 / 140 / 220 / 340 | Separately purchased 5% lower infantry, vehicle/naval and aircraft costs per rank, up to 25% |
-| Special Building Limit | 150 / 300 / 550 | +1 / +2 / +3 to positive special-building limits; normal access requirements remain |
+| Special Building Limit | 150 / 300 / 550 | +1 / +2 / +3 to supported special-building and capped-defense limits; normal access requirements remain |
 | Fundraising | 120 / 240 / 420 / 650 | Automatically deposit 1,000 / 2,000 / 3,000 / 4,000 credits every 300 in-game seconds, starting at five minutes |
 | Starting army | 40 / 80 / 140 / 220 / 340 / 500 / 750 / 1,100 | Eight ranks: 3 / 6 / 9 / 12 / 15 / 15 / 15 / 15 units, with up to nine types; support infantry, specialist armor, faction heroes and heavy aircraft |
 | Veteran army | 60 / 120 | Veteran, then Elite (highest veterancy); two infantry at that rank instead if Starting army is disabled |
@@ -355,8 +355,14 @@ and Epsilon HQ receives Rahn.
 The two cost perks multiply the existing friendly country cost modifiers, so
 they apply to all purchased types, including private perk copies and defenses.
 They do not alter enemy costs. Special Building Limit affects private copies of
-the normally capped Ore Purifier, Industrial Plant, Cloning Vats and Reprocessor;
-it is separate from Unique-unit capacity and does not unlock extra buildings.
+the normally capped Ore Purifier, Industrial Plant, Cloning Vats and Reprocessor,
+plus Ultra Dome, Hyperion, Warpnode, Iron Guard, War Rig, Signal Inhibitor and
+Plasmerizer. Eligibility follows the shared Structure Capacity catalogue rather
+than the building's combat category, for every faction and subfaction. Both
+War Rig forms keep the upgraded limit and transform into their private copies.
+Normal technology, prerequisites and faction restrictions remain; native and
+enemy copies retain their original limits. This perk is separate from
+Unique-unit capacity and does not unlock extra buildings.
 
 Fundraising deposits credits directly through Ares `Money.Amount` on a hidden,
 automatically fired one-shot superweapon. One native repeating elapsed-time
