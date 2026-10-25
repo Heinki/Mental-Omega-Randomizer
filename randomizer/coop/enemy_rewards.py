@@ -22,7 +22,7 @@ from randomizer.maps.ini import (
 from randomizer.maps.powers import (
     append_static_startup_buildings, append_superweapon_grant_trigger,
 )
-from randomizer.rewards.catalogue import BUFF_TARGETS, canonical_reward
+from randomizer.rewards.catalogue import BUFF_TARGETS, REWARD_POOL, canonical_reward
 from randomizer.rewards.enemy_scaling import enemy_effect_values
 from randomizer.ui.cameos import installed_rules_registry
 
@@ -46,6 +46,14 @@ def _safe_enemy_unit_buffs(lines, enemies, players, counts, rewards, installed):
     }
     if not effects:
         return ()
+    # Match campaign AI scaling: tier rewards apply only to units eligible
+    # for the corresponding player buff (for example, finite-ammo units).
+    player_buff_pairs = {
+        (str(reward.get('unit') or '').upper(), reward.get('buff_type'))
+        for reward in REWARD_POOL
+        if reward.get('kind') == 'buff' and not reward.get('enemy_reward')
+        and reward.get('unit')
+    }
     map_sections = all_section_value_maps_preserve(lines)
     map_by_lower = {key.lower(): value for key, value in map_sections.items()}
     installed_by_lower = {key.lower(): value for key, value in installed.items()}
@@ -90,6 +98,8 @@ def _safe_enemy_unit_buffs(lines, enemies, players, counts, rewards, installed):
             'health', 'armor', 'sight', 'ammo', 'self_healing',
             'cloak', 'sensors', 'speed',
         ):
+            if (unit_id, buff_type) not in player_buff_pairs:
+                continue
             amount = effects.get((tier, buff_type), 0)
             if amount and buff_type == 'self_healing':
                 updated['SelfHealing'] = 'yes'
@@ -102,6 +112,7 @@ def _safe_enemy_unit_buffs(lines, enemies, players, counts, rewards, installed):
             buff_type: effects[(tier, buff_type)]
             for buff_type in ('damage', 'range', 'reload')
             if (tier, buff_type) in effects
+            and (unit_id, buff_type) in player_buff_pairs
         }
         if weapon_counts:
             cloned_weapons = {}
