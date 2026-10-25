@@ -142,6 +142,8 @@ class FinalFortressRepository:
 
         def change(state):
             from .perks import next_price, owned_rank
+            if state['run'] is not None and state['run']['status'] == 'active':
+                raise ValueError('Permanent perk purchases are locked during an active Final Fortress run.')
             rank = owned_rank(state, perk_id)
             price = next_price(perk, rank)
             if price is None:
@@ -154,6 +156,33 @@ class FinalFortressRepository:
                 state['owned_perks'].append(perk_id)
             if perk_id not in state['selected_perks']:
                 state['selected_perks'].append(perk_id)
+        return self._update(change)[0]
+
+    def refund_perk(self, config, perk_id):
+        """Remove one purchased rank and return its full Defensive Points cost."""
+        validate_config(config)
+        perk = next((entry for entry in config['perks'] if entry['id'] == perk_id), None)
+        if perk is None:
+            raise ValueError('Unknown Final Fortress perk.')
+
+        def change(state):
+            from .perks import owned_rank, ranks
+            if state['run'] is not None and state['run']['status'] == 'active':
+                raise ValueError('Permanent perk refunds are locked during an active Final Fortress run.')
+            rank = owned_rank(state, perk_id)
+            if rank == 0:
+                raise ValueError('Purchase this permanent perk before refunding it.')
+            entries = ranks(perk)
+            if rank > len(entries):
+                raise ValueError('This perk has an unsupported saved rank.')
+            state['gems'] += entries[rank - 1]['gem_cost']
+            if rank > 1:
+                state['perk_ranks'][perk_id] = rank - 1
+            else:
+                del state['perk_ranks'][perk_id]
+                state['owned_perks'].remove(perk_id)
+                if perk_id in state['selected_perks']:
+                    state['selected_perks'].remove(perk_id)
         return self._update(change)[0]
 
     def set_wave_multiplier(self, wave_multiplier):

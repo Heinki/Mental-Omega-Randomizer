@@ -535,21 +535,51 @@ class WindowController:
             'assistance_frame',
             'appearance_frame',
         )
-        required = (*normal_names, 'shop_settings_frame')
+        required = (*normal_names, 'shop_settings_frame', 'fortress_mode_settings_frame')
         if not all(hasattr(self, name) for name in required):
             return
-        shop_mode = self.progression_mode_var.get() == 'Shop Mode'
+        fortress_mode = self.final_fortress_mode_selected()
+        shop_mode = not fortress_mode and self.progression_mode_var.get() == 'Shop Mode'
         self.coop_controls_frame.grid_remove() if shop_mode else self.coop_controls_frame.grid()
         self.shop_coop_row.grid() if shop_mode else self.shop_coop_row.grid_remove()
         wide = int(width or 0) >= 840
         buff_columns = 1 if int(width or 0) < 600 else 2
-        layout_signature = (shop_mode, wide, buff_columns)
+        layout_signature = (fortress_mode, shop_mode, wide, buff_columns)
         if self.__dict__.get('_settings_layout_signature') == layout_signature:
             return
         self._settings_layout_signature = layout_signature
         widgets = [getattr(self, name) for name in required]
         for widget in widgets:
             widget.grid_forget()
+
+        normal_intro = self.__dict__.setdefault(
+            '_campaign_settings_intro_text', self.settings_intro_label.cget('text'))
+        self.settings_intro_label.configure(text=(
+            'Choose a game mode, configure Final Fortress co-op and launcher appearance. '
+            'Defense setup and permanent perks are in the Final Fortress tab.'
+            if fortress_mode else normal_intro))
+        self.appearance_frame.configure(
+            text='Appearance' if fortress_mode else 'Appearance & Hidden Settings')
+        for widget in (self.map_colors_frame, self.hide_reward_details_check,
+                       self.hide_locked_grid_missions_check):
+            widget.grid_remove() if fortress_mode else widget.grid()
+
+        if fortress_mode:
+            self.settings_frame.columnconfigure(0, weight=1, uniform='')
+            self.settings_frame.columnconfigure(1, weight=1 if wide else 0, uniform='')
+            self.settings_intro_label.grid(
+                row=0, column=0, columnspan=2 if wide else 1,
+                sticky='ew', pady=(0, 8))
+            self.fortress_mode_settings_frame.grid(
+                row=1, column=0, columnspan=2 if wide else 1,
+                sticky='ew', pady=(0, 8))
+            self.mission_appearance_column.grid(
+                row=2, column=0, sticky='new', padx=(0, 4) if wide else 0)
+            self.appearance_frame.grid(
+                row=2 if wide else 3, column=1 if wide else 0,
+                sticky='new', padx=(4, 0) if wide else 0, pady=(8, 0))
+            self.on_settings_content_configure()
+            return
 
         if shop_mode:
             self.settings_frame.columnconfigure(0, weight=1, uniform='')

@@ -310,6 +310,17 @@ def _build_right_panel(self, main_frame):
     settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
     self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
 
+    self.fortress_mode_settings_frame = ttk.Frame(settings_frame)
+    self.fortress_mode_settings_frame.columnconfigure(1, weight=1)
+    ttk.Label(self.fortress_mode_settings_frame, text='Game Mode').grid(
+        row=0, column=0, sticky='w', padx=(0, 8))
+    self.fortress_settings_mode_combo = ttk.Combobox(
+        self.fortress_mode_settings_frame, textvariable=self.game_mode_var,
+        values=self.game_mode_choices, state='readonly', width=20)
+    self.fortress_settings_mode_combo.grid(row=0, column=1, sticky='ew')
+    self.fortress_settings_mode_combo.bind('<<ComboboxSelected>>', self.on_game_mode_changed)
+    self.fortress_settings_mode_combo.bind('<MouseWheel>', self.on_settings_control_mousewheel)
+
     seed_settings_frame = ttk.LabelFrame(
         settings_frame,
         text='Seed & Run',

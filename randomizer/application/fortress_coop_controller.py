@@ -35,6 +35,10 @@ class FortressCoopController(FortressCoopLaunchController):
         locked = (bool(sessions) or self._final_fortress_preparing
                   or (process is not None and process.poll() is None))
         enabled = bool(self.final_fortress_coop_var.get())
+        mode = getattr(self, 'fortress_settings_mode_combo', None)
+        if mode is not None:
+            mode.configure(state='disabled' if locked or getattr(self, '_coop_lobby', None)
+                           or getattr(self, '_coop_busy', False) else 'readonly')
         for prefix in ('', 'shop_'):
             fields = getattr(self, prefix + 'fortress_player_count_fields', ())
             for field in fields:
@@ -59,8 +63,7 @@ class FortressCoopController(FortressCoopLaunchController):
             if not fortress:
                 continue
             if include is not None:
-                include.configure(text='Include challenge maps (unavailable in Final Fortress)', state='disabled')
-                include.grid()
+                include.grid_remove()
             for field in getattr(self, prefix + 'challenge_fields', ()):
                 field.grid_remove()
             for suffix in ('challenge_local_frame', 'challenge_availability_label'):

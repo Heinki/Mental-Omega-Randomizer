@@ -593,9 +593,11 @@ def build_map(game_root, run, rules, *, preloads=None):
         # Change only this private objective. Its initial health stays full;
         # native damage thresholds and emergency repair use the new Strength.
         objective['Strength'] = str(int(objective['Strength']) * (100 + plan['effects']['lab_health_percent']) // 100)
+    # Clear inherited garrison slots as well as blocking entry; CALAB has ten.
     objective.update({'Image': building['type'], 'Name': 'Final Fortress',
                       'Insignificant': 'no', 'Selectable': 'yes',
                       'Capturable': 'no', 'CanBeOccupied': 'no', 'Unsellable': 'yes',
+                      'MaxNumberOccupants': '0', 'CanOccupyFire': 'no',
                       'ImmuneToPsionics': 'yes', 'Chronoshift.Allow': 'no'})
     objective.update({'ProduceCashStartup': str(plan['effects']['starting_credits']),
                       'ProduceCashAmount': '0', 'ProduceCashDelay': '0'})

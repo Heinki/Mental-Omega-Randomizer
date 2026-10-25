@@ -29,6 +29,11 @@ from .fortress_coop_controller import FortressCoopController
 class FinalFortressController(FortressCoopController):
     def apply_color_mode(self):
         super().apply_color_mode()
+        canvas = getattr(self, 'final_fortress_canvas', None)
+        if canvas is not None:
+            canvas.configure(background=self.ui_palette()['background'])
+        for pane in getattr(self, 'final_fortress_panes', ()):
+            pane.configure(background=self.ui_palette()['background'])
         for name in ('final_fortress_perk_details', 'final_fortress_challenge_details'):
             details = getattr(self, name, None)
             if details is not None:
@@ -202,6 +207,7 @@ class FinalFortressController(FortressCoopController):
                     notebook.forget(tab)
             if str(self.final_fortress_tab) not in notebook.tabs():
                 notebook.insert(0, self.final_fortress_tab, text=DISPLAY_NAME)
+            notebook.tab(self.settings_tab, text='Settings')
             notebook.select(self.final_fortress_tab)
             self.on_workspace_tab_changed()
             return
@@ -353,14 +359,18 @@ class FinalFortressController(FortressCoopController):
         if tree is not None:
             from randomizer.final_fortress.perks import ranks, owned_rank, next_price
             selection = tree.selection()
+            perks_locked = self.final_fortress_perks_locked()
             for perk in config['perks']:
                 key = perk['id']
                 rank = owned_rank(state, key)
                 status = ('Enabled' if key in state['selected_perks'] else 'Disabled'
                           if rank else 'Not purchased')
                 price = next_price(perk, rank)
-                values = (perk['display_name'], f'{price} Defensive Points' if price is not None else 'MAX',
-                          f'{rank}/{len(ranks(perk))} · {status}', perk['description'])
+                values = (perk['display_name'], '◀' if rank and not perks_locked else '',
+                          f'{rank}/{len(ranks(perk))}',
+                          '▶' if not perks_locked and price is not None and state['gems'] >= price else '',
+                          status, f'{price} Defensive Points' if price is not None else 'MAX',
+                          perk['description'])
                 if tree.exists(key):
                     tree.item(key, values=values)
                 else:
@@ -407,6 +417,9 @@ class FinalFortressController(FortressCoopController):
             'Enemy and helper AI collect for the player; in co-op, AI pickups deliver cash/squads to the host. '
             'Each crate awards its reward and Defensive Points once. Crate rewards are frozen for each run.',
             'Perk purchases and upgrades enable that perk automatically for subsequent runs. '
+            'In Permanent perks, the left arrow refunds one rank at its full Defensive Points cost; '
+            'the right arrow buys the next rank. Refunded points can be spent on another perk. '
+            'Perk purchases and refunds are locked during an active run. '
             'Challenge uses Grid enemy stat and production buffs, excluding vision, sensors and defense buffs. '
             'Drag or Shift-click to select a range; '
             'Ctrl/Alt-click adds or removes individual rows; Select all or Ctrl+A selects every modifier. '
@@ -678,11 +691,53 @@ class FinalFortressController(FortressCoopController):
         country = self.final_fortress_country_choices[self.final_fortress_country_var.get()]
         self._final_fortress_action(lambda: self.final_fortress_repository.set_player_country(country))
 
+    def final_fortress_perks_locked(self):
+        state = self.final_fortress_state
+        process = getattr(self, 'active_game_process', None)
+        return bool(state is None or self._final_fortress_preparing
+                    or (process is not None and process.poll() is None)
+                    or (state['run'] is not None and state['run']['status'] == 'active'))
+
+    def on_final_fortress_perk_click(self, event):
+        tree = self.final_fortress_perks_tree
+        if tree.identify_region(event.x, event.y) != 'cell':
+            return
+        key = tree.identify_row(event.y)
+        column = tree.column(tree.identify_column(event.x), 'id')
+        if not key or column not in ('decrease', 'increase'):
+            return
+        tree.selection_set(key)
+        tree.focus(key)
+        tree.focus_set()
+        if tree.set(key, column):
+            if column == 'decrease':
+                self.refund_final_fortress_perk()
+            else:
+                self.buy_final_fortress_perk()
+        return 'break'
+
     def buy_final_fortress_perk(self):
+        from randomizer.final_fortress.perks import next_price, owned_rank
+        if self.final_fortress_perks_locked():
+            return 'break'
         selection = self.final_fortress_perks_tree.selection()
         if selection:
+            perk = next(entry for entry in self.final_fortress_config['perks'] if entry['id'] == selection[0])
+            price = next_price(perk, owned_rank(self.final_fortress_state, selection[0]))
+            if price is None or self.final_fortress_state['gems'] < price:
+                return 'break'
             self._final_fortress_action(lambda: self.final_fortress_repository.purchase_perk(
                 self.final_fortress_config, selection[0]))
+        return 'break'
+
+    def refund_final_fortress_perk(self):
+        if self.final_fortress_perks_locked():
+            return 'break'
+        selection = self.final_fortress_perks_tree.selection()
+        if selection and selection[0] in self.final_fortress_state['owned_perks']:
+            self._final_fortress_action(lambda: self.final_fortress_repository.refund_perk(
+                self.final_fortress_config, selection[0]))
+        return 'break'
 
     def select_final_fortress_perk(self, _event=None):
         from randomizer.final_fortress.perks import ranks, owned_rank, next_price
@@ -692,16 +747,18 @@ class FinalFortressController(FortressCoopController):
         state = self.final_fortress_state
         if not selection or state is None:
             show_perk_details(self, 'Select a perk to see its ranks.')
+            self.final_fortress_refund_perk_button.configure(state='disabled')
             self.final_fortress_buy_perk_button.configure(state='disabled')
             self.final_fortress_toggle_perk_button.configure(state='disabled')
             return
         perk = next(entry for entry in self.final_fortress_config['perks'] if entry['id'] == selection[0])
         rank = owned_rank(state, perk['id'])
         price = next_price(perk, rank)
-        process = getattr(self, 'active_game_process', None)
-        busy = self._final_fortress_preparing or (process is not None and process.poll() is None)
+        busy = self.final_fortress_perks_locked()
         enabled = perk['id'] in state['selected_perks']
         show_perk_details(self, rank_descriptions(perk, state['preferences']['player_country']))
+        self.final_fortress_refund_perk_button.configure(
+            state='normal' if rank and not busy else 'disabled')
         self.final_fortress_buy_perk_button.configure(
             text='Maximum rank' if price is None else 'Upgrade' if rank else 'Buy',
             state='disabled' if busy or price is None or state['gems'] < price else 'normal')
