@@ -40,6 +40,46 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def audit_wave_rosters(config, rules):
+    """Check every composition, including types a particular seed never draws."""
+    from randomizer.final_fortress.config import stage_compositions, wave_rosters
+    from randomizer.final_fortress.engine import _MapWriter
+    from randomizer.final_fortress.player_perks import _eligible
+    from randomizer.maps.enemy_powerhouses import POWERHOUSE_UNITS_BY_FAMILY
+
+    infantry = set(rules['InfantryTypes'].values())
+    vehicles = set(rules['VehicleTypes'].values())
+    families = dict(zip(SIDE_COUNTRIES, SIDE_FAMILIES))
+    for country, stages in wave_rosters(config, 'normal').items():
+        kinds = set()
+        for stage in stages:
+            for composition in stage_compositions(stage):
+                units = [unit['type'] for unit in composition['units']]
+                label = f'{country}/{stage["from_seconds"]}/{composition["id"]}'
+                require(len(units) == len(set(units)), f'Duplicate wave identity: {label}')
+                require(set(units) & infantry and set(units) & vehicles,
+                        f'Wave composition requires infantry and vehicles: {label}')
+                for kind in units:
+                    require(kind in infantry | vehicles and _eligible(rules[kind], country)
+                            and rules[kind].get('MovementZone') != 'Fly',
+                            f'Ineligible ground wave unit {kind}: {label}')
+                kinds.update(units)
+        for stage in config.get('wave_air_support', []):
+            for unit in stage['units_by_country'][country]:
+                kind = unit['type']
+                require(kind in vehicles and _eligible(rules[kind], country)
+                        and rules[kind].get('MovementZone') == 'Fly'
+                        and rules[kind].get('Primary') not in (None, '', 'none'),
+                        f'Ineligible air wave unit {kind}: {country}')
+                kinds.add(kind)
+        # Include all Challenge heavies and recursive conversion forms together;
+        # a different seed must not overflow the native release event limit.
+        kinds.update(POWERHOUSE_UNITS_BY_FAMILY[families[country]])
+        aliases = _MapWriter([]).wave_types(
+            [{'units': [{'type': kind, 'count': 1} for kind in sorted(kinds)]}], rules)
+        require(len(aliases) <= 30, f'Wave roster exceeds native tracking limit: {country}')
+
+
 def resource_overlay_indices(rules):
     return {int(key) for key, kind in rules.get('OverlayTypes', {}).items()
             if key.isdigit() and rules.get(kind, {}).get('Tiberium', 'no').lower() in ('yes', 'true')}
@@ -1138,7 +1178,8 @@ def audit_wave_pools(rows, effective, plan, rules, preloads, spawn, terrain):
                 # Late replacements must favor advanced/special units even
                 # when the queue is still delivering the opening wave.
                 require(sum(n for kind, n in expected_units['late'].items() if priority(kind, policy)) >= int(count) // 2,
-                        'Capacity-delayed delivery is still dominated by low-tier units')
+                        f'Capacity-delayed delivery is still dominated by low-tier units: '
+                        f'wave {wave}, {house}, {dict(expected_units["late"])}')
     if plan.get('wave_priorities'):
         policy = plan['wave_priorities']
         late = rows['FFWavePriority']['Late']
@@ -1891,6 +1932,7 @@ def main():
     config = load_config()
     config = select_map(config, args.map_id or config['map']['id'])
     _, rules = installed_rules_registry(synchronous=True)
+    audit_wave_rosters(config, rules)
     source_path = GAME_ROOT / config['map']['source']
     source_data = source_path.read_bytes()
     source = all_section_value_maps_preserve(source_lines(GAME_ROOT, config['map']))

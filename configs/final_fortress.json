@@ -2670,6 +2670,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "robot_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "ETNK",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "FV",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -2706,15 +2748,15 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "ETNK",
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "GGI",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -2723,18 +2765,18 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "seal_column",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "GHOST",
+                  "count": 3
                 },
                 {
                   "type": "ENFO",
-                  "count": 5
+                  "count": 3
                 },
                 {
-                  "type": "ETNK",
+                  "type": "E1",
                   "count": 2
                 },
                 {
@@ -2748,23 +2790,123 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "mirage_column",
               "units": [
                 {
                   "type": "E1",
                   "count": 3
                 },
                 {
+                  "type": "MGTK",
+                  "count": 4
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "FV",
+                  "count": 2
+                },
+                {
                   "type": "ENFO",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "ambush_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "ETNK",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "prism_escort",
+              "units": [
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 3
                 },
                 {
                   "type": "FV",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "riot_column",
+              "units": [
+                {
+                  "type": "RIOT",
+                  "count": 3
+                },
+                {
+                  "type": "ETNK",
+                  "count": 3
+                },
+                {
+                  "type": "ENFO",
+                  "count": 2
+                },
+                {
+                  "type": "FV",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "sniper_escort",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -2782,14 +2924,14 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "ABRM",
                   "count": 3
                 },
                 {
-                  "type": "ETNK",
+                  "type": "BLZZ",
                   "count": 2
                 },
                 {
@@ -2797,7 +2939,7 @@
                   "count": 1
                 },
                 {
-                  "type": "HOWI",
+                  "type": "BASS",
                   "count": 2
                 }
               ]
@@ -2806,20 +2948,120 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 2
-                },
-                {
-                  "type": "ABRM",
+                  "type": "GGI",
                   "count": 3
                 },
                 {
-                  "type": "FV",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "BASS",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "chrono_column",
+              "units": [
+                {
+                  "type": "CLEG",
+                  "count": 3
+                },
+                {
+                  "type": "CHRTNK",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "suppression_column",
+              "units": [
+                {
+                  "type": "SUPR",
+                  "count": 3
+                },
+                {
+                  "type": "RIOT",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "blizzard_column",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "BLZZ",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
                   "count": 2
+                }
+              ]
+            },
+            {
+              "id": "fortress_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
@@ -2828,52 +3070,52 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "aeroblaze_escort",
               "units": [
                 {
-                  "type": "ENFO",
-                  "count": 5
+                  "type": "RIOT",
+                  "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "AERO",
+                  "count": 3
                 },
                 {
-                  "type": "ABRM",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 2
                 },
                 {
-                  "type": "ETNK",
-                  "count": 2
-                },
-                {
-                  "type": "BASS",
+                  "type": "HOWI",
                   "count": 1
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "prism_column",
               "units": [
+                {
+                  "type": "SUPR",
+                  "count": 2
+                },
                 {
                   "type": "ENFO",
                   "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 3
-                },
-                {
-                  "type": "ABRM",
+                  "type": "SREF",
                   "count": 4
                 },
                 {
-                  "type": "ETNK",
-                  "count": 4
+                  "type": "BLZZ",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -2971,6 +3213,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "robot_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "MTNK",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "AMC",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -3007,15 +3291,15 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "MTNK",
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "GGI",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -3024,18 +3308,18 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "seal_column",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "GHOST",
+                  "count": 3
                 },
                 {
                   "type": "ENFO",
-                  "count": 5
+                  "count": 3
                 },
                 {
-                  "type": "MTNK",
+                  "type": "E1",
                   "count": 2
                 },
                 {
@@ -3049,23 +3333,123 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "mirage_column",
               "units": [
                 {
                   "type": "E1",
                   "count": 3
                 },
                 {
+                  "type": "MGTK",
+                  "count": 4
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "AMC",
+                  "count": 2
+                },
+                {
                   "type": "ENFO",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "ambush_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "MTNK",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "prism_escort",
+              "units": [
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 3
                 },
                 {
                   "type": "AMC",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "riot_column",
+              "units": [
+                {
+                  "type": "RIOT",
+                  "count": 3
+                },
+                {
+                  "type": "MTNK",
+                  "count": 3
+                },
+                {
+                  "type": "ENFO",
+                  "count": 2
+                },
+                {
+                  "type": "AMC",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "sniper_escort",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -3083,14 +3467,14 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "ABRM",
                   "count": 3
                 },
                 {
-                  "type": "MTNK",
+                  "type": "BLZZ",
                   "count": 2
                 },
                 {
@@ -3098,7 +3482,7 @@
                   "count": 1
                 },
                 {
-                  "type": "HOWI",
+                  "type": "BASS",
                   "count": 2
                 }
               ]
@@ -3107,20 +3491,120 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 2
-                },
-                {
-                  "type": "ABRM",
+                  "type": "GGI",
                   "count": 3
                 },
                 {
-                  "type": "AMC",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "BASS",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "chrono_column",
+              "units": [
+                {
+                  "type": "CLEG",
+                  "count": 3
+                },
+                {
+                  "type": "CHRTNK",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "suppression_column",
+              "units": [
+                {
+                  "type": "SUPR",
+                  "count": 3
+                },
+                {
+                  "type": "RIOT",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "blizzard_column",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "BLZZ",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
                   "count": 2
+                }
+              ]
+            },
+            {
+              "id": "fortress_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
@@ -3129,52 +3613,52 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "aeroblaze_escort",
               "units": [
                 {
-                  "type": "ENFO",
-                  "count": 5
+                  "type": "RIOT",
+                  "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "AERO",
+                  "count": 3
                 },
                 {
-                  "type": "ABRM",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 2
                 },
                 {
-                  "type": "MTNK",
-                  "count": 2
-                },
-                {
-                  "type": "BASS",
+                  "type": "HOWI",
                   "count": 1
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "prism_column",
               "units": [
+                {
+                  "type": "SUPR",
+                  "count": 2
+                },
                 {
                   "type": "ENFO",
                   "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 3
-                },
-                {
-                  "type": "ABRM",
+                  "type": "SREF",
                   "count": 4
                 },
                 {
-                  "type": "MTNK",
-                  "count": 4
+                  "type": "BLZZ",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -3272,6 +3756,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "robot_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "KTNK",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "TENGU",
+                  "count": 3
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -3308,15 +3834,15 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "KTNK",
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "GGI",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -3325,18 +3851,18 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "seal_column",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "GHOST",
+                  "count": 3
                 },
                 {
                   "type": "ENFO",
-                  "count": 5
+                  "count": 3
                 },
                 {
-                  "type": "KTNK",
+                  "type": "E1",
                   "count": 2
                 },
                 {
@@ -3350,23 +3876,123 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "mirage_column",
               "units": [
                 {
                   "type": "E1",
                   "count": 3
                 },
                 {
+                  "type": "MGTK",
+                  "count": 4
+                },
+                {
+                  "type": "ROBO",
+                  "count": 3
+                },
+                {
+                  "type": "TENGU",
+                  "count": 2
+                },
+                {
                   "type": "ENFO",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "ambush_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 3
                 },
                 {
                   "type": "KTNK",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "prism_escort",
+              "units": [
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 3
                 },
                 {
                   "type": "TENGU",
-                  "count": 4
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "riot_column",
+              "units": [
+                {
+                  "type": "RIOT",
+                  "count": 3
+                },
+                {
+                  "type": "KTNK",
+                  "count": 3
+                },
+                {
+                  "type": "ENFO",
+                  "count": 2
+                },
+                {
+                  "type": "TENGU",
+                  "count": 2
+                },
+                {
+                  "type": "HOWI",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "sniper_escort",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
@@ -3384,14 +4010,14 @@
               "units": [
                 {
                   "type": "ENFO",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "ABRM",
                   "count": 3
                 },
                 {
-                  "type": "KTNK",
+                  "type": "BLZZ",
                   "count": 2
                 },
                 {
@@ -3399,7 +4025,7 @@
                   "count": 1
                 },
                 {
-                  "type": "HOWI",
+                  "type": "BASS",
                   "count": 2
                 }
               ]
@@ -3408,20 +4034,120 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "E1",
-                  "count": 2
-                },
-                {
-                  "type": "ABRM",
+                  "type": "GGI",
                   "count": 3
                 },
                 {
-                  "type": "TENGU",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "BASS",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
+                  "count": 2
+                },
+                {
+                  "type": "E1",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "chrono_column",
+              "units": [
+                {
+                  "type": "CLEG",
+                  "count": 3
+                },
+                {
+                  "type": "CHRTNK",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "suppression_column",
+              "units": [
+                {
+                  "type": "SUPR",
+                  "count": 3
+                },
+                {
+                  "type": "RIOT",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "SREF",
+                  "count": 2
+                },
+                {
+                  "type": "BASS",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "blizzard_column",
+              "units": [
+                {
+                  "type": "SNIPE",
+                  "count": 2
+                },
+                {
+                  "type": "ENFO",
+                  "count": 3
+                },
+                {
+                  "type": "BLZZ",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "HOWI",
                   "count": 2
+                }
+              ]
+            },
+            {
+              "id": "fortress_column",
+              "units": [
+                {
+                  "type": "GHOST",
+                  "count": 3
+                },
+                {
+                  "type": "GGI",
+                  "count": 2
+                },
+                {
+                  "type": "BFRT",
+                  "count": 3
+                },
+                {
+                  "type": "ABRM",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
@@ -3430,52 +4156,52 @@
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "aeroblaze_escort",
               "units": [
                 {
-                  "type": "ENFO",
-                  "count": 5
+                  "type": "RIOT",
+                  "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 5
+                  "type": "AERO",
+                  "count": 3
                 },
                 {
-                  "type": "ABRM",
+                  "type": "SREF",
+                  "count": 3
+                },
+                {
+                  "type": "MGTK",
                   "count": 2
                 },
                 {
-                  "type": "KTNK",
-                  "count": 2
-                },
-                {
-                  "type": "BASS",
+                  "type": "HOWI",
                   "count": 1
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "prism_column",
               "units": [
+                {
+                  "type": "SUPR",
+                  "count": 2
+                },
                 {
                   "type": "ENFO",
                   "count": 3
                 },
                 {
-                  "type": "E1",
-                  "count": 3
-                },
-                {
-                  "type": "ABRM",
+                  "type": "SREF",
                   "count": 4
                 },
                 {
-                  "type": "KTNK",
-                  "count": 4
+                  "type": "BLZZ",
+                  "count": 2
                 },
                 {
                   "type": "BASS",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -3573,6 +4299,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "drone_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "HTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "SCAR",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -3605,10 +4373,14 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "shock_column",
               "units": [
                 {
-                  "type": "FLAMER",
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "E2",
                   "count": 2
                 },
                 {
@@ -3617,28 +4389,28 @@
                 },
                 {
                   "type": "FLAKT",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "V3",
-                  "count": 3
+                  "count": 1
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "specialist_column",
               "units": [
                 {
-                  "type": "E2",
-                  "count": 5
+                  "type": "SHOCK",
+                  "count": 3
                 },
                 {
                   "type": "FLAMER",
-                  "count": 5
+                  "count": 3
                 },
                 {
                   "type": "HTNK",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "SCAR",
@@ -3651,27 +4423,127 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "flame_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "BOREK",
+                  "count": 3
+                },
+                {
+                  "type": "HTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "drone_column",
+              "units": [
+                {
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "HTNK",
+                  "count": 3
+                },
+                {
+                  "type": "SCAR",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_escort",
               "units": [
                 {
                   "type": "E2",
                   "count": 3
                 },
                 {
-                  "type": "FLAMER",
+                  "type": "DTRUCK",
+                  "count": 2
+                },
+                {
+                  "type": "HTNK",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "radiation_escort",
+              "units": [
+                {
+                  "type": "DESO",
                   "count": 3
                 },
                 {
                   "type": "HTNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "SCAR",
-                  "count": 4
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
+                  "count": 2
+                },
+                {
+                  "type": "SCAR",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "FLAMER",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 3
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                },
+                {
+                  "type": "HTNK",
+                  "count": 2
                 }
               ]
             }
@@ -3685,19 +4557,19 @@
               "units": [
                 {
                   "type": "FLAMER",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "APOC",
                   "count": 3
                 },
                 {
-                  "type": "HTNK",
+                  "type": "TTNK",
                   "count": 2
                 },
                 {
-                  "type": "SCAR",
-                  "count": 1
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
@@ -3710,6 +4582,110 @@
               "units": [
                 {
                   "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 2
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "tesla_column",
+              "units": [
+                {
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 4
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
+                },
+                {
+                  "type": "HTNK",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "radiation_column",
+              "units": [
+                {
+                  "type": "DESO",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 2
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "sentinel_column",
+              "units": [
+                {
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "DTRUCK",
                   "count": 2
                 },
                 {
@@ -3717,66 +4693,62 @@
                   "count": 3
                 },
                 {
-                  "type": "SCAR",
-                  "count": 1
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "nuwa_escort",
+              "units": [
+                {
+                  "type": "DESO",
+                  "count": 2
+                },
+                {
+                  "type": "SHOCK",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
                   "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "FLAMER",
-                  "count": 5
-                },
-                {
-                  "type": "E2",
-                  "count": 5
-                },
-                {
-                  "type": "APOC",
-                  "count": 2
-                },
-                {
-                  "type": "HTNK",
-                  "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
+              "id": "flame_siege",
               "units": [
                 {
                   "type": "FLAMER",
                   "count": 3
                 },
                 {
-                  "type": "E2",
+                  "type": "BOREK",
                   "count": 3
                 },
                 {
-                  "type": "APOC",
-                  "count": 4
-                },
-                {
-                  "type": "HTNK",
-                  "count": 4
-                },
-                {
                   "type": "BURA",
-                  "count": 1
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
                 }
               ]
             }
@@ -3874,6 +4846,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "drone_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "JTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "HTK",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -3906,10 +4920,14 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "shock_column",
               "units": [
                 {
-                  "type": "FLAMER",
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "E2",
                   "count": 2
                 },
                 {
@@ -3918,28 +4936,28 @@
                 },
                 {
                   "type": "FLAKT",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "V3",
-                  "count": 3
+                  "count": 1
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "specialist_column",
               "units": [
                 {
-                  "type": "E2",
-                  "count": 5
+                  "type": "MOTOR",
+                  "count": 3
                 },
                 {
                   "type": "FLAMER",
-                  "count": 5
+                  "count": 3
                 },
                 {
                   "type": "JTNK",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "HTK",
@@ -3952,27 +4970,127 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "flame_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "BOREK",
+                  "count": 3
+                },
+                {
+                  "type": "JTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "drone_column",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "JTNK",
+                  "count": 3
+                },
+                {
+                  "type": "HTK",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_escort",
               "units": [
                 {
                   "type": "E2",
                   "count": 3
                 },
                 {
-                  "type": "FLAMER",
+                  "type": "BGGY",
+                  "count": 2
+                },
+                {
+                  "type": "JTNK",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "radiation_escort",
+              "units": [
+                {
+                  "type": "DESO",
                   "count": 3
                 },
                 {
                   "type": "JTNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "HTK",
-                  "count": 4
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
+                  "count": 2
+                },
+                {
+                  "type": "HTK",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "MOTOR",
+                  "count": 3
+                },
+                {
+                  "type": "FLAMER",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 3
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                },
+                {
+                  "type": "JTNK",
+                  "count": 2
                 }
               ]
             }
@@ -3986,19 +5104,19 @@
               "units": [
                 {
                   "type": "FLAMER",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "APOC",
                   "count": 3
                 },
                 {
-                  "type": "JTNK",
+                  "type": "TTNK",
                   "count": 2
                 },
                 {
-                  "type": "HTK",
-                  "count": 1
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
@@ -4011,6 +5129,110 @@
               "units": [
                 {
                   "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 2
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "tesla_column",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 4
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
+                },
+                {
+                  "type": "JTNK",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "radiation_column",
+              "units": [
+                {
+                  "type": "DESO",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 2
+                },
+                {
+                  "type": "BOREK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "sentinel_column",
+              "units": [
+                {
+                  "type": "MOTOR",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "BGGY",
                   "count": 2
                 },
                 {
@@ -4018,66 +5240,62 @@
                   "count": 3
                 },
                 {
-                  "type": "HTK",
-                  "count": 1
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "nuwa_escort",
+              "units": [
+                {
+                  "type": "DESO",
+                  "count": 2
+                },
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
                   "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "FLAMER",
-                  "count": 5
-                },
-                {
-                  "type": "E2",
-                  "count": 5
-                },
-                {
-                  "type": "APOC",
-                  "count": 2
-                },
-                {
-                  "type": "JTNK",
-                  "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
+              "id": "flame_siege",
               "units": [
                 {
                   "type": "FLAMER",
                   "count": 3
                 },
                 {
-                  "type": "E2",
+                  "type": "BOREK",
                   "count": 3
                 },
                 {
-                  "type": "APOC",
-                  "count": 4
-                },
-                {
-                  "type": "JTNK",
-                  "count": 4
-                },
-                {
                   "type": "BURA",
-                  "count": 1
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
                 }
               ]
             }
@@ -4175,6 +5393,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "drone_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "CTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "HTK",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -4207,10 +5467,14 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "shock_column",
               "units": [
                 {
-                  "type": "FLAMER",
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "E2",
                   "count": 2
                 },
                 {
@@ -4219,28 +5483,28 @@
                 },
                 {
                   "type": "FLAKT",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "V3",
-                  "count": 3
+                  "count": 1
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "specialist_column",
               "units": [
                 {
-                  "type": "E2",
-                  "count": 5
+                  "type": "SHK",
+                  "count": 3
                 },
                 {
                   "type": "FLAMER",
-                  "count": 5
+                  "count": 3
                 },
                 {
                   "type": "CTNK",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "HTK",
@@ -4253,27 +5517,127 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "flame_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "ARMA",
+                  "count": 3
+                },
+                {
+                  "type": "CTNK",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "drone_column",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "DRON",
+                  "count": 3
+                },
+                {
+                  "type": "CTNK",
+                  "count": 3
+                },
+                {
+                  "type": "HTK",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_escort",
               "units": [
                 {
                   "type": "E2",
                   "count": 3
                 },
                 {
-                  "type": "FLAMER",
+                  "type": "DTRUCK",
+                  "count": 2
+                },
+                {
+                  "type": "CTNK",
+                  "count": 3
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                },
+                {
+                  "type": "ARMA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "radiation_escort",
+              "units": [
+                {
+                  "type": "DESOR",
                   "count": 3
                 },
                 {
                   "type": "CTNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "HTK",
-                  "count": 4
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
+                  "count": 2
+                },
+                {
+                  "type": "HTK",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "FLAMER",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 3
+                },
+                {
+                  "type": "ARMA",
+                  "count": 2
+                },
+                {
+                  "type": "CTNK",
+                  "count": 2
                 }
               ]
             }
@@ -4287,19 +5651,19 @@
               "units": [
                 {
                   "type": "FLAMER",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "APOC",
                   "count": 3
                 },
                 {
-                  "type": "CTNK",
+                  "type": "TTNK",
                   "count": 2
                 },
                 {
-                  "type": "HTK",
-                  "count": 1
+                  "type": "FLAKT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
@@ -4312,6 +5676,110 @@
               "units": [
                 {
                   "type": "E2",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 2
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "tesla_column",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 4
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
+                },
+                {
+                  "type": "CTNK",
+                  "count": 2
+                },
+                {
+                  "type": "V3",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "radiation_column",
+              "units": [
+                {
+                  "type": "DESOR",
+                  "count": 3
+                },
+                {
+                  "type": "APOC",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 2
+                },
+                {
+                  "type": "ARMA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "sentinel_column",
+              "units": [
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "demolition_column",
+              "units": [
+                {
+                  "type": "FLAMER",
+                  "count": 3
+                },
+                {
+                  "type": "DTRUCK",
                   "count": 2
                 },
                 {
@@ -4319,66 +5787,62 @@
                   "count": 3
                 },
                 {
-                  "type": "HTK",
-                  "count": 1
+                  "type": "BURA",
+                  "count": 2
+                },
+                {
+                  "type": "FLAKT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "nuwa_escort",
+              "units": [
+                {
+                  "type": "DESOR",
+                  "count": 2
+                },
+                {
+                  "type": "SHK",
+                  "count": 3
+                },
+                {
+                  "type": "EMPR",
+                  "count": 3
+                },
+                {
+                  "type": "SENT",
+                  "count": 2
                 },
                 {
                   "type": "V3",
                   "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "FLAMER",
-                  "count": 5
-                },
-                {
-                  "type": "E2",
-                  "count": 5
-                },
-                {
-                  "type": "APOC",
-                  "count": 2
-                },
-                {
-                  "type": "CTNK",
-                  "count": 2
-                },
-                {
-                  "type": "BURA",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
+              "id": "flame_siege",
               "units": [
                 {
                   "type": "FLAMER",
                   "count": 3
                 },
                 {
-                  "type": "E2",
+                  "type": "ARMA",
                   "count": 3
                 },
                 {
-                  "type": "APOC",
-                  "count": 4
-                },
-                {
-                  "type": "CTNK",
-                  "count": 4
-                },
-                {
                   "type": "BURA",
-                  "count": 1
+                  "count": 3
+                },
+                {
+                  "type": "TTNK",
+                  "count": 2
+                },
+                {
+                  "type": "E2",
+                  "count": 2
                 }
               ]
             }
@@ -4476,6 +5940,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "stinger_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "LTNK",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -4508,40 +6014,119 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "LTNK",
+                  "type": "MARA",
                   "count": 3
                 },
                 {
                   "type": "HARP",
-                  "count": 1
-                },
-                {
-                  "type": "TELE",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "INIT",
-                  "count": 5
-                },
-                {
-                  "type": "BRUTE",
-                  "count": 5
+                  "count": 2
                 },
                 {
                   "type": "LTNK",
                   "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "dunerider_column",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "MARA",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "LTNK",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "bloatick_escort",
+              "units": [
+                {
+                  "type": "KAOS",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "MARA",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_escort",
+              "units": [
+                {
+                  "type": "YURIPR",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "LTNK",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "scourge_column",
+              "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "MARA",
+                  "count": 3
                 },
                 {
                   "type": "YTNK",
@@ -4554,27 +6139,52 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "stalker_column",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "STALKER",
                   "count": 3
                 },
                 {
                   "type": "BRUTE",
-                  "count": 3
+                  "count": 2
                 },
                 {
                   "type": "LTNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "YTNK",
-                  "count": 4
+                  "type": "STING",
+                  "count": 2
                 },
                 {
                   "type": "TELE",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
+                },
+                {
+                  "type": "MARA",
+                  "count": 2
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
                 }
               ]
             }
@@ -4588,19 +6198,19 @@
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 3
                 },
                 {
-                  "type": "LTNK",
+                  "type": "COYO",
                   "count": 2
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TELE",
@@ -4612,7 +6222,40 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mastermind_column",
+              "units": [
+                {
+                  "type": "YURIPR",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "MIND",
                   "count": 2
                 },
                 {
@@ -4621,65 +6264,132 @@
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "virus_escort",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 3
                 },
                 {
                   "type": "TELE",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
+                  "type": "MARA",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "stalker_assault",
               "units": [
                 {
-                  "type": "BRUTE",
-                  "count": 5
+                  "type": "STALKER",
+                  "count": 3
                 },
                 {
-                  "type": "INIT",
-                  "count": 5
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_siege",
+              "units": [
+                {
+                  "type": "YURIPR",
+                  "count": 3
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 2
                 },
                 {
-                  "type": "LTNK",
+                  "type": "YTNK",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
-                  "count": 1
+                  "type": "HARP",
+                  "count": 2
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "specialist_assault",
               "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "MARA",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "oxidizer_column",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
                 {
                   "type": "BRUTE",
                   "count": 3
                 },
                 {
-                  "type": "INIT",
+                  "type": "COYO",
                   "count": 3
                 },
                 {
+                  "type": "TELE",
+                  "count": 2
+                },
+                {
                   "type": "DEVO",
-                  "count": 4
-                },
-                {
-                  "type": "LTNK",
-                  "count": 4
-                },
-                {
-                  "type": "COYO",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -4777,6 +6487,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "stinger_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "QTNK",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -4809,40 +6561,119 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "QTNK",
+                  "type": "TRIKE",
                   "count": 3
                 },
                 {
                   "type": "HARP",
-                  "count": 1
-                },
-                {
-                  "type": "TELE",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "INIT",
-                  "count": 5
-                },
-                {
-                  "type": "BRUTE",
-                  "count": 5
+                  "count": 2
                 },
                 {
                   "type": "QTNK",
                   "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "dunerider_column",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "TRIKE",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "QTNK",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "bloatick_escort",
+              "units": [
+                {
+                  "type": "KAOS",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "TRIKE",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_escort",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "QTNK",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "scourge_column",
+              "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "TRIKE",
+                  "count": 3
                 },
                 {
                   "type": "YTNK",
@@ -4855,27 +6686,52 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "stalker_column",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "STALKER",
                   "count": 3
                 },
                 {
                   "type": "BRUTE",
-                  "count": 3
+                  "count": 2
                 },
                 {
                   "type": "QTNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "YTNK",
-                  "count": 4
+                  "type": "STING",
+                  "count": 2
                 },
                 {
                   "type": "TELE",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "PLAG",
+                  "count": 3
+                },
+                {
+                  "type": "TRIKE",
+                  "count": 2
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
                 }
               ]
             }
@@ -4889,19 +6745,19 @@
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 3
                 },
                 {
-                  "type": "QTNK",
+                  "type": "COYO",
                   "count": 2
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TELE",
@@ -4913,7 +6769,40 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 2
+                },
+                {
+                  "type": "PLAG",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mastermind_column",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "MIND",
                   "count": 2
                 },
                 {
@@ -4922,65 +6811,132 @@
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "virus_escort",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 3
                 },
                 {
                   "type": "TELE",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
+                  "type": "TRIKE",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "stalker_assault",
               "units": [
                 {
-                  "type": "BRUTE",
-                  "count": 5
+                  "type": "STALKER",
+                  "count": 3
                 },
                 {
-                  "type": "INIT",
-                  "count": 5
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_siege",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 3
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 2
                 },
                 {
-                  "type": "QTNK",
+                  "type": "YTNK",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
-                  "count": 1
+                  "type": "HARP",
+                  "count": 2
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "specialist_assault",
               "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "TRIKE",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "oxidizer_column",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
                 {
                   "type": "BRUTE",
                   "count": 3
                 },
                 {
-                  "type": "INIT",
+                  "type": "COYO",
                   "count": 3
                 },
                 {
+                  "type": "PLAG",
+                  "count": 2
+                },
+                {
                   "type": "DEVO",
-                  "count": 4
-                },
-                {
-                  "type": "QTNK",
-                  "count": 4
-                },
-                {
-                  "type": "COYO",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -5078,6 +7034,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "stinger_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "STNK",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mobile_screen",
+              "units": [
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 3
+                },
+                {
+                  "type": "STING",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -5110,40 +7108,119 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
-                  "type": "STNK",
+                  "type": "SHADOW",
                   "count": 3
                 },
                 {
                   "type": "HARP",
-                  "count": 1
-                },
-                {
-                  "type": "TELE",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "INIT",
-                  "count": 5
-                },
-                {
-                  "type": "BRUTE",
-                  "count": 5
+                  "count": 2
                 },
                 {
                   "type": "STNK",
                   "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "dunerider_column",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "SHADOW",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "STNK",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "bloatick_escort",
+              "units": [
+                {
+                  "type": "KAOS",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 3
+                },
+                {
+                  "type": "SHADOW",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_escort",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "STNK",
+                  "count": 3
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "scourge_column",
+              "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "SHADOW",
+                  "count": 3
                 },
                 {
                   "type": "YTNK",
@@ -5156,27 +7233,52 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "stalker_column",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "STALKER",
                   "count": 3
                 },
                 {
                   "type": "BRUTE",
-                  "count": 3
+                  "count": 2
                 },
                 {
                   "type": "STNK",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "YTNK",
-                  "count": 4
+                  "type": "STING",
+                  "count": 2
                 },
                 {
                   "type": "TELE",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
+                },
+                {
+                  "type": "SHADOW",
+                  "count": 2
+                },
+                {
+                  "type": "YTNK",
+                  "count": 2
                 }
               ]
             }
@@ -5190,19 +7292,19 @@
               "units": [
                 {
                   "type": "BRUTE",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 3
                 },
                 {
-                  "type": "STNK",
+                  "type": "COYO",
                   "count": 2
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TELE",
@@ -5214,7 +7316,40 @@
               "id": "heavy_siege",
               "units": [
                 {
-                  "type": "INIT",
+                  "type": "DUNE",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 2
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "HARP",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "mastermind_column",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 2
+                },
+                {
+                  "type": "BRUTE",
+                  "count": 3
+                },
+                {
+                  "type": "MIND",
                   "count": 2
                 },
                 {
@@ -5223,65 +7358,132 @@
                 },
                 {
                   "type": "YTNK",
-                  "count": 1
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "virus_escort",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 3
                 },
                 {
                   "type": "TELE",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
+                  "type": "SHADOW",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "stalker_assault",
               "units": [
                 {
-                  "type": "BRUTE",
-                  "count": 5
+                  "type": "STALKER",
+                  "count": 3
                 },
                 {
-                  "type": "INIT",
-                  "count": 5
+                  "type": "DUNE",
+                  "count": 2
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "STING",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "psychic_siege",
+              "units": [
+                {
+                  "type": "YURI",
+                  "count": 3
+                },
+                {
+                  "type": "TELE",
+                  "count": 3
                 },
                 {
                   "type": "DEVO",
                   "count": 2
                 },
                 {
-                  "type": "STNK",
+                  "type": "YTNK",
                   "count": 2
                 },
                 {
-                  "type": "COYO",
-                  "count": 1
+                  "type": "HARP",
+                  "count": 2
                 }
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "specialist_assault",
               "units": [
+                {
+                  "type": "SCRG",
+                  "count": 3
+                },
+                {
+                  "type": "SHADOW",
+                  "count": 3
+                },
+                {
+                  "type": "DEVO",
+                  "count": 3
+                },
+                {
+                  "type": "COYO",
+                  "count": 2
+                },
+                {
+                  "type": "INIT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "oxidizer_column",
+              "units": [
+                {
+                  "type": "VIRUS",
+                  "count": 2
+                },
                 {
                   "type": "BRUTE",
                   "count": 3
                 },
                 {
-                  "type": "INIT",
+                  "type": "COYO",
                   "count": 3
                 },
                 {
+                  "type": "TELE",
+                  "count": 2
+                },
+                {
                   "type": "DEVO",
-                  "count": 4
-                },
-                {
-                  "type": "STNK",
-                  "count": 4
-                },
-                {
-                  "type": "COYO",
-                  "count": 1
+                  "count": 2
                 }
               ]
             }
@@ -5379,6 +7581,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "teratorn_screen",
+              "units": [
+                {
+                  "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "knight_screen",
+              "units": [
+                {
+                  "type": "KNIGHT",
+                  "count": 4
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -5411,11 +7655,40 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "CONF",
+                  "count": 3
+                },
+                {
+                  "type": "KNIGHT",
                   "count": 2
+                },
+                {
+                  "type": "COON",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "raccoon_escort",
+              "units": [
+                {
+                  "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "COON",
+                  "count": 3
                 },
                 {
                   "type": "JACKAL",
@@ -5423,31 +7696,6 @@
                 },
                 {
                   "type": "KNIGHT",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "JACKAL",
-                  "count": 2
-                },
-                {
-                  "type": "TERA",
                   "count": 2
                 },
                 {
@@ -5457,27 +7705,127 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "syncronin_column",
               "units": [
                 {
-                  "type": "COVE",
+                  "type": "SYNC",
                   "count": 3
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                },
+                {
+                  "type": "CONF",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "shadray_escort",
+              "units": [
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "COON",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 2
                 },
                 {
                   "type": "HUNTR",
                   "count": 3
                 },
                 {
-                  "type": "JACKAL",
-                  "count": 4
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "CONF",
+                  "count": 2
                 },
                 {
                   "type": "TERA",
-                  "count": 4
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "support_column",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "COON",
+                  "count": 3
+                },
+                {
+                  "type": "CONF",
+                  "count": 3
                 },
                 {
                   "type": "TARCHIA",
-                  "count": 1
+                  "count": 2
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -5491,19 +7839,19 @@
               "units": [
                 {
                   "type": "HUNTR",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "MEGA",
                   "count": 3
                 },
                 {
-                  "type": "JACKAL",
+                  "type": "PROME",
                   "count": 2
                 },
                 {
                   "type": "TERA",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TARCHIA",
@@ -5516,6 +7864,139 @@
               "units": [
                 {
                   "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "giantsbane_column",
+              "units": [
+                {
+                  "type": "BANE",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "COON",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "zorbtrotter_column",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 2
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "syncronin_assault",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "BANE",
+                  "count": 2
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "CONF",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_siege",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "madman_escort",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "MAD",
                   "count": 2
                 },
                 {
@@ -5524,65 +8005,32 @@
                 },
                 {
                   "type": "TERA",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "shadray_column",
               "units": [
                 {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "MEGA",
-                  "count": 2
-                },
-                {
-                  "type": "JACKAL",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
-              "units": [
-                {
-                  "type": "HUNTR",
+                  "type": "BANE",
                   "count": 3
                 },
                 {
-                  "type": "COVE",
+                  "type": "SHRAY",
                   "count": 3
                 },
                 {
-                  "type": "MEGA",
-                  "count": 4
+                  "type": "PROME",
+                  "count": 2
                 },
                 {
-                  "type": "JACKAL",
-                  "count": 4
+                  "type": "COON",
+                  "count": 2
                 },
                 {
-                  "type": "SHRAY",
-                  "count": 1
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -5680,6 +8128,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "teratorn_screen",
+              "units": [
+                {
+                  "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "knight_screen",
+              "units": [
+                {
+                  "type": "KNIGHT",
+                  "count": 4
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -5712,11 +8202,40 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "ROADR",
+                  "count": 3
+                },
+                {
+                  "type": "KNIGHT",
                   "count": 2
+                },
+                {
+                  "type": "RACC",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "id": "raccoon_escort",
+              "units": [
+                {
+                  "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "RACC",
+                  "count": 3
                 },
                 {
                   "type": "JACKAL",
@@ -5724,31 +8243,6 @@
                 },
                 {
                   "type": "KNIGHT",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "JACKAL",
-                  "count": 2
-                },
-                {
-                  "type": "TERA",
                   "count": 2
                 },
                 {
@@ -5758,27 +8252,127 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "syncronin_column",
               "units": [
                 {
-                  "type": "COVE",
+                  "type": "SYNC",
                   "count": 3
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                },
+                {
+                  "type": "ROADR",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "shadray_escort",
+              "units": [
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "RACC",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                },
+                {
+                  "type": "JACKAL",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 2
                 },
                 {
                   "type": "HUNTR",
                   "count": 3
                 },
                 {
-                  "type": "JACKAL",
-                  "count": 4
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "ROADR",
+                  "count": 2
                 },
                 {
                   "type": "TERA",
-                  "count": 4
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "support_column",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "RACC",
+                  "count": 3
+                },
+                {
+                  "type": "ROADR",
+                  "count": 3
                 },
                 {
                   "type": "TARCHIA",
-                  "count": 1
+                  "count": 2
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -5792,19 +8386,19 @@
               "units": [
                 {
                   "type": "HUNTR",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "MEGA",
                   "count": 3
                 },
                 {
-                  "type": "JACKAL",
+                  "type": "PROME",
                   "count": 2
                 },
                 {
                   "type": "TERA",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TARCHIA",
@@ -5817,6 +8411,139 @@
               "units": [
                 {
                   "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "giantsbane_column",
+              "units": [
+                {
+                  "type": "BANE",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "RACC",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "zorbtrotter_column",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 2
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "syncronin_assault",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "BANE",
+                  "count": 2
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "ROADR",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_siege",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "madman_escort",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "MAD",
                   "count": 2
                 },
                 {
@@ -5825,65 +8552,32 @@
                 },
                 {
                   "type": "TERA",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "shadray_column",
               "units": [
                 {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "MEGA",
-                  "count": 2
-                },
-                {
-                  "type": "JACKAL",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
-              "units": [
-                {
-                  "type": "HUNTR",
+                  "type": "BANE",
                   "count": 3
                 },
                 {
-                  "type": "COVE",
+                  "type": "SHRAY",
                   "count": 3
                 },
                 {
-                  "type": "MEGA",
-                  "count": 4
+                  "type": "PROME",
+                  "count": 2
                 },
                 {
-                  "type": "JACKAL",
-                  "count": 4
+                  "type": "RACC",
+                  "count": 2
                 },
                 {
-                  "type": "SHRAY",
-                  "count": 1
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -5981,6 +8675,48 @@
                   "count": 1
                 }
               ]
+            },
+            {
+              "id": "teratorn_screen",
+              "units": [
+                {
+                  "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "ROACH",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "knight_screen",
+              "units": [
+                {
+                  "type": "KNIGHT",
+                  "count": 4
+                },
+                {
+                  "type": "ROACH",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                }
+              ]
             }
           ]
         },
@@ -6013,11 +8749,11 @@
               ]
             },
             {
-              "id": "siege_escort",
+              "id": "specialist_column",
               "units": [
                 {
                   "type": "HUNTR",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "ROACH",
@@ -6025,31 +8761,10 @@
                 },
                 {
                   "type": "KNIGHT",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 3
-                }
-              ]
-            },
-            {
-              "id": "infantry_column",
-              "units": [
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "ROACH",
                   "count": 2
                 },
                 {
-                  "type": "TERA",
+                  "type": "RACC",
                   "count": 2
                 },
                 {
@@ -6059,27 +8774,152 @@
               ]
             },
             {
-              "id": "mobile_column",
+              "id": "raccoon_escort",
               "units": [
                 {
                   "type": "COVE",
                   "count": 3
                 },
                 {
-                  "type": "HUNTR",
+                  "type": "RACC",
                   "count": 3
                 },
                 {
                   "type": "ROACH",
-                  "count": 4
+                  "count": 3
                 },
                 {
-                  "type": "TERA",
-                  "count": 4
+                  "type": "KNIGHT",
+                  "count": 2
                 },
                 {
                   "type": "TARCHIA",
                   "count": 1
+                }
+              ]
+            },
+            {
+              "id": "syncronin_column",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                },
+                {
+                  "type": "ROACH",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
+                },
+                {
+                  "type": "ROACH",
+                  "count": 3
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "shadray_escort",
+              "units": [
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "RACC",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                },
+                {
+                  "type": "ROACH",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "siege_escort",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "ROACH",
+                  "count": 2
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "support_column",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "RACC",
+                  "count": 3
+                },
+                {
+                  "type": "ROACH",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -6093,19 +8933,19 @@
               "units": [
                 {
                   "type": "HUNTR",
-                  "count": 2
+                  "count": 3
                 },
                 {
                   "type": "MEGA",
                   "count": 3
                 },
                 {
-                  "type": "ROACH",
+                  "type": "PROME",
                   "count": 2
                 },
                 {
                   "type": "TERA",
-                  "count": 1
+                  "count": 2
                 },
                 {
                   "type": "TARCHIA",
@@ -6118,6 +8958,139 @@
               "units": [
                 {
                   "type": "COVE",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "giantsbane_column",
+              "units": [
+                {
+                  "type": "BANE",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 2
+                },
+                {
+                  "type": "RACC",
+                  "count": 2
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "zorbtrotter_column",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "MEGA",
+                  "count": 2
+                },
+                {
+                  "type": "TERA",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "syncronin_assault",
+              "units": [
+                {
+                  "type": "SYNC",
+                  "count": 3
+                },
+                {
+                  "type": "BANE",
+                  "count": 2
+                },
+                {
+                  "type": "MEGA",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "ROACH",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "clairvoyant_siege",
+              "units": [
+                {
+                  "type": "CLAIR",
+                  "count": 3
+                },
+                {
+                  "type": "PROME",
+                  "count": 3
+                },
+                {
+                  "type": "SHRAY",
+                  "count": 3
+                },
+                {
+                  "type": "TARCHIA",
+                  "count": 2
+                },
+                {
+                  "type": "KNIGHT",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "id": "madman_escort",
+              "units": [
+                {
+                  "type": "ZORB",
+                  "count": 2
+                },
+                {
+                  "type": "HUNTR",
+                  "count": 3
+                },
+                {
+                  "type": "MAD",
                   "count": 2
                 },
                 {
@@ -6126,65 +9099,32 @@
                 },
                 {
                   "type": "TERA",
-                  "count": 1
-                },
-                {
-                  "type": "TARCHIA",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
                   "count": 2
                 }
               ]
             },
             {
-              "id": "infantry_column",
+              "id": "shadray_column",
               "units": [
                 {
-                  "type": "HUNTR",
-                  "count": 5
-                },
-                {
-                  "type": "COVE",
-                  "count": 5
-                },
-                {
-                  "type": "MEGA",
-                  "count": 2
-                },
-                {
-                  "type": "ROACH",
-                  "count": 2
-                },
-                {
-                  "type": "SHRAY",
-                  "count": 1
-                }
-              ]
-            },
-            {
-              "id": "mobile_column",
-              "units": [
-                {
-                  "type": "HUNTR",
+                  "type": "BANE",
                   "count": 3
                 },
                 {
-                  "type": "COVE",
+                  "type": "SHRAY",
                   "count": 3
                 },
                 {
-                  "type": "MEGA",
-                  "count": 4
+                  "type": "PROME",
+                  "count": 2
                 },
                 {
-                  "type": "ROACH",
-                  "count": 4
+                  "type": "RACC",
+                  "count": 2
                 },
                 {
-                  "type": "SHRAY",
-                  "count": 1
+                  "type": "COVE",
+                  "count": 2
                 }
               ]
             }
@@ -20844,17 +23784,29 @@
             {
               "type": "WOLF",
               "count": 2
+            },
+            {
+              "type": "SCHP",
+              "count": 2
             }
           ],
           "Latin": [
             {
               "type": "WOLF",
               "count": 2
+            },
+            {
+              "type": "SCHP",
+              "count": 2
             }
           ],
           "Chinese": [
             {
               "type": "WOLF",
+              "count": 2
+            },
+            {
+              "type": "SCHP",
               "count": 2
             }
           ],
@@ -20880,18 +23832,30 @@
             {
               "type": "BUZZ",
               "count": 2
+            },
+            {
+              "type": "DIVER",
+              "count": 1
             }
           ],
           "Guild2": [
             {
               "type": "BUZZ",
               "count": 2
+            },
+            {
+              "type": "DIVER",
+              "count": 1
             }
           ],
           "Guild3": [
             {
               "type": "COND",
               "count": 2
+            },
+            {
+              "type": "DIVER",
+              "count": 1
             }
           ]
         }
@@ -20936,6 +23900,14 @@
               "count": 2
             },
             {
+              "type": "SCHP",
+              "count": 2
+            },
+            {
+              "type": "EDRN",
+              "count": 1
+            },
+            {
               "type": "ZEP",
               "count": 1
             }
@@ -20946,6 +23918,14 @@
               "count": 2
             },
             {
+              "type": "SCHP",
+              "count": 2
+            },
+            {
+              "type": "EDRN",
+              "count": 1
+            },
+            {
               "type": "ZEP",
               "count": 1
             }
@@ -20954,6 +23934,14 @@
             {
               "type": "WOLF",
               "count": 2
+            },
+            {
+              "type": "SCHP",
+              "count": 2
+            },
+            {
+              "type": "EDRN",
+              "count": 1
             },
             {
               "type": "ZEP",
@@ -20996,7 +23984,15 @@
               "count": 2
             },
             {
+              "type": "DIVER",
+              "count": 1
+            },
+            {
               "type": "VIPER",
+              "count": 2
+            },
+            {
+              "type": "HURR",
               "count": 1
             }
           ],
@@ -21006,7 +24002,15 @@
               "count": 2
             },
             {
+              "type": "DIVER",
+              "count": 1
+            },
+            {
               "type": "VIPER",
+              "count": 2
+            },
+            {
+              "type": "HURR",
               "count": 1
             }
           ],
@@ -21016,7 +24020,15 @@
               "count": 2
             },
             {
+              "type": "DIVER",
+              "count": 1
+            },
+            {
               "type": "VIPER",
+              "count": 2
+            },
+            {
+              "type": "HURR",
               "count": 1
             }
           ]
@@ -23585,29 +26597,55 @@
       "late_seconds": 1800,
       "advanced_units": [
         "ABRM",
+        "AERO",
         "AHVYBOT",
         "AITHOR",
         "APOC",
         "ARCH",
+        "BANE",
         "BASIL",
         "BASS",
+        "BFRT",
         "BLZZ",
         "BURA",
+        "CHRTNK",
+        "CLAIR",
+        "CLEG",
         "COYO",
+        "DESO",
+        "DESOR",
         "DEVO",
+        "DIVER",
+        "EDRN",
         "EMPR",
+        "HURR",
+        "MAD",
         "MAMM",
         "MEGA",
+        "MIND",
+        "PLAG",
         "PROME",
+        "RIOT",
+        "SCHP",
+        "SCRG",
+        "SENT",
         "SHRAY",
+        "SNIPE",
         "SREF",
+        "STALKER",
+        "SUPR",
+        "SYNC",
         "TARCHIA",
         "TELE",
         "TTNK",
         "V3",
         "VIPER",
+        "VIRUS",
         "WOLF",
-        "ZEP"
+        "YURI",
+        "YURIPR",
+        "ZEP",
+        "ZORB"
       ],
       "special_units": [
         "AHVYBOT",
@@ -23623,18 +26661,39 @@
         "TTNK"
       ],
       "infantry_units": [
+        "BANE",
         "BRUTE",
+        "CLAIR",
+        "CLEG",
         "COVE",
+        "DESO",
+        "DESOR",
+        "DUNE",
         "E1",
         "E2",
         "ENFO",
         "FLAKT",
         "FLAMER",
         "GGI",
+        "GHOST",
         "HARP",
         "HUNTR",
         "INIT",
-        "KNIGHT"
+        "KAOS",
+        "KNIGHT",
+        "MOTOR",
+        "RIOT",
+        "SCRG",
+        "SHK",
+        "SHOCK",
+        "SNIPE",
+        "STALKER",
+        "SUPR",
+        "SYNC",
+        "VIRUS",
+        "YURI",
+        "YURIPR",
+        "ZORB"
       ],
       "stages": [
         {

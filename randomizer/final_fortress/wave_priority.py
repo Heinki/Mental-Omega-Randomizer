@@ -68,5 +68,18 @@ def late_delivery(plan, wave, group, units):
     source = next(g for g in later['groups'] if g['house'] == group['house'])
     flying = bool(set(group.get('air_types', [])) & {u['type'] for u in units})
     candidates = [u for u in source['units'] if (u['type'] in source.get('air_types', [])) == flying]
+    if flying and not any(priority(u['type'], policy) for u in candidates):
+        # The first late wave can roll basic air support. Find a planned
+        # advanced flyer so a delayed batch still receives its upgrade,
+        # using only identities already registered in this house's pool.
+        for later_wave in plan['wave_schedule']:
+            if later_wave['seconds'] < policy['late_seconds']:
+                continue
+            later_group = next(g for g in later_wave['groups'] if g['house'] == group['house'])
+            advanced = [u for u in later_group['units']
+                        if u['type'] in later_group.get('air_types', []) and priority(u['type'], policy)]
+            if advanced:
+                candidates = advanced
+                break
     return rebalance(candidates or units, sum(u['count'] for u in units), seed=plan['seed'],
                      house=group['house'], seconds=max(later['seconds'], policy['late_seconds']), policy=policy)

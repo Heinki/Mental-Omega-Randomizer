@@ -38,7 +38,13 @@ until all its units are gone; normal AI production is excluded. **Help → Wave 
 shows scheduled counts for the selected settings. Rules and current launch
 details are also in **Help**, keeping the play controls compact. Choose your
 faction, then **Launch Final Fortress**. Installed faction pools now provide
-mixed units across three time stages. Defend Einstein’s Lab beside your MCV while the native countdown runs. Survival awards 25/50/100 total Defensive Points at 25/45/60 minutes; cleared camp claims and verified kill statistics add bonuses. Challenge offers the Grid enemy stat and production catalogue, including tier-specific armor and firepower; enable modifiers individually and choose their stack counts. Enabled stacks add victory Defensive Points. All balance values are configurable. Camp crates randomly grant player-only credits, ten Tier 1 units, five Tier 2 units, or a faction special unit, alongside camp Defensive Points. Native visual crates can be removed by AI without consuming the player reward. After victory or defeat, Run results opens on the Final Fortress tab and itemizes earned Defensive Points and claimed crate rewards. It does not use campaign seeds or Shop progression.
+mixed units across three time stages. Each subfaction has six opening compositions,
+eight from minute 15, and eight from minute 25, drawing on 15–20 ground unit types.
+Later compositions introduce faction specialists such as Chrono Legionnaires,
+Tesla Cruisers, Masterminds, and Mastodons, with native subfaction restrictions.
+Soviet and Foehn air support also rotate through more armed flying vehicles.
+These pools apply to new runs; saved runs retain their frozen wave plans.
+Defend Einstein’s Lab beside your MCV while the native countdown runs. Survival awards 25/50/100 total Defensive Points at 25/45/60 minutes; cleared camp claims and verified kill statistics add bonuses. Challenge offers the Grid enemy stat and production catalogue, including tier-specific armor and firepower; enable modifiers individually and choose their stack counts. Enabled stacks add victory Defensive Points. All balance values are configurable. Camp crates randomly grant player-only credits, ten Tier 1 units, five Tier 2 units, or a faction special unit, alongside camp Defensive Points. Native visual crates can be removed by AI without consuming the player reward. After victory or defeat, Run results opens on the Final Fortress tab and itemizes earned Defensive Points and claimed crate rewards. It does not use campaign seeds or Shop progression.
 Fortress also offers separate building/defense and unit discounts (5% per rank,
 up to 25%), Special Building Limit (+1 per rank, up to +3), and Fundraising
 (1,000 credits per rank automatically deposited every five in-game minutes,
