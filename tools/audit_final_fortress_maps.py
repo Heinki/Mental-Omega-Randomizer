@@ -80,6 +80,22 @@ def audit_wave_rosters(config, rules):
         require(len(aliases) <= 30, f'Wave roster exceeds native tracking limit: {country}')
 
 
+def audit_special_rosters(config):
+    """Keep every portable special unit covered without duplicate purchases."""
+    from randomizer.rewards.catalogue import BUFF_TARGETS, SPECIAL_REWARD_UNIT_IDS
+
+    perks = {entry['id']: entry for entry in config['perks']}
+    for country, family in zip(SIDE_COUNTRIES, SIDE_FAMILIES):
+        expected = {kind for kind in SPECIAL_REWARD_UNIT_IDS
+                    if BUFF_TARGETS[kind]['category'] in ('infantry', 'units', 'aircraft')
+                    and {value.lower() for value in BUFF_TARGETS[kind]['factions']} & {family, 'neutral'}}
+        campaign = set(ranks(perks['special_unit_access'])[-1]['effects']['special_units_by_country'][country])
+        stolen = set(ranks(perks['stolen_tech_access'])[-1]['effects']['special_units_by_country'][country])
+        require(len(stolen) == 4, f'Stolen tech must cover four units: {country}')
+        require(not campaign & stolen, f'Special and stolen-tech purchases overlap: {country}')
+        require(campaign | stolen == expected, f'Incomplete special unit roster: {country}')
+
+
 def resource_overlay_indices(rules):
     return {int(key) for key, kind in rules.get('OverlayTypes', {}).items()
             if key.isdigit() and rules.get(kind, {}).get('Tiberium', 'no').lower() in ('yes', 'true')}
@@ -157,7 +173,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     if power_bonus:
         from math import ceil
         for original, alias in rows.get('FFPlayerTypes', {}).items():
-            base = rules[original]
+            base = rules.get(original, {})
             if original in rules['BuildingTypes'].values() and float(base.get('Power', '0')) > 0:
                 require(effective[alias]['Power'] == str(ceil(float(base['Power']) * (1 + power_bonus / 100))),
                         'Generator power bonus does not match the purchased rank')
@@ -412,13 +428,13 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
 
 def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
     """Review generated production gates, arrival identities and capacity events."""
-    from randomizer.final_fortress.arsenal import FACTORIES, reviewed_rules
+    from randomizer.final_fortress.arsenal import TYPE_REFERENCE_FIELDS, production_factory, reviewed_rules
     from randomizer.final_fortress.engine import _waypoint
 
     access = plan['effects'].get('special_access', [])
     mapping = rows.get('FFSpecialAccess', {})
     require(set(mapping) == set(access), 'Special access does not match purchased rank')
-    reviewed, _ = reviewed_rules(rules, access)
+    reviewed, forms = reviewed_rules(rules, access)
     friends = {actor for actor, _, _ in coalition(plan)}
     for original, alias in mapping.items():
         row = effective[alias]
@@ -427,25 +443,79 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         require(set(row['Owner'].split(',')) == friends
                 and set(row['RequiredHouses'].split(',')) == friends,
                 f'Special access leaked to native/enemy countries: {original}')
-        require(row['Prerequisite'] == FACTORIES[rules[plan['player_country']]['Side']],
+        require(row['Prerequisite'] == production_factory(original, plan['player_country'], reviewed),
                 f'Special access retained a mission prerequisite: {original}')
-        require(not any(key.startswith(('Prerequisite.', 'FactoryOwners')) for key in row),
+        private_factory = rows.get('FFPlayerTypes', {}).get(row['Prerequisite'])
+        alternatives = {key: value for key, value in row.items() if key.startswith('Prerequisite.')}
+        require(not any(key.startswith('FactoryOwners') or key == 'BuiltAt' for key in row)
+                and all(key == 'Prerequisite.Lists' or re.fullmatch(r'Prerequisite\.List[1-9]\d*', key)
+                        and private_factory and value == private_factory for key, value in alternatives.items()),
                 f'Special access retained a hidden production gate: {original}')
+        if private_factory:
+            require(any(value == private_factory for key, value in alternatives.items() if key != 'Prerequisite.Lists'),
+                    f'Special access cannot use the fortified factory: {original}')
+        if original in reviewed['AircraftTypes'].values():
+            require(row['Prerequisite'] in row.get('Dock', '').split(','),
+                    f'Special plane cannot dock at its own airfield: {original}')
         native_limit = reviewed[original].get('BuildLimit')
         from randomizer.final_fortress.utilities import supported_pairs
         expected_limit = str(int(native_limit) + plan['effects'].get('unique_limit_stacks', 0)) if (
             native_limit and int(native_limit) > 0 and (original, 'build_limit') in supported_pairs()) else native_limit
         require(row.get('BuildLimit') == expected_limit,
                 f'Special unit lost its unique limit: {original}')
+        if int(row.get('BuildLimit', '0')) > 0:
+            category = next(category for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes')
+                            if alias in effective[category].values())
+            registered = list(dict.fromkeys(effective[category].values()))
+            require(registered.index(alias) < 512,
+                    f'Special unit limit exceeds native ownership counter capacity: {original}')
         require(not any('MORP' in value for value in row.values()), f'Unresolved roster alias: {original}')
         for field, value in row.items():
             if re.fullmatch(r'(?:Elite)?(?:Primary|Secondary|Weapon\d+)', field):
                 require(value.lower() in ('none', '') or value in effective,
                         f'Unresolved special unit weapon: {original}.{field}')
-        for field in ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass'):
+        for field in TYPE_REFERENCE_FIELDS:
             value = row.get(field, '')
-            require(value.lower() in ('none', '') or value in effective,
-                    f'Unresolved special conversion: {original}.{field}')
+            require(all(part.lower() in ('none', '') or part in effective for part in value.split(',')),
+                    f'Unresolved special dependency: {original}.{field}')
+    aliases = rows.get('FFPlayerTypes', {})
+    technos = {kind for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes')
+               for kind in effective[category].values()}
+    for original in forms:
+        alias = aliases[original]
+        row = effective[alias]
+        require(alias in technos and alias in preloads['rules'],
+                f'Special dependency is not preloaded and registered: {original}')
+        require(not any('MORP' in value for value in row.values()),
+                f'Special dependency retains campaign clone references: {original}')
+        if original not in access and original in rules:
+            from randomizer.final_fortress.player_perks import _eligible
+            payload = any(original in reviewed[source].get('InitialPayload.Types', '').split(',')
+                          for source in forms)
+            if payload and _eligible(rules[original], plan['player_country']):
+                require(row['TechLevel'] == rules[original]['TechLevel'],
+                        f'Special payload blocked ordinary production: {original}')
+        for field in TYPE_REFERENCE_FIELDS:
+            if field in reviewed[original]:
+                expected = ','.join(aliases.get(kind, kind) for kind in reviewed[original][field].split(','))
+                require(row.get(field) == expected, f'Special dependency escaped private copies: {original}.{field}')
+        for field, weapon in row.items():
+            if not re.fullmatch(r'(?:Elite)?(?:Primary|Secondary|Weapon\d+)|DeathWeapon', field):
+                continue
+            require(weapon.lower() in ('none', '') or weapon in effective,
+                    f'Special dependency has an unresolved weapon: {original}.{field}')
+            if weapon in effective:
+                for reference in ('Warhead', 'Projectile'):
+                    value = effective[weapon].get(reference, '')
+                    require(value.lower() in ('none', '') or value in effective,
+                            f'Special weapon has an unresolved {reference}: {original}')
+    from randomizer.rewards.catalogue import STANDALONE_UNIT_RULE_TEMPLATES
+    for original in forms:
+        for definitions in STANDALONE_UNIT_RULE_TEMPLATES.get(original, {}).values():
+            for section in definitions:
+                if section in rules:
+                    require(effective[section] == rules[section],
+                            f'Special dependency changed native combat rules: {section}')
     schedule = plan.get('reinforcement_schedule', [])
     if not schedule:
         return
@@ -518,6 +588,79 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         counts.append(count)
 
 
+def audit_logistics(rows, effective, plan, rules, reviewed):
+    """Inspect actual cargo, firing eligibility and structure conversion graphs."""
+    from randomizer.final_fortress.utilities import supported_pairs
+    from randomizer.final_fortress.player_perks import _eligible
+
+    effects = plan['effects']
+    capacity = effects.get('transport_capacity_stacks', 0)
+    health = effects.get('infrastructure_health_percent', 0)
+    open_topped = effects.get('open_topped', False)
+    if not (capacity or health or open_topped):
+        return
+    aliases = rows.get('FFPlayerTypes', {})
+    pairs = supported_pairs()
+    buildings = set(rules['BuildingTypes'].values())
+    technos = {kind for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes')
+               for kind in reviewed[category].values()}
+    for original, base in reviewed.items():
+        if original not in technos:
+            continue
+        alias = aliases.get(original, original)
+        row = effective[alias]
+        belongs = (original in aliases or _eligible(base, plan['player_country'])
+                   or original in effects.get('special_access', []))
+        if not belongs:
+            continue
+        if original in buildings:
+            upgraded = base.get('PowersUpBuilding')
+            if health and upgraded in aliases and _eligible(base, plan['player_country']):
+                require(original in aliases and row.get('PowersUpBuilding') == aliases[upgraded],
+                        f'Infrastructure blocks an ordinary building upgrade: {original}')
+            defense = base.get('IsBaseDefense', 'no').lower() == 'yes'
+            production = base.get('Factory', '').lower() in ('buildingtype', 'infantrytype', 'unittype', 'aircrafttype')
+            economy = (any(base.get(field, 'no').lower() == 'yes' for field in
+                           ('Refinery', 'Grinding', 'Cloning', 'OrePurifier', 'FactoryPlant'))
+                       or float(base.get('Power', '0')) > 0 or float(base.get('ProduceCashAmount', '0')) > 0)
+            eligible = not defense and float(base.get('Strength', '0')) > 1 and (production or economy)
+            if health and eligible:
+                require(original in aliases and int(row['Strength']) == int(base['Strength']) * (100 + health) // 100,
+                        f'Infrastructure health missing or applied twice: {original}')
+                for field, value in base.items():
+                    if field.startswith(('Factory', 'Prerequisite')) and field != 'PrerequisiteOverride':
+                        require(row.get(field) == value, f'Infrastructure changed production gates: {original}.{field}')
+                for field, value in rules['AI'].items():
+                    if original in value.split(','):
+                        require(alias in effective['AI'].get(field, value).split(','),
+                                f'Helper AI cannot recognize private infrastructure: {original}.{field}')
+                mobile = base.get('UndeploysInto')
+                if mobile in reviewed:
+                    require(mobile in aliases and row['UndeploysInto'] == aliases[mobile]
+                            and effective[aliases[mobile]]['DeploysInto'] == alias,
+                            f'Infrastructure conversion returns to native copies: {original}')
+            elif health and not defense and original in aliases:
+                require(row.get('Strength') == base.get('Strength'),
+                        f'Infrastructure health affected a support/tech building: {original}')
+            continue
+        sealed = (base.get('InitialPayload.Types', '').lower() not in ('', 'none')
+                  and base.get('NoManualEnter', 'no').lower() == 'yes'
+                  and base.get('NoManualUnload', 'no').lower() == 'yes')
+        cargo = int(base.get('Passengers', '0')) > 0 and base.get('Gunner', 'no').lower() != 'yes' and not sealed
+        expected = int(base.get('Passengers', '0')) + (
+            capacity if cargo and (original, 'passenger_capacity') in pairs else 0)
+        require(int(row.get('Passengers', '0')) == expected,
+                f'Transport capacity differs from reviewed eligibility: {original}')
+        if open_topped and cargo and (original, 'open_topped') in pairs:
+            require(original in aliases and row.get('OpenTopped', 'no').lower() == 'yes',
+                    f'Reviewed open-topped transport cannot fire: {original}')
+        else:
+            require(row.get('OpenTopped') == base.get('OpenTopped'),
+                    f'Open-topped perk changed an excluded/native transport: {original}')
+        for field in ('Gunner', 'InitialPayload.Nums', 'NoManualEnter', 'NoManualUnload'):
+            require(row.get(field) == base.get(field), f'Transport perk changed payload behavior: {original}.{field}')
+
+
 def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
     """Inspect actual private utility types, enemy powers and Powerhouse teams."""
     from randomizer.final_fortress.enemy_powers import rewards_for
@@ -525,11 +668,13 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
     from randomizer.config.tuning import stacked_self_heal_amount, stacking_amount
 
     effects = plan['effects']
+    from randomizer.final_fortress.arsenal import reviewed_rules
+    reviewed, _ = reviewed_rules(rules, set(effects.get('special_access', [])))
     pairs = supported_pairs()
     buildings = set(rules['BuildingTypes'].values())
     changed = dict(healing_stacks=0, recon_stacks=0, unique_limit_stacks=0, income_stacks=0)
     for original, alias in rows.get('FFPlayerTypes', {}).items():
-        row, base = effective[alias], rules[original]
+        row, base = effective[alias], reviewed[original]
         require(alias in preloads['rules'], f'Private utility type not preloaded: {original}')
         mobile_or_defense = original not in buildings or base.get('IsBaseDefense', 'no').lower() == 'yes'
         if effects.get('healing_stacks') and mobile_or_defense and any(
@@ -560,13 +705,15 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
             changed['income_stacks'] += 1
     for field, count in changed.items():
         require(not effects.get(field) or count > 0, f'Enabled utility perk affected no private types: {field}')
+    audit_logistics(rows, effective, plan, rules, reviewed)
     # Gate/list additions are allowed on native identities; perk stats and
     # challenge power behavior must remain confined to private definitions.
     for original in (
             set(rules['InfantryTypes'].values()) | set(rules['VehicleTypes'].values())
             | set(rules['AircraftTypes'].values()) | buildings):
         for field in ('Strength', 'Sight', 'Sensors', 'SensorsSight', 'SelfHealing', 'SelfHealing.Amount',
-                      'SelfHealing.Rate', 'BuildLimit', 'ProduceCashAmount', 'ProduceCashDelay'):
+                      'SelfHealing.Rate', 'BuildLimit', 'ProduceCashAmount', 'ProduceCashDelay',
+                      'Passengers', 'OpenTopped', 'InitialPayload.Types', 'InitialPayload.Nums', 'Gunner'):
             require(effective[original].get(field) == rules[original].get(field),
                     f'Perk leaked onto native type: {original}.{field}')
 
@@ -1910,16 +2057,20 @@ def main():
                         help='Override the Starting buildings rank for selected building profiles')
     parser.add_argument('--special-building-limit-rank', type=int, choices=range(1, 4),
                         help='Override the Special Building Limit rank for selected capacity profiles')
+    parser.add_argument('--special-access-rank', type=int, choices=range(1, 5),
+                        help='Override campaign/stolen-tech ranks, capped at each perk maximum')
     parser.add_argument('--profiles', nargs='+', choices=(
                         'baseline', 'helpers', 'maximum', 'defenses', 'defenses-first', 'defenses-second',
                         'defenses-third', 'powers', 'upgrades', 'secondary',
-                        'arsenal', 'starting-army', 'combined-armies', 'starting-buildings', 'buildings-and-defenses',
+                        'arsenal', 'stolen-tech', 'all-specials', 'starting-army', 'combined-armies', 'starting-buildings', 'buildings-and-defenses',
                         'reinforcements', 'arsenal-first', 'reinforcements-first',
                         'healing', 'recon', 'limits', 'income', 'enemy-powers', 'powerhouses', 'utilities-first',
                         'veteran', 'elite', 'reinforcements-veteran', 'reinforcements-rookie',
                         'lab-repair', 'lab-reserve', 'lab-support', 'lab-support-helpers',
                         'lab-health-first', 'lab-health-middle', 'lab-health', 'lab-health-support',
                         'construction', 'production', 'building-limits', 'economy-first',
+                        'transport-capacity', 'open-topped', 'infrastructure', 'logistics',
+                        'logistics-first', 'logistics-middle',
                         'fundraising-1', 'fundraising-2', 'fundraising-3', 'fundraising-4',
                         'fundraising-mixed', 'fundraising-guest'),
                         default=['baseline', 'helpers', 'maximum'])
@@ -1933,6 +2084,7 @@ def main():
     config = select_map(config, args.map_id or config['map']['id'])
     _, rules = installed_rules_registry(synchronous=True)
     audit_wave_rosters(config, rules)
+    audit_special_rosters(config)
     source_path = GAME_ROOT / config['map']['source']
     source_data = source_path.read_bytes()
     source = all_section_value_maps_preserve(source_lines(GAME_ROOT, config['map']))
@@ -1956,6 +2108,13 @@ def main():
         'buildings-and-defenses': ['starting_buildings', 'starting_defenses', 'allied_helpers'],
         'powers': ['support_powers', 'faction_superweapon', 'allied_helpers'],
         'upgrades': ['power_upgrades'], 'arsenal': ['special_unit_access'], 'arsenal-first': ['special_unit_access'],
+        'stolen-tech': ['stolen_tech_access'],
+        'all-specials': ['special_unit_access', 'stolen_tech_access', 'allied_helpers'],
+        'transport-capacity': ['transport_capacity'], 'open-topped': ['open_topped_transports'],
+        'infrastructure': ['fortified_infrastructure'],
+        **{profile: ['transport_capacity', 'open_topped_transports', 'fortified_infrastructure',
+                     'special_unit_access', 'stolen_tech_access', 'allied_helpers']
+           for profile in ('logistics', 'logistics-first', 'logistics-middle')},
         'reinforcements': ['periodic_reinforcements'], 'reinforcements-first': ['periodic_reinforcements', 'allied_helpers'],
         'reinforcements-veteran': ['periodic_reinforcements', 'allied_helpers'],
         'reinforcements-rookie': ['periodic_reinforcements', 'allied_helpers'],
@@ -1997,6 +2156,9 @@ def main():
                     player_country=country, selected_perks=selected,
                     perk_ranks={entry['id']: (args.special_building_limit_rank if args.special_building_limit_rank is not None
                                                   and entry['id'] == 'special_building_limit'
+                                             else min(args.special_access_rank, len(ranks(entry)))
+                                                  if args.special_access_rank is not None
+                                                  and entry['id'] in ('special_unit_access', 'stolen_tech_access')
                                              else args.starting_buildings_rank if args.starting_buildings_rank is not None
                                                   and entry['id'] == 'starting_buildings'
                                              else args.starting_army_rank if args.starting_army_rank is not None
@@ -2009,11 +2171,15 @@ def main():
                                              else args.lab_reserve_rank if args.lab_reserve_rank is not None
                                                   and entry['id'] == 'lab_reserve_squad'
                                              else 1 if (profile == 'secondary' and entry['id'] == 'faction_superweapon'
+                                                  or profile == 'logistics-first' and entry['id'] in (
+                                                      'transport_capacity', 'fortified_infrastructure')
                                                   or profile == 'arsenal-first' and entry['id'] == 'special_unit_access'
                                                   or profile == 'reinforcements-first' and entry['id'] == 'periodic_reinforcements'
                                                   or profile == 'utilities-first' and entry['id'] in utilities
                                                   or profile == 'lab-health-first' and entry['id'] == 'lab_durability')
                                              else 2 if profile == 'lab-health-middle' and entry['id'] == 'lab_durability'
+                                             else 2 if profile == 'logistics-middle' and entry['id'] in (
+                                                 'transport_capacity', 'fortified_infrastructure')
                                              else 1 if profile == 'veteran' and entry['id'] == 'veteran_escort'
                                              else 7 if profile == 'reinforcements-veteran' and entry['id'] == 'periodic_reinforcements'
                                              else 6 if profile == 'reinforcements-rookie' and entry['id'] == 'periodic_reinforcements'

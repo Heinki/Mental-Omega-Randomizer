@@ -20,6 +20,24 @@ def supported_pairs():
                      and variant not in MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(entry['buff_type'], ()))
 
 
+def infrastructure_building(row, *, defense=False):
+    """Production and economy structures, excluding defenses and the Lab."""
+    return not defense and float(row.get('Strength', '0')) > 1 and (
+        row.get('Factory', '').lower() in ('buildingtype', 'infantrytype', 'unittype', 'aircrafttype')
+        or any(row.get(field, 'no').lower() == 'yes'
+               for field in ('Refinery', 'Grinding', 'Cloning', 'OrePurifier', 'FactoryPlant'))
+        or float(row.get('Power', '0')) > 0 or float(row.get('ProduceCashAmount', '0')) > 0)
+
+
+def transport_buff_allowed(original, row, kind):
+    """Reuse catalogue policy and reject live gunner/sealed-payload changes."""
+    sealed = (row.get('InitialPayload.Types', '').lower() not in ('', 'none')
+              and row.get('NoManualEnter', 'no').lower() == 'yes'
+              and row.get('NoManualUnload', 'no').lower() == 'yes')
+    return ((original, kind) in supported_pairs() and int(row.get('Passengers', '0')) > 0
+            and row.get('Gunner', 'no').lower() != 'yes' and not sealed)
+
+
 def utility_updates(original, row, effects, *, building=False, defense=False):
     """Preserve live baselines and exclusions rather than broad native overrides."""
     power = effects.get('generator_power_percent', 0)
@@ -28,6 +46,9 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
                   if building and power and float(row.get('Power', '0')) > 0
                   and float(row.get(field, '0')) > 0}
     updates = dict(generation)
+    health = effects.get('infrastructure_health_percent', 0)
+    if building and health and infrastructure_building(row, defense=defense):
+        updates['Strength'] = str(int(row['Strength']) * (100 + health) // 100)
     limit = effects.get('special_building_limit_stacks', 0)
     # Structure Capacity also covers capped defenses and their linked mobile
     # forms (War Rig). Combat category does not determine capacity eligibility.
@@ -36,7 +57,8 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
         if native > 0:
             updates['BuildLimit'] = str(native + min(limit, 3))
     if not any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
-                                              'unique_limit_stacks', 'income_stacks')):
+                                              'unique_limit_stacks', 'income_stacks',
+                                              'transport_capacity_stacks', 'open_topped')):
         return updates
     metadata = BUFF_TARGETS.get(original)
     if not metadata:
@@ -44,6 +66,11 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
     pairs = supported_pairs()
     target = _target_with_effective_unit_stats(metadata, row)
     mobile_or_defense = not building or defense
+    capacity = effects.get('transport_capacity_stacks', 0)
+    if not building and capacity and transport_buff_allowed(original, row, 'passenger_capacity'):
+        apply_unit_buff_value(updates, target, 'passenger_capacity', capacity)
+    if not building and effects.get('open_topped') and transport_buff_allowed(original, row, 'open_topped'):
+        apply_unit_buff_value(updates, target, 'open_topped', 1)
     healing = effects.get('healing_stacks', 0)
     if mobile_or_defense and healing and any(
             (original, kind) in pairs for kind in ('self_healing', 'self_healing_rate')):

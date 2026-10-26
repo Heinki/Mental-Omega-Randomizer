@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 39
+PLAN_VERSION = 40
 
 
 def configuration_digest(config):
@@ -92,7 +92,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                                   include_lab_veterancy=plan_version >= 29,
                                   include_generator_power=plan_version >= 32,
                                   include_economy=plan_version >= 34,
-                                  share_starting_power=plan_version >= 38)
+                                  share_starting_power=plan_version >= 38,
+                                  include_logistics=plan_version >= 40)
     settings = config['settings']
     enemy_rng = random.Random(f'{seed}:final_fortress:enemy_countries')
     enemies = [enemy_rng.choice(SIDE_COUNTRIES) for _ in range(3)]

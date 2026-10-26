@@ -263,7 +263,8 @@ def _starting_perks(writer, plan, rules, aliases=None):
         refinery_copies[original] = alias
         from .player_perks import register_building_equivalent
         register_building_equivalent(writer, rules, original, alias, aliases,
-                                     preserve_native=plan.get('plan_version', 1) >= 14)
+                                     preserve_native=plan.get('plan_version', 1) >= 14,
+                                     current_prerequisites=plan.get('plan_version', 1) >= 40)
         return alias
 
     for name, country, waypoint in coalition(plan):
@@ -645,6 +646,8 @@ def build_map(game_root, run, rules, *, preloads=None):
         from .player_perks import needs_countries
         if needs_countries(plan):
             reserved_player_types = writer.wave_types([{'units': [{'type': 'RAVA', 'count': 1}]}], rules)
+    from .arsenal import reserve_special_limits
+    reserved_player_types.update(reserve_special_limits(writer, plan, rules))
     # Native house ownership counters hold only 512 entries per category.
     # Reserve camps before the large player/challenge/pool registries so their
     # Event 61 checks never read an untracked high-index vehicle. Preload these

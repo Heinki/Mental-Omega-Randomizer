@@ -10,7 +10,7 @@ from .config import DIFFICULTY_IDS, identifier, integer, text, validate_wave_mul
 from .perks import rank_limit
 
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 def new_state():
@@ -38,10 +38,11 @@ def normalize_state(document):
     if not isinstance(document, dict):
         raise ValueError('Final Fortress state must be an object.')
     if (type(document.get('schema_version')) is not int
-            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, 8, 9, SCHEMA_VERSION)
+            or document['schema_version'] not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, SCHEMA_VERSION)
             or document.get('mode_id') != MODE_ID):
         raise ValueError('Unsupported Final Fortress state schema or mode ID.')
     document = deepcopy(document)
+    migrate_special_access = document['schema_version'] < 11
     if document['schema_version'] < 9:
         if 'coop_run_ids' in document:
             raise ValueError('Legacy state contains unsupported co-op receipts.')
@@ -118,6 +119,16 @@ def normalize_state(document):
         # The former single rank bought the offensive weapon. Keep that
         # purchase when a secondary weapon becomes the new first rank.
         rank_table['faction_superweapon'] = 2
+    if migrate_special_access and 'special_unit_access' in rank_table:
+        # The former mixed perk included stolen-tech unlocks. Preserve them
+        # across faction switches when splitting production into two perks.
+        rank_table['stolen_tech_access'] = max(rank_table.get('stolen_tech_access', 0),
+                                              min(3, rank_table['special_unit_access']))
+        if 'stolen_tech_access' not in document['owned_perks']:
+            document['owned_perks'].append('stolen_tech_access')
+        if ('special_unit_access' in document['selected_perks']
+                and 'stolen_tech_access' not in document['selected_perks']):
+            document['selected_perks'].append('stolen_tech_access')
     preferences = document['preferences']
     if (not isinstance(preferences, dict)
             or set(preferences) != {'difficulty', 'player_country', 'wave_multiplier',

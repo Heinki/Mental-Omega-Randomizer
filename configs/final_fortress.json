@@ -18464,45 +18464,93 @@
       {
         "id": "special_unit_access",
         "display_name": "Special unit access",
-        "description": "Unlock one additional faction special unit for production per rank. Uses the ordinary faction war factory; unique-unit limits still apply.",
+        "description": "Three cumulative ranks unlock faction campaign units, prototypes and heroes, plus Rejuvenator for every faction. Uses matching native production buildings; unique-unit limits still apply. Stolen-tech units have their own perk.",
         "gem_cost": 300,
         "effects": {
           "special_units_by_country": {
             "UnitedStates": [
-              "PANTHER"
+              "PANTHER",
+              "ARTY",
+              "RANGER",
+              "LONGBO",
+              "ARND",
+              "CLNT",
+              "STLN"
             ],
             "Europeans": [
-              "PANTHER"
+              "PANTHER",
+              "ARTY",
+              "RANGER",
+              "LONGBO",
+              "ARND",
+              "CLNT",
+              "STLN"
             ],
             "Pacific": [
-              "PANTHER"
+              "PANTHER",
+              "ARTY",
+              "RANGER",
+              "LONGBO",
+              "ARND",
+              "CLNT",
+              "STLN"
             ],
             "USSR": [
-              "MAMM"
+              "KSNK",
+              "OTRK",
+              "MADU",
+              "MAMU",
+              "V2",
+              "BIKE",
+              "TERROR"
             ],
             "Latin": [
-              "MAMM"
+              "KSNK",
+              "OTRK",
+              "MADU",
+              "MAMU",
+              "V2",
+              "BIKE",
+              "TERROR"
             ],
             "Chinese": [
-              "MAMM"
+              "KSNK",
+              "OTRK",
+              "MADU",
+              "MAMU",
+              "V2",
+              "BIKE",
+              "TERROR"
             ],
             "PsiCorps": [
-              "WORMQ"
+              "GRAV",
+              "GRND",
+              "CAOS",
+              "SCAV",
+              "RHAD"
             ],
             "ScorpionCell": [
-              "WORMQ"
+              "GRAV",
+              "GRND",
+              "CAOS",
+              "SCAV",
+              "RHAD"
             ],
             "Headquaters": [
-              "WORMQ"
+              "GRAV",
+              "GRND",
+              "CAOS",
+              "SCAV",
+              "RHAD"
             ],
             "Guild1": [
-              "PHNT"
+              "ROACHP"
             ],
             "Guild2": [
-              "PHNT"
+              "ROACHP"
             ],
             "Guild3": [
-              "PHNT"
+              "ROACHP"
             ]
           }
         },
@@ -18512,13 +18560,444 @@
             "effects": {
               "special_units_by_country": {
                 "UnitedStates": [
-                  "PANTHER"
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN"
                 ],
                 "Europeans": [
-                  "PANTHER"
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN"
                 ],
                 "Pacific": [
-                  "PANTHER"
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN"
+                ],
+                "USSR": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR"
+                ],
+                "Latin": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR"
+                ],
+                "Chinese": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR"
+                ],
+                "PsiCorps": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD"
+                ],
+                "ScorpionCell": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD"
+                ],
+                "Headquaters": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD"
+                ],
+                "Guild1": [
+                  "ROACHP"
+                ],
+                "Guild2": [
+                  "ROACHP"
+                ],
+                "Guild3": [
+                  "ROACHP"
+                ]
+              }
+            }
+          },
+          {
+            "gem_cost": 600,
+            "effects": {
+              "special_units_by_country": {
+                "UnitedStates": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA"
+                ],
+                "Europeans": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA"
+                ],
+                "Pacific": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA"
+                ],
+                "USSR": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO"
+                ],
+                "Latin": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO"
+                ],
+                "Chinese": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO"
+                ],
+                "PsiCorps": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE"
+                ],
+                "ScorpionCell": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE"
+                ],
+                "Headquaters": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE"
+                ],
+                "Guild1": [
+                  "ROACHP",
+                  "CAPU"
+                ],
+                "Guild2": [
+                  "ROACHP",
+                  "CAPU"
+                ],
+                "Guild3": [
+                  "ROACHP",
+                  "CAPU"
+                ]
+              }
+            }
+          },
+          {
+            "gem_cost": 1000,
+            "effects": {
+              "special_units_by_country": {
+                "UnitedStates": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA",
+                  "STARDUSTB",
+                  "SHINBOT",
+                  "STHOR",
+                  "REJU"
+                ],
+                "Europeans": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA",
+                  "STARDUSTB",
+                  "SHINBOT",
+                  "STHOR",
+                  "REJU"
+                ],
+                "Pacific": [
+                  "PANTHER",
+                  "ARTY",
+                  "RANGER",
+                  "LONGBO",
+                  "ARND",
+                  "CLNT",
+                  "STLN",
+                  "AHVYBOT",
+                  "JACKALP",
+                  "DIVERP",
+                  "TARCHIAP",
+                  "MECHA",
+                  "STARDUSTB",
+                  "SHINBOT",
+                  "STHOR",
+                  "REJU"
+                ],
+                "USSR": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO",
+                  "PERUN",
+                  "BORIS",
+                  "REZNOV",
+                  "KRUKOV",
+                  "CYCOM",
+                  "CZEP",
+                  "MAMUP",
+                  "REJU"
+                ],
+                "Latin": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO",
+                  "PERUN",
+                  "BORIS",
+                  "REZNOV",
+                  "KRUKOV",
+                  "CYCOM",
+                  "CZEP",
+                  "MAMUP",
+                  "REJU"
+                ],
+                "Chinese": [
+                  "KSNK",
+                  "OTRK",
+                  "MADU",
+                  "MAMU",
+                  "V2",
+                  "BIKE",
+                  "TERROR",
+                  "ICBM",
+                  "GHTNKP",
+                  "PROMEP",
+                  "ITNK",
+                  "LUNR",
+                  "CYBO",
+                  "PERUN",
+                  "BORIS",
+                  "REZNOV",
+                  "KRUKOV",
+                  "CYCOM",
+                  "CZEP",
+                  "MAMUP",
+                  "REJU"
+                ],
+                "PsiCorps": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE",
+                  "DHANDL",
+                  "YURIX2",
+                  "BRUTM",
+                  "BRUTS",
+                  "BRUTV",
+                  "YAHCRE",
+                  "REJU"
+                ],
+                "ScorpionCell": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE",
+                  "DHANDL",
+                  "YURIX2",
+                  "BRUTM",
+                  "BRUTS",
+                  "BRUTV",
+                  "YAHCRE",
+                  "REJU"
+                ],
+                "Headquaters": [
+                  "GRAV",
+                  "GRND",
+                  "CAOS",
+                  "SCAV",
+                  "RHAD",
+                  "HEPH",
+                  "CBRIS",
+                  "LUNRE",
+                  "DHANDL",
+                  "YURIX2",
+                  "BRUTM",
+                  "BRUTS",
+                  "BRUTV",
+                  "YAHCRE",
+                  "REJU"
+                ],
+                "Guild1": [
+                  "ROACHP",
+                  "CAPU",
+                  "REJU"
+                ],
+                "Guild2": [
+                  "ROACHP",
+                  "CAPU",
+                  "REJU"
+                ],
+                "Guild3": [
+                  "ROACHP",
+                  "CAPU",
+                  "REJU"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "stolen_tech_access",
+        "display_name": "Stolen tech access",
+        "description": "Four cumulative ranks unlock all four faction stolen-tech units without infiltration. Infantry and vehicles use matching production buildings; planes require an airfield. Unique-unit limits still apply.",
+        "gem_cost": 300,
+        "ranks": [
+          {
+            "gem_cost": 300,
+            "effects": {
+              "special_units_by_country": {
+                "UnitedStates": [
+                  "QUICK"
+                ],
+                "Europeans": [
+                  "QUICK"
+                ],
+                "Pacific": [
+                  "QUICK"
                 ],
                 "USSR": [
                   "MAMM"
@@ -18555,16 +19034,16 @@
             "effects": {
               "special_units_by_country": {
                 "UnitedStates": [
-                  "PANTHER",
-                  "QUICK"
+                  "QUICK",
+                  "LIONH"
                 ],
                 "Europeans": [
-                  "PANTHER",
-                  "QUICK"
+                  "QUICK",
+                  "LIONH"
                 ],
                 "Pacific": [
-                  "PANTHER",
-                  "QUICK"
+                  "QUICK",
+                  "LIONH"
                 ],
                 "USSR": [
                   "MAMM",
@@ -18580,15 +19059,15 @@
                 ],
                 "PsiCorps": [
                   "WORMQ",
-                  "HEPH"
+                  "TRACTOR"
                 ],
                 "ScorpionCell": [
                   "WORMQ",
-                  "HEPH"
+                  "TRACTOR"
                 ],
                 "Headquaters": [
                   "WORMQ",
-                  "HEPH"
+                  "TRACTOR"
                 ],
                 "Guild1": [
                   "PHNT",
@@ -18610,49 +19089,49 @@
             "effects": {
               "special_units_by_country": {
                 "UnitedStates": [
-                  "PANTHER",
                   "QUICK",
-                  "STARDUSTB"
+                  "LIONH",
+                  "CHRP"
                 ],
                 "Europeans": [
-                  "PANTHER",
                   "QUICK",
-                  "STARDUSTB"
+                  "LIONH",
+                  "CHRP"
                 ],
                 "Pacific": [
-                  "PANTHER",
                   "QUICK",
-                  "STARDUSTB"
+                  "LIONH",
+                  "CHRP"
                 ],
                 "USSR": [
                   "MAMM",
                   "SYCKLE",
-                  "PERUN"
+                  "GRUMBLE"
                 ],
                 "Latin": [
                   "MAMM",
                   "SYCKLE",
-                  "PERUN"
+                  "GRUMBLE"
                 ],
                 "Chinese": [
                   "MAMM",
                   "SYCKLE",
-                  "PERUN"
+                  "GRUMBLE"
                 ],
                 "PsiCorps": [
                   "WORMQ",
-                  "HEPH",
-                  "DHANDL"
+                  "TRACTOR",
+                  "SEIZER"
                 ],
                 "ScorpionCell": [
                   "WORMQ",
-                  "HEPH",
-                  "DHANDL"
+                  "TRACTOR",
+                  "SEIZER"
                 ],
                 "Headquaters": [
                   "WORMQ",
-                  "HEPH",
-                  "DHANDL"
+                  "TRACTOR",
+                  "SEIZER"
                 ],
                 "Guild1": [
                   "PHNT",
@@ -18671,8 +19150,127 @@
                 ]
               }
             }
+          },
+          {
+            "gem_cost": 1400,
+            "effects": {
+              "special_units_by_country": {
+                "UnitedStates": [
+                  "QUICK",
+                  "LIONH",
+                  "CHRP",
+                  "AHVYBOT2"
+                ],
+                "Europeans": [
+                  "QUICK",
+                  "LIONH",
+                  "CHRP",
+                  "AHVYBOT2"
+                ],
+                "Pacific": [
+                  "QUICK",
+                  "LIONH",
+                  "CHRP",
+                  "AHVYBOT2"
+                ],
+                "USSR": [
+                  "MAMM",
+                  "SYCKLE",
+                  "GRUMBLE",
+                  "IDRAG"
+                ],
+                "Latin": [
+                  "MAMM",
+                  "SYCKLE",
+                  "GRUMBLE",
+                  "IDRAG"
+                ],
+                "Chinese": [
+                  "MAMM",
+                  "SYCKLE",
+                  "GRUMBLE",
+                  "IDRAG"
+                ],
+                "PsiCorps": [
+                  "WORMQ",
+                  "TRACTOR",
+                  "SEIZER",
+                  "SALA"
+                ],
+                "ScorpionCell": [
+                  "WORMQ",
+                  "TRACTOR",
+                  "SEIZER",
+                  "SALA"
+                ],
+                "Headquaters": [
+                  "WORMQ",
+                  "TRACTOR",
+                  "SEIZER",
+                  "SALA"
+                ],
+                "Guild1": [
+                  "PHNT",
+                  "SEITAAD",
+                  "ARCH",
+                  "RAMW"
+                ],
+                "Guild2": [
+                  "PHNT",
+                  "SEITAAD",
+                  "ARCH",
+                  "RAMW"
+                ],
+                "Guild3": [
+                  "PHNT",
+                  "SEITAAD",
+                  "ARCH",
+                  "RAMW"
+                ]
+              }
+            }
           }
-        ]
+        ],
+        "effects": {
+          "special_units_by_country": {
+            "UnitedStates": [
+              "QUICK"
+            ],
+            "Europeans": [
+              "QUICK"
+            ],
+            "Pacific": [
+              "QUICK"
+            ],
+            "USSR": [
+              "MAMM"
+            ],
+            "Latin": [
+              "MAMM"
+            ],
+            "Chinese": [
+              "MAMM"
+            ],
+            "PsiCorps": [
+              "WORMQ"
+            ],
+            "ScorpionCell": [
+              "WORMQ"
+            ],
+            "Headquaters": [
+              "WORMQ"
+            ],
+            "Guild1": [
+              "PHNT"
+            ],
+            "Guild2": [
+              "PHNT"
+            ],
+            "Guild3": [
+              "PHNT"
+            ]
+          }
+        }
       },
       {
         "id": "periodic_reinforcements",
@@ -23002,6 +23600,73 @@
             }
           }
         ]
+      },
+      {
+        "id": "transport_capacity",
+        "display_name": "Transport capacity",
+        "description": "Add +1 / +2 / +3 passenger slots to catalogue-eligible transports. Gunner seats, Chrono Prison and sealed weapon payloads remain excluded. Does not unlock units or add initial passengers.",
+        "gem_cost": 80,
+        "effects": {
+          "transport_capacity_stacks": 1
+        },
+        "ranks": [
+          {
+            "gem_cost": 80,
+            "effects": {
+              "transport_capacity_stacks": 1
+            }
+          },
+          {
+            "gem_cost": 160,
+            "effects": {
+              "transport_capacity_stacks": 2
+            }
+          },
+          {
+            "gem_cost": 280,
+            "effects": {
+              "transport_capacity_stacks": 3
+            }
+          }
+        ]
+      },
+      {
+        "id": "fortified_infrastructure",
+        "display_name": "Fortified infrastructure",
+        "description": "Add +15% / +30% / +45% health to friendly production and economy buildings, including Construction Yards, barracks, factories, airfields, shipyards, refineries, generators, grinders and special economy buildings. Defenses, tech/support buildings and the Lab are unchanged.",
+        "gem_cost": 100,
+        "effects": {
+          "infrastructure_health_percent": 15
+        },
+        "ranks": [
+          {
+            "gem_cost": 100,
+            "effects": {
+              "infrastructure_health_percent": 15
+            }
+          },
+          {
+            "gem_cost": 220,
+            "effects": {
+              "infrastructure_health_percent": 30
+            }
+          },
+          {
+            "gem_cost": 400,
+            "effects": {
+              "infrastructure_health_percent": 45
+            }
+          }
+        ]
+      },
+      {
+        "id": "open_topped_transports",
+        "display_name": "Open-topped transports",
+        "description": "Enable passenger firing only on the randomizer catalogue's reviewed eligible vehicles. Gunner vehicles, Stallion and Chrono Prison remain excluded. Existing open-topped units and sealed weapon payloads keep their normal behavior. Does not unlock units.",
+        "gem_cost": 200,
+        "effects": {
+          "open_topped": true
+        }
       },
       {
         "id": "unique_unit_capacity",

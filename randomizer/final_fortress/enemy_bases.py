@@ -85,7 +85,8 @@ def protect_enemy_buildings(writer, plan, rules, aliases):
         writer.put('FFEnemyBuildings' if original in buildings else 'FFEnemyBaseUnits', original, alias)
     for original in buildings:
         register_building_equivalent(writer, rules, original, aliases[original], aliases,
-                                     preserve_native=plan.get('plan_version', 1) >= 14)
+                                     preserve_native=plan.get('plan_version', 1) >= 14,
+                                     current_prerequisites=plan.get('plan_version', 1) >= 40)
     native_yards = rules['AI']['BuildConst'].split(',')
     starting_yards = []
     if starting_only:
@@ -102,7 +103,8 @@ def protect_enemy_buildings(writer, plan, rules, aliases):
             writer.sections[alias] = row
             _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', alias)
             writer.put('FFEnemyStartingYards', original, alias)
-            register_building_equivalent(writer, rules, original, alias, aliases, preserve_native=True)
+            register_building_equivalent(writer, rules, original, alias, aliases, preserve_native=True,
+                                         current_prerequisites=plan.get('plan_version', 1) >= 40)
             starting_yards.append(alias)
     for actor, _ in countries:
         writer.put(actor, 'StartInMultiplayer.WithConst', 'yes')

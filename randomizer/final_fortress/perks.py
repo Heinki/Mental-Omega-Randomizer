@@ -13,7 +13,9 @@ def ranks(perk):
 def rank_limit(perk_id):
     return {'reinforcements': 8, 'periodic_reinforcements': 12, 'lab_reserve_squad': 10,
             'cheaper_construction': 5, 'cheaper_production': 5,
-            'special_building_limit': 3, 'fundraising': 4}.get(perk_id, 6)
+            'special_building_limit': 3, 'fundraising': 4, 'stolen_tech_access': 4,
+            'transport_capacity': 3, 'fortified_infrastructure': 3,
+            'open_topped_transports': 1}.get(perk_id, 6)
 
 
 def owned_rank(state, key):
@@ -61,11 +63,14 @@ def validate_perk(perk):
                      'lab_emergency_repair', 'lab_reserve_units_by_country', 'lab_reserve_shield_seconds',
                      'lab_health_percent', 'lab_reserve_veterancy', 'generator_power_percent',
                      'construction_discount_percent', 'unit_discount_percent',
-                     'special_building_limit_stacks', 'fundraising_stacks'}
+                     'special_building_limit_stacks', 'fundraising_stacks',
+                     'transport_capacity_stacks', 'infrastructure_health_percent', 'open_topped'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
         if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
             raise ValueError('Lab emergency repair must be boolean.')
+        if 'open_topped' in effects and type(effects['open_topped']) is not bool:
+            raise ValueError('Open-topped transport access must be boolean.')
         if 'lab_reserve_shield_seconds' in effects:
             integer(effects['lab_reserve_shield_seconds'], 'Lab reserve shield seconds', 1)
             if effects['lab_reserve_shield_seconds'] > 30 or 'lab_reserve_units_by_country' not in effects:
@@ -77,7 +82,8 @@ def validate_perk(perk):
                            ('unique_limit_stacks', 6), ('income_stacks', 4), ('lab_health_percent', 100),
                            ('lab_reserve_veterancy', 2), ('generator_power_percent', 150),
                            ('construction_discount_percent', 25), ('unit_discount_percent', 25),
-                           ('special_building_limit_stacks', 3), ('fundraising_stacks', 4)):
+                           ('special_building_limit_stacks', 3), ('fundraising_stacks', 4),
+                           ('transport_capacity_stacks', 3), ('infrastructure_health_percent', 45)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -109,17 +115,21 @@ def validate_perk(perk):
                         raise ValueError('Starting armies are limited to 15 units.')
                 else:
                     maximum = {'defenses_by_country': 32, 'support_powers_by_country': 5,
-                               'power_buildings_by_country': 24, 'special_units_by_country': 6}.get(key, 5)
+                               'power_buildings_by_country': 24, 'special_units_by_country': 32}.get(key, 5)
                     minimum = 0 if key == 'power_buildings_by_country' else 1
                     if not isinstance(values, list) or not minimum <= len(values) <= maximum:
                         raise ValueError(f'{key} requires {minimum} to {maximum} native types.')
                     for value in values:
                         _techno(value)
                     if key == 'special_units_by_country':
-                        if len(values) != index + 1 or len(set(values)) != len(values):
-                            raise ValueError('Each special-unit rank must unlock exactly one additional type.')
-                        if index and values[:-1] != entries[index - 1]['effects'].get(key, {}).get(country):
-                            raise ValueError('Special-unit ranks must retain previous unlocks.')
+                        if perk['id'] == 'stolen_tech_access' and len(values) != index + 1:
+                            raise ValueError('Each stolen-tech rank must unlock exactly one additional type.')
+                        if len(set(values)) != len(values):
+                            raise ValueError('Special-unit unlocks must be unique.')
+                        if index:
+                            previous_units = entries[index - 1]['effects'].get(key, {}).get(country, [])
+                            if len(values) <= len(previous_units) or values[:len(previous_units)] != previous_units:
+                                raise ValueError('Special-unit ranks must retain previous unlocks and add new types.')
         if 'reinforcements' in effects:
             reinforcement = effects['reinforcements']
             fields = ['first_seconds', 'interval_seconds', 'max_active_units', 'units_by_country']
@@ -156,7 +166,7 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
                     include_power_upgrades=False, include_arsenal=False, include_utilities=False,
                     include_lab_support=False, include_lab_shield=False, include_lab_health=False,
                     include_lab_veterancy=False, include_generator_power=False,
-                    include_economy=False, share_starting_power=False):
+                    include_economy=False, share_starting_power=False, include_logistics=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -171,6 +181,8 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
     utility_fields = ('healing_stacks', 'recon_stacks', 'unique_limit_stacks', 'income_stacks')
     if include_utilities:
         effects.update({field: 0 for field in utility_fields})
+    if include_logistics:
+        effects.update(transport_capacity_stacks=0, infrastructure_health_percent=0, open_topped=False)
     if include_lab_support:
         effects.update(lab_emergency_repair=False, lab_reserve_units=[])
     if include_lab_shield:
@@ -194,6 +206,10 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_logistics:
+            for field in ('transport_capacity_stacks', 'infrastructure_health_percent'):
+                effects[field] = max(effects[field], current.get(field, 0))
+            effects['open_topped'] |= current.get('open_topped', False)
         if include_economy:
             for field in economy_fields:
                 effects[field] = max(effects[field], current.get(field, 0))

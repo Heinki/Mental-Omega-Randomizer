@@ -31,6 +31,8 @@ def needs_countries(plan):
                 or effects.get('generator_power_percent')
                 or effects.get('construction_discount_percent') or effects.get('unit_discount_percent')
                 or effects.get('special_building_limit_stacks')
+                or effects.get('transport_capacity_stacks') or effects.get('open_topped')
+                or effects.get('infrastructure_health_percent')
                 or any(plan.get('fundraising_ranks', []))
                 or any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                                         'unique_limit_stacks', 'income_stacks')))
@@ -43,7 +45,8 @@ def _eligible(row, country):
             and country not in parts('ForbiddenHouses'))
 
 
-def register_building_equivalent(writer, rules, original, alias, aliases, *, preserve_native=False):
+def register_building_equivalent(writer, rules, original, alias, aliases, *, preserve_native=False,
+                                 current_prerequisites=False):
     """Keep refinery prerequisites and harvester docks valid for private copies."""
     for section in ('General', 'GenericPrerequisites'):
         for field, value in rules.get(section, {}).items():
@@ -55,17 +58,28 @@ def register_building_equivalent(writer, rules, original, alias, aliases, *, pre
             for target in {key, aliases.get(key, key)}:
                 existing = writer.sections.get(target, {}).get('Dock', base['Dock'])
                 writer.put(target, 'Dock', ','.join(dict.fromkeys([*existing.split(','), alias])))
-        prerequisites = base.get('Prerequisite', '').split(',')
-        if original in prerequisites:
-            for target in {key, aliases.get(key, key)}:
-                existing = writer.sections.get(target, {}).get('Prerequisite.Lists', base.get('Prerequisite.Lists', '0'))
-                index = int(existing)
-                writer.put(target, 'Prerequisite.Lists', index + 1)
-                # List0 replaces the default prerequisites; extra lists start
-                # at one. Writing List0 while declaring one extra list both
-                # erased the normal build path and left an empty alternative.
-                slot = index + 1 if preserve_native else index
-                writer.put(target, f'Prerequisite.List{slot}', ','.join(alias if part == original else part for part in prerequisites))
+        for target in {key, aliases.get(key, key)}:
+            current = writer.sections.get(target, {})
+            native_prerequisites = base.get('Prerequisite', '').split(',')
+            if not current_prerequisites and original not in native_prerequisites:
+                continue
+            target_prerequisites = (current.get('Prerequisite', base.get('Prerequisite', '')).split(',')
+                                    if current_prerequisites else native_prerequisites)
+            # Use this copy's actual prerequisites. Special access can replace
+            # mission gates with a barracks/airfield absent from the native row;
+            # enemy copies already refer to their private expansion yards.
+            equivalents = {original, aliases.get(original, original)} if current_prerequisites else {original}
+            alternative = [alias if part in equivalents else part for part in target_prerequisites]
+            if alternative == target_prerequisites:
+                continue
+            fallback = base.get('Prerequisite.Lists', '0') if target == key or not current_prerequisites else '0'
+            index = int(current.get('Prerequisite.Lists', fallback))
+            writer.put(target, 'Prerequisite.Lists', index + 1)
+            # List0 replaces the default prerequisites; extra lists start
+            # at one. Writing List0 while declaring one extra list both
+            # erased the normal build path and left an empty alternative.
+            slot = index + 1 if preserve_native else index
+            writer.put(target, f'Prerequisite.List{slot}', ','.join(alternative))
 
 
 def gate_prerequisite_overrides(writer, plan, rules):
@@ -106,8 +120,9 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     """
     private_player = needs_countries(plan)
     effects = plan['effects']
-    from .utilities import supported_pairs, utility_updates
-    from .arsenal import production_access, reviewed_rules
+    from .utilities import infrastructure_building, supported_pairs, utility_updates
+    from .arsenal import (CONVERSION_FIELDS, TYPE_REFERENCE_FIELDS, production_access,
+                          replace_references, reviewed_rules, special_dependencies)
     from randomizer.rewards.catalogue import SPECIAL_REWARD_UNIT_IDS
     access = set(effects.get('special_access', []))
     special_deliveries = {unit['type'] for unit in (effects.get('reinforcements') or {}).get('units', [])
@@ -115,7 +130,12 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     native_drakuv = plan['player_country'] in ('USSR', 'Latin', 'Chinese') and private_player
     if native_drakuv:
         special_deliveries.add('RAVA')
+    installed_types = {kind for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes')
+                       for kind in rules[category].values()}
     rules, special_forms = reviewed_rules(rules, access | special_deliveries)
+    dependencies = special_dependencies(writer, rules, special_forms)
+    payload_types = {kind for source in special_forms
+                     for kind in rules[source].get('InitialPayload.Types', '').split(',') if kind}
     friends = coalition(plan) if private_player else []
     for alias, country, _ in friends:
         row = deepcopy(rules[country])
@@ -140,6 +160,8 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     actors.extend((f'FFENEMY{i + 1}', country) for i, country in enumerate(plan['enemy_countries']))
     for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes'):
         for original in rules[category].values():
+            if original not in installed_types:
+                continue
             base = rules[original]
             if plan.get('plan_version', 1) >= 13 and category != 'BuildingTypes':
                 owners = set(base.get('Owner', '').split(','))
@@ -184,7 +206,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         defense = category == 'BuildingTypes' and row.get('IsBaseDefense', 'no').lower() == 'yes'
         utilities = utility_updates(original, row, effects, building=category == 'BuildingTypes', defense=defense)
         prison = native_drakuv and original == 'NAPRIS'
-        if category == 'BuildingTypes' and not defense and not utilities and not prison:
+        if category == 'BuildingTypes' and not defense and not utilities and not prison and original not in special_forms:
             continue
         eligible = [alias for alias, country, _ in friends if _eligible(row, country)]
         if original in delivered or original in special_forms:
@@ -204,6 +226,11 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         row = rules[original]
         if row.get('FreeUnit') in aliases and any(_eligible(row, country) for _, country, _ in friends):
             aliases[original] = writer.key()
+        if (effects.get('infrastructure_health_percent') and row.get('PowersUpBuilding') in aliases
+                and original not in aliases and any(_eligible(row, country) for _, country, _ in friends)):
+            # Turbines and Nuclear Converters must still attach to the private
+            # generator even when they have no independent Strength to buff.
+            aliases[original] = writer.key()
 
     mutation_targets = {}
     if plan.get('plan_version', 1) >= 10 and any(
@@ -216,7 +243,13 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
 
     def conversion_fields(original):
         fields = ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass')
-        if (original, 'building_limit') in capacity_pairs:
+        if original in special_forms:
+            return CONVERSION_FIELDS
+        infrastructure = effects.get('infrastructure_health_percent') and (
+            categories[original] == 'BuildingTypes'
+            and infrastructure_building(rules[original], defense=rules[original].get('IsBaseDefense', 'no').lower() == 'yes')
+            or infrastructure_building(rules.get(rules[original].get('DeploysInto', ''), {})))
+        if (original, 'building_limit') in capacity_pairs or infrastructure:
             fields += ('DeploysInto', 'UndeploysInto')
         return fields
 
@@ -245,7 +278,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         if not tier:
             tier = next((_authored_tech_tier(rules[source]) for source in aliases
                          if original in [rules[source].get(field) for field in
-                                         ('Convert.Deploy', 'Convert.Land', 'Convert.Water', 'UnloadingClass')]), 0)
+                                         conversion_fields(source)]), 0)
         percent = effects.get('defense_percent', 0) if defense else effects.get('tier_buffs', {}).get(str(tier), 0)
         if category == 'BuildingTypes' and not defense and plan.get('plan_version', 1) >= 12:
             percent = 0
@@ -268,8 +301,8 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
             # access to that subfaction's regular production roster.
             row.update(TechLevel='-1', BuildLimit='0')
         if original in access:
-            production_access(row, [name for name, _, _ in friends], plan['player_country'], rules)
-        elif original in special_forms:
+            production_access(row, [name for name, _, _ in friends], plan['player_country'], rules, original)
+        elif original in special_forms and not (original in payload_types and native_eligible):
             row.update(TechLevel='-1', BuildLimit='0')
         if percent and not defense and float(row.get('Strength', '0')) > 1:
             row['Strength'] = str(floor(float(row['Strength']) * factor))
@@ -301,20 +334,22 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
                     values['ROF'] = str(max(1, ceil(float(base['ROF']) / factor)))
                 if defense and float(base.get('Range', '0')) > 0:
                     values['Range'] = f'{float(base["Range"]) * factor:g}'
-                writer.sections[clone] = values
+                writer.sections[clone] = replace_references(values, dependencies)
                 _register_map_type(writer.sections, writer.lines, rules, 'WeaponTypes', clone)
                 weapons[weapon_key] = clone
             row[field] = weapons[weapon_key]
-        for field in (*conversion_fields(original), 'FreeUnit', 'PowersUpBuilding'):
-            if row.get(field) in aliases:
-                row[field] = aliases[row[field]]
-        writer.sections[alias] = row
+        for field in (*TYPE_REFERENCE_FIELDS, 'FreeUnit', 'PowersUpBuilding'):
+            if row.get(field):
+                row[field] = ','.join(aliases.get(part.strip(), part.strip()) for part in row[field].split(','))
+        writer.sections[alias] = replace_references(row, dependencies)
         _register_map_type(writer.sections, writer.lines, rules, category, alias)
-        writer.put(original, 'ForbiddenHouses', ','.join(sorted(forbidden | {name for name, _, _ in friends})))
+        if original in installed_types:
+            writer.put(original, 'ForbiddenHouses', ','.join(sorted(forbidden | {name for name, _, _ in friends})))
     for original, alias in aliases.items():
         if categories[original] == 'BuildingTypes':
             register_building_equivalent(writer, rules, original, alias, aliases,
-                                         preserve_native=plan.get('plan_version', 1) >= 14)
+                                         preserve_native=plan.get('plan_version', 1) >= 14,
+                                         current_prerequisites=plan.get('plan_version', 1) >= 40)
     if effects.get('defense_veterancy'):
         for name, country, _ in friends:
             defenses = [aliases.get(original, original) for original in rules['BuildingTypes'].values()

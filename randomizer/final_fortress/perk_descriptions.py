@@ -73,6 +73,22 @@ def rank_descriptions(perk, country):
         if effect.get('special_building_limit_stacks'):
             parts.append(f'+{effect["special_building_limit_stacks"]} to supported special-building and capped-defense limits; '
                          'normal technology and ownership requirements remain')
+        if effect.get('transport_capacity_stacks'):
+            parts.append(f'+{effect["transport_capacity_stacks"]} passenger slots on catalogue-eligible transports; '
+                         'gunner vehicles, Chrono Prison and sealed weapon payloads are excluded. '
+                         'Does not add initial passengers or unlock units')
+        if effect.get('infrastructure_health_percent'):
+            parts.append(f'+{effect["infrastructure_health_percent"]}% health for starting and future friendly '
+                         'production and economy buildings: Construction Yards, barracks, factories, '
+                         'airfields, shipyards, refineries, generators, grinders and special economy buildings. '
+                         'Normal access requirements remain; defenses, tech/support buildings and the Lab are unchanged')
+        if effect.get('open_topped'):
+            from .utilities import supported_pairs
+            eligible = sorted(kind for kind, buff in supported_pairs() if buff == 'open_topped')
+            parts.append('Passenger firing enabled on catalogue-reviewed transports only: '
+                         + ', '.join(name(kind) for kind in eligible)
+                         + '. Gunner vehicles, Stallion and Chrono Prison are excluded; '
+                         'existing open-topped units retain their behavior. Does not unlock units')
         if effect.get('fundraising_stacks'):
             parts.append(f'{effect["fundraising_stacks"] * 1000:,} credits deposited automatically every '
                          '300 in-game seconds, first payment at 5 minutes. Each human uses their own '
@@ -148,8 +164,11 @@ def rank_descriptions(perk, country):
                          'captured native copies retain their original payout. Ore-sale percentage is unchanged')
         if effect.get('special_units_by_country'):
             table = effect['special_units_by_country']
+            counts = [len(values) for values in table.values()]
+            amount = str(min(counts)) if min(counts) == max(counts) else f'{min(counts)}–{max(counts)}'
+            label = 'stolen-tech units' if perk['id'] == 'stolen_tech_access' else 'special units'
             parts.append('Production access: ' + (', '.join(name(kind) for kind in table[country])
-                         if country else f'{index} faction special units'))
+                         if country else f'{amount} faction {label}'))
         if effect.get('reinforcements'):
             reinforcement = effect['reinforcements']
             table = reinforcement['units_by_country']

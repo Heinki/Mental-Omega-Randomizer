@@ -342,10 +342,14 @@ rank's effect a second time. Prices are paid once per rank.
 | Power upgrades | 160 / 280 / 440 / 650 / 920 / 1,260 | Six ranks improving compatible effects of unlocked perk support powers and superweapons |
 | Satellite intelligence | 150 | Reveal the entire map immediately |
 | Allied helpers | 300 / 600 | Up to two normal skirmish AIs sharing the player's faction and enabled perks |
-| Special unit access | 300 / 600 / 1,000 | One additional faction special production unlock per rank, retaining earlier unlocks |
+| Special unit access | 300 / 600 / 1,000 | Three cumulative bundles of campaign units, prototypes and heroes; Rejuvenator is available to every faction at rank 3 |
+| Stolen tech access | 300 / 600 / 1,000 / 1,400 | Four cumulative ranks, one additional stolen-tech production unlock per rank, without infiltration |
 | Periodic reinforcements | 80 / 160 / 280 / 440 / 650 / 900 / 1,200 / 1,600 / 2,100 / 2,700 / 3,400 / 4,200 | Twelve ranks, every five minutes: 10 / 14 / 18 / 21 / 24 / 25 / 25 / 25 / 25 / 25 / 25 / 30 units; up to ten types. Rank 7 is Veteran, rank 8 onward Elite. Shared 150-unit living cap |
 | Automatic healing | 100 / 220 / 400 | Eligible rookie units and defenses heal 1% / 2% / 3% of maximum HP per native healing tick; stronger existing healing remains |
 | Sight and stealth detection | 80 / 160 / 280 | +1 / +2 / +3 sight, plus supported cloak sensors; existing longer sensor ranges remain |
+| Transport capacity | 80 / 160 / 280 | +1 / +2 / +3 passenger slots on catalogue-eligible transports; no added initial passengers |
+| Fortified infrastructure | 100 / 220 / 400 | +15% / +30% / +45% health for friendly production and economy buildings |
+| Open-topped transports | 200 | Passenger firing on the randomizer's thirteen reviewed eligible vehicle types; no new unit access |
 | Unique-unit capacity | 150 / 300 / 550 | +1 / +2 / +3 to eligible positive live-unit production limits, including unlocked specials; no new access |
 | Special building income | 120 / 240 / 420 / 650 | +5 / +10 / +15 / +20 credits per existing payout cycle on eligible special buildings |
 
@@ -511,21 +515,139 @@ lists for shortcut buildings. This retains those shortcuts while enforcing
 house and technology gates, preventing the original Harrier from appearing
 beside its buffed private copy through `PrerequisiteOverride`.
 
-Special access grants production through the faction's ordinary war factory,
-not free starting units. The three cumulative unlocks are:
+Special unit access and Stolen tech access grant production, rather than free
+starting units. Infantry use the faction's barracks, vehicles and flying vehicles
+use its war factory, and airport-bound planes use its airfield. Mission,
+infiltration and captured-factory gates are removed only from private copies.
+Credit costs and unique build limits remain; Tier and utility perks still apply.
+All three countries within each faction family share the same unlocks. Helper AI
+receives the same access, but its native recipes decide which units it builds.
 
-- Allies: Paladin Tank Hunter, Quickshifter, Paradox Engine.
-- Soviets: Apocalypse Tank, Syckle, Perun Flagship.
-- Epsilon: Wormqueen, Ganzir Defender, Hand of Ereshkigal.
-- Foehn: Phantasm MLRS, Seitaad Ballista, Archelon.
+Stolen tech access follows the [official stolen-tech roster](https://www.mentalomega.com/index.php?page=stolen_tech).
+The following entries are added one per rank, retaining all earlier entries:
 
-These are private reviewed reward models, including the portable Paradox Engine
-and Hand of Ereshkigal fixes and Archelon's deploy conversion. Mission and
-stolen-tech gates are replaced only on those private copies. Native unit credit
-costs and unique build limits remain; existing Tier perks also buff eligible
-special copies. All three countries within each faction family currently share
-this configurable sequence. Helper AI receives the same access, but its native
-production recipes still decide which units it builds.
+| Faction | Rank 1 | Rank 2 | Rank 3 | Rank 4 |
+| --- | --- | --- | --- | --- |
+| Allies | Quickshifter | Lionheart Bomber | Chrono Prison | Future Tank Alpha |
+| Soviets | Apocalypse Tank | Syckle | Grumble | Iron Dragon |
+| Epsilon | Wormqueen | Scavenger | Dybbuk-Seizer | Salamander |
+| Foehn | Phantasm MLRS | Seitaad Ballista | Archelon | Ramwagon |
+
+Special unit access supplies the remaining campaign roster in three cumulative
+bundles. Each row below lists only the additions at that rank:
+
+| Faction | Rank 1 | Rank 2 | Rank 3 |
+| --- | --- | --- | --- |
+| Allies | Paladin Tank Hunter, Old Artillery, Old Ranger, Old Longbow, Arnie Frankfurter, Flint Westwood, Sammy Stallion | Future Tank X-0, Jackal Racer Prototype, Diverbee Prototype, Tarchia Prototype, Robo Tengu | Paradox Engine, Shin Tsurugi Decimator, Super Thor Gunship, Rejuvenator |
+| Soviets | Old Heavy Tank, Old Demo Truck, Old M.A.D. Tank, Old Mammoth Tank, Old V2 Launcher, Ivan Biker, Ivan Cadet | Topol-M, Gharial Prototype, Mastodon Prototype, Infector Tank, Soviet Cosmonaut, Cyborg Vanguard | Perun Flagship, Boris, Col. Reznov, Col. Krukov, Cyborg Commando, Kirov Command Airship, Apocalypse Prototype, Rejuvenator |
+| Epsilon | Gravitron, Mobile Grinder, Genequad, Tyrant, Rashidi | Ganzir Defender, Space Commando, Epsilon Cosmonaut | Hands of Ereshkigal, Yuri, Psychic Boss Brute, Gene Boss Brute, Virus Boss Brute, Gehenna Platform (Earthrise), Rejuvenator |
+| Foehn | Bison Prototype | Heavy Trooper | Rejuvenator |
+
+Together, the two perks cover all 68 special mobile units in the randomizer
+catalogue. The Psychic Sensor is a building and remains outside these unit perks.
+Portable models also include hidden deploy/undeploy forms, Super Thor and
+Salamander payloads, and private boss-Brute weapon graphs. Ordinary infantry used
+as payloads retain their existing production access. Installed native combat
+definitions remain unchanged.
+
+Capped special units are registered before the large camp, reinforcement and
+Challenge registries. This keeps their live-unit limits inside the native
+512-entry ownership counters, including maximum loadouts. The map audit checks
+that bound as well as the authored limits.
+
+State schema 11 preserves previous Special unit access purchases. An older owner
+receives the same rank of Stolen tech access, up to rank 3, without another point
+charge. It is enabled if the old mixed perk was enabled. This retains every
+previously purchased stolen-tech unlock across faction changes. Existing active
+runs keep their frozen configuration and loadout; the split applies to new runs.
+
+The generated-map audit checks roster coverage, distinct purchases, factory and
+airfield prerequisites, hidden forms, passenger references and native combat-rule
+isolation. Use `--profiles arsenal stolen-tech all-specials` to inspect each
+purchase separately or combined with helpers. `--special-access-rank 1` through
+`4` selects a particular cumulative rank, capped at each perk's maximum.
+
+Validation on October 26, 2026 passed Python compilation, whitespace checks,
+the full launcher self-check and 96 terrain-audited Normal-difficulty map
+variants: 24 combined/maximum loadouts on each map, 12 three-human maximum
+loadouts on The Sky Mountain, and 36 lower-rank loadouts on Miners in the Sun.
+Every group covered all twelve playable countries. The final maximum-loadout
+audits also enforce the capped-special ownership-counter bound. Existing solo
+and testing saves normalized in memory without changing their frozen plans or
+writing the saves. Native gameplay and production timing still need play review.
+
+Plan 40 adds Transport capacity, Fortified infrastructure and Open-topped
+transports. They apply to every friendly house, including the host's co-op
+guests and AI helpers, through private copies. Existing runs keep their frozen
+effects; start a new run to use these purchases.
+
+Transport capacity follows the existing campaign reward catalogue and adds
+one cargo slot per rank, up to three. Gunner seats, Chrono Prison, Salamander
+and Super Thor are excluded. Initial passenger counts and identities, gunner
+behavior and sealed weapon payloads retain their existing contracts. Stallion
+can receive extra cargo slots, but cannot receive the open-topped perk.
+
+Open-topped transports is a single purchase. It uses the same reviewed reward
+eligibility and mandatory exclusions as the randomizer. Its complete whitelist
+contains thirteen types:
+
+- Airborne Humvee (`AHMV`), Armadillo (`ARMA`), Borillo (`BOREK`).
+- Driller APC (`DRIL`), Gharial (`GHTNK`), Gharial Prototype (`GHTNKP`).
+- Halftrack (`HTK`), Voyager Transport (`LCRF`), Quickshifter (`QUICK`).
+- Zubr Transport (`SAPC`), Tigr APC (`SCAR`), Watercat Transport (`SEAT`),
+  Mandjet Transport (`YHVR`).
+
+Gunner vehicles (`AMC`, `FV`, `STING`, `STNK`, `TENGU`, `TRACTOR`), Chrono Prison
+(`CHRP`) and the verified non-firing Stallion (`SHAD`) cannot gain open-topped
+passenger firing. Existing open-topped vehicles retain their native behavior.
+Both transport perks also reject live submod changes that turn an otherwise
+eligible type into a gunner vehicle or a sealed weapon carrier. Neither perk
+grants unit production access or bypasses faction requirements.
+
+Fortified infrastructure strengthens Construction Yards, barracks, war
+factories, airfields, shipyards, refineries, generators, grinders, Cloning Vats
+and other special economy buildings. Each rank adds 15% of the installed
+health, for a maximum of 45%. Existing Starting buildings and generator grants,
+normal future construction and native AI building lists use the private copies.
+Power Turbine and Nuclear Converter copies still attach to their fortified
+generators, including when no other generator perk is enabled.
+Deployable factories, War Rigs and Mobile Grinders retain linked private mobile
+and deployed identities. Mobile units keep their ordinary unit health perks.
+Defenses, walls, tech/support buildings and the protected Lab receive no
+infrastructure health bonus; Lab durability remains separate. Costs, income,
+power output, factory behavior and access requirements remain independent.
+
+Private building equivalents respect each target's actual prerequisites. A
+special unit already redirected to a generic faction factory does not regain
+its native campaign/technology prerequisites when that factory is fortified.
+
+Plan-40 validation on October 26, 2026 passed compilation, whitespace checks,
+the full launcher self-check and 120 terrain-audited Normal-difficulty variants
+across all twelve countries: isolated transport, open-topped and infrastructure
+loadouts; all three combined ranks; maximum loadouts on both maps; and three-human
+maximum loadouts on The Sky Mountain. Follow-up generator-upgrade audits passed
+36 solo variants and the twelve three-human maximum variants. The audits verify
+actual passenger counts, firing exclusions, initial payload preservation, health
+scaling, private deploy/undeploy and power-up links, helper AI building lists,
+ordinary production prerequisites and unchanged native combat stats. An existing
+plan-39 maximum Allied map remained byte-identical, and stored run plans normalized
+without changes. Native gameplay, passenger firing and construction timing still
+need play review.
+
+Useful follow-up perk candidates, not yet implemented:
+
+- **Rapid response:** increase eligible infantry and vehicle movement speed by
+  one existing speed-buff stack per rank. Reuse the reviewed movement ceilings
+  and jumpjet handling rather than changing locomotors.
+- **Expanded magazines:** add one ammo per rank to eligible aircraft and other
+  magazine-fed units. Reuse the reward catalogue's ammo eligibility so infinite
+  ammo and special weapon-state counters remain unchanged.
+- **Ore logistics:** add four storage per rank to eligible harvesters, reducing
+  refinery trips without altering their ore types, dock lists or collection AI.
+These remaining candidates already have campaign reward calculations and
+eligibility metadata; they need Fortress rank definitions, effect resolution
+and private-type wiring. None requires an engine extension or an executable
+patch.
 
 Starting army now has eight ranks. The first five grant 3/6/9/12/15 units;
 ranks 6–8 keep fifteen units while replacing basic troops with more advanced
