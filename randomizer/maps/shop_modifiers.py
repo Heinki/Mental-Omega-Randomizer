@@ -211,10 +211,31 @@ def _registered_ids(installed_sections, map_sections, rule_sections, list_name):
 
 
 def _effective_values(section_id, installed_sections, map_sections, rule_sections):
-    values = dict(installed_sections.get(section_id, {}))
-    values.update(map_sections.get(section_id, {}))
-    values.update(rule_sections.get(section_id, {}))
+    values = {}
+    keys = {}
+    for source in (installed_sections, map_sections, rule_sections):
+        for key, value in source.get(section_id, {}).items():
+            # INI keys are case-insensitive, including map/clone overrides.
+            effective_key = keys.setdefault(str(key).casefold(), key)
+            values[effective_key] = value
     return values
+
+
+def _uses_suicide_primary(values, installed_sections, map_sections, rule_sections):
+    """Preserve the engine's primary death blast only for suicide weapons."""
+    primary = str(values.get(_key(values, 'Primary'), '')).strip()
+    elite = str(values.get(_key(values, 'ElitePrimary'), '')).strip()
+    if not elite or elite.casefold() in {'none', '<none>'}:
+        elite = primary
+    for weapon_id in dict.fromkeys((primary, elite)):
+        weapon = _effective_values(
+            weapon_id, installed_sections, map_sections, rule_sections
+        )
+        if str(weapon.get(_key(weapon, 'Suicide'), '')).strip().casefold() not in {
+            'yes', 'true', '1',
+        }:
+            return False
+    return True
 
 
 def apply_shop_global_modifiers(
@@ -267,6 +288,12 @@ def apply_shop_global_modifiers(
                 if str(values.get(death_key, '')).strip().casefold() in {
                     '', 'none', '<none>',
                 }:
+                    # Demo trucks intentionally use their current primary
+                    # (including elite/buffed clones) as the death weapon.
+                    if _uses_suicide_primary(
+                        values, installed_sections, map_sections, rule_sections
+                    ):
+                        continue
                     # Explodes falls back to the current primary weapon.
                     # Temporal/spawner/control weapons cannot safely fire
                     # from a dying unit (ABOTTLE: TemporalClass::Fire).
