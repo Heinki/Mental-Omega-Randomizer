@@ -14375,13 +14375,6 @@
       "id": 81065630
     },
     {
-      "name": "Instant Shelter Armor Plating I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067927
-    },
-    {
       "name": "Instant Shelter Power",
       "classification": "progression",
       "category": "power_unlocks",
@@ -14401,48 +14394,6 @@
       "category": "power_buffs",
       "repeatable": true,
       "id": 81065633
-    },
-    {
-      "name": "Instant Shelter Rapid Regeneration I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81068261
-    },
-    {
-      "name": "Instant Shelter Recon Package I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067928
-    },
-    {
-      "name": "Instant Shelter Reinforced Frames I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067929
-    },
-    {
-      "name": "Instant Shelter Repair Systems I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067930
-    },
-    {
-      "name": "Instant Shelter Sensor Suite I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067931
-    },
-    {
-      "name": "Instant Shelter Stealth Systems I",
-      "classification": "useful",
-      "category": "unit_buffs",
-      "repeatable": true,
-      "id": 81067932
     },
     {
       "name": "Invader Access",
@@ -34477,7 +34428,7 @@
       ]
     }
   ],
-  "catalogue_checksum": "b755f29a3c8efc8553d46185c3833f34a873fab4389ee405594224e881c2eaaa",
+  "catalogue_checksum": "aa75e68002afa3f963b396d0eca43335c97f15b0f483a8b38c9ed2ef0e3dddac",
   "locations": [
     {
       "name": "Allied 01: RED DAWN RISING - Objective 1 - Reward 1",
