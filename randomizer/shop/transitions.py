@@ -321,7 +321,8 @@ def start_new_run(
         seed=seed,
         status=RunStatus.ACTIVE,
         stage=1,
-        run_length=config.run_length,
+        run_length=(len(reward_settings['classic_mission_order'])
+                    if reward_settings.get('classic_mission_order') else config.run_length),
         run_coins=min(
             config.maximum_starting_ore,
             starting_run_coins(

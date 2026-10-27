@@ -32,6 +32,7 @@ class FortressCoopLaunchController:
                      *[{'name': sessions[i].peer, 'address': sessions[i].ipv4_pair()[1],
                         'port': 1234 + i} for i in sorted(sessions)]]
         preferences = dict(self.final_fortress_state['preferences'])
+        preferences['player_color'] = self.selected_fortress_color()
         repository = self.final_fortress_repository
         config = deepcopy(self.final_fortress_config)
         from randomizer.final_fortress.economy import selected_fundraising_rank
@@ -49,6 +50,7 @@ class FortressCoopLaunchController:
             state, run_id = repository.begin_run(
                 config, difficulty=preferences['difficulty'], seed='FF-' + secrets.token_hex(8),
                 player_country=preferences['player_country'],
+                player_color=preferences['player_color'],
                 wave_multiplier=preferences['wave_multiplier'],
                 mental_ai_boost=preferences['mental_ai_boost'], coop_players=players,
                 fundraising_ranks=fundraising_ranks)

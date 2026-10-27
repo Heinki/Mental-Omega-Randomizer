@@ -61,7 +61,11 @@ from .challenge_controller import ChallengeController
 from .final_fortress_controller import FinalFortressController
 
 
+from .progression_battles import ProgressionBattlesController
+
+
 class LauncherApp(
+    ProgressionBattlesController,
     UpdateController,
     FinalFortressController,
     ChallengeController,

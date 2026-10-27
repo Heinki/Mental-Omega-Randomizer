@@ -2,7 +2,6 @@
 
 import tkinter as tk
 from tkinter import ttk
-from randomizer.ui.config import GAME_SPEEDS
 
 from .pressure import wave_size
 from .reporting import reward_report
@@ -130,6 +129,7 @@ def build_final_fortress_tab(app, notebook):
 
     progression = ttk.Notebook(content)
     app.final_fortress_progression_tabs = progression
+    app.build_fortress_color_control(title)
     progression.grid(row=1, column=0, sticky='nsew', pady=(12, 0))
     perks = ttk.Frame(progression, padding=12)
     challenges = ttk.Frame(progression, padding=12)
@@ -293,8 +293,6 @@ def build_final_fortress_tab(app, notebook):
         ('Wave multiplier', app.final_fortress_wave_multiplier_var,
          tuple(app.final_fortress_wave_multiplier_choices),
          app.on_final_fortress_wave_multiplier_changed),
-        ('Game speed', app.game_speed_var, tuple(label for label, _ in GAME_SPEEDS),
-         app.on_game_speed_changed),
     )):
         setup_label = ttk.Label(setup, text=label)
         setup_labels.append(setup_label)
@@ -309,7 +307,7 @@ def build_final_fortress_tab(app, notebook):
                     setup, text='Mental AI Boost (enemy and allied AI)',
                     variable=app.final_fortress_mental_ai_boost_var,
                     command=app.on_final_fortress_mental_ai_boost_changed)
-    app.final_fortress_mental_ai_boost_check.grid(row=6, column=1, sticky='w', pady=5)
+    app.final_fortress_mental_ai_boost_check.grid(row=5, column=1, sticky='w', pady=5)
 
     launch = ttk.Frame(tab)
     launch.grid(row=1, column=0, sticky='ew', pady=(8, 0))
@@ -341,7 +339,7 @@ def build_final_fortress_tab(app, notebook):
                                         padx=(16 if column else 0, 8), pady=3)
             combo.grid_configure(row=row, column=column + 1, pady=3)
         app.final_fortress_mental_ai_boost_check.grid_configure(
-            row=3 if two_columns else 6, column=0, columnspan=4 if two_columns else 2)
+            row=3 if two_columns else 5, column=0, columnspan=4 if two_columns else 2)
         orient = 'vertical' if compact else 'horizontal'
         for pane in (panes, challenge_panes):
             if str(pane.cget('orient')) != orient:

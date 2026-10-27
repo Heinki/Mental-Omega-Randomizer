@@ -125,6 +125,7 @@ def generate_mission_offers(
     stage,
     run_length=None,
     completed_codes=(),
+    classic_order=(),
     repeat_completed=False,
     unrestricted=False,
     reroll_count=0,
@@ -133,6 +134,16 @@ def generate_mission_offers(
     config: ShopModeConfig = SHOP_CONFIG,
 ):
     """Return an isolated, repeatable offer without touching other RNG streams."""
+    if classic_order:
+        by_code = {str(m['code']).upper(): m for m in missions}
+        completed = {str(code).upper() for code in completed_codes}
+        code = next((str(code).upper() for code in classic_order
+                     if str(code).upper() not in completed), None)
+        if code is None:
+            return ()
+        if code not in by_code:
+            raise ValueError(f'Classic Shop mission {code} is missing from this installation')
+        return (MissionOffer(code, classify_mission(by_code[code])),)
     run_length = config.run_length if run_length is None else int(run_length)
     stage = int(stage)
     reroll_count = int(reroll_count)

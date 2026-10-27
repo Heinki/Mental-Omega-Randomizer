@@ -546,6 +546,7 @@ class FinalFortressController(FortressCoopController):
                 or getattr(self, '_challenge_preparing', False)):
             return
         preferences = dict(self.final_fortress_state['preferences'])
+        preferences['player_color'] = self.selected_fortress_color()
         speed = self.get_selected_game_speed_value()
         self._final_fortress_preparing = True
         self.refresh_final_fortress()
@@ -562,6 +563,7 @@ class FinalFortressController(FortressCoopController):
             state, run_id = self.final_fortress_repository.begin_run(
                 self.final_fortress_config, difficulty=preferences['difficulty'],
                 seed='FF-' + secrets.token_hex(8), player_country=preferences['player_country'],
+                player_color=preferences['player_color'],
                 wave_multiplier=preferences['wave_multiplier'],
                 mental_ai_boost=preferences['mental_ai_boost'])
             launch['run_id'] = run_id

@@ -82,6 +82,8 @@ def spawn_data(plan, map_data, *, slot, endpoints, game_speed=2):
             sections[f'Multi{house + 1}_Alliances'] = {
                 'HouseAlly' + ordinal: str(other)
                 for ordinal, other in zip(ordinals, (other for other in team if other != house))}
+    from .colors import remap_colors
+    remap_colors(sections, plan)
     return '\r\n'.join(line for section, values in sections.items()
                        for line in (f'[{section}]', *(f'{key}={value}' for key, value in values.items()), '')).encode('latin-1')
 

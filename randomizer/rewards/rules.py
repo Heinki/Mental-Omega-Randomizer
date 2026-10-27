@@ -3,6 +3,7 @@
 from randomizer.rewards.catalogue import (
     canonical_reward,
     canonical_rewards,
+    linked_buff_variant_ids,
     unit_role_equivalents,
 )
 
@@ -40,6 +41,10 @@ def buffs_with_unlocked_access(
         str(unit_id).upper()
         for unit_id in (additional_unlocked_tech_ids or [])
     )
+    # Power-delivered/deployed forms prove access to their shared buff identity.
+    # This expands buff eligibility only; it does not grant production access.
+    for unit_id in tuple(unlocked):
+        unlocked.update(linked_buff_variant_ids(unit_id))
     filtered = []
     for reward in canonical_rewards(rewards):
         if reward.get('kind') != 'buff':
@@ -57,6 +62,7 @@ def buffs_with_unlocked_access(
             or reward.get('global_buff')
             or not unit_id
             or unit_id in unlocked
+            or (reward.get('_runtime_canonical') and reward.get('runtime_payload_access'))
             or equivalent_is_buff_eligible
         ):
             filtered.append(reward)

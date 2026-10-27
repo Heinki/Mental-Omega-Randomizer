@@ -25,7 +25,7 @@ def configuration_digest(config):
 def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(),
                    wave_multiplier=1, plan_version=PLAN_VERSION, selected_challenges=(),
                    challenge_stacks=None, perk_ranks=None, mental_ai_boost=False,
-                   coop_players=(), fundraising_ranks=None):
+                   coop_players=(), fundraising_ranks=None, player_color=None):
     """Freeze approved inputs before the engine adapter creates map bytes.
 
     Times are simulation seconds. Victory owns the duration boundary, so the
@@ -107,6 +107,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                     for entry in config['milestones']})
     rewards.update({f'camp:{entry["id"]}': entry['gems']
                     for entry in config['map']['camps']})
+    if player_color is not None and (type(player_color) is not int or not 0 <= player_color < 64):
+        raise ValueError('Invalid Final Fortress player color.')
     plan = {
         'mode_id': MODE_ID,
         'config_digest': configuration_digest(config),
@@ -134,6 +136,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
         if len(available) < allies:
             raise ValueError('This map has no configured allied helper start positions.')
         plan['allied_waypoints'] = available[:allies]
+    if player_color is not None:
+        plan['player_color'] = player_color
     if coop_players:
         plan['coop_players'] = list(coop_players)
     if plan_version >= 34:

@@ -319,6 +319,9 @@ def _active_direct_buff_counts(
         source_id = str(reward.get('unit') or '').upper()
         for variant_id in sorted(linked_buff_variant_ids(source_id) - {source_id}):
             variant_target = BUFF_TARGETS.get(variant_id, {})
+            allowed = variant_target.get('allowed_buff_types')
+            if allowed and reward.get('buff_type') not in allowed:
+                continue
             if (
                 variant_target.get('linked_buff_weapon_only')
                 and reward.get('buff_type') not in WEAPON_STAT_BUFF_TYPES

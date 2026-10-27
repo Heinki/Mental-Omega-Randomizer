@@ -2,7 +2,9 @@
 
 from copy import deepcopy
 
-from randomizer.rewards.catalogue import REWARD_POOL, canonical_rewards
+from randomizer.rewards.catalogue import (
+    BUFF_TARGETS, MANDATORY_EXCLUDED_BUFF_TYPE_IDS, REWARD_POOL, canonical_rewards,
+)
 from randomizer.rewards.power_buff_definitions import (
     POWER_BUFF_CONFIG,
     power_buff_stack_limit,
@@ -98,7 +100,10 @@ def equivalent_payload_unit_buff_rewards(
         ).upper()
         source_unit = (
             preferred
-            if preferred and preferred in available_units
+            if preferred and (preferred in available_units or any(
+                reward.get('kind') == 'buff' and str(reward.get('unit') or '').upper() == preferred
+                for reward in canonical
+            ))
             else faction_source
         )
         if not source_unit:
@@ -112,7 +117,15 @@ def equivalent_payload_unit_buff_rewards(
                 or str(reward.get('unit') or '').upper() != source_unit
             ):
                 continue
+            buff_type = reward.get('buff_type')
+            target = BUFF_TARGETS.get(payload_unit, {})
+            allowed = target.get('allowed_buff_types')
+            if (allowed and buff_type not in allowed
+                    or payload_unit in MANDATORY_EXCLUDED_BUFF_TYPE_IDS.get(buff_type, ())):
+                continue
             equivalent = dict(reward)
+            # Owning this power is the access proof for its unbuildable payload.
+            equivalent['runtime_payload_access'] = True
             equivalent['unit'] = payload_unit
             equivalent['force_direct_unit_buff'] = True
             equivalent['_runtime_canonical'] = True

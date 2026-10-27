@@ -32,25 +32,27 @@ def build_coop_controls(self, parent, row, *, shop=False):
         'Adds installed challenges to the next seed. Mission goal and Advanced exclusions apply. '
         'Available in standalone Grid Mode, Mission List and Classic.',
     )
+    if not shop:
+        self.build_skirmish_pool_control(frame, row=2)
     player_label = ttk.Label(frame, text='Human players (legacy run)')
-    player_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
+    player_label.grid(row=3, column=0, sticky='w', pady=(5, 0))
     count = ttk.Combobox(
         frame, textvariable=self.challenge_player_count_var, values=('1', '2'),
         state='readonly', width=3,
     )
-    count.grid(row=2, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
+    count.grid(row=3, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     count.bind('<<ComboboxSelected>>', self.on_challenge_setup_changed)
     fortress_label = ttk.Label(frame, text='Co-op players')
-    fortress_label.grid(row=2, column=0, sticky='w', pady=(5, 0))
+    fortress_label.grid(row=3, column=0, sticky='w', pady=(5, 0))
     fortress_count = ttk.Combobox(
         frame, textvariable=self._fortress_coop_count_var, values=('2', '3'),
         state='readonly', width=3,
     )
-    fortress_count.grid(row=2, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
+    fortress_count.grid(row=3, column=1, sticky='w', padx=(8, 0), pady=(5, 0))
     fortress_label.grid_remove()
     fortress_count.grid_remove()
     local = ttk.LabelFrame(frame, text='Local challenge players', padding=8)
-    local.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(8, 0))
+    local.grid(row=4, column=0, columnspan=3, sticky='ew', pady=(8, 0))
     local.columnconfigure(1, weight=1)
     country_label = ttk.Label(local, text='Your house')
     country_label.grid(row=0, column=0, sticky='w', padx=(0, 8), pady=2)
@@ -104,14 +106,14 @@ def build_coop_controls(self, parent, row, *, shop=False):
     connect = ttk.Button(
         frame, text='Co-op Connection…', command=self.open_coop_dialog,
     )
-    connect.grid(row=4, column=0, columnspan=3, sticky='w', pady=(5, 0))
+    connect.grid(row=5, column=0, columnspan=3, sticky='w', pady=(5, 0))
     if not hasattr(self, 'challenge_availability_var'):
         self.challenge_availability_var = tk.StringVar(master=self)
     availability = ttk.Label(
         frame, textvariable=self.challenge_availability_var,
         wraplength=360, justify='left', style='Muted.TLabel',
     )
-    availability.grid(row=5, column=0, columnspan=3, sticky='w')
+    availability.grid(row=6, column=0, columnspan=3, sticky='w')
     prefix = 'shop_' if shop else ''
     setattr(self, prefix + 'fortress_player_count_fields', (fortress_label, fortress_count))
     setattr(self, prefix + 'fortress_player_count_combo', fortress_count)

@@ -61,11 +61,7 @@ class WindowController:
         )
 
     def refresh_game_speed_controls(self):
-        visible = self.selected_mission_category() != 'coop'
-        state = 'disabled' if self.game_speed_controls_locked() else 'readonly'
-        for row, combo in getattr(self, 'play_game_speed_controls', ()):
-            row.grid() if visible else row.grid_remove()
-            combo.configure(state=state)
+        """Keep shared launch callbacks compatible; MO has no speed selector."""
 
     def on_game_speed_changed(self, _event=None):
         if self.game_speed_controls_locked():
@@ -85,8 +81,6 @@ class WindowController:
             self.progression_mode_var.get(),
             self.difficulty_var.get(),
         ]
-        if self.selected_mission_category() != 'coop':
-            parts.append(self.game_speed_var.get())
         if self.selected_mission_category() == 'challenge':
             parts.append(f'Challenges · {self.selected_challenge_player_count()} human(s)')
         elif self.coop_mode_var.get():

@@ -171,6 +171,8 @@ class ShopProgressionService:
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
+        if run.reward_settings.get('classic_mission_order'):
+            raise ShopTransitionError('Classic Shop follows the saved campaign order')
         if modifier_effects(run.modifiers)['disable_rerolls']:
             raise ShopTransitionError('Run modifiers disable Mission Rerolls')
         upgrade = SHOP_CONFIG.permanent_upgrades['mission_reroll']

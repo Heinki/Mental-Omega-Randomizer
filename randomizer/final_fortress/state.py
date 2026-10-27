@@ -178,6 +178,7 @@ def normalize_state(document):
         rebuilt = build_run_plan(
             run['config'], difficulty=plan.get('difficulty'),
             seed=plan.get('seed'), player_country=plan.get('player_country'),
+            player_color=plan.get('player_color'),
             selected_perks=plan.get('selected_perks', ()), perk_ranks=plan.get('perk_ranks'),
             wave_multiplier=plan.get('wave_multiplier', 1), plan_version=version,
             selected_challenges=[entry['id'] for entry in plan.get('challenges', [])],

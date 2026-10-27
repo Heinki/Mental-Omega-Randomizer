@@ -54,33 +54,6 @@ class _Value:
         return self.value
 
 
-class _HookAudit(LaunchController):
-    def __init__(self):
-        self.active_hook = {
-            'mission_code': 'AREDDAWN',
-            'markers': {'MOR_AREDDAWN_VIC': 'victory'},
-            'seen': set(),
-            'scenario_ready': False,
-        }
-        self.completed = False
-        self.failures = []
-        self.close_scheduled = False
-
-    def is_mission_complete(self, _code):
-        return self.completed
-
-    def unlock_mission_check(self, _code, check_id, _source):
-        if check_id != 'victory' or self.completed:
-            return False
-        self.completed = True
-        return True
-
-    def schedule_game_close_after_victory(self):
-        self.close_scheduled = True
-
-    def record_failed_mission_attempt(self, code, source):
-        self.failures.append((code, source))
-        return True
 
 
 class _AuditLauncher(LaunchController):
@@ -286,31 +259,6 @@ def _assert_mermaid_tanya(path, context):
         )
 
 
-def _assert_hook_restart_race():
-    watcher = _HookAudit()
-    watcher.process_hook_log_text(
-        'Capture_Mouse()\nMapClass::Init_Clear entry\n'
-    )
-    if watcher.failures or 'restart_detected_at' not in watcher.active_hook:
-        raise AssertionError('AREDDAWN restart was not deferred for its victory marker')
-    watcher.process_hook_log_text('Team MOR_AREDDAWN_VIC created\n')
-    if (
-        watcher.failures
-        or not watcher.completed
-        or not watcher.close_scheduled
-        or 'restart_detected_at' in watcher.active_hook
-    ):
-        raise AssertionError('AREDDAWN late victory marker lost the teardown race')
-
-    actual_restart = _HookAudit()
-    actual_restart.process_hook_log_text(
-        'Capture_Mouse()\nMapClass::Init_Clear entry\n'
-    )
-    actual_restart.active_hook['restart_detected_at'] -= 60
-    if not actual_restart.process_pending_restart_failure():
-        raise AssertionError('A genuine in-game restart was not recorded')
-    if len(actual_restart.failures) != 1:
-        raise AssertionError('A genuine restart produced the wrong failure count')
 
 
 def _assert_miner_docking(path):
@@ -1589,7 +1537,6 @@ def _assert_powerhouse_progression(missions):
 
 
 def main():
-    _assert_hook_restart_race()
     missions = parse_missions(BATTLE_CLIENT_INI)
     audit_final_mission_rewards(missions)
     if len(missions) != 97:

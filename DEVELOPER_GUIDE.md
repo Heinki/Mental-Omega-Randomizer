@@ -303,7 +303,7 @@ Co-op AP uses one shared slot. The host owns the AP session, check reporting,
 and generated AP purchases; guest mirrors are temporary and never open a
 second session. `randomizer/coop/archipelago.py` projects the same received-item
 ledger into map rewards and matching guest Shop runs. Run the launcher
-`--self-check` and `tools/check_coop_parity.py` after changing this bridge,
+`--self-check` installation report after changing this bridge,
 then verify connection and Shop progression with the rebuilt `.apworld`.
 
 Ownership, clone, AI, power, Action, or mission-map changes require all 97

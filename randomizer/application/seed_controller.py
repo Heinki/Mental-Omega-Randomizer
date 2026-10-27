@@ -235,6 +235,7 @@ class SeedController(SeedGeneration):
             'challenge_player_count': int(self.challenge_player_count_var.get()),
             'two_start_positions': bool(self.grid_two_starts_var.get()),
             'mission_pool_settings': {
+                'include_skirmishes': bool(self.include_skirmishes_var.get()),
                 'include_challenge_missions': self.optional_challenges_enabled(),
                 'include_no_build_missions': bool(self.include_no_build_missions_var.get()),
                 'include_no_build_production_missions': bool(

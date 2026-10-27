@@ -297,6 +297,14 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
     run_length = _positive_int(
         document.get('run_length'), 'run_length', config.run_length
     )
+    # Active campaign saves follow their complete frozen order, including
+    # campaigns longer or shorter than the normal Shop stage limit.
+    reward_settings = _object(document.get('reward_settings', {}), 'reward_settings')
+    classic_order = _unique_mission_codes(
+        reward_settings.get('classic_mission_order'), 'classic_mission_order'
+    )
+    if status is RunStatus.ACTIVE and classic_order:
+        run_length = len(classic_order)
     stage = _positive_int(document.get('stage'), 'stage', 1)
     if stage > run_length:
         raise ShopStateError(

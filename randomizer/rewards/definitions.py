@@ -381,6 +381,12 @@ LINKED_BUFF_VARIANTS = {
     for unit_id, variants in _UNIT_DATA_CONFIG['linked_buff_variants'].items()
 }
 
+# Instant Shelter is a delivered form of the garrison bunker. Keep its own
+# armor, sight, initial occupants and delivery-only production policy.
+LINKED_BUFF_VARIANTS.setdefault('NABNKR', {})['NABNKRR'] = {
+    'category': 'defenses', 'weapons': {},
+}
+
 
 def linked_buff_variant_ids(unit_id):
     """Return one gameplay identity and its deployment/mutation variants."""
@@ -1046,6 +1052,12 @@ for source_id, variants in LINKED_BUFF_VARIANTS.items():
                     source_weapon_ids.add(str(weapon_id).upper())
 
 
+# Clone payloads retain native regeneration, with the same rate/cap upgrades
+# as their hero source when those upgrades are earned.
+BUFF_TARGETS['LIBRC']['allowed_buff_types'] = list(dict.fromkeys([
+    *BUFF_TARGETS['LIBRC']['allowed_buff_types'], 'self_healing_cap', 'self_healing_rate',
+]))
+
 for unit_id, target in BUFF_TARGETS.items():
     template = _RANDOMIZER_TEMPLATE_VALUES.get(unit_id, {})
     target.update(self_healing_metadata(
@@ -1638,3 +1650,10 @@ for unit_id in NONTRAINABLE_UNIT_IDS:
 
 for buff_type in BUFF_TYPES:
     REWARD_ALIASES[f'Mind Control Unit {buff_type["name"]} I'] = f'Mastermind {buff_type["name"]} I'
+
+# Preserve purchases and serialized rewards from before bunkers shared stacks.
+for buff_type in BUFF_TYPES:
+    old_name = f'Instant Shelter {buff_type["name"]} I'
+    replacement = REWARD_BY_BUFF_KEY.get(('NABNKR', buff_type['id']))
+    if replacement:
+        REWARD_ALIASES[old_name] = replacement['name']

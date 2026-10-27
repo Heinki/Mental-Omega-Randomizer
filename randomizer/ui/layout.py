@@ -5,7 +5,6 @@ from ._builder_dependencies import (
     CAMPAIGN_FILTERS,
     DEFAULT_MISSION_GOAL,
     DIFFICULTIES,
-    GAME_SPEEDS,
     MAX_REWARDS_PER_CHECK,
     REWARD_MODES,
     TreeTooltip,
@@ -16,22 +15,6 @@ from ._builder_dependencies import (
 )
 from .shop import _tree
 from .coop import build_coop_controls
-
-
-def _build_game_speed_control(self, parent, **grid_options):
-    row = ttk.Frame(parent)
-    row.grid(**grid_options)
-    row.columnconfigure(1, weight=1)
-    ttk.Label(row, text='Game speed').grid(row=0, column=0, sticky='w', padx=(0, 8))
-    combo = ttk.Combobox(
-        row, state='readonly', textvariable=self.game_speed_var,
-        values=[label for label, _ in GAME_SPEEDS], width=14,
-    )
-    combo.grid(row=0, column=1, sticky='ew')
-    combo.bind('<<ComboboxSelected>>', self.on_game_speed_changed, add='+')
-    WidgetTooltip(combo, 'Applies to the next launch; no new seed needed. '
-                  'For two-player challenges, the host chooses the speed.')
-    self.__dict__.setdefault('play_game_speed_controls', []).append((row, combo))
 
 
 def _build_window_shell(self):
@@ -62,6 +45,7 @@ def _build_window_shell(self):
     header_actions = ttk.Frame(main_frame)
     header_actions.grid(row=0, column=1, sticky='ne')
     self.create_update_button(header_actions)
+    self.initialize_skirmish_pool_settings()
     self.settings_toggle_button = ttk.Button(
         header_actions,
         text='Hide Details',
@@ -86,7 +70,6 @@ def _build_window_shell(self):
         self.reward_mode_var,
         self.progression_mode_var,
         self.difficulty_var,
-        self.game_speed_var,
     ):
         variable.trace_add('write', self.update_header_summary)
     self.update_header_summary()
@@ -252,10 +235,6 @@ def _build_window_shell(self):
         compact_complete_button,
         'Co-op host: record a won mission to unlock the next maps. '
         'Single-player: recovery when automatic completion was not detected.',
-    )
-    _build_game_speed_control(
-        self, self.compact_action_row, row=1, column=0, columnspan=2,
-        sticky='ew', pady=(6, 0),
     )
     self.compact_action_row.grid(row=2, column=0, columnspan=2, sticky='ew')
     self.compact_action_row.grid_remove()
@@ -585,19 +564,7 @@ def _build_right_panel(self, main_frame):
     )
     self.shop_settings_frame = shop_settings_frame
     shop_settings_frame.columnconfigure(1, weight=1)
-    ttk.Label(
-        shop_settings_frame,
-        text=(
-            f'Shop run = complete {self.shop_config.run_length}-stage session. '
-            'Stage = numbered step '
-            f'(Stage 1 / {self.shop_config.run_length}). Mission = map chosen '
-            'for that stage. Each selected mission gets one attempt. An '
-            'Emergency Revival repeats a failed stage with new mission choices.'
-        ),
-        style='Muted.TLabel',
-        justify='left',
-        wraplength=720,
-    ).grid(row=2, column=0, columnspan=2, sticky='ew', pady=(0, 12))
+    self.build_classic_shop_controls(shop_settings_frame)
 
     ttk.Label(shop_settings_frame, text='Game Mode').grid(
         row=0, column=0, sticky='w', padx=(0, 12)
@@ -666,6 +633,7 @@ def _build_right_panel(self, main_frame):
     shop_mission_filters.grid(
         row=8, column=0, columnspan=2, sticky='ew', pady=(8, 0)
     )
+    self.build_skirmish_pool_control(shop_mission_filters, row=3, shop=True)
     self.shop_include_no_build_missions_check = ttk.Checkbutton(
         shop_mission_filters,
         text='Include no-build missions',
@@ -858,22 +826,19 @@ def _build_right_panel(self, main_frame):
     button_row = ttk.Frame(right_frame)
     button_row.grid(row=0, column=0, sticky='ew', pady=(0, 6))
     button_row.columnconfigure(0, weight=1)
-    _build_game_speed_control(
-        self, button_row, row=0, column=0, sticky='ew', pady=(0, 6),
-    )
     self.launch_selected_button = ttk.Button(
         button_row,
         text='Launch Selected Mission',
         command=self.on_launch_selected,
         style='Launch.TButton',
     )
-    self.launch_selected_button.grid(row=1, column=0, sticky='ew', pady=(0, 4))
+    self.launch_selected_button.grid(row=0, column=0, sticky='ew', pady=(0, 4))
     self.debug_complete_button = ttk.Button(
         button_row,
         text='Mark Mission Complete',
         command=self.on_debug_mark_complete,
     )
-    self.debug_complete_button.grid(row=2, column=0, sticky='ew', pady=(0, 3))
+    self.debug_complete_button.grid(row=1, column=0, sticky='ew', pady=(0, 3))
     WidgetTooltip(
         self.debug_complete_button,
         'Co-op host: record a won mission to unlock the next maps. '

@@ -44,6 +44,8 @@ class RewardGeneration:
 
     def objective_templates_for_code(self, code):
         mission = self.mission_lookup().get(code, {})
+        if mission.get('skirmish'):
+            return [('victory', 'Skirmish Victory', 'Defeat the single enemy AI.')]
         if mission.get('challenge_name'):
             return [('victory', 'Challenge Victory', 'Defeat every enemy in the challenge.')]
         if mission.get('coop_name'):

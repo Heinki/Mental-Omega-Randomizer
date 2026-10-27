@@ -243,7 +243,7 @@ class FinalFortressRepository:
         return self._update(change)[0]
 
     def begin_run(self, config, *, difficulty, seed, player_country, wave_multiplier=None,
-                  mental_ai_boost=None, coop_players=(), fundraising_ranks=None):
+                  mental_ai_boost=None, coop_players=(), fundraising_ranks=None, player_color=None):
         """Commit the exact run snapshot before starting its game process."""
         snapshot = deepcopy(config)
 
@@ -254,6 +254,7 @@ class FinalFortressRepository:
                           if wave_multiplier is None else wave_multiplier)
             plan = build_run_plan(
                 snapshot, difficulty=difficulty, seed=seed, player_country=player_country,
+                player_color=player_color,
                 selected_perks=[key for key in state['selected_perks']
                                 if key in {entry['id'] for entry in snapshot['perks']}],
                 perk_ranks=state['perk_ranks'], wave_multiplier=multiplier,

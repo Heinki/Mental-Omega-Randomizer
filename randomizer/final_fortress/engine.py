@@ -669,6 +669,17 @@ def build_map(game_root, run, rules, *, preloads=None):
         if additions:
             writer.put('General', field, ','.join([*native, *additions]))
     player_aliases = apply_player_types(writer, plan, rules, reserved_aliases=reserved_player_types)
+    # Reuse the Shop/Grid adapter for native building powers and exact-type
+    # lists. A private Reprocessor must activate bounty just like FAREPR.
+    if player_aliases.get('FAREPR'):
+        from randomizer.coop.native_buildings import preserve_native_building_abilities
+        from .player_perks import coalition
+        def register_native_ability(category, alias):
+            _register_map_type(writer.sections, writer.lines, rules, category, alias)
+        preserve_native_building_abilities(
+            writer.sections, {'FAREPR': player_aliases['FAREPR']}, rules, {},
+            ','.join(actor for actor, _, _ in coalition(plan)), 'FF',
+            register_native_ability, techno_clones=player_aliases)
     from .reinforcements import reserve_staging
     reserve_staging(writer, plan, rules)
     place_fortifications(writer, plan, rules, enemy_aliases)
@@ -823,6 +834,8 @@ def spawn_data(plan, map_data, *, game_speed=2):
         sections.setdefault('HouseColors', {})[house] = str(index + 3)
         sections.setdefault('HouseHandicaps', {})[house] = str(2 - plan['engine_difficulty'])
         sections['SpawnLocations'][house] = str(waypoint)
+    from .colors import remap_colors
+    remap_colors(sections, plan)
     return '\r\n'.join(line for section, values in sections.items()
                        for line in (f'[{section}]', *(f'{key}={value}' for key, value in values.items()), '')).encode('latin-1')
 
