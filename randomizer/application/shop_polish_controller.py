@@ -146,7 +146,12 @@ class ShopPolishController(ShopArchipelagoController):
             for iid in targets:
                 bounds = tree.bbox(iid, 'upgrades')
                 if bounds:
-                    visible[iid] = bounds
+                    x, y, width, height = bounds
+                    button_height = min(30, max(22, height - 8))
+                    button_y = y + max(0, (height - button_height) // 2)
+                    if (x + 5 >= 0 and x + max(24, width - 10) + 5 <= tree.winfo_width() - 2
+                            and button_y + button_height <= tree.winfo_height() - 2):
+                        visible[iid] = bounds
         for iid in tuple(buttons):
             if iid not in visible:
                 buttons.pop(iid).destroy()

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 import re
 
 from randomizer.coop.compatibility import resolve_path
+from randomizer.core.diagnostics import event as log_event
 from randomizer.maps.ini import all_section_value_maps
 from randomizer.missions.catalogue import BASE_BUILD, normalize_long_description
 
@@ -107,7 +109,11 @@ def _validate_metadata(metadata: dict) -> None:
     if metadata.get('iscoopmission', '').casefold() not in {'true', 'yes', '1'}:
         raise ValueError('Selected map is not registered as a challenge mission.')
     if metadata.get('minplayers') not in {'1', '2'} or metadata.get('maxplayers') != '2':
-        raise ValueError('Challenges require native one- or two-player registration.')
+        raise ValueError(
+            'Challenges require native one- or two-player registration '
+            f"(MinPlayers={metadata.get('minplayers', '<missing>')}, "
+            f"MaxPlayers={metadata.get('maxplayers', '<missing>')})."
+        )
     modes = {value.strip().casefold() for value in metadata.get('gamemodes', '').split(',')}
     if any(mode.casefold() not in modes for mode in CHALLENGE_MODES):
         raise ValueError('Challenge map is missing a registered difficulty mode.')
@@ -149,28 +155,49 @@ def map_config(game_root: Path, map_name: str, player_country: str | None = None
 
 
 def discover_challenge_missions(game_root: Path, player_country: str | None = None, *,
-                                country: str | None = None, player_count: int = 1) -> list[dict]:
+                                country: str | None = None, player_count: int = 1,
+                                on_warning=None) -> list[dict]:
     """Discover the full catalogue independently of per-match player choices.
 
     Country parameters remain accepted for older callers. A mission's default
     country is deterministic metadata, while map_config validates the actual
     human and AI houses immediately before launch.
+
+    Unsupported entries are optional content: report and skip them without
+    discarding the campaign catalogue or other compatible challenges.
     """
     if player_count not in (1, 2):
         raise ValueError('Challenges support one or two human players.')
     selected = player_country or country
     if selected and selected not in SIDE_COUNTRIES:
         raise ValueError('Unknown challenge player country.')
+
+    def warn(source, error):
+        message = f'Skipped challenge content {source}: {error}'
+        log_event('challenge_catalogue_warning', level=logging.WARNING,
+                  source=str(source), error=str(error))
+        if on_warning is not None:
+            on_warning(message)
+
+    try:
+        sections = catalogue_sections(game_root)
+    except (OSError, ValueError) as exc:
+        warn(CATALOGUE_PATH, exc)
+        return []
     missions = []
-    for section, metadata in catalogue_sections(game_root).items():
+    for section, metadata in sections.items():
         match = _REGISTERED.fullmatch(section)
         if not match:
             continue
         name = match.group(1).casefold()
-        source = resolve_path(game_root, f'MapsMO/Challenge/{name}.map')
-        if not source.is_file():
+        try:
+            source = resolve_path(game_root, f'MapsMO/Challenge/{name}.map')
+            if not source.is_file():
+                raise FileNotFoundError(f'Challenge map is missing: {source}')
+            _validate_metadata(metadata)
+        except (OSError, ValueError) as exc:
+            warn(section, exc)
             continue
-        _validate_metadata(metadata)
         available = allowed_countries(metadata)
         chosen = available[0]
         family = SIDE_FAMILIES[SIDE_COUNTRIES.index(chosen)]

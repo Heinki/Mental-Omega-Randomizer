@@ -1,6 +1,7 @@
 """Shop Mode workspace widgets."""
 
 from ._builder_dependencies import TreeTooltip, WidgetTooltip, tk, ttk
+from .viewport import ScrollableViewport
 
 
 def _tree(
@@ -35,6 +36,10 @@ def _tree(
     horizontal_scrollbar.grid(row=1, column=0, sticky='ew')
     parent.columnconfigure(0, weight=1)
     parent.rowconfigure(0, weight=1)
+    # A stretched Treeview retains its column widths. Do not let those widths
+    # become the minimum width of the entire Shop after shrinking the window.
+    parent.configure(width=1, height=tree.winfo_reqheight() + 40)
+    parent.grid_propagate(False)
     return tree
 
 
@@ -108,9 +113,21 @@ def build_shop_tab(self, workspace_tabs):
     tab = ttk.Frame(workspace_tabs)
     self.shop_tab = tab
     tab.columnconfigure(0, weight=1)
-    tab.rowconfigure(1, weight=1)
+    tab.rowconfigure(0, weight=1)
 
-    header = ttk.Frame(tab, padding=(8, 8, 8, 0))
+    viewport = ScrollableViewport(tab, padding=8)
+    self.shop_viewport = viewport
+    viewport.grid(row=0, column=0, columnspan=2, sticky='nsew')
+    canvas = viewport.canvas
+    self.shop_canvas = canvas
+    content = viewport.content
+    self.shop_content_frame = content
+    content.columnconfigure(0, weight=1)
+    content.rowconfigure(3, weight=1)
+    self.shop_canvas_window = viewport.window
+    viewport.layout = self.layout_shop_content
+
+    header = ttk.Frame(content, padding=(8, 8, 8, 0))
     self.shop_header_frame = header
     header.grid(row=0, column=0, sticky='ew')
     for column in range(6):
@@ -134,33 +151,6 @@ def build_shop_tab(self, workspace_tabs):
         label.grid(row=0, column=column, sticky='w', padx=(0, 10))
         self.shop_header_labels.append(label)
     self.shop_status_label = self.shop_header_labels[1]
-
-    canvas = tk.Canvas(
-        tab,
-        borderwidth=0,
-        highlightthickness=0,
-        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
-    )
-    self.shop_canvas = canvas
-    vertical_scrollbar = ttk.Scrollbar(
-        tab, orient='vertical', command=canvas.yview
-    )
-    canvas.configure(yscrollcommand=vertical_scrollbar.set)
-    canvas.grid(row=1, column=0, sticky='nsew')
-    vertical_scrollbar.grid(row=1, column=1, sticky='ns')
-
-    content = ttk.Frame(canvas, padding=8)
-    self.shop_content_frame = content
-    content.columnconfigure(0, weight=1)
-    content.rowconfigure(3, weight=1)
-    self.shop_canvas_window = canvas.create_window(
-        (0, 0), window=content, anchor='nw'
-    )
-    content.bind('<Configure>', self.on_shop_content_configure, add='+')
-    canvas.bind('<Configure>', self.on_shop_canvas_configure, add='+')
-    self.bind_all('<MouseWheel>', self.on_shop_mousewheel, add='+')
-    self.bind_all('<Button-4>', self.on_shop_mousewheel, add='+')
-    self.bind_all('<Button-5>', self.on_shop_mousewheel, add='+')
 
     run_ended = ttk.Frame(content, padding=(18, 24))
     self.shop_run_ended_frame = run_ended
@@ -980,3 +970,4 @@ def build_shop_tab(self, workspace_tabs):
         'write', lambda *_args: self.schedule_shop_search_refresh('permanent')
     )
     self.sync_shop_workspace()
+    viewport.bind_controls()

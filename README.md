@@ -228,6 +228,8 @@ Every Python module stays below 1,000 lines. Public facades such as
 
 Run `MentalOmegaRandomizer.exe --self-check` first. The result is saved to `RandomizerLauncherData\self_check.json`, and structured launcher diagnostics are kept in `RandomizerLauncherData\logs\launcher.log`. Objective and victory marker activity comes from the game's `debug\debug.log`.
 
+The installation report includes the compatible challenge count and any rejected challenge registrations. An unavailable challenge catalogue or an unsupported challenge entry is logged and skipped; valid campaign missions and other compatible challenges remain available. Diagnostics identify the rejected map and registration values. Challenge launch still validates the installed registration before preparing a game.
+
 When reporting a reproducible problem, include those files together with the mission code, seed, reward mode, and whether the issue also occurs on a fresh unmodified Mental Omega installation. Do not post `randomizer_state.json` publicly without reviewing it first; it contains the active run's seed and progress.
 
 ## Current Status

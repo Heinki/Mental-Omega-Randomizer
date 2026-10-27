@@ -225,10 +225,7 @@ class FinalFortressController(FortressCoopController):
             self._final_fortress_workspace_active = True
             self.subtitle_label.configure(textvariable=self.final_fortress_header_var)
             self.copy_seed_button.grid_remove()
-            self.right_frame.grid_remove()
-            self.workspace_tabs.grid_configure(columnspan=2, padx=0)
-            self.settings_toggle_button.grid_remove()
-            self.compact_action_row.grid_remove()
+            self.sync_workspace_layout()
             self.sync_debug_completion_controls()
             if self.workspace_tabs.select() == str(self.settings_tab):
                 self.after_idle(lambda: self.layout_settings_sections(

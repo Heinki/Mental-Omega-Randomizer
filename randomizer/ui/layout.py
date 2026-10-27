@@ -15,6 +15,7 @@ from ._builder_dependencies import (
 )
 from .shop import _tree
 from .coop import build_coop_controls
+from .viewport import ScrollableViewport
 
 
 def _build_window_shell(self):
@@ -26,6 +27,8 @@ def _build_window_shell(self):
 
     self.style = ttk.Style(self)
     self.style.configure('Randomizer.TNotebook', tabposition='n')
+    self.style.layout('Compact.Randomizer.TNotebook', [('Notebook.client', {'sticky': 'nswe'})])
+    self.style.layout('Compact.Randomizer.TNotebook.Tab', [])
     self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
     self.style.configure('Unlocks.TNotebook', tabposition='n')
     self.style.configure('Unlocks.TNotebook.Tab', padding=(7, 7), font=('Segoe UI', 9, 'bold'))
@@ -41,7 +44,11 @@ def _build_window_shell(self):
         text=f'Mental Omega Randomizer Launcher v{APP_VERSION}',
         font=('Segoe UI', 14, 'bold'),
     )
-    header.grid(row=0, column=0, sticky='w')
+    self.header_label = header
+    self._compact_window_heading = f'MO Randomizer v{APP_VERSION}'
+    self._full_window_heading = header.cget('text')
+    header.grid(row=0, column=0, sticky='ew')
+    main_frame.bind('<Configure>', self.on_main_frame_configure, add='+')
     header_actions = ttk.Frame(main_frame)
     header_actions.grid(row=0, column=1, sticky='ne')
     self.create_update_button(header_actions)
@@ -52,6 +59,12 @@ def _build_window_shell(self):
         command=self.toggle_settings_panel,
     )
     self.settings_toggle_button.grid(row=0, column=1, sticky='ne')
+    self.workspace_menu = tk.Menu(header_actions, tearoff=False)
+    self.workspace_menu.configure(postcommand=self.populate_workspace_menu)
+    self.workspace_menu_button = ttk.Menubutton(
+        header_actions, text='Views', menu=self.workspace_menu, width=6,
+    )
+    self.workspace_menu_button.grid(row=0, column=2, sticky='ne', padx=(6, 0))
     self.copy_seed_button = ttk.Button(
         main_frame,
         text='Copy Seed',
@@ -64,7 +77,7 @@ def _build_window_shell(self):
         textvariable=self.header_summary_var,
         style='Muted.TLabel',
     )
-    self.subtitle_label.grid(row=1, column=0, sticky='w', pady=(2, 10))
+    self.subtitle_label.grid(row=1, column=0, sticky='ew', pady=(2, 10))
     for variable in (
         self.campaign_var,
         self.reward_mode_var,
@@ -167,6 +180,11 @@ def _build_window_shell(self):
     tree_scrollbar.grid(row=1, column=1, sticky='ns')
     self.missions_tree.configure(yscrollcommand=tree_scrollbar.set)
     self.tree_scrollbar = tree_scrollbar
+    self.mission_horizontal_scrollbar = ttk.Scrollbar(
+        mission_view_frame, orient='horizontal', command=self.missions_tree.xview,
+    )
+    self.mission_horizontal_scrollbar.grid(row=2, column=0, sticky='ew')
+    self.missions_tree.configure(xscrollcommand=self.mission_horizontal_scrollbar.set)
 
     self.grid_frame = ttk.Frame(mission_view_frame, padding=(4, 4, 4, 4))
     self.grid_frame.grid(row=1, column=0, columnspan=2, sticky='nsew')
@@ -236,15 +254,16 @@ def _build_window_shell(self):
         'Co-op host: record a won mission to unlock the next maps. '
         'Single-player: recovery when automatic completion was not detected.',
     )
-    self.compact_action_row.grid(row=2, column=0, columnspan=2, sticky='ew')
+    self.compact_action_row.grid(row=3, column=0, columnspan=2, sticky='ew')
     self.compact_action_row.grid_remove()
 
     return main_frame
 
 def _build_right_panel(self, main_frame):
-    right_frame = ttk.Frame(main_frame)
-    self.right_frame = right_frame
-    right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
+    viewport = ScrollableViewport(main_frame)
+    self.right_frame = viewport
+    viewport.grid(row=2, column=1, rowspan=5, sticky='nsew')
+    right_frame = viewport.content
     right_frame.columnconfigure(0, weight=1)
     right_frame.rowconfigure(1, weight=1)
 
@@ -259,35 +278,20 @@ def _build_right_panel(self, main_frame):
     settings_tab.columnconfigure(0, weight=1)
     settings_tab.rowconfigure(0, weight=1)
     self.workspace_tabs.add(settings_tab, text='Settings')
-    settings_canvas = tk.Canvas(
-        settings_tab,
-        borderwidth=0,
-        highlightthickness=0,
-        background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
-    )
+    viewport = ScrollableViewport(settings_tab, padding=8)
+    self.settings_viewport = viewport
+    viewport.grid(row=0, column=0, sticky='nsew')
+    settings_canvas = viewport.canvas
     self.settings_canvas = settings_canvas
-    settings_scrollbar = ttk.Scrollbar(
-        settings_tab,
-        orient='vertical',
-        command=settings_canvas.yview,
-    )
-    settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
-    settings_canvas.grid(row=0, column=0, sticky='nsew')
-    settings_scrollbar.grid(row=0, column=1, sticky='ns')
-    settings_frame = ttk.Frame(settings_canvas, padding=(8, 8, 8, 8))
+    self.settings_horizontal_scrollbar = viewport.horizontal
+    settings_frame = viewport.content
     settings_frame.columnconfigure(0, weight=1)
     settings_frame.columnconfigure(1, weight=0)
     self.settings_frame = settings_frame
     self.mission_appearance_column = ttk.Frame(settings_frame)
     self.mission_appearance_column.columnconfigure(0, weight=1)
-    self.settings_canvas_window = settings_canvas.create_window(
-        (0, 0),
-        window=settings_frame,
-        anchor='nw',
-    )
-    settings_frame.bind('<Configure>', self.on_settings_content_configure, add='+')
+    self.settings_canvas_window = viewport.window
     settings_canvas.bind('<Configure>', self.on_settings_canvas_configure, add='+')
-    self.bind_all('<MouseWheel>', self.on_settings_mousewheel, add='+')
 
     self.fortress_mode_settings_frame = ttk.Frame(settings_frame)
     self.fortress_mode_settings_frame.columnconfigure(1, weight=1)
@@ -859,7 +863,7 @@ def _build_info_tabs(self, info_tabs):
 
     self.rewards_text = scrolledtext.ScrolledText(
         progress_frame,
-        height=16,
+        height=16, width=1,
         wrap='word',
         state='disabled',
         font=('Segoe UI', 9),
@@ -966,7 +970,7 @@ def _build_info_tabs(self, info_tabs):
     self.unlock_search_status.grid(row=0, column=4, padx=(6, 0))
     self.unlocks_text = scrolledtext.ScrolledText(
         summary_page,
-        height=16,
+        height=16, width=1,
         wrap='word',
         state='disabled',
         font=('Segoe UI', 9),

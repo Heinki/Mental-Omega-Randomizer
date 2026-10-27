@@ -86,7 +86,12 @@ class SeedController(SeedGeneration):
             self.append_log('Challenges support Classic, Grid Mode and Mission List.', error=True)
             return None
         if not self.missions:
-            self.append_log('Cannot generate seed: no missions loaded.', error=True)
+            cause = getattr(self, '_mission_load_error', '')
+            self.append_log(
+                f'Cannot generate seed: mission loading failed: {cause}' if cause
+                else 'Cannot generate seed: no missions loaded. Check the Launcher Log.',
+                error=True,
+            )
             return
 
         seed_missions = self.filtered_missions_for_seed()

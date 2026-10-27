@@ -416,14 +416,16 @@ class RewardController(RewardGeneration):
             return discover_challenge_missions(
                 GAME_ROOT,
                 player_count=player_count or self.selected_challenge_player_count(),
+                on_warning=self.append_log,
             )
         missions = (discover_coop_missions(GAME_ROOT) if category == 'coop'
                     else parse_missions(BATTLE_CLIENT_INI, FALLBACK_OBJECTIVE_COUNT))
-        return missions + discover_challenge_missions(GAME_ROOT)
+        return missions + discover_challenge_missions(GAME_ROOT, on_warning=self.append_log)
 
     def apply_missions(self, missions):
         """Apply a previously parsed mission catalogue to launcher widgets."""
         self.missions = missions
+        self._mission_load_error = ''
         self._mission_by_code = {mission['code']: mission for mission in self.missions}
         self.mission_goal_spinbox.configure(to=max(1, len(self.missions)))
         if self.missions and self.mission_goal_var.get() > len(self.missions):

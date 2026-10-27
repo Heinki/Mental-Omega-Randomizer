@@ -22,12 +22,16 @@ def _build_log_and_overlay(self, main_frame):
         width=18,
     )
     self.log_toggle_button.grid(row=0, column=0, sticky='w')
-    ttk.Label(log_header, text=f'Persistent diagnostics: {LAUNCHER_LOG}').grid(
+    diagnostics_label = ttk.Label(
+        log_header, text=f'Persistent diagnostics: {LAUNCHER_LOG}', width=1,
+    )
+    diagnostics_label.grid(
         row=0,
         column=1,
-        sticky='w',
+        sticky='ew',
         padx=(8, 0),
     )
+    WidgetTooltip(diagnostics_label, str(LAUNCHER_LOG))
     self.shop_debug_mission_var = tk.StringVar(value='')
     self.shop_debug_mission_codes = {}
     self.shop_debug_mission_combo = ttk.Combobox(
@@ -57,7 +61,7 @@ def _build_log_and_overlay(self, main_frame):
     self.shop_debug_complete_button.grid_remove()
     self.log_text = scrolledtext.ScrolledText(
         main_frame,
-        height=10,
+        height=6,
         wrap='word',
         state='disabled',
         background='black',
@@ -69,9 +73,7 @@ def _build_log_and_overlay(self, main_frame):
 
     main_frame.rowconfigure(2, weight=1)
     main_frame.rowconfigure(9, weight=0)
-    # Keep wide mission/settings workspace beside narrower details panel.
-    main_frame.columnconfigure(0, weight=13, uniform='content')
-    main_frame.columnconfigure(1, weight=6, minsize=396, uniform='content')
+    self.sync_workspace_layout()
 
     # Long seed/map work runs on the single background worker. This overlay
     # blocks duplicate input while Tk keeps painting progress and elapsed time.

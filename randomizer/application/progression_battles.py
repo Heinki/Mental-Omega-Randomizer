@@ -290,7 +290,7 @@ class ProgressionBattlesController:
 
     def launch_progression_skirmish(self, mission):
         from randomizer.core.paths import DEBUG_LOG
-        from randomizer.skirmish import GAME, multiplayer_colors, prepare_game
+        from randomizer.skirmish import GAME, multiplayer_colors, prepare_game, preload_player_country
         from randomizer.skirmish_progression import SkirmishResultWatch
         process = getattr(self, 'active_game_process', None)
         if process is not None and process.poll() is None:
@@ -348,6 +348,7 @@ class ProgressionBattlesController:
             art = getattr(self, 'prepare_direct_game_art', None)
             if art:
                 art()
+            preload_player_country(GAME_ROOT)
             return command
 
         def finish(command):

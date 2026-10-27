@@ -3,6 +3,7 @@
 import secrets
 import tkinter as tk
 from tkinter import ttk
+from randomizer.ui.viewport import ScrollableViewport, fit_dialog
 
 
 def connection_dialog(app):
@@ -20,9 +21,9 @@ def connection_dialog(app):
     app._fortress_coop_dialog = dialog
     dialog.title('Final Fortress co-op — ZeroTier')
     dialog.transient(app)
-    dialog.resizable(False, False)
-    frame = ttk.Frame(dialog, padding=12)
-    frame.pack(fill='both', expand=True)
+    viewport = ScrollableViewport(dialog, padding=12)
+    viewport.pack(fill='both', expand=True)
+    frame = viewport.content
     frame.columnconfigure(1, weight=1)
     app._fortress_connection_fields = {}
     fields = (
@@ -57,6 +58,8 @@ def connection_dialog(app):
     ttk.Label(frame, textvariable=app.fortress_coop_status_var, wraplength=410, justify='left').grid(
         row=6, column=0, columnspan=2, sticky='w', pady=(8, 0))
     app.refresh_fortress_coop_controls()
+    viewport.bind_controls()
+    fit_dialog(dialog, frame)
 
 
 def refresh_connection_dialog(app, *, connected, busy):

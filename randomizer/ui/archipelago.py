@@ -2,14 +2,16 @@
 
 from ._builder_dependencies import scrolledtext, ttk
 from randomizer.core.paths import LAUNCHER_LOG
+from .viewport import ScrollableViewport
 
 
 def build_archipelago_tab(self, workspace_tabs):
-    tab = ttk.Frame(workspace_tabs, padding=(12, 12, 12, 12))
-    self.archipelago_tab = tab
+    viewport = ScrollableViewport(workspace_tabs, padding=12)
+    self.archipelago_tab = viewport
+    workspace_tabs.add(viewport, text='Archipelago')
+    tab = viewport.content
     tab.columnconfigure(0, weight=1)
     tab.rowconfigure(3, weight=1)
-    workspace_tabs.add(tab, text='Archipelago')
 
     connection = ttk.LabelFrame(tab, text='Connection', padding=(10, 10, 10, 10))
     connection.grid(row=0, column=0, sticky='ew')
@@ -205,3 +207,12 @@ def build_archipelago_tab(self, workspace_tabs):
         wraplength=820,
         justify='left',
     ).grid(row=4, column=0, sticky='ew', pady=(8, 0))
+    def layout(width):
+        def wrap(widget):
+            if isinstance(widget, ttk.Label) and int(widget.cget('wraplength') or 0):
+                widget.configure(wraplength=max(160, width - 64))
+            for child in widget.winfo_children():
+                wrap(child)
+        wrap(tab)
+    viewport.layout = layout
+    viewport.bind_controls()

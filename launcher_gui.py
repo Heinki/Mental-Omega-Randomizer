@@ -49,10 +49,15 @@ def run_self_check():
         from randomizer.core.version import APP_VERSION
         from randomizer.missions.catalogue import campaign_mission_counts, parse_missions
         from randomizer.shop.catalogue import shop_catalogue
+        from randomizer.challenges.catalogue import discover_challenge_missions
 
         static_paths = validate_static_configs(REQUIRED_STATIC_CONFIGS)
         missions = parse_missions(BATTLE_CLIENT_INI)
         entries = shop_catalogue()
+        challenge_warnings = []
+        challenges = discover_challenge_missions(
+            GAME_ROOT, on_warning=challenge_warnings.append,
+        )
         report = {
             'version': APP_VERSION,
             'game_root': str(GAME_ROOT),
@@ -64,6 +69,8 @@ def run_self_check():
             'static_configs_valid': len(static_paths) == len(REQUIRED_STATIC_CONFIGS),
             'mission_count': len(missions),
             'mission_counts_by_campaign': campaign_mission_counts(missions),
+            'challenge_mission_count': len(challenges),
+            'challenge_catalogue_warnings': challenge_warnings,
             'shop_catalogue_entries': len(entries),
         }
         from randomizer.rewards.roster import (

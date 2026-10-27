@@ -16,11 +16,13 @@ def create_widgets(self):
         main_frame,
     )
     _build_info_tabs(self, info_tabs)
+    self.right_frame.bind_controls()
     build_shop_tab(self, self.workspace_tabs)
     build_final_fortress_tab(self, self.workspace_tabs)
     _build_advanced_tab(self, self.workspace_tabs)
     build_archipelago_tab(self, self.workspace_tabs)
     _build_gameplay_settings(self, settings_frame)
+    self.settings_viewport.bind_controls()
     self.sync_shop_workspace()
     self.layout_settings_sections(self.settings_canvas.winfo_width())
     self.initialize_archipelago_control_registry()

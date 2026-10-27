@@ -96,8 +96,8 @@ class LauncherApp(
                 pass
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
-        minimum_width = min(800, max(480, screen_width - 80))
-        minimum_height = min(560, max(400, screen_height - 80))
+        minimum_width = min(480, max(1, screen_width - 80))
+        minimum_height = min(360, max(1, screen_height - 100))
         window_width = min(
             1600, max(minimum_width, screen_width - 160)
         )
@@ -614,8 +614,11 @@ class LauncherApp(
 
     def handle_initial_load_error(self, exc, detail):
         self.initial_load_complete = True
+        self._mission_load_error = str(exc)
         self.append_log(f'Launcher startup failed: {exc}', error=True)
         log_event('launcher_startup_failed', error=str(exc), traceback=detail)
+        if not self.log_visible_var.get():
+            self.toggle_log()
 
 
 def main():

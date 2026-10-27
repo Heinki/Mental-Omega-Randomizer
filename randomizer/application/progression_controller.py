@@ -133,12 +133,14 @@ class ProgressionController:
         if grid_mode:
             self.missions_tree.grid_remove()
             self.tree_scrollbar.grid_remove()
+            self.mission_horizontal_scrollbar.grid_remove()
             self.grid_frame.grid()
             self.redraw_grid()
         else:
             self.grid_frame.grid_remove()
             self.missions_tree.grid()
             self.tree_scrollbar.grid()
+            self.mission_horizontal_scrollbar.grid()
 
     def redraw_grid(self):
         started = time.perf_counter()

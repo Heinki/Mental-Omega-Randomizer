@@ -146,17 +146,133 @@ class WindowController:
     def toggle_settings_panel(self):
         self.unlock_hover_card_key = None
         self.set_unlock_grid_highlights(())
-        self.settings_panel_visible = not self.settings_panel_visible
-        if self.settings_panel_visible:
-            self.right_frame.grid()
-            self.workspace_tabs.grid_configure(columnspan=1, padx=(0, 12))
-            self.compact_action_row.grid_remove()
-            self.settings_toggle_button.configure(text='Hide Details')
+        if getattr(self, '_compact_window_layout', False):
+            self._compact_details_visible = not getattr(self, '_compact_details_visible', False)
         else:
-            self.right_frame.grid_remove()
-            self.workspace_tabs.grid_configure(columnspan=2, padx=0)
-            self.compact_action_row.grid()
-            self.settings_toggle_button.configure(text='Show Details')
+            self.settings_panel_visible = not self.settings_panel_visible
+        self.sync_workspace_layout()
+        self.on_info_tab_changed()
+        self.after_idle(self.resize_grid_canvas_window)
+
+    def on_main_frame_configure(self, event):
+        """Keep the active workspace usable at laptop sizes and display scales."""
+        self.sync_workspace_layout(event.width)
+        scale = self.winfo_fpixels('1i') / 96
+        short = event.height < 560 * scale or event.width < 700 * scale
+        cramped = event.height < 440 * scale
+        self.subtitle_label.grid_remove() if cramped else self.subtitle_label.grid()
+        self.header_label.configure(
+            text=self._compact_window_heading if short else self._full_window_heading,
+            font=('Segoe UI', 10 if short else 14, 'bold'),
+        )
+        action_width = self.settings_toggle_button.master.winfo_reqwidth()
+        text_width = max(160, event.width - action_width - 36)
+        for label in (self.header_label, self.subtitle_label):
+            label.configure(wraplength=0 if short else text_width, width=1 if short else 0)
+        if hasattr(self, 'status_label'):
+            self.status_label.configure(
+                wraplength=0 if short else max(160, event.width - 24),
+                width=1 if short else 0,
+            )
+        text_height = int(self.tk.call('font', 'metrics', 'TkDefaultFont', '-linespace'))
+        for style, minimum in (('Treeview', 22), ('ShopCameo.Treeview', 52),
+                               ('StartingUnlocks.Treeview', 52)):
+            self.style.configure(style, rowheight=max(minimum, text_height + 6))
+
+    def populate_workspace_menu(self):
+        """Keep every notebook page reachable when its tab strip overflows."""
+        menu = self.workspace_menu
+        for submenu in menu.winfo_children():
+            submenu.destroy()
+        menu.delete(0, 'end')
+
+        def open_page(path):
+            for notebook, page in path:
+                notebook.select(page)
+            self._compact_details_visible = False
+            self.sync_workspace_layout()
+
+        def notebooks_in(widget):
+            for child in widget.winfo_children():
+                if child.winfo_class() == 'TNotebook':
+                    yield child
+                else:
+                    yield from notebooks_in(child)
+
+        def populate(target, notebook, path=()):
+            for page in notebook.tabs():
+                state = str(notebook.tab(page, 'state'))
+                if state == 'hidden':
+                    continue
+                label = notebook.tab(page, 'text')
+                page_path = (*path, (notebook, page))
+                children = tuple(notebooks_in(self.nametowidget(page)))
+                if children:
+                    submenu = tk.Menu(target, tearoff=False)
+                    target.add_cascade(label=label, menu=submenu, state=state)
+                    submenu.add_command(label=f'Open {label}',
+                                        command=lambda value=page_path: open_page(value))
+                    submenu.add_separator()
+                    for child in children:
+                        populate(submenu, child, page_path)
+                else:
+                    target.add_command(label=label, state=state,
+                                       command=lambda value=page_path: open_page(value))
+
+        populate(menu, self.workspace_tabs)
+
+    def sync_workspace_layout(self, width=None):
+        """Use one full-width pane on small screens, with an explicit way back."""
+        if not all(hasattr(self, name) for name in (
+            'workspace_tabs', 'right_frame', 'compact_action_row', 'style',
+        )):
+            return
+        width = width if width is not None else self.main_frame.winfo_width()
+        if width <= 1:
+            width = self.winfo_width() - 24
+        scale = self.winfo_fpixels('1i') / 96
+        cramped = self.main_frame.winfo_height() < 440 * scale
+        compact = width < round(1200 * scale) or cramped
+        tight = width < 700 * scale or self.main_frame.winfo_height() < 560 * scale
+        full_workspace = (self.final_fortress_mode_selected()
+                          or self.progression_mode_var.get() == 'Shop Mode')
+        details = (getattr(self, '_compact_details_visible', False)
+                   if compact else self.settings_panel_visible)
+        signature = (compact, full_workspace, details, tight, cramped, round(scale, 3))
+        if signature == getattr(self, '_workspace_layout_signature', None):
+            return
+        self._workspace_layout_signature = signature
+        self._compact_window_layout = compact
+        self.workspace_tabs.configure(style=(
+            'Compact.Randomizer.TNotebook' if cramped else 'Randomizer.TNotebook'))
+        self.workspace_menu_button.grid() if compact else self.workspace_menu_button.grid_remove()
+        self.style.configure('Randomizer.TNotebook.Tab',
+                             padding=(8, 5) if compact else (16, 7))
+        split = not compact and not full_workspace and details
+        self.main_frame.columnconfigure(0, weight=13 if split else 1,
+                                        uniform='content' if split else '')
+        self.main_frame.columnconfigure(1, weight=6 if split else 0,
+                                        minsize=round(396 * scale) if split else 0,
+                                        uniform='content' if split else '')
+        self.workspace_tabs.grid()
+        self.workspace_tabs.grid_configure(columnspan=1 if split else 2,
+                                            padx=(0, 12) if split else 0)
+        self.compact_action_row.grid_remove()
+        self.right_frame.grid_remove()
+        if full_workspace:
+            self.settings_toggle_button.grid_remove()
+        else:
+            self.settings_toggle_button.grid()
+            if details:
+                self.right_frame.grid(row=2, column=1 if split else 0,
+                                      columnspan=1 if split else 2)
+                if compact:
+                    self.workspace_tabs.grid_remove()
+                self.settings_toggle_button.configure(
+                    text=('Back' if tight else 'Back to Workspace') if compact else 'Hide Details')
+            else:
+                self.compact_action_row.grid()
+                self.settings_toggle_button.configure(text='Details' if tight else 'Show Details')
         self.after_idle(self.resize_grid_canvas_window)
 
     def on_workspace_tab_changed(self, _event=None):
@@ -171,23 +287,7 @@ class WindowController:
             hasattr(self, 'progression_mode_var')
             and self.progression_mode_var.get() == 'Shop Mode'
         )
-        if shop_mode_selected:
-            self.right_frame.grid_remove()
-            self.workspace_tabs.grid_configure(columnspan=2, padx=0)
-            self.settings_toggle_button.grid_remove()
-            self.compact_action_row.grid_remove()
-        else:
-            self.settings_toggle_button.grid()
-            if self.settings_panel_visible:
-                self.right_frame.grid()
-                self.workspace_tabs.grid_configure(
-                    columnspan=1, padx=(0, 12)
-                )
-                self.compact_action_row.grid_remove()
-            else:
-                self.right_frame.grid_remove()
-                self.workspace_tabs.grid_configure(columnspan=2, padx=0)
-                self.compact_action_row.grid()
+        self.sync_workspace_layout()
         if hasattr(self, 'settings_tab') and selected == str(self.settings_tab):
             if shop_mode_selected:
                 self.after_idle(self.refresh_visible_shop_setup)
@@ -511,8 +611,8 @@ class WindowController:
             self.after(1 if pending else 40, self.process_ui_queue)
 
     def on_settings_content_configure(self, _event=None):
-        if hasattr(self, 'settings_canvas'):
-            self.settings_canvas.configure(scrollregion=self.settings_canvas.bbox('all'))
+        if hasattr(self, 'settings_viewport'):
+            self.settings_viewport._schedule_resize()
 
     def layout_settings_sections(self, width):
         """Use two Settings columns when workspace width can support them."""
@@ -536,7 +636,13 @@ class WindowController:
         shop_mode = not fortress_mode and self.progression_mode_var.get() == 'Shop Mode'
         self.coop_controls_frame.grid_remove() if shop_mode else self.coop_controls_frame.grid()
         self.shop_coop_row.grid() if shop_mode else self.shop_coop_row.grid_remove()
-        wide = int(width or 0) >= 840
+        left_width = max(self.seed_settings_frame.winfo_reqwidth(),
+                         self.mission_pool_frame.winfo_reqwidth(),
+                         self.reward_frame.winfo_reqwidth())
+        right_width = max(self.mission_appearance_column.winfo_reqwidth(),
+                          self.assistance_frame.winfo_reqwidth(),
+                          self.appearance_frame.winfo_reqwidth())
+        wide = int(width or 0) >= max(840, left_width + right_width + 32)
         buff_columns = 1 if int(width or 0) < 600 else 2
         layout_signature = (fortress_mode, shop_mode, wide, buff_columns)
         if self.__dict__.get('_settings_layout_signature') == layout_signature:
@@ -664,8 +770,6 @@ class WindowController:
         self.on_settings_content_configure()
 
     def on_settings_canvas_configure(self, event):
-        if hasattr(self, 'settings_canvas_window'):
-            self.settings_canvas.itemconfigure(self.settings_canvas_window, width=event.width)
         self.layout_settings_sections(event.width)
         if hasattr(self, 'settings_intro_label'):
             self.settings_intro_label.configure(wraplength=max(220, event.width - 32))
@@ -683,23 +787,7 @@ class WindowController:
                     (event.width // 2 if event.width >= 720 else event.width) - 64,
                 )
             )
-
-    def on_settings_mousewheel(self, event):
-        if not hasattr(self, 'settings_canvas') or not hasattr(self, 'settings_tab'):
-            return None
-        if self.workspace_tabs.select() != str(self.settings_tab):
-            return None
-        pointer_x = self.winfo_pointerx()
-        pointer_y = self.winfo_pointery()
-        left = self.settings_canvas.winfo_rootx()
-        top = self.settings_canvas.winfo_rooty()
-        right = left + self.settings_canvas.winfo_width()
-        bottom = top + self.settings_canvas.winfo_height()
-        if not (left <= pointer_x <= right and top <= pointer_y <= bottom):
-            return None
-        steps = -1 if event.delta > 0 else 1
-        self.settings_canvas.yview_scroll(steps, 'units')
-        return 'break'
+        self.on_settings_content_configure()
 
     def on_settings_control_mousewheel(self, event):
         """Scroll Settings without changing the focused readonly control."""
@@ -707,70 +795,12 @@ class WindowController:
             self.settings_canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
         return 'break'
 
-    def on_shop_canvas_configure(self, event):
-        """Fit Shop content to its viewport; overflow scrolls vertically."""
-        if not hasattr(self, 'shop_canvas_window'):
-            return
-        content_width = max(1, event.width)
-        if content_width != getattr(self, '_shop_content_width', None):
-            self._shop_content_width = content_width
-            self.shop_canvas.itemconfigure(
-                self.shop_canvas_window, width=content_width
-            )
-            self.layout_shop_content(content_width)
-        self.schedule_shop_canvas_resize()
-
-    def schedule_shop_canvas_resize(self):
-        if getattr(self, '_shop_canvas_resize_pending', False):
-            return
-        self._shop_canvas_resize_pending = True
-        self.after_idle(self.resize_shop_canvas_window)
-
-    def collapse_shop_details_if_narrow(self):
-        self._shop_detail_collapse_pending = False
-        if not all(hasattr(self, name) for name in (
-            'shop_tab', 'workspace_tabs', 'settings_panel_visible'
-        )):
-            return
-        narrow_shop = (
-            self.workspace_tabs.select() == str(self.shop_tab)
-            and 1 < self.winfo_width() < 1100
-        )
-        if (
-            narrow_shop
-            and not getattr(self, '_shop_details_auto_collapsed', False)
-        ):
-            self._shop_details_auto_collapsed = True
-            if self.settings_panel_visible:
-                self.toggle_settings_panel()
-
-    def on_shop_content_configure(self, _event=None):
-        if not hasattr(self, 'shop_canvas'):
-            return
-        self.schedule_shop_canvas_resize()
-
-    def resize_shop_canvas_window(self):
-        """Fill tall viewports while retaining vertical overflow scrolling."""
-        self._shop_canvas_resize_pending = False
-        if not hasattr(self, 'shop_canvas_window'):
-            return
-        height = max(
-            self.shop_canvas.winfo_height(),
-            self.shop_content_frame.winfo_reqheight(),
-        )
-        if height != getattr(self, '_shop_content_height', None):
-            self._shop_content_height = height
-            self.shop_canvas.itemconfigure(self.shop_canvas_window, height=height)
-        region = self.shop_canvas.bbox('all')
-        if region != getattr(self, '_shop_scrollregion', None):
-            self._shop_scrollregion = region
-            self.shop_canvas.configure(scrollregion=region)
-
     def layout_shop_content(self, width):
         """Stack mission cards and wrap their text when workspace is narrow."""
         if not hasattr(self, 'shop_mission_cards'):
             return
-        compact = width < 900
+        logical_width = width / (self.winfo_fpixels('1i') / 96)
+        compact = logical_width < 900
         columns = 1 if compact else 3
         for column in range(3):
             self.shop_choices_frame.columnconfigure(
@@ -789,39 +819,18 @@ class WindowController:
             )
         self.shop_message_label.configure(wraplength=max(1, width - 140))
 
-        header_columns = 3 if compact else 6
+        header_columns = 1 if logical_width < 520 else 3 if compact else 6
         for column in range(6):
             self.shop_header_frame.columnconfigure(
                 column, weight=1 if column < header_columns else 0
             )
         for index, label in enumerate(self.shop_header_labels):
+            label.configure(wraplength=max(120, width // header_columns - 24))
             label.grid_configure(
                 row=index // header_columns,
                 column=index % header_columns,
                 pady=(3 if compact and index >= header_columns else 0, 0),
             )
-
-    def on_shop_mousewheel(self, event):
-        if not all(hasattr(self, name) for name in (
-            'shop_canvas', 'shop_tab', 'workspace_tabs'
-        )):
-            return None
-        if self.workspace_tabs.select() != str(self.shop_tab):
-            return None
-        pointer_x = self.winfo_pointerx()
-        pointer_y = self.winfo_pointery()
-        left = self.shop_canvas.winfo_rootx()
-        top = self.shop_canvas.winfo_rooty()
-        right = left + self.shop_canvas.winfo_width()
-        bottom = top + self.shop_canvas.winfo_height()
-        if not (left <= pointer_x <= right and top <= pointer_y <= bottom):
-            return None
-        direction = -1 if (
-            getattr(event, 'num', 0) == 4
-            or getattr(event, 'delta', 0) > 0
-        ) else 1
-        self.shop_canvas.yview_scroll(direction, 'units')
-        return 'break'
 
     def on_grid_configure(self, _event=None):
         """Keep cached Grid content and canvas viewport dimensions aligned."""
@@ -1114,7 +1123,7 @@ class WindowController:
         self.log_text.configure(state='disabled')
         if self.log_visible_var.get():
             self.log_text.see('end')
-        self.status_label.config(text='Error' if error else message[:120])
+        self.status_label.config(text=f'Error: {message[:180]}' if error else message[:120])
 
     def clear_log(self):
         self.log_text.configure(state='normal')
