@@ -65,6 +65,9 @@ for an already published release.
    `release_manifest.json`, `SHA256SUMS.txt`, and the generated Archipelago setup
    guide. The tag-triggered GitHub build
    also prepares a draft with these assets; it does not publish it automatically.
+   If that tag already has a published release, CI skips release uploads and
+   keeps the verified bundle in the workflow run's artifacts. Existing drafts
+   receive the new build assets. Release lookup and upload errors still fail CI.
 4. Publish when ready and mark the release as latest. Drafts and prereleases
    never trigger stable update prompts. Normal commits do not trigger prompts.
 

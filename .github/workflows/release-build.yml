@@ -74,7 +74,7 @@ jobs:
 
       - name: Prepare draft release for version tag
         if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')
-        shell: powershell
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -88,17 +88,25 @@ jobs:
           $assets = $assetNames | ForEach-Object {
             (Resolve-Path -LiteralPath (Join-Path 'release' $_)).Path
           }
-          gh release view $env:GITHUB_REF_NAME 2>$null | Out-Null
+          $releaseState = (gh release view $env:GITHUB_REF_NAME --json isDraft --jq '.isDraft' 2>&1) -join "`n"
           if ($LASTEXITCODE -eq 0) {
-            $isDraft = gh release view $env:GITHUB_REF_NAME --json isDraft --jq '.isDraft'
-            if ($LASTEXITCODE -ne 0 -or $isDraft -ne 'true') {
-              throw 'Refusing to replace published assets. Create a new version tag.'
+            if ($releaseState.Trim() -eq 'false') {
+              Write-Host "::notice::Release $env:GITHUB_REF_NAME is already published. Skipping release upload; the verified bundle is available in this run's artifacts."
+              exit 0
+            }
+            if ($releaseState.Trim() -ne 'true') {
+              throw "Unexpected release state: $releaseState"
             }
             gh release upload $env:GITHUB_REF_NAME $assets --clobber
-          } else {
+          } elseif ($releaseState.Trim() -eq 'release not found') {
             gh release create $env:GITHUB_REF_NAME $assets `
               --draft `
               --verify-tag `
               --generate-notes `
               --title $env:GITHUB_REF_NAME
+          } else {
+            throw "Failed to look up release ${env:GITHUB_REF_NAME}: $releaseState"
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to upload assets or create draft release $env:GITHUB_REF_NAME."
           }
