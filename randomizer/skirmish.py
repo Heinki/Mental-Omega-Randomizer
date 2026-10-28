@@ -283,6 +283,18 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
         faction = {'allies': 'Allies', 'soviets': 'Soviets', 'epsilon': 'Epsilon', 'foehn': 'Foehn'}[SIDE_FAMILIES[SIDE_COUNTRIES.index(country)]]
         rewards = equivalent_payload_unit_buff_rewards(list(rewards),
             [r['superweapon'] for r in powers if r.get('kind') == 'superweapon'], unlocked, faction)
+    from randomizer.rewards.rules import buffs_with_unlocked_access, expand_equivalent_role_buffs
+    # Role sharing must stop at this launch's roster. Expanding inside the
+    # clone builder also visits locked peers (for example a Magnetron's Scud
+    # peer), creating unsupported missile clones for units the player lacks.
+    rewards = buffs_with_unlocked_access(
+        expand_equivalent_role_buffs(
+            canonical_rewards(rewards),
+            enabled=bool(settings.get('_skirmish_share_buffs', False)),
+            allowed_unit_ids=unlocked | payload,
+        ),
+        additional_unlocked_tech_ids=unlocked | payload,
+    )
     kwargs = {}
     if GAME == 'mo':
         from randomizer.rewards.roster import randomizer_unit_roster, installed_rules_template_overlay
@@ -294,7 +306,7 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
         additional_unlocked_tech_ids=unlocked | payload, buildable_tech_ids=unlocked,
         build_owner_ids=('RZPLAYER',), forced_buildable_clone_ids=unlocked,
         forced_isolated_clone_ids=payload, forced_compact_clone_ids=payload,
-        share_basic_equivalent_buffs=bool(settings.get('_skirmish_share_buffs', False)),
+        share_basic_equivalent_buffs=False,
         unit_specific_mode=True, owned_clone_rule_overlays=overlays, **kwargs)
     if warnings:
         raise ValueError('Cannot apply Skirmish rewards: ' + '; '.join(map(str, warnings)))

@@ -687,6 +687,52 @@ def check_powerhouse_death_triggers(missions, launcher_type):
               flush=True)
 
 
+def check_skirmish_roster():
+    """Audit shared artillery buffs on three installed multiplayer maps."""
+    from randomizer.core.paths import GAME_ROOT, GENERATED_MAP_DIR
+    from randomizer.skirmish import _ra2_rewards, _serialize, discover_maps
+    from randomizer.ui.cameos import installed_rules_registry
+
+    _, installed = installed_rules_registry(synchronous=True)
+    output = GENERATED_MAP_DIR / 'skirmish-roster-audit'
+    output.mkdir(parents=True, exist_ok=True)
+    maps = list(discover_maps(GAME_ROOT).values())[:3]
+    if len(maps) != 3:
+        raise ValueError('Skirmish audit requires three installed multiplayer maps.')
+    rewards = [REWARD_BY_NAME['Magnetron Access'], REWARD_BY_NAME['Hailstorm Access'],
+               *(REWARD_BY_BUFF_KEY[('TELE', kind)] for kind in ('damage', 'sight', 'speed'))]
+    for definition in maps:
+        path = Path(definition['path'])
+        original = path.read_bytes()
+        for mode, sharing in product(('Standard', 'Chaos'), (False, True)):
+            source = all_section_value_maps_preserve(original.decode('latin-1').splitlines())
+            rows, _ = _ra2_rewards(source, rewards, {
+                '_skirmish_reward_mode': mode, '_skirmish_share_buffs': sharing,
+            }, 'UnitedStates', True)
+            (output / f'{path.stem}-{mode}-{sharing}.map').write_text(_serialize(rows), encoding='latin-1')
+            # V3 is neither unlocked nor a power payload. Its native identity
+            # remains locked for the player and no private Scud is generated.
+            assert 'RZPLAYER' in rows['V3']['ForbiddenHouses'].split(',')
+            assert not any(row.get('Name') == installed['V3']['Name']
+                           for kind, row in rows.items() if kind != 'V3')
+            for unit in ('TELE', 'VCARR'):
+                alias = 'MORP' + unit
+                assert rows[alias]['RequiredHouses'] == 'RZPLAYER'
+                sight = float(rows[alias]['Sight'])
+                base_sight = float(installed[unit]['Sight'])
+                if unit == 'TELE' or sharing:
+                    assert sight > base_sight, (unit, mode, sharing)
+                else:
+                    assert sight == base_sight, (unit, mode, sharing)
+            for field in ('Secondary', 'EliteSecondary'):
+                source_weapon = installed['TELE'][field]
+                output_weapon = rows['MORPTELE'][field]
+                damage = float(rows.get(output_weapon, installed.get(output_weapon, {}))['Damage'])
+                assert damage > float(installed[source_weapon]['Damage'])
+            assert path.read_bytes() == original
+        print(f'{path.name}: Standard/Chaos Skirmish, shared artillery on/off; locked Scud excluded', flush=True)
+
+
 def main():
     from tools.audit_campaign_maps import _AuditLauncher
     from randomizer.core.paths import BATTLE_CLIENT_INI
@@ -704,6 +750,7 @@ def main():
     check_ghost_hunt_powerhouses(missions, _AuditLauncher)
     check_bleed_red_access(missions, _AuditLauncher)
     check_powerhouse_death_triggers(missions, _AuditLauncher)
+    check_skirmish_roster()
     print('Reported mission and unit generation regressions passed.')
 
 

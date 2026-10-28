@@ -124,6 +124,7 @@ def reserved_arrival_cells(rows, effective, art, types):
 
 
 def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None):
+    rules = {section: {**row, **source.get(section, {})} for section, row in rules.items()}
     rows = read_sections(data)
     resource_overlays = resource_overlay_indices(rules)
     camp_guard_tags = {value.split(',')[1] for value in rows.get('FFCampTracking', {}).values()}
@@ -133,6 +134,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     for section, values in rows.items():
         effective.setdefault(section, {}).update(values)
     ids = {section.casefold(): section for section in effective}
+    audit_native_production(rows, effective, plan, rules, source, preloads)
 
     # Only reserved arrival tiles may change; overlays and scenery stay exact.
     for section in ('OverlayPack', 'OverlayDataPack', 'Terrain'):
@@ -424,6 +426,62 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             required_transfers += 1
         require(plan['initial_transfer_kills'] == required_transfers, 'Starting power transfers counted as combat kills')
     return {registry: len(set(effective[registry].values())) for registry in registries}
+
+
+def audit_native_production(rows, effective, plan, rules, source, preloads):
+    """Preserve every faction's native units, buildings and production paths."""
+    from randomizer.final_fortress.player_perks import _eligible
+
+    def paths(row):
+        values = [row.get('Prerequisite.List0', row.get('Prerequisite', ''))]
+        values.extend(row.get(f'Prerequisite.List{index}', '')
+                      for index in range(1, int(row.get('Prerequisite.Lists', '0')) + 1))
+        values.extend(part for part in row.get('PrerequisiteOverride', '').split(',')
+                      if part and part.lower() != 'none')
+        return [{part.strip() for part in value.split(',') if part.strip()} for value in values]
+
+    aliases = rows.get('FFPlayerTypes', {})
+    for category in ('InfantryTypes', 'VehicleTypes', 'AircraftTypes', 'BuildingTypes'):
+        for original in rules[category].values():
+            native = rules[original]
+            if not 0 <= int(native.get('TechLevel', '-1')) <= 10 or native.get('BuildLimit') == '0':
+                continue
+            unit = aliases.get(original, original)
+            row = effective[unit]
+            for actor, country, _ in coalition(plan):
+                if not _eligible(native, country):
+                    continue
+                label = f'{original}/{country}/{actor}'
+                actual_country = actor if needs_countries(plan) else country
+                require(_eligible(row, actual_country), f'Native country access lost: {label}')
+                require(0 <= int(row.get('TechLevel', '-1')) <= int(native['TechLevel']),
+                        f'Native tech level locked or increased: {label}')
+                limit = row.get('BuildLimit')
+                native_limit = native.get('BuildLimit')
+                require(limit != '0' and (limit is None
+                        or native_limit is not None and int(limit) >= int(native_limit)),
+                        f'Native production limit tightened: {label}')
+                for path in paths(native):
+                    expected = {aliases.get(part, part) for part in path}
+                    require(any(candidate <= expected for candidate in paths(row)),
+                            f'Native production path lost: {label}: {",".join(sorted(path))}')
+                for field in ('Prerequisite.Negative', 'FactoryOwners.Forbidden', 'Prerequisite.RequiredTheaters'):
+                    require(not row.get(field) or row.get(field) == native.get(field),
+                            f'Native production gained a restriction: {label}/{field}')
+    for original in rules['BuildingTypes'].values():
+        restriction = source.get(original, {}).get('TechLevel')
+        if restriction is None or 0 <= int(restriction) <= 10:
+            continue
+        copies = {original}
+        for mapping in ('FFPlayerTypes', 'FFEnemyBuildings'):
+            if original in rows.get(mapping, {}):
+                copies.add(rows[mapping][original])
+        for unit in copies:
+            require(effective[unit]['TechLevel'] == restriction,
+                    f'Source map building lock lost: {original}/{unit}')
+            if unit in preloads['rules'] and 'TechLevel' in preloads['rules'][unit]:
+                require(preloads['rules'][unit]['TechLevel'] == restriction,
+                        f'Source map building lock lost in early preload: {original}/{unit}')
 
 
 def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
@@ -762,8 +820,19 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
                         for value in rows['Structures'].values()), 'Enemy power has no real launch provider')
     require(len(rows.get('FFEnemyPowers', {})) == sum(map(len, expected_powers.values())),
             'Unexpected hostile power without a selected Challenge')
+    native_sources = {alias: original for mapping in ('FFPlayerTypes', 'FFEnemyBuildings')
+                      for original, alias in rows.get(mapping, {}).items()}
     for original in rules['SuperWeaponTypes'].values():
-        require(effective[original] == rules[original], f'Native power changed by enemy Challenge: {original}')
+        actual = dict(effective[original])
+        # Native building ability routing appends private designators and
+        # inhibitors. Check those identities without treating them as buffs.
+        for field in ('SW.Designators', 'SW.Inhibitors'):
+            native = rules[original].get(field)
+            if native is not None and actual.get(field) != native:
+                require({native_sources.get(kind, kind) for kind in actual[field].split(',')}
+                        == set(native.split(',')), f'Native power targeting changed: {original}/{field}')
+                actual[field] = native
+        require(actual == rules[original], f'Native power changed by enemy Challenge: {original}')
     powerhouse = any(entry.get('enemy_effect_id') == 'powerhouse' for entry in plan.get('challenges', []))
     if not powerhouse:
         return
@@ -2062,7 +2131,7 @@ def main():
     parser.add_argument('--profiles', nargs='+', choices=(
                         'baseline', 'helpers', 'maximum', 'defenses', 'defenses-first', 'defenses-second',
                         'defenses-third', 'powers', 'upgrades', 'secondary',
-                        'arsenal', 'stolen-tech', 'all-specials', 'starting-army', 'combined-armies', 'starting-buildings', 'buildings-and-defenses',
+                        'arsenal', 'arsenal-buildings', 'fortified-buildings', 'native-tech', 'native-tech-specials', 'stolen-tech', 'all-specials', 'starting-army', 'combined-armies', 'starting-buildings', 'buildings-and-defenses',
                         'reinforcements', 'arsenal-first', 'reinforcements-first',
                         'healing', 'recon', 'limits', 'income', 'enemy-powers', 'powerhouses', 'utilities-first',
                         'veteran', 'elite', 'reinforcements-veteran', 'reinforcements-rookie',
@@ -2108,6 +2177,11 @@ def main():
         'buildings-and-defenses': ['starting_buildings', 'starting_defenses', 'allied_helpers'],
         'powers': ['support_powers', 'faction_superweapon', 'allied_helpers'],
         'upgrades': ['power_upgrades'], 'arsenal': ['special_unit_access'], 'arsenal-first': ['special_unit_access'],
+        'arsenal-buildings': ['special_unit_access', 'starting_buildings', 'fortified_infrastructure'],
+        'fortified-buildings': ['starting_buildings', 'fortified_infrastructure'],
+        'native-tech': [entry['id'] for entry in config['perks']
+                        if entry['id'] not in ('special_unit_access', 'stolen_tech_access')],
+        'native-tech-specials': [entry['id'] for entry in config['perks']],
         'stolen-tech': ['stolen_tech_access'],
         'all-specials': ['special_unit_access', 'stolen_tech_access', 'allied_helpers'],
         'transport-capacity': ['transport_capacity'], 'open-topped': ['open_topped_transports'],

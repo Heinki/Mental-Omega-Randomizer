@@ -60,26 +60,48 @@ def register_building_equivalent(writer, rules, original, alias, aliases, *, pre
                 writer.put(target, 'Dock', ','.join(dict.fromkeys([*existing.split(','), alias])))
         for target in {key, aliases.get(key, key)}:
             current = writer.sections.get(target, {})
-            native_prerequisites = base.get('Prerequisite', '').split(',')
-            if not current_prerequisites and original not in native_prerequisites:
-                continue
-            target_prerequisites = (current.get('Prerequisite', base.get('Prerequisite', '')).split(',')
-                                    if current_prerequisites else native_prerequisites)
+            effective = ({**base, **current} if target == key or not current else current)
+            prerequisite_row = effective if current_prerequisites else base
+            paths = [prerequisite_row.get('Prerequisite.List0', prerequisite_row.get('Prerequisite', ''))]
+            # Preserve authored alternatives as well as the default path (for
+            # example Power Turbines can use either an airfield or a depot).
+            paths.extend(prerequisite_row[field] for field in base
+                         if re.fullmatch(r'Prerequisite\.List[1-9]\d*', field)
+                         and field in prerequisite_row)
+            paths.extend(part for part in prerequisite_row.get('PrerequisiteOverride', '').split(',')
+                         if part and part.lower() != 'none')
             # Use this copy's actual prerequisites. Special access can replace
             # mission gates with a barracks/airfield absent from the native row;
             # enemy copies already refer to their private expansion yards.
             equivalents = {original, aliases.get(original, original)} if current_prerequisites else {original}
-            alternative = [alias if part in equivalents else part for part in target_prerequisites]
-            if alternative == target_prerequisites:
-                continue
             fallback = base.get('Prerequisite.Lists', '0') if target == key or not current_prerequisites else '0'
             index = int(current.get('Prerequisite.Lists', fallback))
-            writer.put(target, 'Prerequisite.Lists', index + 1)
-            # List0 replaces the default prerequisites; extra lists start
-            # at one. Writing List0 while declaring one extra list both
-            # erased the normal build path and left an empty alternative.
-            slot = index + 1 if preserve_native else index
-            writer.put(target, f'Prerequisite.List{slot}', ','.join(alternative))
+            alternatives = []
+            for path in paths:
+                target_prerequisites = path.split(',')
+                alternative = [alias if part in equivalents else part for part in target_prerequisites]
+                if alternative == target_prerequisites:
+                    continue
+                alternatives.append(alternative)
+                if preserve_native:
+                    # Keep the complete private path when several required
+                    # production buildings are copied together.
+                    replacements = {**aliases, original: alias}
+                    alternatives.append([replacements.get(part, part) for part in target_prerequisites])
+            if not alternatives:
+                continue
+            existing = {tuple(value.split(',')) for field, value in effective.items()
+                        if field == 'Prerequisite' or re.fullmatch(r'Prerequisite\.List\d+', field)}
+            for candidate in alternatives:
+                if tuple(candidate) in existing:
+                    continue
+                # List0 replaces the default prerequisites; extra lists start
+                # at one. Preserve the native path and append complete lists.
+                slot = index + 1 if preserve_native else index
+                writer.put(target, f'Prerequisite.List{slot}', ','.join(candidate))
+                index += 1
+                existing.add(tuple(candidate))
+            writer.put(target, 'Prerequisite.Lists', index)
 
 
 def gate_prerequisite_overrides(writer, plan, rules):
@@ -120,6 +142,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     """
     private_player = needs_countries(plan)
     effects = plan['effects']
+    native_rules = rules
     from .utilities import infrastructure_building, supported_pairs, utility_updates
     from .arsenal import (CONVERSION_FIELDS, TYPE_REFERENCE_FIELDS, production_access,
                           replace_references, reviewed_rules, special_dependencies)
@@ -271,6 +294,19 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     weapons = {}
     for original, alias in aliases.items():
         row = deepcopy(rules[original])
+        native = native_rules.get(original, {})
+        native_production = (original not in access
+                             and 0 <= int(native.get('TechLevel', '-1')) <= 10
+                             and native.get('BuildLimit') != '0'
+                             and any(_eligible(native, country) for _, country, _ in friends))
+        if original in special_forms and native_production:
+            # A special's conversion target can already be ordinary tech.
+            # Reviewed reward templates lock production by default; retain the
+            # native Grinder and any other buildable form alongside the gift.
+            def production_field(field):
+                return field in ('TechLevel', 'BuildLimit', 'BuiltAt') or field.startswith(('Prerequisite', 'FactoryOwners'))
+            row = {field: value for field, value in row.items() if not production_field(field)}
+            row.update({field: value for field, value in native.items() if production_field(field)})
         category = categories[original]
         defense = category == 'BuildingTypes' and row.get('IsBaseDefense', 'no').lower() == 'yes'
         tier = _authored_tech_tier(rules[mutation_sources.get(original, original)])
@@ -302,7 +338,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
             row.update(TechLevel='-1', BuildLimit='0')
         if original in access:
             production_access(row, [name for name, _, _ in friends], plan['player_country'], rules, original)
-        elif original in special_forms and not (original in payload_types and native_eligible):
+        elif original in special_forms and not native_production and not (original in payload_types and native_eligible):
             row.update(TechLevel='-1', BuildLimit='0')
         if percent and not defense and float(row.get('Strength', '0')) > 1:
             row['Strength'] = str(floor(float(row['Strength']) * factor))

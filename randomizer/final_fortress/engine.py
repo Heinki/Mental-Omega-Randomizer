@@ -17,7 +17,7 @@ from randomizer.maps.hooks import append_hook_team
 from randomizer.maps.buff_values import _register_map_type
 from randomizer.maps.ini import (
     IniLines, append_section_list_entry, merge_ini_section_values,
-    next_numeric_section_index, section_value_map,
+    all_section_value_maps_preserve, next_numeric_section_index, section_value_map,
 )
 
 from .maps import inspect_map, source_lines
@@ -542,6 +542,11 @@ def build_map(game_root, run, rules, *, preloads=None):
     if len(plan['wave_schedule']) > MAX_SCRIPTED_WAVES:
         raise ValueError(f'The engine adapter supports at most {MAX_SCRIPTED_WAVES} waves.')
     lines = source_lines(game_root, definition)
+    # Private copies and their early preloads must inherit map restrictions,
+    # including TechLevel=11 shipyards on land-only maps.
+    source_rules = all_section_value_maps_preserve(lines)
+    rules = {section: {**row, **source_rules.get(section, {})}
+             for section, row in rules.items()}
     if any(section_value_map(lines, section) for section in ('Triggers', 'VariableNames')):
         raise ValueError('Final Fortress requires a source without authored triggers or variables.')
     writer = _MapWriter(lines, definition['player_waypoint'])
