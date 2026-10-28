@@ -214,11 +214,15 @@ def normalize_state(document):
                     or any(value is not None and (type(value) is not int or value < 0)
                            for value in counts.values())):
                 raise ValueError('Invalid Final Fortress kill counters.')
-        if not guest and not set(plan['selected_perks']).issubset(document['owned_perks']):
-            raise ValueError('Run plan contains unowned perks.')
-        if not guest and any(rank > document['perk_ranks'].get(key, 0)
-               for key, rank in plan.get('perk_ranks', {}).items()):
-            raise ValueError('Run plan contains unpurchased perk ranks.')
+        # Only active local loadouts must remain purchased. Finished runs keep
+        # their frozen perks and ranks as history while the player refunds
+        # purchases for future runs; their plan and receipts stay validated.
+        if run['status'] == 'active' and not guest:
+            if not set(plan['selected_perks']).issubset(document['owned_perks']):
+                raise ValueError('Run plan contains unowned perks.')
+            if any(rank > document['perk_ranks'].get(key, 0)
+                   for key, rank in plan.get('perk_ranks', {}).items()):
+                raise ValueError('Run plan contains unpurchased perk ranks.')
         claimed = run['claimed_events']
         allowed = set(plan['gem_rewards']) | {'defeat', 'abandoned'}
         if (not isinstance(claimed, list)

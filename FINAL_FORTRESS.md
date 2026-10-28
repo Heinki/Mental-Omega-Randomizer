@@ -286,7 +286,11 @@ horizontal scrollbar. Rank text scrolls with the mouse wheel or keyboard,
 without a second scrollbar. Prices appear only in **Next rank cost**. Use
 **Disable perk** to omit an owned perk without losing its purchased ranks.
 Purchases remain available after restarting. An active run keeps its frozen
-loadout; perks can be changed once that run finishes.
+loadout; purchases and refunds are locked until that run finishes. Between
+runs, use the left arrow or **Refund rank** to return one rank's full Defensive
+Points cost, then spend those points on other perks. Refunding the final rank
+removes and disables that perk. Finished runs (victory, defeat, or abandoned)
+retain their original loadout and reward receipts after refunds.
 
 For local source-checkout gameplay testing, set
 `RANDOMIZER_FINAL_FORTRESS_DEBUG=1` in the launcher's environment, then choose
