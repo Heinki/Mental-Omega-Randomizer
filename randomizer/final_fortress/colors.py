@@ -1,4 +1,29 @@
-"""Apply a visual color choice without changing player, faction or team slots."""
+"""Keep native spawn colors and score identities in sync."""
+
+
+def remap_color(color, plan):
+    """Swap the host's default color with the chosen color for every house."""
+    selected = plan.get('player_color', 0)
+    return selected if color == 0 else 0 if color == selected else color
+
+
+def score_scheme(color):
+    """Mental Omega creates two remap schemes per rules [Colors] entry.
+
+    Multiplayer slots skip LightGrey, the third rules color (observer/flash).
+    Score records use the second scheme of each pair, starting with Teal=1.
+    """
+    return 2 * (color + int(color >= 2)) + 1
+
+
+def remap_score_scheme(scheme, plan):
+    """Resolve a frozen default-color receipt against the actual spawn palette.
+
+    Keep historical plans unchanged so their configuration and reward receipts
+    still validate, including runs launched before color-aware score parsing.
+    """
+    selected_scheme = score_scheme(plan.get('player_color', 0))
+    return selected_scheme if scheme == 1 else 1 if scheme == selected_scheme else scheme
 
 
 def remap_colors(sections, plan):
@@ -11,8 +36,7 @@ def remap_colors(sections, plan):
             if key not in values:
                 continue
             color = int(values[key])
-            if color in (0, selected):
-                values[key] = str(selected if color == 0 else 0)
+            values[key] = str(remap_color(color, plan))
 
     players = plan.get('coop_players', [])
     if players:

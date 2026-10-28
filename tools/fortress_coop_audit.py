@@ -4,6 +4,7 @@ from copy import deepcopy
 import hashlib
 
 from randomizer.final_fortress.coop import spawn_data
+from randomizer.final_fortress.colors import remap_color
 from randomizer.final_fortress.player_perks import coalition
 from randomizer.maps.ini import all_section_value_maps_preserve, parse_action_groups
 
@@ -41,7 +42,8 @@ def audit_coop_artifacts(output, name, plan, data, preloads, rules):
                 and settings['AIPlayers'] == str(3 + expected_helpers), 'Wrong native human/AI count')
         require(settings['Name'] == player and settings['Side'] == country_indices[friends[slot][0]],
                 'Local human uses another house or native perk-free country')
-        require(settings['Color'] == str((0, 4, 5)[slot]) and settings['Port'] == str(1234 + slot),
+        require(settings['Color'] == str(remap_color((0, 4, 5)[slot], plan))
+                and settings['Port'] == str(1234 + slot),
                 'Local network color/port differs from the roster')
         require(settings['Host'] == ('Yes' if slot == 0 else 'No'), 'Guest is also a native host')
         peers = [current[f'Other{i + 1}'] for i in range(count - 1)]
@@ -50,7 +52,8 @@ def audit_coop_artifacts(output, name, plan, data, preloads, rules):
             other = players.index(peer['Name'])
             require(peer['Ip'] == endpoints[other]['address'] and peer['Port'] == str(1234 + other)
                     and peer['Side'] == country_indices[friends[other][0]]
-                    and peer['Color'] == str((0, 4, 5)[other]), 'Wrong peer route, country or color')
+                    and peer['Color'] == str(remap_color((0, 4, 5)[other], plan)),
+                    'Wrong peer route, country or color')
         shared = {key: value for key, value in current.items()
                   if key != 'Settings' and not key.startswith('Other')}
         identity = (settings['Seed'], settings['GameID'], settings['MapSHA1'])
@@ -59,7 +62,9 @@ def audit_coop_artifacts(output, name, plan, data, preloads, rules):
             host_spawn = spawn
         require(canonical == (shared, identity), 'Players disagree on native map identity, houses or alliances')
         require(settings['MapSHA1'] == hashlib.sha1(data).hexdigest(), 'Network scenario digest is wrong')
-        for index, (_, _, waypoint) in enumerate(friends[:count], 1):
+        ordered_humans = sorted(range(count), key=lambda index: remap_color((0, 4, 5)[index], plan))
+        for index, human in enumerate(ordered_humans, 1):
+            waypoint = friends[human][2]
             require(shared['SpawnLocations'][f'Multi{index}'] == str(waypoint), 'Human starts overlap or moved')
         for index, waypoint in enumerate(plan['map']['enemy_waypoints'], count + 1):
             key = f'Multi{index}'

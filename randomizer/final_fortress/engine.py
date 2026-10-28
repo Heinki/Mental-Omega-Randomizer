@@ -788,7 +788,7 @@ def build_map(game_root, run, rules, *, preloads=None):
     return writer.finish()
 
 
-def spawn_data(plan, map_data, *, game_speed=2):
+def spawn_data(plan, map_data, *, game_speed=2, apply_colors=True):
     """One human, three hostile AIs, and up to two friendly skirmish AIs."""
     from .player_perks import needs_countries
     if type(game_speed) is not int or not 0 <= game_speed <= 6:
@@ -839,8 +839,9 @@ def spawn_data(plan, map_data, *, game_speed=2):
         sections.setdefault('HouseColors', {})[house] = str(index + 3)
         sections.setdefault('HouseHandicaps', {})[house] = str(2 - plan['engine_difficulty'])
         sections['SpawnLocations'][house] = str(waypoint)
-    from .colors import remap_colors
-    remap_colors(sections, plan)
+    if apply_colors:
+        from .colors import remap_colors
+        remap_colors(sections, plan)
     return '\r\n'.join(line for section, values in sections.items()
                        for line in (f'[{section}]', *(f'{key}={value}' for key, value in values.items()), '')).encode('latin-1')
 

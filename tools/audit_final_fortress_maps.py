@@ -123,6 +123,28 @@ def reserved_arrival_cells(rows, effective, art, types):
             for dx, dy in footprint(effective[fields[1]], art)}
 
 
+def audit_score_colors(spawn, plan, rules):
+    """Compare score matching with emitted houses and the installed palette."""
+    from randomizer.final_fortress.colors import remap_score_scheme
+
+    ui = all_section_value_maps_preserve(
+        (GAME_ROOT / 'uimd.ini').read_bytes().decode('latin-1').splitlines())['Colors']
+    palette = list(rules['Colors'])
+    humans = {row['Name']: int(row['Color']) for section, row in spawn.items()
+              if section == 'Settings' or section.startswith('Other')}
+    countries = {value: key for key, value in rules['Countries'].items()}
+    for actor in plan.get('coalition_scores', []):
+        if actor['name'] is not None:
+            color = humans[actor['name']]
+        else:
+            house = next(key for key, value in spawn['HouseCountries'].items()
+                         if value == countries[actor['actor']])
+            color = int(spawn['HouseColors'][house])
+        native_scheme = 2 * palette.index(ui[f'Slot{color + 1}.ColorScheme']) + 1
+        require(remap_score_scheme(actor['scheme'], plan) == native_scheme,
+                f'Kill rewards cannot match {actor["actor"]} at native color {color}')
+
+
 def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None):
     rules = {section: {**row, **source.get(section, {})} for section, row in rules.items()}
     rows = read_sections(data)
@@ -394,6 +416,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
                 f'Wrong starting army veterancy for {actor}')
 
     spawn_rows = read_sections(spawn)
+    audit_score_colors(spawn_rows, plan, effective)
     humans = len(plan.get('coop_players', [])) or 1
     friendly_slots = [*range(humans), *range(humans + 3, 4 + len(plan['allied_countries']))]
     for slot in friendly_slots:
@@ -2146,8 +2169,12 @@ def main():
     parser.add_argument('--difficulties', nargs='+', choices=DIFFICULTY_IDS, default=list(DIFFICULTY_IDS))
     parser.add_argument('--mental-ai-boost', action='store_true', help='Audit the installed Mental AI Boost option')
     parser.add_argument('--humans', type=int, choices=(1, 2, 3), default=1, help='Emit solo or co-op native maps/spawns')
+    parser.add_argument('--player-color', type=int, help='Installed multiplayer color index for the host')
     parser.add_argument('--terrain', action='store_true', help='Check flat ground/resources; requires the system LZO2 library')
     args = parser.parse_args()
+    if args.player_color is not None:
+        from randomizer.skirmish import multiplayer_colors
+        require(args.player_color in multiplayer_colors(GAME_ROOT).values(), 'Unknown installed player color')
     args.output.mkdir(parents=True, exist_ok=True)
     config = load_config()
     config = select_map(config, args.map_id or config['map']['id'])
@@ -2265,6 +2292,7 @@ def main():
                     challenge_stacks={entry['id']: maximum(entry) for entry in config['challenges']},
                     wave_multiplier=10 if profile == 'maximum' else 1, mental_ai_boost=args.mental_ai_boost,
                     coop_players=[f'Fortress{i + 1}' for i in range(args.humans)] if args.humans > 1 else (),
+                    player_color=args.player_color,
                     fundraising_ranks=([4, 1, 0][:args.humans] if profile == 'fundraising-mixed'
                                        else [0, 4, 2][:args.humans] if profile == 'fundraising-guest' else None))
                 preloads = {}

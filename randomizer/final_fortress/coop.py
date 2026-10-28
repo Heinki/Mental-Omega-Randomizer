@@ -37,7 +37,7 @@ def spawn_data(plan, map_data, *, slot, endpoints, game_speed=2):
     if type(slot) is not int or not 0 <= slot < len(players):
         raise ValueError('Invalid local Fortress player.')
     base = all_section_value_maps_preserve(
-        solo_spawn_data(plan, map_data, game_speed=game_speed).decode('latin-1').splitlines())
+        solo_spawn_data(plan, map_data, game_speed=game_speed, apply_colors=False).decode('latin-1').splitlines())
     countries = section_value_map(IniLines(map_data.decode('latin-1').splitlines()), 'Countries')
     indices = {country: key for key, country in countries.items()}
     friends = coalition(plan)
@@ -83,6 +83,8 @@ def spawn_data(plan, map_data, *, slot, endpoints, game_speed=2):
                 'HouseAlly' + ordinal: str(other)
                 for ordinal, other in zip(ordinals, (other for other in team if other != house))}
     from .colors import remap_colors
+    # The solo base still names Commander and has no network peers. Apply the
+    # palette once, after every human and helper has its final roster entry.
     remap_colors(sections, plan)
     return '\r\n'.join(line for section, values in sections.items()
                        for line in (f'[{section}]', *(f'{key}={value}' for key, value in values.items()), '')).encode('latin-1')

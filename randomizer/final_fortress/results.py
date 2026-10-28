@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 from .engine import marker_names
+from .colors import remap_score_scheme
 
 
 _CREATED = re.compile(r"Creating a new team named '([^']+)'\.")
@@ -187,7 +188,7 @@ class FinalFortressResultWatch:
             return
         record, self._score_record = self._score_record, None
         for actor in self.plan['coalition_scores']:
-            if (record.get('Scheme') == actor['scheme'] and 'Kills' in record
+            if (record.get('Scheme') == remap_score_scheme(actor['scheme'], self.plan) and 'Kills' in record
                     and (actor['name'] is None or record['name'] == actor['name'])):
                 self._coalition_records.setdefault(actor['actor'], record['Kills'])
         if len(self._coalition_records) != len(self.plan['coalition_scores']):

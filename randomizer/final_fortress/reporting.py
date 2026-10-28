@@ -42,6 +42,7 @@ def reward_report(run):
         rows.append((camp['display_name'], plan['gem_rewards'][clear_event] if clear_event in claimed else 0, detail))
     tiers = [event for event in claimed if event.startswith('kills:')]
     counts = run.get('kill_counts', {})
+    verified_counts = any(value is not None for value in counts.values())
     actors = {entry['actor']: entry for entry in plan.get('coalition_scores', [])}
     players = plan.get('coop_players', ['Player'])
     missing_scores = ('Available after victory or defeat' if run['status'] == 'active' else
@@ -59,7 +60,7 @@ def reward_report(run):
     rows.append(('Kill reward',
                  sum(plan['gem_rewards'][event] for event in tiers),
                  f'{max(int(event.split(":")[1]) for event in tiers)}-kill threshold reached'
-                 if tiers else 'No verified final scores; kill bonus unavailable' if not counts else
+                 if tiers else 'No verified final scores; kill bonus unavailable' if not verified_counts else
                  'No kill-reward threshold reached'))
     total = sum(plan['gem_rewards'].get(event, 0) for event in claimed)
     outcome = {'active': 'Run in progress', 'victory': 'Victory', 'defeat': 'Defeat',

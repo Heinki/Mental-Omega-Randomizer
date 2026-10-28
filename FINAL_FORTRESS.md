@@ -41,7 +41,10 @@ Survival milestones, camp-pickup Defensive Points and victory/Challenge bonuses
 are awarded independently to every player's local Fortress profile. New runs
 combine combat kills from every friendly human and AI helper for the kill bonus.
 Native score records are matched to the frozen friendly roster by remap scheme
-and human name; hostile AI records are excluded. Each house's setup transfers
+and human name; hostile AI records are excluded. The selected player color
+swaps the host's native score scheme with the previous holder of that color,
+including helpers and co-op guests. Score parsing applies the same swap without
+rewriting the frozen plan. Each house's setup transfers
 and its collected cash escrow are deducted before the totals are combined.
 Existing run snapshots retain their original local-player scoring.
 Camp crates are available from the start, surrounded by their guards. Any human
@@ -1041,10 +1044,13 @@ deduplicated. Only verified score tiers may be credited after a terminal result.
 The checkpoint contains only the 64 bytes immediately before the read cursor;
 an unread log backlog cannot be mistaken for file replacement. Shutdown waits
 until the final log tail is consumed before classifying an unfinished run.
-Active or abandoned saved runs can recover from matching native START and
+Active, abandoned or completed saved runs with missing statistics can recover from matching native START and
 terminal markers in the retained debug log. Recovery runs in the background,
 backs up the original save, preserves the frozen reward values and credits only
 missing receipts. Replaying the same evidence cannot award Defensive Points twice.
+This also recovers kill rewards missed by older color-unaware launchers when
+the matching native score table remains in `debug/debug.log`. A state file alone
+does not contain the missing native kill counts.
 
 Normal progression uses `final_fortress_state.json` and its OS lock; the
 optional testing profile uses its separate state file and lock.
