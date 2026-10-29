@@ -5,9 +5,12 @@ from tkinter import ttk
 
 
 def _route_wheel(event):
-    """Route wheel events from controls created after initial construction."""
+    """Scroll the nearest content canvas or settings viewport."""
     widget = event.widget
     while widget is not None:
+        handler = getattr(widget, '_content_scroll_handler', None)
+        if handler is not None:
+            return handler(event)
         if isinstance(widget, ScrollableViewport):
             return widget._mousewheel(event)
         widget = getattr(widget, 'master', None)

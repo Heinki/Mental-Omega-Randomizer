@@ -894,7 +894,8 @@ class WindowController:
 
     @staticmethod
     def on_unlock_mousewheel(event, canvas):
-        canvas.yview_scroll(-1 if event.delta > 0 else 1, 'units')
+        up = getattr(event, 'delta', 0) > 0 or getattr(event, 'num', 0) == 4
+        canvas.yview_scroll(-1 if up else 1, 'units')
         return 'break'
 
     def on_unlock_canvas_configure(self, faction, canvas, window, width):

@@ -33,6 +33,25 @@ from ._dependencies import (
     unlocked_reward_tech_ids,
 )
 
+def _display_buff_key(reward):
+    """Separate power effects and payload variants in presentation totals."""
+    kind = reward.get('power_buff_type') or reward.get('buff_type')
+    if kind == 'payload' and reward.get('payload_unit_id'):
+        return f'payload:{str(reward["payload_unit_id"]).upper()}'
+    return kind
+
+
+def _display_buff_reward(reward, entry):
+    """Retarget shared-role descriptions without editing earned rewards."""
+    display_reward = dict(reward)
+    if entry.get('kind') == 'unit':
+        display_reward['unit'] = entry['id']
+        display_reward.pop('shared_buff_units', None)
+        display_reward.pop('shared_buff_label', None)
+        display_reward['_runtime_canonical'] = True
+    return display_reward
+
+
 class UnlockDataController:
 
     def reward_group_label(self, tech_id):
@@ -73,99 +92,6 @@ class UnlockDataController:
             f'fire rate {round(((1 / multipliers["rof"]) - 1) * 100)}% faster, '
             f'attack range +{range_cells:g} {range_unit}'
         )
-
-    def build_unlock_display_groups(self, earned):
-        """Group canonical earned rewards for Unlocks text rendering."""
-        groups = {}
-        shared_groups = {}
-        house_buff_groups = {}
-        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
-        share_foehn_roles = self.foehn_standard_bundles_enabled()
-
-        def group_for(tech_id):
-            return groups.setdefault(tech_id, {
-                'label': self.reward_group_label(tech_id),
-                'access': {},
-                'buffs': {},
-                'other': [],
-            })
-
-        for reward in earned:
-            house_scope = self.reward_house_wide_buff_scope(reward)
-            if house_scope:
-                entry = house_buff_groups.setdefault(
-                    house_scope,
-                    {'reward': reward, 'count': 0},
-                )
-                entry['count'] += 1
-                continue
-
-            bundle_units = reward.get('bundle_units') or []
-            if bundle_units:
-                unit_ids = tuple(sorted(set(bundle_units), key=self.unit_faction_sort_key))
-                shared_group = shared_groups.setdefault(
-                    unit_ids,
-                    {'access': {}, 'buffs': {}},
-                )
-                shared_group['access'].setdefault(reward.get('name', 'Shared Access'), reward)
-                continue
-
-            if reward.get('kind') == 'buff' and reward.get('unit'):
-                source_unit = reward['unit']
-                equivalent_units = unit_role_equivalents(source_unit)
-                if (
-                    (share_chaos_role_buffs or share_foehn_roles)
-                    and not reward.get('global_buff')
-                    and len(equivalent_units) > 1
-                ):
-                    if share_foehn_roles:
-                        equivalent_units = {
-                            unit_id
-                            for unit_id in equivalent_units
-                            if self.unit_faction(unit_id) in {'Allies', 'Soviets'}
-                        }
-                    if len(equivalent_units) < 2:
-                        group = group_for(source_unit)
-                        key = reward.get('buff_type', reward.get('name', 'buff'))
-                        entry = group['buffs'].setdefault(
-                            key,
-                            {'reward': reward, 'count': 0},
-                        )
-                        entry['count'] += 1
-                        continue
-                    unit_ids = tuple(sorted(equivalent_units, key=self.unit_faction_sort_key))
-                    shared_group = shared_groups.setdefault(
-                        unit_ids,
-                        {'access': {}, 'buffs': {}},
-                    )
-                    key = reward.get('buff_type', reward.get('name', 'buff'))
-                    display_reward = dict(reward)
-                    display_reward.pop('name', None)
-                    entry = shared_group['buffs'].setdefault(
-                        key,
-                        {'reward': display_reward, 'count': 0},
-                    )
-                    entry['count'] += 1
-                else:
-                    group = group_for(source_unit)
-                    key = reward.get('buff_type', reward.get('name', 'buff'))
-                    entry = group['buffs'].setdefault(key, {'reward': reward, 'count': 0})
-                    entry['count'] += 1
-                continue
-
-            tech_ids = sorted(tech_ids_for_rewards([reward]))
-            if tech_ids:
-                for tech_id in tech_ids:
-                    group_for(tech_id)['access'].setdefault(reward.get('name', tech_id), reward)
-            else:
-                groups.setdefault('Other', {
-                    'label': 'Other',
-                    'access': {},
-                    'buffs': {},
-                    'other': [],
-                })['other'].append(reward)
-
-        return groups, shared_groups, house_buff_groups
 
     def current_unlocks_text(self):
         if not self.state:
@@ -218,127 +144,64 @@ class UnlockDataController:
                 )
             ):
                 earned.append(canonical)
-        if not earned:
-            if lines:
-                return '\n'.join(lines).rstrip()
-            return 'No unlocks or buffs earned yet.'
+        lines.extend(self.unlock_summary_lines(earned))
+        return '\n'.join(lines).rstrip() or 'No unlocks or buffs earned yet.'
 
-        share_foehn_roles = self.foehn_standard_bundles_enabled()
-        groups, shared_groups, house_buff_groups = (
-            self.build_unlock_display_groups(earned)
+    def unlock_summary_entries(self):
+        """Use the faction cards' access and earned-effect model for Summary."""
+        return [
+            entry for entry in self.unlock_dashboard_entries()
+            if entry['status'] == 'unlocked'
+            or any(
+                reward.get('kind') == 'buff'
+                for _source, reward in entry['sources']['earned']
+            )
+        ]
+
+    def unlock_summary_lines(self, earned):
+        """Show cumulative effects beside each relevant unit or power."""
+        categories = (
+            'Infantry', 'Vehicles', 'Vehicles / Naval', 'Naval', 'Aircraft',
+            'Defenses', 'Special Buildings', 'Special', 'Superweapons',
+            'Global Buffs', 'House-Wide Buffs',
         )
+        entries = sorted(self.unlock_summary_entries(), key=lambda entry: (
+            FACTION_ORDER.index(entry['faction'])
+            if entry['faction'] in FACTION_ORDER else len(FACTION_ORDER),
+            entry['faction'],
+            categories.index(entry['category'])
+            if entry['category'] in categories else len(categories),
+            entry['category'], entry['label'].casefold(), entry['key'],
+        ))
+        lines = []
+        section = None
+        for entry in entries:
+            next_section = (entry['faction'], entry['category'])
+            if next_section != section:
+                heading = ' / '.join(next_section)
+                lines.extend([heading, '=' * len(heading), ''])
+                section = next_section
+            if entry['kind'] == 'power':
+                token = reward_cameo_token(entry['reward'])
+                if token:
+                    lines.append(token)
+            lines.extend([self.unlock_dashboard_tooltip(entry, for_summary=True), ''])
 
-        if house_buff_groups:
-            heading = 'Global / House-Wide Buffs'
-            lines.extend([heading, '=' * len(heading)])
-            global_production_count = house_buff_groups.get(
-                ('All', 'production'), {}
-            ).get('count', 0)
-            for scope, entry in sorted(
-                house_buff_groups.items(),
-                key=lambda item: house_wide_buff_label(item[0]).casefold(),
+        # Preserve informational rewards without repeating power or buff receipts.
+        other = {}
+        for reward in earned:
+            if (
+                reward.get('kind') != 'buff'
+                and not self.unlock_dashboard_reward_keys(reward)
             ):
-                combined_count = entry['count']
-                if scope[1] == 'production' and scope[0] != 'All':
-                    combined_count += global_production_count
-                count = effective_buff_count(
-                    entry['reward'], combined_count
-                )
-                lines.extend(
-                    house_wide_buff_effect_lines(
-                        scope,
-                        count=count,
-                        stack_limit=buff_stack_limit(entry['reward']),
-                    )
-                )
+                other.setdefault(reward.get('name', ''), reward)
+        if other:
+            lines.extend(['Other Rewards', '=============', ''])
+            for reward in other.values():
+                lines.append(reward_display_name(reward))
+                lines.extend(f'  {line}' for line in reward_rule_summary(reward))
             lines.append('')
-
-        if shared_groups:
-            heading = (
-                'Shared Allied / Soviet Bundles'
-                if share_foehn_roles
-                else 'Shared Unit Buffs'
-            )
-            lines.append(heading)
-            lines.append('=' * len(heading))
-            lines.append(
-                'Each pictured role is earned together; listed bonuses apply to every pictured unit.'
-                if share_foehn_roles
-                else 'Every pictured unit receives the bonuses listed beneath its group.'
-            )
-            lines.append('')
-            for unit_ids, shared_group in sorted(
-                shared_groups.items(),
-                key=lambda item: tuple(unit_display_label(unit_id) for unit_id in item[0]),
-            ):
-                lines.append(f'[[MOR_SHARED:{",".join(unit_ids)}]]')
-                lines.append('  •  '.join(unit_display_label(unit_id) for unit_id in unit_ids))
-                for reward in sorted(
-                    shared_group['access'].values(),
-                    key=lambda item: item.get('name', ''),
-                ):
-                    source_names = reward.get('bundle_reward_names') or [reward_display_name(reward)]
-                    lines.append('  Shared access: ' + '  •  '.join(source_names))
-                for _, entry in sorted(shared_group['buffs'].items()):
-                    reward = entry['reward']
-                    count = effective_buff_count(reward, entry['count'])
-                    for summary in buff_effect_lines(reward, count=count, include_label=False):
-                        lines.append(f'  {summary}')
-                lines.append('')
-
-        current_faction = None
-        def summary_section(unit_id):
-            if BUFF_TARGETS.get(unit_id, {}).get('category') == 'special_buildings':
-                return 'Special Buildings'
-            return self.unit_faction(unit_id)
-
-        for tech_id in sorted(
-            groups,
-            key=lambda unit_id: (
-                summary_section(unit_id) == 'Special Buildings',
-                self.unit_faction_sort_key(unit_id),
-            ),
-        ):
-            group = groups[tech_id]
-            faction = summary_section(tech_id)
-            if faction != current_faction:
-                if lines and lines[-1] != '':
-                    lines.append('')
-                heading = (
-                    faction
-                    if faction == 'Special Buildings'
-                    else
-                    f'{faction} Units'
-                    if faction in FACTION_ORDER
-                    else f'{faction} Rewards'
-                )
-                lines.append(heading)
-                lines.append('=' * len(heading))
-                lines.append('')
-                current_faction = faction
-            lines.append(group['label'])
-            lines.append('-' * len(group['label']))
-
-            if group['access']:
-                for reward in sorted(group['access'].values(), key=lambda item: item.get('name', '')):
-                    lines.append(reward_display_name(reward))
-
-            if group['buffs']:
-                for _, entry in sorted(group['buffs'].items()):
-                    reward = entry['reward']
-                    count = effective_buff_count(reward, entry['count'])
-                    for summary in buff_effect_lines(reward, count=count, include_label=False):
-                        lines.append(f'  {summary}')
-
-            for reward in group['other']:
-                power_token = reward_cameo_token(reward)
-                lines.append(f'{power_token}Reward: {reward_display_name(reward)}')
-                for summary in reward_rule_summary(reward):
-                    lines.append(f'  {summary}')
-
-            lines.append('')
-
-        return '\n'.join(lines).rstrip()
+        return lines
 
     def mission_arsenal_summary_lines(self):
         """Describe selected mission's temporary roster inside existing Summary."""
@@ -445,41 +308,10 @@ class UnlockDataController:
             return []
         unit_ids = set(self.display_starting_tier_one_unit_ids())
         unit_ids.update(self.display_starting_tier_one_defense_ids())
-        if self.active_reward_mode() == ARSENAL_MODE:
-            selected = self.selected_mission()
-            arsenal = self.mission_arsenal(selected.get('code', '')) if selected else {}
-            unit_ids.update(
-                str(entry.get('unit_id') or '').upper()
-                for entry in arsenal.get('units', ())
-                if entry.get('unit_id')
-            )
-        share_chaos_role_buffs = self.share_chaos_role_buffs_enabled()
-        share_foehn_roles = self.foehn_standard_bundles_enabled()
-        manual_names = self.manual_starting_reward_names_in_state()
-        for reward in self.canonical_earned_rewards():
-            if (
-                reward.get('name') not in manual_names
-                and self.standard_foehn_unit_reward(reward)
-            ):
-                continue
-            if reward.get('kind') == 'buff' and reward.get('unit'):
-                if not self.reward_house_wide_buff_scope(reward):
-                    if (
-                        (share_chaos_role_buffs or share_foehn_roles)
-                        and not reward.get('global_buff')
-                    ):
-                        equivalents = unit_role_equivalents(reward['unit'])
-                        if share_foehn_roles:
-                            equivalents = {
-                                unit_id
-                                for unit_id in equivalents
-                                if self.unit_faction(unit_id) in {'Allies', 'Soviets'}
-                            }
-                        unit_ids.update(equivalents)
-                    else:
-                        unit_ids.add(reward['unit'])
-                continue
-            unit_ids.update(tech_ids_for_rewards([reward]))
+        unit_ids.update(
+            entry['id'] for entry in self.unlock_summary_entries()
+            if entry['kind'] == 'unit'
+        )
         return sorted(unit_ids, key=self.unit_faction_sort_key)
 
     def display_starting_tier_one_unit_ids(self):
@@ -1131,7 +963,7 @@ class UnlockDataController:
                 )
         return entries
 
-    def unlock_dashboard_tooltip(self, entry):
+    def unlock_dashboard_tooltip(self, entry, *, for_summary=False):
         archipelago_active = bool(
             getattr(self, 'archipelago_run_active', lambda: False)()
         )
@@ -1157,7 +989,7 @@ class UnlockDataController:
             else status_labels[entry['status']]
         )
         lines = [
-            f'{entry["label"]} - {status_label}',
+            entry["label"] if for_summary else f'{entry["label"]} - {status_label}',
             '─' * min(48, max(12, len(entry['label']) + 12)),
         ]
         sources = entry['sources']
@@ -1221,6 +1053,9 @@ class UnlockDataController:
                 else 'Not assigned by this seed and current reward settings.'
             )
 
+        if for_summary:
+            lines = [*lines[:2], f'Access: {status_label}']
+
         earned = [reward for _, reward in sources['earned']]
         effect_lines = []
         if entry.get('kind') == 'house':
@@ -1241,20 +1076,15 @@ class UnlockDataController:
                 (arsenal_entry and not entry.get('arsenal_selected'))
                 or (
                     not arsenal_entry
-                    and entry.get('kind') == 'power'
+                    and entry.get('kind') in {'unit', 'power'}
                     and entry['status'] != 'unlocked'
                 )
             ):
                 active_effect_rewards = ()
             for reward in active_effect_rewards:
                 if reward.get('kind') == 'buff':
-                    key = (
-                        reward.get('buff_type')
-                        or reward.get('power_buff_type')
-                    )
-                    display_reward = dict(reward)
-                    if entry.get('kind') == 'unit':
-                        display_reward['unit'] = entry['id']
+                    key = _display_buff_key(reward)
+                    display_reward = _display_buff_reward(reward, entry)
                     buffs.setdefault(
                         key, {'reward': display_reward, 'count': 0}
                     )['count'] += 1
@@ -1285,7 +1115,7 @@ class UnlockDataController:
         if (
             entry.get('reward')
             and entry['status'] == 'unlocked'
-            and entry.get('kind') != 'global'
+            and entry.get('kind') not in {'global', 'house'}
             and entry['reward'].get('access_category') != 'special_building'
         ):
             effect_lines.extend(reward_rule_summary(entry['reward']))
@@ -1307,9 +1137,9 @@ class UnlockDataController:
         if inactive_arsenal_buffs:
             deferred = {}
             for reward in inactive_arsenal_buffs:
-                key = reward.get('buff_type') or reward.get('power_buff_type')
+                key = _display_buff_key(reward)
                 deferred.setdefault(
-                    key, {'reward': reward, 'count': 0}
+                    key, {'reward': _display_buff_reward(reward, entry), 'count': 0}
                 )['count'] += 1
             lines.append('Earned buffs inactive in this mission:')
             for buff in deferred.values():
@@ -1320,20 +1150,20 @@ class UnlockDataController:
                 ):
                     lines.append(f'  {summary}')
 
-        deferred_power_buffs = [
+        deferred_buffs = [
             reward
             for reward in earned
             if not arsenal_entry
-            and entry.get('kind') == 'power'
+            and entry.get('kind') in {'unit', 'power'}
             and entry['status'] != 'unlocked'
             and reward.get('kind') == 'buff'
         ]
-        if deferred_power_buffs:
+        if deferred_buffs:
             deferred = {}
-            for reward in deferred_power_buffs:
-                key = reward.get('power_buff_type')
+            for reward in deferred_buffs:
+                key = _display_buff_key(reward)
                 deferred.setdefault(
-                    key, {'reward': reward, 'count': 0}
+                    key, {'reward': _display_buff_reward(reward, entry), 'count': 0}
                 )['count'] += 1
             lines.append('Stored buffs (apply after unlock):')
             for buff in deferred.values():
@@ -1343,6 +1173,9 @@ class UnlockDataController:
                     include_label=False,
                 ):
                     lines.append(f'  {summary}')
+
+        if for_summary:
+            return '\n'.join(lines)
 
         if entry['status'] == 'available':
             potential = []

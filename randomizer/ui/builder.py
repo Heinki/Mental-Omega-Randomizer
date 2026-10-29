@@ -16,7 +16,6 @@ def create_widgets(self):
         main_frame,
     )
     _build_info_tabs(self, info_tabs)
-    self.right_frame.bind_controls()
     build_shop_tab(self, self.workspace_tabs)
     build_final_fortress_tab(self, self.workspace_tabs)
     _build_advanced_tab(self, self.workspace_tabs)

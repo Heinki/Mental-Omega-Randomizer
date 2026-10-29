@@ -30,8 +30,10 @@ def _build_window_shell(self):
     self.style.layout('Compact.Randomizer.TNotebook', [('Notebook.client', {'sticky': 'nswe'})])
     self.style.layout('Compact.Randomizer.TNotebook.Tab', [])
     self.style.configure('Randomizer.TNotebook.Tab', padding=(16, 7), font=('Segoe UI', 10, 'bold'))
-    self.style.configure('Unlocks.TNotebook', tabposition='n')
-    self.style.configure('Unlocks.TNotebook.Tab', padding=(7, 7), font=('Segoe UI', 9, 'bold'))
+    self.style.configure('Info.TNotebook', tabposition='nw')
+    self.style.configure('Info.TNotebook.Tab', padding=(7, 5), font=('Segoe UI', 9, 'bold'))
+    self.style.configure('Unlocks.TNotebook', tabposition='nw')
+    self.style.configure('Unlocks.TNotebook.Tab', padding=(4, 5), font=('Segoe UI', 9, 'bold'))
     self.style.configure('Launch.TButton', font=('Segoe UI', 10, 'bold'), padding=(10, 7))
     self.style.configure(
         'Shop.StartNewRun.TButton',
@@ -260,14 +262,15 @@ def _build_window_shell(self):
     return main_frame
 
 def _build_right_panel(self, main_frame):
-    viewport = ScrollableViewport(main_frame)
-    self.right_frame = viewport
-    viewport.grid(row=2, column=1, rowspan=5, sticky='nsew')
-    right_frame = viewport.content
+    # Tabs and actions stay fixed; their text/canvas children own scrolling.
+    right_frame = ttk.Frame(main_frame, width=1, height=1)
+    self.right_frame = right_frame
+    right_frame.grid(row=2, column=1, rowspan=5, sticky='nsew')
+    right_frame.grid_propagate(False)
     right_frame.columnconfigure(0, weight=1)
     right_frame.rowconfigure(1, weight=1)
 
-    info_tabs = ttk.Notebook(right_frame, style='Randomizer.TNotebook')
+    info_tabs = ttk.Notebook(right_frame, style='Info.TNotebook')
     self.info_tabs = info_tabs
     info_tabs.grid(row=1, column=0, sticky='nsew')
     info_tabs.enable_traversal()
@@ -926,6 +929,9 @@ def _build_info_tabs(self, info_tabs):
             highlightthickness=0,
             background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
         )
+        canvas._content_scroll_handler = (
+            lambda event, target=canvas: self.on_unlock_mousewheel(event, target)
+        )
         scrollbar = ttk.Scrollbar(faction_page, orient='vertical', command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.grid(row=0, column=0, sticky='nsew')
@@ -963,10 +969,10 @@ def _build_info_tabs(self, info_tabs):
     search_row.columnconfigure(0, weight=1)
     self.unlock_search_entry = ttk.Entry(search_row, textvariable=self.unlock_search_var)
     self.unlock_search_entry.grid(row=0, column=0, sticky='ew', padx=(0, 4))
-    ttk.Button(search_row, text='Prev', command=self.find_unlock_previous, width=8).grid(row=0, column=1, padx=(0, 4))
-    ttk.Button(search_row, text='Next', command=self.find_unlock_next, width=8).grid(row=0, column=2, padx=(0, 4))
-    ttk.Button(search_row, text='Clear', command=self.clear_unlock_search, width=8).grid(row=0, column=3)
-    self.unlock_search_status = ttk.Label(search_row, text='', width=9, anchor='e')
+    ttk.Button(search_row, text='Prev', command=self.find_unlock_previous, width=5).grid(row=0, column=1, padx=(0, 4))
+    ttk.Button(search_row, text='Next', command=self.find_unlock_next, width=5).grid(row=0, column=2, padx=(0, 4))
+    ttk.Button(search_row, text='Clear', command=self.clear_unlock_search, width=5).grid(row=0, column=3)
+    self.unlock_search_status = ttk.Label(search_row, text='', width=7, anchor='e')
     self.unlock_search_status.grid(row=0, column=4, padx=(6, 0))
     self.unlocks_text = scrolledtext.ScrolledText(
         summary_page,
@@ -1009,6 +1015,9 @@ def _build_info_tabs(self, info_tabs):
         borderwidth=0,
         highlightthickness=0,
         background=self.style.lookup('TFrame', 'background') or '#f0f0f0',
+    )
+    enemy_buffs_canvas._content_scroll_handler = (
+        lambda event: self.on_unlock_mousewheel(event, enemy_buffs_canvas)
     )
     self.enemy_buffs_canvas = enemy_buffs_canvas
     enemy_buffs_scrollbar = ttk.Scrollbar(
@@ -1059,6 +1068,16 @@ def _build_info_tabs(self, info_tabs):
         ),
         add='+',
     )
+    for page in (progress_frame, unlocks_frame, enemy_buffs_page):
+        for widget in page.winfo_children():
+            if isinstance(widget, ttk.Label):
+                widget.configure(width=1)
+                widget.bind(
+                    '<Configure>',
+                    lambda event: event.widget.configure(wraplength=max(80, event.width)),
+                    add='+',
+                )
+
     info_tabs.bind(
         '<<NotebookTabChanged>>',
         self.on_info_tab_changed,
