@@ -698,6 +698,9 @@ def build_map(game_root, run, rules, *, preloads=None):
     apply_drakuv_power(writer, plan, rules, player_aliases)
     from .enemy_powers import apply_enemy_powers
     apply_enemy_powers(writer, plan, rules, enemy_aliases)
+    from .player_perks import register_exact_type_lists
+    register_exact_type_lists(writer, rules, player_aliases, enemy_aliases,
+                              writer.sections.get('FFEnemyFortifications', {}))
     from .wave_clock import create_wave_clock, create_friendly_clocks
     wave_clock = create_wave_clock(writer, plan, rules, finished)
     friendly_clocks = create_friendly_clocks(writer, plan, rules, finished)

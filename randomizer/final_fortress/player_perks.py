@@ -45,6 +45,29 @@ def _eligible(row, country):
             and country not in parts('ForbiddenHouses'))
 
 
+def register_exact_type_lists(writer, rules, *alias_groups):
+    """Include private actors in native airfield and EMPulse exact-ID lists.
+
+    These engine lookups do not follow copied flags or prerequisites. Keep
+    native entries and include both coalitions, using the final map values so
+    one group's additions cannot overwrite another's or a map override.
+    """
+    from randomizer.maps.clone_references import empulse_cannon_clone_rules
+    from randomizer.maps.ini import IniLines, merge_ini_section_values
+    from randomizer.maps.player_clones import player_clone_pad_aircraft_rules
+
+    current = IniLines(list(writer.lines))
+    merge_ini_section_values(current, writer.sections)
+    for aliases in alias_groups:
+        handled = {original: {'clone_id': alias} for original, alias in aliases.items()}
+        pads, _ = player_clone_pad_aircraft_rules(current, rules, handled)
+        cannons = empulse_cannon_clone_rules(current, rules, handled)
+        for updates in (pads, cannons):
+            merge_ini_section_values(current, updates)
+            for section, values in updates.items():
+                writer.sections.setdefault(section, {}).update(values)
+
+
 def register_building_equivalent(writer, rules, original, alias, aliases, *, preserve_native=False,
                                  current_prerequisites=False):
     """Keep refinery prerequisites and harvester docks valid for private copies."""
@@ -249,10 +272,10 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         row = rules[original]
         if row.get('FreeUnit') in aliases and any(_eligible(row, country) for _, country, _ in friends):
             aliases[original] = writer.key()
-        if (effects.get('infrastructure_health_percent') and row.get('PowersUpBuilding') in aliases
+        if (row.get('PowersUpBuilding') in aliases
                 and original not in aliases and any(_eligible(row, country) for _, country, _ in friends)):
             # Turbines and Nuclear Converters must still attach to the private
-            # generator even when they have no independent Strength to buff.
+            # generator for every perk that copies it, including More power!
             aliases[original] = writer.key()
 
     mutation_targets = {}

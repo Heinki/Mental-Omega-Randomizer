@@ -193,6 +193,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     for registry in registries:
         require(all(value.casefold() in ids for value in effective[registry].values()),
                 f'Unresolved {registry} definition')
+    audit_exact_type_lists(rows, effective, plan, rules, preloads)
     power_bonus = plan['effects'].get('generator_power_percent', 0)
     if power_bonus:
         from math import ceil
@@ -669,6 +670,49 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         counts.append(count)
 
 
+def audit_exact_type_lists(rows, effective, plan, rules, preloads):
+    """Inspect native capacity, cannon and attachment links in emitted maps."""
+    from randomizer.final_fortress.player_perks import _eligible
+
+    mappings = [rows.get(name, {}) for name in
+                ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications')]
+    native_pads = set(rules['General'].get('PadAircraft', '').split(',')) - {''}
+    pads = set(effective['General'].get('PadAircraft', '').split(',')) - {''}
+    require(native_pads <= pads, 'Airfield capacity lost a native aircraft')
+    for aliases in mappings:
+        for original in native_pads & aliases.keys():
+            require(aliases[original] in pads, f'Aircraft bypasses airfield capacity: {original}/{aliases[original]}')
+    if pads != native_pads:
+        require(preloads['rules'].get('General', {}).get('PadAircraft')
+                == effective['General']['PadAircraft'], 'Airfield capacity list missing early preload')
+
+    for power in rules['SuperWeaponTypes'].values():
+        native = set(rules[power].get('EMPulse.Cannons', '').split(',')) - {''}
+        cannons = set(effective[power].get('EMPulse.Cannons', '').split(',')) - {''}
+        require(native <= cannons, f'Native EMPulse cannon lost: {power}')
+        for aliases in mappings:
+            for original in native & aliases.keys():
+                require(aliases[original] in cannons, f'Private cannon cannot fire: {power}/{original}')
+        if cannons != native:
+            require(preloads['rules'].get(power, {}).get('EMPulse.Cannons')
+                    == effective[power]['EMPulse.Cannons'], f'Cannon list missing early preload: {power}')
+
+    groups = [(mappings[0], [country for _, country, _ in coalition(plan)]),
+              (mappings[1], plan['enemy_countries'])]
+    for aliases, countries in groups:
+        for original in rules['BuildingTypes'].values():
+            base = rules[original]
+            host = base.get('PowersUpBuilding')
+            if host not in aliases or not any(_eligible(base, country) for country in countries):
+                continue
+            require(original in aliases, f'Private generator lost its upgrade: {original}')
+            alias = aliases[original]
+            require(effective[alias].get('PowersUpBuilding') == aliases[host],
+                    f'Upgrade cannot attach to private generator: {original}')
+            require(preloads['rules'].get(alias, {}).get('PowersUpBuilding') == aliases[host],
+                    f'Upgrade attachment missing early preload: {original}')
+
+
 def audit_logistics(rows, effective, plan, rules, reviewed):
     """Inspect actual cargo, firing eligibility and structure conversion graphs."""
     from randomizer.final_fortress.utilities import supported_pairs
@@ -695,10 +739,6 @@ def audit_logistics(rows, effective, plan, rules, reviewed):
         if not belongs:
             continue
         if original in buildings:
-            upgraded = base.get('PowersUpBuilding')
-            if health and upgraded in aliases and _eligible(base, plan['player_country']):
-                require(original in aliases and row.get('PowersUpBuilding') == aliases[upgraded],
-                        f'Infrastructure blocks an ordinary building upgrade: {original}')
             defense = base.get('IsBaseDefense', 'no').lower() == 'yes'
             production = base.get('Factory', '').lower() in ('buildingtype', 'infantrytype', 'unittype', 'aircrafttype')
             economy = (any(base.get(field, 'no').lower() == 'yes' for field in
@@ -843,13 +883,13 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
                         for value in rows['Structures'].values()), 'Enemy power has no real launch provider')
     require(len(rows.get('FFEnemyPowers', {})) == sum(map(len, expected_powers.values())),
             'Unexpected hostile power without a selected Challenge')
-    native_sources = {alias: original for mapping in ('FFPlayerTypes', 'FFEnemyBuildings')
+    native_sources = {alias: original for mapping in ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyFortifications')
                       for original, alias in rows.get(mapping, {}).items()}
     for original in rules['SuperWeaponTypes'].values():
         actual = dict(effective[original])
-        # Native building ability routing appends private designators and
-        # inhibitors. Check those identities without treating them as buffs.
-        for field in ('SW.Designators', 'SW.Inhibitors'):
+        # Native building ability routing appends private designators,
+        # inhibitors and cannons. Check identities without treating them as buffs.
+        for field in ('SW.Designators', 'SW.Inhibitors', 'EMPulse.Cannons'):
             native = rules[original].get(field)
             if native is not None and actual.get(field) != native:
                 require({native_sources.get(kind, kind) for kind in actual[field].split(',')}
@@ -2161,6 +2201,7 @@ def main():
                         'lab-repair', 'lab-reserve', 'lab-support', 'lab-support-helpers',
                         'lab-health-first', 'lab-health-middle', 'lab-health', 'lab-health-support',
                         'construction', 'production', 'building-limits', 'economy-first',
+                        'generators', 'generators-first',
                         'transport-capacity', 'open-topped', 'infrastructure', 'logistics',
                         'logistics-first', 'logistics-middle',
                         'fundraising-1', 'fundraising-2', 'fundraising-3', 'fundraising-4',
@@ -2213,6 +2254,7 @@ def main():
         'all-specials': ['special_unit_access', 'stolen_tech_access', 'allied_helpers'],
         'transport-capacity': ['transport_capacity'], 'open-topped': ['open_topped_transports'],
         'infrastructure': ['fortified_infrastructure'],
+        'generators': ['more_power'], 'generators-first': ['more_power'],
         **{profile: ['transport_capacity', 'open_topped_transports', 'fortified_infrastructure',
                      'special_unit_access', 'stolen_tech_access', 'allied_helpers']
            for profile in ('logistics', 'logistics-first', 'logistics-middle')},
@@ -2284,7 +2326,7 @@ def main():
                                              else 1 if profile == 'veteran' and entry['id'] == 'veteran_escort'
                                              else 7 if profile == 'reinforcements-veteran' and entry['id'] == 'periodic_reinforcements'
                                              else 6 if profile == 'reinforcements-rookie' and entry['id'] == 'periodic_reinforcements'
-                                             else 1 if profile == 'economy-first'
+                                             else 1 if profile in ('economy-first', 'generators-first')
                                              else int(profile[-1]) if profile.startswith('fundraising-')
                                                   and profile[-1].isdigit() and entry['id'] == 'fundraising'
                                              else len(ranks(entry))) for entry in config['perks']},
