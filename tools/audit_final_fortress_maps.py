@@ -281,10 +281,11 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     blueprints = ({entry['superweapon']: entry for entry in power_rewards(plan, rules)}
                   if plan.get('plan_version', 1) >= 9 else {})
     if plan['effects'].get('power_upgrade_stacks') and not powers:
-        clocks = {rows.get('FFWaveClock', {}).get('Power'),
-                  rows.get('FFLabSupport', {}).get('ShieldPower'),
-                  *[rows[section]['Power'] for section in rows.get('FFAlliedClocks', {}).values()]}
-        require({k:v for k,v in rows.get('SuperWeaponTypes', {}).items() if v not in clocks}
+        building_powers = {rows.get('FFWaveClock', {}).get('Power'),
+                           rows.get('FFLabSupport', {}).get('ShieldPower'),
+                           rows.get('FFDrakuvPower', {}).get('Power'),
+                           *[rows[section]['Power'] for section in rows.get('FFAlliedClocks', {}).values()]}
+        require({k:v for k,v in rows.get('SuperWeaponTypes', {}).items() if v not in building_powers}
                 == source.get('SuperWeaponTypes', {}),
                 'Power upgrades granted an unpurchased power')
     registered_powers = list(dict.fromkeys(effective['SuperWeaponTypes'].values()))
@@ -319,6 +320,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             for field in ('Type', 'UIName', 'RechargeTime', 'Money.Amount', 'SidebarPCX'):
                 require(power.get(field) == native.get(field), f'Changed native {original}.{field}')
             relocated = {'SW.RequiredHouses', 'SW.ForbiddenHouses', 'SW.AllowPlayer', 'SW.AllowAI',
+                         'SW.Inhibitors', 'SW.Attractors', 'SW.Suppressors', 'HunterSeeker.Buildings',
                          'SW.PostDependent', 'ParaDrop.Types', 'Deliver.Types', 'DropPod.Types',
                          'WeaponType', 'Nuke.Payload', 'SW.Warhead', 'SpyPlane.Type',
                          'Dominator.FirstAnim'}
@@ -676,6 +678,7 @@ def audit_exact_type_lists(rows, effective, plan, rules, preloads):
 
     mappings = [rows.get(name, {}) for name in
                 ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications')]
+    audit_native_power_gates(effective, plan, rules, preloads, mappings)
     native_pads = set(rules['General'].get('PadAircraft', '').split(',')) - {''}
     pads = set(effective['General'].get('PadAircraft', '').split(',')) - {''}
     require(native_pads <= pads, 'Airfield capacity lost a native aircraft')
@@ -711,6 +714,36 @@ def audit_exact_type_lists(rows, effective, plan, rules, preloads):
                     f'Upgrade cannot attach to private generator: {original}')
             require(preloads['rules'].get(alias, {}).get('PowersUpBuilding') == aliases[host],
                     f'Upgrade attachment missing early preload: {original}')
+
+
+def audit_native_power_gates(effective, plan, rules, preloads, mappings):
+    """Inspect installed powers independently of the purchased unlock list."""
+    actors = [(actor, country) for actor, country, _ in coalition(plan) if actor in effective]
+    actors.extend((f'FFENEMY{i + 1}', country)
+                  for i, country in enumerate(plan['enemy_countries']))
+    type_fields = ('SW.AuxBuildings', 'SW.NegBuildings', 'SW.Designators', 'SW.Inhibitors',
+                   'SW.Attractors', 'SW.Suppressors', 'HunterSeeker.Buildings')
+    house_fields = ('SW.RequiredHouses', 'SW.ForbiddenHouses')
+    native_powers = set(rules['SuperWeaponTypes'].values())
+    for power in dict.fromkeys(effective['SuperWeaponTypes'].values()):
+        row = effective[power]
+        for field in (*type_fields, *house_fields):
+            if field in house_fields and power not in native_powers:
+                continue
+            values = set(row.get(field, '').split(',')) - {'', 'none', '<none>'}
+            native = set(rules.get(power, {}).get(field, '').split(',')) - {'', 'none', '<none>'}
+            require(native <= values, f'Native power gate lost installed identities: {power}.{field}')
+            if field in type_fields:
+                expected = {alias for aliases in mappings for original, alias in aliases.items()
+                            if original in values}
+            else:
+                expected = {actor for actor, country in actors if country in values}
+            require(expected <= values,
+                    f'Native power gate excludes private identities: {power}.{field}: '
+                    + ', '.join(sorted(expected - values)))
+            if values != native:
+                require(preloads['rules'].get(power, {}).get(field) == row.get(field),
+                        f'Native power gate missing or different in early preload: {power}.{field}')
 
 
 def audit_logistics(rows, effective, plan, rules, reviewed):
@@ -883,16 +916,23 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
                         for value in rows['Structures'].values()), 'Enemy power has no real launch provider')
     require(len(rows.get('FFEnemyPowers', {})) == sum(map(len, expected_powers.values())),
             'Unexpected hostile power without a selected Challenge')
-    native_sources = {alias: original for mapping in ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyFortifications')
+    native_sources = {alias: original for mapping in
+                      ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications')
                       for original, alias in rows.get(mapping, {}).items()}
+    native_countries = {actor: country for actor, country, _ in coalition(plan)}
+    native_countries.update({f'FFENEMY{i + 1}': country
+                             for i, country in enumerate(plan['enemy_countries'])})
     for original in rules['SuperWeaponTypes'].values():
         actual = dict(effective[original])
-        # Native building ability routing appends private designators,
-        # inhibitors and cannons. Check identities without treating them as buffs.
-        for field in ('SW.Designators', 'SW.Inhibitors', 'EMPulse.Cannons'):
+        # Collapse private equivalents before comparing every native setting.
+        # Exact-list compatibility must not disguise changed ability strength.
+        for field in ('SW.AuxBuildings', 'SW.NegBuildings', 'SW.Designators', 'SW.Inhibitors',
+                      'SW.Attractors', 'SW.Suppressors', 'HunterSeeker.Buildings', 'EMPulse.Cannons',
+                      'SW.RequiredHouses', 'SW.ForbiddenHouses'):
             native = rules[original].get(field)
             if native is not None and actual.get(field) != native:
-                require({native_sources.get(kind, kind) for kind in actual[field].split(',')}
+                sources = native_countries if field in ('SW.RequiredHouses', 'SW.ForbiddenHouses') else native_sources
+                require({sources.get(kind, kind) for kind in actual[field].split(',')}
                         == set(native.split(',')), f'Native power targeting changed: {original}/{field}')
                 actual[field] = native
         require(actual == rules[original], f'Native power changed by enemy Challenge: {original}')
@@ -2191,6 +2231,8 @@ def main():
                         help='Override the Special Building Limit rank for selected capacity profiles')
     parser.add_argument('--special-access-rank', type=int, choices=range(1, 5),
                         help='Override campaign/stolen-tech ranks, capped at each perk maximum')
+    parser.add_argument('--support-powers-rank', type=int, choices=range(1, 6),
+                        help='Override the purchased faction support-power rank')
     parser.add_argument('--profiles', nargs='+', choices=(
                         'baseline', 'helpers', 'maximum', 'defenses', 'defenses-first', 'defenses-second',
                         'defenses-third', 'powers', 'upgrades', 'secondary',
@@ -2299,6 +2341,8 @@ def main():
                     player_country=country, selected_perks=selected,
                     perk_ranks={entry['id']: (args.special_building_limit_rank if args.special_building_limit_rank is not None
                                                   and entry['id'] == 'special_building_limit'
+                                             else args.support_powers_rank if args.support_powers_rank is not None
+                                                  and entry['id'] == 'support_powers'
                                              else min(args.special_access_rank, len(ranks(entry)))
                                                   if args.special_access_rank is not None
                                                   and entry['id'] in ('special_unit_access', 'stolen_tech_access')

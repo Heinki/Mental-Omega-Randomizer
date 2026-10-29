@@ -12,6 +12,51 @@ from randomizer.rewards.power_buff_definitions import (
 )
 
 
+def register_native_power_gates(writer, plan, rules, *alias_groups):
+    """Let native powers recognize private tech, targets and concrete countries.
+
+    Building-provided powers remain subject to their installed prerequisites.
+    A copied Ore Purifier, for example, must satisfy Ultra Miner's gate just
+    like GAOREP. Extend negative and targeting lists too, preserving their
+    native meaning for both coalitions and any map-specific restrictions.
+    Empty lists on independent perk powers must stay empty.
+    """
+    from .player_perks import coalition
+    from randomizer.maps.ini import all_section_value_maps_preserve
+
+    current = IniLines(list(writer.lines))
+    merge_ini_section_values(current, writer.sections)
+    sections = all_section_value_maps_preserve(current)
+    aliases = {}
+    for group in alias_groups:
+        for original, alias in group.items():
+            aliases.setdefault(original, []).append(alias)
+    countries = [(actor, country) for actor, country, _ in coalition(plan)
+                 if actor in sections]
+    countries.extend((f'FFENEMY{i + 1}', country)
+                     for i, country in enumerate(plan['enemy_countries']))
+    native_powers = set(rules['SuperWeaponTypes'].values())
+    powers = dict.fromkeys([*rules['SuperWeaponTypes'].values(),
+                           *sections.get('SuperWeaponTypes', {}).values()])
+    for power in powers:
+        row = {**rules.get(power, {}), **sections.get(power, {})}
+        for field in ('SW.AuxBuildings', 'SW.NegBuildings', 'SW.Designators',
+                      'SW.Inhibitors', 'SW.Attractors', 'SW.Suppressors',
+                      'HunterSeeker.Buildings', 'SW.RequiredHouses', 'SW.ForbiddenHouses'):
+            values = [part.strip() for part in row.get(field, '').split(',') if part.strip()]
+            if not values or all(value.lower() in ('none', '<none>') for value in values):
+                continue
+            if field in ('SW.RequiredHouses', 'SW.ForbiddenHouses'):
+                if power not in native_powers:
+                    continue
+                additions = [actor for actor, country in countries if country in values]
+            else:
+                additions = [alias for original in values for alias in aliases.get(original, ())]
+            expanded = list(dict.fromkeys([*values, *additions]))
+            if expanded != values:
+                writer.put(power, field, ','.join(expanded))
+
+
 def upgrade_description(stacks):
     """Describe compatible upgrades without suggesting that they unlock powers."""
     effects = [power_buff_effect_text({'power_buff_type': entry['id']}, stacks)
