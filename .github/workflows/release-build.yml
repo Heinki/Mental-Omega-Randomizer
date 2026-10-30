@@ -99,10 +99,14 @@ jobs:
             }
             gh release upload $env:GITHUB_REF_NAME $assets --clobber
           } elseif ($releaseState.Trim() -eq 'release not found') {
+            $notesArguments = @('--generate-notes')
+            if (Test-Path -LiteralPath 'RELEASE_NOTES.md' -PathType Leaf) {
+              $notesArguments = @('--notes-file', 'RELEASE_NOTES.md')
+            }
             gh release create $env:GITHUB_REF_NAME $assets `
               --draft `
               --verify-tag `
-              --generate-notes `
+              @notesArguments `
               --title $env:GITHUB_REF_NAME
           } else {
             throw "Failed to look up release ${env:GITHUB_REF_NAME}: $releaseState"

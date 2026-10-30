@@ -37,7 +37,7 @@ the tagged commit, so an uncommitted version bump cannot fix a tagged build.
 From the project root, check the intended tag before creating and pushing it:
 
 ```sh
-python tools/write_release_manifest.py --verify-tag-only --tag V1.45
+python tools/write_release_manifest.py --verify-tag-only --tag V1.47
 ```
 
 Use the tag that matches the intended `APP_VERSION`. CI checks this match before
@@ -49,10 +49,17 @@ still builds the same incorrect source. A failed, unpublished tag must point to
 the corrected commit, or use a new version and matching tag. Do not move a tag
 for an already published release.
 
+If the release is already published, commit and push the matching source version
+without changing its tag. In Actions, open **Build Windows release**, choose
+**Run workflow**, and select the corrected branch. This creates a new build and
+verified download artifacts; it does not replace the published release assets.
+The original failed run still refers to the old tagged commit. Use a new version
+and matching tag for the next published release.
+
 ## Publishing manually
 
 1. Increment `APP_VERSION` in `randomizer/core/version.py`. Use a dotted numeric
-   version and a matching GitHub tag, such as `v1.45` for `1.45`.
+   version and a matching GitHub tag, such as `V1.47` for `1.47`.
 2. Build with `build_archipelago_release.ps1`, or `build_all_linux.sh` when using
    Wine. Both workflows prepare `release_manifest.json` and `SHA256SUMS.txt`
    alongside the launcher and APWorld. For other manual builds, run:
@@ -64,7 +71,9 @@ for an already published release.
 3. Create a draft GitHub release and attach the launcher, matching APWorld,
    `release_manifest.json`, `SHA256SUMS.txt`, and the generated Archipelago setup
    guide. The tag-triggered GitHub build
-   also prepares a draft with these assets; it does not publish it automatically.
+   also prepares a draft with these assets. If `RELEASE_NOTES.md` exists, it
+   supplies the release notes; otherwise GitHub generates them. It does not
+   publish the draft automatically.
    If that tag already has a published release, CI skips release uploads and
    keeps the verified bundle in the workflow run's artifacts. Existing drafts
    receive the new build assets. Release lookup and upload errors still fail CI.
