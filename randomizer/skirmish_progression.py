@@ -57,10 +57,13 @@ def select_pool(missions, catalogue, *, enabled, factions=(), excluded=()):
 
 
 class SkirmishResultWatch:
-    """Read fresh native completion plus both complete 1v1 score records.
+    """Read fresh, complete native 1v1 score records from a started game.
 
-    Closing/restarting a game cannot award victory. DTA uses its existing
-    directory-aware ScoreLog reader; RA2 profiles follow their current log.
+    Native multiplayer results can report SawCompletion=0 after a win. A
+    complete Commander Winner / Computer Loser pair verifies this solo win;
+    a Winner row alone does not. Closing/restarting cannot award victory.
+    DTA uses its existing directory-aware ScoreLog reader; RA2 profiles follow
+    their current log.
     """
     def __init__(self, path):
         self.path = Path(path)
@@ -71,7 +74,8 @@ class SkirmishResultWatch:
         self._anchor = b''
         self._tail = ''
         self._scenario = False
-        self._completion = False
+        self._game_started = False
+        self._in_results = False
         self._quit = False
         self._pending = None
         self._scores = {}
@@ -105,17 +109,24 @@ class SkirmishResultWatch:
                     self.error = 'Skirmish restarted; this attempt cannot earn progression.'
                     self._unarmed = True
                 self._scenario = match[1].replace('\\', '/').rsplit('/', 1)[-1].casefold() == 'spawnmap.ini'
-                self._completion = False
+                self._game_started = False
+                self._in_results = False
+                self._quit = False
+                self._pending = None
                 self._scores = {}
                 continue
             if not self._scenario:
                 continue
+            if line.strip() == 'Capture_Mouse()':
+                self._game_started = True
             if "quit, but didn't see completion" in line:
                 self._quit = True
             if 'Sending game results.' in line:
-                self._completion = bool(re.search(r'\bSawCompletion=1\b', line))
+                self._in_results = self._game_started
                 self._scores = {}
                 self._pending = None
+                continue
+            if not self._in_results:
                 continue
             if match := re.fullmatch(r'(Commander|Computer): (Winner|Loser)', line):
                 self._pending = match[1], match[2]
@@ -123,7 +134,7 @@ class SkirmishResultWatch:
                 name, outcome = self._pending
                 self._scores.setdefault(name, []).append(outcome)
                 self._pending = None
-                if self._completion and not self._quit and not self._unarmed:
+                if not self._quit and not self._unarmed:
                     if self._scores.get('Commander') == ['Loser']:
                         self.result = 'defeat'
                     elif self._scores == {'Commander': ['Winner'], 'Computer': ['Loser']}:
@@ -156,6 +167,13 @@ class SkirmishResultWatch:
                     self._offset, self._identity = handle.tell(), identity
                     handle.seek(max(0, self._offset - 64))
                     self._anchor = handle.read(min(self._offset, 64))
+            if final and self._tail:
+                # Process exit makes the last line complete even without a
+                # trailing newline (some native logs close this way).
+                self._feed('\n')
         except OSError as exc:
             self.error = str(exc)
+        else:
+            if not self._unarmed:
+                self.error = ''
         return self.result

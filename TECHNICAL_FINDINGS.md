@@ -2,6 +2,27 @@
 
 This document is the authoritative implementation reference. Player-facing option semantics are intentionally kept in [README_RANDOMIZER.md](README_RANDOMIZER.md#settings-reference) so they are not duplicated here.
 
+## Progression skirmish result detection
+
+`SkirmishResultWatch` uses the same solo victory contract as
+`ChallengeResultParser`: complete `Commander: Winner` and `Computer: Loser`
+records, each ending in a numeric `Score` line. `SawCompletion=1` is not required
+for this solo result. Requiring that flag discarded otherwise valid score
+pairs, causing the process-exit fallback to fail a won Shop stage or Grid node.
+
+Records count only after a fresh `Reading scenario: spawnmap.ini`,
+`Capture_Mouse()`, and `Sending game results.` header. A lone Winner, an
+all-Winner table, explicit quit without completion, restarted scenario, or
+replaced log during the attempt cannot grant victory. Process exit also flushes
+the final buffered line if the native log has no trailing newline. Recoverable
+read errors clear after a successful read; restart errors remain visible.
+
+Manual gameplay verification: win an offered 1v1 skirmish in Shop Mode, click
+Continue, and confirm one victory reward and the next stage. Repeat from a Grid
+node and confirm its victory check. Verify that losing, quitting an unfinished
+match, and restarting do not grant a win. Compilation and the launcher
+installation report do not replace these gameplay checks.
+
 ## Heinki v1.44 reward and roster corrections (23 October 2026)
 
 Final-mission reward restrictions are frozen as `restrict_final_mission_rewards`
