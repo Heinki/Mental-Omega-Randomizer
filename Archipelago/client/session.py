@@ -51,7 +51,7 @@ def _scout_location_ids(slot_data):
 
 
 class ArchipelagoIdentityMismatch(ArchipelagoProtocolError):
-    """A persisted client checkpoint belongs to another generated session."""
+    """An automatic reconnect reached a different generated session or slot."""
 
 
 @dataclass(frozen=True)
@@ -111,6 +111,9 @@ class ArchipelagoSession:
         self._stop_event = threading.Event()
         self._outbound = queue.Queue()
         self._status = 'disconnected'
+        # A saved checkpoint is only a resume candidate. The first Connected
+        # packet binds this worker to the authenticated room and slot.
+        self._identity_confirmed = False
 
         checkpoint = checkpoint or {}
         if not isinstance(checkpoint, Mapping):
@@ -532,12 +535,35 @@ class ArchipelagoSession:
         with self._lock:
             expected = (self._seed_name, self._team, self._slot)
             actual = (result.seed_name, result.team, result.slot)
-            if self._seed_name and expected != actual:
-                raise ArchipelagoIdentityMismatch(
-                    'Saved Archipelago progress belongs to another '
-                    f'session/slot: expected {expected!r}, got {actual!r}.'
-                )
+            if expected != actual:
+                if self._identity_confirmed:
+                    raise ArchipelagoIdentityMismatch(
+                        'Archipelago room or slot changed during reconnect: '
+                        f'expected {expected!r}, got {actual!r}. '
+                        'Disconnect and select Connect to join the new session.'
+                    )
+                if self._seed_name:
+                    # Reusing a server/slot name for a new world is normal.
+                    # Never send the previous world's checks or goal, or
+                    # reuse its item acknowledgments, in the new world.
+                    self._completed_locations.clear()
+                    self._pending_locations.clear()
+                    self._goal_complete = False
+                    self._ledger = ReceivedItemLedger()
+                    self._outbound = queue.Queue()
+                    self._game_data.clear()
+                    self._requested_games.clear()
+                    self._metadata_ready = False
+                    self._deferred_received_items.clear()
+                    self._deferred_location_info.clear()
+                    self._deferred_messages.clear()
+                    self._diagnose(
+                        'archipelago_saved_progress_ignored',
+                        saved_identity=expected,
+                        connected_identity=actual,
+                    )
             self._seed_name, self._team, self._slot = actual
+            self._identity_confirmed = True
             server_checked = set(result.checked_locations)
             self._server_locations = server_checked
             self._pending_locations.difference_update(server_checked)
