@@ -74,6 +74,13 @@ def source_lines(game_root, definition):
         lines = IniLines(retained)
     merge_ini_section_values(lines, {'Waypoints': {
         key: str(p['y'] * 1000 + p['x']) for key, p in definition.get('start_positions', {}).items()}})
+    if definition.get('start_positions'):
+        # Converted four-player sources can gain reviewed helper/co-op slots.
+        # Change only the generated scenario, never the installed source map.
+        original = int(section_value_map(lines, 'Basic').get('maxplayer', '0'))
+        required = max(int(key) + 1 for key in definition['start_positions'])
+        if required > original:
+            merge_ini_section_values(lines, {'Basic': {'MaxPlayer': str(required)}})
     return lines
 
 

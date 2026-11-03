@@ -88,9 +88,24 @@ def _map(value):
                                  'enemy_wave_positions', 'start_positions', 'clear_source_scripts',
                                  'wave_clock_position', 'camps_below_waypoint',
                                  'camp_minimum_spacing', 'remove_source_units',
-                                 'maximum_terrain_height') if key in value)
+                                 'maximum_terrain_height', 'defense_coverage_degrees',
+                                 'camp_friendly_clearance', 'utility_positions') if key in value)
     _object(value, fields, 'Map')
     identifier(value['id'], 'Map ID')
+    if 'utility_positions' in value:
+        _list(value['utility_positions'], 'Utility positions')
+        cells = []
+        for position in value['utility_positions']:
+            _position(position)
+            cells.append((position['x'], position['y']))
+        if len(cells) < 100 or len(set(cells)) != len(cells):
+            raise ValueError('Utility positions require at least 100 distinct reviewed cells.')
+    if 'camp_friendly_clearance' in value:
+        integer(value['camp_friendly_clearance'], 'Camp friendly clearance', 12)
+    if 'defense_coverage_degrees' in value:
+        coverage = integer(value['defense_coverage_degrees'], 'Defense angular coverage', 180)
+        if coverage > 270:
+            raise ValueError('Defense angular coverage must be between 180 and 270 degrees.')
     if 'maximum_terrain_height' in value:
         height = integer(value['maximum_terrain_height'], 'Maximum terrain height')
         if height > 14:

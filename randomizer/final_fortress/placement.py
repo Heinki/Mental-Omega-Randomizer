@@ -139,7 +139,8 @@ def validate_camp_access(writer, plan):
         centers.append((center['x'], center['y']))
         for point in [camp['position'], *guard_positions(camp)]:
             if minimum and plan.get('plan_version', 1) >= 29 and any(
-                    max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) < 32
+                    max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000))
+                    < plan['map'].get('camp_friendly_clearance', 32)
                     for cell in friendly):
                 raise ValueError('Final Fortress camp overlaps a friendly base: ' + camp['id'])
             if any(max(abs(point['x'] - cell % 1000), abs(point['y'] - cell // 1000)) < 40

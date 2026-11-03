@@ -120,6 +120,18 @@ that overlap only with full reward-plan and 97-map parity coverage.
   The Sky Mountain keeps player waypoint 0, moves friendly waypoints 1/3
   onto the northern plateau, and uses enemy waypoints 4/6/7. Its own layouts
   cover all perks, southern arrivals and six camp formations in solo/co-op.
+  The selector also includes DEFCON Six (`defcon_six`), Central Quad
+  (`centralquad`) and Frozen Throne (`frozenthrone`). Each conversion keeps
+  three hostile AIs, two optional helper/co-op starts and six reward camps.
+  Central Quad uses a clear inner terrace rather than its obstructed center.
+  Frozen Throne adds reviewed start slots in generated scenario bytes only.
+  `utility_positions` reserves flat, empty cells for invisible power, timer
+  and cash providers. Compact-map `camp_friendly_clearance` retains the
+  protected enemy-base buffer while allowing camps in friendly approaches.
+  `defense_coverage_degrees` accommodates Frozen Throne's coastal bases;
+  its four eight-turret batteries cover the available land approaches.
+  Arrival paving selects native temperate, snow or NewUrban pavement without
+  changing heights, overlays or the installed source maps.
   Milestone rewards are incremental: 25 Defensive Points at minute 25 and another 25 at
   minute 45; `completion_gems: 50` brings the victory total to 100 at one hour.
   `survival_seconds: 3600` admits eleven five-minute waves, through minute 55.

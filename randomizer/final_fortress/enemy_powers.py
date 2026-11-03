@@ -142,7 +142,11 @@ def apply_enemy_powers(writer, plan, rules, enemy_aliases):
                        ProduceCashStartup='0', ProduceCashAmount='0', ProduceCashDelay='0')
             writer.sections[provider] = row
             _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', provider)
-            _place(writer, 'Structures', f'Neutral,{provider},256,{cell % 1000 + slot},'
-                   f'{cell // 1000 + index + 1},64,{tag},1,0,1,0,0,None,None,None,0,0')
+            x, y = cell % 1000 + slot, cell // 1000 + index + 1
+            if 'utility_positions' in plan['map']:
+                from .coop_map import escrow_cell
+                x, y = escrow_cell(writer, plan, rules, cell)
+            _place(writer, 'Structures', f'Neutral,{provider},256,{x},'
+                   f'{y},64,{tag},1,0,1,0,0,None,None,None,0,0')
             writer.put('FFEnemyPowers', power, f'{actor},{rewards[slot]["superweapon"]}')
         writer.trigger('Fortress enemy powers ' + actor, [(13, 0, 2)], actions, owner=actor)

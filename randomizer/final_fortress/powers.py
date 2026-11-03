@@ -163,8 +163,12 @@ def apply_powers(writer, plan, rules, country_aliases):
                 row['SpySat'] = 'yes'
             writer.sections[provider] = row
             _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', provider)
-            _place(writer, 'Structures', f'Neutral,{provider},256,{cell % 1000 + index},'
-                   f'{cell // 1000 + actor_index + 1},64,{tag},1,0,1,0,0,None,None,None,0,0')
+            x, y = cell % 1000 + index, cell // 1000 + actor_index + 1
+            if 'utility_positions' in plan['map']:
+                from .coop_map import escrow_cell
+                x, y = escrow_cell(writer, plan, rules, cell)
+            _place(writer, 'Structures', f'Neutral,{provider},256,{x},'
+                   f'{y},64,{tag},1,0,1,0,0,None,None,None,0,0')
         if actions:
             writer.trigger('Fortress perk powers ' + actor, [(13, 0, 2)], actions, owner=actor)
 

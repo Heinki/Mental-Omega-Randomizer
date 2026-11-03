@@ -35,9 +35,11 @@ def escrow_cell(writer, plan, rules, spare_cell):
                                 for dx in range(-2, 2) for dy in range(-1, 2))
         bounds = PlayableBounds(section_value_map(writer.lines, 'Map'))
         x, y = spare_cell % 1000, spare_cell // 1000
-        writer._coop_escrow_cells = iter((x + dx, y + dy) for dy in range(5, 30)
-            for dx in range(12) if (x + dx, y + dy) not in occupied
-            and bounds.contains({(x + dx, y + dy)}, maximum_height=14))
+        reviewed = plan['map'].get('utility_positions')
+        candidates = (((p['x'], p['y']) for p in reviewed) if reviewed is not None else
+                      ((x + dx, y + dy) for dy in range(5, 30) for dx in range(12)))
+        writer._coop_escrow_cells = iter(cell for cell in candidates
+            if cell not in occupied and bounds.contains({cell}, maximum_height=14))
     try:
         return next(writer._coop_escrow_cells)
     except StopIteration:

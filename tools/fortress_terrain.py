@@ -82,6 +82,25 @@ class Terrain:
     def __init__(self, source):
         from randomizer.final_fortress.placement import PlayableBounds
         self.bounds = PlayableBounds(source['Map'])
+        self.theater = source['Map']['Theater'].lower()
+        # Theater-specific flat LAT tiles, from installed MO theater INIs.
+        # Snow's 418-434 are waterfalls/roads, not temperate rough grass.
+        common = {0, 65535, *range(131, 148)}
+        flat = {
+            'temperate': {534, *range(418, 435), *range(463, 510)},
+            'snow': {734, *range(696, 713), *range(749, 765)},
+            'newurban': {534, 1105, 1553, *range(418, 435),
+                         *range(463, 510), *range(852, 860), *range(938, 969),
+                         *range(1175, 1193), *range(176, 277)},
+        }
+        if self.theater not in flat:
+            raise ValueError('Unsupported Fortress terrain audit theater: ' + self.theater)
+        self.flat_tiles = common | flat[self.theater]
+        self.walk_tiles = self.flat_tiles | set(range(29, 49)) | set(range(176, 277)) | set(range(293, 314))
+        self.walk_tiles.update(range(444, 456) if self.theater == 'snow' else range(510, 522))
+        if self.theater == 'newurban':
+            self.walk_tiles.update(range(1106, 1116))
+            self.walk_tiles.update(range(1126, 1146))
         self.cells = {(x, y): (tile, height) for x, y, tile, sub, height, extra in
                       struct.iter_unpack('<HHIBBB', _unpack(source['IsoMapPack5'], lzo=True))}
         self.overlays = _unpack(source['OverlayPack'])
@@ -97,13 +116,7 @@ class Terrain:
         heights = set()
         for x, y in cells:
             tile, height = self.cells.get((x, y), (-1, -1))
-            # Native TEMPERATMD flat LAT surfaces and their transitions:
-            # dark grass (131–147), rough grass (418–434), pavement/sand
-            # (463–509), and clear pavement (534). Slopes and cliffs remain
-            # excluded; treating flat grass transitions as cliffs needlessly
-            # forced reviewed utility layouts far outside their own bases.
-            if tile not in {0, 65535, 534, *range(131, 148), *range(418, 435),
-                            *range(463, 510)} or (x, y) in self.objects:
+            if tile not in self.flat_tiles or (x, y) in self.objects:
                 return False
             if not (0 <= x < 512 and 0 <= y < 512):
                 return False
@@ -112,3 +125,17 @@ class Terrain:
                 return False
             heights.add(height)
         return len(heights) == 1
+
+    def walkable(self, cell, *, allowed_overlays=()):
+        """Conservative land connectivity, including native roads and ramps.
+
+        Building placement still requires flat ground through ``clear``.
+        Water, cliffs, ice and unknown tile families stay excluded.
+        """
+        x, y = cell
+        if cell not in self.cells or cell in self.objects or not (0 <= x < 512 and 0 <= y < 512):
+            return False
+        tile, _ = self.cells[cell]
+        return (tile in self.walk_tiles and self.bounds.contains({cell}, heights=self.heights)
+                and (self.overlays[y * 512 + x] == 255
+                     or self.overlays[y * 512 + x] in allowed_overlays))

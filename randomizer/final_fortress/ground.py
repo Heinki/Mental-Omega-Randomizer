@@ -6,8 +6,9 @@ import struct
 from randomizer.maps.ini import find_section_bounds, section_value_map
 
 
-# TEMPERATMD.INI: TileSet0046 (LAT Pavement), PVCLR01.TEM, one subtile.
-PAVEMENT_TILE = 534
+# Installed MO theater registries: TEMPERATMO TileSet0046, SNOWMO
+# TileSet0068, URBANNMO TileSet0114. Each is a flat, one-subtile pavement.
+PAVEMENT_TILES = {'temperate': 534, 'snow': 734, 'newurban': 1105}
 CELL = struct.Struct('<HHIBBB')
 
 
@@ -106,8 +107,10 @@ def pave_spawn_areas(lines, cells):
     Original compressed blocks survive verbatim unless an arrival touches
     them. Only generated map bytes change; installed maps remain untouched.
     """
-    if section_value_map(lines, 'Map').get('theater', '').casefold() != 'temperate':
-        raise ValueError('Fortress spawn pavement requires temperate terrain.')
+    theater = section_value_map(lines, 'Map').get('theater', '').casefold()
+    pavement = PAVEMENT_TILES.get(theater)
+    if pavement is None:
+        raise ValueError('Unsupported Fortress spawn pavement theater: ' + theater)
     packed = base64.b64decode(''.join(section_value_map(lines, 'IsoMapPack5').values()),
                              validate=True)
     blocks = []
@@ -129,7 +132,7 @@ def pave_spawn_areas(lines, cells):
     for offset in range(0, len(raw), CELL.size):
         x, y, tile, subtile, height, extra = CELL.unpack_from(raw, offset)
         if (x, y) in cells:
-            CELL.pack_into(changed, offset, x, y, PAVEMENT_TILE, 0, height, extra)
+            CELL.pack_into(changed, offset, x, y, pavement, 0, height, extra)
             remaining.discard((x, y))
     if remaining:
         raise ValueError('Fortress spawn pavement extends outside existing terrain.')

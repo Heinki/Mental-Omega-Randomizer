@@ -168,6 +168,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         import struct
         from fortress_terrain import _unpack
         expected = bytearray(_unpack(source['IsoMapPack5'], lzo=True))
+        pavement = {'TEMPERATE': 534, 'SNOW': 734, 'NEWURBAN': 1105}[source['Map']['Theater'].upper()]
         positions = list(plan['map']['enemy_wave_positions'].values())
         if plan.get('reinforcement_schedule') or plan['effects'].get('lab_reserve_units'):
             positions.extend(plan['map']['perk_layouts'][str(w)]['units'] for _, _, w in coalition(plan))
@@ -176,7 +177,7 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         for offset in range(0, len(expected), 11):
             x, y = struct.unpack_from('<HH', expected, offset)
             if (x, y) in cells:
-                struct.pack_into('<IB', expected, offset + 4, 534, 0)
+                struct.pack_into('<IB', expected, offset + 4, pavement, 0)
                 found.add((x, y))
         require(found == cells, 'Spawn pavement has missing map cells')
         require(_unpack(rows['IsoMapPack5'], lzo=True) == expected,
@@ -386,6 +387,10 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
         deployment = (deployment_cells(x, y) if plan.get('plan_version', 1) >= 23 else
                       {(x + dx, y + dy) for dx in range(-2, 2) for dy in range(-1, 2)})
         require(not deployment & occupied.keys(), f'MCV deployment overlap: waypoint {waypoint}')
+        if terrain is not None and 'utility_positions' in plan['map']:
+            require(terrain.clear(deployment), f'Unsafe MCV deployment terrain: waypoint {waypoint}')
+    if terrain is not None and 'utility_positions' in plan['map']:
+        audit_skirmish_routes(rows, effective, plan, terrain, art, resource_overlays)
     for category in ('Infantry', 'Units'):
         for key, value in rows.get(category, {}).items():
             if key in source.get(category, {}):
@@ -452,6 +457,45 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             required_transfers += 1
         require(plan['initial_transfer_kills'] == required_transfers, 'Starting power transfers counted as combat kills')
     return {registry: len(set(effective[registry].values())) for registry in registries}
+
+
+def audit_skirmish_routes(rows, effective, plan, terrain, art, resources):
+    """Audit actual converted terrain and grants for connected ground routes."""
+    from collections import deque
+    blocked = set()
+    for value in rows.get('Structures', {}).values():
+        fields = value.split(',')
+        row = dict(effective.get(fields[1], {}))
+        if row.get('IsPassable', 'no').lower() == 'yes':
+            continue
+        row.setdefault('Image', fields[1])
+        x, y = map(int, fields[3:5])
+        blocked.update((x + dx, y + dy) for dx, dy in footprint(row, art))
+    land = {cell for cell in terrain.cells if cell not in blocked
+            and terrain.walkable(cell, allowed_overlays=resources)}
+    def position(waypoint):
+        cell = int(rows['Waypoints'][str(waypoint)])
+        return cell % 1000, cell // 1000
+    start = position(plan['map']['player_waypoint'])
+    pending = deque([start])
+    reached = {start}
+    while pending:
+        x, y = pending.popleft()
+        for cell in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if (cell in land and cell not in reached
+                    and abs(terrain.heights[cell] - terrain.heights[(x, y)]) <= 1):
+                reached.add(cell)
+                pending.append(cell)
+    for waypoint in [*plan['map']['enemy_waypoints'], *plan['allied_waypoints']]:
+        require(position(waypoint) in reached, f'Base has no ground route to the defender: {waypoint}')
+    for index, p in plan['map']['enemy_wave_positions'].items():
+        require((p['x'] + 2, p['y'] + 1) in reached,
+                f'Enemy wave apron has no ground route to the defender: {index}')
+    for camp in plan['map']['camps']:
+        p = camp['position']
+        require((p['x'], p['y']) in reached, f'Camp crate has no ground route: {camp["id"]}')
+    for p in plan['map']['utility_positions']:
+        require(terrain.clear({(p['x'], p['y'])}), 'Reviewed utility cell has unsafe terrain')
 
 
 def audit_native_production(rows, effective, plan, rules, source, preloads):
@@ -1158,6 +1202,16 @@ def audit_survival_fixes(rows, effective, plan, rules, preloads, terrain):
             require(len(locations) == 6 and all(cy > v and abs(cx - u) < terrain.bounds.width_local / 4
                                                 for cx, cy in locations),
                     'Camps are not below the configured reference start')
+        elif 'camp_friendly_clearance' in plan['map']:
+            # Compact skirmish conversions place camps in the reachable
+            # friendly approaches, outside the protected hostile base buffers.
+            camps = plan['map']['camps']
+            minimum = plan['map']['camp_minimum_spacing']
+            require(len(camps) == 6 and all(
+                max(abs(a['position']['x'] - b['position']['x']),
+                    abs(a['position']['y'] - b['position']['y'])) >= minimum
+                for i, a in enumerate(camps) for b in camps[i + 1:]),
+                'Skirmish camps overlap their reviewed spacing')
         elif plan['map'].get('camp_minimum_spacing'):
             require(len(locations) == 6
                     and max(x for x, y in locations) - min(x for x, y in locations) > .6 * terrain.bounds.width_local
@@ -1231,8 +1285,10 @@ def audit_generator_access(rows, effective, plan, terrain):
                     escaped = True
                     break
                 for cell in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-                    if (cell not in visited and cell not in blocked and terrain.clear({cell})
-                            and terrain.heights[cell] == terrain.heights[(x, y)]):
+                    reviewed = 'utility_positions' in plan['map']
+                    clear = (terrain.walkable(cell) if reviewed else terrain.clear({cell}))
+                    if (cell not in visited and cell not in blocked and clear
+                            and abs(terrain.heights[cell] - terrain.heights[(x, y)]) <= (1 if reviewed else 0)):
                         visited.add(cell)
                         pending.append(cell)
             require(escaped, f'Reinforcement apron has no walkable exit beyond generators: {actor}')
@@ -1257,7 +1313,8 @@ def audit_arrival_fixes(rows, effective, plan, rules, preloads, terrain):
                     group = layout['defenses'][index:index + count]
                     angles = sorted(atan2(p['y'] - center[1], p['x'] - center[0]) % tau for p in group)
                     gap = max(b - a for a, b in zip(angles, [*angles[1:], angles[0] + tau]))
-                    require(len(group) == count and (gap <= pi / 2 if count == 8 else gap < pi),
+                    coverage = plan['map'].get('defense_coverage_degrees', 270)
+                    require(len(group) == count and (gap <= 2*pi - coverage*pi/180 if count == 8 else gap < pi),
                             f'Defense rank {index // count + 1} does not cover the full perimeter of {actor}')
                     require(all((6 if count == 8 else 8) <= hypot(p['x'] - center[0], p['y'] - center[1]) <= 32 for p in group),
                             f'Defense ring is inside deployment space or detached from {actor}')
@@ -2250,6 +2307,8 @@ def main():
                         'fundraising-mixed', 'fundraising-guest'),
                         default=['baseline', 'helpers', 'maximum'])
     parser.add_argument('--difficulties', nargs='+', choices=DIFFICULTY_IDS, default=list(DIFFICULTY_IDS))
+    parser.add_argument('--countries', nargs='+', choices=SIDE_COUNTRIES, default=list(SIDE_COUNTRIES),
+                        help='Installed native countries to include in this map audit')
     parser.add_argument('--mental-ai-boost', action='store_true', help='Audit the installed Mental AI Boost option')
     parser.add_argument('--humans', type=int, choices=(1, 2, 3), default=1, help='Emit solo or co-op native maps/spawns')
     parser.add_argument('--player-color', type=int, help='Installed multiplayer color index for the host')
@@ -2333,7 +2392,7 @@ def main():
         selected_challenges = [entry['id'] for entry in config['challenges'] if profile == 'maximum'
                                or profile == 'enemy-powers' and definition(entry)['effect'] in ('power', 'power_group')
                                or profile == 'powerhouses' and entry['enemy_effect_id'] == 'powerhouse']
-        for country in SIDE_COUNTRIES:
+        for country in args.countries:
             for difficulty in args.difficulties:
                 name = f'{profile}-{country}-{difficulty}' + (f'-coop{args.humans}' if args.humans > 1 else '')
                 plan = build_run_plan(
@@ -2401,7 +2460,7 @@ def main():
                                                        if unit['type'] in group.get('air_types', []))}
                                            for wave in plan['wave_schedule']],
                                  'bytes': len(data), 'registries': counts})
-        print(f'{profile}: {len(SIDE_COUNTRIES) * len(args.difficulties)} {config["map"]["display_name"]} configurations audited', flush=True)
+        print(f'{profile}: {len(args.countries) * len(args.difficulties)} {config["map"]["display_name"]} configurations audited', flush=True)
     require(source_path.read_bytes() == source_data, 'Installed source map changed during audit')
     (args.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     print(f'PASS: one map, {len(manifest)} configurations; artifacts: {args.output}')

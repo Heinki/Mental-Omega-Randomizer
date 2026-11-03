@@ -1107,7 +1107,23 @@ map audits, and actual launcher/native gameplay checks. No unit tests.
 
 `python3 tools/audit_final_fortress_maps.py --output /tmp/fortress-map-audit`
 
-Add `--map the_sky_mountain` to audit the new map; omit it to audit the original.
+Select a map with `--map the_sky_mountain`, `--map defcon_six`,
+`--map centralquad` or `--map frozenthrone`; omit it to audit Miners in the Sun.
+The three skirmish conversions include faction-specific utility layouts,
+three protected enemy bases, separate wave arrivals, optional helper/co-op
+starts and six spaced reward camps. Central Quad's player starts on an inner
+terrace because its decorative center cannot accommodate the full grants.
+Frozen Throne uses added start slots for the complete six-house setup; its
+coastal defense batteries follow the buildable land rather than enclosing water.
+Installed source maps remain unchanged. Generated arrival pads use each
+theater's native pavement tile and preserve the original heights and overlays.
+The terrain audit checks clear MCV deployment rectangles and ground routes
+from every hostile base, hostile arrival apron, helper start and camp to the
+defender. Road and ramp tiles participate in connectivity; building foundations
+still require flat ground. These structural checks do not simulate native AI
+base expansion or establish gameplay balance.
+Use `--countries UnitedStates USSR PsiCorps Guild1` to review one country from
+each native faction, or omit it to include all twelve countries.
 Use `--profiles lab-support --lab-reserve-rank 1` (or any rank through 10) to
 review a particular emergency roster and veterancy. Default reserve profiles
 use the highest configured rank.
