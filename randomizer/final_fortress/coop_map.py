@@ -24,6 +24,13 @@ def escrow_cell(writer, plan, rules, spare_cell):
         for camp in plan['map']['camps']:
             occupied.add((camp['position']['x'], camp['position']['y']))
             occupied.update((p['x'], p['y']) for p in guard_positions(camp))
+            for entry in camp.get('outpost', {}).get('structures', []):
+                p = entry['position']
+                row = {'Image': entry['type'], **rules[entry['type']]}
+                occupied.update((p['x'] + dx, p['y'] + dy) for dx, dy in foundation(row, art))
+        if plan['effects'].get('outpost_rank'):
+            p = plan['map'].get('wave_clock_position', {'x': 113, 'y': 71})
+            occupied.add((p['x'], p['y']))
         points = section_value_map(writer.lines, 'Waypoints')
         for waypoint in [plan['map']['player_waypoint'], *plan['map']['enemy_waypoints'],
                          *plan['allied_waypoints']]:
@@ -63,6 +70,8 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
                       for i, (country, start) in enumerate(zip(
                           plan['enemy_countries'], plan['map']['enemy_waypoints']))]]
     cash_selectors = {}
+    from .outposts import prepare_outpost
+    outpost_pickups = prepare_outpost(writer, plan, rules, camp, player_aliases, finished)
     for slot, (actor, _, start) in enumerate(collectors):
         # All AI collect for the host. Human co-op collectors retain their
         # own cash/squad ownership; the shared Defensive Points receipt pays once.
@@ -90,6 +99,7 @@ def camp_claims(writer, plan, rules, camp, index, waypoint, cleared,
         if reward.get('units'):
             owner = recipient if needs_countries(plan) else plan['player_country']
             actions.extend(_camp_squad(writer, plan, camp, waypoint, recipient_start, owner, player_aliases))
+        actions.extend(outpost_pickups.get(recipient_slot, []))
         trigger, tag = writer.trigger(f'Camp {camp["id"]} claim {actor}',
             [(1, 0, 4475 + start), (36, 0, cleared), (37, 0, finished), (37, 0, claimed)],
             actions, disabled=True)

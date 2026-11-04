@@ -14,7 +14,7 @@ from .config import (
 from .waves import build_wave_schedule
 
 
-PLAN_VERSION = 40
+PLAN_VERSION = 41
 
 
 def configuration_digest(config):
@@ -93,7 +93,8 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                                   include_generator_power=plan_version >= 32,
                                   include_economy=plan_version >= 34,
                                   share_starting_power=plan_version >= 38,
-                                  include_logistics=plan_version >= 40)
+                                  include_logistics=plan_version >= 40,
+                                  include_expansion=plan_version >= 41)
     settings = config['settings']
     enemy_rng = random.Random(f'{seed}:final_fortress:enemy_countries')
     enemies = [enemy_rng.choice(SIDE_COUNTRIES) for _ in range(3)]
@@ -218,6 +219,17 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
                     'credits': reward['credits'],
                     'units': deepcopy(reward['units_by_country'].get(player_country, [])),
                 }
+                if plan_version >= 41:
+                    grant = camp['crate_reward']
+                    if grant['id'] in ('tier1_squad', 'tier2_squad') and effects['camp_reward_units']:
+                        grant['units'] = deepcopy(effects['camp_reward_units'])
+                        grant['display_name'] = 'Advanced faction squad'
+                    grant['credits'] += effects['camp_salvage_credits']
+                    grant['veterancy'] = effects['camp_veterancy']
+                    if effects['camp_salvage_credits']:
+                        grant['display_name'] += f' + {effects["camp_salvage_credits"]:,} salvage credits'
+                    if grant['units'] and grant['veterancy']:
+                        grant['display_name'] += ' (Veteran)' if grant['veterancy'] == 1 else ' (Elite)'
         rewards['victory'] += sum(entry['victory_gems'] for entry in plan['challenges'])
     if plan_version >= 12:
         from .enemy_powers import add_powerhouses
@@ -230,6 +242,9 @@ def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(
     if plan_version >= 31 and config.get('wave_priorities'):
         from .wave_priority import apply_priorities
         apply_priorities(plan, config['wave_priorities'])
+    if plan_version >= 41 and effects['outpost_rank']:
+        from .outposts import resolve_outposts
+        resolve_outposts(plan)
     if coop_players:
         for slot in range(len(coop_players)):
             for camp in plan['map']['camps']:

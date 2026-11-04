@@ -496,6 +496,8 @@ def _camp_squad(writer, plan, camp, waypoint, start, owner, aliases):
         if pickup:
             name += f' group {index + 1}'
         team = writer.team(name, group, start, attack=False, owner=owner)
+        if plan.get('plan_version', 1) >= 41:
+            writer.put(team, 'VeteranLevel', camp['crate_reward'].get('veterancy', 0) + 1)
         writer.put(team, 'Waypoint', _waypoint(waypoint))
         actions.append(writer.reinforce(team) if pickup else _action(7, team=team))
     return actions
@@ -713,6 +715,11 @@ def build_map(game_root, run, rules, *, preloads=None):
     ai_sections = route_ai(writer, plan, rules, ai_rules, enemy_aliases, player_aliases)
     _camps(writer, plan, rules, marker_teams, finished, overrides, player_aliases,
            guard_types=guard_types)
+    if plan.get('plan_version', 1) >= 41 and plan['effects'].get('outpost_rank'):
+        # New exact airfield lists must include the recovered Allied command
+        # center just as ordinary private copies do.
+        register_exact_type_lists(writer, rules, writer.sections.get('FFOutpostTypes', {}))
+        register_native_power_gates(writer, plan, rules, writer.sections.get('FFOutpostTypes', {}))
     gate_prerequisite_overrides(writer, plan, rules)
     if reserved_friendly_types:
         from .reinforcements import reinforcement_overrides
@@ -727,11 +734,11 @@ def build_map(game_root, run, rules, *, preloads=None):
                     'FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications',
                     'FFEnemyStartingYards', 'Smudge',
                     'FFReinforcementPads', 'FFEnemyWavePads', 'FFWaveClock', 'FFDrakuvPower',
-                    'FFCampTracking', 'FFLabSupport', 'FFFundraising'}
+                    'FFCampTracking', 'FFLabSupport', 'FFFundraising', 'FFOutpostTypes'}
         changed = {section: {key: value for key, value in values.items()
                             if before_perk_rules.get(section, {}).get(key) != value}
                    for section, values in writer.sections.items() if section not in map_only
-                   and not section.startswith('FFAlliedClock') and section not in ai_sections}
+                   and not section.startswith(('FFAlliedClock', 'FFOutpost')) and section not in ai_sections}
         preloads['rules'] = {key: row for key, row in changed.items() if row}
         preloads['ai'] = ai_sections
     from .reinforcements import apply_reinforcements

@@ -340,6 +340,14 @@ rank's effect a second time. Prices are paid once per rank.
 | Starting buildings | 50 / 90 / 150 / 230 / 350 | Power plant, barracks, refinery with harvester, radar, war factory; extra native generators where needed for spare starting power |
 | Starting defenses | 40 / 80 / 150 / 260 | Eight of every unlocked defense type through T3, plus enough starting power plants |
 | Veteran defenses | 120 | Starting and subsequently built defenses begin veteran |
+| Fortified Emplacements | 120 / 260 / 480 | +15% / +30% / +45% defense health, including recovered outposts; combines with defense firepower and veterancy |
+| Expedition Salvage | 100 / 220 / 400 | Collected camps grant an additional 1,000 / 2,000 / 3,000 credits to their normal human recipient |
+| Priority Reinforcements | 160 / 320 / 560 | Periodic arrivals every 4:45 / 4:30 / 4:15, including the first delivery; retains the shared population cap and delivery wait |
+| Advanced Spoils | 150 / 300 / 550 | Ordinary Tier 1/2 camp unit rewards become mixed faction squads of 5 / 6 / 8 units; credit and special-unit rolls remain |
+| Veteran Spoils | 180 / 360 | Camp-awarded mobile units arrive Veteran / Elite, including Advanced Spoils |
+| Forward Outposts | 200 / 350 / 550 / 800 / 1,150 / 1,600 | Six cumulative camp outpost ranks; powered barracks, refinery, radar/AA, factory/advanced defenses, second refinery/factory, then a yard and up to 12 defenses; terrain can reduce the grant |
+| Factory Training | 120 / 260 / 480 | Barracks and land war factories train eligible units with 25% / 50% / 100% progress toward Veteran; excludes airfield aircraft, naval units and nontrainable types |
+| Rapid Response | 100 / 220 / 400 | 1 / 2 / 3 existing Mobility stacks with reviewed infantry 8, vehicle 12 and aircraft 30 Speed ceilings; authored faster types cannot be accelerated |
 | Defense firepower | 100 / 200 / 360 / 560 / 820 / 1,160 | Six ranks, +10% damage, fire rate and range each, up to +60% |
 | Tier 1 units | 200 / 300 / 450 / 650 / 900 / 1,250 | Six ranks, +5% health, damage and fire rate each, up to +30% |
 | Tier 2 units | 400 / 600 / 900 / 1,300 / 1,800 / 2,500 | Same 30% cap, independently purchased |
@@ -1341,3 +1349,70 @@ manual gameplay review. The cap does not bound normal AI armies. Grid's existing
 eligibility and unsupported weapon exceptions apply to tier buffs. The full
 launcher self-check retains its pre-existing Drakuv/RAVA expected-buff mismatch
 (`self_healing_rate`); this feature does not change that contract.
+
+## Plan 41: expanded permanent perks
+
+Eight additional perks are available in new runs. The six DTA-inspired perks are
+Fortified Emplacements, Expedition Salvage, Priority Reinforcements, Advanced
+Spoils, Veteran Spoils and Forward Outposts. MO also adds Factory Training and
+Rapid Response. Existing purchases, balances and frozen runs retain their original
+configuration and plan version.
+
+Factory Training uses academy bonuses on private barracks and land war factories.
+Exact eligible type lists keep airfield aircraft and naval production excluded.
+Organic and war-factory aircraft classifications receive the appropriate academy
+category without granting bonuses to AircraftTypes. Ares retains a stronger
+academy bonus when another academy is owned. The three ranks provide 25%, 50% and
+100% progress toward Veteran; the last rank starts production at Veteran.
+
+Rapid Response reuses catalogue-reviewed speed eligibility and the campaign's
+`capped_movement_speed` implementation. Infantry are capped at 8, vehicles at 12
+and aircraft at 30. Already faster authored types retain their native speed and
+cannot be accelerated. Immobile or excluded types receive no movement changes.
+The existing speed adapter keeps JumpjetSpeed aligned when it changes movement.
+
+Priority Reinforcements shortens both initial and subsequent delivery intervals.
+New schedules allow up to fourteen arrivals within the one-hour match. The
+reusable population reservations, shared 150-unit cap, per-human countdowns and
+capacity waits remain intact; faster scheduling allocates no extra pool locals.
+
+Camp perks modify the frozen reward before map generation. Salvage adds credits
+regardless of reward roll; Advanced Spoils replaces only ordinary Tier 1/2 squads;
+Veteran Spoils sets every camp squad's TeamType veterancy. Human collectors retain
+their cash, units and outpost; enemy/helper AI collections route to the host under
+the existing pickup rules. The shared claim gate prevents duplicate rewards.
+
+Forward Outposts uses static, source-reviewed foundations for all five maps and
+four faction families. `python tools/fortress_outposts.py --write` regenerates the
+placements from installed terrain. The Windows launcher consumes those placements
+without an external terrain decoder. Each placement stores its reviewed plateau
+height so edge sites do not assume a fourteen-level cliff at every foundation.
+All cumulative ranks retain earlier positions and include sufficient native power.
+Tight sites may omit larger production buildings or defenses. MO's fifth rank adds
+a second refinery and factory instead of DTA's helipad/service-depot combination.
+
+Passable, invisible reservations protect the selected rank's foundations until
+collection. Native action 125 creates buildings by their string IDs after pickup,
+without DTA/Vinifera runtime heap indices. It moves blocking units and clears ore
+beneath the new building. Creation uses small, one-shot trigger chains, with
+separate notification actions to fit the 511-byte parser limit. Installed source
+maps and emitted terrain/overlay packs remain unchanged outside the existing
+arrival pavement. Recovered structures are unsellable and noncapturable; refineries
+retain their buffed free harvester. Production prerequisites, docks, exact airfield
+lists, power gates and defense veterancy recognize the recovered copies. No extra
+ownership transfers or per-building local variables are introduced.
+
+The map audit includes `expansion`, `expansion-first`, `expansion-middle`,
+`outposts`, `factory-training`, `rapid-response`, `camp-rewards` and
+`priority-reinforcements` profiles. It inspects actual emitted perk values,
+production categories, speed ceilings, reward teams, schedules, outpost ownership,
+terrain, power and building creation chains. These audits do not simulate gameplay.
+
+Plan 41 validation passed twenty terrain-audited maximum-loadout configurations
+across all five installed maps, four faction families and three human players.
+Twelve additional three-human configurations covered first/middle ranks and
+outposts alone. Factory Training and Rapid Response each passed independent map
+audits for all twelve countries, and four solo faction configurations covered camp
+rewards alone. Existing saved plan-40 and plan-38 runs regenerated and passed the
+terrain/map audit without modifying their profiles. Python compilation and the
+Windows launcher build passed. Native gameplay verification remains pending.

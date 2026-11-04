@@ -274,6 +274,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
     audit_lab_support(rows, effective, plan, rules, preloads, terrain)
     from fortress_economy_audit import audit_economy
     audit_economy(rows, effective, plan, rules, preloads)
+    from fortress_perks_audit import audit_expansion
+    audit_expansion(rows, effective, plan, rules, preloads, terrain, art, resource_overlays)
 
     # Every purchased support unlock must be registered and granted to each
     # friendly house, including ranks beyond the proxy's two building slots.
@@ -399,6 +401,8 @@ def audit_map(data, spawn, preloads, plan, rules, source, art, ai, terrain=None)
             x, y = map(int, fields[3:5])
             pads = rows.get('FFReinforcementPads', {})
             pad_types = {pads.get('Type'), pads.get('MarkerType')}
+            pad_types.update(kind for kind, row in effective.items()
+                             if row.get('Name') == 'Final Fortress reserved outpost foundation')
             require((x, y) not in occupied or occupied[(x, y)] in pad_types,
                     f'Starting unit overlaps a building at {(x, y)}')
             require(fields[0] == 'Neutral', 'Private starting objects must use native ownership transfers')
@@ -574,10 +578,11 @@ def audit_arsenal(rows, effective, plan, rules, preloads, terrain):
         require(row['Prerequisite'] == production_factory(original, plan['player_country'], reviewed),
                 f'Special access retained a mission prerequisite: {original}')
         private_factory = rows.get('FFPlayerTypes', {}).get(row['Prerequisite'])
+        factories = {private_factory, rows.get('FFOutpostTypes', {}).get(row['Prerequisite'])} - {None}
         alternatives = {key: value for key, value in row.items() if key.startswith('Prerequisite.')}
         require(not any(key.startswith('FactoryOwners') or key == 'BuiltAt' for key in row)
                 and all(key == 'Prerequisite.Lists' or re.fullmatch(r'Prerequisite\.List[1-9]\d*', key)
-                        and private_factory and value == private_factory for key, value in alternatives.items()),
+                        and value in factories for key, value in alternatives.items()),
                 f'Special access retained a hidden production gate: {original}')
         if private_factory:
             require(any(value == private_factory for key, value in alternatives.items() if key != 'Prerequisite.Lists'),
@@ -721,7 +726,7 @@ def audit_exact_type_lists(rows, effective, plan, rules, preloads):
     from randomizer.final_fortress.player_perks import _eligible
 
     mappings = [rows.get(name, {}) for name in
-                ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications')]
+                ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications', 'FFOutpostTypes')]
     audit_native_power_gates(effective, plan, rules, preloads, mappings)
     native_pads = set(rules['General'].get('PadAircraft', '').split(',')) - {''}
     pads = set(effective['General'].get('PadAircraft', '').split(',')) - {''}
@@ -961,7 +966,7 @@ def audit_utilities_and_challenges(rows, effective, plan, rules, preloads):
     require(len(rows.get('FFEnemyPowers', {})) == sum(map(len, expected_powers.values())),
             'Unexpected hostile power without a selected Challenge')
     native_sources = {alias: original for mapping in
-                      ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications')
+                      ('FFPlayerTypes', 'FFEnemyBuildings', 'FFEnemyBaseUnits', 'FFEnemyFortifications', 'FFOutpostTypes')
                       for original, alias in rows.get(mapping, {}).items()}
     native_countries = {actor: country for actor, country, _ in coalition(plan)}
     native_countries.update({f'FFENEMY{i + 1}': country
@@ -2303,6 +2308,8 @@ def main():
                         'generators', 'generators-first',
                         'transport-capacity', 'open-topped', 'infrastructure', 'logistics',
                         'logistics-first', 'logistics-middle',
+                        'expansion', 'expansion-first', 'expansion-middle', 'outposts',
+                        'factory-training', 'rapid-response', 'camp-rewards', 'priority-reinforcements',
                         'fundraising-1', 'fundraising-2', 'fundraising-3', 'fundraising-4',
                         'fundraising-mixed', 'fundraising-guest'),
                         default=['baseline', 'helpers', 'maximum'])
@@ -2385,6 +2392,15 @@ def main():
         **{f'fundraising-{rank}': ['fundraising'] for rank in range(1, 5)},
         'fundraising-mixed': ['fundraising', 'allied_helpers'],
         'fundraising-guest': ['allied_helpers'],
+        **{profile: ['fortified_emplacements', 'expedition_salvage', 'priority_reinforcements',
+                     'advanced_spoils', 'veteran_spoils', 'forward_outposts', 'factory_training',
+                     'rapid_response', 'periodic_reinforcements', 'allied_helpers', 'starting_defenses',
+                     'defense_training', 'veteran_defenses', 'tier_1_training', 'tier_2_training', 'tier_3_training']
+           for profile in ('expansion', 'expansion-first', 'expansion-middle')},
+        'outposts': ['forward_outposts'], 'factory-training': ['factory_training'],
+        'rapid-response': ['rapid_response'],
+        'camp-rewards': ['expedition_salvage', 'advanced_spoils', 'veteran_spoils'],
+        'priority-reinforcements': ['priority_reinforcements', 'periodic_reinforcements'],
     }
     from randomizer.final_fortress.challenges import definition
     for profile in args.profiles:
@@ -2432,6 +2448,8 @@ def main():
                                              else 1 if profile in ('economy-first', 'generators-first')
                                              else int(profile[-1]) if profile.startswith('fundraising-')
                                                   and profile[-1].isdigit() and entry['id'] == 'fundraising'
+                                             else 1 if profile == 'expansion-first'
+                                             else min(2, len(ranks(entry))) if profile == 'expansion-middle'
                                              else len(ranks(entry))) for entry in config['perks']},
                     selected_challenges=selected_challenges,
                     challenge_stacks={entry['id']: maximum(entry) for entry in config['challenges']},

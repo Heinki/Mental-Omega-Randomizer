@@ -89,9 +89,38 @@ def _map(value):
                                  'wave_clock_position', 'camps_below_waypoint',
                                  'camp_minimum_spacing', 'remove_source_units',
                                  'maximum_terrain_height', 'defense_coverage_degrees',
-                                 'camp_friendly_clearance', 'utility_positions') if key in value)
+                                 'camp_friendly_clearance', 'utility_positions', 'outpost_layouts') if key in value)
     _object(value, fields, 'Map')
     identifier(value['id'], 'Map ID')
+    if 'outpost_layouts' in value:
+        from .outposts import FACTION_BUILDINGS, FACTION_DEFENSES
+        layouts = value['outpost_layouts']
+        _object(layouts, FACTION_BUILDINGS, 'Outpost faction layouts')
+        for family, camps in layouts.items():
+            if not isinstance(camps, list) or len(camps) != len(value['camps']):
+                raise ValueError('Outpost layouts must cover every camp.')
+            allowed = {*FACTION_BUILDINGS[family], *FACTION_DEFENSES[family]}
+            for camp, layout in zip(value['camps'], camps):
+                _object(layout, ('camp_id', 'structures', 'omitted'), 'Outpost layout')
+                if layout['camp_id'] != camp['id']:
+                    raise ValueError('Outpost layout has the wrong camp ID.')
+                structures = layout['structures']
+                if not isinstance(structures, list) or not 1 <= len(structures) <= 32:
+                    raise ValueError('Outposts require 1–32 reviewed structures.')
+                for structure in structures:
+                    _object(structure, ('type', 'position', 'rank', 'height'), 'Outpost structure')
+                    if structure['type'] not in allowed:
+                        raise ValueError('Outpost structure is not native to its faction.')
+                    _position(structure['position'])
+                    if integer(structure['rank'], 'Outpost unlock rank', 1) > 6:
+                        raise ValueError('Outpost unlock rank exceeds six.')
+                    if integer(structure['height'], 'Outpost terrain height') > 14:
+                        raise ValueError('Outpost terrain height exceeds fourteen.')
+                _list(layout['omitted'], 'Omitted outpost structures')
+                for structure in layout['omitted']:
+                    _object(structure, ('type', 'rank'), 'Omitted outpost structure')
+                    if structure['type'] not in allowed or not 1 <= integer(structure['rank'], 'Omitted rank', 1) <= 6:
+                        raise ValueError('Invalid omitted outpost structure.')
     if 'utility_positions' in value:
         _list(value['utility_positions'], 'Utility positions')
         cells = []

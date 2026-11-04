@@ -33,6 +33,8 @@ def needs_countries(plan):
                 or effects.get('special_building_limit_stacks')
                 or effects.get('transport_capacity_stacks') or effects.get('open_topped')
                 or effects.get('infrastructure_health_percent')
+                or effects.get('defense_health_percent') or effects.get('mobility_stacks')
+                or effects.get('factory_training_percent') or effects.get('outpost_rank')
                 or any(plan.get('fundraising_ranks', []))
                 or any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                                         'unique_limit_stacks', 'income_stacks')))
@@ -43,6 +45,29 @@ def _eligible(row, country):
         return {part.strip() for part in row.get(field, '').split(',') if part.strip()}
     return (country in parts('Owner') and (not parts('RequiredHouses') or country in parts('RequiredHouses'))
             and country not in parts('ForbiddenHouses'))
+
+
+def factory_training_updates(row, effects, rules, country):
+    """Give private barracks/land factories reviewed academy production bonuses."""
+    percent = effects.get('factory_training_percent', 0)
+    factory = row.get('Factory', '').lower()
+    if not percent or factory not in ('infantrytype', 'unittype') or row.get('Naval', 'no').lower() == 'yes':
+        return {}
+    category = 'InfantryTypes' if factory == 'infantrytype' else 'VehicleTypes'
+    access = set(effects.get('special_access', []))
+    types = []
+    for kind in rules[category].values():
+        unit = rules[kind]
+        if (unit.get('Trainable', 'yes').lower() == 'no' or unit.get('Naval', 'no').lower() == 'yes'
+                or not (_eligible(unit, country) or kind in access)
+                or kind not in access and not 0 <= int(unit.get('TechLevel', '-1')) <= 10):
+            continue
+        types.append(kind)
+    # Ares classifies organic vehicles as infantry and some war-factory
+    # aircraft as aircraft. The exact type list restricts all three bonuses
+    # to this production category; AircraftTypes and naval units are absent.
+    return {'Academy.' + category + 'Veterancy': f'{percent / 100:g}'
+            for category in ('Infantry', 'Vehicle', 'Aircraft')} | {'Academy.Types': ','.join(types)}
 
 
 def register_exact_type_lists(writer, rules, *alias_groups):
@@ -244,6 +269,9 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
     delivered.update(unit['type'] for unit in effects['starting_defenses'])
     delivered.update(unit['type'] for unit in (effects.get('reinforcements') or {}).get('units', []))
     delivered.update(unit['type'] for unit in effects.get('lab_reserve_units', []))
+    outpost_types = {entry['type'] for camp in plan['map']['camps']
+                     for entry in camp.get('outpost', {}).get('structures', [])}
+    delivered.update(outpost_types)
     if native_drakuv:
         delivered.add('RAVA')
     aliases = {}
@@ -251,15 +279,19 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         row = rules.get(original, {})
         defense = category == 'BuildingTypes' and row.get('IsBaseDefense', 'no').lower() == 'yes'
         utilities = utility_updates(original, row, effects, building=category == 'BuildingTypes', defense=defense)
+        training = (factory_training_updates(row, effects, rules, plan['player_country'])
+                    if category == 'BuildingTypes' else {})
         prison = native_drakuv and original == 'NAPRIS'
-        if category == 'BuildingTypes' and not defense and not utilities and not prison and original not in special_forms:
+        if (category == 'BuildingTypes' and not defense and not utilities and not training and not prison
+                and original not in special_forms and original not in outpost_types):
             continue
         eligible = [alias for alias, country, _ in friends if _eligible(row, country)]
         if original in delivered or original in special_forms:
             eligible = [alias for alias, _, _ in friends]
         tier = _authored_tech_tier(row)
         percent = effects.get('defense_percent', 0) if defense else effects.get('tier_buffs', {}).get(str(tier), 0)
-        if not eligible or not (percent or utilities or original in special_forms or prison
+        if not eligible or not (percent or utilities or training or original in outpost_types
+                                 or original in special_forms or prison
                                  or (defense and effects.get('defense_veterancy'))):
             continue
         # Include conversion-only counterparts when reachable from a playable
@@ -366,6 +398,8 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
         if percent and not defense and float(row.get('Strength', '0')) > 1:
             row['Strength'] = str(floor(float(row['Strength']) * factor))
         row.update(utility_updates(original, row, effects, building=category == 'BuildingTypes', defense=defense))
+        if category == 'BuildingTypes':
+            row.update(factory_training_updates(row, effects, rules, plan['player_country']))
         if defense and effects.get('defense_veterancy'):
             row['Trainable'] = 'yes'
             # Ares reads VeteranBuildings on the concrete country; native
@@ -397,7 +431,7 @@ def apply_player_types(writer, plan, rules, *, reserved_aliases=None):
                 _register_map_type(writer.sections, writer.lines, rules, 'WeaponTypes', clone)
                 weapons[weapon_key] = clone
             row[field] = weapons[weapon_key]
-        for field in (*TYPE_REFERENCE_FIELDS, 'FreeUnit', 'PowersUpBuilding'):
+        for field in (*TYPE_REFERENCE_FIELDS, 'FreeUnit', 'PowersUpBuilding', 'Academy.Types'):
             if row.get(field):
                 row[field] = ','.join(aliases.get(part.strip(), part.strip()) for part in row[field].split(','))
         writer.sections[alias] = replace_references(row, dependencies)

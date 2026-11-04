@@ -37,6 +37,48 @@ def rank_descriptions(perk, country):
     for index, rank in enumerate(ranks(perk), 1):
         effect = rank['effects']
         parts = []
+        if effect.get('defense_health_percent'):
+            parts.append(f'+{effect["defense_health_percent"]}% maximum health for starting, '
+                         'produced and recovered-outpost defenses; stacks with defense veterancy and firepower')
+        if effect.get('camp_salvage_credits'):
+            parts.append(f'+{effect["camp_salvage_credits"]:,} credits per collected camp alongside its normal reward. '
+                         'The collecting human receives the credits; AI collections use the host')
+        if effect.get('camp_veterancy'):
+            parts.append('All camp-awarded mobile units arrive '
+                         + ('Veteran' if effect['camp_veterancy'] == 1 else 'Elite (highest veterancy)'))
+        if effect.get('camp_reward_units_by_country'):
+            table = effect['camp_reward_units_by_country']
+            parts.append('Ordinary Tier 1/2 camp unit rewards become '
+                         + (units(table[country]) if country else
+                            f'{sum(unit["count"] for unit in next(iter(table.values())))} mixed faction units')
+                         + '; credit and special-unit rolls remain. Combines with Salvage and Veteran Spoils')
+        if effect.get('reinforcement_interval_reduction_seconds'):
+            interval = 300 - effect['reinforcement_interval_reduction_seconds']
+            parts.append(f'Periodic reinforcements every {interval // 60}:{interval % 60:02d}, '
+                         'including the first delivery. Requires Periodic reinforcements; '
+                         'the shared living-unit cap and capacity wait remain')
+        if effect.get('outpost_rank'):
+            additions = ('powered barracks and two basic defenses', 'refinery with harvester',
+                         'radar and anti-air defenses', 'war factory and advanced defenses',
+                         'second refinery/factory and more defenses', 'construction yard and up to 12 defenses')
+            parts.append('Collected camps deploy cumulative faction outposts: '
+                         + '; '.join(additions[:effect['outpost_rank']])
+                         + '. All ranks include enough power. Collecting humans own their outpost; '
+                         'AI collections use the host. Foundations are reserved until collection; '
+                         'blocking units are moved aside and ore under buildings is cleared during native creation. '
+                         'Tight terrain can reduce the outpost. Structures cannot be sold')
+        if effect.get('factory_training_percent'):
+            parts.append(f'Barracks and land war factories train eligible units with '
+                         f'{effect["factory_training_percent"]}% progress toward Veteran. '
+                         'Rank 3 starts Veteran; stronger academy bonuses remain. '
+                         'Airfield aircraft, naval units and nontrainable units are excluded')
+        if effect.get('mobility_stacks'):
+            from randomizer.rewards.definitions import MOVEMENT_SPEED_SAFE_CEILINGS
+            caps = MOVEMENT_SPEED_SAFE_CEILINGS
+            parts.append(f'{effect["mobility_stacks"]} existing Mobility stacks for catalogue-eligible mobile units. '
+                         f'Reviewed Speed caps: infantry {caps["infantry"]}, vehicles {caps["units"]}, '
+                         f'aircraft {caps["aircraft"]}. Faster native types are not accelerated; '
+                         'jumpjet movement stays aligned with Speed')
         if effect.get('lab_health_percent'):
             percent = effect['lab_health_percent']
             base = int(rules['CALAB']['Strength'])

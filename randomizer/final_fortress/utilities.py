@@ -46,6 +46,8 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
                   if building and power and float(row.get('Power', '0')) > 0
                   and float(row.get(field, '0')) > 0}
     updates = dict(generation)
+    if building and defense and effects.get('defense_health_percent'):
+        updates['Strength'] = str(int(row['Strength']) * (100 + effects['defense_health_percent']) // 100)
     health = effects.get('infrastructure_health_percent', 0)
     if building and health and infrastructure_building(row, defense=defense):
         updates['Strength'] = str(int(row['Strength']) * (100 + health) // 100)
@@ -58,13 +60,21 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
             updates['BuildLimit'] = str(native + min(limit, 3))
     if not any(effects.get(field) for field in ('healing_stacks', 'recon_stacks',
                                               'unique_limit_stacks', 'income_stacks',
-                                              'transport_capacity_stacks', 'open_topped')):
+                                              'transport_capacity_stacks', 'open_topped', 'mobility_stacks')):
         return updates
     metadata = BUFF_TARGETS.get(original)
     if not metadata:
         return updates
     pairs = supported_pairs()
-    target = _target_with_effective_unit_stats(metadata, row)
+    target = _target_with_effective_unit_stats(metadata, {**row, **updates})
+    mobility = effects.get('mobility_stacks', 0)
+    if not building and mobility and float(row.get('Speed', '0')) > 0 and (original, 'speed') in pairs:
+        # Reuse reviewed category ceilings and retain authored faster identities.
+        # The shared adapter also keeps JumpjetSpeed aligned with Speed.
+        movement = {field: row[field] for field in ('JumpjetSpeed',) if field in row}
+        apply_unit_buff_value(movement, target, 'speed', mobility)
+        if float(movement['Speed']) > float(row['Speed']):
+            updates.update(movement)
     mobile_or_defense = not building or defense
     capacity = effects.get('transport_capacity_stacks', 0)
     if not building and capacity and transport_buff_allowed(original, row, 'passenger_capacity'):
@@ -83,7 +93,7 @@ def utility_updates(original, row, effects, *, building=False, defense=False):
         # native healing is retained; Tier perks contribute their actual HP.
         updates['SelfHealing'] = 'yes'
         updates['SelfHealing.Amount'] = str(max(int(float(row.get('SelfHealing.Amount', '0'))),
-            stacked_self_heal_amount(resolved_safe_strength(target, row), healing)))
+            stacked_self_heal_amount(resolved_safe_strength(target, updates), healing)))
         apply_unit_buff_value(updates, target, 'self_healing_rate', 0)
     recon = effects.get('recon_stacks', 0)
     if mobile_or_defense and recon:

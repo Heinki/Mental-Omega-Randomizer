@@ -78,8 +78,9 @@ def build_schedule(plan):
     if total > effect['max_active_units']:
         raise ValueError('A friendly reinforcement arrival exceeds its shared living-unit cap.')
     times = range(effect['first_seconds'], plan['survival_seconds'], effect['interval_seconds'])
-    if len(times) > 11:
-        raise ValueError('Final Fortress supports at most eleven friendly reinforcement arrivals.')
+    maximum = 14 if plan.get('effects', {}).get('reinforcement_interval_reduction_seconds') else 11
+    if len(times) > maximum:
+        raise ValueError(f'Final Fortress supports at most {maximum} friendly reinforcement arrivals.')
     return [{'seconds': seconds, 'groups': deepcopy(groups)} for seconds in times]
 
 

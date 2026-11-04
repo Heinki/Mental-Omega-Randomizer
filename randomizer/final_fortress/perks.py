@@ -15,6 +15,9 @@ def rank_limit(perk_id):
             'cheaper_construction': 5, 'cheaper_production': 5,
             'special_building_limit': 3, 'fundraising': 4, 'stolen_tech_access': 4,
             'transport_capacity': 3, 'fortified_infrastructure': 3,
+            'fortified_emplacements': 3, 'expedition_salvage': 3,
+            'priority_reinforcements': 3, 'advanced_spoils': 3,
+            'veteran_spoils': 2, 'factory_training': 3, 'rapid_response': 3,
             'open_topped_transports': 1}.get(perk_id, 6)
 
 
@@ -64,7 +67,10 @@ def validate_perk(perk):
                      'lab_health_percent', 'lab_reserve_veterancy', 'generator_power_percent',
                      'construction_discount_percent', 'unit_discount_percent',
                      'special_building_limit_stacks', 'fundraising_stacks',
-                     'transport_capacity_stacks', 'infrastructure_health_percent', 'open_topped'}
+                     'transport_capacity_stacks', 'infrastructure_health_percent', 'open_topped',
+                     'defense_health_percent', 'camp_salvage_credits', 'camp_veterancy',
+                     'camp_reward_units_by_country', 'reinforcement_interval_reduction_seconds',
+                     'outpost_rank', 'factory_training_percent', 'mobility_stacks'}
         if not effects or set(effects) - supported:
             raise ValueError('Unsupported or empty perk effects.')
         if 'lab_emergency_repair' in effects and type(effects['lab_emergency_repair']) is not bool:
@@ -83,7 +89,10 @@ def validate_perk(perk):
                            ('lab_reserve_veterancy', 2), ('generator_power_percent', 150),
                            ('construction_discount_percent', 25), ('unit_discount_percent', 25),
                            ('special_building_limit_stacks', 3), ('fundraising_stacks', 4),
-                           ('transport_capacity_stacks', 3), ('infrastructure_health_percent', 45)):
+                           ('transport_capacity_stacks', 3), ('infrastructure_health_percent', 45),
+                           ('defense_health_percent', 45), ('camp_salvage_credits', 3000),
+                           ('camp_veterancy', 2), ('reinforcement_interval_reduction_seconds', 45),
+                           ('outpost_rank', 6), ('factory_training_percent', 100), ('mobility_stacks', 3)):
             if key in effects:
                 integer(effects[key], key)
                 if effects[key] > limit:
@@ -97,7 +106,7 @@ def validate_perk(perk):
         for key in ('starting_units_by_country', 'buildings_by_country',
                     'defenses_by_country', 'support_powers_by_country', 'harvesters_by_country',
                     'fallback_units_by_country', 'power_buildings_by_country', 'superweapons_by_country',
-                    'special_units_by_country', 'lab_reserve_units_by_country'):
+                    'special_units_by_country', 'lab_reserve_units_by_country', 'camp_reward_units_by_country'):
             if key not in effects:
                 continue
             table = effects[key]
@@ -105,7 +114,7 @@ def validate_perk(perk):
                 raise ValueError(f'{key} must cover all playable countries.')
             for country, values in table.items():
                 if key in ('starting_units_by_country', 'harvesters_by_country', 'fallback_units_by_country',
-                           'lab_reserve_units_by_country'):
+                           'lab_reserve_units_by_country', 'camp_reward_units_by_country'):
                     _units(values)
                     if key == 'lab_reserve_units_by_country':
                         if (not values or len(values) > 6 or sum(unit['count'] for unit in values) > 30
@@ -113,6 +122,10 @@ def validate_perk(perk):
                             raise ValueError('Lab reserves require 1–30 units in at most six unique types per house.')
                     elif sum(unit['count'] for unit in values) > 15:
                         raise ValueError('Starting armies are limited to 15 units.')
+                    if key == 'camp_reward_units_by_country' and (
+                            not values or len(values) > 6 or sum(unit['count'] for unit in values) > 8
+                            or len({unit['type'] for unit in values}) != len(values)):
+                        raise ValueError('Camp squads require 1–8 units in at most six unique types.')
                 else:
                     maximum = {'defenses_by_country': 32, 'support_powers_by_country': 5,
                                'power_buildings_by_country': 24, 'special_units_by_country': 32}.get(key, 5)
@@ -166,7 +179,8 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
                     include_power_upgrades=False, include_arsenal=False, include_utilities=False,
                     include_lab_support=False, include_lab_shield=False, include_lab_health=False,
                     include_lab_veterancy=False, include_generator_power=False,
-                    include_economy=False, share_starting_power=False, include_logistics=False):
+                    include_economy=False, share_starting_power=False, include_logistics=False,
+                    include_expansion=False):
     effects = {'starting_credits': 0, 'starting_units': [], 'starting_defenses': [],
                'veterancy': 0, 'production_percent': 0, 'starting_buildings': [],
                'defense_types': [], 'defense_veterancy': 0, 'defense_percent': 0,
@@ -183,6 +197,12 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         effects.update({field: 0 for field in utility_fields})
     if include_logistics:
         effects.update(transport_capacity_stacks=0, infrastructure_health_percent=0, open_topped=False)
+    expansion_fields = ('defense_health_percent', 'camp_salvage_credits', 'camp_veterancy',
+                        'reinforcement_interval_reduction_seconds', 'outpost_rank',
+                        'factory_training_percent', 'mobility_stacks')
+    if include_expansion:
+        effects.update({field: 0 for field in expansion_fields})
+        effects['camp_reward_units'] = []
     if include_lab_support:
         effects.update(lab_emergency_repair=False, lab_reserve_units=[])
     if include_lab_shield:
@@ -206,6 +226,11 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         if type(rank) is not int or not 1 <= rank <= len(entries):
             raise ValueError(f'Invalid purchased perk rank: {key}.')
         current = entries[rank - 1]['effects']
+        if include_expansion:
+            for field in expansion_fields:
+                effects[field] = max(effects[field], current.get(field, 0))
+            if 'camp_reward_units_by_country' in current:
+                effects['camp_reward_units'] = deepcopy(current['camp_reward_units_by_country'][country])
         if include_logistics:
             for field in ('transport_capacity_stacks', 'infrastructure_health_percent'):
                 effects[field] = max(effects[field], current.get(field, 0))
@@ -274,6 +299,12 @@ def resolve_effects(config, selected, purchased, country, *, include_power=False
         effects['starting_power_buildings'].extend(shared_power.elements())
     if include_power_upgrades:
         effects['support_powers'] = list(dict.fromkeys(effects['support_powers']))
+    if include_expansion and effects.get('reinforcements'):
+        reduction = effects['reinforcement_interval_reduction_seconds']
+        for field in ('first_seconds', 'interval_seconds'):
+            effects['reinforcements'][field] -= reduction
+            if effects['reinforcements'][field] < 255:
+                raise ValueError('Priority reinforcements cannot arrive more often than every 255 seconds.')
     if sum(unit['count'] for unit in effects['starting_units']) > 15:
         raise ValueError('Combined starting-army perks exceed the 15-unit limit.')
     return effects

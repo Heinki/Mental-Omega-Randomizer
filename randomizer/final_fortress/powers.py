@@ -164,7 +164,7 @@ def apply_powers(writer, plan, rules, country_aliases):
             writer.sections[provider] = row
             _register_map_type(writer.sections, writer.lines, rules, 'BuildingTypes', provider)
             x, y = cell % 1000 + index, cell // 1000 + actor_index + 1
-            if 'utility_positions' in plan['map']:
+            if 'utility_positions' in plan['map'] or plan['effects'].get('outpost_rank'):
                 from .coop_map import escrow_cell
                 x, y = escrow_cell(writer, plan, rules, cell)
             _place(writer, 'Structures', f'Neutral,{provider},256,{x},'

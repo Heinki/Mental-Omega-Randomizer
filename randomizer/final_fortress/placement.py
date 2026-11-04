@@ -192,6 +192,17 @@ def validate_placements(writer, rules, plan=None):
     maximum_height = (plan['map'].get('maximum_terrain_height', 14)
                       if plan and plan.get('plan_version', 1) >= 33 else 14)
     art = installed_art()
+    outpost_heights = {}
+    if plan and plan.get('plan_version', 1) >= 41:
+        # These fixed foundations were decoded from the installed source map.
+        # Use their reviewed plateau heights instead of assuming that every
+        # edge cell might be a fourteen-level cliff.
+        for camp in plan['map']['camps']:
+            for entry in camp.get('outpost', {}).get('structures', []):
+                p = entry['position']
+                row = {'Image': entry['type'], **rules[entry['type']]}
+                for dx, dy in foundation(row, art):
+                    outpost_heights[p['x'] + dx, p['y'] + dy] = entry['height']
     if plan and plan.get('plan_version', 1) >= 37:
         generators, access = generator_access(plan, rules, art)
         for actor, kind, position, cells in generators:
@@ -213,7 +224,10 @@ def validate_placements(writer, rules, plan=None):
             row.setdefault('Image', kind)
             offsets = foundation(row, art) if category == 'Structures' else {(0, 0)}
             cells = {(x + dx, y + dy) for dx, dy in offsets} or {(x, y)}
-            if not bounds.contains(cells, maximum_height=maximum_height):
+            reviewed_outpost = row.get('Name') == 'Final Fortress reserved outpost foundation'
+            valid = (cells <= outpost_heights.keys() and bounds.contains(cells, heights=outpost_heights)
+                     if reviewed_outpost else bounds.contains(cells, maximum_height=maximum_height))
+            if not valid:
                 raise ValueError(f'Final Fortress {kind} at ({x}, {y}) extends outside playable map bounds.')
             if cells & reserved:
                 raise ValueError(f'Final Fortress {kind} at ({x}, {y}) blocks an MCV deployment area.')
