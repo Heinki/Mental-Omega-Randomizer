@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from randomizer.progression.grid import required_goals
+from randomizer.progression.mission_access import configure_grid_access
+
 from collections import Counter
 from copy import deepcopy
 from hashlib import sha256
@@ -43,6 +46,9 @@ GAMEPLAY_CONFIG_KEYS = (
     "mission_goal",
     "progression_mode",
     "grid_two_start_positions",
+    "required_victory_missions",
+    "mission_unlock_mode",
+    "minimum_completed_missions_before_final_unlock",
     "unlock_all_rewards_after_final_grid_mission",
     "restrict_final_mission_rewards",
     "rewards_per_objective",
@@ -127,6 +133,7 @@ def _goal_for_state(state, mission_order):
         return {
             "type": "grid",
             "mission_code": grid.get("goal") or mission_order[-1],
+            **({"mission_codes": required_goals(grid)} if "required_goals" in grid else {}),
         }
     return {"type": "mission", "mission_code": mission_order[-1]}
 
@@ -151,6 +158,7 @@ def _stable_grid(value):
         "height": int(value.get("height", 0)),
         "two_start_positions": bool(value.get("two_start_positions", False)),
         "goal": value.get("goal"),
+        **({key: deepcopy(value[key]) for key in ("required_goals", "required_victory_missions") if key in value}),
         "nodes": stable_nodes,
     }
 
@@ -205,6 +213,10 @@ def expected_logic_spheres(manifest):
     if not isinstance(manifest, dict):
         raise ValueError("Archipelago run manifest must be an object.")
     mission_order = [str(code) for code in manifest.get("mission_order", ())]
+    access = manifest.get('grid_access') or {}
+    if access.get('mode', 'Standard') != 'Standard':
+        return {'mission_spheres': {code: (1 if code in access['starting_missions'] else None)
+                                    for code in mission_order}, 'goal_sphere': None}
     progression = manifest.get("progression")
     if not mission_order or not isinstance(progression, dict):
         raise ValueError("Run manifest has no signed progression graph.")
@@ -291,7 +303,7 @@ def expected_logic_spheres(manifest):
     goal_codes = (
         mission_order
         if goal.get("type") == "all_missions"
-        else [str(goal.get("mission_code") or mission_order[-1])]
+        else goal.get("mission_codes", [str(goal.get("mission_code") or mission_order[-1])])
     )
     try:
         goal_sphere = max(sphere_by_mission[code] for code in goal_codes) + 1
@@ -649,6 +661,7 @@ def build_run_manifest(state, launcher_config=None, *, catalogue_checksum=None):
         },
         "state_snapshot": _server_state_snapshot(state),
     }
+    configure_grid_access(manifest, launcher_config or {})
     unsigned = _canonical_json(manifest).encode("utf-8")
     manifest["manifest_checksum"] = sha256(unsigned).hexdigest()
     return manifest

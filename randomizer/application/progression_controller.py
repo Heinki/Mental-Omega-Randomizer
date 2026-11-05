@@ -23,7 +23,11 @@ from ._dependencies import (
     time,
 )
 
-class ProgressionController:
+from .grid_access_controller import GridAccessController
+from randomizer.progression.grid import required_goals
+
+
+class ProgressionController(GridAccessController):
 
     def mission_matches_search(self, mission):
         query = self.mission_search_var.get().strip().casefold()
@@ -94,6 +98,9 @@ class ProgressionController:
         grid = self.state.get('grid') if self.state else None
         if not isinstance(grid, dict):
             return {}
+        key_states = self.grid_key_states()
+        if key_states is not None:
+            return key_states
         return refresh_grid_states(
             grid,
             self.state.get('completed_missions', []),
@@ -109,6 +116,9 @@ class ProgressionController:
         if self.active_progression_mode() != 'Grid Mode' or not self.state:
             return []
         self.sync_grid_progression()
+        access = self.grid_access_contract()
+        if access and access['mode'] != 'Standard':
+            return []
         return completing_unlocks(
             self.state.get('grid', {}),
             code,
@@ -166,6 +176,7 @@ class ProgressionController:
             return
         grid = self.state.get('grid', {})
         states = self.sync_grid_progression()
+        self.refresh_grid_access_controls()
         lookup = self.mission_lookup()
         selected_code = self.selected_mission_code()
         search_codes = self.mission_search_codes()
@@ -183,7 +194,7 @@ class ProgressionController:
             gradient_enabled = getattr(widgets['body'], 'set_gradient_enabled', None)
             if gradient_enabled is not None:
                 gradient_enabled(challenge_group == 'Mixed' and state != GRID_LOCKED)
-            if hide_locked and state == GRID_LOCKED:
+            if hide_locked and state == GRID_LOCKED and code not in required_goals(grid) and (self.grid_access_contract() or {}).get('mode', 'Standard') == 'Standard':
                 signature = ('hidden', code in search_codes, canvas_color)
                 if self.grid_tile_signatures.get(code) == signature:
                     continue
@@ -224,12 +235,12 @@ class ProgressionController:
                 if started and self.failure_assistance_enabled()
                 else 0
             )
-            is_goal = code == grid.get('goal')
+            is_goal = code in required_goals(grid)
             hover_highlight = code in hover_codes
             signature = (
                 state, started, counts, assistance_stacks,
                 code == selected_code, code in search_codes,
-                is_goal, hover_highlight, canvas_color,
+                is_goal, hover_highlight, canvas_color, self.grid_mission_requirements_text(code),
                 id(mission), mission.get('title'), faction, faction_color,
             )
             if self.grid_tile_signatures.get(code) == signature:
@@ -242,7 +253,16 @@ class ProgressionController:
                 widget.mission_tooltip.text = tooltip
             if state == GRID_LOCKED:
                 background, foreground = '#3f454b', '#aeb5bc'
-                state_label = 'MISSION LOCKED'
+                access = self.grid_access_contract() or {}
+                if access.get('mode') == 'Mission-Specific Keys':
+                    state_label = 'MISSING MISSION KEY'
+                elif access.get('mode') == 'Key Currency':
+                    from randomizer.progression.mission_access import purchase_blocker
+                    blocker = purchase_blocker(access, self.grid_key_projection(), code)
+                    state_label = ('COMPLETION THRESHOLD' if blocker.startswith('Complete ') else
+                                   'MISSING MISSION KEYS' if blocker else 'PURCHASE ACCESS')
+                else:
+                    state_label = 'MISSION LOCKED'
                 banner_color = '#555c63'
             elif state == GRID_COMPLETED:
                 background, foreground = faction_color, '#ffffff'
@@ -288,6 +308,8 @@ class ProgressionController:
                 text=(
                     f"{mission.get('title', code)}\n"
                     f'Mission type: {mission_build_label(mission)}'
+                    + ('\n★ Required Victory Mission' if is_goal else '')
+                    + (f'\nCost: {self.grid_access_contract()["prices"][code]} keys' if (self.grid_access_contract() or {}).get('mode') == 'Key Currency' else '')
                 ),
                 background=background,
                 foreground=foreground,
@@ -299,7 +321,8 @@ class ProgressionController:
                 code = self.missions[index]['code']
             except (IndexError, TypeError):
                 return
-            if self.sync_grid_progression().get(code) == GRID_LOCKED:
+            grid = self.state.get('grid', {})
+            if self.sync_grid_progression().get(code) == GRID_LOCKED and code not in required_goals(grid) and (self.grid_access_contract() or {}).get('mode', 'Standard') == 'Standard':
                 return
         previous_code = self.selected_mission_code()
         self.selected_index.set(index)
@@ -591,6 +614,9 @@ class ProgressionController:
         if not mission:
             return ''
         lines = [mission.get('title') or mission.get('code', 'Mission')]
+        requirements = self.grid_mission_requirements_text(mission.get('code'))
+        if requirements:
+            lines.extend(('', requirements))
         briefing = str(mission.get('briefing') or '').strip()
         if briefing:
             lines.extend(('', 'Briefing:', briefing))
@@ -646,7 +672,7 @@ class ProgressionController:
             unlocked = set(self.unlocked_mission_codes())
             if mission['code'] not in unlocked and mission['code'] not in self.state.get('completed_missions', []):
                 self.append_log(f'Mission is locked by current seed: {mission["code"]}', error=True)
-                messagebox.showwarning('Mission Locked', 'Complete more open missions to unlock this one.')
+                messagebox.showwarning('Mission Locked', self.grid_mission_requirements_text(mission['code']) or 'Complete more open missions to unlock this one.')
                 return
 
         self.save_current_launcher_config()

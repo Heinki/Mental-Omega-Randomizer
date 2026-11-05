@@ -64,6 +64,8 @@ class SeedGeneration:
                     mission_codes,
                     two_start_positions,
                     protect_opening=True,
+                    required_victory_missions=options.get("required_victory_missions", 1),
+                    seed=seed,
                 )
             except ValueError as exc:
                 raise ValueError(f'Cannot generate grid: {exc}.') from exc

@@ -15,7 +15,7 @@ from randomizer.core.version import APP_VERSION, ARCHIPELAGO_VERSION
 
 
 GAME_NAME = 'Mental Omega'
-SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6, 7})
+SUPPORTED_SLOT_DATA_VERSIONS = frozenset({4, 5, 6, 7, 8})
 SUPPORTED_RANDOMIZER_VERSION = APP_VERSION
 CLIENT_VERSION = tuple(int(part) for part in ARCHIPELAGO_VERSION.split('.'))
 ITEMS_HANDLING_ALL = 0b111
@@ -437,6 +437,13 @@ def validate_slot_data(value):
         raise ArchipelagoProtocolError('Slot data has no run manifest.')
     if run_manifest.get('schema_version') != 1:
         raise ArchipelagoProtocolError('Unsupported run-manifest schema version.')
+    from randomizer.progression.mission_access import validate_grid_contract
+    if (run_manifest.get('grid_contract') is not None) != (slot_data_version == 8):
+        raise ArchipelagoProtocolError('New Grid runs require matching slot-data version 8 clients and APWorlds.')
+    try:
+        validate_grid_contract(run_manifest)
+    except ValueError as exc:
+        raise ArchipelagoProtocolError(str(exc)) from exc
     unsigned_manifest = dict(run_manifest)
     unsigned_manifest.pop('manifest_checksum', None)
     calculated_manifest_checksum = sha256(json.dumps(

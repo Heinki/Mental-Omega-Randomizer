@@ -243,3 +243,9 @@ The principal remaining limitations are mission-specific objective matching, a f
 
 In the official Mental Omega Discord is a channel for the Randomizer mo_randomizer you can contact me there or via Discord where my Name is Heinki
 Mental Omega Discord Invite link : https://discord.com/invite/KpJzhWY
+
+## Grid victory objectives and AP mission keys
+
+See [Grid progression and mission access](GRID_PROGRESSION.md) for required victory missions,
+AP unlock modes, the frozen whole-board currency budget, persistence, protocol
+compatibility, and the manual gameplay checklist.

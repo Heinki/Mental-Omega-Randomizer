@@ -18,6 +18,7 @@ class ArchipelagoYamlController:
             'schema_version', 'randomizer_version', 'randomizer_seed',
             'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
             'progression_mode', 'mission_goal', 'mission_order', 'goal', 'shop',
+            'grid_contract', 'grid_access',
         )
         return {
             key: deepcopy(manifest[key])

@@ -1,5 +1,7 @@
 """Grid Mode widget construction and redraw behavior."""
 
+from randomizer.progression.grid import required_goals
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -128,7 +130,7 @@ def redraw_grid(self):
         )
         selection_frame.columnconfigure(0, weight=1)
         selection_frame.rowconfigure(1, weight=1)
-        is_goal = code == grid.get('goal')
+        is_goal = code in required_goals(grid)
         selection_frame.grid(
             row=0,
             column=0,

@@ -24,6 +24,12 @@ from .data import (
 )
 
 
+try:
+    from ._vendor.randomizer.progression.mission_access import validate_grid_contract
+except ModuleNotFoundError:
+    from randomizer.progression.mission_access import validate_grid_contract
+
+
 MANIFEST_SCHEMA_VERSION = 1
 
 
@@ -537,6 +543,10 @@ def parse_manifest(raw_value):
                 f"Manifest server state misses active checks for {code}."
             )
 
+    try:
+        validate_grid_contract(value)
+    except ValueError as exc:
+        raise ManifestError(str(exc)) from exc
     # Return the exact validated document. Adding optional defaults here would
     # invalidate its checksum when fill_slot_data sends it to the launcher.
     return value

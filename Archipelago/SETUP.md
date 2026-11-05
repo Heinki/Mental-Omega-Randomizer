@@ -2,7 +2,7 @@
 
 ## Required versions
 
-- Mental Omega Randomizer Launcher 1.47
+- Mental Omega Randomizer Launcher 1.48
 - Mental Omega 3.3.6 in a separate, unmodified installation
 - Archipelago 0.6.8
 - `mental_omega.apworld` from the same Randomizer release as the launcher
@@ -77,3 +77,22 @@ Run the launcher with `--self-check` to validate its installed configuration and
 Archipelago contracts. With the rebuilt `.apworld` installed in Archipelago
 0.6.8, generate a room from an exported Player YAML, connect the launcher, and
 verify item receipt, mission progression, and Shop controls in gameplay.
+
+
+## New Grid settings
+
+Required Victory Missions defaults to 1, retaining the bottom-right goal.
+Choose a larger count for exact randomly selected objectives, or All for the
+whole board. Every selected mission must be won locally.
+
+Archipelago Mission Unlock Mode defaults to Standard adjacency. Key Currency
+uses server-generated prices and a shuffled Mission Key Supply covering the
+whole board, with durable purchases through Buy Mission Access. Mission-Specific
+Keys opens only the mission matching each received key. Currency's Minimum
+Completed Missions Before Final Unlock defaults to Auto (3/8 of board size);
+only actual local wins count. These controls prepare the exported YAML and
+never activate keys in standalone runs.
+
+Use the updated matching launcher and APWorld. New Grid rooms use slot-data
+version 8; install the new APWorld in custom_worlds, restart Archipelago, then
+generate a new room. Older clients explicitly reject the new format.

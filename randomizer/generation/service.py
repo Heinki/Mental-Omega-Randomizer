@@ -162,6 +162,7 @@ class RunGenerator(SeedGeneration, RewardGeneration, GenerationSettings, Startin
             'starting_defense_ids': defenses,
             'progression_mode': mode,
             'two_start_positions': config['grid_two_start_positions'],
+            'required_victory_missions': config.get('required_victory_missions', 1),
             'mission_pool_settings': mission_settings,
         }
         state = self.build_seed_generation(options)['state']

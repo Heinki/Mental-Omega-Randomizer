@@ -6,7 +6,7 @@ create a player YAML, connect to a room, and continue an existing game.
 ## What you need
 
 - Mental Omega 3.3.6 in a separate, unmodified game installation
-- Mental Omega Randomizer Launcher 1.47
+- Mental Omega Randomizer Launcher 1.48
 - Archipelago 0.6.8
 - `mental_omega.apworld` from the same Randomizer release as the launcher
 
@@ -227,3 +227,9 @@ granting their rewards twice.
 - Return to the launcher and confirm that it is still connected.
 - Reconnect to request synchronization from the server.
 - Check the activity feed for a server refusal or compatibility message.
+
+## Grid victory objectives and AP mission keys
+
+See [Grid progression and mission access](../GRID_PROGRESSION.md) for required victory missions,
+AP unlock modes, the frozen whole-board currency budget, persistence, protocol
+compatibility, and the manual gameplay checklist.

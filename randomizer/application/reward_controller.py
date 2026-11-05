@@ -1,5 +1,7 @@
 """Reward filtering, mission checks, and earned reward state."""
 
+from randomizer.progression.grid import required_goals
+
 from ._dependencies import (
     ARSENAL_MODE,
     ALWAYS_AVAILABLE_TECH_IDS,
@@ -222,7 +224,7 @@ class RewardController(RewardGeneration):
         grid = self.state.get('grid', {})
         if (
             self.state.get('progression_mode') == 'Grid Mode'
-            and grid.get('goal') in self.state.get('completed_missions', [])
+            and set(required_goals(grid)).issubset(self.state.get('completed_missions', []))
             and self.state.get('unlock_all_rewards_after_final_grid_mission', False)
             and not self.archipelago_run_active()
         ):

@@ -70,6 +70,19 @@ LOCAL_VICTORY_LOCATION_TABLE = {
     for data in LOCAL_VICTORY_DATA.values()
 }
 LOCATION_TABLE.update(LOCAL_VICTORY_LOCATION_TABLE)
+# Additive code-derived key IDs occupy a reserved 48-bit namespace.
+try:
+    from ._vendor.randomizer.progression.mission_access import key_item_table, local_victory_table
+except ModuleNotFoundError:
+    from randomizer.progression.mission_access import key_item_table, local_victory_table
+KEY_ITEM_TABLE = key_item_table(MISSION_DATA)
+if set(KEY_ITEM_TABLE.values()) & ({entry['id'] for entry in ITEM_DATA.values()} | set(LOCATION_TABLE.values())):
+    raise ValueError('Reserved mission-key IDs collide with published catalogue IDs.')
+for _name, _id in KEY_ITEM_TABLE.items():
+    ITEM_DATA[_name] = {'id': _id, 'classification': ItemClassification.progression,
+                        'classification_name': 'progression', 'category': 'Mission Keys', 'repeatable': False}
+    ITEM_TABLE[_name] = (_id, ItemClassification.progression)
+
 SHOP_PURCHASE_LOCATION_TABLE = {
     f"Roguelike Shop Purchase {index}": (
         SHOP_PURCHASE_LOCATION_ID_BASE + index - 1

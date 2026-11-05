@@ -1,5 +1,7 @@
 """Launcher adapter for the isolated Archipelago session worker."""
 
+from randomizer.progression.grid import required_goals
+
 from copy import deepcopy
 from datetime import datetime
 from urllib.parse import urlsplit, urlunsplit
@@ -209,6 +211,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             'slot_data_version', 'randomizer_version', 'randomizer_seed',
             'catalogue_checksum', 'manifest_checksum', 'campaign_filter',
             'progression_mode', 'mission_goal', 'mission_order', 'goal', 'shop',
+            'grid_contract', 'grid_access',
         )
         return {
             key: deepcopy(slot_data[key])
@@ -987,6 +990,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             f'Mental Omega Local Victory: {code}'
             for code in (slot_data.get('local_victories') or {})
         }
+        access_items = ((slot_data.get('run_manifest') or {}).get('grid_access') or {}).get('item_ids', {})
         item_names = {}
         try:
             for item_id, reward_name in values.items():
@@ -1008,12 +1012,15 @@ class ArchipelagoController(ArchipelagoYamlController):
             for reward_name in item_names.values()
             if reward_name not in REWARD_BY_NAME
             and reward_name not in local_victory_names
+            and reward_name not in access_items
         })
         if unknown:
             preview = ', '.join(unknown[:3])
             if len(unknown) > 3:
                 preview += f', +{len(unknown) - 3} more'
             raise ValueError(f'unknown Randomizer reward(s): {preview}')
+        if any(item_names.get(item_id) != name for name, item_id in access_items.items()):
+            raise ValueError('Mission key item mapping differs from the signed manifest.')
         return item_names
 
     @staticmethod
@@ -1259,14 +1266,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         # earned rewards, so location projection need not recanonicalize the
         # full inventory on every mission check.
         if self.state.get('progression_mode') == 'Grid Mode':
-            from randomizer.progression.grid import refresh_states
-            refresh_states(
-                self.state.get('grid', {}),
-                completed,
-                unlock_all_after_goal=bool(self.state.get(
-                    'unlock_all_rewards_after_final_grid_mission', False
-                )),
-            )
+            self.sync_grid_progression()
         log_event(
             'archipelago_server_locations_applied',
             replace=bool(replace),
@@ -1613,6 +1613,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Persist and acknowledge one network item batch with two saves."""
         started = time.perf_counter()
         receipts = tuple(receipts or ())
+        receipts = self.apply_grid_key_receipts(receipts)
         if not receipts:
             return ()
         ap_state = self._active_archipelago_state()
@@ -2105,7 +2106,7 @@ class ArchipelagoController(ArchipelagoYamlController):
             str(code).upper()
             for code in self.state.get('completed_missions', ())
         }
-        if not goal_code or goal_code not in completed:
+        if not goal_code or not set(required_goals(grid)).issubset(completed):
             return ()
         excluded = {
             (str(group_code).upper(), str(check_id))

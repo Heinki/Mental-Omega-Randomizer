@@ -215,6 +215,14 @@ def _build_window_shell(self):
     self.grid_canvas.grid(row=0, column=0, sticky='nsew')
     self.grid_vertical_scrollbar.grid(row=0, column=1, sticky='ns')
     self.grid_horizontal_scrollbar.grid(row=1, column=0, sticky='ew')
+    self.grid_access_bar = ttk.Frame(self.grid_frame)
+    self.grid_access_bar.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(6, 0))
+    self.grid_access_bar.columnconfigure(0, weight=1)
+    self.grid_objectives_label = ttk.Label(self.grid_access_bar, text='', wraplength=850, justify='left')
+    self.grid_objectives_label.grid(row=0, column=0, sticky='w')
+    self.grid_purchase_button = ttk.Button(self.grid_access_bar, text='Buy Mission Access', command=self.buy_selected_grid_mission)
+    self.grid_purchase_button.grid(row=1, column=0, sticky='w', pady=(4, 0))
+    self.grid_purchase_button.grid_remove()
     self.grid_content_frame = ttk.Frame(self.grid_canvas)
     self.grid_canvas_window = self.grid_canvas.create_window(
         (0, 0),
@@ -523,6 +531,13 @@ def _build_right_panel(self, main_frame):
 
     self.grid_options_frame = ttk.Frame(options_row)
     self.grid_options_frame.grid(row=11, column=0, columnspan=2, sticky='ew', pady=(6, 0))
+    ttk.Label(self.grid_options_frame, text='Required Victory Missions (1..N or All):').grid(row=2, column=0, sticky='w', pady=(6, 0))
+    ttk.Entry(self.grid_options_frame, textvariable=self.required_victory_missions_var, width=12).grid(row=3, column=0, sticky='w')
+    ttk.Label(self.grid_options_frame, text='Archipelago only — Mission Unlock Mode:').grid(row=4, column=0, sticky='w', pady=(6, 0))
+    ttk.Combobox(self.grid_options_frame, textvariable=self.mission_unlock_mode_var,
+                 values=('Standard', 'Key Currency', 'Mission-Specific Keys'), state='readonly', width=24).grid(row=5, column=0, sticky='w')
+    ttk.Label(self.grid_options_frame, text='AP Currency — Minimum Completed Missions (Auto or 0..N-1):').grid(row=6, column=0, sticky='w', pady=(6, 0))
+    ttk.Entry(self.grid_options_frame, textvariable=self.minimum_completed_missions_var, width=12).grid(row=7, column=0, sticky='w')
     self.grid_two_starts_check = ttk.Checkbutton(
         self.grid_options_frame,
         text='Start with two available missions',
@@ -536,13 +551,13 @@ def _build_right_panel(self, main_frame):
     )
     self.unlock_all_grid_rewards_check = ttk.Checkbutton(
         self.grid_options_frame,
-        text='Unlock all rewards after final Grid mission',
+        text='Unlock all rewards after all required Grid victories',
         variable=self.unlock_all_grid_rewards_var,
     )
     self.unlock_all_grid_rewards_check.grid(row=1, column=0, sticky='w', pady=(4, 0))
     WidgetTooltip(
         self.unlock_all_grid_rewards_check,
-        'After the final Grid mission is completed, release every remaining '
+        'After every required Grid victory mission is completed, release every remaining '
         'seed reward, unlock the complete configured arsenal, and open all '
         'optional Grid missions. When disabled, ordinary neighbor progression '
         'and hidden locked missions remain active.',

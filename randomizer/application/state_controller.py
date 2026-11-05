@@ -1,5 +1,7 @@
 """Persistent state, player configuration, starters, and assistance."""
 
+from randomizer.progression.grid import required_goals
+
 from randomizer.config.tuning import mission_assistance_stack_count
 from randomizer.coop import feature
 from randomizer.core.paths import BACKUP_DIR, state_path_for_mode
@@ -341,7 +343,7 @@ class StateController(GenerationSettings):
                 changed = True
             goal_code = self.state['grid'].get('goal')
             if (
-                goal_code in completed
+                set(required_goals(self.state['grid'])).issubset(completed)
                 and not self.archipelago_run_active()
                 and self.state.get(
                     'unlock_all_rewards_after_final_grid_mission', False
@@ -362,7 +364,7 @@ class StateController(GenerationSettings):
             self.state['earned_rewards'] = self.earned_rewards_from_checks()
             self.save_state()
 
-    def save_state(self):
+    def save_state(self, *, durable=False):
         if self.coop_guest_connected():
             return
         self.__dict__.pop('_active_reward_settings_cache', None)
@@ -374,7 +376,7 @@ class StateController(GenerationSettings):
             'coop' if self.state.get('coop_mode') else 'campaign'
         )
         path = state_path_for_mode(category, self.state.get('coop_mode', False))
-        atomic_write_json(path, self.state, indent=None)
+        atomic_write_json(path, self.state, indent=None, durable=durable)
         self.coop_publish_state()
 
 
@@ -657,6 +659,18 @@ class StateController(GenerationSettings):
         self.config['progression_mode'] = self.progression_mode_var.get()
         self.config.pop('grid_width', None)
         self.config.pop('grid_height', None)
+        required = self.required_victory_missions_var.get().strip()
+        from randomizer.progression.grid import normalize_required_count
+        normalize_required_count(required, max(1, mission_goal))
+        self.config['required_victory_missions'] = 'All' if required.lower() == 'all' else int(required)
+        self.config['mission_unlock_mode'] = self.mission_unlock_mode_var.get()
+        minimum = self.minimum_completed_missions_var.get().strip()
+        if minimum.lower() == 'auto':
+            self.config['minimum_completed_missions_before_final_unlock'] = 'Auto'
+        elif minimum.isdecimal():
+            self.config['minimum_completed_missions_before_final_unlock'] = int(minimum)
+        else:
+            raise ValueError('Minimum Completed Missions must be a nonnegative integer or Auto.')
         self.config['grid_two_start_positions'] = bool(self.grid_two_starts_var.get())
         self.config['unlock_all_rewards_after_final_grid_mission'] = bool(
             self.unlock_all_grid_rewards_var.get()
@@ -889,6 +903,9 @@ class StateController(GenerationSettings):
             PROGRESSION_MODES,
             PROGRESSION_MODES[0],
         ))
+        self.required_victory_missions_var.set(str(self.config.get('required_victory_missions', 1)))
+        self.mission_unlock_mode_var.set(self.config.get('mission_unlock_mode', 'Standard'))
+        self.minimum_completed_missions_var.set(str(self.config.get('minimum_completed_missions_before_final_unlock', 'Auto')))
         self.grid_two_starts_var.set(bool(
             self.config.get('grid_two_start_positions', False)
         ))

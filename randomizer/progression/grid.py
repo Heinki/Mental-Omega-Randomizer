@@ -195,7 +195,8 @@ def grid_opening_mission_codes(grid):
     return [positioned[cell] for cell in opening_cells]
 
 
-def create_grid(mission_codes, two_start_positions=False, protect_opening=False):
+def create_grid(mission_codes, two_start_positions=False, protect_opening=False,
+                required_victory_missions=1, seed=""):
     """Create a serializable grid state for the supplied mission content."""
     mission_codes = list(mission_codes)
     if not mission_codes or len(set(mission_codes)) != len(mission_codes):
@@ -220,6 +221,7 @@ def create_grid(mission_codes, two_start_positions=False, protect_opening=False)
         'goal': mission_codes[-1],
         'nodes': nodes,
     }
+    select_required_goals(grid, required_victory_missions, seed)
     refresh_states(grid, [])
     return grid
 
@@ -260,7 +262,7 @@ def refresh_states(grid, completed_codes, unlock_all_after_goal=False):
     unlocked = set(starting_nodes(grid))
     for code in completed:
         unlocked.update(neighbors(grid, code))
-    if unlock_all_after_goal and grid.get('goal') in completed:
+    if unlock_all_after_goal and set(required_goals(grid)).issubset(completed):
         unlocked.update(nodes)
 
     for code, node in nodes.items():
@@ -273,7 +275,8 @@ def completing_unlocks(grid, code, unlock_all_after_goal=False):
     nodes = grid.get('nodes', {})
     if code not in nodes:
         return []
-    if unlock_all_after_goal and code == grid.get('goal'):
+    completed = {item for item, node in nodes.items() if node.get('state') == COMPLETED}
+    if unlock_all_after_goal and set(required_goals(grid)).issubset(completed | {code}):
         return [
             node_code
             for node_code, node in nodes.items()
@@ -286,8 +289,48 @@ def completing_unlocks(grid, code, unlock_all_after_goal=False):
     ]
 
 
-def is_complete(grid):
-    """A grid run is complete when its designated endgoal is cleared."""
+def required_goals(grid):
+    """Read exact stable objectives; old saves retain their single goal."""
+    values = grid.get('required_goals', [grid.get('goal')])
     nodes = grid.get('nodes', {})
-    goal = grid.get('goal')
-    return bool(nodes and goal in nodes) and nodes[goal].get('state') == COMPLETED
+    if (not isinstance(values, list) or not values or len(set(values)) != len(values)
+            or any(code not in nodes for code in values)):
+        raise ValueError('Grid required victory missions are invalid.')
+    return values
+
+
+def normalize_required_count(value, mission_count):
+    """Clamp an integer against the actual filtered board; preserve All."""
+    if isinstance(value, str) and value.strip().lower() == 'all':
+        return mission_count
+    if isinstance(value, bool):
+        raise ValueError('Required Victory Missions must be 1..N or All.')
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        raise ValueError('Required Victory Missions must be 1..N or All.') from None
+    if str(count) != str(value).strip() or count < 1:
+        raise ValueError('Required Victory Missions must be 1..N or All.')
+    return min(count, mission_count)
+
+
+def select_required_goals(grid, value, seed):
+    """Freeze a separate RNG stream without changing mission/reward generation."""
+    import random
+    codes = list(grid['nodes'])
+    count = normalize_required_count(value, len(codes))
+    if count == 1 and str(value).strip().lower() != 'all':
+        selected = [grid['goal']]
+    elif count == len(codes):
+        selected = codes
+    else:
+        selected = random.Random(f'{seed}:required-grid-victories:v1').sample(codes, count)
+    grid['required_goals'] = selected
+    grid['required_victory_missions'] = 'All' if str(value).strip().lower() == 'all' else count
+
+
+def is_complete(grid):
+    """Win only after every specifically required mission has been cleared."""
+    if not grid.get('nodes'):
+        return False
+    return all(grid['nodes'][code].get('state') == COMPLETED for code in required_goals(grid))

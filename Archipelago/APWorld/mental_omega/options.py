@@ -6,6 +6,7 @@ from Options import (
     Choice,
     DefaultOnToggle,
     FreeText,
+    NamedRange,
     OptionCounter,
     OptionDict,
     OptionGroup,
@@ -100,6 +101,36 @@ class ProgressionMode(Choice):
     option_grid_mode = 2
     option_shop_mode = 3
     default = 1
+
+
+class RequiredVictoryMissions(NamedRange):
+    """Exact required Grid missions. 0 means All; oversized values clamp to the actual filtered board."""
+
+    display_name = "Required Victory Missions (0 = All)"
+    range_start = 0
+    range_end = 97
+    default = 1
+    special_range_names = {"all": 0}
+
+
+class MissionUnlockMode(Choice):
+    """Archipelago Grid access. Key Supply funds every mission; mission keys unlock exact identities."""
+
+    display_name = "Mission Unlock Mode"
+    option_standard = 0
+    option_key_currency = 1
+    option_mission_specific_keys = 2
+    default = 0
+
+
+class MinimumCompletedMissionsBeforeFinalUnlock(NamedRange):
+    """Currency only: victories before buying the bottom-right mission. -1 = Auto (3/8 of the board)."""
+
+    display_name = "Minimum Completed Missions Before Final Unlock"
+    range_start = -1
+    range_end = 97
+    default = -1
+    special_range_names = {"auto": -1}
 
 
 class GridTwoStartPositions(Toggle):
@@ -514,6 +545,9 @@ class MentalOmegaOptions(PerGameCommonOptions):
     coop_mode: CoopMode
     mission_goal: MissionGoal
     progression_mode: ProgressionMode
+    required_victory_missions: RequiredVictoryMissions
+    mission_unlock_mode: MissionUnlockMode
+    minimum_completed_missions_before_final_unlock: MinimumCompletedMissionsBeforeFinalUnlock
     grid_two_start_positions: GridTwoStartPositions
     unlock_all_grid_rewards: UnlockAllGridRewards
     rewards_per_objective: RewardsPerObjective
@@ -563,7 +597,8 @@ class MentalOmegaOptions(PerGameCommonOptions):
 
 MENTAL_OMEGA_OPTION_GROUPS = [
     OptionGroup("Randomizer Run", [
-        Campaign, MissionGoal, ProgressionMode, GridTwoStartPositions,
+        Campaign, MissionGoal, ProgressionMode, RequiredVictoryMissions, MissionUnlockMode,
+        MinimumCompletedMissionsBeforeFinalUnlock, GridTwoStartPositions,
         UnlockAllGridRewards, Difficulty, GameSpeed, PlayerColor, Rainbowizer,
         EvaVoice,
     ]),
@@ -660,6 +695,11 @@ def launcher_settings_from_options(options):
         "campaign_filter": CAMPAIGNS[options.campaign.value],
         "mission_goal": options.mission_goal.value,
         "progression_mode": PROGRESSION_MODES[options.progression_mode.value],
+        "required_victory_missions": options.required_victory_missions.value or "All",
+        "mission_unlock_mode": ("Standard", "Key Currency", "Mission-Specific Keys")[options.mission_unlock_mode.value],
+        "minimum_completed_missions_before_final_unlock": (
+            "Auto" if options.minimum_completed_missions_before_final_unlock.value == -1
+            else options.minimum_completed_missions_before_final_unlock.value),
         "grid_two_start_positions": bool(options.grid_two_start_positions.value),
         "unlock_all_rewards_after_final_grid_mission": bool(
             options.unlock_all_grid_rewards.value

@@ -570,38 +570,9 @@ class UnlockViewController:
                     f'•  {node_state}'
                 )
                 unlocks = self.mission_unlocks(code)
-                if code == self.state.get('grid', {}).get('goal') and node.get('state') != GRID_COMPLETED:
-                    if archipelago_active:
-                        reward_note = (
-                            'queues every unchecked GRID location for '
-                            'Archipelago server confirmation, and '
-                            if self.state.get(
-                                'unlock_all_rewards_after_final_grid_mission',
-                                False,
-                            )
-                            else 'keeps unchecked Archipelago locations pending, and '
-                        )
-                        lines.append(
-                            'Completing this endgoal records Randomizer victory, '
-                            + reward_note
-                            + 'unlocks every unfinished grid mission.'
-                        )
-                    else:
-                        reward_note = (
-                            'releases every pending seed reward, unlocks the '
-                            'complete configured arsenal, and '
-                            if self.state.get(
-                                'unlock_all_rewards_after_final_grid_mission',
-                                False,
-                            )
-                            else 'keeps unfinished rewards pending, and '
-                        )
-                        lines.append(
-                            'Completing this endgoal records Randomizer victory, '
-                            + reward_note
-                            + 'unlocks every unfinished grid mission.'
-                        )
-                elif unlocks:
+                lines.append(self.grid_mission_requirements_text(code))
+                lines.append(self.grid_status_text())
+                if unlocks:
                     if self.hide_locked_grid_missions_var.get():
                         lines.append(
                             f'Completing this node reveals {len(unlocks)} neighboring mission(s).'

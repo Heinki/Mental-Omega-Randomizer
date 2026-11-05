@@ -161,7 +161,10 @@ class MentalOmegaWorld(World):
             code: LOCAL_VICTORY_DATA[code]["item_name"]
             for code in self.run_manifest["mission_order"]
         }
-        if progression["type"] == "victory_count":
+        from .grid_rules import connect_key_regions
+        if connect_key_regions(self, menu, by_code, local_victory_names):
+            pass
+        elif progression["type"] == "victory_count":
             all_victories = tuple(local_victory_names.values())
             for code, region in by_code.items():
                 required = progression["mission_requirements"][code]
@@ -193,7 +196,7 @@ class MentalOmegaWorld(World):
         goal_codes = (
             self.run_manifest["mission_order"]
             if goal["type"] == "all_missions"
-            else [goal["mission_code"]]
+            else goal.get("mission_codes", [goal["mission_code"]])
         )
         goal_items = tuple(local_victory_names[code] for code in goal_codes)
         victory.access_rule = lambda state, names=goal_items: all(
@@ -342,7 +345,7 @@ class MentalOmegaWorld(World):
                 ],
             }
         return {
-            "slot_data_version": 7 if shop is not None else 5,
+            "slot_data_version": 8 if self.run_manifest.get("grid_contract") else 7 if shop is not None else 5,
             "randomizer_version": self.run_manifest["randomizer_version"],
             "randomizer_seed": self.run_manifest["randomizer_seed"],
             "catalogue_checksum": CATALOGUE_CHECKSUM,
