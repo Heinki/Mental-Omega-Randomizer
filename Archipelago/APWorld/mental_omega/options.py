@@ -126,7 +126,10 @@ class MissionUnlockMode(Choice):
 class MinimumCompletedMissionsBeforeFinalUnlock(NamedRange):
     """Currency only: victories before buying the bottom-right mission. -1 = Auto (3/8 of the board)."""
 
-    display_name = "Minimum Completed Missions Before Final Unlock"
+    # Keep legacy YAML overrides readable without exposing a technical default
+    # in Options Creator. Selecting Key Currency is sufficient for normal play.
+    visibility = Visibility.none
+    display_name = "Wins Before Final Mission (Advanced YAML Override)"
     range_start = -1
     range_end = 97
     default = -1

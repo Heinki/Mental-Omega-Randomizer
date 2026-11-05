@@ -89,10 +89,17 @@ Archipelago Mission Unlock Mode defaults to Standard adjacency. Key Currency
 uses server-generated prices and a shuffled Mission Key Supply covering the
 whole board, with durable purchases through Buy Mission Access. Mission-Specific
 Keys opens only the mission matching each received key. Currency's Minimum
-Completed Missions Before Final Unlock defaults to Auto (3/8 of board size);
+Completed Missions Before Final Unlock is chosen automatically for the board;
 only actual local wins count. These controls prepare the exported YAML and
 never activate keys in standalone runs.
 
 Use the updated matching launcher and APWorld. New Grid rooms use slot-data
 version 8; install the new APWorld in custom_worlds, restart Archipelago, then
 generate a new room. Older clients explicitly reject the new format.
+
+
+Mission Unlock Mode is now on the Archipelago page under Grid Mission Access,
+with a description for each mode and hover tooltips. Selecting Key Currency
+configures prices and the bottom-right mission's win requirement automatically.
+There is no separate Auto field to fill in. Required Victory Missions remains
+in Settings for standalone and Archipelago Grid Mode, with explanatory tooltips.

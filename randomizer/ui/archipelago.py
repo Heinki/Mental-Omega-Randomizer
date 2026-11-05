@@ -1,8 +1,65 @@
 """Archipelago workspace tab."""
 
-from ._builder_dependencies import scrolledtext, ttk
+from ._builder_dependencies import WidgetTooltip, scrolledtext, ttk
 from randomizer.core.paths import LAUNCHER_LOG
 from .viewport import ScrollableViewport
+
+
+def _build_grid_access_settings(self, tab):
+    """Keep AP generation settings beside YAML export, with plain-language help."""
+    frame = ttk.LabelFrame(tab, text='Grid Mission Access', padding=(10, 8, 10, 8))
+    self.archipelago_grid_settings_frame = frame
+    frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
+    frame.columnconfigure(1, weight=1)
+    ttk.Label(
+        frame,
+        text='For Archipelago Grid Mode. Save Player YAML to use these settings in a new room.',
+        style='Muted.TLabel', wraplength=820, justify='left',
+    ).grid(row=0, column=0, columnspan=2, sticky='ew', pady=(0, 8))
+    label = ttk.Label(frame, text='Mission Unlock Mode:')
+    label.grid(row=1, column=0, sticky='w', padx=(0, 10))
+    self.archipelago_mission_unlock_combo = ttk.Combobox(
+        frame, textvariable=self.mission_unlock_mode_var,
+        values=('Standard', 'Key Currency', 'Mission-Specific Keys'),
+        state='readonly', width=26,
+    )
+    self.archipelago_mission_unlock_combo.grid(row=1, column=1, sticky='w')
+    mode_help = (
+        'Standard: win missions to open neighboring tiles.\n\n'
+        'Key Currency: receive Mission Key Supply from Archipelago, then spend '
+        'keys to buy access to any mission. The supply covers the whole board. '
+        'Prices and the number of wins needed before buying the bottom-right '
+        'mission are chosen automatically for the generated board. '
+        'For example, a 16-mission board normally needs 6 wins first.\n\n'
+        'Mission-Specific Keys: each received mission key opens only its matching '
+        'mission. Keys grant access; you still need to win the required missions.'
+    )
+    WidgetTooltip(label, mode_help)
+    WidgetTooltip(self.archipelago_mission_unlock_combo, mode_help)
+    description = ttk.Label(frame, style='Muted.TLabel', wraplength=820, justify='left')
+    description.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(8, 0))
+    WidgetTooltip(description, mode_help)
+
+    def refresh_description(*_args):
+        mode = self.mission_unlock_mode_var.get()
+        descriptions = {
+            'Standard': 'Win missions to open neighboring tiles, starting from the opening missions.',
+            'Key Currency': (
+                'Receive Mission Key Supply, then spend keys to open any mission. '
+                'Prices and the wins needed before buying the bottom-right mission '
+                'are set for your board automatically. No extra setup needed.'
+            ),
+            'Mission-Specific Keys': (
+                'Receive a mission key from Archipelago to open only that mission. '
+                'Starting missions are already open. Receiving a key does not count as a win.'
+            ),
+        }
+        description.configure(text=descriptions.get(mode, descriptions['Standard']))
+
+    self._archipelago_unlock_description_trace = self.mission_unlock_mode_var.trace_add(
+        'write', refresh_description,
+    )
+    refresh_description()
 
 
 def build_archipelago_tab(self, workspace_tabs):
@@ -11,7 +68,7 @@ def build_archipelago_tab(self, workspace_tabs):
     workspace_tabs.add(viewport, text='Archipelago')
     tab = viewport.content
     tab.columnconfigure(0, weight=1)
-    tab.rowconfigure(3, weight=1)
+    tab.rowconfigure(4, weight=1)
 
     connection = ttk.LabelFrame(tab, text='Connection', padding=(10, 10, 10, 10))
     connection.grid(row=0, column=0, sticky='ew')
@@ -105,12 +162,14 @@ def build_archipelago_tab(self, workspace_tabs):
     )
     self.archipelago_status_label.grid(row=0, column=0, sticky='w')
 
+    _build_grid_access_settings(self, tab)
+
     yaml_frame = ttk.LabelFrame(
         tab,
         text='Player YAML Export',
         padding=(10, 8, 10, 8),
     )
-    yaml_frame.grid(row=2, column=0, sticky='ew', pady=(0, 10))
+    yaml_frame.grid(row=3, column=0, sticky='ew', pady=(0, 10))
     yaml_frame.columnconfigure(0, weight=1)
     self.archipelago_save_yaml_button = ttk.Button(
         yaml_frame,
@@ -133,7 +192,7 @@ def build_archipelago_tab(self, workspace_tabs):
         text='Archipelago Activity',
         padding=(8, 8, 8, 8),
     )
-    history_frame.grid(row=3, column=0, sticky='nsew')
+    history_frame.grid(row=4, column=0, sticky='nsew')
     history_frame.columnconfigure(0, weight=1)
     history_frame.rowconfigure(0, weight=1)
     self.archipelago_history_text = scrolledtext.ScrolledText(
@@ -206,7 +265,7 @@ def build_archipelago_tab(self, workspace_tabs):
         style='Muted.TLabel',
         wraplength=820,
         justify='left',
-    ).grid(row=4, column=0, sticky='ew', pady=(8, 0))
+    ).grid(row=5, column=0, sticky='ew', pady=(8, 0))
     def layout(width):
         def wrap(widget):
             if isinstance(widget, ttk.Label) and int(widget.cget('wraplength') or 0):

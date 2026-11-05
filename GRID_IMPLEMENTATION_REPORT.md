@@ -124,3 +124,24 @@ manual gameplay verification is claimed.
 - `randomizer/ui/grid.py`
 - `randomizer/ui/layout.py`
 - `GRID_IMPLEMENTATION_REPORT.md` (this report)
+
+## Archipelago settings usability update
+
+- Moved AP-only Mission Unlock Mode into Grid Mission Access on the Archipelago
+  page, directly before Player YAML Export. Each mode has a short description
+  and the standard hover tooltip. The selector remains read-only while connected.
+- Removed the editable Auto/completion-threshold field and its UI state. The
+  launcher omits that override from exported YAML; the APWorld computes the
+  balanced requirement from the generated board. Existing rooms retain their
+  frozen rules. Legacy/expert explicit YAML overrides remain supported, but the
+  technical option is hidden from Options Creator.
+- Added tooltips to the shared Required Victory Missions field. It remains in
+  Settings because it applies to standalone Grid Mode too. Moved the adjacent
+  skirmish control below it in DTA and Reloaded to prevent overlapping rows.
+- Rebuilt and installed the matching launchers and APWorlds in all three games.
+  Source compilation, builds, release checksum validation, and diff checks
+  passed. No tests or gameplay verification were run.
+
+The settings update backed up the preceding release at:
+
+`/home/Games/C&C Mental Omega - Randomizer/RandomizerLauncherData/backups/ap-settings-before-install-20261105-180716`

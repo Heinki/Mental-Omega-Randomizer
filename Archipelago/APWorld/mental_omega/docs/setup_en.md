@@ -45,8 +45,9 @@ defaults to 1; Options Creator accepts `all` (numeric 0) for every generated
 mission. Mission Unlock Mode defaults to Standard. Key Currency delivers one
 shuffled Mission Key Supply worth the total board cost, allowing optional
 purchases without permanently exhausting the required-objective budget. Its
-protected bottom-right mission uses Minimum Completed Missions Before Final
-Unlock (`auto`, or -1, by default). Mission-Specific Keys opens only the mission
+protected bottom-right mission automatically gets a win requirement based on
+the board size. Choose the unlock mode on the Archipelago page; hover over it
+for an explanation. No separate currency setup is needed. Mission-Specific Keys opens only the mission
 matching the received code. All keys grant access only; local gameplay victories
 are still required. Install the matching updated launcher for slot-data version
 8 and regenerate the room to use these settings.

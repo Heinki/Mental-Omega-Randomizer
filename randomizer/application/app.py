@@ -390,7 +390,6 @@ class LauncherApp(
         grid_state = self.state.get('grid', {}) if isinstance(self.state.get('grid'), dict) else {}
         self.required_victory_missions_var = tk.StringVar(value=str(self.config.get('required_victory_missions', 1)))
         self.mission_unlock_mode_var = tk.StringVar(value=self.config.get('mission_unlock_mode', 'Standard'))
-        self.minimum_completed_missions_var = tk.StringVar(value=str(self.config.get('minimum_completed_missions_before_final_unlock', 'Auto')))
         self.grid_two_starts_var = tk.BooleanVar(
             value=bool(grid_state.get(
                 'two_start_positions',

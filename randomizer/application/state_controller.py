@@ -664,13 +664,9 @@ class StateController(GenerationSettings):
         normalize_required_count(required, max(1, mission_goal))
         self.config['required_victory_missions'] = 'All' if required.lower() == 'all' else int(required)
         self.config['mission_unlock_mode'] = self.mission_unlock_mode_var.get()
-        minimum = self.minimum_completed_missions_var.get().strip()
-        if minimum.lower() == 'auto':
-            self.config['minimum_completed_missions_before_final_unlock'] = 'Auto'
-        elif minimum.isdecimal():
-            self.config['minimum_completed_missions_before_final_unlock'] = int(minimum)
-        else:
-            raise ValueError('Minimum Completed Missions must be a nonnegative integer or Auto.')
+        # The launcher chooses the balanced completion gate for every new room.
+        # Existing connected rooms keep their frozen server-generated rules.
+        self.config.pop('minimum_completed_missions_before_final_unlock', None)
         self.config['grid_two_start_positions'] = bool(self.grid_two_starts_var.get())
         self.config['unlock_all_rewards_after_final_grid_mission'] = bool(
             self.unlock_all_grid_rewards_var.get()
@@ -905,7 +901,6 @@ class StateController(GenerationSettings):
         ))
         self.required_victory_missions_var.set(str(self.config.get('required_victory_missions', 1)))
         self.mission_unlock_mode_var.set(self.config.get('mission_unlock_mode', 'Standard'))
-        self.minimum_completed_missions_var.set(str(self.config.get('minimum_completed_missions_before_final_unlock', 'Auto')))
         self.grid_two_starts_var.set(bool(
             self.config.get('grid_two_start_positions', False)
         ))

@@ -10,7 +10,16 @@ independent progression modes retain their existing rules.
 | --- | --- | --- | --- |
 | Required Victory Missions | `1` | `required_victory_missions` | `required_victory_missions` (`all` / `0` means All) |
 | Archipelago Mission Unlock Mode | `Standard` | `mission_unlock_mode` | `mission_unlock_mode`: `standard`, `key_currency`, `mission_specific_keys` |
-| AP Currency Minimum Completed Missions | `Auto` | `minimum_completed_missions_before_final_unlock` | `minimum_completed_missions_before_final_unlock`: `auto` / `-1`, or integer |
+| Final-mission win requirement | Chosen automatically; no launcher control | Omitted; the APWorld chooses the balanced default | Advanced YAML override only; hidden in Options Creator |
+
+Mission Unlock Mode is on the **Archipelago** page in **Grid Mission Access**,
+with hover tooltips and an explanation that changes with the selected mode.
+Selecting Key Currency automatically configures prices and the bottom-right
+mission's win requirement; no separate currency or completion-gate setup is
+needed. The launcher omits the completion-gate override from exported YAML;
+the APWorld calculates it from the actual board. There is no editable `Auto` field.
+Required Victory Missions remains in Settings because it also applies to
+standalone Grid Mode, and its label and input both have explanatory tooltips.
 
 Launcher-exported YAML stores these fields inside `launcher_settings`.
 Options Creator exports the individual fields directly under the game's name.

@@ -531,13 +531,23 @@ def _build_right_panel(self, main_frame):
 
     self.grid_options_frame = ttk.Frame(options_row)
     self.grid_options_frame.grid(row=11, column=0, columnspan=2, sticky='ew', pady=(6, 0))
-    ttk.Label(self.grid_options_frame, text='Required Victory Missions (1..N or All):').grid(row=2, column=0, sticky='w', pady=(6, 0))
-    ttk.Entry(self.grid_options_frame, textvariable=self.required_victory_missions_var, width=12).grid(row=3, column=0, sticky='w')
-    ttk.Label(self.grid_options_frame, text='Archipelago only — Mission Unlock Mode:').grid(row=4, column=0, sticky='w', pady=(6, 0))
-    ttk.Combobox(self.grid_options_frame, textvariable=self.mission_unlock_mode_var,
-                 values=('Standard', 'Key Currency', 'Mission-Specific Keys'), state='readonly', width=24).grid(row=5, column=0, sticky='w')
-    ttk.Label(self.grid_options_frame, text='AP Currency — Minimum Completed Missions (Auto or 0..N-1):').grid(row=6, column=0, sticky='w', pady=(6, 0))
-    ttk.Entry(self.grid_options_frame, textvariable=self.minimum_completed_missions_var, width=12).grid(row=7, column=0, sticky='w')
+    self.required_victory_missions_label = ttk.Label(
+        self.grid_options_frame, text='Required Victory Missions:',
+    )
+    self.required_victory_missions_label.grid(row=2, column=0, sticky='w', pady=(6, 0))
+    self.required_victory_missions_entry = ttk.Entry(
+        self.grid_options_frame, textvariable=self.required_victory_missions_var, width=12,
+    )
+    self.required_victory_missions_entry.grid(row=3, column=0, sticky='w')
+    victory_help = (
+        'Enter 1 to keep the bottom-right mission as the victory objective. '
+        'Enter a larger number to require that many randomly chosen missions, '
+        'or All to require every mission on the board. You must win every marked '
+        'mission, not just any missions with the same total. '
+        'Applies to standalone and Archipelago Grid Mode.'
+    )
+    WidgetTooltip(self.required_victory_missions_label, victory_help)
+    WidgetTooltip(self.required_victory_missions_entry, victory_help)
     self.grid_two_starts_check = ttk.Checkbutton(
         self.grid_options_frame,
         text='Start with two available missions',
