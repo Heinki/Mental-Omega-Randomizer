@@ -16,6 +16,7 @@ from ._builder_dependencies import (
 from .shop import _tree
 from .coop import build_coop_controls
 from .viewport import ScrollableViewport
+from .showcase import RosterShowcase
 
 
 def _build_window_shell(self):
@@ -731,36 +732,19 @@ def _build_right_panel(self, main_frame):
         style='Muted.TLabel',
         wraplength=720,
     ).grid(row=13, column=0, columnspan=2, sticky='ew', pady=(2, 6))
-    shop_loadout_search = ttk.Frame(shop_settings_frame)
-    shop_loadout_search.grid(
-        row=14, column=0, columnspan=2, sticky='ew', pady=(0, 6)
-    )
-    ttk.Label(shop_loadout_search, text='Search permanent units and powers:').pack(
-        side='left'
-    )
-    ttk.Entry(
-        shop_loadout_search, textvariable=self.shop_setup_search_var
-    ).pack(side='left', fill='x', expand=True, padx=(6, 0))
     shop_loadout_frame = ttk.Frame(shop_settings_frame)
     shop_loadout_frame.grid(
         row=15, column=0, columnspan=2, sticky='nsew'
     )
-    self.shop_loadout_select_tree = _tree(
-        shop_loadout_frame,
-        ('selected', 'name', 'tier', 'source'),
-        (
-            ('selected', 'Next Run', 90),
-            ('name', 'Starting Unit or Power', 330),
-            ('tier', 'Tier / Type', 80),
-            ('source', 'Source', 130),
-        ),
-        selectmode='none',
-        height=5,
-        cameos=True,
+    shop_loadout_frame.columnconfigure(0, weight=1)
+    self.shop_roster_showcase = RosterShowcase(
+        shop_loadout_frame, command=self.toggle_shop_setup_reward,
+        refresh=self._refresh_shop_setup, search_var=self.shop_setup_search_var,
+        choices=self.advanced_pool_group_choices('units')
+        + [('category', 'powers', 'Powers')],
+        palette=self.ui_palette(),
     )
-    self.shop_loadout_select_tree.bind(
-        '<ButtonRelease-1>', self.toggle_shop_setup_reward
-    )
+    self.shop_roster_showcase.grid(row=0, column=0, columnspan=2, sticky='nsew')
 
     self.shop_permanent_units_without_buffs_check = ttk.Checkbutton(
         shop_loadout_frame,

@@ -6,6 +6,7 @@ from .general_settings import build_general_settings
 from .coop import build_coop_controls
 from .negative_buffs import build_negative_buffs_tab
 from .viewport import ScrollableViewport
+from .showcase import build_showcase_search, build_showcase_selectors
 
 from ._builder_dependencies import (
     ARSENAL_FACTIONS,
@@ -120,84 +121,6 @@ def power_buff_setting_text(definition):
     )
 
 
-def _append_advanced_common_actions(self, parent, pool_key):
-    ttk.Separator(parent, orient='vertical').pack(
-        side='left', fill='y', padx=(2, 6)
-    )
-    ttk.Label(parent, text='All:').pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Include',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_all(key, True),
-    ).pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Exclude',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_all(key, False),
-    ).pack(side='left')
-    ttk.Separator(parent, orient='vertical').pack(
-        side='left', fill='y', padx=(6, 6)
-    )
-    ttk.Label(parent, text='Special:').pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Include',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_group(
-            key, 'special', 'special', True
-        ),
-    ).pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Exclude',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_group(
-            key, 'special', 'special', False
-        ),
-    ).pack(side='left')
-
-
-def _append_advanced_selected_actions(
-    self,
-    parent,
-    pool_key,
-    faction_var,
-    category_var,
-):
-    ttk.Label(parent, text='Selected:').pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Include',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_groups(
-            key,
-            faction_var.get(),
-            category_var.get(),
-            True,
-        ),
-    ).pack(side='left', padx=(0, 4))
-    ttk.Button(
-        parent,
-        text='Exclude',
-        width=7,
-        padding=(6, 3),
-        command=lambda key=pool_key: self.set_advanced_pool_groups(
-            key,
-            faction_var.get(),
-            category_var.get(),
-            False,
-        ),
-    ).pack(side='left')
-    _append_advanced_common_actions(self, parent, pool_key)
-
-
 def _build_advanced_tab(self, workspace_tabs):
     viewport = ScrollableViewport(workspace_tabs, padding=8)
     self.advanced_tab = viewport
@@ -286,100 +209,20 @@ def _build_advanced_tab(self, workspace_tabs):
                 ),
             ).pack(side='left')
         else:
-            choices = self.advanced_pool_group_choices(pool_key)
-            grouped_choices = {
-                group_type: [
-                    (value, label)
-                    for choice_type, value, label in choices
-                    if choice_type == group_type
-                ]
-                for group_type in ('faction', 'category')
-            }
-            group_vars = {}
+            group_vars, _buttons = build_showcase_selectors(
+                controls, self.advanced_pool_group_choices(pool_key),
+                selected=lambda faction, category, include, key=pool_key: (
+                    self.set_advanced_pool_groups(key, faction, category, include)
+                ),
+                all_items=lambda include, key=pool_key: self.set_advanced_pool_all(key, include),
+                special=lambda include, key=pool_key: self.set_advanced_pool_group(
+                    key, 'special', 'special', include
+                ),
+            )
             self.advanced_pool_group_vars[pool_key] = group_vars
-            selector_frame = ttk.Frame(controls)
-            selector_frame.grid(row=0, column=0, sticky='w')
-            ttk.Label(selector_frame, text='Faction:').grid(
-                row=0, column=0, sticky='w', padx=(0, 4)
-            )
-            faction_choices = grouped_choices['faction']
-            faction_var = tk.StringVar(
-                value=faction_choices[0][0] if faction_choices else ''
-            )
-            group_vars['faction'] = faction_var
-            for column, (value, label) in enumerate(
-                faction_choices, start=1
-            ):
-                ttk.Radiobutton(
-                    selector_frame,
-                    text=label,
-                    value=value,
-                    variable=faction_var,
-                    padding=(0, 0),
-                ).grid(
-                    row=0,
-                    column=column,
-                    sticky='w',
-                    padx=(0, 2),
-                )
-            ttk.Label(selector_frame, text='Category:').grid(
-                row=1, column=0, sticky='w', padx=(0, 4), pady=(6, 0)
-            )
-            category_choices = [
-                *grouped_choices['category'],
-                ('all', 'All'),
-            ]
-            category_var = tk.StringVar(
-                value=category_choices[0][0] if category_choices else ''
-            )
-            group_vars['category'] = category_var
-            for column, (value, label) in enumerate(
-                category_choices, start=1
-            ):
-                ttk.Radiobutton(
-                    selector_frame,
-                    text=label,
-                    value=value,
-                    variable=category_var,
-                    padding=(0, 0),
-                ).grid(
-                    row=1,
-                    column=column,
-                    sticky='w',
-                    padx=(0, 2),
-                    pady=(6, 0),
-                )
-            ttk.Separator(controls, orient='vertical').grid(
-                row=0, column=1, sticky='ns', padx=(6, 6)
-            )
-            action_row = ttk.Frame(controls)
-            action_row.grid(row=0, column=2, sticky='n')
-            _append_advanced_selected_actions(
-                self,
-                action_row,
-                pool_key,
-                faction_var,
-                category_var,
-            )
-        search_row = ttk.Frame(controls)
-        search_row.grid(
-            row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
-        )
-        search_row.columnconfigure(1, weight=1)
-        ttk.Label(search_row, text='Search:').grid(
-            row=0, column=0, sticky='w', padx=(0, 6)
-        )
         search_var = tk.StringVar(value='')
         self.advanced_pool_search_vars[pool_key] = search_var
-        ttk.Entry(search_row, textvariable=search_var).grid(
-            row=0, column=1, sticky='ew', padx=(0, 4)
-        )
-        ttk.Button(
-            search_row,
-            text='Clear',
-            width=8,
-            command=lambda target=search_var: target.set(''),
-        ).grid(row=0, column=2)
+        build_showcase_search(controls, search_var)
         search_var.trace_add(
             'write',
             lambda *_args, key=pool_key: (

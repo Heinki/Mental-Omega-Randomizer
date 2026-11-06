@@ -34,6 +34,9 @@ from ._dependencies import (
     unit_display_label,
 )
 
+from randomizer.ui.showcase import draw_showcase_card, scale_showcase_photo
+
+
 class AdvancedSettingsController:
 
     ADVANCED_VIEW_KEYS = (
@@ -590,12 +593,7 @@ class AdvancedSettingsController:
             return self.advanced_pool_images[cache_key]
         try:
             photo = tk.PhotoImage(file=str(path))
-            if photo.width() <= 70 and photo.height() <= 55:
-                photo = photo.zoom(4, 4).subsample(3, 3)
-            else:
-                factor = max(1, (photo.width() + 87) // 88, (photo.height() + 55) // 56)
-                if factor > 1:
-                    photo = photo.subsample(factor, factor)
+            photo = scale_showcase_photo(photo)
         except (OSError, tk.TclError):
             return None
         self.advanced_pool_images[cache_key] = photo
@@ -608,47 +606,9 @@ class AdvancedSettingsController:
             'powers': self.excluded_superweapon_ids,
         }
         excluded = entry['id'] in excluded_sets[pool_key]
-        faction = entry.get('faction', '')
-        base_color = FACTION_TILE_COLORS.get(faction, '#315b82')
-        border = '#777777' if excluded else '#4d92d8'
-        card = tk.Canvas(
-            parent,
-            width=102,
-            height=90,
-            highlightthickness=2,
-            highlightbackground=border,
-            highlightcolor=border,
-            background=base_color,
-            cursor='hand2',
-        )
-        card.grid(row=row, column=column, padx=4, pady=4, sticky='nw')
-        if photo is not None:
-            card.create_image(51, 31, image=photo, anchor='center')
-        else:
-            card.create_text(
-                51, 31, text=faction or '?', fill='#ffffff',
-                font=('Segoe UI', 10, 'bold'), width=94, justify='center',
-            )
-        card.create_rectangle(0, 62, 102, 90, fill='#151a20', outline='')
-        card.create_text(
-            51, 76,
-            text=entry['label'],
-            fill='#aeb4bb' if excluded else '#ffffff',
-            font=('Segoe UI', 8, 'bold'),
-            width=96,
-            justify='center',
-        )
-        if excluded:
-            card.create_rectangle(
-                0, 0, 102, 90, fill='#777777', outline='', stipple='gray50'
-            )
-            card.create_text(
-                51, 44, text='EXCLUDED', fill='#ffffff',
-                font=('Segoe UI', 8, 'bold'),
-            )
-        card.bind(
-            '<Button-1>',
-            lambda _event, key=pool_key, item_id=entry['id']: (
+        card = draw_showcase_card(
+            parent, row, column, entry, photo=photo, excluded=excluded,
+            command=lambda key=pool_key, item_id=entry['id']: (
                 self.toggle_advanced_pool_entry(key, item_id)
             ),
         )

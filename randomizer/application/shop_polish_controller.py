@@ -242,7 +242,6 @@ class ShopPolishController(ShopArchipelagoController):
             'shop_upgrade_tree',
             'shop_permanent_buff_tree',
             'shop_permanent_power_buff_tree',
-            'shop_loadout_select_tree',
             'shop_loadout_upgrade_tree',
         ):
             tree = getattr(self, tree_name, None)
