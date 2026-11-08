@@ -656,7 +656,9 @@ class AdvancedSettingsController:
                 or entry.get('faction') == selected_campaign
             )
 
-        campaign_missions = self.mission_pool_candidates(apply_exclusions=False)
+        campaign_missions = (self._shop_campaign_missions(CAMPAIGN_FILTERS[0])
+                             if self.shop_mode_selected() else
+                             self.mission_pool_candidates(apply_exclusions=False))
         visible_missions = filter_missions_by_build_settings(
             campaign_missions,
             include_true_no_build=self.include_no_build_missions_var.get(),
@@ -851,12 +853,12 @@ class AdvancedSettingsController:
         included_powers = len(visible_power_ids - self.excluded_superweapon_ids)
         self.advanced_pool_status_label.configure(
             text=(
-                f'{ARSENAL_MODE if arsenal_mode else selected_campaign}: '
+                f'{"Regular Shop: all campaigns" if self.shop_mode_selected() else ARSENAL_MODE if arsenal_mode else selected_campaign}: '
                 f'missions {included_missions}/{len(visible_missions)}, '
                 f'units/buildings {included_units}/{len(visible_unit_ids)}, '
                 f'superpowers {included_powers}/{len(visible_power_ids)} included'
                 + (
-                    ' | Warning: Shop Mode requires at least 10 missions.'
+                    ' | Shop Mode requires at least 10 missions (no maximum of 10).'
                     if self.shop_mode_selected() and included_missions < 10
                     else ' | Warning: exactly 10 missions selected; repeats possible.'
                     if self.shop_mode_selected() and included_missions == 10
@@ -910,10 +912,13 @@ class AdvancedSettingsController:
                         mission.get('side', '')
                     ),
                     'mission_category': mission.get('mission_category'),
+                    'shop_mission': self.shop_mode_selected(),
                     'special': bool(mission.get('operation')),
                 }
                 for mission in filter_missions_by_build_settings(
-                    self.mission_pool_candidates(apply_exclusions=False),
+                    (self._shop_campaign_missions(CAMPAIGN_FILTERS[0])
+                     if self.shop_mode_selected() else
+                     self.mission_pool_candidates(apply_exclusions=False)),
                     include_true_no_build=self.include_no_build_missions_var.get(),
                     include_no_build_production=(
                         self.include_no_build_production_missions_var.get()
@@ -1002,6 +1007,8 @@ class AdvancedSettingsController:
 
     def advanced_pool_entry_is_visible(self, entry):
         """Match the campaign/Arsenal scope already used by Advanced cards."""
+        if entry.get('shop_mission'):
+            return True
         if entry.get('mission_category') == 'challenge':
             return self.selected_mission_category() == 'challenge' or self.optional_challenges_enabled()
         selected_campaign = self.campaign_var.get()

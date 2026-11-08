@@ -11,16 +11,49 @@ from randomizer.ui.config import CAMPAIGN_FILTERS
 
 
 class ProgressionBattlesController:
+    def _shop_mission(self, code):
+        from randomizer.skirmish_factions import selected_mission
+        return selected_mission(super()._shop_mission(code),
+                                self.config.get('skirmish_factions', {}))
+
+    def selected_mission(self):
+        from randomizer.skirmish_factions import selected_mission
+        return selected_mission(super().selected_mission(),
+                                self.config.get('skirmish_factions', {}))
+
+    def refresh_progress_view(self):
+        result = super().refresh_progress_view()
+        picker = getattr(self, 'skirmish_faction_picker', None)
+        if picker is not None:
+            process = getattr(self, 'active_game_process', None)
+            picker.set_mission(None if self.shop_mode_selected() else self.selected_mission(), editable=not (
+                getattr(self, '_skirmish_busy', False)
+                or (process is not None and process.poll() is None)))
+        return result
+
+    def _refresh_shop_missions(self):
+        from randomizer.shop.modifiers import hidden_offer_codes
+        result = super()._refresh_shop_missions()
+        run = self.shop_run
+        hidden = set(hidden_offer_codes(run)) if run is not None else set()
+        for card in self.shop_mission_cards:
+            code = card.get('code')
+            concealed = code in hidden and not (run.mission_committed and run.selected_mission_code == code)
+            mission = self._shop_mission(code) if code and not concealed else None
+            card['faction_picker'].set_mission(
+                mission, editable=card['launch_button'].instate(['!disabled']))
+        return result
+
     def build_classic_shop_controls(self, parent):
         campaigns = [name for name in CAMPAIGN_FILTERS if name != 'All Campaigns']
         saved = self.config.get('classic_shop_campaign')
         self.classic_shop_var = tk.BooleanVar(self, value=bool(self.config.get('classic_shop', False)))
         self.classic_shop_campaign_var = tk.StringVar(
             self, value=saved if saved in campaigns else campaigns[0])
-        frame = ttk.LabelFrame(parent, text='Classic Shop Mode', padding=8)
+        frame = ttk.LabelFrame(parent, text='Shopmode Campaign Mode', padding=8)
         frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(0, 12))
         frame.columnconfigure(1, weight=1)
-        ttk.Checkbutton(frame, text='Classic Shop Mode (next run)',
+        ttk.Checkbutton(frame, text='Play one campaign in story order (next run)',
                         variable=self.classic_shop_var,
                         command=self.save_classic_shop_options).grid(
                             row=0, column=0, columnspan=2, sticky='w')
@@ -37,6 +70,8 @@ class ProgressionBattlesController:
             'Ore, Gems, purchases, buffs, modifiers, victory rewards and defeat rules stay the same. '
             'Purchases and buffs carry between missions under the normal Shop rules. '
             'Optional 1v1 Skirmishes are included between story missions when enabled. '
+            'Campaign selection applies only while this campaign mode is enabled. '
+            'Advanced mission exclusions and build filters do not remove story missions. '
             'Applies to the next run; an active run keeps its saved mission pool.'
         ), style='Muted.TLabel', justify='left', wraplength=900).grid(
             row=2, column=0, columnspan=2, sticky='ew')
@@ -59,6 +94,8 @@ class ProgressionBattlesController:
     def refresh_classic_shop_summary(self):
         if not hasattr(self, 'classic_shop_length_var'):
             return
+        self.classic_shop_campaign_combo.configure(
+            state='readonly' if self.classic_shop_var.get() else 'disabled')
         count = self.next_shop_run_length()
         if self.classic_shop_var.get():
             total = f' {count} total battles.' if count else ''
@@ -68,7 +105,10 @@ class ProgressionBattlesController:
         else:
             self.classic_shop_length_var.set(
                 f'Normal Shop run: {self.shop_config.run_length} stages. '
-                'Enable Classic Shop Mode to play the entire selected campaign without a stage cap.')
+                'Missions are randomized across campaigns. Campaign selection and the Shop '
+                'faction pool do not restrict these mission choices. Use Advanced to customize '
+                'the pool (at least 10 missions; no maximum of 10). Enable Shopmode Campaign '
+                'Mode for the entire selected campaign in story order.')
         if getattr(self, 'shop_run', None) is None and hasattr(self, 'shop_stage_var'):
             self.shop_stage_var.set(f'Stage — / {count}' if count else 'Campaign: ALL missions')
 
@@ -183,7 +223,8 @@ class ProgressionBattlesController:
             checkbox,
             'Adds installed skirmish maps to the next Shop mission pool or Grid nodes. '
             'Each battle is one human versus one AI and uses the run’s unlocked units, '
-            'powers, purchased buffs and normal reward rules. Available in standalone '
+            'powers, purchased buffs and normal reward rules. Choose your faction in the '
+            'mission card or Details before each launch. Available in standalone '
             'Shop/Grid runs. Existing runs keep their generated mission pool.')
         name = 'shop_include_skirmishes_check' if shop else 'include_skirmishes_check'
         setattr(self, name, checkbox)
@@ -295,6 +336,8 @@ class ProgressionBattlesController:
         process = getattr(self, 'active_game_process', None)
         if process is not None and process.poll() is None:
             return
+        from randomizer.skirmish_factions import selected_mission
+        mission = selected_mission(mission, self.config.get('skirmish_factions', {}))
         code, country = mission['code'], mission['skirmish_country']
         definition = deepcopy(mission['skirmish_map'])
         definition['path'] = str(GAME_ROOT / definition['path'])
@@ -307,6 +350,15 @@ class ProgressionBattlesController:
         if not shop and (not state or code not in state.get('mission_order', ())):
             messagebox.showwarning('Skirmish Locked', 'Generate a Shop/Grid run containing this Skirmish first.', parent=self)
             return
+        if shop:
+            from randomizer.shop.modifiers import hidden_offer_codes
+            if code in hidden_offer_codes(run):
+                from randomizer.ui.skirmish import choose_skirmish_faction
+                mission = choose_skirmish_faction(self, mission)
+                if mission is None:
+                    self.finish_progression_launch_context()
+                    return
+                country = mission['skirmish_country']
         seed = str(self.active_launch_seed())
         rewards = deepcopy(self.launch_rewards_for_mission(code))
         settings = deepcopy(self.active_reward_settings())

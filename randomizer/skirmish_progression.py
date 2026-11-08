@@ -15,6 +15,8 @@ def mission_catalogue(root):
     countries = playable_countries()
     for relative, definition in discover_maps(root).items():
         for label, country in countries.items():
+            if country not in definition['countries']:
+                continue
             if GAME == 'dta':
                 faction = country
             elif GAME == 'reloaded':

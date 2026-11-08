@@ -2,6 +2,7 @@
 
 from ._builder_dependencies import TreeTooltip, WidgetTooltip, tk, ttk
 from .viewport import ScrollableViewport
+from .skirmish import SkirmishFactionPicker
 
 
 def _tree(
@@ -325,9 +326,12 @@ def build_shop_tab(self, workspace_tabs):
             state='disabled',
             style='Launch.TButton',
         )
-        launch_button.grid(row=1, column=0, sticky='ew')
+        faction_picker = SkirmishFactionPicker(card, self)
+        faction_picker.grid(row=1, column=0, sticky='ew', pady=(5, 5))
+        faction_picker.grid_remove()
+        launch_button.grid(row=2, column=0, sticky='ew')
         mission_actions = ttk.Frame(card)
-        mission_actions.grid(row=2, column=0, sticky='ew', pady=(5, 0))
+        mission_actions.grid(row=3, column=0, sticky='ew', pady=(5, 0))
         mission_actions.columnconfigure(0, weight=1)
         mission_actions.columnconfigure(1, weight=1)
         reroll_button = ttk.Button(
@@ -363,6 +367,7 @@ def build_shop_tab(self, workspace_tabs):
             'enemy_buffs_label': enemy_buffs_label,
             'detail_canvas': detail_canvas,
             'launch_button': launch_button,
+            'faction_picker': faction_picker,
             'reroll_button': reroll_button,
             'ease_button': ease_button,
             'tooltip': tooltip,

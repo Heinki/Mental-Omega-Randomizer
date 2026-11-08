@@ -53,8 +53,12 @@ def discover_maps(root):
             starts = [i for i in range(8) if str(i) in rows.get('Waypoints', {})]
             if len(starts) < 2 or starts != list(range(len(starts))):
                 continue
+            from randomizer.skirmish_factions import map_countries
+            countries = tuple(map_countries(root, {'path': str(source.resolve())}, rows=rows).values())
+            if not countries:
+                continue
             label = str(source.relative_to(root))
-            result[label] = {'path': str(source), 'name': rows.get('Basic', {}).get('Name', source.stem), 'starts': starts}
+            result[label] = {'path': str(source), 'name': rows.get('Basic', {}).get('Name', source.stem), 'starts': starts, 'countries': countries}
     return result
 
 
@@ -71,6 +75,10 @@ def prepare_game(root, definition, rewards, settings, *, country, color, opponen
         raise ValueError('Skirmish map must belong to this installation.')
     if country not in playable_countries().values() or color not in multiplayer_colors(root).values():
         raise ValueError('Choose an installed faction and color.')
+    from randomizer.skirmish_factions import map_countries
+    available = tuple(map_countries(root, definition).values())
+    if country not in available:
+        raise ValueError('Selected faction is not supported by this Skirmish map.')
     if type(opponents) is not int or opponents != 1:
         raise ValueError('Progression Skirmish requires exactly one enemy AI.')
     if len(definition['starts']) < 2:
@@ -112,7 +120,7 @@ def prepare_game(root, definition, rewards, settings, *, country, color, opponen
     spawn = {'Settings': values, 'SpawnLocations': {'Multi1': '0'}, 'HouseCountries': {}, 'HouseColors': {}, 'HouseHandicaps': {}}
     for index in range(opponents):
         house = f'Multi{index + 2}'
-        enemy = rng.choice(native_countries)
+        enemy = rng.choice(available)
         spawn['SpawnLocations'][house] = str(index + 1)
         indices = {value: index for index, value in enumerate(rows.get('Countries', {}).values())}
         spawn['HouseCountries'][house] = str(indices[enemy] if GAME != 'dta' else native_countries.index(enemy))
