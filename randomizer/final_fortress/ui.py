@@ -229,7 +229,6 @@ def build_final_fortress_tab(app, notebook):
     app.final_fortress_setup_combos = []
     setup_labels = []
     for row, (label, variable, values, handler) in enumerate((
-        ('Game Mode', app.game_mode_var, app.game_mode_choices, app.on_game_mode_changed),
         ('Map', app.final_fortress_map_var, app.final_fortress_map_choices, app.on_final_fortress_map_changed),
         ('Player faction', app.final_fortress_country_var,
          tuple(app.final_fortress_country_choices), app.on_final_fortress_country_changed),
@@ -252,7 +251,7 @@ def build_final_fortress_tab(app, notebook):
                     setup, text='Mental AI Boost (enemy and allied AI)',
                     variable=app.final_fortress_mental_ai_boost_var,
                     command=app.on_final_fortress_mental_ai_boost_changed)
-    app.final_fortress_mental_ai_boost_check.grid(row=5, column=1, sticky='w', pady=5)
+    app.final_fortress_mental_ai_boost_check.grid(row=4, column=1, sticky='w', pady=5)
 
     launch = ttk.Frame(content)
     launch.grid(row=2, column=0, sticky='ew', pady=(8, 0))

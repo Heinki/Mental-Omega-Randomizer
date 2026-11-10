@@ -67,10 +67,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
                   or bool(getattr(self, '_coop_busy', False))
                   or active_game or self.shop_launch_active()
                   or self.gameplay_settings_locked())
-        for name in ('progression_mode_combo', 'shop_progression_mode_combo'):
-            widget = getattr(self, name, None)
-            if widget is not None:
-                widget.configure(state='disabled' if locked else 'readonly')
+        self.refresh_game_mode_navigation()
         for widget in (self.coop_mode_check, self.shop_coop_mode_check):
             widget.configure(state='disabled' if locked or not available else 'normal')
         for widget in (self.coop_player_count_combo, self.shop_coop_player_count_combo):

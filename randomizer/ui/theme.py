@@ -307,7 +307,8 @@ def apply_color_mode(self):
         if self.enemy_buffs_view_visible():
             self.after_idle(self.refresh_enemy_buffs_view)
     for canvas_name in (
-        'settings_canvas', 'grid_canvas', 'shop_canvas', 'enemy_buffs_canvas'
+        'settings_canvas', 'grid_canvas', 'shop_canvas', 'enemy_buffs_canvas',
+        'game_mode_selection_canvas',
     ):
         canvas = getattr(self, canvas_name, None)
         if canvas is not None:
@@ -338,6 +339,7 @@ def apply_color_mode(self):
                 selectbackground=selected,
                 selectforeground=selected_foreground,
             )
+    self.refresh_rewards_text_colors()
     if hasattr(self, 'unlocks_text'):
         self.unlocks_text.tag_configure(
             'search_match',

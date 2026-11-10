@@ -483,7 +483,7 @@ class UnlockViewController:
         detail_tag_colors = {}
 
         def append_styled_line(parts):
-            line_number = len(lines) + 1
+            line_index = len(lines)
             text = ''
             for value, tag in parts:
                 value = str(value)
@@ -491,8 +491,9 @@ class UnlockViewController:
                 text += value
                 if tag and value:
                     detail_spans.append((
-                        f'{line_number}.{start}',
-                        f'{line_number}.{len(text)}',
+                        line_index,
+                        start,
+                        len(text),
                         tag,
                     ))
             lines.append(text)
@@ -753,19 +754,31 @@ class UnlockViewController:
         elif not lines:
             lines.append('No rewards earned yet.')
 
+        # Grid summaries and server text can contain several physical lines.
+        # Resolve spans after assembling every block so headers never shift tags.
+        detail_line_numbers = []
+        line_number = 1
+        for line in lines:
+            detail_line_numbers.append(line_number)
+            line_number += line.count('\n') + 1
+
         self.set_rewards_text(
             '\n'.join(lines),
-            spans=detail_spans,
+            spans=(
+                (f'{detail_line_numbers[line]}.0+{start}c',
+                 f'{detail_line_numbers[line]}.0+{end}c', tag)
+                for line, start, end, tag in detail_spans
+            ),
             tag_colors=detail_tag_colors,
         )
         self._details_view_dirty = False
         if refresh_unlocks:
             self.refresh_progress_side_views()
 
-    def set_rewards_text(self, text, spans=(), tag_colors=None):
-        self.rewards_text.configure(state='normal')
-        self.rewards_text.delete('1.0', 'end')
-        self.rewards_text.insert('end', text)
+    def refresh_rewards_text_colors(self):
+        """Refresh semantic tags even when Details is hidden during a theme change."""
+        if not hasattr(self, 'rewards_text'):
+            return
         dark = bool(self.dark_mode_var.get())
         self.rewards_text.tag_configure(
             'detail_reward_access',
@@ -779,15 +792,27 @@ class UnlockViewController:
             'detail_reward_superweapon',
             foreground='#c3afff' if dark else '#6548b8',
         )
+        self.rewards_text.tag_configure(
+            'enemy_reward',
+            foreground='#ff7b72' if dark else '#b00020',
+        )
+        for tag in self.rewards_text.tag_names():
+            if tag.startswith('detail_player_'):
+                slot = int(tag.removeprefix('detail_player_'))
+                self.rewards_text.tag_configure(
+                    tag, foreground=self._archipelago_player_color(slot),
+                )
+
+    def set_rewards_text(self, text, spans=(), tag_colors=None):
+        self.rewards_text.configure(state='normal')
+        self.rewards_text.delete('1.0', 'end')
+        self.rewards_text.insert('end', text)
+        self.refresh_rewards_text_colors()
         for tag, color in (tag_colors or {}).items():
             self.rewards_text.tag_configure(tag, foreground=color)
         for start, end, tag in spans:
             if tag:
                 self.rewards_text.tag_add(tag, start, end)
-        self.rewards_text.tag_configure(
-            'enemy_reward',
-            foreground='#ff7b72' if dark else '#b00020',
-        )
         start = '1.0'
         while True:
             match = self.rewards_text.search(

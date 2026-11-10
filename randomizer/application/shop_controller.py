@@ -368,9 +368,7 @@ class ShopController(ShopPolishController):
             self.shop_run is not None
             and self.shop_run.status is RunStatus.ACTIVE
         )
-        self.shop_progression_mode_combo.configure(
-            state='disabled' if locked else 'readonly'
-        )
+        self.refresh_game_mode_navigation()
         self.shop_seed_entry.configure(
             state='disabled' if locked or active else 'normal'
         )

@@ -19,7 +19,10 @@ from ._dependencies import (
     traceback,
 )
 
-class WindowController:
+from .game_mode_navigation import GameModeNavigationController
+
+
+class WindowController(GameModeNavigationController):
 
     def close_launcher(self):
         """Keep cleanup polling alive until an active game safely exits."""
@@ -48,6 +51,7 @@ class WindowController:
 
     def create_widgets(self):
         build_launcher_widgets(self)
+        self.initialize_game_mode_navigation()
         self.refresh_coop_controls()
 
     def game_speed_controls_locked(self):
@@ -629,7 +633,7 @@ class WindowController:
             'assistance_frame',
             'appearance_frame',
         )
-        required = (*normal_names, 'shop_settings_frame', 'fortress_mode_settings_frame')
+        required = (*normal_names, 'shop_settings_frame')
         if not all(hasattr(self, name) for name in required):
             return
         fortress_mode = self.final_fortress_mode_selected()
@@ -655,7 +659,7 @@ class WindowController:
         normal_intro = self.__dict__.setdefault(
             '_campaign_settings_intro_text', self.settings_intro_label.cget('text'))
         self.settings_intro_label.configure(text=(
-            'Choose a game mode, configure Final Fortress co-op and launcher appearance. '
+            'Configure Final Fortress co-op and launcher appearance. '
             'Defense setup and permanent perks are in the Final Fortress tab.'
             if fortress_mode else normal_intro))
         self.appearance_frame.configure(
@@ -670,13 +674,10 @@ class WindowController:
             self.settings_intro_label.grid(
                 row=0, column=0, columnspan=2 if wide else 1,
                 sticky='ew', pady=(0, 8))
-            self.fortress_mode_settings_frame.grid(
-                row=1, column=0, columnspan=2 if wide else 1,
-                sticky='ew', pady=(0, 8))
             self.mission_appearance_column.grid(
-                row=2, column=0, sticky='new', padx=(0, 4) if wide else 0)
+                row=1, column=0, sticky='new', padx=(0, 4) if wide else 0)
             self.appearance_frame.grid(
-                row=2 if wide else 3, column=1 if wide else 0,
+                row=1 if wide else 2, column=1 if wide else 0,
                 sticky='new', padx=(4, 0) if wide else 0, pady=(8, 0))
             self.on_settings_content_configure()
             return

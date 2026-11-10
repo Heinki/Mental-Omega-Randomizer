@@ -15,7 +15,6 @@ from randomizer.coop.prototype import build_manifest
 from randomizer.core.game_shutdown import GameShutdownWatch
 from randomizer.core.paths import DEBUG_LOG, GAME_ROOT
 from randomizer.rewards.arsenal import ARSENAL_MODE
-from randomizer.ui.config import PROGRESSION_MODES
 from randomizer.missions.pool import is_challenge, select_mission_pool
 
 
@@ -417,12 +416,7 @@ class ChallengeController:
                     widget.grid() if self.challenges_available() and not self.coop_mode_var.get() else widget.grid_remove()
         if challenge and self.progression_mode_var.get() == 'Shop Mode':
             self.progression_mode_var.set('Grid Mode')
-        modes = tuple(mode for mode in PROGRESSION_MODES
-                      if not challenge or mode != 'Shop Mode')
-        for name in ('progression_mode_combo', 'shop_progression_mode_combo'):
-            widget = getattr(self, name, None)
-            if widget is not None:
-                widget.configure(values=modes)
+        self.refresh_game_mode_navigation()
         for name in ('archipelago_connect_button', 'archipelago_save_yaml_button'):
             widget = getattr(self, name, None)
             if widget is not None and not self.gameplay_settings_locked():
