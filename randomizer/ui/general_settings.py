@@ -73,5 +73,6 @@ def build_general_settings(self, settings_frame):
     WidgetTooltip(
         self.hide_locked_grid_missions_check,
         'Shows locked grid nodes as ? tiles. Completing a visible mission reveals '
-        'newly unlocked mission names and faction colors.',
+        'newly unlocked mission names and faction colors. Archipelago key modes '
+        'always show mission names, costs, and access requirements.',
     )

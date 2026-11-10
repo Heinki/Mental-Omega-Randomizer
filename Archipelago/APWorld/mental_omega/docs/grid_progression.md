@@ -54,6 +54,11 @@ The AP-only controls prepare exported YAML; they do not activate keys locally.
 
 **Standard** preserves the Grid's existing start nodes and adjacency rules.
 
+Both key modes always show every mission name, even when **Hide locked Grid
+Mode mission names** is enabled. Locked missions remain grey and cannot be
+launched. Select one to inspect its required key or currency price; currency
+missions can be purchased from anywhere on the board.
+
 **Mission-Specific Keys** gives every non-start mission its own progression
 item, named `<stable mission code> Mission Key`. Only the matching mission
 opens on receipt. Starting missions need no item. Keys are not spent, and

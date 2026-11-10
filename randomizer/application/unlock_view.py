@@ -439,6 +439,7 @@ class UnlockViewController:
             self.cameo_retry_count = 0
 
     def refresh_progress_view(self, *, refresh_unlocks=True):
+        self.refresh_grid_access_controls()
         if not self.details_view_visible():
             self._details_view_dirty = True
             if refresh_unlocks:
@@ -573,7 +574,7 @@ class UnlockViewController:
                 lines.append(self.grid_mission_requirements_text(code))
                 lines.append(self.grid_status_text())
                 if unlocks:
-                    if self.hide_locked_grid_missions_var.get():
+                    if self.grid_mission_names_hidden():
                         lines.append(
                             f'Completing this node reveals {len(unlocks)} neighboring mission(s).'
                         )

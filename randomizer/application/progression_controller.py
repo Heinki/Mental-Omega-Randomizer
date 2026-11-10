@@ -181,7 +181,7 @@ class ProgressionController(GridAccessController):
         selected_code = self.selected_mission_code()
         search_codes = self.mission_search_codes()
         canvas_color = self.ui_palette()['canvas']
-        hide_locked = self.hide_locked_grid_missions_var.get()
+        hide_locked = self.grid_mission_names_hidden()
         hover_codes = getattr(self, 'unlock_hover_grid_codes', set())
         codes = list(mission_codes) if mission_codes is not None else list(self.grid_tile_widgets)
         for code in codes:
@@ -316,7 +316,7 @@ class ProgressionController(GridAccessController):
             )
 
     def select_grid_mission(self, index):
-        if self.hide_locked_grid_missions_var.get() and self.state:
+        if self.grid_mission_names_hidden() and self.state:
             try:
                 code = self.missions[index]['code']
             except (IndexError, TypeError):

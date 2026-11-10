@@ -610,7 +610,7 @@ class UnlockDataController:
         privacy = bool(
             self.state
             and self.active_progression_mode() == 'Grid Mode'
-            and self.hide_locked_grid_missions_var.get()
+            and self.grid_mission_names_hidden()
         )
         earned_rewards = list(
             self.canonical_earned_rewards() if self.state else ()

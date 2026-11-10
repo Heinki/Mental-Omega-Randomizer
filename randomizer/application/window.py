@@ -419,7 +419,7 @@ class WindowController:
     def on_hide_locked_grid_missions_changed(self):
         self.save_ui_preferences()
         if (
-            self.hide_locked_grid_missions_var.get()
+            self.grid_mission_names_hidden()
             and self.active_progression_mode() == 'Grid Mode'
             and self.state
         ):

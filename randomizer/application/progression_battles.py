@@ -21,8 +21,8 @@ class ProgressionBattlesController:
         return selected_mission(super().selected_mission(),
                                 self.config.get('skirmish_factions', {}))
 
-    def refresh_progress_view(self):
-        result = super().refresh_progress_view()
+    def refresh_progress_view(self, *, refresh_unlocks=True):
+        result = super().refresh_progress_view(refresh_unlocks=refresh_unlocks)
         picker = getattr(self, 'skirmish_faction_picker', None)
         if picker is not None:
             process = getattr(self, 'active_game_process', None)

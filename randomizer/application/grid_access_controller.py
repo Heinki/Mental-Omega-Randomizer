@@ -13,6 +13,12 @@ class GridAccessController:
             return None
         return self.state.get('grid_access')
 
+    def grid_mission_names_hidden(self):
+        """Key modes always reveal mission identities, regardless of preferences."""
+        access = self.grid_access_contract()
+        return (self.hide_locked_grid_missions_var.get()
+                and (not access or access['mode'] == 'Standard'))
+
     def grid_key_projection(self):
         access = self.grid_access_contract()
         if access is None:
@@ -96,6 +102,15 @@ class GridAccessController:
         return '\n'.join(lines)
 
     def refresh_grid_access_controls(self):
+        access = self.grid_access_contract()
+        projection = (self.grid_key_projection()
+                      if access and access['mode'] != 'Standard' else None)
+        launch_allowed = (projection is None or self.selected_mission_code()
+                          in projection['unlocked'] | projection['completed'])
+        for name in ('launch_selected_button', 'primary_launch_button', 'compact_launch_button'):
+            launch_button = getattr(self, name, None)
+            if launch_button is not None:
+                launch_button.configure(state='normal' if launch_allowed else 'disabled')
         label = getattr(self, 'grid_objectives_label', None)
         if label is not None:
             label.configure(text=self.grid_status_text(compact=True))
@@ -112,12 +127,12 @@ class GridAccessController:
         valid = bool(code in access['prices'] and code not in projection['unlocked'])
         blocker = purchase_blocker(access, projection, code) if valid else ''
         button.configure(text=(f'Buy Mission Access ({access["prices"][code]} keys)' if valid else 'Mission Access Unlocked'),
-                         state='normal' if valid and not blocker and not self.coop_guest_connected() else 'disabled')
+                         state='normal' if valid and not blocker and not getattr(self, 'coop_guest_connected', lambda: False)() else 'disabled')
 
     def buy_selected_grid_mission(self):
         """Tk serializes requests; one atomic save commits both charge and access."""
         access = self.grid_access_contract()
-        if not access or access['mode'] != 'Key Currency' or self.coop_guest_connected():
+        if not access or access['mode'] != 'Key Currency' or getattr(self, 'coop_guest_connected', lambda: False)():
             return
         code = self.selected_mission_code()
         projection = self.grid_key_projection()
