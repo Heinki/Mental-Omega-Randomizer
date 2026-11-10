@@ -35,3 +35,28 @@ def inject_victory_markers(lines: list[str], coop_name: str, player_country: str
             raise ValueError(f'{coop_name} win action {action_id} cannot fit a progress marker.')
         append_hook_team(lines, team_id, taskforce_id, script_id, marker, player_country)
     return marker
+
+
+def defeat_marker_name(coop_name: str) -> str:
+    return hook_marker_name(coop_name.upper(), 'defeat')
+
+
+def inject_defeat_markers(lines: list[str], coop_name: str, player_country: str):
+    """Mark authored multiplayer losses; missing markers never imply defeat."""
+    action_ids = action_line_ids(lines, lambda groups: action_has_code(groups, 1))
+    marker = defeat_marker_name(coop_name)
+    for action_id in action_ids:
+        # Use fresh registered IDs even when victory markers already exist.
+        occupied = {line.strip()[1:-1].casefold() for line in lines
+                    if line.strip().startswith('[') and line.strip().endswith(']')}
+        for section in ('TeamTypes', 'TaskForces', 'ScriptTypes'):
+            occupied.update(str(value).casefold()
+                            for value in section_value_map_preserve(lines, section).values())
+        suffix = 1
+        while any(f'SHOPCOOP{kind}{suffix:03d}'.casefold() in occupied for kind in 'TFS'):
+            suffix += 1
+        team, taskforce, script = (f'SHOPCOOP{kind}{suffix:03d}' for kind in 'TFS')
+        action = ['4', '1', team, '0', '0', '0', '0', 'A']
+        if insert_actions_before_codes(lines, action_id, [action], before_codes=('1',)):
+            append_hook_team(lines, team, taskforce, script, marker, player_country)
+    return marker

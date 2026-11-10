@@ -29,7 +29,7 @@ from randomizer.coop.shop_loadout import (
     _registered_unit_types, _require_registered_type, _validate_shop_loadout,
     shop_unit_loadout,
 )
-from randomizer.coop.victory import inject_victory_markers
+from randomizer.coop.victory import inject_victory_markers, inject_defeat_markers
 from randomizer.maps.buff_values import _active_direct_buff_counts
 from randomizer.rewards.arsenal import ARSENAL_MODE, arsenal_launch_rewards, arsenal_unit_type
 from randomizer.rewards.catalogue import BUFF_TARGETS, buff_stack_limit, canonical_reward, check_rewards
@@ -433,6 +433,8 @@ def _map_bytes(source: Path, source_key: str, manifest: dict, family: str,
         inject_victory_markers(
             lines, source.stem.lower(), manifest['player_country'],
         )
+        if manifest.get('shop_stage') is not None:
+            inject_defeat_markers(lines, source.stem.lower(), manifest['player_country'])
     lines.insert(0, f'; {manifest["marker"]} {source_key} {manifest["seed"]}')
     return ('\r\n'.join(lines) + '\r\n').encode('latin-1')
 

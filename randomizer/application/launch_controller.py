@@ -813,6 +813,13 @@ class LaunchController:
         if not self.active_hook or not text:
             return
 
+        watch = getattr(self, '_shop_interruption_watch', None)
+        if watch is not None:
+            watch.observe_text(text)
+        text = self.active_hook.pop('log_tail', '') + text
+        parts = text.split('\n')
+        self.active_hook['log_tail'] = parts.pop()
+        text = '\n'.join(parts)
         code = self.active_hook['mission_code']
         markers = self.active_hook.get('markers', {})
         seen = self.active_hook.setdefault('seen', set())
@@ -823,6 +830,8 @@ class LaunchController:
         # mistaken for failed attempts.
         for line in text.splitlines():
             for marker, check_id in markers.items():
+                if check_id == 'defeat' and f"Creating a new team named '{marker}'." not in line:
+                    continue
                 if marker in seen or marker not in line:
                     continue
                 seen.add(marker)
@@ -893,6 +902,8 @@ class LaunchController:
         if elapsed_ms < RESTART_FAILURE_GRACE_MS:
             return False
         self.active_hook.pop('restart_detected_at', None)
+        if self.shop_launch_active():
+            return False  # Init_Clear also occurs during crashes and teardown.
         return self.record_failed_mission_attempt(
             code,
             'In-game mission restart detected',
@@ -965,6 +976,7 @@ class LaunchController:
                     # across that boundary or the first Init_Clear in the new
                     # file is misclassified as an in-game restart.
                     self.active_hook['scenario_ready'] = False
+                    self.active_hook.pop('log_tail', None)
                 with DEBUG_LOG.open('r', encoding='utf-8', errors='ignore') as handle:
                     handle.seek(offset)
                     text = handle.read()
@@ -980,6 +992,8 @@ class LaunchController:
             self.after(HOOK_POLL_MS, self.poll_hook_log)
             return
 
+        if self.active_hook and self.active_hook.get('log_tail'):
+            self.process_hook_log_text('\n')
         if self.active_hook:
             scenario = self.active_hook.get('scenario', 'mission')
             seen_count = len(self.active_hook.get('seen', set()))
@@ -1006,7 +1020,9 @@ class LaunchController:
         attempt = self.active_mission_attempt or {}
         attempt_code = attempt.get('mission_code')
         if attempt_code and not self.is_mission_complete(attempt_code):
-            self.record_failed_mission_attempt(attempt_code, 'Mission closed without victory')
+            if not self.shop_launch_active():
+                self.record_failed_mission_attempt(attempt_code, 'Mission closed without victory')
+            # Shop cleanup below releases an unresolved attempt without a loss.
         self.active_hook = None
         self.active_game_process = None
         self.refresh_game_speed_controls()
@@ -1276,6 +1292,7 @@ class LaunchController:
 
     def spawn_game_process(self, command):
         """Start Wine/Syringe without requiring any Tk calls on the worker."""
+        self.begin_shop_mission_interruption_watch()
         popen_options = {}
         launch_target = command
         if sys.platform == 'win32':

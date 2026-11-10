@@ -23,6 +23,110 @@ class CoopShopSetupRequired(ValueError):
 
 
 class CoopShopController:
+    def begin_coop_shop_attempt(self, code, token):
+        self._coop_shop_attempt = {
+            'code': code, 'token': token, 'run': self._shop_launch_run,
+            'pool': self._shop_launch_mission_pool, 'launched': False,
+            'settled': False, 'interrupted': False, 'local': None, 'peer': None,
+            'watch': None,
+        }
+
+    def interrupt_coop_shop_attempt(self, reason):
+        attempt = getattr(self, '_coop_shop_attempt', None)
+        if attempt and not attempt['settled']:
+            attempt['interrupted'] = True
+            if attempt['watch'] is not None:
+                attempt['watch'].reason = attempt['watch'].reason or reason
+
+    def report_coop_shop_attempt(self, result_watch):
+        attempt = getattr(self, '_coop_shop_attempt', None)
+        if not attempt or attempt['settled'] or attempt['local'] is not None:
+            return
+        watch = attempt['watch']
+        won = bool(result_watch and result_watch.get('detected'))
+        defeated = bool(result_watch and result_watch.get('defeated'))
+        interrupted = bool(attempt['interrupted'] or watch is None
+                           or watch.poll() or won == defeated
+                           or result_watch and result_watch.get('log_error'))
+        report = {'type': 'shop_attempt_finished', 'code': attempt['code'],
+                  'session_token': attempt['token'],
+                  'game_id': self._coop_active_game_id if attempt['launched'] else None,
+                  'won': won, 'defeated': defeated, 'interrupted': interrupted}
+        attempt['local'] = report
+        lobby = getattr(self, '_coop_lobby', None)
+        if not lobby or not lobby.connected:
+            attempt['interrupted'] = attempt['settled'] = True
+            return  # Normal disconnect cleanup releases this unresolved stage.
+        try:
+            lobby.send(report)
+        except OSError as exc:
+            self.interrupt_coop_shop_attempt('Co-op result delivery failed')
+            self._record_coop_log('Co-op Shop result delivery failed: ' + str(exc), error=True)
+            lobby.close()
+            attempt['settled'] = True
+            return
+        self.settle_coop_shop_attempt()
+        if not attempt['settled']:
+            self._set_coop_status('Game closed. Waiting for the other player; Shop run remains protected.')
+
+    def settle_coop_shop_attempt(self):
+        attempt = getattr(self, '_coop_shop_attempt', None)
+        lobby = getattr(self, '_coop_lobby', None)
+        if (not attempt or attempt['settled'] or not lobby or lobby.role != 'host'
+                or attempt['local'] is None or attempt['peer'] is None):
+            return
+        current = self.shop_repository.load_run()
+        launch = attempt['run']
+        if (current is None or current.run_id != launch.run_id or current.stage != launch.stage
+                or not current.mission_committed or current.selected_mission_code != attempt['code']):
+            attempt['settled'] = True
+            return  # A late packet cannot settle another stage or overwrite a new run.
+        watch = attempt['watch']
+        reports = (attempt['local'], attempt['peer'])
+        interrupted = bool(attempt['interrupted'] or not lobby.connected
+                           or watch is None or watch.poll()
+                           or any(report['interrupted'] for report in reports))
+        self._shop_launch_run = attempt['run']
+        self._shop_launch_mission_pool = attempt['pool']
+        self._shop_interruption_watch = watch
+        attempt['settled'] = True
+        try:
+            if not interrupted and all(report['won'] and not report['defeated'] for report in reports):
+                self.unlock_mission_check(attempt['code'], 'victory', 'Verified co-op victory from both players')
+            elif not interrupted and all(report['defeated'] and not report['won'] for report in reports):
+                self.record_failed_mission_attempt(attempt['code'], 'Verified co-op defeat from both players')
+            else:
+                if watch is not None:
+                    watch.reason = watch.reason or 'A co-op player desynced, crashed, or had an unverified result'
+                self.record_interrupted_mission_attempt(attempt['code'],
+                    'A co-op player desynced, crashed, or had an unverified result')
+        finally:
+            self.finish_progression_launch_context()
+        self._set_coop_status('Shop result settled. Host may select another mission.')
+
+    def receive_coop_shop_attempt(self, lobby, message):
+        attempt = getattr(self, '_coop_shop_attempt', None)
+        if (not attempt or message.get('code') != attempt['code']
+                or message.get('session_token') != attempt['token']
+                or not ((type(message.get('game_id')) is int
+                         and message['game_id'] == getattr(self, '_coop_active_game_id', None))
+                        or message.get('game_id') is None
+                        and message.get('interrupted') is True
+                        and message.get('won') is False and message.get('defeated') is False)
+                or any(type(message.get(key)) is not bool
+                       for key in ('won', 'defeated', 'interrupted'))):
+            raise ValueError('Stale or invalid co-op Shop attempt result.')
+        if attempt['settled']:
+            return
+        if attempt['peer'] is not None:
+            if attempt['peer'] != message:
+                raise ValueError('Co-op player changed an already reported Shop result.')
+            return
+        attempt['peer'] = dict(message)
+        if message['interrupted']:
+            self.interrupt_coop_shop_attempt('Other co-op player reported an interrupted game')
+        self.settle_coop_shop_attempt()
+
     def suggest_coop_shop_mission(self, index):
         lobby = getattr(self, '_coop_lobby', None)
         run = self.shop_repository.load_run()
@@ -55,6 +159,9 @@ class CoopShopController:
 
     def receive_coop_shop_message(self, lobby, message):
         kind = message['type']
+        if kind == 'shop_attempt_finished':
+            self.receive_coop_shop_attempt(lobby, message)
+            return True
         if lobby.role == 'guest':
             if kind == 'shop_stage':
                 if not self.coop_mode_var.get():
@@ -68,6 +175,12 @@ class CoopShopController:
                 if updated != run:
                     self.shop_repository.save_run(updated)
                 self.shop_run = updated
+                attempt = getattr(self, '_coop_shop_attempt', None)
+                if (attempt and not updated.mission_committed
+                        and updated.seed == attempt['run'].seed
+                        and updated.stage == attempt['run'].stage):
+                    attempt['settled'] = True
+                    self.finish_progression_launch_context()
                 self._coop_shop_stage_digest = stage_digest(snapshot)
                 self.refresh_shop_mode()
                 lobby.send({'type': 'shop_ready', 'digest': stage_digest(snapshot)})
@@ -84,11 +197,19 @@ class CoopShopController:
                         and code in run.completed_missions
                         and (run.stage > stage or run.status is RunStatus.COMPLETED)):
                     return True
+                if (run is not None and run.status is RunStatus.ACTIVE
+                        and run.seed == message.get('seed') and run.stage == stage
+                        and not run.mission_committed
+                        and code in {offer.mission_code for offer in run.mission_offers}):
+                    run = self.shop_service.commit_mission(code)
                 if (run is None or run.status is not RunStatus.ACTIVE
                         or run.seed != message.get('seed') or run.stage != stage
                         or not run.mission_committed
                         or run.selected_mission_code != code):
                     raise ValueError('Host Shop victory differs from guest committed stage.')
+                attempt = getattr(self, '_coop_shop_attempt', None)
+                if attempt and attempt['code'] == code:
+                    attempt['settled'] = True
                 self._shop_launch_run = run
                 self._shop_launch_mission_pool = tuple(self._shop_run_mission_pool(run))
                 if not self.unlock_mission_check(code, 'victory', 'Co-op host victory'):
@@ -121,13 +242,21 @@ class CoopShopController:
                         and run.failed_stage == stage
                         and run.failed_mission_code == code):
                     return True
-                if (run.status is RunStatus.ACTIVE and not run.mission_committed
-                        and run.emergency_revivals_used > 0):
+                if not run.mission_committed and dict(run.coop_last_result) == {
+                        'stage': stage, 'code': code, 'outcome': 'failure',
+                        'revived': message['revived']}:
                     return True
+                if (run.status is RunStatus.ACTIVE and not run.mission_committed
+                        and code in {offer.mission_code for offer in run.mission_offers}
+                        and run.selected_mission_code == code):
+                    run = self.shop_service.commit_mission(code)
                 if (run.status is not RunStatus.ACTIVE or not run.mission_committed
                         or run.selected_mission_code != code):
                     raise ValueError('Host Shop failure differs from guest committed stage.')
                 self.shop_profile, run = self.shop_repository.load()
+                attempt = getattr(self, '_coop_shop_attempt', None)
+                if attempt and attempt['code'] == code:
+                    attempt['settled'] = True
                 self._shop_launch_run = run
                 self._shop_launch_mission_pool = tuple(self._shop_run_mission_pool(run))
                 self._coop_host_revival = message['revived']

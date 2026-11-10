@@ -5,6 +5,7 @@ from dataclasses import replace
 import uuid
 import tkinter as tk
 from tkinter import messagebox
+from randomizer.core.paths import DEBUG_LOG, GAME_ROOT
 
 from ._dependencies import (
     BUFF_TARGETS,
@@ -210,6 +211,8 @@ class ShopController(ShopPolishController):
         self._shop_launch_run = None
         self._shop_launch_victory_key = None
         self._shop_launch_mission_pool = ()
+        self._shop_interruption_watch = None
+        self.recover_idle_shop_mission()
 
     def shop_mode_selected(self):
         return self.progression_mode_var.get() == 'Shop Mode'
@@ -357,6 +360,7 @@ class ShopController(ShopPolishController):
         )
         self.shop_service = ShopProgressionService(self.shop_repository)
         self.shop_profile, self.shop_run = self.shop_repository.load()
+        self.recover_idle_shop_mission()
 
     def refresh_shop_settings_controls(self):
         if not hasattr(self, 'shop_setup_start_button'):
@@ -1717,8 +1721,12 @@ class ShopController(ShopPolishController):
         if not self.shop_launch_active():
             return super().unlock_mission_check(code, check_id, source)
         code = str(code or '').upper()
+        if check_id == 'defeat':
+            return self.record_failed_mission_attempt(code, 'Verified in-game defeat')
         if check_id != 'victory':
             return False
+        if self.shop_mission_interruption_reason():
+            return False  # A desync can emit misleading native winner/loser rows.
         run = self.shop_repository.load_run()
         if (
             run is None
@@ -1772,14 +1780,71 @@ class ShopController(ShopPolishController):
         self.refresh_shop_mode()
         return True
 
+    def begin_shop_mission_interruption_watch(self):
+        """Snapshot engine diagnostics before this attempt's process is spawned."""
+        if self.shop_launch_active():
+            from randomizer.core.game_interruption import GameInterruptionWatch
+            self._shop_interruption_watch = GameInterruptionWatch(GAME_ROOT, DEBUG_LOG)
+        return getattr(self, '_shop_interruption_watch', None)
+
+    def shop_mission_interruption_reason(self):
+        watch = getattr(self, '_shop_interruption_watch', None)
+        return watch.poll() if watch is not None else ''
+
+    def recover_idle_shop_mission(self):
+        """Recover a persisted commitment after launcher/preparation interruption."""
+        process = getattr(self, 'active_game_process', None)
+        if (self.shop_launch_active() or (process and process.poll() is None)
+                or getattr(self, '_coop_games_running', None)
+                or getattr(self, '_coop_pending_launch', None)
+                or getattr(self, '_coop_busy', False)
+                or getattr(self, '_coop_building_map', False)):
+            return
+        guest = getattr(self, 'coop_guest_connected', lambda: False)()
+        if guest:
+            return  # A connected guest follows the host's durable result.
+        run = self.shop_repository.load_run()
+        if run is not None and run.status is RunStatus.ACTIVE and run.mission_committed:
+            self.shop_run = self.shop_service.interrupt_mission(
+                run.selected_mission_code, run_id=run.run_id, stage=run.stage,
+            )
+
+    def record_interrupted_mission_attempt(self, code, source):
+        """Keep an unverified Shop outcome retryable without rewards or penalties."""
+        if not self.shop_launch_active():
+            return False
+        if self.coop_mode_var.get() and self.coop_guest_connected():
+            return False
+        launch = self._shop_launch_run
+        run = self.shop_repository.load_run()
+        if (run is None or run.run_id != launch.run_id or run.stage != launch.stage
+                or run.status is not RunStatus.ACTIVE or not run.mission_committed
+                or run.selected_mission_code != str(code or '').upper()):
+            return False
+        self.shop_run = self.shop_service.interrupt_mission(
+            code, run_id=launch.run_id, stage=launch.stage,
+        )
+        self._set_shop_message(
+            f'{source}. Shop run preserved. Retry this mission or choose '
+            'another original offer; no currency or Emergency Revival was spent.'
+        )
+        self.append_log(f'Shop mission {code} interrupted: {source}. Run preserved.')
+        self.coop_publish_shop_stage()
+        return True
+
     def record_failed_mission_attempt(self, code, source):
         if not self.shop_launch_active():
             return super().record_failed_mission_attempt(code, source)
+        reason = self.shop_mission_interruption_reason()
+        if reason:
+            self._set_shop_message(f'{reason}. Shop run preserved; close the game to retry.')
+            return False
         code = str(code or '').upper()
         run = self.shop_repository.load_run()
         if (
             run is None
             or run.run_id != self._shop_launch_run.run_id
+            or run.stage != self._shop_launch_run.stage
             or run.status is not RunStatus.ACTIVE
             or not run.mission_committed
             or run.selected_mission_code != code
@@ -1856,9 +1921,19 @@ class ShopController(ShopPolishController):
     def finish_progression_launch_context(self):
         if not self.shop_launch_active():
             return
+        attempt = getattr(self, '_coop_shop_attempt', None)
+        lobby = getattr(self, '_coop_lobby', None)
+        if (attempt and (attempt['launched'] or attempt['local'] is not None) and not attempt['settled']
+                and lobby and lobby.connected):
+            return  # Keep purchases/mission changes locked until both players finish.
+        self.record_interrupted_mission_attempt(
+            self._shop_launch_run.selected_mission_code,
+            'Mission ended without a verified result',
+        )
         self._shop_launch_run = None
         self._shop_launch_victory_key = None
         self._shop_launch_mission_pool = ()
+        self._shop_interruption_watch = None
         if hasattr(self, 'shop_stage_var'):
             self.refresh_shop_mode()
 
@@ -2092,11 +2167,13 @@ class ShopController(ShopPolishController):
                 f'This Shop run contains {self.next_shop_run_length()} stages. '
                 'At each stage, choose one mission. That selected mission gets '
                 'one attempt.\n\nDo not save, load, or restart a mission. Any '
-                'of these actions, a defeat, or closing the game before victory '
+                'of these actions or a verified defeat '
                 'counts as a failed mission and can end the run. An Emergency '
                 'Revival keeps the run alive by repeating the same stage with '
                 'new mission choices.\n\n'
-                'Select OK only when you are ready to begin.',
+                'Crashes, desyncs, and exits without a verified result preserve the '
+            'run and original mission choices without spending a revival.\n\n'
+            'Select OK only when you are ready to begin.',
                 icon='warning',
                 parent=self,
             ):

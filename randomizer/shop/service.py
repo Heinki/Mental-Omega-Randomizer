@@ -92,6 +92,21 @@ class ShopProgressionService:
         )
         return profile, None
 
+    def interrupt_mission(self, mission_code, *, run_id, stage):
+        """Release only this unresolved attempt, preserving every stage resource.
+
+        Unknown exits are not defeats. Identity checks keep a late cleanup from
+        unlocking a newer stage or a different run. Repeating recovery is safe.
+        """
+        run = self.repository.load_run()
+        if (run is None or run.run_id != run_id or run.stage != stage
+                or run.status is not RunStatus.ACTIVE or not run.mission_committed
+                or run.selected_mission_code != str(mission_code or '').upper()):
+            return run
+        recovered = replace(run, mission_committed=False)
+        self.repository.save_run(recovered)
+        return recovered
+
     def commit_mission(self, mission_code):
         run = self.repository.load_run()
         if run is None:

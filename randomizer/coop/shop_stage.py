@@ -136,7 +136,7 @@ def apply_stage_snapshot(run, snapshot: dict, missions: dict):
             or not run.difficulty_assists_used <= assists <= 10000):
         raise ValueError('Invalid host Shop mission decision.')
     if run.mission_committed and (
-        not committed or selected != run.selected_mission_code
+        selected != run.selected_mission_code
         or tuple(offers) != run.mission_offers
         or rerolls != run.rerolls_used
         or assisted != (run.assisted_mission_code or '')

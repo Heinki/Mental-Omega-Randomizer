@@ -3104,6 +3104,9 @@ def prepare_hooked_map(self, mission, extra_rules=None):
         patch_plan,
         hook_house,
     )
+    if self.shop_launch_active():
+        from randomizer.shop.attempts import inject_defeat_markers
+        markers.update(inject_defeat_markers(lines, code))
     for check, action_id in hook_failures:
         self.append_log(
             f'Skipped automatic {check.get("name", check.get("id", "check"))} hook for '

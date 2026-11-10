@@ -20,7 +20,7 @@ from randomizer.coop.runtime import installation_details, validate_runtime
 
 
 LOBBY_PORT = 19420
-PROTOCOL = 4
+PROTOCOL = 5
 MAX_WIRE = 8 * 1024 * 1024
 MAX_STATE = 32 * 1024 * 1024
 
@@ -202,7 +202,7 @@ class Lobby:
                 message = self._receive(stream)
                 if message.get('type') not in {
                     'state', 'select', 'suggest', 'launch', 'player_options', 'challenge_victory',
-                    'shop_stage', 'shop_ready', 'shop_victory', 'shop_failure',
+                    'shop_stage', 'shop_ready', 'shop_victory', 'shop_failure', 'shop_attempt_finished',
                     'fortress_roster', 'fortress_prepare', 'fortress_ready',
                     'fortress_start', 'fortress_abort',
                     'fortress_idle',

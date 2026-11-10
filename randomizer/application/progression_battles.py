@@ -405,6 +405,8 @@ class ProgressionBattlesController:
 
         def finish(command):
             try:
+                if shop:
+                    self.begin_shop_mission_interruption_watch()
                 self._skirmish_watch = SkirmishResultWatch(DEBUG_LOG)
                 spawn = getattr(self, 'spawn_game_process', None)
                 if spawn:
@@ -433,11 +435,17 @@ class ProgressionBattlesController:
             nonlocal outcome_applied
             if outcome_applied or not same_run():
                 return
+            if shop and self.shop_mission_interruption_reason():
+                result = None
             outcome_applied = True
             if result == 'victory':
                 self.unlock_mission_check(code, 'victory', 'Verified 1v1 Skirmish victory')
+            elif result == 'defeat':
+                self.record_failed_mission_attempt(code, 'Verified Skirmish defeat')
+            elif shop:
+                self.record_interrupted_mission_attempt(code, 'Skirmish closed without a verified result')
             else:
-                self.record_failed_mission_attempt(code, 'Skirmish defeat or closed without victory')
+                self.record_failed_mission_attempt(code, 'Skirmish closed without victory')
 
         def cleanup():
             self._skirmish_busy = False
@@ -460,7 +468,7 @@ class ProgressionBattlesController:
                 self.after(1000, poll)
                 return
             if not outcome_applied:
-                apply_outcome('defeat')
+                apply_outcome(None)
             if self._skirmish_watch.error:
                 self.append_log(self._skirmish_watch.error, error=True)
             cleanup()

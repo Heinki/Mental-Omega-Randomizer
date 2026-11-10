@@ -17,6 +17,25 @@ teammate, and synchronized two-human play. Choose houses and colors before each
 match without resetting the run. See the [challenge guide](CHALLENGES_TESTING.md)
 for setup, supported modes, and validation limits in version 1.45.
 
+## Shop interruption recovery
+
+Crashes, co-op desyncs, launch errors, and exits without a verified result
+preserve the active Shop stage, Ore, purchases, original mission offers, and
+Emergency Revivals. After the game closes, retry the same mission or select
+another original offer. Reopening the launcher also recovers an unresolved
+mission commitment automatically. Recovery awards no victory rewards. Verified
+defeats still follow the normal failure and Emergency Revival rules. Update
+both players' launchers before co-op play.
+
+Co-op Shop results now wait until every player's game has closed. A fresh engine
+SYNC/EXCEPT diagnostic, an explicit desync/reconnection error, a missing result,
+or conflicting peer results preserves the stage instead of ending the run or
+spending an Emergency Revival. Old diagnostic files are ignored. Close every
+player's game, then retry the same mission or choose another original offer.
+Every player must update: older lobby protocols are rejected because they cannot
+report interruptions safely. This protects progression; it does not claim to
+prevent every engine desync.
+
 ## Disclaimer
 
 I am *not* part of the Development of Mental Omega nor did I contribute in any way, all I did was access the game and the mapfiles to create the randomizer. Credits go to the Mental Omega Developers and their work!
