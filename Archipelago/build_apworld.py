@@ -64,7 +64,7 @@ def build(output_directory: Path) -> Path:
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     manifest.update({
         'minimum_ap_version': versions['archipelago_version'],
-        'world_version': versions['apworld_version'],
+        'world_version': '.'.join((versions['apworld_version'].split('.') + ['0', '0'])[:3]),
         # AP 0.6.8 reads format 7; this archive needs no format 8 features.
         'compatible_version': 7,
         'version': versions['apworld_container_version'],
