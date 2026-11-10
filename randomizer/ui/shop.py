@@ -114,11 +114,11 @@ def build_shop_tab(self, workspace_tabs):
     tab = ttk.Frame(workspace_tabs)
     self.shop_tab = tab
     tab.columnconfigure(0, weight=1)
-    tab.rowconfigure(0, weight=1)
+    tab.rowconfigure(1, weight=1)
 
     viewport = ScrollableViewport(tab, padding=8)
     self.shop_viewport = viewport
-    viewport.grid(row=0, column=0, columnspan=2, sticky='nsew')
+    viewport.grid(row=1, column=0, columnspan=2, sticky='nsew')
     canvas = viewport.canvas
     self.shop_canvas = canvas
     content = viewport.content
@@ -128,9 +128,10 @@ def build_shop_tab(self, workspace_tabs):
     self.shop_canvas_window = viewport.window
     viewport.layout = self.layout_shop_content
 
-    header = ttk.Frame(content, padding=(8, 8, 8, 0))
+    # Keep run status and balances visible while the Shop body scrolls.
+    header = ttk.Frame(tab, padding=(8, 8, 8, 0))
     self.shop_header_frame = header
-    header.grid(row=0, column=0, sticky='ew')
+    header.grid(row=0, column=0, columnspan=2, sticky='ew')
     for column in range(6):
         header.columnconfigure(column, weight=1)
     header_items = (
