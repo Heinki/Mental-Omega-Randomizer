@@ -28,6 +28,7 @@ from randomizer.rewards.display import (
 )
 from randomizer.shop.active import (
     active_shop_rewards,
+    active_shop_permanent_buffs,
     active_shop_starter_defense_ids,
     active_shop_starter_unit_ids,
     active_shop_tech_ids,
@@ -671,7 +672,7 @@ class ShopController(ShopPolishController):
                 *run.random_starting_unit_unlocks,
                 *(
                     item.reward_id
-                    for item in run.permanent_buffs_snapshot
+                    for item in active_shop_permanent_buffs(run)
                     for _index in range(item.stacks)
                 ),
                 *(item.reward_id for item in run.run_purchases),
@@ -2471,7 +2472,7 @@ class ShopController(ShopPolishController):
 
         buff_items = [
             ('Permanent', item.reward_id, item.stacks)
-            for item in run.permanent_buffs_snapshot
+            for item in active_shop_permanent_buffs(run)
         ] + [
             ('This Run', item.reward_id, item.stacks)
             for item in run.run_buffs

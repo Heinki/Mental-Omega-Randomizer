@@ -13,6 +13,7 @@ from randomizer.core.paths import (
 )
 from randomizer.core.storage import atomic_write_json, read_json_object
 
+from .model import RunStatus
 from .state import normalize_shop_profile, normalize_shop_run
 
 
@@ -105,6 +106,10 @@ class ShopRepository:
         try:
             raw = read_json_object(self.paths.run)
             run = normalize_shop_run(raw)
+            from .permanent import SNAPSHOT_SETTING, complete_permanent_buff_snapshot
+            if (run.status is RunStatus.ACTIVE
+                    and not run.reward_settings.get(SNAPSHOT_SETTING)):
+                run = complete_permanent_buff_snapshot(run, self._read_profile())
         except Exception as exc:
             self._raise_invalid('Shop run', self.paths.run, exc)
         normalized = run.to_dict()

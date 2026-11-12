@@ -49,6 +49,8 @@ def select_pool(missions, catalogue, *, enabled, factions=(), excluded=()):
     factions, excluded = set(factions), set(excluded)
     grouped = {}
     for mission in catalogue:
+        if (GAME == 'mo' and Path(mission['scenario']).stem.casefold() == 'l_levelgrounddancing'):
+            continue  # Authored start pocket prevents AI MCV deployment.
         if mission['code'] in excluded or (factions and mission['faction'] not in factions):
             continue
         grouped.setdefault(mission['scenario'], []).append(mission)
@@ -59,13 +61,11 @@ def select_pool(missions, catalogue, *, enabled, factions=(), excluded=()):
 
 
 class SkirmishResultWatch:
-    """Read fresh, complete native 1v1 score records from a started game.
+    """Read both fresh, complete native 1v1 score records.
 
-    Native multiplayer results can report SawCompletion=0 after a win. A
-    complete Commander Winner / Computer Loser pair verifies this solo win;
-    a Winner row alone does not. Closing/restarting cannot award victory.
-    DTA uses its existing directory-aware ScoreLog reader; RA2 profiles follow
-    their current log.
+    Closing/restarting a game cannot award victory. DTA uses its existing
+    directory-aware ScoreLog reader. RA2 can collect
+    scores without sending network statistics, and its AI name is localized.
     """
     def __init__(self, path):
         self.path = Path(path)
@@ -76,11 +76,10 @@ class SkirmishResultWatch:
         self._anchor = b''
         self._tail = ''
         self._scenario = False
-        self._game_started = False
-        self._in_results = False
+        self._completion = False
         self._quit = False
         self._pending = None
-        self._scores = {}
+        self._scores = []
         self._unarmed = False
         self._directory_log = None
         if GAME == 'dta':
@@ -111,36 +110,36 @@ class SkirmishResultWatch:
                     self.error = 'Skirmish restarted; this attempt cannot earn progression.'
                     self._unarmed = True
                 self._scenario = match[1].replace('\\', '/').rsplit('/', 1)[-1].casefold() == 'spawnmap.ini'
-                self._game_started = False
-                self._in_results = False
-                self._quit = False
+                self._completion = False
+                self._scores = []
                 self._pending = None
-                self._scores = {}
                 continue
             if not self._scenario:
                 continue
-            if line.strip() == 'Capture_Mouse()':
-                self._game_started = True
-            if "quit, but didn't see completion" in line:
+            if "quit, but didn't see completion" in line and len(self._scores) < 2:
                 self._quit = True
             if 'Sending game results.' in line:
-                self._in_results = self._game_started
-                self._scores = {}
-                self._pending = None
+                self._completion = bool(re.search(r'\bSawCompletion=1\b', line))
+                # Score collection and network-statistics delivery are
+                # separate engine paths. Either can be logged first.
                 continue
-            if not self._in_results:
-                continue
-            if match := re.fullmatch(r'(Commander|Computer): (Winner|Loser)', line):
+            if match := re.fullmatch(r'(.+): (Winner|Loser)\s*', line):
                 self._pending = match[1], match[2]
-            elif self._pending and re.fullmatch(r'\s+Score\s*=\s*-?\d+', line):
-                name, outcome = self._pending
-                self._scores.setdefault(name, []).append(outcome)
+            elif self._pending and re.fullmatch(r'\s+Score\s*=\s*-?\d+\s*', line):
+                self._scores.append(self._pending)
                 self._pending = None
-                if not self._quit and not self._unarmed:
-                    if self._scores.get('Commander') == ['Loser']:
-                        self.result = 'defeat'
-                    elif self._scores == {'Commander': ['Winner'], 'Computer': ['Loser']}:
-                        self.result = 'victory'
+
+    def _resolve(self, final):
+        if not self._scenario or self._quit or self._unarmed:
+            return
+        if GAME != 'dta' and not final:
+            return
+        local = [outcome for name, outcome in self._scores if name == 'Commander']
+        enemy = [outcome for name, outcome in self._scores if name != 'Commander']
+        if len(self._scores) == 2 and local == ['Winner'] and enemy == ['Loser']:
+            self.result = 'victory'
+        elif len(self._scores) == 2 and local == ['Loser'] and enemy == ['Winner']:
+            self.result = 'defeat'
 
     def poll(self, *, final=False):
         if self.result or self._unarmed:
@@ -169,13 +168,17 @@ class SkirmishResultWatch:
                     self._offset, self._identity = handle.tell(), identity
                     handle.seek(max(0, self._offset - 64))
                     self._anchor = handle.read(min(self._offset, 64))
-            if final and self._tail:
-                # Process exit makes the last line complete even without a
-                # trailing newline (some native logs close this way).
-                self._feed('\n')
-        except OSError as exc:
-            self.error = str(exc)
-        else:
             if not self._unarmed:
                 self.error = ''
+        except OSError as exc:
+            self.error = str(exc)
+        if final and self._tail:
+            self._feed('\n')
+        self._resolve(final)
+        if final and not self.result and not self.error:
+            self.error = (
+                'No verified Skirmish result: '
+                f'scenario={self._scenario}, completion={self._completion}, '
+                f'quit={self._quit}, scores={self._scores!r}'
+            )
         return self.result

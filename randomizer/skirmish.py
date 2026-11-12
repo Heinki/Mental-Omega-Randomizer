@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 import hashlib
+import logging
 from pathlib import Path
 import random
 
@@ -35,7 +36,7 @@ def playable_countries():
 
 
 def discover_maps(root):
-    """Offer unscripted maps only; authored campaigns keep their own adapters."""
+    """Offer installed multiplayer maps, preserving their authored map scripts."""
     root = Path(root)
     result = {}
     for directory in ('Maps', 'MapsMO'):
@@ -45,13 +46,18 @@ def discover_maps(root):
         for source in sorted(folder.rglob('*')):
             if source.suffix.lower() not in ('.map', '.mpr', '.yrm'):
                 continue
-            if any(part.casefold() in ('co-op', 'cooperative', 'coop', 'challenge', 'campaign') for part in source.relative_to(folder).parts[:-1]):
+            if any(part.casefold() in ('co-op', 'cooperative', 'coop', 'challenge', 'challenges', 'campaign', 'campaigns') for part in source.relative_to(folder).parts[:-1]):
                 continue
             rows = all_section_value_maps_preserve(source.read_bytes().decode('latin-1').splitlines())
-            if any(rows.get(name) for name in ('Triggers', 'TeamTypes', 'AITriggerTypes', 'Houses')):
+            if rows.get('Basic', {}).get('MultiplayerOnly', 'yes').casefold() in ('no', 'false', '0'):
                 continue
-            starts = [i for i in range(8) if str(i) in rows.get('Waypoints', {})]
-            if len(starts) < 2 or starts != list(range(len(starts))):
+            # Later low-numbered waypoints can be script destinations, not
+            # player seats (Twilight Heat has four starts plus waypoint 7).
+            count = rows.get('Header', {}).get(
+                'NumberStartingPoints', rows.get('Basic', {}).get('MaxPlayer', '8'))
+            limit = int(count) if count.isdigit() and 2 <= int(count) <= 8 else 8
+            starts = [i for i in range(limit) if str(i) in rows.get('Waypoints', {})]
+            if len(starts) < 2 or 0 not in starts:
                 continue
             from randomizer.skirmish_factions import map_countries
             countries = tuple(map_countries(root, {'path': str(source.resolve())}, rows=rows).values())
@@ -84,8 +90,15 @@ def prepare_game(root, definition, rewards, settings, *, country, color, opponen
     if len(definition['starts']) < 2:
         raise ValueError('Skirmish map requires two start positions.')
     rows = all_section_value_maps_preserve(source.read_bytes().decode('latin-1').splitlines())
-    if any(rows.get(name) for name in ('Triggers', 'TeamTypes', 'AITriggerTypes', 'Houses')):
-        raise ValueError('Progression Skirmish requires an unscripted multiplayer map.')
+    if rows.get('Basic', {}).get('MultiplayerOnly', 'yes').casefold() in ('no', 'false', '0'):
+        raise ValueError('Progression Skirmish requires a multiplayer map.')
+    waypoints = rows.get('Waypoints', {})
+    starts = {index: divmod(int(waypoints[str(index)]), 1000)
+              for index in definition['starts']}
+    enemy_start = max((index for index in starts if index != 0), key=lambda index: (
+        sum((value - origin) ** 2 for value, origin in zip(starts[index], starts[0])),
+        -index,
+    ))
     if GAME == 'dta':
         from randomizer.coop.catalogue import inherited_sections
         rows = inherited_sections(root, source)
@@ -94,7 +107,8 @@ def prepare_game(root, definition, rewards, settings, *, country, color, opponen
                                  str(source.relative_to(root.resolve())))
     else:
         rows, side = _ra2_rewards(rows, rewards, settings, country, randomize_access)
-    rows.setdefault('Basic', {}).update(Name=definition['name'], MultiplayerOnly='yes', IgnoreGlobalAITriggers='no')
+    rows.setdefault('Basic', {}).update(Name=definition['name'], MultiplayerOnly='yes')
+    rows['Basic'].setdefault('IgnoreGlobalAITriggers', 'no')
     rows['Basic'].pop('Player', None)
     data = _serialize(rows)
     game_id = random.SystemRandom().randrange(1, 2**31 - 1)
@@ -121,7 +135,7 @@ def prepare_game(root, definition, rewards, settings, *, country, color, opponen
     for index in range(opponents):
         house = f'Multi{index + 2}'
         enemy = rng.choice(available)
-        spawn['SpawnLocations'][house] = str(index + 1)
+        spawn['SpawnLocations'][house] = str(enemy_start)
         indices = {value: index for index, value in enumerate(rows.get('Countries', {}).values())}
         spawn['HouseCountries'][house] = str(indices[enemy] if GAME != 'dta' else native_countries.index(enemy))
         spawn['HouseColors'][house] = str(palette[index])
@@ -209,6 +223,7 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     from randomizer.maps.base import cloned_superweapon_plan
     from randomizer.rewards.catalogue import BUFF_TARGETS, ALWAYS_AVAILABLE_TECH_IDS, canonical_rewards
     from randomizer.rewards.rules import unlocked_reward_tech_ids
+    from randomizer.config.tuning import CLONE_POLICY
     installed_types, installed = installed_rules_registry(synchronous=True)
     countries = dict(installed['Countries'])
     countries.update(rows.get('Countries', {}))
@@ -218,7 +233,7 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     next_key = max((int(key) for key in countries if key.isdigit()), default=-1) + 1
     countries[str(next_key)] = 'RZPLAYER'
     rows['Countries'] = countries
-    rows['RZPLAYER'] = dict(installed[country], Name='Progression Commander', ParentCountry=country, Multiplay='no')
+    rows['RZPLAYER'] = dict(installed[country], Name='Progression Commander', ParentCountry='RZPLAYER', Multiplay='no')
     unlocked = set(unlocked_reward_tech_ids(rewards))
     unlocked.update(settings.get('_skirmish_access', ()))
     if not randomized:
@@ -240,6 +255,15 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
                 forbidden = changes.get('ForbiddenHouses', base.get('ForbiddenHouses', ''))
                 changes['ForbiddenHouses'] = ','.join(dict.fromkeys([*filter(None, forbidden.split(',')), 'RZPLAYER']))
     overlays = {}
+    # Keep native factory/support gates on core and non-randomized units.
+    # Ownership-only overlays otherwise erase these gates in the clone builder.
+    for unit in unlocked:
+        native = {**installed.get(unit, {}), **rows.get(unit, {})}
+        overlays[unit] = {
+            key: value for key, value in native.items()
+            if key.lower() in CLONE_POLICY['production_gate_keys']
+            or key.lower().startswith(tuple(CLONE_POLICY['production_gate_prefixes']))
+        }
     for reward in canonical_rewards(rewards):
         if reward.get('kind') == 'buff':
             continue
@@ -249,7 +273,12 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     for unit in unlocked:
         overlays.setdefault(unit, {}).update(TechLevel='1', Owner='RZPLAYER', RequiredHouses='RZPLAYER', ForbiddenHouses='none')
     # Campaign clone code receives a temporary House record for ownership analysis.
-    rows['Houses'] = {'0': 'RZPLAYER House'}
+    authored_houses = deepcopy(rows.get('Houses'))
+    if 'RZPLAYER House' in rows:
+        raise ValueError('Source map reserves the progression player house.')
+    rows['Houses'] = dict(authored_houses or {})
+    next_house = max((int(key) for key in rows['Houses'] if key.isdigit()), default=-1) + 1
+    rows['Houses'][str(next_house)] = 'RZPLAYER House'
     rows['RZPLAYER House'] = {'Country': 'RZPLAYER', 'PlayerControl': 'yes'}
     rows.setdefault('Basic', {})['Player'] = 'RZPLAYER House'
     lines = IniLines(_serialize(rows).splitlines())
@@ -274,7 +303,10 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     starters = _starter_rules(planning_lines, settings)
     unlocked.update(starters)
     for unit in unlocked:
-        overlays.setdefault(unit, {}).update(planned.get(unit, {}))
+        if randomized:
+            overlays.setdefault(unit, {}).update(planned.get(unit, {}))
+        else:
+            overlays.setdefault(unit, {})
         overlays[unit].update(starters.get(unit, {}))
         overlays[unit].update(TechLevel='1', Owner='RZPLAYER', RequiredHouses='RZPLAYER', ForbiddenHouses='none')
     powers = apply_power_buffs_to_unlock_rewards(list(rewards), installed)
@@ -316,8 +348,14 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
         forced_isolated_clone_ids=payload, forced_compact_clone_ids=payload,
         share_basic_equivalent_buffs=False,
         unit_specific_mode=True, owned_clone_rule_overlays=overlays, **kwargs)
+    # Authored ambient/script units can deliberately retain native references.
+    # Their production clone still exists; this notice does not block launch.
+    blocking = [warning for warning in warnings
+                if not str(warning).endswith('build-only clone kept native mission references')]
+    if blocking:
+        raise ValueError('Cannot apply Skirmish rewards: ' + '; '.join(map(str, blocking)))
     if warnings:
-        raise ValueError('Cannot apply Skirmish rewards: ' + '; '.join(map(str, warnings)))
+        logging.getLogger(__name__).info('Skirmish clone notices: %s', '; '.join(map(str, warnings)))
     from randomizer.maps.shop_modifiers import apply_shop_clone_modifiers, apply_shop_clone_restrictions
     apply_shop_clone_modifiers(changes, handled, settings)
     apply_shop_clone_restrictions(changes, handled, installed, settings)
@@ -334,6 +372,8 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     merge_ini_section_values(lines, changes)
     pad_rules, _ = player_clone_pad_aircraft_rules(lines, installed, handled)
     merge_ini_section_values(lines, pad_rules)
+    from randomizer.maps.prerequisites import player_building_prerequisite_rules
+    merge_ini_section_values(lines, player_building_prerequisite_rules(lines, installed, handled))
     if GAME == 'mo':
         from randomizer.coop.native_buildings import preserve_native_building_abilities
         from randomizer.maps.buff_values import _register_map_type
@@ -375,7 +415,10 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
     if actions or providers:
         _power_providers(lines, installed_types, installed, actions, providers)
     rows = all_section_value_maps_preserve(lines)
-    rows.pop('Houses', None)
+    if authored_houses is None:
+        rows.pop('Houses', None)
+    else:
+        rows['Houses'] = authored_houses
     rows.pop('RZPLAYER House', None)
     return rows, side
 

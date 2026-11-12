@@ -445,7 +445,7 @@ class ProgressionBattlesController:
             elif shop:
                 self.record_interrupted_mission_attempt(code, 'Skirmish closed without a verified result')
             else:
-                self.record_failed_mission_attempt(code, 'Skirmish closed without victory')
+                self.append_log('Skirmish closed without a verified result. Grid attempt remains retryable.')
 
         def cleanup():
             self._skirmish_busy = False

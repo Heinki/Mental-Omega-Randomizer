@@ -358,6 +358,8 @@ def start_new_run(
         mission_offers=offers,
         modifiers=modifier_ids,
     )
+    from .permanent import complete_permanent_buff_snapshot
+    run = complete_permanent_buff_snapshot(run, profile)
     run = normalize_shop_run(run.to_dict(), config=config)
     return StartRunTransition(
         updated_profile,

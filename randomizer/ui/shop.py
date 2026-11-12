@@ -758,8 +758,8 @@ def build_shop_tab(self, workspace_tabs):
         permanent_buffs,
         text=(
             '1. Buy a unit on Units. 2. Select it below. 3. Buy lasting buff '
-            'stacks with Gems. Buffs apply whenever that unit is selected '
-            'for a future run. Between runs, use arrows to buy or refund '
+            'stacks with Gems. Buffs apply when that unit becomes available '
+            'in a run, including purchases with Ore. Between runs, buy or refund '
             'one stack for its full Gem price.'
         ),
         style='Shop.Help.TLabel',

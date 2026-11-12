@@ -184,6 +184,18 @@ def active_shop_starter_defense_ids(run):
     )
 
 
+def active_shop_permanent_buffs(run):
+    """Activate frozen permanent buffs when their unit or power is acquired."""
+    from .permanent import active_permanent_buffs
+    if run is None:
+        return ()
+    return active_permanent_buffs(run, (
+        *active_shop_starter_unit_ids(run),
+        *active_shop_starter_defense_ids(run),
+        *shop_always_available_unit_ids(),
+    ))
+
+
 def active_shop_reward_ids(run):
     """Return canonical reward IDs selected or purchased for this run."""
     if run is None:
@@ -193,7 +205,7 @@ def active_shop_reward_ids(run):
         *run.random_starting_unit_unlocks,
         *run.permanent_power_unlocks_snapshot,
         *ap_automatic_reward_ids(run.ap_entitlements_snapshot),
-        *(buff.reward_id for buff in run.permanent_buffs_snapshot),
+        *(buff.reward_id for buff in active_shop_permanent_buffs(run)),
         *(purchase.reward_id for purchase in run.run_purchases),
         *(buff.reward_id for buff in run.run_buffs),
         *(buff.reward_id for buff in run.starting_draft_buffs),
@@ -224,7 +236,7 @@ def active_shop_rewards(run):
                 continue
             active_access.add(entry.reward_id)
         reward_ids.append(reward_id)
-    for buff in run.permanent_buffs_snapshot:
+    for buff in active_shop_permanent_buffs(run):
         reward_ids.extend([buff.reward_id] * buff.stacks)
     for purchase in run.run_purchases:
         reward_ids.extend([purchase.reward_id] * purchase.quantity)
