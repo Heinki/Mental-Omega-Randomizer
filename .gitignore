@@ -40,3 +40,8 @@ configs/player/mental_omega_randomizer.yaml
 config/mental_omega_randomizer.yaml
 PROJECT_CONTEXT.md
 assets/Campaign Only Units For All Factions.ini
+
+# Personal Conquest campaigns and durable battle receipts
+conquest_state*
+conquest_coop_state*
+conquest_coop_guest*

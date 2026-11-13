@@ -6,6 +6,7 @@ from .viewport import ScrollableViewport
 
 
 MODE_DESCRIPTIONS = {
+    'Conquest': 'Conquer territories solo or with up to four players over ZeroTier. Build personal armies, research upgrades, and fight skirmishes or autobattles.',
     'Classic': 'Follow the installed campaign order, opening one mission at a time.',
     'Mission List': 'Play through missions in a randomized linear order.',
     'Grid Mode': 'Explore a randomized mission board through neighboring victories.',

@@ -279,3 +279,7 @@ Mental Omega Discord Invite link : https://discord.com/invite/KpJzhWY
 See [Grid progression and mission access](GRID_PROGRESSION.md) for required victory missions,
 AP unlock modes, the frozen whole-board currency budget, persistence, protocol
 compatibility, and the manual gameplay checklist.
+
+## Conquest mode
+
+Open **Game Modes → Conquest** for the DTA-style territory campaign with native faction armies and battles. See [CONQUEST.md](CONQUEST.md) for engine adaptations, omitted perks and replacement suggestions.

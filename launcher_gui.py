@@ -78,6 +78,9 @@ def run_self_check():
         )
         report['unit_roster'] = validate_randomizer_unit_roster()
         report['unit_health'] = validate_randomizer_unit_health()
+        from randomizer.conquest.engine import catalogue_report as conquest_catalogue_report
+        conquest = conquest_catalogue_report(GAME_ROOT)
+        report['conquest'] = {key: value for key, value in conquest.items() if key != 'maps'}
         report['passed'] = bool(
             report['game_exe_exists'] and report['game_launcher_exists']
             and report['battle_ini_exists'] and report['static_configs_valid']

@@ -59,12 +59,14 @@ from .archipelago_controller import ArchipelagoController
 from .coop_controller import CoopController
 from .challenge_controller import ChallengeController
 from .final_fortress_controller import FinalFortressController
+from .conquest_controller import ConquestController
 
 
 from .progression_battles import ProgressionBattlesController
 
 
 class LauncherApp(
+    ConquestController,
     ProgressionBattlesController,
     UpdateController,
     FinalFortressController,
@@ -581,6 +583,7 @@ class LauncherApp(
         self.initialize_challenge_defaults()
         self.initialize_shop_controller()
         self.initialize_final_fortress_controller()
+        self.initialize_conquest()
         self.cleanup_generated_root_maps()
         self.disable_generated_rules_for_client()
 
