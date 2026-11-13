@@ -64,6 +64,10 @@ class ScrollableViewport(ttk.Frame):
         self._pending = None
         width = max(self.canvas.winfo_width(), self.content.winfo_reqwidth())
         height = max(self.canvas.winfo_height(), self.content.winfo_reqheight())
+        signature = (width, height, self.canvas.winfo_width())
+        if signature == getattr(self, '_size_signature', None):
+            return
+        self._size_signature = signature
         self.canvas.itemconfigure(self.window, width=width, height=height)
         self.canvas.configure(scrollregion=(0, 0, width, height))
         if width > self.canvas.winfo_width():
@@ -85,7 +89,6 @@ class ScrollableViewport(ttk.Frame):
                 return
             if tag not in widget.bindtags():
                 widget.bindtags((tag, *widget.bindtags()))
-                widget.bind('<Configure>', self._schedule_resize, add='+')
             for child in widget.winfo_children():
                 visit(child)
 

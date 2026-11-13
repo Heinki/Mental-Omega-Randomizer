@@ -97,15 +97,22 @@ def _build_loadout_upgrade_view(self, parent):
         self.shop_loadout_upgrade_tree,
         self.shop_loadout_upgrade_tooltip,
     )
+    loadout_upgrade_actions = ttk.Frame(frame)
+    loadout_upgrade_actions.grid(row=3, column=0, sticky='e', pady=(7, 0))
     self.shop_loadout_upgrade_purchase_button = ttk.Button(
-        frame,
+        loadout_upgrade_actions,
         text='Purchase Selected',
         command=self.buy_selected_loadout_upgrade,
         state='disabled',
     )
-    self.shop_loadout_upgrade_purchase_button.grid(
-        row=3, column=0, sticky='e', pady=(7, 0)
+    self.shop_loadout_upgrade_purchase_button.pack(side='left')
+    self.shop_loadout_upgrade_max_button = ttk.Button(
+        loadout_upgrade_actions,
+        text='Buy Max',
+        command=lambda: self.buy_selected_loadout_upgrade(buy_max=True),
+        state='disabled',
     )
+    self.shop_loadout_upgrade_max_button.pack(side='left', padx=(8, 0))
     frame.grid(row=0, column=0, sticky='nsew')
     frame.grid_remove()
 
@@ -513,6 +520,13 @@ def build_shop_tab(self, workspace_tabs):
         state='disabled',
     )
     self.shop_purchase_button.pack(side='left')
+    self.shop_purchase_max_button = ttk.Button(
+        shop_action_row,
+        text='Buy Max',
+        command=lambda: self.buy_selected_shop_reward(buy_max=True),
+        state='disabled',
+    )
+    self.shop_purchase_max_button.pack(side='left', padx=(8, 0))
 
     loadout = ttk.Frame(panels, padding=8)
     self.shop_loadout_panel = loadout
@@ -760,7 +774,9 @@ def build_shop_tab(self, workspace_tabs):
             '1. Buy a unit on Units. 2. Select it below. 3. Buy lasting buff '
             'stacks with Gems. Buffs apply when that unit becomes available '
             'in a run, including purchases with Ore. Between runs, buy or refund '
-            'one stack for its full Gem price.'
+            'one stack for its full Gem price. '
+            'Buy Max purchases as many stacks of the selected buff '
+            'as your Gems and its stack limit allow.'
         ),
         style='Shop.Help.TLabel',
         wraplength=620,
@@ -812,13 +828,22 @@ def build_shop_tab(self, workspace_tabs):
         wraplength=620,
         justify='left',
     ).grid(row=3, column=0, sticky='w', pady=(7, 4))
+    permanent_buff_actions = ttk.Frame(permanent_buffs)
+    permanent_buff_actions.grid(row=4, column=0, sticky='e')
     self.shop_permanent_buff_button = ttk.Button(
-        permanent_buffs,
+        permanent_buff_actions,
         text='Select a Permanent Buff',
         command=self.buy_selected_permanent_buff,
         state='disabled',
     )
-    self.shop_permanent_buff_button.grid(row=4, column=0, sticky='e')
+    self.shop_permanent_buff_button.pack(side='left')
+    self.shop_permanent_buff_max_button = ttk.Button(
+        permanent_buff_actions,
+        text='Buy Max',
+        command=lambda: self.buy_selected_permanent_buff(buy_max=True),
+        state='disabled',
+    )
+    self.shop_permanent_buff_max_button.pack(side='left', padx=(8, 0))
     permanent_power_buffs = ttk.Frame(permanent_tabs, padding=8)
     self.shop_permanent_power_buffs_panel = permanent_power_buffs
     permanent_tabs.add(permanent_power_buffs, text='Permanent Power Buffs')
@@ -829,7 +854,9 @@ def build_shop_tab(self, workspace_tabs):
         text=(
             '1. Buy a power on Powers. 2. Select it below. 3. Buy lasting '
             'buff stacks with Gems. Buffs apply whenever that power is '
-            'active in a future run. Between runs, use arrows to buy or refund one stack for its full Gem price.'
+            'active in a future run. Between runs, use arrows to buy or refund one stack for its full Gem price. '
+            'Buy Max purchases as many stacks of the selected buff '
+            'as your Gems and its stack limit allow.'
         ),
         style='Shop.Help.TLabel',
         wraplength=620,
@@ -891,13 +918,22 @@ def build_shop_tab(self, workspace_tabs):
         wraplength=620,
         justify='left',
     ).grid(row=3, column=0, sticky='w', pady=(7, 4))
+    permanent_power_buff_actions = ttk.Frame(permanent_power_buffs)
+    permanent_power_buff_actions.grid(row=4, column=0, sticky='e')
     self.shop_permanent_power_buff_button = ttk.Button(
-        permanent_power_buffs,
+        permanent_power_buff_actions,
         text='Select a Permanent Power Buff',
         command=self.buy_selected_permanent_power_buff,
         state='disabled',
     )
-    self.shop_permanent_power_buff_button.grid(row=4, column=0, sticky='e')
+    self.shop_permanent_power_buff_button.pack(side='left')
+    self.shop_permanent_power_buff_max_button = ttk.Button(
+        permanent_power_buff_actions,
+        text='Buy Max',
+        command=lambda: self.buy_selected_permanent_power_buff(buy_max=True),
+        state='disabled',
+    )
+    self.shop_permanent_power_buff_max_button.pack(side='left', padx=(8, 0))
 
     ap_purchases = ttk.Frame(panels, padding=8)
     self.shop_ap_panel = ap_purchases

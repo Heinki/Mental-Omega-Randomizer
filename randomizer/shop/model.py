@@ -322,6 +322,7 @@ class PurchaseValidation:
     result: PurchaseResult
     reward_id: str = ''
     cost: int = 0
+    quantity: int = 1
 
     @property
     def allowed(self) -> bool:

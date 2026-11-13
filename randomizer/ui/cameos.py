@@ -603,7 +603,7 @@ def ensure_superweapon_cameos(
     synchronous=False,
 ):
     """Resolve the installed sidebar icon for each requested superweapon."""
-    sidebar_names = rules_sidebar_names(synchronous=synchronous)
+    sidebar_names = dict(rules_sidebar_names(synchronous=synchronous))
     sidebar_names.update({
         str(superweapon_id).upper(): str(cameo_name)
         for superweapon_id, cameo_name in (sidebar_overrides or {}).items()
@@ -616,3 +616,11 @@ def ensure_superweapon_cameos(
         if cameo_name:
             requested[superweapon_id] = cameo_name
     return ensure_requested_cameos(requested, synchronous=synchronous)
+
+
+# Tk requests are batched on the existing worker; workers retain direct access.
+from .asset_loader import deferred_cameos
+
+ensure_unit_cameos, ensure_superweapon_cameos, bind_cameo_loader = deferred_cameos(
+    ensure_unit_cameos, ensure_superweapon_cameos, synchronous=True,
+)

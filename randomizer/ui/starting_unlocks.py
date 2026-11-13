@@ -52,7 +52,7 @@ def build_starting_unlocks_tab(self, advanced_notebook):
         row=0, column=3, sticky='ew', padx=(6, 12)
     )
     self.starting_unlock_search_var.trace_add(
-        'write', lambda *_args: self.refresh_starting_unlocks_view()
+        'write', lambda *_args: self.schedule_starting_unlock_search()
     )
     ttk.Button(
         controls,

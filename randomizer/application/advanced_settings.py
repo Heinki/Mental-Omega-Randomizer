@@ -53,6 +53,7 @@ class AdvancedSettingsController:
         """Return the visible Advanced subpage without rendering hidden pages."""
         if (
             not hasattr(self, 'workspace_tabs')
+            or not self.workspace_tabs.winfo_ismapped()
             or not hasattr(self, 'advanced_tab')
             or self.workspace_tabs.select() != str(self.advanced_tab)
             or not hasattr(self, 'advanced_notebook')
@@ -68,8 +69,33 @@ class AdvancedSettingsController:
             return self.ADVANCED_VIEW_KEYS[index]
         return None
 
+    def advanced_view_signature(self, key):
+        """Describe controls that affect cards, without rebuilding the cards."""
+        def values(item):
+            if isinstance(item, tk.Variable):
+                return item.get()
+            if isinstance(item, dict):
+                return tuple((name, values(value)) for name, value in sorted(item.items()))
+            return None
+        controls = tuple((name, values(value)) for name, value in sorted(self.__dict__.items())
+                         if name.endswith(('_var', '_vars')))
+        exclusions = tuple((name, repr(getattr(self, name, None))) for name in (
+            'excluded_mission_codes', 'excluded_unit_access_ids', 'excluded_superweapon_ids',
+            'excluded_unit_buff_types', 'excluded_power_buff_types', 'manual_starting_reward_names'))
+        return (key, controls, exclusions, id(self.missions), len(self.missions),
+                tuple(sorted(getattr(self, 'advanced_pool_column_counts', {}).items())),
+                self.gameplay_settings_locked(),
+                getattr(getattr(self, '_cameo_loader', None), 'revision', 0))
+
     def refresh_active_advanced_view(self):
         key = self.active_advanced_view_key()
+        if key is None:
+            return
+        signature = self.advanced_view_signature(key)
+        signatures = self.__dict__.setdefault('_advanced_view_signatures', {})
+        if signatures.get(key) == signature:
+            return
+        signatures[key] = signature
         if key == 'starting_unlocks':
             self.refresh_starting_unlocks_view()
         elif key == 'negative_buffs':
@@ -85,7 +111,8 @@ class AdvancedSettingsController:
             self._active_advanced_refresh_after_id = None
             self.refresh_active_advanced_view()
 
-        self._active_advanced_refresh_after_id = self.after_idle(refresh)
+        self._active_advanced_refresh_after_id = True
+        self.queue_view_refresh(refresh)
 
     def advanced_search_matches(self, pool_key, *values):
         variable = getattr(self, 'advanced_pool_search_vars', {}).get(pool_key)

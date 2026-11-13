@@ -233,6 +233,17 @@ The report is written to `RandomizerLauncherData\self_check.json`.
 | `build_all.ps1` | Local launcher + tracked APWorld build workflow |
 
 Packaged writable data lives under `RandomizerLauncherData`; source-mode data lives under `RandomizerLauncher`.
+For run buffs, **Buy Max** sits beside **Purchase Selected** in both the
+Current Run Shop and Current Loadout upgrade view. It buys the selected
+buff until the next stack is unaffordable or the stack limit is reached.
+Each stack uses the normal Ore price, discounts, coupons, and available
+Free Buff Tokens; the complete purchase is saved once.
+
+In Shop Mode, select a permanent unit or power buff and click **Buy Max**
+to buy all affordable stacks in one purchase. Purchases stop at the buff
+stack limit and leave any unspent Gems. Permanent buff purchases are
+available only between runs; the arrows still buy or refund one stack.
+
 Permanent Gems, permanent unit/power unlocks, and their buffs live in
 `shop_profile.json`; Run Ore, purchases, and mission state live
 in `shop_run.json`. Permanent powers activate automatically in future Shop

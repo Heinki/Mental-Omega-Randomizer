@@ -223,10 +223,39 @@ class ShopProgressionService:
         self.repository.save_run(updated)
         return updated
 
-    def purchase_run_reward(self, reward_id):
+    def purchase_run_reward(self, reward_id, *, buy_max=False):
+        """Apply one or all affordable purchases, then save the run once."""
         profile, run = self.repository.load()
         if run is None:
             raise ShopTransitionError('No Shop run exists')
+        if buy_max:
+            entry = catalogue_entry(canonical_reward_for_id(reward_id))
+            if entry is None or entry.reward_type not in {
+                ShopRewardType.UNIT_BUFF, ShopRewardType.POWER_BUFF
+            }:
+                raise ShopTransitionError(
+                    'Buy Max is only available for unit and power buffs'
+                )
+        quantity = 0
+        total_cost = 0
+        while True:
+            updated, validation = self._apply_run_reward_purchase(
+                profile, run, reward_id,
+            )
+            if not validation.allowed:
+                if not quantity:
+                    return validation
+                break
+            run = updated
+            purchased = validation
+            quantity += 1
+            total_cost += validation.cost
+            if not buy_max:
+                break
+        self.repository.save_run(run)
+        return replace(purchased, cost=total_cost, quantity=quantity)
+
+    def _apply_run_reward_purchase(self, profile, run, reward_id):
         reward = canonical_reward_for_id(reward_id)
         entry = catalogue_entry(reward)
         if entry is None or entry.reward_type not in {
@@ -235,7 +264,7 @@ class ShopProgressionService:
             ShopRewardType.POWER_ACCESS,
             ShopRewardType.POWER_BUFF,
         }:
-            return validate_run_purchase(
+            return run, validate_run_purchase(
                 reward,
                 price=0,
                 run_coins=run.run_coins,
@@ -331,8 +360,7 @@ class ShopProgressionService:
                     stock_lock_reward_id=None,
                     stock_lock_stage=None,
                 )
-            self.repository.save_run(updated)
-        return validation
+        return (updated if validation.allowed else run), validation
 
     def lock_shop_offer(self, reward_id):
         profile, run = self.repository.load()
@@ -435,7 +463,7 @@ class ShopProgressionService:
             self.repository.save_profile(outcome.profile)
         return outcome
 
-    def purchase_permanent_buff(self, reward_id):
+    def purchase_permanent_buff(self, reward_id, *, buy_max=False):
         profile, run = self.repository.load()
         if run is not None and run.status is RunStatus.ACTIVE:
             raise ShopTransitionError(
@@ -454,7 +482,8 @@ class ShopProgressionService:
         else:
             price = permanent_buff_price(entry.target_id)
         outcome = apply_permanent_buff_purchase(
-            profile, reward, price=price, shop_eligible=shop_eligible
+            profile, reward, price=price, shop_eligible=shop_eligible,
+            buy_max=buy_max,
         )
         if outcome.validation.allowed:
             self.repository.save_profile(outcome.profile)

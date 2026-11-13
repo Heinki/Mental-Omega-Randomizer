@@ -241,6 +241,11 @@ class IntegerSlider(ttk.Frame):
         handle_x = start + ((end - start) * fraction)
         radius = self.HANDLE_RADIUS + (1 if self._hovered else 0)
 
+        signature = (start, end, self.minimum, self.maximum, self._current_value,
+                     self._hovered, remaining, filled, handle_fill)
+        if signature == getattr(self, '_draw_signature', None):
+            return
+        self._draw_signature = signature
         self.canvas.delete('all')
         self.canvas.create_line(
             start,

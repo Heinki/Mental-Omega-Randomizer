@@ -1008,6 +1008,10 @@ def _png_chunk(kind, payload):
     )
 
 
+from randomizer.ui.asset_loader import deferred_preview
+
+
+@deferred_preview
 def custom_sidebar_preview(image_value):
     """Return a launcher-ready 60x48 PNG derived from a configured asset."""
     image_name = _asset_name(image_value, '.png')

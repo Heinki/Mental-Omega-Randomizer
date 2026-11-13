@@ -110,11 +110,30 @@ class FinalFortressController(FortressCoopController):
                 entry['display_name'] for entry in map_definitions(self.final_fortress_map_catalogue))
             if definition is not None:
                 self.final_fortress_map_var.set(definition['display_name'])
-            self.final_fortress_state = self.final_fortress_repository.load()
-            if self.final_fortress_state['preferences']['workspace_selected']:
-                self.game_mode_var.set(DISPLAY_NAME)
+            self._fortress_initial_loaded = False
         except (RuntimeError, ValueError, OSError) as exc:
             self.final_fortress_status_var.set(str(exc))
+
+    def load_initial_fortress_state(self):
+        """Restore and validate saved progression without reading Tk controls."""
+        repository = self.final_fortress_repository
+        try:
+            state = repository.load() if self.final_fortress_config is not None else None
+            return repository, state, ''
+        except (RuntimeError, ValueError, OSError) as exc:
+            return repository, None, str(exc)
+
+    def apply_initial_fortress_state(self, result):
+        self.final_fortress_repository, self.final_fortress_state, error = result
+        self._fortress_initial_loaded = True
+        if error:
+            self.final_fortress_status_var.set(error)
+            return
+        state = self.final_fortress_state
+        if state is not None and state['preferences']['workspace_selected']:
+            self.game_mode_var.set(DISPLAY_NAME)
+            self.sync_shop_workspace()
+        self.refresh_final_fortress()
 
     def _sync_game_mode_choice(self, *_args):
         if not self.final_fortress_mode_selected():
@@ -257,6 +276,8 @@ class FinalFortressController(FortressCoopController):
         return super().on_new_seed()
 
     def refresh_final_fortress(self):
+        if not getattr(self, '_fortress_initial_loaded', False):
+            return
         if self.final_fortress_config is None:
             return
         try:

@@ -77,7 +77,7 @@ def _build_log_and_overlay(self, main_frame):
 
     # Long seed/map work runs on the single background worker. This overlay
     # blocks duplicate input while Tk keeps painting progress and elapsed time.
-    self.busy_overlay = tk.Frame(main_frame, background='#edf3f8')
+    self.busy_overlay = tk.Frame(self, background='#edf3f8')
     self.busy_card = tk.Frame(
         self.busy_overlay,
         background='#f9fcff',

@@ -58,6 +58,7 @@ class UnlockViewController:
     def unlocks_view_visible(self):
         return bool(
             hasattr(self, 'info_tabs')
+            and self.info_tabs.winfo_ismapped()
             and hasattr(self, 'unlocks_tab')
             and self.info_tabs.select() == str(self.unlocks_tab)
         )

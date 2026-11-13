@@ -260,6 +260,15 @@ class StartingUnlocksController(StartingUnlocks):
                 pass
         return self.starting_unlock_placeholder_photo(entry['category'])
 
+    def schedule_starting_unlock_search(self):
+        pending = getattr(self, '_starting_search_after', None)
+        if pending is not None:
+            self.after_cancel(pending)
+        def refresh():
+            self._starting_search_after = None
+            self.refresh_starting_unlocks_view()
+        self._starting_search_after = self.after(150, refresh)
+
     def refresh_starting_unlocks_view(self):
         tree = getattr(self, 'starting_unlocks_tree', None)
         if tree is None:
@@ -267,6 +276,11 @@ class StartingUnlocksController(StartingUnlocks):
         selected_names = set(self.canonical_starting_unlock_names())
         entries = self.visible_starting_unlock_entries()
         self.resolve_starting_unlock_cameo_paths(entries)
+        signature = (tuple(entry['name'] for entry in entries), frozenset(selected_names),
+                     getattr(getattr(self, '_cameo_loader', None), 'revision', 0))
+        if signature == getattr(self, '_starting_rows_signature', None):
+            return
+        self._starting_rows_signature = signature
         tree.delete(*tree.get_children())
         self.starting_unlock_tree_names = {}
         for index, entry in enumerate(entries):

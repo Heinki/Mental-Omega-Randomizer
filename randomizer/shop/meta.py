@@ -27,6 +27,7 @@ from .model import (
 class ProfilePurchaseOutcome:
     profile: ShopProfile
     validation: PurchaseValidation
+    quantity: int = 1
 
 
 def purchase_permanent_unit(profile, reward, *, price, shop_eligible=True):
@@ -89,7 +90,10 @@ def purchase_permanent_power(profile, reward, *, price, shop_eligible=True):
     return ProfilePurchaseOutcome(updated, validation)
 
 
-def purchase_permanent_buff(profile, reward, *, price, shop_eligible=True):
+def purchase_permanent_buff(
+    profile, reward, *, price, shop_eligible=True, buy_max=False
+):
+    """Buy one stack or all affordable stacks, respecting shared caps."""
     reward_id = canonical_reward_id(reward)
     entry = catalogue_entry(reward) if shop_eligible else None
     if entry is None or entry.reward_type not in {
@@ -152,17 +156,25 @@ def purchase_permanent_buff(profile, reward, *, price, shop_eligible=True):
                 PurchaseResult.INSUFFICIENT_CURRENCY, reward_id, int(price)
             ),
         )
+    price = int(price)
+    if price <= 0:
+        raise ValueError('Permanent buff price must be positive')
+    quantity = profile.meta_coins // price if buy_max else 1
+    if entry.stack_limit is not None:
+        quantity = min(quantity, entry.stack_limit - current)
+    total_price = price * quantity
     buffs = [
         item for item in profile.permanent_buffs if item.reward_id != reward_id
     ]
-    buffs.append(BuffPurchase(reward_id, current + 1))
+    buffs.append(BuffPurchase(reward_id, current + quantity))
     return ProfilePurchaseOutcome(
         replace(
             profile,
-            meta_coins=profile.meta_coins - int(price),
+            meta_coins=profile.meta_coins - total_price,
             permanent_buffs=tuple(buffs),
         ),
-        PurchaseValidation(PurchaseResult.OK, reward_id, int(price)),
+        PurchaseValidation(PurchaseResult.OK, reward_id, total_price),
+        quantity=quantity,
     )
 
 

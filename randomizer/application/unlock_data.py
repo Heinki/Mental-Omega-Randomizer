@@ -1202,6 +1202,8 @@ class UnlockDataController:
 
     def schedule_cameo_refresh_retry(self):
         """Redraw image consumers after asynchronous MIX extraction finishes."""
+        if hasattr(self, '_cameo_loader'):
+            return
         if self.cameo_retry_after_id is not None or self.cameo_retry_count >= 20:
             return
         self.cameo_retry_count += 1

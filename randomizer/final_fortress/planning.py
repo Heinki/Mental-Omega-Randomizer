@@ -22,6 +22,10 @@ def configuration_digest(config):
     return hashlib.sha256(encoded).hexdigest()
 
 
+from randomizer.core.plan_cache import cached_plan
+
+
+@cached_plan
 def build_run_plan(config, *, difficulty, seed, player_country, selected_perks=(),
                    wave_multiplier=1, plan_version=PLAN_VERSION, selected_challenges=(),
                    challenge_stacks=None, perk_ranks=None, mental_ai_boost=False,
