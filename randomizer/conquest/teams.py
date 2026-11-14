@@ -76,6 +76,17 @@ def participants(battle):
     return battle['participants'] if 'participants' in battle else plan_participants(battle, legacy=True)
 
 
+def human_coalition(battle):
+    """Use the committed human team, independent of host and active UI seat."""
+    teams = {member['team'] for member in participants(battle) if member['controller'] == 'human'}
+    if len(teams) != 1 or not teams.issubset({'attack', 'defense'}):
+        raise ValueError('Conquest battle must have one committed human coalition.')
+    team = next(iter(teams))
+    if battle.get('human_team', team) != team:
+        raise ValueError('Conquest human coalition differs from its committed participants.')
+    return team
+
+
 def team_power(battle, team):
     return round(sum(m['loadout']['power'] for m in participants(battle) if m['team'] == team), 3)
 

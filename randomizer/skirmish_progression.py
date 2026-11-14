@@ -9,54 +9,99 @@ import re
 from randomizer.skirmish import GAME, discover_maps, playable_countries
 
 
-def mission_catalogue(root):
-    """Stable IDs preserve saved nodes/offers independently of the checkbox."""
+def _mission_code(relative, country):
+    return 'SK_' + hashlib.sha256(f'{relative}|{country}'.encode()).hexdigest()[:16].upper()
+
+
+def mission_for_country(mission, country):
+    """Materialize only a selected or saved country, keeping its original ID."""
+    from randomizer.skirmish_factions import mission_countries, faction_for_country
+    countries = mission_countries(mission)
+    label = next(label for label, native in countries.items() if native == country)
+    faction = faction_for_country(country)
+    return dict(mission, code=_mission_code(mission['scenario'], country),
+                skirmish_country=country, side=faction, faction=faction,
+                title=f'1v1 Skirmish: {mission["skirmish_map"]["name"]} ({label})')
+
+
+def mission_catalogue(root, *, codes=None):
+    """One entry per installed map; the faction picker supplies other countries."""
     result = []
     countries = playable_countries()
-    for relative, definition in discover_maps(root).items():
-        for label, country in countries.items():
-            if country not in definition['countries']:
-                continue
-            if GAME == 'dta':
-                faction = country
-            elif GAME == 'reloaded':
-                faction = label
-            else:
-                from randomizer.challenges.catalogue import SIDE_COUNTRIES, SIDE_FAMILIES
-                family = SIDE_FAMILIES[SIDE_COUNTRIES.index(country)]
-                faction = dict(allies='Allies', soviets='Soviets', epsilon='Epsilon', foehn='Foehn')[family]
-            code = 'SK_' + hashlib.sha256(f'{relative}|{country}'.encode()).hexdigest()[:16].upper()
-            map_info = deepcopy(definition)
-            map_info['path'] = relative
-            result.append({
-                'code': code, 'title': f'1v1 Skirmish: {definition["name"]} ({label})',
-                'scenario': relative, 'side': faction, 'faction': faction,
-                'campaign': 'Skirmish', 'skirmish': True,
-                'skirmish_country': country, 'skirmish_map': map_info,
-                'index': 6, 'mission_number': 6, 'objective_count': 0,
-                'objectives': [], 'build_classification': 'base_build',
-                'reward_class': 'act_1',
-                'briefing': 'Defeat the single enemy AI. Normal run unlocks, buffs, rewards and failure rules apply.',
-            })
+    wanted = None if codes is None else set(codes)
+    if wanted == set():
+        return result
+    accept_path = None if wanted is None else lambda relative: any(
+        _mission_code(relative, country) in wanted for country in countries.values())
+    for relative, definition in discover_maps(root, accept_path=accept_path, allow_legacy=wanted is not None).items():
+        country = next((country for country in countries.values()
+                        if country in definition['countries']), None)
+        if country is None:
+            continue
+        map_info = deepcopy(definition)
+        map_info['path'] = relative
+        mission = dict(scenario=relative, campaign='Skirmish', skirmish=True,
+                       skirmish_map=map_info, skirmish_eligible=definition.get('progression_eligible', True), index=6, mission_number=6,
+                       objective_count=0, objectives=[], build_classification='base_build',
+                       reward_class='act_1',
+                       briefing='Defeat the single enemy AI. Normal run unlocks, buffs, rewards and failure rules apply.')
+        result.append(mission_for_country(mission, country))
     return result
 
 
+def referenced_missions(catalogue, codes):
+    """Recover exact saved IDs without expanding every map into every faction."""
+    from randomizer.skirmish_factions import mission_countries
+    codes = set(codes)
+    result = []
+    for mission in catalogue:
+        saved = [mission_for_country(mission, country)
+                 for country in mission_countries(mission).values()
+                 if _mission_code(mission['scenario'], country) in codes]
+        result.extend(saved)
+    return result
+
+
+def restore_saved_maps(root, catalogue, codes):
+    """Keep legacy map IDs resolvable without offering them in new pools."""
+    missing = set(codes) - {mission['code'] for mission in referenced_missions(catalogue, codes)}
+    if not missing:
+        return catalogue
+    scenarios = {mission['scenario'] for mission in catalogue}
+    return list(catalogue) + [mission for mission in mission_catalogue(root, codes=missing)
+                              if mission['scenario'] not in scenarios]
+
+
+def normalize_exclusions(catalogue, excluded):
+    """An exclusion represents a map, including old country-specific IDs."""
+    from randomizer.skirmish_factions import mission_countries
+    aliases = {_mission_code(mission['scenario'], country): mission['code']
+               for mission in catalogue for country in mission_countries(mission).values()}
+    return {aliases.get(code, code) for code in excluded}
+
+
 def select_pool(missions, catalogue, *, enabled, factions=(), excluded=()):
-    """Choose one fixed playable country per map, without duplicate map weight."""
+    """Select one playable country per map, retaining saved country-specific IDs."""
+    from randomizer.skirmish_factions import mission_countries, faction_for_country
     base = [mission for mission in missions if not mission.get('skirmish')]
     if not enabled:
         return base
-    factions, excluded = set(factions), set(excluded)
-    grouped = {}
+    factions, excluded, seen = set(factions), set(excluded), set()
     for mission in catalogue:
-        if (GAME == 'mo' and Path(mission['scenario']).stem.casefold() == 'l_levelgrounddancing'):
-            continue  # Authored start pocket prevents AI MCV deployment.
-        if mission['code'] in excluded or (factions and mission['faction'] not in factions):
+        if not mission.get('skirmish_eligible', True):
             continue
-        grouped.setdefault(mission['scenario'], []).append(mission)
-    for relative, variants in grouped.items():
-        index = int(hashlib.sha256(relative.encode()).hexdigest()[:8], 16) % len(variants)
-        base.append(variants[index])
+        relative = mission['scenario']
+        if relative in seen or (GAME == 'mo' and Path(relative).stem.casefold() == 'l_levelgrounddancing'):
+            continue
+        seen.add(relative)
+        countries = list(mission_countries(mission).values())
+        if mission['code'] in excluded or any(_mission_code(relative, country) in excluded for country in countries):
+            continue
+        countries = [country for country in countries
+                     if not factions or faction_for_country(country) in factions]
+        if countries:
+            index = int(hashlib.sha256(relative.encode()).hexdigest()[:8], 16) % len(countries)
+            base.append(mission_for_country(mission, countries[index]))
     return base
 
 

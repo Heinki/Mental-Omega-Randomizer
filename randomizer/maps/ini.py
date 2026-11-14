@@ -82,7 +82,7 @@ def set_ini_value_lines(text, section, key, value):
     section_found = False
     key_written = False
     for line in lines:
-        stripped = line.strip()
+        stripped = line.split(';', 1)[0].strip()
         is_section = stripped.startswith('[') and stripped.endswith(']')
         if is_section:
             if in_section and not key_written:
@@ -118,7 +118,7 @@ def find_section_bounds(lines, section):
             current = None
             start = None
             for index, line in enumerate(lines):
-                stripped = line.strip()
+                stripped = line.split(';', 1)[0].strip()
                 if stripped.startswith('[') and stripped.endswith(']'):
                     if current is not None:
                         bounds.setdefault(current, (start, index))
@@ -130,7 +130,7 @@ def find_section_bounds(lines, section):
         return lines._section_bounds_cache.get(wanted, (None, None))
     start = None
     for index, line in enumerate(lines):
-        stripped = line.strip()
+        stripped = line.split(';', 1)[0].strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             if start is not None:
                 bounds = (start, index)
@@ -154,7 +154,7 @@ def section_value_map(lines, section):
             return dict(cached)
     values = {}
     for line in section_lines(lines, section):
-        if '=' in line:
+        if not line.lstrip().startswith(';') and '=' in line:
             key, value = line.split('=', 1)
             values[key.strip().lower()] = value.strip()
     if isinstance(lines, IniLines):
@@ -170,7 +170,7 @@ def section_value_map_preserve(lines, section):
             return dict(cached)
     values = {}
     for line in section_lines(lines, section):
-        if '=' in line:
+        if not line.lstrip().startswith(';') and '=' in line:
             key, value = line.split('=', 1)
             values[key.strip()] = value.strip()
     if isinstance(lines, IniLines):
@@ -187,11 +187,11 @@ def all_section_value_maps(lines):
     sections = {}
     current_values = None
     for line in lines:
-        stripped = line.strip()
+        stripped = line.split(';', 1)[0].strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             current_values = {}
             sections[stripped[1:-1].strip()] = current_values
-        elif current_values is not None and '=' in line:
+        elif current_values is not None and '=' in stripped:
             key, value = line.split('=', 1)
             current_values[key.strip().lower()] = value.strip()
     if isinstance(lines, IniLines):
@@ -202,7 +202,7 @@ def all_section_value_maps(lines):
 
 
 def all_section_value_maps_preserve(lines):
-    """Return every section while preserving key spelling and casing."""
+    """Read native section headers, including trailing comments, preserving keys."""
     if (
         isinstance(lines, IniLines)
         and lines._all_sections_preserve_cache is not None
@@ -214,11 +214,11 @@ def all_section_value_maps_preserve(lines):
     sections = {}
     current_values = None
     for line in lines:
-        stripped = line.strip()
+        stripped = line.split(';', 1)[0].strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             current_values = {}
             sections[stripped[1:-1].strip()] = current_values
-        elif current_values is not None and '=' in line:
+        elif current_values is not None and '=' in stripped:
             key, value = line.split('=', 1)
             current_values[key.strip()] = value.strip()
     if isinstance(lines, IniLines):
@@ -305,7 +305,7 @@ def merge_ini_section_values(lines, section_values):
                         output.append(f'{key}={value}')
 
     for line in lines:
-        stripped = line.strip()
+        stripped = line.split(';', 1)[0].strip()
         if stripped.startswith('[') and stripped.endswith(']'):
             flush_missing_values()
             section_key = stripped[1:-1].strip().lower()
@@ -319,7 +319,7 @@ def merge_ini_section_values(lines, section_values):
                 seen_keys = set()
             output.append(line)
             continue
-        if active_values is not None and '=' in line:
+        if active_values is not None and '=' in stripped:
             key_lower = line.split('=', 1)[0].strip().lower()
             replacement = active_values.get(key_lower)
             if replacement is not None:

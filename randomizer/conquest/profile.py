@@ -16,6 +16,25 @@ def read_ini(path):
             for name, values in all_section_value_maps_preserve(text.splitlines()).items()}
 
 
+def validate_weapon_definitions(rows):
+    """Reject incomplete early weapon definitions before starting the engine.
+
+    Rewriting the native rules must preserve every registered weapon's core
+    fields. Ares can otherwise allocate an empty WeaponType and later abort
+    when a building such as FANANO is constructed.
+    """
+    sections = {name.casefold(): values for name, values in rows.items()}
+    for weapon in sections.get('weapontypes', {}).values():
+        weapon = weapon.split(';', 1)[0].strip()
+        values = {key.casefold(): value.split(';', 1)[0].strip()
+                  for key, value in sections.get(weapon.casefold(), {}).items()}
+        missing = [field for field in ('Projectile', 'Warhead')
+                   if not values.get(field.casefold())]
+        if missing:
+            raise ValueError(f'Conquest weapon {weapon} is missing {", ".join(missing)}. '
+                             'Launch cancelled; battle remains pending. Repair the installed game rules.')
+
+
 def installed_rules():
     """Read the installed, unmodified archive cache rather than a previous run."""
     if not extract_mix_files_sync([(RULES_FILE, CAMEO_CACHE_DIR / RULES_FILE),

@@ -173,7 +173,8 @@ class ConquestCoopController(ConquestCoopLaunchController):
             addresses = zerotier_ipv4_addresses() if host else ()
             lobby = ConquestLobby(GAME_ROOT, 'host' if host else 'guest', self._cq_name.get(),
                 int(self._cq_count.get()), address=self._cq_address.get(), pairing_code=self._cq_pairing.get())
-            repository = Repository(APP_DIR / ('conquest_coop_state.json' if host else 'conquest_coop_guest.json'))
+            repository = Repository(APP_DIR / ('conquest_coop_state.json' if host else 'conquest_coop_guest.json'),
+                                    authoritative=host)
             state = repository.load()
             self.conquest_repository, self.conquest_state = repository, state if host else None
             self._cq_lobby = lobby

@@ -19,6 +19,43 @@ def _map_catalogue(path):
     }
 
 
+
+def supports_progression_skirmish(root, definition, *, rows):
+    """Accept ordinary AI skirmishes without importing other lobby modes."""
+    from randomizer.skirmish import GAME
+    root = Path(root).resolve()
+    source = (root / definition['path']).resolve()
+    if not source.is_relative_to(root):
+        raise ValueError('Skirmish map must belong to this installation.')
+    if any(part.casefold() in (
+            'missions', 'campaign', 'campaigns', 'co-op', 'cooperative',
+            'coop', 'challenge', 'challenges', 'king of the hill', 'koth',
+            'assault', 'survivor', 'fortress', 'oil control', 'bounty hunt',
+    ) for part in source.relative_to(root).parts[:-1]):
+        return False
+    filename = 'MentalOmegaMaps.ini' if GAME == 'mo' else 'MPMaps.ini'
+    catalogue = _map_catalogue(root / 'INI' / filename)
+    key = source.relative_to(root).with_suffix('').as_posix().casefold()
+    metadata = dict(catalogue.get(key, {}))
+    seen = set()
+    while metadata.get('basesection'):
+        parent = metadata.pop('basesection').replace('\\', '/').casefold()
+        if parent in seen or parent not in catalogue:
+            raise ValueError('Invalid Skirmish catalogue BaseSection.')
+        seen.add(parent)
+        metadata = {**catalogue[parent], **metadata}
+    basic = {key.casefold(): value.split(';', 1)[0].strip()
+             for key, value in rows.get('Basic', {}).items()}
+    if basic.get('multiplayeronly', 'yes').casefold() in ('no', 'false', '0'):
+        return False
+    if any(values.get('humanplayersonly', '').casefold() in ('yes', 'true', '1')
+           for values in (basic, metadata)):
+        return False
+    standard = 'default' if GAME == 'dta' else 'standard'
+    modes = metadata.get('gamemodes', basic.get('gamemode', standard))
+    return standard in {mode.strip().casefold() for mode in modes.split(',')}
+
+
 def map_countries(root, definition, *, rows=None):
     """Respect native map side exclusions and disabled country overrides."""
     from randomizer.skirmish import GAME, all_section_value_maps_preserve, playable_countries

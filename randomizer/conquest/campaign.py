@@ -7,6 +7,7 @@ import math
 import random
 import secrets
 import uuid
+from . import objectives
 from .teams import TEAM_VERSION, plan_participants, team_power
 from .players import roster, human_ids, human, country, label, bonus_owners, validate_roster
 
@@ -20,6 +21,45 @@ def record(state, text, faction='player', node=None):
     state['history'].append(dict(id=state['next_event'], turn=state['turn'],
                                  faction=faction, node=node, text=text))
     state['next_event'] += 1
+
+
+def campaign_winner(state):
+    """Evaluate the selected mode, or HQ-and-army elimination for legacy saves.
+
+    Empty territories and neutral nodes do not keep a defeated side alive.
+    Legacy saves without recoverable HQ markers retain territory elimination.
+    A human teammate holding another commander's HQ still protects that side.
+    """
+    if 'victory_mode' in state['settings']:
+        return objectives.winner(state)
+
+    def eliminated(actors):
+        if any(army['faction'] in actors for army in state['armies']):
+            return False
+        if not any(node['owner'] in actors for node in state['nodes']):
+            return True
+        headquarters = {node['hq']: node['owner'] for node in state['nodes']
+                        if node.get('hq') in actors}
+        return (all(actor in headquarters for actor in actors)
+                and all(owner not in actors for owner in headquarters.values()))
+
+    if eliminated(('ai',)):
+        return 'player'
+    if eliminated(human_ids(state)):
+        return 'ai'
+    return None
+
+
+def finish_campaign(state):
+    """Finish once, after resolving any committed battle and before more turns."""
+    if state['pending'] or state['winner']:
+        return False
+    winner = campaign_winner(state)
+    if winner is None:
+        return False
+    state['winner'], state['phase'] = winner, 'finished'
+    record(state, 'Campaign victory. ' + objectives.result_text(state), winner)
+    return True
 
 
 def random_number(state, maximum):
@@ -59,14 +99,22 @@ def _layout(count, seed):
 
 def new_campaign(settings, maps):
     settings = deepcopy(settings)
+    settings.setdefault('mental_ai_boost', False)
     if isinstance(settings.get('seed'), str):
         settings['seed'] = settings['seed'].strip() or secrets.token_hex(8)
     if (settings.get('size') not in (9, 25, 64, 100) or
         settings.get('player_country') not in FACTIONS or settings.get('ai_country') not in FACTIONS or
-        settings.get('difficulty') not in DIFFICULTIES or settings.get('density') not in (0, 1, 2) or
+        settings.get('difficulty') not in DIFFICULTIES or type(settings['mental_ai_boost']) is not bool or settings.get('density') not in (0, 1, 2) or
         type(settings.get('credits')) is not int or not 100 <= settings['credits'] <= 10000 or
         not isinstance(settings.get('seed'), str) or not 1 <= len(settings['seed']) <= 80):
         raise ValueError('Choose valid Conquest settings.')
+    settings.setdefault('victory_mode', objectives.DEFAULT_MODE)
+    if settings['victory_mode'] == 'turn_limit':
+        settings.setdefault('turn_limit', objectives.DEFAULT_TURN_LIMIT)
+    elif settings['victory_mode'] == 'objectives':
+        settings.setdefault('objective_count', objectives.DEFAULT_OBJECTIVE_COUNT)
+        settings.setdefault('hold_turns', objectives.DEFAULT_HOLD_TURNS)
+    objectives.validate_settings(settings)
     players = settings.pop('coop_players', None)
     shared_nodes = settings.pop('shared_nodes', False)
     if players is not None:
@@ -117,6 +165,8 @@ def new_campaign(settings, maps):
         state['armies'].append(dict(id=army_id, faction=side, node=index, strength=8, acted=False))
         record(state, f'Campaign started with {settings["credits"]} credits and army strength 8.', side, index)
         _claim(state, state['nodes'][index])
+    objectives.initialize(state)
+    record(state, objectives.description(settings))
     record(state, 'Your turn. Select an army, then a connected territory.')
     return state
 
@@ -381,7 +431,9 @@ def move(state, source, target, faction='player', *, army_id=None):
         defending_armies=[a['id'] for a in defenders],
         seed=1 + random_number(state, 2**31 - 2),
         starts=[starts[first], others[random_number(state, len(others))]],
-        difficulty=state['settings']['difficulty'], rules_version=RULES_VERSION, attempt=None)
+        difficulty=state['settings']['difficulty'],
+        mental_ai_boost=state['settings'].get('mental_ai_boost', False),
+        rules_version=RULES_VERSION, attempt=None)
     battle = state['pending']
     if state.get('coop') and (human(state, faction) or human(state, destination['owner'])):
         battle['human_team'] = 'attack' if human(state, faction) else 'defense'
@@ -437,13 +489,8 @@ def resolve(state, battle_id, attacker_won, *, method):
         record(state, 'Attacking army destroyed.', battle['attacker'], node['id'])
     state['pending'] = None
     state['phase'] = battle['attacker']
-    if not any(n['owner'] == 'ai' for n in state['nodes']):
-        state['winner'] = 'player'
-    elif not any(human(state, n['owner']) for n in state['nodes']):
-        state['winner'] = 'ai'
-    if state['winner']:
-        state['phase'] = 'finished'
-        record(state, 'Campaign victory. All opposing territories have fallen.', state['winner'])
+    objectives.update_control(state)
+    finish_campaign(state)
     return True
 
 
@@ -469,6 +516,8 @@ def end_turn(state, faction='player'):
     _turn(state, faction)
     if not human(state, faction):
         raise ValueError('Only a human player can end this turn.')
+    if finish_campaign(state):
+        return
     record(state, f'{label(state, faction)} ended their turn.', faction)
     remaining = human_ids(state)[human_ids(state).index(faction) + 1:]
     for actor in remaining:
@@ -479,11 +528,12 @@ def end_turn(state, faction='player'):
     _begin_turn(state, 'ai')
 
 
-def _front_distance(state, start):
+def _front_distance(state, start, targets=None):
     queue, visited = deque([(start, 0)]), {start}
     while queue:
         node, distance = queue.popleft()
-        if state['nodes'][node]['owner'] != 'ai':
+        at_goal = node in targets if targets else state['nodes'][node]['owner'] != 'ai'
+        if at_goal:
             return distance
         for neighbor in neighbors(state, node):
             if neighbor not in visited:
@@ -501,6 +551,8 @@ def step_ai(state):
         return False
     if state['phase'] != 'ai':
         return False
+    if finish_campaign(state):
+        return True
     if not state['ai_purchase']:
         state['ai_purchase'] = True
         wallet = state['ai']
@@ -523,8 +575,12 @@ def step_ai(state):
             return True
     army = next((a for a in state['armies'] if a['faction'] == 'ai' and not a['acted']), None)
     if army:
+        targets = objectives.ai_targets(state)
         def priority(index):
             node = state['nodes'][index]
+            if targets:
+                strength = sum(a['strength'] for a in armies_at(state, index) if a['faction'] != 'ai')
+                return (_front_distance(state, index, targets), strength, index)
             if node['owner'] == 'ai':
                 return (1, _front_distance(state, index), index)
             strength = sum(a['strength'] for a in armies_at(state, index)) or 2
@@ -545,6 +601,12 @@ def step_ai(state):
             state['ai_recruits'] += 1
             return True
     record(state, 'Turn ended.', 'ai')
+    if 'victory_mode' in state['settings']:
+        state['completed_round'] = state['turn']
+        if state['settings']['victory_mode'] in ('turn_limit', 'objectives'):
+            record(state, objectives.summary(state))
+        if finish_campaign(state):
+            return True
     state['turn'] += 1
     first = next((actor for actor in human_ids(state) if any(n['owner'] == actor for n in state['nodes'])), 'player')
     _begin_turn(state, first)

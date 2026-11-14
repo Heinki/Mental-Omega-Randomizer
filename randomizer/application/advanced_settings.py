@@ -34,6 +34,8 @@ from ._dependencies import (
     unit_display_label,
 )
 
+from tkinter import ttk
+
 from randomizer.ui.showcase import draw_showcase_card, scale_showcase_photo
 
 
@@ -686,6 +688,7 @@ class AdvancedSettingsController:
         campaign_missions = (self._shop_campaign_missions(CAMPAIGN_FILTERS[0])
                              if self.shop_mode_selected() else
                              self.mission_pool_candidates(apply_exclusions=False))
+        campaign_missions = self.advanced_skirmish_missions(campaign_missions)
         visible_missions = filter_missions_by_build_settings(
             campaign_missions,
             include_true_no_build=self.include_no_build_missions_var.get(),
@@ -707,6 +710,35 @@ class AdvancedSettingsController:
         ]
         if 'missions' in requested:
             mission_frame = self.advanced_pool_frames['missions']
+            # Limit live Tk widgets even for large custom-map installations.
+            page_size = 100
+            page_codes = tuple(mission['code'] for mission in displayed_missions)
+            if page_codes != getattr(self, '_advanced_mission_page_codes', None):
+                self._advanced_mission_page_codes = page_codes
+                self._advanced_mission_page = 0
+            page_count = max(1, (len(displayed_missions) + page_size - 1) // page_size)
+            page = max(0, min(getattr(self, '_advanced_mission_page', 0), page_count - 1))
+            self._advanced_mission_page = page
+            first = page * page_size
+            page_missions = displayed_missions[first:first + page_size]
+
+            def change_page(index):
+                self._advanced_mission_page = index
+                self.refresh_advanced_pool_views('missions')
+                canvas = getattr(self, 'advanced_pool_canvases', {}).get('missions')
+                if canvas is not None:
+                    canvas.yview_moveto(0)
+
+            def page_controls(row):
+                toolbar = ttk.Frame(mission_frame)
+                toolbar.grid(row=row, column=0, columnspan=mission_columns, sticky='ew', pady=5)
+                ttk.Button(toolbar, text='Previous', state='normal' if page else 'disabled',
+                           command=lambda: change_page(page - 1)).pack(side='left')
+                ttk.Label(toolbar, text=(f'Page {page + 1}/{page_count} — '
+                          f'{len(displayed_missions)} missions; at most {page_size} cards per page')).pack(side='left', padx=10)
+                ttk.Button(toolbar, text='Next', state='normal' if page + 1 < page_count else 'disabled',
+                           command=lambda: change_page(page + 1)).pack(side='left')
+
             mission_icons = {}
             for faction in ('Allies', 'Soviets', 'Epsilon', 'Foehn'):
                 path = GAME_ROOT / 'Resources' / f'{faction}icon.png'
@@ -714,22 +746,42 @@ class AdvancedSettingsController:
                     f'mission:{faction}', path
                 )
             mission_columns = self.advanced_pool_column_count('missions')
-            for index, mission in enumerate(displayed_missions):
-                faction = challenge_color_group(mission) or normalize_faction(
-                    mission.get('side', '')
-                )
-                self.draw_advanced_pool_card(
-                    mission_frame,
-                    index // mission_columns,
-                    index % mission_columns,
-                    {
-                        'id': mission['code'].upper(),
-                        'label': mission.get('title') or mission['code'],
-                        'faction': faction,
-                    },
-                    'missions',
-                    mission_icons.get(faction),
-                )
+            token = object()
+            self._advanced_mission_render_token = token
+            page_controls(0)
+            if page_count > 1:
+                page_controls((len(page_missions) + mission_columns - 1) // mission_columns + 1)
+            pending = iter(enumerate(page_missions))
+
+            def render_mission_batch():
+                if self._advanced_mission_render_token is not token or not mission_frame.winfo_exists():
+                    return
+                if self.active_advanced_view_key() != 'missions':
+                    self.__dict__.setdefault('_advanced_view_signatures', {}).pop('missions', None)
+                    return
+                for _ in range(24):
+                    try:
+                        index, mission = next(pending)
+                    except StopIteration:
+                        return
+                    faction = challenge_color_group(mission) or normalize_faction(
+                        mission.get('side', '')
+                    )
+                    self.draw_advanced_pool_card(
+                        mission_frame,
+                        index // mission_columns + 1,
+                        index % mission_columns,
+                        {
+                            'id': mission['code'].upper(),
+                            'label': mission.get('title') or mission['code'],
+                            'faction': faction,
+                        },
+                        'missions',
+                        mission_icons.get(faction),
+                    )
+                self.after(1, render_mission_batch)
+
+            render_mission_batch()
 
         all_unit_entries = self.advanced_unit_pool_entries()
         unit_entries = [

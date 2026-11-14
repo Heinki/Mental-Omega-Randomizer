@@ -4,6 +4,26 @@
 
 # Mental Omega Randomizer Launcher
 
+## Conquest game modes
+
+Choose **Conquest → New campaign → Game mode** before starting a campaign:
+
+- **Capture all enemy nodes:** capture every enemy-owned territory; neutral nodes are optional.
+- **Capture HQ:** capture the enemy HQ; the human team loses when every friendly HQ is held by the enemy.
+- **Most nodes at turn limit:** choose a final round from 1 to 10,000 (default 20). Count team and enemy territories after every human and the enemy have taken their turns. A tie extends play by complete rounds until one side leads.
+- **Capture and hold highlighted nodes:** choose 3–5 objectives and hold them together for 3–5 full rounds. Magenta diamonds mark objectives on the map. Losing any objective resets the continuous hold. The capture round does not count as a full held round.
+
+Human teammates pool their territory count and objective ownership for victory,
+regardless of territory-bonus sharing. A side with no owned territories loses in
+every mode. Objectives use the campaign seed and prefer non-HQ nodes; small boards
+with too few non-HQ nodes may also highlight HQs. The campaign header and node
+inspector show progress. The strategic AI pursues HQs or highlighted objectives
+in the corresponding modes.
+
+Saved campaigns keep their selected rules and hold progress. Existing saves
+without a selected mode keep their original HQ-and-army elimination rule. All
+co-op players must use updated launchers; older Conquest protocols are rejected.
+
 [![Security checks](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml/badge.svg)](https://github.com/Heinki/Mental-Omega-Randomizer/actions/workflows/security.yml)
 
 A Windows campaign randomizer for Mental Omega with standalone and Archipelago

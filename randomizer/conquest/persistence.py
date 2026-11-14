@@ -12,8 +12,9 @@ from randomizer.core.storage import atomic_write_json, read_json_object
 from .catalogue import (FACTIONS, DIFFICULTIES, STATS, PERKS, RULES_VERSION,
                         MAX_STRENGTH, MAX_REPAIR_KITS, combat_power, starting_force,
                         MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK)
-from .campaign import record, resolve, allied, armies_at
-from .teams import validate_teams
+from . import objectives
+from .campaign import record, resolve, allied, armies_at, campaign_winner, finish_campaign
+from .teams import validate_teams, human_coalition
 from .players import human_ids, human, country, roster, validate_roster
 
 
@@ -94,6 +95,7 @@ def validate(state):
         count = settings['size']
         if (count not in (9, 25, 64, 100) or settings['player_country'] not in FACTIONS or
             settings['ai_country'] not in FACTIONS or settings['difficulty'] not in DIFFICULTIES or
+            type(settings.get('mental_ai_boost', False)) is not bool or
             not isinstance(settings['seed'], str) or not 1 <= len(settings['seed']) <= 80 or
             not _integer(settings['density'], 0, 2) or not _integer(settings['credits'], 100, 10000)):
             raise ValueError('Invalid Conquest campaign settings.')
@@ -156,8 +158,9 @@ def validate(state):
         if ((state['phase'] == 'finished') != (state['winner'] is not None) or
             state['winner'] not in (None, 'player', 'ai')):
             raise ValueError('Invalid Conquest outcome.')
-        if state['winner'] and any(n['owner'] not in ((*humans, 'neutral') if state['winner'] == 'player' else ('ai', 'neutral')) for n in nodes):
-            raise ValueError('Conquest victory still has opposing territories.')
+        objectives.validate_progress(state)
+        if state['winner'] and state['winner'] != campaign_winner(state):
+            raise ValueError('Conquest outcome does not satisfy the saved game mode.')
         history = state['history']
         if (not _integer(state['next_event'], 1, 2**63 - 1) or
             state['next_event'] != len(history) + 1 or
@@ -181,7 +184,9 @@ def validate(state):
                 not _map(battle['map']) or battle['map'] != nodes[battle['target']]['map'] or
                 len(battle['starts']) != 2 or battle['starts'][0] == battle['starts'][1] or
                 any(s not in battle['map']['starts'] for s in battle['starts']) or
-                not _integer(battle['seed'], 1, 2**31 - 1) or battle['difficulty'] not in DIFFICULTIES):
+                not _integer(battle['seed'], 1, 2**31 - 1) or battle['difficulty'] not in DIFFICULTIES or
+                type(battle.get('mental_ai_boost', False)) is not bool or
+                battle.get('mental_ai_boost', False) != settings.get('mental_ai_boost', False)):
                 raise ValueError('Invalid committed Conquest battle.')
             if battle.get('team_version', 1) >= 4:
                 defenders = armies_at(state, battle['target'])
@@ -239,8 +244,9 @@ def validate(state):
 
 
 class Repository:
-    def __init__(self, path=None):
+    def __init__(self, path=None, *, authoritative=True):
         self.path = Path(path) if path is not None else APP_DIR / 'conquest_state.json'
+        self.authoritative = authoritative
 
     @contextmanager
     def _lock(self):
@@ -280,7 +286,15 @@ class Repository:
     def load(self):
         try:
             with self._lock():
-                return self._read()
+                state = self._read()
+                # Only the solo player or cooperative host may advance the
+                # authoritative save. Guests must mirror the host's revision.
+                if state is not None and self.authoritative:
+                    old = deepcopy(state)
+                    if finish_campaign(state):
+                        state['revision'] += 1
+                        self._write(state, old)
+                return state
         except (OSError, ValueError) as exc:
             raise PersistenceError(f'Cannot read Conquest: {exc}') from exc
 
@@ -345,16 +359,27 @@ def mark_launched(state, attempt_id):
     if not battle or not battle['attempt'] or battle['attempt']['id'] != attempt_id:
         raise ValueError('The prepared Conquest battle changed.')
     battle['attempt']['status'] = 'launched'
-    record(state, 'Real battle launched. Committed supplies and perks are frozen.', 'player', battle['target'])
+    record(state, 'Real battle launched. Committed supplies and perks are frozen.',
+           battle['attacker'] if human(state, battle['attacker']) else battle['defense']['faction'], battle['target'])
 
 
 def finish_attempt(state, attempt_id, outcome):
     battle = state['pending']
     if not battle or not battle['attempt'] or battle['attempt']['id'] != attempt_id:
         return False
-    state['attempts'].append(dict(id=attempt_id, battle=battle['id'], result=outcome or 'unresolved'))
+    if outcome not in (None, 'victory', 'defeat'):
+        raise ValueError('Invalid verified Conquest outcome.')
+    winning_team = None
+    if outcome is not None:
+        team = human_coalition(battle)
+        winning_team = team if outcome == 'victory' else ('defense' if team == 'attack' else 'attack')
+    state['attempts'].append(dict(id=attempt_id, battle=battle['id'], result=outcome or 'unresolved',
+                                  attacker=battle['attacker'], target=battle['target'], winning_team=winning_team))
     battle['attempt'] = None
-    if outcome in ('victory', 'defeat'):
-        return resolve(state, battle['id'], (outcome == 'victory') == human(state, battle['attacker']), method='Real battle')
-    record(state, 'No verified result. Battle remains pending; retry or autobattle with the same committed bonuses.', 'player', battle['target'])
+    if winning_team is not None:
+        # resolve transfers the node and surviving army to battle['attacker'],
+        # including Player 2-4; host identity and current UI turn are irrelevant.
+        return resolve(state, battle['id'], winning_team == 'attack', method='Real battle')
+    record(state, 'No verified result. Battle remains pending; retry or autobattle with the same committed bonuses.',
+           battle['attacker'] if human(state, battle['attacker']) else battle['defense']['faction'], battle['target'])
     return True

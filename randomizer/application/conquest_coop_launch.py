@@ -14,7 +14,7 @@ from randomizer.core.storage import atomic_write_json, read_json_object
 from randomizer.conquest.transport_lobby import pack, unpack, installation_details
 from randomizer.conquest.engine import render, install, verify_prepared
 from randomizer.conquest.persistence import validate, commit_attempt, mark_launched, finish_attempt
-from randomizer.conquest.players import roster
+from randomizer.conquest.players import roster, label
 from randomizer.conquest.network import validate_endpoints
 from randomizer.conquest.results import ResultWatch, recover, native_game_running
 from randomizer.maps.assets import claim_runtime_asset_lease
@@ -202,10 +202,12 @@ class ConquestCoopLaunchController:
 
     def _cq_store_result(self, outcome):
         state = self.conquest_state
-        attempt = state['pending']['attempt']
+        battle = state['pending']
+        attempt = battle['attempt']
         player = next(p for p in roster(state) if p['id'] == self.conquest_local_actor())
         report = dict(type='cq_result', token=attempt['id'], campaign=state['id'],
-                      map_hash=attempt['map_hash'], name=player['name'], outcome=outcome)
+                      map_hash=attempt['map_hash'], name=player['name'], outcome=outcome,
+                      battle=battle['id'], attacker=battle['attacker'], target=battle['target'])
         atomic_write_json(self._cq_receipt_path(), report, durable=True)
         return report
 
@@ -229,6 +231,8 @@ class ConquestCoopLaunchController:
                 return
             if not outcome:
                 outcome = recover(DEBUG_LOG, self._conquest_attempt_id, self.conquest_state['pending'])
+            if watch.error:
+                self.append_log('Conquest result reader: ' + watch.error, error=True)
             report = self._cq_store_result(outcome)
             self._cq_resume_attempt = report['token']
             self.active_game_process = None
@@ -269,7 +273,8 @@ class ConquestCoopLaunchController:
         if (saved.get('token') == attempt['id'] and saved.get('map_hash') == attempt['map_hash'] and
             saved.get('campaign') == state['id'] and saved.get('name') == name and
             saved.get('outcome') in (None, 'victory', 'defeat')):
-            report = saved
+            report = saved if saved.get('outcome') is not None else self._cq_store_result(
+                recover(DEBUG_LOG, attempt['id'], state['pending']))
         else:
             report = self._cq_store_result(recover(DEBUG_LOG, attempt['id'], state['pending']))
         self._cq_send_result(report)
@@ -282,23 +287,43 @@ class ConquestCoopLaunchController:
             return  # Retransmission of an already finalized result.
         if (report.get('token') != attempt['id'] or report.get('campaign') != state['id'] or
             report.get('map_hash') != attempt['map_hash'] or report.get('outcome') not in (None, 'victory', 'defeat') or
+            report.get('battle', battle['id']) != battle['id'] or
+            report.get('attacker', battle['attacker']) != battle['attacker'] or
+            report.get('target', battle['target']) != battle['target'] or
             report.get('name') != lobby.players[slot]['name']):
             raise ValueError('Cooperative result differs from the committed battle or authenticated player.')
         name = report['name']
-        if name in self._cq_reports and self._cq_reports[name] != report['outcome']:
+        previous = self._cq_reports.get(name)
+        received = report['outcome']
+        if previous is not None and received is not None and previous != received:
             raise ValueError('Player sent conflicting battle outcomes. Reconnect to recover from native logs.')
-        self._cq_reports[name] = report['outcome']
+        # A missing native receipt is an abstention, not a defeat. Do not let
+        # a stale retransmission erase a completed, verified coalition score.
+        self._cq_reports[name] = previous if previous is not None else received
         required = {p['name'] for p in roster(state)}
         if set(self._cq_reports) != required:
             self._cq_status.set('Waiting for battle results: ' + ', '.join(sorted(required - self._cq_reports.keys())))
             return
-        outcomes = set(self._cq_reports.values())
-        outcome = next(iter(outcomes)) if len(outcomes) == 1 and None not in outcomes else None
+        # Every commander has now finished. At least one complete native
+        # coalition score is enough when other peers have no receipt; verified
+        # opposite results still keep this encounter unresolved.
+        outcomes = {value for value in self._cq_reports.values() if value is not None}
+        outcome = next(iter(outcomes)) if len(outcomes) == 1 else None
         receipts = dict(self._cq_reports)
+        battle_id, attacker, target = battle['id'], battle['attacker'], battle['target']
+
         def commit(current):
-            finish_attempt(current, attempt['id'], outcome)
+            pending = current['pending']
+            if (not pending or pending['id'] != battle_id or pending['attacker'] != attacker
+                    or pending['target'] != target or not finish_attempt(current, attempt['id'], outcome)):
+                raise ValueError('Conquest battle changed before its result could be saved.')
             current['attempts'][-1]['players'] = receipts
+
         self._conquest_change(commit)
-        self._cq_status.set('All players agreed; battle saved.' if outcome else
-                            'Results missing or disagree. Same encounter remains pending for retry or autobattle.')
+        captured = bool(outcome and self.conquest_state['nodes'][target]['owner'] == attacker
+                        and self.conquest_state['nodes'][target]['owner'] != state['nodes'][target]['owner'])
+        self._cq_status.set(
+            f'Verified result saved. {label(self.conquest_state, attacker)} captured territory {target + 1}.' if captured else
+            'Verified coalition result saved.' if outcome else
+            'No verified result, or verified results disagree. Same encounter remains pending for retry or autobattle.')
         self.refresh_conquest()

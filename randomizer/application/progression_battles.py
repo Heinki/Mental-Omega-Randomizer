@@ -11,12 +11,66 @@ from randomizer.ui.config import CAMPAIGN_FILTERS
 
 
 class ProgressionBattlesController:
+    def _skirmish_reference_codes(self, run=None, *, include_preview=True):
+        state = self.state or {}
+        codes = set(state.get('mission_order', ()))
+        saved_run = run if run is not None else getattr(self, 'shop_run', None)
+        codes.update(getattr(saved_run, 'eligible_mission_codes', ()))
+        if include_preview and not state:
+            codes.update(getattr(self, '_skirmish_preview_codes', ()))
+        return {code for code in codes if str(code).startswith('SK_')}
+
+    def _sync_skirmish_references(self, run=None):
+        """Keep saved map IDs available without loading unused faction variants."""
+        from randomizer.skirmish_progression import referenced_missions
+        catalogue = getattr(self, '_skirmish_catalogue', ())
+        codes = self._skirmish_reference_codes(run)
+        signature = (id(catalogue), tuple(sorted(codes)))
+        if signature == getattr(self, '_skirmish_reference_signature', None):
+            return
+        self._skirmish_reference_signature = signature
+        native = [mission for mission in self.missions if not mission.get('skirmish')]
+        self.missions = native + referenced_missions(catalogue, codes)
+        self._mission_by_code = {mission['code']: mission for mission in self.missions}
+        self._mission_by_code.update(getattr(self, '_skirmish_pool_lookup', {}))
+
+    def mission_lookup(self):
+        self._sync_skirmish_references()
+        return super().mission_lookup()
+
+    def advanced_skirmish_missions(self, missions):
+        """Advanced exposes map exclusions once, only when maps are opted in."""
+        catalogue = getattr(self, '_skirmish_catalogue', ())
+        mode = 'Shop Mode' if self.shop_mode_selected() else self.progression_mode_var.get()
+        campaign = self.shop_campaign_filter() if self.shop_mode_selected() else self.campaign_var.get()
+        selected = self._with_skirmish_pool(missions, mode, campaign, apply_exclusions=False)
+        canonical = {mission['scenario']: mission['code'] for mission in catalogue}
+        return [dict(mission, code=canonical[mission['scenario']]) if mission.get('skirmish') else mission
+                for mission in selected]
+
+    def advanced_pool_bulk_entries(self, pool_key):
+        entries, excluded = super().advanced_pool_bulk_entries(pool_key)
+        if pool_key != 'missions':
+            return entries, excluded
+        entries = [entry for entry in entries if not entry['id'].startswith('SK_')]
+        entries.extend(dict(id=mission['code'], faction=mission['faction'],
+                            mission_category='campaign', shop_mission=self.shop_mode_selected(), special=False, skirmish=True)
+                       for mission in self.advanced_skirmish_missions([]) if mission.get('skirmish'))
+        return entries, excluded
+
+    def advanced_pool_entry_is_visible(self, entry):
+        if entry.get('skirmish'):
+            return True  # Already scoped by advanced_skirmish_missions.
+        return super().advanced_pool_entry_is_visible(entry)
+
     def _shop_mission(self, code):
+        self._sync_skirmish_references()
         from randomizer.skirmish_factions import selected_mission
         return selected_mission(super()._shop_mission(code),
                                 self.config.get('skirmish_factions', {}))
 
     def selected_mission(self):
+        self._sync_skirmish_references()
         from randomizer.skirmish_factions import selected_mission
         return selected_mission(super().selected_mission(),
                                 self.config.get('skirmish_factions', {}))
@@ -130,6 +184,10 @@ class ProgressionBattlesController:
 
     def apply_portable_settings(self, config):
         result = super().apply_portable_settings(config)
+        from randomizer.skirmish_progression import normalize_exclusions
+        normalized = normalize_exclusions(getattr(self, '_skirmish_catalogue', ()), self.excluded_mission_codes)
+        self.excluded_mission_codes.clear()
+        self.excluded_mission_codes.update(normalized)
         self.include_skirmishes_var.set(bool(self.config.get('include_skirmishes', False)))
         self.classic_shop_var.set(bool(self.config.get('classic_shop', False)))
         campaign = self.config.get('classic_shop_campaign', CAMPAIGN_FILTERS[1])
@@ -137,6 +195,7 @@ class ProgressionBattlesController:
         color = self.config.get('final_fortress_color', 'Default')
         self.fortress_color_var.set(color if color in self.fortress_color_values else 'Default')
         self.refresh_classic_shop_summary()
+        self._request_skirmish_catalogue()
         return result
 
     def classic_shop_order(self, pool, modifiers):
@@ -160,6 +219,7 @@ class ProgressionBattlesController:
         return tuple(combined)
 
     def _shop_run_mission_pool(self, run=None):
+        self._sync_skirmish_references(run)
         if run is None and getattr(self, 'classic_shop_var', None) and self.classic_shop_var.get():
             campaign = self.classic_shop_campaign_var.get()
             story_missions = [mission for mission in self.missions
@@ -221,18 +281,18 @@ class ProgressionBattlesController:
         checkbox.grid(row=row, column=0, columnspan=3, sticky='w', pady=(5, 0))
         checkbox._skirmish_pool_tooltip = WidgetTooltip(
             checkbox,
-            'Adds installed skirmish maps to the next Shop mission pool or Grid nodes. '
+            'Adds one entry per installed map to the next Mission List, Shop, or Grid run. '
             'Each battle is one human versus one AI and uses the run’s unlocked units, '
             'powers, purchased buffs and normal reward rules. Choose your faction in the '
             'mission card or Details before each launch. Available in standalone '
-            'Shop/Grid runs. Existing runs keep their generated mission pool.')
+            'Mission List/Shop/Grid runs. Existing runs keep their generated mission pool.')
         name = 'shop_include_skirmishes_check' if shop else 'include_skirmishes_check'
         setattr(self, name, checkbox)
         self.refresh_skirmish_pool_controls()
 
     def refresh_skirmish_pool_controls(self):
         catalogue = getattr(self, '_skirmish_catalogue', None)
-        count = len({mission['scenario'] for mission in catalogue}) if catalogue is not None else None
+        count = len({mission['scenario'] for mission in catalogue if mission.get('skirmish_eligible', True)}) if getattr(self, '_skirmish_catalogue_complete', False) else None
         text = 'Include 1v1 skirmish maps'
         if count is not None:
             text += f' ({count} installed)'
@@ -241,33 +301,102 @@ class ProgressionBattlesController:
             if widget is not None:
                 widget.configure(text=text)
 
+    def _request_skirmish_catalogue(self):
+        """Read the full optional map pool only after an explicit opt-in."""
+        if (not self.include_skirmishes_var.get()
+                or getattr(self, '_skirmish_catalogue_complete', False)
+                or not getattr(self, 'initial_load_complete', False)
+                or bool(getattr(self, 'coop_mode_var', None) and self.coop_mode_var.get())
+                or self.archipelago_run_active()):
+            return False
+
+        def loaded(catalogue):
+            self._skirmish_catalogue = catalogue
+            self._skirmish_catalogue_complete = True
+            self._skirmish_catalogue_error = ''
+            self.apply_missions(self.missions)
+            self.refresh_active_advanced_view()
+
+        def failed(exc, detail):
+            from randomizer.core.diagnostics import event
+            import logging
+            self._skirmish_catalogue_error = str(exc)
+            self.include_skirmishes_var.set(False)
+            self.config['include_skirmishes'] = False
+            save_config(self.config)
+            self.update_mission_goal_limit()
+            self.redraw_mission_tree()
+            self.append_log(f'Optional skirmish maps could not load: {exc}. Campaign missions remain available.', error=True)
+            event('skirmish_catalogue_failed', level=logging.ERROR, error=str(exc), traceback=detail)
+
+        from randomizer.skirmish_progression import mission_catalogue, restore_saved_maps
+        codes = self._skirmish_reference_codes(include_preview=False)
+        self.run_in_background(
+            'Loading optional skirmish maps...',
+            'Reading one entry per map. Campaign missions and existing runs are preserved.',
+            lambda: restore_saved_maps(GAME_ROOT, mission_catalogue(GAME_ROOT), codes), loaded, failed)
+        return True
+
     def on_skirmish_pool_changed(self):
         self.config['include_skirmishes'] = bool(self.include_skirmishes_var.get())
         save_config(self.config)
+        if self._request_skirmish_catalogue():
+            return
         self.refresh_classic_shop_summary()
         self.refresh_skirmish_pool_controls()
         self.update_mission_goal_limit()
         self.redraw_mission_tree()
-        self.append_log('Skirmish selection applies to the next Shop/Grid run; existing runs keep their saved mission pool.')
+        self.refresh_active_advanced_view()
+        self.append_log('Skirmish selection applies to the next Mission List/Shop/Grid run; existing runs keep their saved mission pool.')
 
     def load_missions(self, *args, **kwargs):
-        from randomizer.skirmish_progression import mission_catalogue
+        from randomizer.skirmish_progression import mission_catalogue, referenced_missions, restore_saved_maps
         missions = list(super().load_missions(*args, **kwargs))
-        catalogue = mission_catalogue(GAME_ROOT)
+        self._skirmish_catalogue = ()
+        self._skirmish_catalogue_complete = False
+        self._skirmish_catalogue_error = ''
+        if self.coop_enabled():
+            return missions
+        enabled = bool(self.config.get('include_skirmishes', False))
+        codes = self._skirmish_reference_codes(include_preview=False)
+        if not enabled and not codes:
+            return missions
+        try:
+            catalogue = mission_catalogue(GAME_ROOT, codes=None if enabled else codes)
+            if enabled:
+                catalogue = restore_saved_maps(GAME_ROOT, catalogue, codes)
+        except (OSError, ValueError) as exc:
+            from randomizer.core.diagnostics import event
+            import logging
+            self._skirmish_catalogue_error = str(exc)
+            event('skirmish_catalogue_failed', level=logging.ERROR, error=str(exc))
+            return missions
         self._skirmish_catalogue = catalogue
-        return missions + catalogue
+        self._skirmish_catalogue_complete = enabled
+        return missions + referenced_missions(catalogue, codes)
 
     def apply_missions(self, missions):
-        missions = list(missions)
-        known = {mission['code'] for mission in missions}
-        missions.extend(mission for mission in getattr(self, '_skirmish_catalogue', ())
-                        if mission['code'] not in known)
+        from randomizer.skirmish_progression import referenced_missions, normalize_exclusions
+        catalogue = getattr(self, '_skirmish_catalogue', ())
+        native = [mission for mission in missions if not mission.get('skirmish')]
+        codes = self._skirmish_reference_codes()
+        missions = native + referenced_missions(catalogue, codes)
+        self._skirmish_reference_signature = (id(catalogue), tuple(sorted(codes)))
+        excluded = self.excluded_mission_codes
+        normalized = normalize_exclusions(catalogue, excluded)
+        excluded.clear()
+        excluded.update(normalized)
         result = super().apply_missions(missions)
         self.refresh_classic_shop_summary()
         self.refresh_skirmish_pool_controls()
+        if getattr(self, '_skirmish_catalogue_error', ''):
+            self.append_log('Optional skirmish catalogue unavailable: '
+                            + self._skirmish_catalogue_error
+                            + '. Campaign missions remain available.', error=True)
         return result
 
-    def _with_skirmish_pool(self, missions, mode, campaign):
+
+    def _with_skirmish_pool(self, missions, mode, campaign, *, apply_exclusions=True):
         from randomizer.skirmish_progression import select_pool
         from randomizer.missions.catalogue import normalize_faction
         catalogue = getattr(self, '_skirmish_catalogue', ())
@@ -289,20 +418,28 @@ class ProgressionBattlesController:
         # Shop faction pools and individual campaign selections can differ.
         if campaign in {'GDI', 'Nod', 'Allies', 'Soviet', 'Soviets', 'Yuri', 'Epsilon', 'Foehn'}:
             factions = {campaign}
-        enabled = bool(self.include_skirmishes_var.get() and mode in ('Shop Mode', 'Grid Mode')
+        enabled = bool(self.include_skirmishes_var.get() and mode in ('Mission List', 'Shop Mode', 'Grid Mode')
                        and not self.coop_mode_var.get() and not self.archipelago_run_active())
-        return select_pool(native, catalogue, enabled=enabled, factions=factions,
-                           excluded=getattr(self, 'excluded_mission_codes', ()))
+        pool = select_pool(native, catalogue, enabled=enabled, factions=factions,
+                           excluded=getattr(self, 'excluded_mission_codes', ()) if apply_exclusions else ())
+        self._skirmish_pool_lookup = {mission['code']: mission for mission in pool if mission.get('skirmish')}
+        if not self.state:
+            self._skirmish_preview_codes = set(self._skirmish_pool_lookup)
+        if hasattr(self, '_mission_by_code'):
+            self._mission_by_code = {mission['code']: mission for mission in self.missions}
+            self._mission_by_code.update(self._skirmish_pool_lookup)
+        return pool
 
     def filtered_missions_for_seed(self):
         missions = super().filtered_missions_for_seed()
         return self._with_skirmish_pool(missions, self.progression_mode_var.get(), self.campaign_var.get())
 
     def visible_missions(self):
+        eligible = None if self.state else {mission['code'] for mission in self.filtered_missions_for_seed()}
+        self._sync_skirmish_references()
         visible = super().visible_missions()
-        if self.state:
+        if eligible is None:
             return visible
-        eligible = {mission['code'] for mission in self.filtered_missions_for_seed()}
         return [(index, mission) for index, mission in visible
                 if not mission.get('skirmish') or mission['code'] in eligible]
 
@@ -348,7 +485,7 @@ class ProgressionBattlesController:
                 raise ShopTransitionError('Commit the offered Skirmish before launching')
         state = self.state
         if not shop and (not state or code not in state.get('mission_order', ())):
-            messagebox.showwarning('Skirmish Locked', 'Generate a Shop/Grid run containing this Skirmish first.', parent=self)
+            messagebox.showwarning('Skirmish Locked', 'Generate a Mission List, Shop, or Grid run containing this Skirmish first.', parent=self)
             return
         if shop:
             from randomizer.shop.modifiers import hidden_offer_codes

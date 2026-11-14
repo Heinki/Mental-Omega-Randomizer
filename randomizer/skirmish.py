@@ -35,7 +35,7 @@ def playable_countries():
     return {label: country for country, label in COUNTRY_LABELS.items()}
 
 
-def discover_maps(root):
+def discover_maps(root, *, accept_path=None, allow_legacy=False):
     """Offer installed multiplayer maps, preserving their authored map scripts."""
     root = Path(root)
     result = {}
@@ -48,23 +48,35 @@ def discover_maps(root):
                 continue
             if any(part.casefold() in ('co-op', 'cooperative', 'coop', 'challenge', 'challenges', 'campaign', 'campaigns') for part in source.relative_to(folder).parts[:-1]):
                 continue
-            rows = all_section_value_maps_preserve(source.read_bytes().decode('latin-1').splitlines())
-            if rows.get('Basic', {}).get('MultiplayerOnly', 'yes').casefold() in ('no', 'false', '0'):
+            relative = str(source.relative_to(root))
+            if accept_path is not None and not accept_path(relative):
                 continue
-            # Later low-numbered waypoints can be script destinations, not
-            # player seats (Twilight Heat has four starts plus waypoint 7).
-            count = rows.get('Header', {}).get(
-                'NumberStartingPoints', rows.get('Basic', {}).get('MaxPlayer', '8'))
-            limit = int(count) if count.isdigit() and 2 <= int(count) <= 8 else 8
-            starts = [i for i in range(limit) if str(i) in rows.get('Waypoints', {})]
-            if len(starts) < 2 or 0 not in starts:
-                continue
-            from randomizer.skirmish_factions import map_countries
-            countries = tuple(map_countries(root, {'path': str(source.resolve())}, rows=rows).values())
-            if not countries:
-                continue
-            label = str(source.relative_to(root))
-            result[label] = {'path': str(source), 'name': rows.get('Basic', {}).get('Name', source.stem), 'starts': starts, 'countries': countries}
+            try:
+                rows = all_section_value_maps_preserve(source.read_bytes().decode('latin-1').splitlines())
+                if rows.get('Basic', {}).get('MultiplayerOnly', 'yes').casefold() in ('no', 'false', '0'):
+                    continue
+                from randomizer.skirmish_factions import supports_progression_skirmish
+                eligible = supports_progression_skirmish(root, {'path': str(source.resolve())}, rows=rows)
+                if not eligible and not allow_legacy:
+                    continue
+                # Later low-numbered waypoints can be script destinations, not
+                # player seats (Twilight Heat has four starts plus waypoint 7).
+                count = rows.get('Header', {}).get(
+                    'NumberStartingPoints', rows.get('Basic', {}).get('MaxPlayer', '8'))
+                limit = int(count) if count.isdigit() and 2 <= int(count) <= 8 else 8
+                starts = [i for i in range(limit) if str(i) in rows.get('Waypoints', {})]
+                if len(starts) < 2 or 0 not in starts:
+                    continue
+                from randomizer.skirmish_factions import map_countries
+                countries = tuple(map_countries(root, {'path': str(source.resolve())}, rows=rows).values())
+                if not countries:
+                    continue
+                label = str(source.relative_to(root))
+                result[label] = {'path': str(source), 'name': rows.get('Basic', {}).get('Name', source.stem), 'starts': starts, 'countries': countries, 'progression_eligible': eligible}
+            except (OSError, ValueError) as exc:
+                from randomizer.core.diagnostics import event
+                event('skirmish_map_skipped', level=logging.WARNING,
+                      path=relative, error=str(exc))
     return result
 
 

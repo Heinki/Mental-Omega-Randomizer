@@ -8,7 +8,7 @@ from tkinter import ttk
 from randomizer.ui.viewport import ScrollableViewport
 from randomizer.ui.tooltips import WidgetTooltip
 from randomizer.ui.conquest_widgets import PurchaseCard, EscortRoster, configure_purchase_style
-from . import campaign
+from . import campaign, objectives
 from .teams import participants, team_power, deployment
 from .players import roster, human_ids, human, label as actor_label, country, bonus_owners
 from .network import decision_actor
@@ -542,10 +542,15 @@ class ConquestView(ttk.Frame):
     def _build_setup(self):
         parent = self.setup_page.content
         ttk.Label(parent, text='New Conquest campaign', font=('Segoe UI', 14, 'bold')).grid(row=0, column=0, sticky='w')
-        self._label(parent, 'Capture every enemy territory. Each army acts once per turn. Up to four allied armies can share a territory and move out separately.', 1)
+        self._label(parent, 'Choose a victory mode for the next campaign. Each army acts once per turn. Up to four allied armies can share a territory and move out separately.', 1)
         self.settings = {}
         self.setup_controls = []
+        self.mode_rows = {}
         fields = (
+            ('victory_mode', 'Game mode', tuple(objectives.MODES.values()), objectives.MODES[objectives.DEFAULT_MODE]),
+            ('turn_limit', 'Final round (1–10,000)', None, str(objectives.DEFAULT_TURN_LIMIT)),
+            ('objective_count', 'Highlighted nodes', ('3', '4', '5'), str(objectives.DEFAULT_OBJECTIVE_COUNT)),
+            ('hold_turns', 'Full rounds to hold', ('3', '4', '5'), str(objectives.DEFAULT_HOLD_TURNS)),
             ('size', 'Campaign size', list(SIZES), list(SIZES)[1]),
             ('player_country', 'Your faction', FACTIONS, FACTIONS[0]),
             ('ai_country', 'Enemy faction', FACTIONS, FACTIONS[1]),
@@ -558,25 +563,69 @@ class ConquestView(ttk.Frame):
             row = ttk.Frame(parent, padding=(0, 7))
             row.grid(row=i, column=0, sticky='ew')
             row.columnconfigure(1, weight=1)
+            if key in ('turn_limit', 'objective_count', 'hold_turns'):
+                self.mode_rows[key] = row
             ttk.Label(row, text=label, width=23).grid(row=0, column=0, sticky='w')
             value = self.settings[key] = tk.StringVar(value=default)
             widget = ttk.Entry(row, textvariable=value, width=28) if options is None else ttk.Combobox(
                 row, textvariable=value, values=options, state='readonly', width=28)
             widget.grid(row=0, column=1, sticky='ew')
             self.setup_controls.append((widget, options is not None))
-        self._label(parent, 'Recruit a new army for 1,000 credits, or reinforce a selected army for the same price. All armies stationed on a territory defend it together.', 9)
-        self._label(parent, 'Escort upgrades unlock stronger troops. Research reaches 50%. Upgrade prices rise for both you and the enemy.', 10)
+        self.mental_ai_boost_var = tk.BooleanVar(value=False)
+        mental_ai = ttk.Checkbutton(parent, text='Mental AI Boost (enemy and allied AI; next campaign)',
+                                   variable=self.mental_ai_boost_var)
+        mental_ai.grid(row=14, column=0, sticky='w', pady=7)
+        from randomizer.ui.tooltips import WidgetTooltip
+        mental_ai._boost_tooltip = WidgetTooltip(mental_ai,
+            'Uses the installed Mental AI Boost option: faster AI teams, extra factories, '
+            'parallel queues and native economy bonuses. Applies to the next campaign; '
+            'enemy and allied AI both receive it. Existing campaigns keep their saved choice.')
+        self.setup_controls.append((mental_ai, False))
+        self._label(parent, 'Recruit a new army for 1,000 credits, or reinforce a selected army for the same price. All armies stationed on a territory defend it together.', 15)
+        self._label(parent, 'Escort upgrades unlock stronger troops. Research reaches 50%. Upgrade prices rise for both you and the enemy.', 16)
         self.create_button = ttk.Button(parent, text='Start new campaign', style='Launch.TButton', command=self.app.new_conquest)
-        self.create_button.grid(row=11, column=0, sticky='w', pady=12)
+        self.create_button.grid(row=17, column=0, sticky='w', pady=12)
         self.map_count = tk.StringVar(value='Installed map catalogue loads when opening Conquest.')
-        ttk.Label(parent, textvariable=self.map_count, style='Muted.TLabel').grid(row=12, column=0, sticky='w')
+        ttk.Label(parent, textvariable=self.map_count, style='Muted.TLabel').grid(row=18, column=0, sticky='w')
+        self.mode_help = tk.StringVar()
+        self._label(parent, '', len(fields) + 2).configure(textvariable=self.mode_help)
+        for key in ('victory_mode', 'turn_limit', 'objective_count', 'hold_turns'):
+            self.settings[key].trace_add('write', self._update_mode_options)
+        self._update_mode_options()
         self.setup_page.bind_controls()
+
+    def _update_mode_options(self, *_args):
+        mode = next((key for key, label in objectives.MODES.items()
+                     if label == self.settings['victory_mode'].get()), objectives.DEFAULT_MODE)
+        for key, row in self.mode_rows.items():
+            visible = mode == ('turn_limit' if key == 'turn_limit' else 'objectives')
+            row.grid() if visible else row.grid_remove()
+        try:
+            values = dict(victory_mode=mode, **{key: int(self.settings[key].get())
+                          for key in self.mode_rows if self.mode_rows[key].grid_info()})
+            objectives.validate_settings(values)
+            help_text = objectives.description(values)
+        except ValueError as exc:
+            help_text = str(exc)
+        self.mode_help.set(help_text + ' Co-op teammates share victory. A side with no owned nodes loses in every mode.')
 
     def setup_values(self):
         values = {key: variable.get().strip() for key, variable in self.settings.items()}
+        values['victory_mode'] = next(key for key, label in objectives.MODES.items()
+                                           if label == values['victory_mode'])
+        for key in self.mode_rows:
+            if values['victory_mode'] == ('turn_limit' if key == 'turn_limit' else 'objectives'):
+                try:
+                    values[key] = int(values[key])
+                except ValueError as exc:
+                    raise ValueError('Conquest round limits and objective settings must be whole numbers.') from exc
+            else:
+                values.pop(key)
+        objectives.validate_settings(values)
         values['size'] = SIZES[values['size']]
         values['credits'] = int(values['credits'])
         values['density'] = ('Few', 'Normal', 'Many').index(values['density'])
+        values['mental_ai_boost'] = bool(self.mental_ai_boost_var.get())
         return values
 
     def apply_theme(self):
@@ -636,7 +685,9 @@ class ConquestView(ttk.Frame):
             self.heading.set(f'Conquest · Round {state["turn"]} · {phase}')
             self.summary.set(f'{actor_label(state, actor)} · {country(state, actor)} vs {state["settings"]["ai_country"]}  ·  '
                 f'Credits: {state[actor]["credits"]} (+{campaign.income(state, actor)}/turn)  ·  '
-                f'Supplies: {state[actor]["supplies"]}/3  ·  Seed: {state["settings"]["seed"]}')
+                f'Supplies: {state[actor]["supplies"]}/3  ·  Seed: {state["settings"]["seed"]}'
+                + ('  ·  Mental AI Boost' if state['settings'].get('mental_ai_boost', False) else ''))
+            self.summary.set(self.summary.get() + '\n' + objectives.summary(state))
             if self.selected is not None and not 0 <= self.selected < len(state['nodes']):
                 self.selected = None
         active = bool(state and state['phase'] == actor and not busy)
@@ -770,7 +821,7 @@ class ConquestView(ttk.Frame):
         body.pack(fill='both', expand=True)
         color = ('#7ee787' if won else '#ff7b72') if self.app.dark_mode_var.get() else ('#1a7f37' if won else '#cf222e')
         ttk.Label(body, text=title, foreground=color, font=('Segoe UI', 17, 'bold')).pack(anchor='w')
-        ttk.Label(body, text=('All enemy territories captured.' if won else 'All your territories have been lost.'),
+        ttk.Label(body, text=objectives.result_text(state),
                   wraplength=340, justify='left').pack(anchor='w', pady=(12, 6))
         ttk.Label(body, text=f'Campaign ended in round {state["turn"]}.',
                   style='Muted.TLabel').pack(anchor='w', pady=(0, 18))
@@ -869,6 +920,9 @@ class ConquestView(ttk.Frame):
         if state and self.selected is not None:
             node = state['nodes'][self.selected]
             lines += [node['map']['name'], f'{len(node["map"]["starts"])} starting positions', actor_label(state, node['owner']), f'Income: +{node["income"]} credits/turn', '']
+            if node['id'] in state.get('objectives', {}).get('nodes', []):
+                lines += ['HIGHLIGHTED OBJECTIVE', objectives.description(state['settings']),
+                          objectives.summary(state), '']
             if node.get('hq'):
                 lines += [f'HQ · {actor_label(state, node["hq"])}',
                           'HQ guard: +8 rifle infantry and +2 powered faction defenses.' if node['owner'] == node['hq'] else
@@ -1110,6 +1164,12 @@ class ConquestView(ttk.Frame):
                     canvas.create_oval(x+dx-18, y+dy-18, x+dx+18, y+dy+18,
                                        outline='#e7c85a', width=2, tags=tags)
                 self._draw_army(x+dx, y+dy, current, country(state, current['faction']), colors[current['faction']], tags)
+            if node['id'] in state.get('objectives', {}).get('nodes', []):
+                size = radius + 12
+                canvas.create_polygon(x, y-size, x+size, y, x, y+size, x-size, y,
+                                      outline='#f0adff', fill='', width=3, tags=(tag,))
+                canvas.create_text(x, y-size-10, text='OBJECTIVE', fill='#f0adff',
+                                   font=('Segoe UI', 9, 'bold'), tags=(tag,))
             if node.get('hq'):
                 size = radius + 5
                 canvas.create_rectangle(x-size, y-size, x+size, y+size, outline='#e7c85a', width=2, tags=(tag,))

@@ -63,6 +63,9 @@ from randomizer.core.paths import SOURCE_DIR, FROZEN
 def installation_details(root):
     """Compare real native assets, launchers and balance data without loose preloads."""
     paths = [Path(root) / name for name in INSTALLATION_FILES]
+    mental_ai = Path(root) / 'INI/Game Options/Mental AI.ini'
+    if mental_ai.is_file():
+        paths.append(mental_ai)
     paths.extend(sorted(Path(root).glob('*.mix')))
     if FROZEN:
         import sys

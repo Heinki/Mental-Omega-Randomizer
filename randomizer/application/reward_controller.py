@@ -459,4 +459,6 @@ class RewardController(RewardGeneration):
             self.missions_tree.selection_set(children[0])
             self.selected_index.set(int(children[0]))
         self.refresh_coop_controls()
-        self.append_log(f'Loaded {len(self.missions)} missions.')
+        campaign_count = sum(not mission.get('skirmish') for mission in self.missions)
+        map_count = len({mission['scenario'] for mission in self.missions if mission.get('skirmish')})
+        self.append_log(f'Loaded {campaign_count} campaign/challenge missions; {map_count} selected skirmish maps.')

@@ -15,7 +15,7 @@ from randomizer.skirmish import discover_maps, _serialize as _native_serialize
 from randomizer.final_fortress.engine import _MapWriter, _action, _transfer_tag, _place
 from randomizer.final_fortress.placement import foundation
 from .profile import (GAME, TITLE, NATIVE_COUNTRIES, RULES_FILE, ART_FILE, AI_FILE,
-                      INSTALLATION_FILES, installed_rules, read_ini)
+                      INSTALLATION_FILES, installed_rules, read_ini, validate_weapon_definitions)
 from .catalogue import (FACTIONS, DIFFICULTIES, RULES_VERSION, BATTLE_CREDITS_PER_RANK,
                         AIRCRAFT_BUILDINGS, ROSTERS, FACTORIES, ESCORT_ROSTERS, starting_structures)
 from .teams import HOUSE_ALIASES, COLOR_SCHEMES, participants
@@ -446,6 +446,9 @@ def render(root, state, attempt_id, *, game_speed=2, coop_slot=0, endpoints=None
     rows['Basic'].pop('Player', None)
     lines = IniLines(_serialize(rows).splitlines())
     writer = ConquestWriter(lines, rules, root)
+    from randomizer.final_fortress.ai_boost import apply_mental_ai_boost
+    rules = apply_mental_ai_boost(writer, battle, rules, root)
+    writer.rules = rules
     members = participants(battle)
     humans = [m for m in members if m['controller'] == 'human']
     if (not 1 <= len(humans) <= 4 or [m['slot'] for m in humans] != list(range(len(humans))) or
@@ -500,6 +503,7 @@ def render(root, state, attempt_id, *, game_speed=2, coop_slot=0, endpoints=None
     for k in sorted(rules_changes):
         rule_source.setdefault(k, {}).update(rules_changes[k])
     rule_source['Countries'] = writer.sections['Countries']
+    validate_weapon_definitions(rule_source)
     for k in sorted(ai_changes):
         v = ai_changes[k]
         if k in ('AITriggerTypes', 'AITriggerTypesEnable'):
@@ -523,7 +527,8 @@ def render(root, state, attempt_id, *, game_speed=2, coop_slot=0, endpoints=None
         ShortGame='No', AutoSurrender='No', TechLevel='10', Bases='Yes',
         UnitCount='0', Credits='10000', Crates='No', MCVRedeploy='Yes', FogOfWar='No',
         MultiEngineer='Yes', BuildOffAlly='Yes', Protocol='2', FrameSendRate='7',
-        LoadSaveGame='No', UIGameMode='Conquest', UIMapName=battle['map']['name'],
+        LoadSaveGame='No', MentalAI='Yes' if battle.get('mental_ai_boost', False) else 'No',
+        UIGameMode='Conquest', UIMapName=battle['map']['name'],
         MapSHA1=hashlib.sha1(data).hexdigest())
     spawn = dict(Settings=settings, SpawnLocations={}, HouseCountries={}, HouseColors={}, HouseHandicaps={})
     if endpoints:
