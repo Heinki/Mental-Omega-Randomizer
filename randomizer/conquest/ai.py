@@ -77,7 +77,10 @@ def route_ai(writer, members, ai_rules, private):
             fields[0] = 'Conquest ' + fields[0]
             fields[1], fields[14] = team_copy(fields[1]), team_copy(fields[14])
             fields[2] = country_alias
-            if fields[4] == '0':
+            # Native condition 1 counts this AI's objects; condition 0
+            # counts its enemy. Never substitute this actor's private types
+            # into an enemy-owned condition.
+            if fields[4] == '1':
                 fields[5] = aliases.get(fields[5], fields[5])
             ai_sections.setdefault('AITriggerTypes', {})[writer.key()] = ','.join(fields)
     # The Fortress preload replaces the global trigger registry. Retaining

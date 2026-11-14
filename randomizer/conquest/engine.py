@@ -171,17 +171,24 @@ class ConquestWriter(_MapWriter):
     def transfer_tag(self, waypoint, name):
         return _transfer_tag(self, waypoint, name)
 
-    def place(self, category, kind, position, *, tag, veterancy=0):
+    def place(self, category, kind, position, *, tag, veterancy=0, ai=False, collector=False):
         x, y = position['x'], position['y']
         experience = veterancy * 100
+        native = {**self.rules.get(kind, {}), **self.sections.get(kind, {})}
+        collector = collector or native.get('Harvester', 'no').lower() == 'yes'
+        recruitable = int(ai and not collector)
+        mission = 'Harvest' if collector else 'Hunt' if ai else 'Guard'
         if category == 'Structures':
-            value = f'Neutral,{kind},256,{x},{y},64,{tag},1,0,1,0,0,None,None,None,0,0'
+            # Protect only granted AI buildings; native construction keeps its
+            # normal selling policy. Repair remains enabled after the transfer.
+            value = (f'Neutral,{kind},256,{x},{y},64,{tag},{int(not ai)},0,1,0,0,'
+                     f'None,None,None,{int(ai)},0')
         elif category == 'Infantry':
-            value = f'Neutral,{kind},256,{x},{y},0,Guard,64,{tag},{experience},-1,0,0,0'
+            value = (f'Neutral,{kind},256,{x},{y},0,{mission},64,{tag},{experience},-1,0,'
+                     f'{recruitable},{recruitable}')
         else:
-            native = self.rules.get(kind, self.sections.get(kind, {}))
-            mission = 'Harvest' if native.get('Harvester', 'no').lower() == 'yes' else 'Guard'
-            value = f'Neutral,{kind},256,{x},{y},64,{mission},{tag},{experience},-1,0,-1,0,0'
+            value = (f'Neutral,{kind},256,{x},{y},64,{mission},{tag},{experience},-1,0,-1,'
+                     f'{recruitable},{recruitable}')
         _place(self, category, value)
 
     def finish(self):
@@ -206,7 +213,28 @@ def _starting_structure_type(writer, kind, cache, *, template=None, refinery=Tru
                      writer.rules.get('Neutral', {}).get('VeteranBuildings')))
     if source in veterans:
         writer.put('Neutral', 'VeteranBuildings', ','.join(dict.fromkeys([*veterans, alias])))
-    register_building_equivalent(writer, writer.rules, kind, alias, {}, preserve_native=True)
+    # Include private rows already emitted by apply_effects: their direct
+    # prerequisites and factory/docking restrictions also need the grant copy.
+    effective = {key: {**row, **writer.sections.get(key, {})}
+                 for key, row in writer.rules.items()}
+    effective.update({key: {**effective.get(key, {}), **row}
+                      for key, row in writer.sections.items()})
+    for original in dict.fromkeys((kind, source)):
+        register_building_equivalent(writer, effective, original, alias, {}, preserve_native=True)
+    for section in ('General', 'AI'):
+        for field, value in effective.get(section, {}).items():
+            if not field.startswith(('Build', 'Prerequisite')):
+                continue
+            values = items(value)
+            if kind in values or source in values:
+                # Native buildable types stay first; the AI may count a grant
+                # but must never select its TechLevel=-1 type for construction.
+                writer.put(section, field, ','.join(dict.fromkeys([*values, alias])))
+    for target, row in effective.items():
+        for field in ('Dock', 'BuiltAt', 'Prerequisite.Negative', 'AI.PowerPlants'):
+            values = items(row.get(field))
+            if kind in values or source in values:
+                writer.put(target, field, ','.join(dict.fromkeys([*values, alias])))
     return alias
 
 
@@ -231,7 +259,7 @@ def _treasury(writer, loadout, waypoint, candidates, occupied, tag):
     writer.place('Structures', alias, dict(x=x, y=y), tag=tag)
 
 
-def _placements(writer, source, sides, *, private_types=None):
+def _placements(writer, source, sides, *, private_types=None, ai_waypoints=()):
     terrain = Terrain(source)
     art = {key.casefold(): row for key, row in read_ini(CAMEO_CACHE_DIR / ART_FILE).items()}
     occupied = set(terrain.objects)
@@ -308,6 +336,7 @@ def _placements(writer, source, sides, *, private_types=None):
         if not candidates:
             raise ValueError(f'No connected clear ground near start {waypoint + 1}. Battle remains pending; autobattle is available.')
         structures = starting_structures(force, loadout['perks'], power)
+        computer = waypoint in ai_waypoints
         tag = writer.transfer_tag(waypoint, 'Conquest starting forces')
         _treasury(writer, loadout, waypoint, candidates, occupied, tag)
         placed = []
@@ -326,7 +355,7 @@ def _placements(writer, source, sides, *, private_types=None):
                 pad = {**rules[kind], **writer.sections.get(output, {})}
                 if pad.get('FreeUnit', 'none').casefold() not in ('none', '<none>', ''):
                     output = _starting_structure_type(writer, kind, refinery_cache, template=private.get(kind), refinery=False)
-            writer.place('Structures', output, {'x': x, 'y': y}, tag=tag)
+            writer.place('Structures', output, {'x': x, 'y': y}, tag=tag, ai=computer)
             placed.append(dict(type=kind, output_type=output, x=x, y=y))
         for kind, count in force['units'].items():
             if kind not in rules:
@@ -338,7 +367,8 @@ def _placements(writer, source, sides, *, private_types=None):
                     raise ValueError('Starting army cannot fit safely. Battle remains pending; autobattle is available.')
                 occupied.add(position)
                 writer.place(category, private.get(kind, kind), dict(zip(('x', 'y'), position)), tag=tag,
-                             veterancy=0 if kind == force['collector'] else force['veterancy'])
+                             veterancy=0 if kind == force['collector'] else force['veterancy'],
+                             ai=computer, collector=kind == force['collector'])
                 placed.append(dict(type=kind, output_type=private.get(kind, kind), x=position[0], y=position[1]))
         reports.append(dict(country=loadout['country'], waypoint=waypoint,
                             structures=dict(structures), units=force['units'], placements=placed))
@@ -428,7 +458,9 @@ def render(root, state, attempt_id, *, game_speed=2, coop_slot=0, endpoints=None
         writer.put('Sides', side, ','.join(dict.fromkeys([*items(countries), *additions])))
     _validate_production(writer, members, private)
     grants = _placements(writer, rows, [(m['loadout'], m['waypoint']) for m in members],
-                         private_types={m['waypoint']: private[m['slot']] for m in members})
+                         private_types={m['waypoint']: private[m['slot']] for m in members},
+                         ai_waypoints={m['waypoint'] for m in members if m['controller'] == 'ai'})
+    from randomizer.final_fortress.wave_pool import _batches
     # Recruit the real AI's gifted opening army so it attacks instead of
     # remaining in Guard while the native AI builds its production base.
     for member in members:
@@ -437,10 +469,12 @@ def render(root, state, attempt_id, *, game_speed=2, coop_slot=0, endpoints=None
         army = [{'type': private[member['slot']].get(k, k), 'count': n}
                 for k, n in member['loadout']['force']['units'].items()
                 if k != member['loadout']['force']['collector']]
-        for i in range(0, len(army), 6):
-            team = writer.team('Conquest opening army', army[i:i+6], member['waypoint'],
+        for batch in _batches(army, 15):
+            team = writer.team('Conquest opening army', batch, member['waypoint'],
                                owner=HOUSE_ALIASES[member['slot']])
-            writer.put(team, 'Recruiter', 'yes')
+            # Recruit unassigned grants without stealing another active team.
+            writer.put(team, 'Recruiter', 'no')
+            writer.put(team, 'AreTeamMembersRecruitable', 'yes')
             writer.put(team, 'VeteranLevel', member['loadout']['force']['veterancy'] + 1)
             writer.trigger('Conquest opening orders', [(13, 0, 2)], [_action(4, team=team)],
                            owner=HOUSE_ALIASES[member['slot']])
