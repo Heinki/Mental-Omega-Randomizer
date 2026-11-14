@@ -191,11 +191,14 @@ def apply_shop_clone_modifiers(rule_sections, handled_by_unit, settings):
                     current = float(weapon_values[damage_key])
                 except (TypeError, ValueError):
                     continue
-                _set_number(
-                    weapon_values,
-                    'Damage',
-                    current * correction,
-                    integer=True,
+                # Negative damage heals/repairs. Preserve its sign while
+                # scaling the magnitude, including clone-seed correction.
+                # Zero-damage utility weapons must stay at zero.
+                if current == 0:
+                    continue
+                sign = -1 if current < 0 else 1
+                weapon_values[damage_key] = str(
+                    sign * max(1, int(round(abs(current) * correction)))
                 )
                 counts['damage_weapons'] += 1
     return counts
