@@ -223,15 +223,17 @@ class ConquestController(ConquestCoopController):
                     lambda s: finish_attempt(s, attempt['id'], outcome))
             maps, fingerprint = catalogue(GAME_ROOT)
             from randomizer.conquest.profile import installed_rules
-            names = {key: row.get('Name', key) for key, row in installed_rules().items()}
+            rules = installed_rules()
+            names = {key: row.get('Name', key) for key, row in rules.items()}
+            power = {key: row['Power'] for key, row in rules.items() if 'Power' in row}
             from randomizer.conquest.appearance import army_sprites
             sprites = army_sprites()
-            return state, maps, fingerprint, names, sprites
+            return state, maps, fingerprint, names, sprites, power
 
         def finish(result):
             self._conquest_loading = False
             self._conquest_error = ''
-            self.conquest_state, self._conquest_maps, self._conquest_installation_hash, self._conquest_names, sprites = result
+            self.conquest_state, self._conquest_maps, self._conquest_installation_hash, self._conquest_names, sprites, self._conquest_building_power = result
             self.conquest_view.load_army_sprites(sprites)
             self.conquest_view.map_count.set(f'{len(self._conquest_maps)} installed 2–8-player skirmish maps available.')
             self.refresh_conquest('Campaign loaded. Select an army, then a connected territory; right/middle drag to pan.')

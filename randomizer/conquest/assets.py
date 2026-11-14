@@ -102,7 +102,9 @@ def _find(path, name, *, offset=0, length=None, depth=0):
     if depth>=3:
         return None
     for nested in ('localmd.mix','local.mix','genericmd.mix','generic.mix','conqmd.mix','conquer.mix',
-                   'cachemd.mix','cache.mix','isotemmd.mix','isotemp.mix','temmd.mix','temperat.mix'):
+                   'cachemd.mix','cache.mix','isotemmd.mix','isotemp.mix','temmd.mix','temperat.mix',
+                   'isosnomd.mix','isosnow.mix','isourbmd.mix','isourb.mix','isoubnmd.mix','isoubn.mix',
+                   'isodesmd.mix','isodes.mix','isolunmd.mix','isolun.mix'):
         entry=next((entries[key] for key in mix_hashes(nested) if key in entries),None)
         if entry:
             result=_find(path,name,offset=entry[0],length=entry[1],depth=depth+1)

@@ -16,7 +16,7 @@ from .catalogue import (FACTIONS, DIFFICULTIES, SIZES, STATS, PERKS, MAX_STRENGT
                         RECRUIT_COST, RESEARCH_COST, SUPPLY_COST, LOCAL_PERKS,
                         REPAIR_KIT_COST, MAX_REPAIR_KITS, BATTLE_CREDITS_PER_RANK,
                         AIRCRAFT_BUILDING_LABELS, FACTORY_TRAINING_PERCENT, deployment_rank, perk_rank,
-                        MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK)
+                        MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK, starting_structures)
 
 
 class ConquestView(ttk.Frame):
@@ -450,6 +450,13 @@ class ConquestView(ttk.Frame):
             self.node_rows[key] = value, button
         self.node_page.bind_controls()
 
+    def _node_fortifications(self, state, node):
+        structures = campaign.node_structures(state, node, getattr(self.app, '_conquest_building_power', None))
+        names = getattr(self.app, '_conquest_names', {})
+        return [f'Fortifications: {sum(structures.values())} starting buildings',
+                'Buildings: ' + (', '.join(f'{count}× {names.get(kind, kind)}' for kind, count in structures.items()) or 'None'),
+                f'Territory garrison rank: {node["perks"].get("garrison", 0)}/{PERKS["garrison"]["maximum"]}']
+
     def _refresh_node_upgrades(self, state, node, actor, active):
         owned = [n for n in state['nodes'] if n['owner'] == actor] if state else []
         self._upgrade_nodes = [n['id'] for n in owned]
@@ -467,6 +474,7 @@ class ConquestView(ttk.Frame):
             self.node_summary.set(f'{node["map"]["name"]} · {actor_label(state, node["owner"])}\n'
                 f'Income: {node["income"]} credits/turn · Armies: {len(armies)}/4 · Total strength: {sum(a["strength"] for a in armies)}\n'
                 + 'Territory bonuses: ' + (', '.join(f'{STATS[k]} +{v}%' for k, v in node['buffs'].items()) or 'None')
+                + '\n' + '\n'.join(self._node_fortifications(state, node))
                 + f'\nLocal upgrade ranks: {sum(node["perks"].values())}\n' + upgrades
                 + f'\nCivil Engineers: {state[actor]["perks"].get("civil_engineers", 0) * 10}% discount on your local purchases.')
         else:
@@ -865,8 +873,8 @@ class ConquestView(ttk.Frame):
                 lines += [f'HQ · {actor_label(state, node["hq"])}',
                           'HQ guard: +8 rifle infantry and +2 powered faction defenses.' if node['owner'] == node['hq'] else
                           'HQ captured. Original defender bonus inactive.', '']
-            lines += [f'Fortification: {node["perks"].get("garrison", 0)}/{PERKS["garrison"]["maximum"]}',
-                      'Each rank adds one defensive building here.',
+            lines += self._node_fortifications(state, node)
+            lines += ['Includes node upgrades, owner perks, HQ defenses and required generators.',
                       f'Local upgrade ranks: {sum(node["perks"].values())}',
                       'Use Node upgrades to add defenses, power plants, barracks, refineries and vehicle factories.', '']
             lines += [f'{STATS[k]} +{v}%' for k, v in node['buffs'].items()]
@@ -904,6 +912,7 @@ class ConquestView(ttk.Frame):
             for member in participants(battle):
                 loadout = member['loadout']
                 force = loadout['force']
+                structures = starting_structures(force, loadout['perks'], getattr(self.app, '_conquest_building_power', None))
                 names = getattr(self.app, '_conquest_names', {})
                 lines += ['', f'{actor_label(state, loadout['faction'])} · {loadout["country"]} · {member["role"]}:',
                           f'Battle credits: {10000 + BATTLE_CREDITS_PER_RANK * loadout["perks"].get("battle_treasury", 0):,}',
@@ -915,7 +924,7 @@ class ConquestView(ttk.Frame):
                           f'Defense health: +{15 * loadout["perks"].get("fortified_emplacements", 0)}% · Generator output: +{25 * loadout["perks"].get("generator_efficiency", 0)}%',
                           'Starting troop rank: ' + ('Elite' if force['veterancy'] == 2 else 'Veteran' if force['veterancy'] == 1 else 'Rookie'),
                           ', '.join(f'{count}× {names.get(kind, kind)}' for kind, count in force['units'].items()),
-                          'Buildings: ' + (', '.join(f'{count}× {names.get(kind, kind)}' for kind, count in force['structures'].items()) or 'None')]
+                          'Buildings: ' + (', '.join(f'{count}× {names.get(kind, kind)}' for kind, count in structures.items()) or 'None')]
                 if 'transport_capacity' in PERKS:
                     lines.append(f'Transport slots: +{loadout["perks"].get("transport_capacity", 0)} · Open-topped: ' + ('enabled' if loadout['perks'].get('open_topped_transports') else 'not purchased') + ' (reviewed types only)')
             lines += ['', 'Required power is included. Bonuses are already committed. These battle buttons stay tied to this encounter.']

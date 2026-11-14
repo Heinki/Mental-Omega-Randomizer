@@ -12,7 +12,7 @@ from .players import roster, human_ids, human, country, label, bonus_owners, val
 
 from .catalogue import (FACTIONS, DIFFICULTIES, STATS, PERKS, MAX_STRENGTH,
                         RECRUIT_COST, RESEARCH_COST, SUPPLY_COST, RULES_VERSION,
-                        REPAIR_KIT_COST, MAX_REPAIR_KITS, combat_power, starting_force, perk_rank,
+                        REPAIR_KIT_COST, MAX_REPAIR_KITS, combat_power, starting_force, starting_structures, perk_rank,
                         MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK, INCOME_PER_RANK)
 
 
@@ -298,6 +298,23 @@ def _claim(state, node):
         else:
             inventory[key] = rank + 1
         record(state, f'Permanent capture reward: {perk["name"]}, rank {rank + 1}.', faction, node['id'])
+
+
+def node_structures(state, node, power=None):
+    """Preview this owner's defending buildings without consuming campaign items."""
+    pending = state.get('pending')
+    if pending and pending['target'] == node['id']:
+        loadout = pending['defense']
+        return starting_structures(loadout['force'], loadout['perks'], power)
+    faction = node['owner']
+    perks = dict(state[faction]['perks']) if faction != 'neutral' else {}
+    perks.update(node['perks'])
+    defenders = armies_at(state, node['id'])
+    own_armies = [army for army in defenders if army['faction'] == faction]
+    force = starting_force(country(state, faction), sum(army['strength'] for army in own_armies) or 2,
+                           perks, headquarters=node.get('hq') == faction,
+                           army_count=max(1, len(own_armies)), defense_multiplier=max(1, len(defenders)))
+    return starting_structures(force, perks, power)
 
 
 def _loadout(state, faction, strength, node, defending, *, army_count=1, defense_multiplier=1):

@@ -1,9 +1,8 @@
 """Native RA2/Ares battles, isolated countries, AI and safe starting grants."""
 
-from collections import Counter, deque
+from collections import deque
 from copy import deepcopy
 import hashlib
-import math
 import os
 from pathlib import Path
 import re
@@ -18,7 +17,7 @@ from randomizer.final_fortress.placement import foundation
 from .profile import (GAME, TITLE, NATIVE_COUNTRIES, RULES_FILE, ART_FILE, AI_FILE,
                       INSTALLATION_FILES, installed_rules, read_ini)
 from .catalogue import (FACTIONS, DIFFICULTIES, RULES_VERSION, BATTLE_CREDITS_PER_RANK,
-                        AIRCRAFT_BUILDINGS, ROSTERS, FACTORIES, ESCORT_ROSTERS)
+                        AIRCRAFT_BUILDINGS, ROSTERS, FACTORIES, ESCORT_ROSTERS, starting_structures)
 from .teams import HOUSE_ALIASES, COLOR_SCHEMES, participants
 from .players import human
 from .terrain import Terrain, BUILDABLE_TILES
@@ -234,19 +233,35 @@ def _treasury(writer, loadout, waypoint, candidates, occupied, tag):
 
 def _placements(writer, source, sides, *, private_types=None):
     terrain = Terrain(source)
-    flat_tiles = terrain.flat_tiles
     art = {key.casefold(): row for key, row in read_ini(CAMEO_CACHE_DIR / ART_FILE).items()}
     occupied = set(terrain.objects)
+    obstacles = set(terrain.objects)
     rules = writer.rules
+    power = {kind: row['Power'] for kind, row in rules.items() if 'Power' in row}
     walls = {i for i, kind in enumerate(rules['OverlayTypes'].values())
              if rules.get(kind, {}).get('Wall', '').casefold() in ('yes', 'true', '1')}
 
     def cells(kind, x, y):
         return {(x + dx, y + dy) for dx, dy in foundation({'Image': kind, **rules[kind]}, art)}
 
+    def building_site(kind, candidates, connected):
+        # Prefer clearance on every side. Tight authored bases may put a
+        # building against rear scenery; both front exit edges stay open.
+        for offsets in ((-1, 0, 1), (0, 1)):
+            for x, y in candidates:
+                footprint = cells(kind, x, y)
+                apron = {(px + dx, py + dy) for px, py in footprint
+                         for dx in offsets for dy in offsets}
+                # Resources may border foundations, but never occupy them.
+                if apron <= connected and not apron.intersection(occupied) and terrain.clear(footprint):
+                    return x, y, apron
+        return None
+
     for value in source.get('Structures', {}).values():
         row = value.split(',')
-        occupied.update(cells(row[1], int(row[3]), int(row[4])))
+        footprint = cells(row[1], int(row[3]), int(row[4]))
+        occupied.update(footprint)
+        obstacles.update(footprint)
     for category in ('Units', 'Infantry', 'Aircraft'):
         for value in source.get(category, {}).values():
             row = value.split(',')
@@ -273,30 +288,26 @@ def _placements(writer, source, sides, *, private_types=None):
         walkable = {(x, y) for x in range(cx - 26, cx + 27) for y in range(cy - 26, cy + 27)
                     if 0 <= x < 512 and 0 <= y < 512 and
                     terrain.heights.get((x, y), 0) == height and
-                    terrain.cells.get((x, y), (-1, 0, 0))[0] in flat_tiles and
+                    terrain.flat((x, y)) and
                     terrain.overlays[y * 512 + x] not in walls and
-                    (x, y) not in terrain.objects and terrain.bounds.contains({(x, y)}, heights=terrain.heights)}
-        connected, pending = set(), deque([(cx, cy)])
+                    (x, y) not in obstacles and terrain.bounds.contains({(x, y)}, heights=terrain.heights)}
+        # Authored starts can sit on a decorative or obstructed cell while
+        # the native MCV uses adjacent ground. Seed that same local area,
+        # retaining one connected component and the authored start height.
+        origin = min((p for p in walkable if abs(p[0] - cx) <= 4 and abs(p[1] - cy) <= 4),
+                     key=lambda p: ((p[0] - cx)**2 + (p[1] - cy)**2, p), default=None)
+        connected, pending = set(), deque([origin] if origin is not None else [])
         while pending:
             point = pending.popleft()
             if point in connected or point not in walkable:
                 continue
             connected.add(point)
             pending.extend((point[0] + dx, point[1] + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-        candidates = sorted((p for p in connected if terrain.clear({p}, flat_tiles=flat_tiles)),
+        candidates = sorted((p for p in connected if terrain.clear({p})),
                             key=lambda p: ((p[0] - cx)**2 + (p[1] - cy)**2, p))
         if not candidates:
             raise ValueError(f'No connected clear ground near start {waypoint + 1}. Battle remains pending; autobattle is available.')
-        structures = Counter(force['structures'])
-        balance = sum(float(rules[k].get('Power', '0')) * count for k, count in structures.items())
-        # Purchased node generators are extra capacity. Do not replace the
-        # minimum power already promised for the node's other buildings.
-        balance -= float(rules[force['power_type']].get('Power', '0')) * loadout['perks'].get('node_power', 0)
-        if balance < 0:
-            output = float(rules[force['power_type']].get('Power', '0'))
-            if output <= 0:
-                raise ValueError('The selected faction has no valid starting generator.')
-            structures[force['power_type']] += math.ceil(-balance / output)
+        structures = starting_structures(force, loadout['perks'], power)
         tag = writer.transfer_tag(waypoint, 'Conquest starting forces')
         _treasury(writer, loadout, waypoint, candidates, occupied, tag)
         placed = []
@@ -304,29 +315,25 @@ def _placements(writer, source, sides, *, private_types=None):
         buildings = [k for k, count in structures.items() for _ in range(count)]
         buildings.sort(key=lambda k: -len(cells(k, 0, 0)))
         for kind in buildings:
-            for x, y in candidates:
-                footprint = cells(kind, x, y)
-                apron = {(px + dx, py + dy) for px, py in footprint
-                         for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-                if footprint <= connected and terrain.clear(apron, flat_tiles=flat_tiles, occupied=occupied):
-                    occupied.update(apron)
-                    output = (_starting_structure_type(writer, kind, refinery_cache, template=private.get(kind))
-                              if rules[kind].get('FreeUnit', 'none').lower() not in ('none', '') else private.get(kind, kind))
-                    if kind in set(AIRCRAFT_BUILDINGS.values()):
-                        pad = {**rules[kind], **writer.sections.get(output, {})}
-                        if pad.get('FreeUnit', 'none').casefold() not in ('none', '<none>', ''):
-                            output = _starting_structure_type(writer, kind, refinery_cache, template=private.get(kind), refinery=False)
-                    writer.place('Structures', output, {'x': x, 'y': y}, tag=tag)
-                    placed.append(dict(type=kind, output_type=output, x=x, y=y))
-                    break
-            else:
+            site = building_site(kind, candidates, connected)
+            if site is None:
                 raise ValueError(f'{kind} cannot fit safely near start {waypoint + 1}. Battle remains pending; autobattle is available.')
+            x, y, apron = site
+            occupied.update(apron)
+            output = (_starting_structure_type(writer, kind, refinery_cache, template=private.get(kind))
+                      if rules[kind].get('FreeUnit', 'none').lower() not in ('none', '') else private.get(kind, kind))
+            if kind in set(AIRCRAFT_BUILDINGS.values()):
+                pad = {**rules[kind], **writer.sections.get(output, {})}
+                if pad.get('FreeUnit', 'none').casefold() not in ('none', '<none>', ''):
+                    output = _starting_structure_type(writer, kind, refinery_cache, template=private.get(kind), refinery=False)
+            writer.place('Structures', output, {'x': x, 'y': y}, tag=tag)
+            placed.append(dict(type=kind, output_type=output, x=x, y=y))
         for kind, count in force['units'].items():
             if kind not in rules:
                 raise ValueError('Missing native starting unit: ' + kind)
             category = 'Infantry' if kind in rules['InfantryTypes'].values() else 'Units'
             for _ in range(count):
-                position = next((p for p in candidates if terrain.clear({p}, flat_tiles=flat_tiles, occupied=occupied)), None)
+                position = next((p for p in candidates if terrain.clear({p}, occupied=occupied)), None)
                 if position is None:
                     raise ValueError('Starting army cannot fit safely. Battle remains pending; autobattle is available.')
                 occupied.add(position)

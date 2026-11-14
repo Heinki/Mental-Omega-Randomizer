@@ -2,43 +2,12 @@
 
 import base64
 import struct
-from functools import lru_cache
-from .assets import asset
-from randomizer.maps.ini import all_section_value_maps_preserve
+from .ground import THEATERS, native_ground
 from randomizer.final_fortress.ground import _decode_lzo
 from randomizer.final_fortress.placement import PlayableBounds
 
 
-THEATER_FILES = {'temperate': 'temperatmd.ini', 'snow': 'snowmd.ini', 'urban': 'urbanmd.ini',
-                 'newurban': 'urbannmd.ini', 'desert': 'desertmd.ini', 'lunar': 'lunarmd.ini'}
-BUILDABLE_TILES = {theater: frozenset((0, 65535)) for theater in THEATER_FILES}
-
-
-@lru_cache(maxsize=6)
-def flat_ground(theater):
-    """Resolve flat LAT and road sets from this mod's own theater registry.
-
-    Tile numbers differ between mods and theaters. Native General fields
-    identify the clear/sand/grass/paving families; never reuse DTA indices.
-    Ramp, cliff, bridge, water, ice and equipment sets remain excluded.
-    """
-    data = asset(THEATER_FILES[theater])
-    if not data:
-        raise ValueError('Installed Conquest theater registry is missing: ' + theater)
-    rows = {name: {k: v.split(';', 1)[0].strip() for k, v in row.items()}
-            for name, row in all_section_value_maps_preserve(data.decode('latin-1').splitlines()).items()}
-    general = rows['General']
-    fields = ('ClearTile', 'RoughTile', 'ClearToRoughLat', 'SandTile', 'ClearToSandLat',
-              'GreenTile', 'ClearToGreenLat', 'PaveTile', 'MiscPaveTile', 'ClearToPaveLat',
-              'PavedRoads', 'PavedRoadEnds', 'DirtRoadJunction', 'DirtRoadCurve', 'DirtRoadStraight')
-    selected = {int(general[field]) for field in fields if general.get(field, '').isdigit()}
-    tiles, offset = {65535}, 0
-    for name in sorted(n for n in rows if n.startswith('TileSet') and n[7:].isdigit()):
-        size = int(rows[name].get('TilesInSet', '0'))
-        if int(name[7:]) in selected:
-            tiles.update(range(offset, offset + size))
-        offset += size
-    return frozenset(tiles)
+BUILDABLE_TILES = {theater: frozenset((0, 65535)) for theater in THEATERS}
 
 
 def _lcw(data):
@@ -104,7 +73,7 @@ class Terrain:
         self.theater = source['Map']['Theater'].casefold()
         if self.theater not in BUILDABLE_TILES:
             raise ValueError('Unsupported Conquest terrain theater: ' + self.theater)
-        self.flat_tiles = flat_ground(self.theater)
+        self.ground = native_ground(self.theater)
         raw = unpack(source['IsoMapPack5'], lzo=True)
         if len(raw) % 11 == 4 and raw[-4:] == b'\0' * 4:
             raw = raw[:-4]  # native RA2 editor's native trailing map-pack sentinel.
@@ -116,10 +85,12 @@ class Terrain:
         self.objects = {(int(key) % 1000, int(key) // 1000) for key in source.get('Terrain', {})}
         self.heights = {cell: value[2] for cell, value in self.cells.items()}
 
-    def clear(self, cells, *, flat_tiles=None, occupied=()):
+    def flat(self, cell):
+        tile, sub, _ = self.cells.get(cell, (-1, 0, 0))
+        return self.ground.flat(tile, sub)
+
+    def clear(self, cells, *, occupied=()):
         cells = set(cells)
-        if flat_tiles is None:
-            flat_tiles = self.flat_tiles
         if not cells or cells.intersection(occupied) or cells.intersection(self.objects):
             return False
         if not self.bounds.contains(cells, heights=self.heights):
@@ -127,7 +98,7 @@ class Terrain:
         heights = set()
         for x, y in cells:
             tile, sub, height = self.cells.get((x, y), (-1, 0, 0))
-            if tile not in flat_tiles or not 0 <= x < 512 or not 0 <= y < 512:
+            if not 0 <= x < 512 or not 0 <= y < 512 or not self.ground.flat(tile, sub):
                 return False
             if self.overlays[y * 512 + x] != 255:
                 return False
