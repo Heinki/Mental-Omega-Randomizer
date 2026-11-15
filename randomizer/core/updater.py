@@ -87,7 +87,7 @@ class AvailableUpdate:
 
 
 def check_latest_release(installed_version):
-    """Accept only complete, stable releases from this product's repository."""
+    """Accept stable product pairs with manifest or GitHub SHA-256 checksums."""
     release = _json_from_url(f'https://api.github.com/repos/{REPOSITORY}/releases/latest')
     if release.get('draft') or release.get('prerelease'):
         return None
@@ -111,15 +111,27 @@ def check_latest_release(installed_version):
         if url != prefix + quote(name, safe=''):
             raise ValueError('Release asset does not belong to the selected release.')
         assets[name] = asset
-    if not all(name in assets for name in ('release_manifest.json', EXECUTABLE_NAME, APWORLD_NAME)):
-        raise ValueError('Release is missing its launcher, APWorld, or update manifest.')
-    manifest = _json_from_url(assets['release_manifest.json']['browser_download_url'])
-    version = manifest.get('launcher_version', '')
-    if manifest.get('format') != 1 or version_key(version) != version_key(tag):
-        raise ValueError('Release manifest version does not match its GitHub tag.')
-    hashes = manifest.get('files')
-    if not isinstance(hashes, dict):
-        raise ValueError('Release manifest has no file checksums.')
+    if not all(name in assets for name in (EXECUTABLE_NAME, APWORLD_NAME)):
+        raise ValueError('Release is missing its launcher or matching APWorld.')
+    version = tag.lstrip('vV')
+    hashes = {}
+    if 'release_manifest.json' in assets:
+        # A present but invalid manifest must fail rather than downgrade trust.
+        manifest = _json_from_url(assets['release_manifest.json']['browser_download_url'])
+        version = manifest.get('launcher_version', '')
+        if manifest.get('format') != 1 or version_key(version) != version_key(tag):
+            raise ValueError('Release manifest version does not match its GitHub tag.')
+        hashes = manifest.get('files')
+        if not isinstance(hashes, dict):
+            raise ValueError('Release manifest has no file checksums.')
+    else:
+        # Manual releases often attach only the EXE/APWorld. GitHub supplies a
+        # SHA-256 digest for each uploaded asset through its HTTPS release API.
+        for name in (EXECUTABLE_NAME, APWORLD_NAME):
+            digest = assets[name].get('digest')
+            if not isinstance(digest, str) or not re.fullmatch(r'sha256:[0-9a-fA-F]{64}', digest):
+                raise ValueError(f'Release has no manifest or GitHub SHA-256 for {name}.')
+            hashes[name] = digest.removeprefix('sha256:')
     selected = []
     for name in (EXECUTABLE_NAME, APWORLD_NAME):
         checksum = hashes.get(name, '')

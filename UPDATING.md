@@ -5,6 +5,12 @@ after startup. Checks run in the background. Offline access, rate limits, or an
 incomplete release do not prevent playing. Source launches do not check for or
 install executable updates.
 
+The **Check for updates** button stays visible when the startup check fails or
+finds no newer version. Clicking it retries and displays the result, including
+network or metadata errors. Finding a newer release changes the button to **Update**.
+The launcher log records skipped, started, failed, current, and available checks.
+Notice persistence failures are logged without suppressing the update prompt.
+
 When a newer stable release is available, the launcher shows one automatic
 update prompt per version. Choosing **No** or closing the prompt remembers that
 version across launcher restarts. An **Update** button remains in the upper
@@ -80,8 +86,12 @@ and matching tag for the next published release.
 4. Publish when ready and mark the release as latest. Drafts and prereleases
    never trigger stable update prompts. Normal commits do not trigger prompts.
 
-The updater requires the manifest's launcher version to match the tag and
-requires both product assets. CI validates the complete release bundle, including all checksums and the
+The updater requires both product assets. It prefers a manifest whose launcher
+version matches the tag and rejects a malformed manifest. Without a manifest,
+newer launchers use the SHA-256 digests returned by GitHub's release API for both
+assets. Missing checksums still prevent installation. Always attach the manifest:
+older installed launchers require it even when GitHub supplies asset digests.
+CI validates the complete release bundle, including all checksums and the
 APWorld archive version. Version-tag builds also require the tag to match
 `APP_VERSION` before uploading. Uploading only an EXE is insufficient. Upload all
 assets before publishing. Build a new version rather than changing the assets
@@ -89,6 +99,22 @@ of an already published release.
 
 Players on versions without the updater must download an updater-enabled
 launcher manually once. They can then accept future releases inside the launcher.
+
+## Repairing missing release metadata
+
+Reloaded V2.2, Mental Omega V1.49, and DTA V2.7 were published with only their
+EXE and APWorld. Older updaters reject these releases before showing a prompt.
+Attach a format-1 `release_manifest.json` with `launcher_version` matching the
+published tag and `files` mapping the published EXE/APWorld names to SHA-256
+values. Use GitHub's asset `digest` values or hashes of the downloaded published
+files. Never use hashes from a local rebuild, even with the same version.
+Adding this missing metadata restores discovery for existing updater-enabled
+launchers below that release version without replacing either published asset.
+
+Players already on the latest version correctly receive no update prompt.
+Source launches skip executable updates. Same-version local builds and normal
+commits do not create a newer public release. The checksum fallback and visible
+retry button take effect after installing a repaired build.
 
 ## Recovery and verification
 

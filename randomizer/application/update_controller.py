@@ -22,17 +22,29 @@ from randomizer.core.version import APP_VERSION
 
 class UpdateController:
     def create_update_button(self, parent):
-        self.update_button = ttk.Button(parent, text='Update', command=self.offer_update)
+        self.update_button = ttk.Button(parent, text='Check for updates', command=self.check_or_offer_update)
         self.update_button.grid(row=0, column=0, sticky='ne', padx=(0, 8))
-        self.update_button.grid_remove()
+        if not FROZEN or os.name != 'nt':
+            self.update_button.grid_remove()
 
-    def start_update_check(self):
+    def check_or_offer_update(self):
+        if getattr(self, '_available_update', None) is not None:
+            self.offer_update()
+        else:
+            self.start_update_check(manual=True)
+
+    def start_update_check(self, manual=False):
         """Source/developer launches never offer to replace a packaged EXE."""
-        if not FROZEN or os.name != 'nt' or getattr(self, '_update_check_started', False):
+        if not FROZEN or os.name != 'nt':
+            log_event('update_check_skipped', reason='requires_packaged_windows_launcher')
             return
-        self._update_check_started = True
-        self._available_update = None
+        if getattr(self, '_update_check_running', False):
+            return
+        self._update_check_running = True
+        self._update_check_manual = manual
         self._update_results = queue.Queue()
+        self.update_button.configure(text='Checking…', state='disabled')
+        log_event('update_check_started', installed_version=APP_VERSION, manual=manual)
 
         def worker():
             try:
@@ -49,15 +61,35 @@ class UpdateController:
         except queue.Empty:
             self.after(200, self.poll_update_check)
             return
+        self._update_check_running = False
+        self.update_button.configure(text='Check for updates', state='normal')
         if kind == 'error':
             # Offline, rate-limited, and incomplete releases never block play.
             log_event('update_check_unavailable', error=value)
+            if self._update_check_manual:
+                messagebox.showinfo(
+                    'Update check unavailable',
+                    f'Could not check for updates.\n\n{value}\n\n'
+                    'You can keep playing and retry with Check for updates.',
+                    parent=self,
+                )
             return
         if value is None:
+            log_event('update_check_current', installed_version=APP_VERSION)
+            if self._update_check_manual:
+                messagebox.showinfo(
+                    'No update available',
+                    f'No newer stable release is available. You have {APP_VERSION}.',
+                    parent=self,
+                )
             return
         self._available_update = value
-        self.update_button.grid()
-        self.after(300, self.offer_automatic_update)
+        self.update_button.configure(text='Update')
+        log_event('update_available', installed_version=APP_VERSION, version=value.version)
+        if self._update_check_manual:
+            self.offer_update()
+        else:
+            self.after(300, self.offer_automatic_update)
 
     def update_activity_locked(self):
         process = getattr(self, 'active_game_process', None)
@@ -101,13 +133,6 @@ class UpdateController:
                 )
             return
         self._update_notice_handled = True
-        try:
-            # Persist BEFORE showing the dialog, including closing its title bar.
-            remember_notice(APP_DIR, update.version)
-        except (OSError, ValueError) as exc:
-            log_event('update_notice_persistence_failed', error=str(exc))
-            if automatic:
-                return  # Keep the button, without an unremembered popup on every launch.
         accepted = messagebox.askyesno(
             f'{PRODUCT_NAME} update',
             f'Version {update.version} is available. You have {APP_VERSION}.\n\n'
@@ -119,6 +144,11 @@ class UpdateController:
             'Install it in Archipelago before generating a new multiworld.',
             parent=self,
         )
+        try:
+            # Only a dialog that was actually displayed can suppress a notice.
+            remember_notice(APP_DIR, update.version)
+        except (OSError, ValueError) as exc:
+            log_event('update_notice_persistence_failed', error=str(exc))
         if not accepted:
             return
         # Tk message boxes run a nested event loop; recheck before staging.
