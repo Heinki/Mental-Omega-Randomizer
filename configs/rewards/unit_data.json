@@ -3923,8 +3923,8 @@
       },
       "CAPU": {
         "weapons": {
-          "KnightGun": {"damage": 50, "rof": 55, "range": 6},
-          "KnightGunE": {"damage": 50, "rof": 55, "range": 6}
+          "MORCAPUGUN": {"damage": 50, "rof": 55, "range": 6},
+          "MORCAPUGUNE": {"damage": 50, "rof": 55, "range": 6}
         }
       },
       "ARTY": {
@@ -4664,7 +4664,7 @@
       },
       "DIVERP": {
         "weapons": {
-          "DiverbeeAttack": {
+          "MORDIVERATTACK": {
             "damage": 220,
             "rof": 500,
             "range": 7
@@ -5593,6 +5593,103 @@
     },
     "standalone_weapon_templates": {},
     "standalone_unit_rule_templates": {
+      "CAPU": {
+        "WeaponTypes": {
+          "MORCAPUGUN": {
+            "Damage": "50",
+            "ROF": "55",
+            "Range": "6",
+            "Projectile": "InvisibleWork",
+            "AttachedParticleSystem": "GyroBulletSys",
+            "IsDetachedRailgun": "true",
+            "Speed": "100",
+            "Warhead": "KnightBetaSA",
+            "Report": "GharialAttackGun",
+            "OpenToppedAnim": "GHARCAN2"
+          },
+          "MORCAPUGUNE": {
+            "Damage": "50",
+            "ROF": "55",
+            "Range": "6",
+            "Projectile": "InvisibleWork",
+            "AttachedParticleSystem": "GyroBulletSys",
+            "IsDetachedRailgun": "true",
+            "Speed": "100",
+            "Warhead": "KnightBetaSA",
+            "Report": "GharialAttackGun",
+            "OpenToppedAnim": "GHARCAN2"
+          }
+        }
+      },
+      "DIVERP": {
+        "WeaponTypes": {
+          "MORDIVERATTACK": {
+            "Damage": "220",
+            "ROF": "500",
+            "Range": "7",
+            "Burst": "1",
+            "Projectile": "DiverbeeP",
+            "Speed": "100",
+            "Warhead": "MORDIVERWH",
+            "Report": "DiverbeeAttack",
+            "DecloakToFire": "yes",
+            "RevealOnFire": "yes",
+            "Anim": "DIVERKILL2",
+            "OmniFire": "yes"
+          }
+        },
+        "Warheads": {
+          "MORDIVERWH": {
+            "Wall": "yes",
+            "Wood": "yes",
+            "Sparky": "yes",
+            "Verses": "60%,50%,40%,200%,190%,175%,15%,10%,10%,100%,100%",
+            "Versus.s_siren2": "-190%",
+            "Versus.wood_b": "10%",
+            "Versus.steel_b": "5%",
+            "Versus.concrete_b": "5%",
+            "Versus.nuclear": "10%",
+            "Versus.defense": "15%",
+            "Versus.tesla": "15%",
+            "Versus.risen": "15%",
+            "Versus.lrod": "15%",
+            "Versus.tbnk": "10%",
+            "Versus.garrison_b": "10%",
+            "Versus.defense_b": "10%",
+            "Versus.bfg": "10%",
+            "Versus.garrison_c": "10%",
+            "Versus.f_light": "100%",
+            "Versus.f_shad": "100%",
+            "Versus.f_seizer": "100%",
+            "Versus.f_jet": "100%",
+            "Versus.f_medium": "80%",
+            "Versus.f_gotter": "90%",
+            "Versus.f_heavy": "80%",
+            "Versus.f_dybb": "90%",
+            "Versus.f_spawn": "100%",
+            "Versus.f_shrike": "100%",
+            "Versus.f_widow": "80%",
+            "Versus.f_thor": "80%",
+            "Versus.f_quetz": "80%",
+            "Versus.f_harb": "80%",
+            "Versus.f_cryoc": "80%",
+            "Versus.f_hurr": "70%",
+            "Versus.f_diver": "20%",
+            "Versus.f_edrn": "50%",
+            "Versus.f_mothra": "30%",
+            "Versus.f_rock": "30%",
+            "Versus.f_hero": "20%",
+            "Versus.camo.PassiveAcquire": "no",
+            "CellSpread": "2",
+            "PercentAtMax": ".4",
+            "Conventional": "no",
+            "MinDebris": "2",
+            "MaxDebris": "3",
+            "AnimList": "BRRLEXP1",
+            "InfDeath": "4"
+          }
+        }
+      },
       "BRUTM": {
         "WeaponTypes": {
           "MagnetPunch": {"ROF": "45", "Ammo": "1", "Range": "2", "Speed": "100", "Damage": "100", "Report": "BruteSmashAttack", "Warhead": "MagnetBattering", "Projectile": "InvisibleLowBrute4", "FireInTransport": "no"},

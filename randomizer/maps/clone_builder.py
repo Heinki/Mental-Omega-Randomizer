@@ -1577,13 +1577,6 @@ def build_player_clone_sections(
         _register_map_type(
             section_rules, lines, installed_sections, list_section, clone_id
         )
-        if unit_id in {'JACKAL', 'JACKALP'}:
-            # Map-authored JACKALA works only while the original JACKAL
-            # identity supplies its visible mobile turret. A standalone clone
-            # must use the complete standard body/turret asset pair. Its
-            # prototype cameo remains distinct through the generated art
-            # overlay deployed for this launch.
-            clone_values['Image'] = 'JACKAL'
         section_rules[clone_id] = clone_values
         clone_id_by_source[unit_id] = clone_id
         cloned_source_ids.add(unit_id)

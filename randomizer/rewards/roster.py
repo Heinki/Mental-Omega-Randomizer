@@ -28,6 +28,14 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
+    # Keep corrected portable prototype identities on preserved editable
+    # rosters as well. Combat dependencies are supplied by unit_data.json.
+    'CAPU': {
+        'Primary': 'MORCAPUGUN',
+        'ElitePrimary': 'MORCAPUGUNE',
+    },
+    'JACKALP': {'Image': 'JACKALA'},
+    'DIVERP': {'Primary': 'MORDIVERATTACK'},
     'YURIPR': {'Cloneable': None},
     'YURIX': {
         'Insignia.Rookie': 'herostcr',
@@ -172,7 +180,7 @@ MANDATORY_TEMPLATE_OVERRIDES = {
         'Name': 'Apocalypse Prototype',
         'UIName': 'NAME:COPA',
         'Image': 'COPA',
-        'Armor': 'ex_apoc',
+        'Armor': 'r_heavy',
         'Strength': '3600',
         'Speed': '5',
         'Operator': None,

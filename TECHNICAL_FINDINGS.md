@@ -672,10 +672,13 @@ namespaced loose `morperunicon.pcx` at launch, and assigned to exact compact
 clone aliases plus `[PERUN]`; this avoids the missing installed art section
 which otherwise falls through to the generic Mental Omega icon. Jackal
 Prototype uses `jackaicon.pcx`. The file has a launcher marker, refuses to
-replace custom loose art, and is deleted with the generated map. Normal and
-prototype standalone Jackal clones use `Image=JACKAL`
-because native `Image=JACKALA` depends on the original identity's mobile
-turret and produced an invisible standalone clone.
+replace custom loose art, and is deleted with the generated map. Prototype
+Jackal clones use `Image=JACKALA`, as authored in FBEYOND and
+FREMNANT. Both the prototype body and turret have installed VXL/HVA assets.
+The earlier claim that this model requires the original JACKAL identity was
+not supported by the asset audit; the unconditional standard-model override
+has been removed. Normal Jackal rewards retain `Image=JACKAL`, while native
+campaign appearance overrides are preserved. See `PROTOTYPE_UNITS_AUDIT.md`.
 
 Map and cameo extraction load `NLog.dll`, `CNCMaps.Shared.dll`, and `CNCMaps.FileFormats.dll` from byte arrays in dependency order. This avoids .NET error `0x80131515` when a freshly copied/downloaded Mental Omega folder retains Windows `Zone.Identifier` markers. The launcher does not unblock, rewrite, or remove alternate streams from the installed renderer DLLs or MIX archives.
 

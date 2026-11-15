@@ -75,7 +75,9 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Name': 'Apocalypse Prototype',
         'UIName': 'NAME:COPA',
         'Image': 'COPA',
-        'Armor': 'ex_apoc',
+        # SARMS defines ex_apoc=r_heavy locally. Use its installed parent so
+        # portable rewards do not depend on that mission-only armor alias.
+        'Armor': 'r_heavy',
         'Strength': '3600',
         'Speed': '5',
         'Passengers': '0',
@@ -130,6 +132,8 @@ TEMPLATE_VALUE_OVERRIDES = {
         'Name': 'Heavy Trooper',
         'UIName': 'NAME:CAPU',
         'Image': 'CAPU',
+        'Primary': 'MORCAPUGUN',
+        'ElitePrimary': 'MORCAPUGUNE',
         'Armor': 'plate',
         'Strength': '175',
         'Sight': '5',
@@ -351,14 +355,13 @@ TEMPLATE_VALUE_OVERRIDES = {
     },
     'JACKALP': {
         'Name': 'Jackal Racer Prototype',
-        # JACKALA is a native-map appearance swap whose visible turret still
-        # depends on the original JACKAL identity. Standalone reward clones
-        # need the complete JACKAL voxel/turret pair.
-        'Image': 'JACKAL',
+        # FBEYOND/FREMNANT use this complete installed body/turret pair.
+        'Image': 'JACKALA',
     },
     'DIVERP': {
         'Name': 'Diverbee Prototype',
         'Image': 'ADIVER',
+        'Primary': 'MORDIVERATTACK',
         'Cost': '800',
         'Soylent': '400',
         'Explosion': 'DIVERKILL2',
