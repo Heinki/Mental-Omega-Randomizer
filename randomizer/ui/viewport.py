@@ -17,8 +17,9 @@ def _route_wheel(event):
 
 
 class ScrollableViewport(ttk.Frame):
-    def __init__(self, parent, background=None, *, padding=0):
+    def __init__(self, parent, background=None, *, padding=0, fill_height=True):
         super().__init__(parent)
+        self.fill_height = fill_height
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
         self.canvas = tk.Canvas(
@@ -63,12 +64,18 @@ class ScrollableViewport(ttk.Frame):
     def _resize(self):
         self._pending = None
         width = max(self.canvas.winfo_width(), self.content.winfo_reqwidth())
-        height = max(self.canvas.winfo_height(), self.content.winfo_reqheight())
+        height = self.content.winfo_reqheight()
+        if self.fill_height:
+            height = max(self.canvas.winfo_height(), height)
         signature = (width, height, self.canvas.winfo_width())
         if signature == getattr(self, '_size_signature', None):
             return
         self._size_signature = signature
-        self.canvas.itemconfigure(self.window, width=width, height=height)
+        # A natural-height window receives Configure events when descendants
+        # change their requested height, even while the canvas stays the same size.
+        self.canvas.itemconfigure(
+            self.window, width=width, height=height if self.fill_height else 0,
+        )
         self.canvas.configure(scrollregion=(0, 0, width, height))
         if width > self.canvas.winfo_width():
             self.horizontal.grid()

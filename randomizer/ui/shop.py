@@ -41,6 +41,17 @@ def _tree(
     # become the minimum width of the entire Shop after shrinking the window.
     parent.configure(width=1, height=tree.winfo_reqheight() + 40)
     parent.grid_propagate(False)
+
+    def resize_parent():
+        # Theme setup can change cameo row heights after this tree is built.
+        parent.configure(height=tree.winfo_reqheight() + 40)
+
+    def schedule_resize(_event=None):
+        tree.after_idle(resize_parent)
+
+    tree.bind('<Map>', schedule_resize, add='+')
+    tree.bind('<<ThemeChanged>>', schedule_resize, add='+')
+    schedule_resize()
     return tree
 
 
@@ -123,7 +134,9 @@ def build_shop_tab(self, workspace_tabs):
     tab.columnconfigure(0, weight=1)
     tab.rowconfigure(1, weight=1)
 
-    viewport = ScrollableViewport(tab, padding=8)
+    # Let the body follow its requested height so new runs and upgrade pages
+    # update the outer scroll region without needing a launcher window resize.
+    viewport = ScrollableViewport(tab, padding=8, fill_height=False)
     self.shop_viewport = viewport
     viewport.grid(row=1, column=0, columnspan=2, sticky='nsew')
     canvas = viewport.canvas
