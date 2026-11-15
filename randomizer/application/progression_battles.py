@@ -349,13 +349,18 @@ class ProgressionBattlesController:
         self.refresh_active_advanced_view()
         self.append_log('Skirmish selection applies to the next Mission List/Shop/Grid run; existing runs keep their saved mission pool.')
 
-    def load_missions(self, *args, **kwargs):
+    def load_missions(self, *, category=None, country=None, player_count=None):
         from randomizer.skirmish_progression import mission_catalogue, referenced_missions, restore_saved_maps
-        missions = list(super().load_missions(*args, **kwargs))
+        # Startup supplies the category from Tk's main thread; reuse that
+        # snapshot for the optional solo skirmish pool as well.
+        category = category or self.selected_mission_category()
+        missions = list(super().load_missions(
+            category=category, country=country, player_count=player_count,
+        ))
         self._skirmish_catalogue = ()
         self._skirmish_catalogue_complete = False
         self._skirmish_catalogue_error = ''
-        if self.coop_enabled():
+        if category != 'campaign':
             return missions
         enabled = bool(self.config.get('include_skirmishes', False))
         codes = self._skirmish_reference_codes(include_preview=False)
