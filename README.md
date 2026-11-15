@@ -259,6 +259,13 @@ buff until the next stack is unaffordable or the stack limit is reached.
 Each stack uses the normal Ore price, discounts, coupons, and available
 Free Buff Tokens; the complete purchase is saved once.
 
+Unit and building cost upgrades retain a minimum rules cost of 1 credit
+for types whose native cost is positive. This avoids zero-cost engine
+issues with veterancy and the harvester included with a Refinery. Native
+zero-cost utility types remain free. Existing upgrade stacks apply this
+floor when a mission is relaunched; existing in-mission saves retain
+their old rules.
+
 In Shop Mode, select a permanent unit or power buff and click **Buy Max**
 to buy all affordable stacks in one purchase. Purchases stop at the buff
 stack limit and leave any unspent Gems. Permanent buff purchases are

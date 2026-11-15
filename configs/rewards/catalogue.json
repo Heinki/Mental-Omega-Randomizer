@@ -681,7 +681,7 @@
         "id": "cost",
         "name": "Logistics",
         "setting_label": "Cost reduction",
-        "description": "{plural} cost 20% less in future launched missions."
+        "description": "{plural} cost 20% less in future launched missions, with a minimum cost of 1 credit."
       },
       {
         "id": "speed",

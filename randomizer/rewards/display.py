@@ -288,12 +288,12 @@ def _uncached_buff_stack_limit(reward):
         target = BUFF_TARGETS.get(reward.get('unit'), {})
         configured = stacking_stack_limit('cost')
         base_cost = max(1, int(round(float(target.get('cost', 1)))))
-        previous = base_cost
         for count in range(1, configured + 1):
             current = stacked_cost(base_cost, count)
-            if current == previous:
-                return max(1, count - 1)
-            previous = current
+            # Rounded intermediate prices may repeat before falling again.
+            # Only stop early when the engine-safe one-credit floor is met.
+            if current <= 1:
+                return count
         return configured
     if buff_type in {'damage', 'reload'}:
         target = BUFF_TARGETS.get(reward.get('unit'), {})

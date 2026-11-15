@@ -72,10 +72,14 @@ def stacking_amount(effect, count):
 
 
 def stacked_cost(base_cost, count):
-    """Return the configured rounded cost for a cumulative stack count."""
+    """Discount production without making a positive native cost zero."""
     base_cost = max(0, int(round(float(base_cost))))
     count = max(0, int(count))
-    return max(0, int(round(
+    # Zero-cost production breaks engine veterancy and refinery FreeUnit
+    # handling. Keep native zero-cost utility types free; discounted paid
+    # types must retain a positive rules cost, even at the configured cap.
+    minimum_cost = 1 if base_cost > 0 else 0
+    return max(minimum_cost, int(round(
         base_cost * stacking_multiplier('cost', count)
     )))
 
