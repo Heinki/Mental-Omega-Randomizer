@@ -157,6 +157,9 @@ class _AuditLauncher(LaunchController):
     def active_progression_mode(self):
         return self._progression_mode
 
+    def shop_launch_active(self):
+        return self._progression_mode == 'Shop Mode'
+
     def active_reward_settings(self):
         settings = dict(self.config['generation'])
         settings.update({

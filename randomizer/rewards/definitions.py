@@ -659,6 +659,11 @@ BUFF_TARGETS['FAGUAR']['spawned_aircraft_range_support'] = {
     'base_guard_range': 30,
 }
 
+# Mastodons fire through a timed gatling cycle and an ammunition reload.
+# Weapon ROF alone does not shorten either part of their firing cadence.
+for _unit_id in ('PROME', 'PROMEP'):
+    BUFF_TARGETS[_unit_id]['gattling_reload_cycle'] = True
+
 # Mind-control WeaponType Damage is the simultaneous-control capacity, not
 # attack damage. Keep these weapons out of generic firepower scaling and give
 # each player clone its own capacity upgrade. Permanent mind control does not

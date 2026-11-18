@@ -35,6 +35,7 @@ from .buff_values import (
     apply_unit_buff_value,
     apply_weapon_buff_value,
     normalize_unit_strength,
+    unit_reload_timing_values,
 )
 from .helper_ai import (
     _append_prerequisite_alternatives,
@@ -1300,6 +1301,15 @@ def build_player_clone_sections(
                 clone_values[key] = weapon_clone
             handled_weapon_ids.add(weapon.upper())
             weapon_clone_ids[weapon.upper()] = weapon_clone
+
+        if 'reload' in weapon_buff_types:
+            reload_timings = unit_reload_timing_values(
+                clone_base_values, target, counts['reload'],
+            )
+            _remove_case_insensitive(clone_values, *reload_timings)
+            clone_values.update(reload_timings)
+            if reload_timings:
+                handled_unit_types.add('reload')
 
         spawn_support = target.get('spawned_aircraft_range_support')
         if spawn_support and 'range' in handled_weapon_types:

@@ -264,6 +264,46 @@ def apply_unit_buff_value(values, target, buff_type, count):
         return False
     return True
 
+def unit_reload_timing_values(base_values, target, count):
+    """Scale reviewed timed firing cycles without collapsing stage windows."""
+    if not target.get('gattling_reload_cycle') or count <= 0:
+        return {}
+    if any(
+        str(_value_case_insensitive(base_values, key, 'no')).casefold()
+        not in {'yes', 'true', '1'}
+        for key in ('IsGattling', 'Gattling.Cycle')
+    ):
+        return {}
+    timings = {}
+    if parse_float(_value_case_insensitive(base_values, 'Ammo'), 0) > 0:
+        for key in ('Reload', 'EmptyReload'):
+            delay = parse_float(_value_case_insensitive(base_values, key), 0)
+            if delay > 1:
+                timings[key] = str(stacked_weapon_rof(delay, count))
+    stages = int(parse_float(
+        _value_case_insensitive(base_values, 'WeaponStages'), 0
+    ))
+    for prefix in ('Stage', 'EliteStage'):
+        previous = 0
+        scaled = 0
+        stage_values = {}
+        for number in range(1, stages + 1):
+            key = f'{prefix}{number}'
+            threshold = int(parse_float(
+                _value_case_insensitive(base_values, key), 0
+            ))
+            if threshold <= previous:
+                break
+            # Thresholds are cumulative. Scale each window, retaining at
+            # least one frame for the blast even at the reload stack cap.
+            scaled += stacked_weapon_rof(threshold - previous, count)
+            previous = threshold
+            stage_values[key] = str(scaled)
+        else:
+            timings.update(stage_values)
+    return timings
+
+
 def apply_weapon_buff_value(values, base_stats, buff_type, count):
     if buff_type == 'damage' and base_stats.get('damage', 0) != 0:
         for key in list(values):

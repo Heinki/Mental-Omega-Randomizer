@@ -1,7 +1,9 @@
 """Validate that displayed unit buffs produced real generated INI changes."""
 
 from randomizer.rewards.healing import self_healing_metadata
-from randomizer.maps.buff_values import _active_direct_buff_counts
+from randomizer.maps.buff_values import (
+    _active_direct_buff_counts, unit_reload_timing_values,
+)
 from randomizer.maps.ini import all_section_value_maps
 from randomizer.rewards.catalogue import (
     BUFF_TARGETS,
@@ -279,6 +281,18 @@ def validate_generated_unit_buff_changes(
                         details,
                         sections,
                     ):
+                        if buff_type == 'reload' and target.get('gattling_reload_cycle'):
+                            timings = unit_reload_timing_values(
+                                details.get('clone_base_values', {}), target, count,
+                            )
+                            final_values = _lower_values(sections.get(
+                                str(details.get('clone_id') or ''), {},
+                            ))
+                            if not timings or any(
+                                _numeric(final_values.get(key.lower())) != float(value)
+                                for key, value in timings.items()
+                            ):
+                                continue
                         valid = True
                         break
             else:

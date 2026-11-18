@@ -40,6 +40,11 @@ SPECIAL_TEMPLATE_SOURCES = {
     'CAPU': 'KNIGHT',
 }
 TEMPLATE_VALUE_OVERRIDES = {
+    'ROACH': {
+        # Map-created player types must not rely on damage-smoke default
+        # discovery to retain the Bison's low-health nanite repair system.
+        'DamageSmokeParticleSystems': 'FoehnRepairSys',
+    },
     'STNK': {
         # The portable Opus uses a sealed single gunner seat. Passenger
         # upgrades change the gunner identity, never its count.

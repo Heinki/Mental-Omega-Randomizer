@@ -27,6 +27,7 @@ from .buff_values import (
     _active_direct_buff_counts,
     apply_unit_buff_value,
     apply_weapon_buff_value,
+    unit_reload_timing_values,
 )
 from .clone_references import (
     _standalone_clone_values_from_maps,
@@ -243,6 +244,18 @@ def unit_weapon_buff_rules(
                 rule_sections.pop(unit_id, None)
 
         weapon_buff_types = WEAPON_STAT_BUFF_TYPES.intersection(counts)
+        if 'reload' in weapon_buff_types and 'reload' not in handled_unit_types:
+            timings = unit_reload_timing_values(
+                effective_values, target, counts['reload'],
+            )
+            if timings and unsafe_unit_houses:
+                skipped_units.append(
+                    f'{target.get("label", unit_id)} firing cycle '
+                    f'({", ".join(unsafe_unit_houses)})'
+                )
+            elif timings:
+                rule_sections.setdefault(unit_id, {}).update(timings)
+                applied = True
         if weapon_buff_types:
             for weapon, base_stats in target.get('weapons', {}).items():
                 if weapon.upper() in handled_weapon_ids:
@@ -389,7 +402,11 @@ def native_variant_unit_buff_rules(
             continue
         effective_target = _target_with_effective_unit_stats(target, base_values)
         updated_values = dict(base_values)
-        applied = False
+        reload_timings = unit_reload_timing_values(
+            base_values, target, counts.get('reload', 0),
+        )
+        updated_values.update(reload_timings)
+        applied = bool(reload_timings)
         for buff_type in (
             'health', 'armor', 'sight', 'ammo', 'storage', 'income',
             'passenger_capacity',
