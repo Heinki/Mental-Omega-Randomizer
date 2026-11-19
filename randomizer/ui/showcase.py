@@ -1,5 +1,6 @@
 """Shared Advanced-style cards and the permanent Shop roster showcase."""
 
+import re
 import tkinter as tk
 from tkinter import ttk
 
@@ -118,14 +119,26 @@ def build_showcase_selectors(controls, choices, *, selected=None, all_items=None
     return variables, buttons
 
 
+def matches_search(query, *values):
+    terms = re.findall(r'[^\W_]+', query.casefold())
+    if not terms:
+        return True
+    text = ' '.join(str(value) for value in values if value is not None)
+    haystack = ' '.join(re.findall(r'[^\W_]+', text.casefold()))
+    return all(term in haystack for term in terms)
+
+
 def build_showcase_search(controls, search_var):
     """Build the full-width search row used by Advanced."""
     row = ttk.Frame(controls)
     row.grid(row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0))
     row.columnconfigure(1, weight=1)
     ttk.Label(row, text='Search:').grid(row=0, column=0, sticky='w', padx=(0, 6))
-    ttk.Entry(row, textvariable=search_var).grid(row=0, column=1, sticky='ew', padx=(0, 4))
-    ttk.Button(row, text='Clear', width=8, command=lambda: search_var.set('')).grid(row=0, column=2)
+    entry = ttk.Entry(row, textvariable=search_var)
+    entry.grid(row=0, column=1, sticky='ew', padx=(0, 4))
+    clear = ttk.Button(row, text='Clear', width=8, command=lambda: search_var.set(''))
+    clear.grid(row=0, column=2)
+    return entry, clear
 
 
 class RosterShowcase(ttk.Frame):

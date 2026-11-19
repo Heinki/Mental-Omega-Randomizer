@@ -36,7 +36,7 @@ from ._dependencies import (
 
 from tkinter import ttk
 
-from randomizer.ui.showcase import draw_showcase_card, scale_showcase_photo
+from randomizer.ui.showcase import draw_showcase_card, matches_search, scale_showcase_photo
 
 
 class AdvancedSettingsController:
@@ -118,13 +118,42 @@ class AdvancedSettingsController:
 
     def advanced_search_matches(self, pool_key, *values):
         variable = getattr(self, 'advanced_pool_search_vars', {}).get(pool_key)
-        query = variable.get().strip().casefold() if variable is not None else ''
-        if not query:
-            return True
-        haystack = ' '.join(
-            str(value) for value in values if value is not None
-        ).casefold()
-        return all(term in haystack for term in query.split())
+        return matches_search(variable.get() if variable is not None else '', *values)
+
+    def advanced_pool_view_matches(self, pool_key, entry):
+        groups = self.advanced_pool_group_vars[pool_key]
+        if pool_key == 'missions':
+            campaign = groups['campaign'].get()
+            return self.advanced_mission_matches_campaign(entry, campaign)
+        faction, category = groups['faction'].get(), groups['category'].get()
+        factions = entry.get('factions') or (entry.get('faction'),)
+        return ((faction in ('all', '') or faction in factions)
+                and (category in ('all', '') or category == entry.get('category')))
+
+    def advanced_mission_matches_campaign(self, entry, campaign):
+        return campaign == CAMPAIGN_FILTERS[0] or campaign == entry.get('campaign')
+
+    def advanced_mission_entry(self, mission):
+        return {
+            'id': mission['code'].upper(),
+            'label': mission.get('title') or mission['code'],
+            'campaign': challenge_color_group(mission) or normalize_faction(mission.get('side', '')),
+            'faction': challenge_color_group(mission) or normalize_faction(mission.get('side', '')),
+            'mission_category': mission.get('mission_category'),
+            'mission': mission,
+            'special': bool(mission.get('operation')),
+            'skirmish': bool(mission.get('skirmish')),
+            'shop_mission': self.shop_mode_selected(),
+        }
+
+    def advanced_pool_search_entry(self, pool_key, entry):
+        mission = entry.get('mission', {})
+        return self.advanced_search_matches(
+            pool_key, entry['id'], entry.get('label'), entry.get('faction'),
+            entry.get('factions'), entry.get('category'), entry.get('campaign'),
+            mission.get('side'), mission.get('scenario'), mission.get('operation'),
+            entry.get('reward', {}).get('description'),
+        )
 
     def schedule_advanced_pool_search_refresh(self, pool_key):
         refresh_ids = self.__dict__.setdefault(
@@ -148,6 +177,9 @@ class AdvancedSettingsController:
             self.refresh_advanced_power_buff_view()
         else:
             self.refresh_advanced_pool_views(pool_key)
+        canvas = self.advanced_pool_canvases.get(pool_key)
+        if canvas is not None:
+            canvas.yview_moveto(0)
 
     def on_advanced_tab_configure(self, event):
         wraplength = max(340, int(event.width or 0) - 32)
@@ -614,6 +646,28 @@ class AdvancedSettingsController:
             ),
         )
 
+    def power_reward_category_variable(self, category):
+        return {
+            'offensive': self.include_superweapon_rewards_var,
+            'secondary': self.include_secondary_superweapon_rewards_var,
+            'aid': self.include_aid_power_rewards_var,
+        }.get(category)
+
+    def enable_power_reward_categories(self, power_ids):
+        """Make an explicit power selection eligible for reward generation."""
+        if getattr(self, 'coop_enabled', lambda: False)():
+            return
+        power_ids = {str(power_id).upper() for power_id in power_ids}
+        changed = False
+        for entry in self.advanced_power_pool_entries():
+            if entry['id'] in power_ids:
+                variable = self.power_reward_category_variable(entry['category'])
+                if variable is not None and not variable.get():
+                    variable.set(True)
+                    changed = True
+        if changed:
+            self.refresh_setting_states()
+
     def advanced_pool_photo(self, key, path):
         if not path:
             return None
@@ -635,8 +689,17 @@ class AdvancedSettingsController:
             'powers': self.excluded_superweapon_ids,
         }
         excluded = entry['id'] in excluded_sets[pool_key]
+        category_variable = (
+            self.power_reward_category_variable(entry['category'])
+            if pool_key == 'powers'
+            else None
+        )
+        category_disabled = (
+            category_variable is not None and not category_variable.get()
+        )
         card = draw_showcase_card(
             parent, row, column, entry, photo=photo, excluded=excluded,
+            disabled=category_disabled,
             command=lambda key=pool_key, item_id=entry['id']: (
                 self.toggle_advanced_pool_entry(key, item_id)
             ),
@@ -648,6 +711,8 @@ class AdvancedSettingsController:
             ),
         )
         status = 'Excluded from next seeds' if excluded else 'Included in next seeds'
+        if category_disabled:
+            status = 'Reward category disabled. Click to enable this power category and include this power.'
         WidgetTooltip(card, f'{entry["label"]} ({entry["id"]})\n{status}')
 
     def refresh_advanced_pool_views(self, pool_key=None):
@@ -697,16 +762,11 @@ class AdvancedSettingsController:
             ),
             include_operation_missions=self.include_operation_missions_var.get(),
         )
+        mission_entries = [self.advanced_mission_entry(mission) for mission in visible_missions]
         displayed_missions = [
-            mission for mission in visible_missions
-            if self.advanced_search_matches(
-                'missions',
-                mission.get('code'),
-                mission.get('title'),
-                challenge_color_group(mission) or mission.get('side'),
-                mission.get('operation'),
-                mission.get('scenario'),
-            )
+            entry['mission'] for entry in mission_entries
+            if self.advanced_pool_view_matches('missions', entry)
+            and self.advanced_pool_search_entry('missions', entry)
         ]
         if 'missions' in requested:
             mission_frame = self.advanced_pool_frames['missions']
@@ -799,16 +859,11 @@ class AdvancedSettingsController:
         ]
         displayed_unit_entries = [
             entry for entry in unit_entries
-            if self.advanced_search_matches(
-                'units',
-                entry.get('id'),
-                entry.get('label'),
-                entry.get('faction'),
-                entry.get('category'),
-            )
+            if self.advanced_pool_view_matches('units', entry)
+            and self.advanced_pool_search_entry('units', entry)
         ]
         if 'units' in requested:
-            unit_ids = [entry['id'] for entry in all_unit_entries]
+            unit_ids = [entry['id'] for entry in displayed_unit_entries]
             cameo_paths = dict(
                 getattr(self, 'advanced_unit_cameo_paths', {}) or {}
             )
@@ -841,20 +896,9 @@ class AdvancedSettingsController:
                 )
 
         all_power_entries = self.advanced_power_pool_entries()
-        enabled_power_categories = {
-            category
-            for category, enabled in (
-                ('offensive', self.include_superweapon_rewards_var.get()),
-                ('secondary', self.include_secondary_superweapon_rewards_var.get()),
-                ('aid', self.include_aid_power_rewards_var.get()),
-            )
-            if enabled
-        }
         power_entries = [
             entry for entry in all_power_entries
             if visible_for_campaign(entry)
-            and entry['reward'].get('power_category', 'offensive')
-            in enabled_power_categories
             and (
                 self.include_special_rewards_var.get()
                 or not entry['reward'].get('special_reward')
@@ -862,14 +906,8 @@ class AdvancedSettingsController:
         ]
         displayed_power_entries = [
             entry for entry in power_entries
-            if self.advanced_search_matches(
-                'powers',
-                entry.get('id'),
-                entry.get('label'),
-                entry.get('faction'),
-                entry.get('category'),
-                entry.get('reward', {}).get('description'),
-            )
+            if self.advanced_pool_view_matches('powers', entry)
+            and self.advanced_pool_search_entry('powers', entry)
         ]
         if 'powers' in requested:
             normal_power_ids = [
@@ -956,7 +994,14 @@ class AdvancedSettingsController:
             'powers': self.excluded_superweapon_ids,
         }[pool_key]
         item_id = str(item_id).upper()
-        if item_id in target:
+        category_variable = next((
+            self.power_reward_category_variable(entry['category'])
+            for entry in self.advanced_power_pool_entries() if entry['id'] == item_id
+        ), None) if pool_key == 'powers' else None
+        if category_variable is not None and not category_variable.get():
+            target.discard(item_id)
+            self.enable_power_reward_categories((item_id,))
+        elif item_id in target:
             target.remove(item_id)
         else:
             target.add(item_id)
@@ -971,10 +1016,14 @@ class AdvancedSettingsController:
         all_ids = {
             entry['id']
             for entry in entries
-            if self.advanced_pool_entry_is_visible(entry)
+            if self.advanced_pool_entry_is_visible(entry, pool_key)
+            and self.advanced_pool_search_entry(pool_key, entry)
+            and self.advanced_pool_view_matches(pool_key, entry)
         }
         if include:
             target.difference_update(all_ids)
+            if pool_key == 'powers':
+                self.enable_power_reward_categories(all_ids)
         else:
             target.update(all_ids)
         self.save_current_launcher_config()
@@ -985,15 +1034,7 @@ class AdvancedSettingsController:
         """Return currently eligible entries and their existing exclusion set."""
         if pool_key == 'missions':
             entries = [
-                {
-                    'id': mission['code'].upper(),
-                    'faction': challenge_color_group(mission) or normalize_faction(
-                        mission.get('side', '')
-                    ),
-                    'mission_category': mission.get('mission_category'),
-                    'shop_mission': self.shop_mode_selected(),
-                    'special': bool(mission.get('operation')),
-                }
+                self.advanced_mission_entry(mission)
                 for mission in filter_missions_by_build_settings(
                     (self._shop_campaign_missions(CAMPAIGN_FILTERS[0])
                      if self.shop_mode_selected() else
@@ -1027,24 +1068,13 @@ class AdvancedSettingsController:
             ]
             return entries, self.excluded_unit_access_ids
 
-        enabled_categories = {
-            category
-            for category, enabled in (
-                ('offensive', self.include_superweapon_rewards_var.get()),
-                ('secondary', self.include_secondary_superweapon_rewards_var.get()),
-                ('aid', self.include_aid_power_rewards_var.get()),
-            )
-            if enabled
-        }
         entries = [
             {
                 **entry,
                 'special': bool(entry['reward'].get('special_reward')),
             }
             for entry in self.advanced_power_pool_entries()
-            if entry['reward'].get('power_category', 'offensive')
-            in enabled_categories
-            and (
+            if (
                 self.include_special_rewards_var.get()
                 or not entry['reward'].get('special_reward')
             )
@@ -1084,7 +1114,7 @@ class AdvancedSettingsController:
         )
         return choices
 
-    def advanced_pool_entry_is_visible(self, entry):
+    def advanced_pool_entry_is_visible(self, entry, pool_key):
         """Match the campaign/Arsenal scope already used by Advanced cards."""
         if entry.get('shop_mission'):
             return True
@@ -1114,18 +1144,16 @@ class AdvancedSettingsController:
         entries, target = self.advanced_pool_bulk_entries(pool_key)
         scope = [
             entry for entry in entries
-            if self.advanced_pool_entry_is_visible(entry)
+            if self.advanced_pool_entry_is_visible(entry, pool_key)
+            and self.advanced_pool_search_entry(pool_key, entry)
         ]
         if selector == 'special':
-            included_ids = {
-                entry['id'] for entry in scope if entry.get('special')
-            }
+            included_ids = {entry['id'] for entry in scope if entry.get('special')}
+        elif pool_key == 'missions':
+            included_ids = {entry['id'] for entry in scope
+                            if self.advanced_mission_matches_campaign(entry, selector)}
         else:
-            included_ids = {
-                entry['id']
-                for entry in scope
-                if entry.get('faction') == selector
-            }
+            included_ids = {entry['id'] for entry in scope if entry.get('faction') == selector}
         if not included_ids:
             return
         target.update(entry['id'] for entry in scope)
@@ -1141,12 +1169,16 @@ class AdvancedSettingsController:
         entries, target = self.advanced_pool_bulk_entries(pool_key)
         scope = [
             entry for entry in entries
-            if self.advanced_pool_entry_is_visible(entry)
+            if self.advanced_pool_entry_is_visible(entry, pool_key)
+            and self.advanced_pool_search_entry(pool_key, entry)
         ]
         if group_type == 'special':
             matching_ids = {
                 entry['id'] for entry in scope if entry.get('special')
             }
+        elif group_type == 'campaign':
+            matching_ids = {entry['id'] for entry in scope
+                            if self.advanced_mission_matches_campaign(entry, value)}
         else:
             matching_ids = {
                 entry['id']
@@ -1157,6 +1189,8 @@ class AdvancedSettingsController:
             return
         if include:
             target.difference_update(matching_ids)
+            if pool_key == 'powers':
+                self.enable_power_reward_categories(matching_ids)
         else:
             target.update(matching_ids)
         self.save_current_launcher_config()
@@ -1177,8 +1211,9 @@ class AdvancedSettingsController:
         matching_ids = {
             entry['id']
             for entry in entries
-            if self.advanced_pool_entry_is_visible(entry)
-            and entry.get('faction') == faction
+            if self.advanced_pool_entry_is_visible(entry, pool_key)
+            and self.advanced_pool_search_entry(pool_key, entry)
+            and (faction == 'all' or faction in (entry.get('factions') or (entry.get('faction'),)))
             and (
                 category == 'all'
                 or entry.get('category') == category
@@ -1188,6 +1223,8 @@ class AdvancedSettingsController:
             return
         if include:
             target.difference_update(matching_ids)
+            if pool_key == 'powers':
+                self.enable_power_reward_categories(matching_ids)
         else:
             target.update(matching_ids)
         self.save_current_launcher_config()

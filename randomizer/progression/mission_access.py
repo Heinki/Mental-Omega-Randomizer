@@ -1,10 +1,4 @@
-"""Frozen Grid access contract shared by world generation and launcher.
-
-Currency is delivered as one shuffled progression supply item, worth the sum
-of all non-start prices. Once received, every optional and mandatory purchase
-is affordable in aggregate. Thus AP's monotone item state never models mutually
-exclusive spends, and arbitrary optional spending cannot strand progression.
-"""
+"""Frozen Grid access contract shared by world generation and launcher."""
 
 from collections import Counter
 from copy import deepcopy
@@ -16,6 +10,7 @@ from randomizer.progression.grid import required_goals, starting_nodes, normaliz
 GRID_CONTRACT_VERSION = 2
 KEY_NAMESPACE = 0x601000000000
 CURRENCY_ITEM = 'Mission Key Supply'
+CURRENCY_ECONOMY = 'single_keys_v2'
 UNLOCK_MODES = ('Standard', 'Key Currency', 'Mission-Specific Keys')
 
 
@@ -42,6 +37,32 @@ def local_victory_table(missions, game_name):
         'location_id': KEY_NAMESPACE + 0x200000000 + int.from_bytes(
             sha256(code.encode('utf-8')).digest()[:4], 'big'),
     } for code, mission in missions.items()}
+
+
+def currency_purchase_order(codes, starts, protected):
+    order = [code for code in codes if code not in starts and code != protected]
+    if protected is not None:
+        order.append(protected)
+    return order
+
+
+def currency_thresholds(access):
+    """AP counts acquired keys. A fixed purchase order makes spending monotone."""
+    spent = 0
+    for code in access.get('purchase_order', ()):
+        spent += access['prices'][code]
+        yield code, spent
+
+
+def _currency_check_shortfalls(access, locations):
+    available = sum(sum(locations[code].values()) for code in access['starting_missions'])
+    previous = access['starting_missions'][0]
+    for code, threshold in currency_thresholds(access):
+        if available < threshold:
+            yield previous, threshold - available
+            available = threshold
+        previous = code
+        available += sum(locations[code].values())
 
 
 def configure_grid_access(manifest, settings):
@@ -74,27 +95,12 @@ def configure_grid_access(manifest, settings):
     keys = {code: mission_key_name(code) for code in remaining} if mode == 'Mission-Specific Keys' else {}
     additions = Counter(keys.values())
     if supply:
-        additions[CURRENCY_ITEM] = 1
+        additions[CURRENCY_ITEM] = supply
     pool = Counter(manifest['item_pool'])
-    # Preserve the exact number and identity of real checks. New progression
-    # items replace deterministic reward slots, never local-victory markers.
-    if sum(additions.values()) > sum(pool.values()):
-        raise ValueError('Not enough real AP reward checks for the selected mission keys; increase rewards per objective.')
-    count = sum(additions.values())
-    for name in sorted(pool):
-        removed = min(count, pool[name])
-        pool[name] -= removed
-        count -= removed
-        if not count:
-            break
-    pool += additions
-    manifest['item_pool'] = dict(sorted(pool.items()))
     # Opening reward locks can consume all starting locations. Let normal AP
     # fill place the new progression items, including in another player's world.
     if mode != 'Standard':
         manifest['local_placements'] = []
-        if not any(manifest['locations'].get(code) for code in starts):
-            raise ValueError('Key modes require a starting mission with real AP reward checks.')
     access = {
         'version': GRID_CONTRACT_VERSION,
         'mode': mode,
@@ -103,14 +109,39 @@ def configure_grid_access(manifest, settings):
         'starting_keys': 0,
         'supply': supply,
         'currency_item': CURRENCY_ITEM if supply else None,
-        'currency_item_value': supply,
+        'currency_item_value': int(bool(supply)),
         'mission_keys': keys,
         'item_ids': {name: table[name] for name in additions},
         'protected_mission': protected if mode == 'Key Currency' else None,
         'minimum_completed_missions': minimum if mode == 'Key Currency' and protected else 0,
-        'economy': 'whole_board_supply_v1' if mode == 'Key Currency' else None,
-        'real_reward_locations': sum(sum(checks.values()) for checks in manifest['locations'].values()),
+        'economy': CURRENCY_ECONOMY if mode == 'Key Currency' else None,
     }
+    locations = manifest['locations']
+    added_checks = 0
+    if mode == 'Key Currency':
+        access['purchase_order'] = currency_purchase_order(codes, starts, protected)
+        # Add real victory slots when the selected draw count cannot fund the
+        # next purchase in a solo room. Each shortfall is at most one price.
+        for code, count in _currency_check_shortfalls(access, locations):
+            checks = locations[code]
+            checks['victory'] = checks.get('victory', 0) + count
+            added_checks += count
+    if mode != 'Standard' and not any(locations.get(code) for code in starts):
+        raise ValueError('Key modes require a starting mission with real AP reward checks.')
+    count = sum(additions.values()) - added_checks
+    if count > sum(pool.values()):
+        raise ValueError('Not enough real AP reward checks for the selected mission keys; increase rewards per objective.')
+    # Prefer replacing duplicate draws. Keep unique unlocks when slots permit.
+    for keep in (1, 0):
+        for name in sorted(pool, key=lambda name: (-pool[name], name)):
+            removed = min(count, max(0, pool[name] - keep))
+            pool[name] -= removed
+            count -= removed
+            if not count:
+                break
+    pool += additions
+    manifest['item_pool'] = dict(sorted(pool.items()))
+    access['real_reward_locations'] = sum(sum(checks.values()) for checks in locations.values())
     manifest['grid_contract'] = GRID_CONTRACT_VERSION
     manifest['grid_access'] = access
     manifest['state_snapshot']['grid_access'] = deepcopy(access)
@@ -178,13 +209,21 @@ def validate_grid_contract(manifest):
         supply = sum(prices.values())
         protected = grid['goal'] if grid['goal'] not in starts else None
         minimum = access.get('minimum_completed_missions')
-        if (access.get('supply') != supply or access.get('currency_item_value') != supply
-                or access.get('starting_keys') != 0 or access.get('economy') != 'whole_board_supply_v1'
+        legacy = access.get('economy') == 'whole_board_supply_v1'
+        if (access.get('supply') != supply
+                or access.get('currency_item_value') != (supply if legacy else int(bool(supply)))
+                or access.get('starting_keys') != 0
+                or access.get('economy') not in ('whole_board_supply_v1', CURRENCY_ECONOMY)
                 or access.get('currency_item') != (CURRENCY_ITEM if supply else None)
                 or access.get('protected_mission') != protected or type(minimum) is not int
                 or not 0 <= minimum < len(codes) or (protected is None and minimum != 0)):
             raise ValueError('Unsafe or inconsistent frozen Grid key economy.')
-        expected_items = {CURRENCY_ITEM: 1} if supply else {}
+        if not legacy and (
+            access.get('purchase_order') != currency_purchase_order(codes, starts, protected)
+            or any(_currency_check_shortfalls(access, manifest['locations']))
+        ):
+            raise ValueError('Grid key order has insufficient reachable reward checks.')
+        expected_items = {CURRENCY_ITEM: 1 if legacy else supply} if supply else {}
     else:
         if (prices != {} or access.get('supply') != 0 or access.get('minimum_completed_missions') != 0
                 or access.get('protected_mission') is not None or access.get('currency_item') is not None
@@ -207,9 +246,10 @@ def validate_grid_contract(manifest):
 
 def access_projection(access, ap_state, completed_codes):
     """Project immutable AP receipts separately from the purchase ledger."""
-    received_ids = {int(item['item']) for item in ap_state.get('checkpoint', {}).get('received_items', ())}
+    received_ids = Counter(int(item['item']) for item in ap_state.get('checkpoint', {}).get('received_items', ()))
     received_names = {name for name, item_id in access['item_ids'].items() if item_id in received_ids}
-    received = access['currency_item_value'] if CURRENCY_ITEM in received_names else 0
+    received = min(access['supply'], access['currency_item_value'] *
+                   received_ids[access['item_ids'].get(CURRENCY_ITEM)])
     purchases = ap_state.get('mission_purchases', {})
     if not isinstance(purchases, dict) or any(
             code not in access['prices'] or type(cost) is not int or cost != access['prices'][code] or cost <= 0
@@ -236,6 +276,10 @@ def purchase_blocker(access, projection, code):
         return ''
     if code not in access['prices']:
         return 'Mission is not part of this generated Grid.'
+    next_code = next((mission for mission in access.get('purchase_order', ())
+                      if mission not in projection['unlocked']), None)
+    if next_code is not None and code != next_code:
+        return f'Purchase {next_code} next to advance the Grid.'
     if code == access['protected_mission']:
         missing = access['minimum_completed_missions'] - len(projection['completed'] - {code})
         if missing > 0:

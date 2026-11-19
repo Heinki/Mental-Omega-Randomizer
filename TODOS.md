@@ -1,5 +1,6 @@
 ## BUGS AND IMPROVEMENTS
 
-## INFO
+- Check https://github.com/bendlang/bend for Randomizer
 
-To use Phobos add dll and edited ini
+
+## INFO

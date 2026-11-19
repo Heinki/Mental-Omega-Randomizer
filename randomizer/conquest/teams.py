@@ -15,9 +15,14 @@ HOUSE_ALIASES = tuple(f'CQC{i}' for i in range(8))
 COLOR_SCHEMES = (1, 3, 7, 9, 11, 13, 15, 17)
 
 
+def valid_opponent_settings(settings):
+    count = settings.get('ai_opponents', 1)
+    return type(count) is int and 1 <= count <= 4 and type(settings.get('allied_opponents', True)) is bool
+
+
 def _member(battle, team, role, waypoint, slot):
     loadout = deepcopy(battle[team])
-    if role == 'ally':
+    if role != 'commander':
         loadout['strength'] = ALLY_STRENGTH
         # Territory defenses belong to the defending commander. Allies share
         # faction research, supplies, escort and economic perks. Node buildings
@@ -38,8 +43,34 @@ def _member(battle, team, role, waypoint, slot):
         slot=slot, waypoint=waypoint, color=slot, scheme=COLOR_SCHEMES[slot], loadout=loadout)
 
 
+def _append_opponents(battle, members, team, available):
+    count = battle.get('ai_opponents', 1) - 1
+    if count > len(available):
+        raise ValueError('This map has too few starts for the selected AI opponents.')
+    positions = battle['map'].get('positions', {})
+    allied = battle.get('allied_opponents', True)
+    commander = next(member['waypoint'] for member in members if member['team'] == team)
+
+    def distance(waypoint, other):
+        point, center = positions.get(str(waypoint)), positions.get(str(other))
+        return sum((a - b) ** 2 for a, b in zip(point, center)) if point and center else abs(waypoint - other)
+
+    for _ in range(count):
+        if allied:
+            waypoint = min(available, key=lambda w: (distance(w, commander), w))
+        else:
+            waypoint = max(available, key=lambda w: (min(distance(w, m['waypoint']) for m in members), -w))
+        available.remove(waypoint)
+        member = _member(battle, team, 'opponent', waypoint, len(members))
+        if not allied:
+            member.update(team=f'opponent:{member["slot"]}', campaign_team=team)
+        members.append(member)
+
+
 def plan_participants(battle, *, legacy=False):
     """Allocate spare starts fairly and cluster allies around their commander."""
+    if 'formation' in battle:
+        return _strategic_participants(battle)
     if 'human_loadouts' in battle and not legacy:
         return _cooperative_participants(battle)
     first = 'attack' if battle['attacker'] == 'player' else 'defense'
@@ -51,14 +82,16 @@ def plan_participants(battle, *, legacy=False):
     requested = {team: battle[team]['perks'].get('allies', 0) for team in ('attack', 'defense')}
     deployed = dict.fromkeys(requested, 0)
     available = sorted(set(battle['map']['starts']) - set(battle['starts']))
+    _append_opponents(battle, members, second, available)
     positions = battle['map'].get('positions', {})
-    leaders = {m['team']: m['waypoint'] for m in members}
+    leaders = {m['team']: m['waypoint'] for m in members if m['role'] == 'commander'}
     order = ('attack', 'defense') if battle['seed'] % 2 else ('defense', 'attack')
     while available:
         eligible = [team for team in order if deployed[team] < requested[team]]
         if not eligible:
             break
-        team = min(eligible, key=lambda t: deployed[t])
+        team = min(eligible, key=lambda t: (
+            'ai_opponents' in battle and (t != first or deployed[t] >= 2), deployed[t]))
         center = positions.get(str(leaders[team]))
         def distance(waypoint):
             point = positions.get(str(waypoint))
@@ -78,6 +111,9 @@ def participants(battle):
 
 def human_coalition(battle):
     """Use the committed human team, independent of host and active UI seat."""
+    if 'formation' in battle:
+        return next(member['team'] for member in participants(battle)
+                    if member['actor'] == battle['decision_actor'] and member['controller'] == 'human')
     teams = {member['team'] for member in participants(battle) if member['controller'] == 'human'}
     if len(teams) != 1 or not teams.issubset({'attack', 'defense'}):
         raise ValueError('Conquest battle must have one committed human coalition.')
@@ -88,7 +124,8 @@ def human_coalition(battle):
 
 
 def team_power(battle, team):
-    return round(sum(m['loadout']['power'] for m in participants(battle) if m['team'] == team), 3)
+    return round(sum(m['loadout']['power'] for m in participants(battle)
+                     if m.get('campaign_team', m['team']) == team), 3)
 
 
 def deployment(battle, team):
@@ -108,9 +145,63 @@ def validate_teams(battle):
 
 
 def requested_allies(battle, team):
+    if 'formation' in battle:
+        return sum(entry['loadout']['perks'].get('allies', 0)
+                   for entry in battle['formation'] if entry['team'] == team)
     if battle.get('human_team') == team:
         return sum(entry['loadout']['perks'].get('allies', 0) for entry in battle['human_loadouts'])
     return battle[team]['perks'].get('allies', 0)
+
+
+def _strategic_participants(battle):
+    formation = battle['formation']
+    primary_team = next((entry['team'] for entry in formation
+                         if entry['loadout']['faction'] == battle['decision_actor']), 'attack')
+    starts = dict(zip((primary_team, 'defense' if primary_team == 'attack' else 'attack'), battle['starts']))
+    available = sorted(set(battle['map']['starts']) - set(starts.values()))
+    positions = battle['map'].get('positions', {})
+
+    def take_near(center):
+        if not available:
+            raise ValueError('This map cannot fit the participating Conquest commanders.')
+        point = positions.get(str(center))
+        waypoint = min(available, key=lambda value: (
+            sum((x - y) ** 2 for x, y in zip(positions[str(value)], point))
+            if point is not None else abs(value - center), value))
+        available.remove(waypoint)
+        return waypoint
+
+    members = []
+    for entry in formation:
+        team, loadout = entry['team'], entry['loadout']
+        actor, name = loadout['faction'], entry['name']
+        start = starts[team]
+        waypoint = start if actor == battle[team]['faction'] else take_near(start)
+        member = _member({**battle, team: loadout}, team, 'commander', waypoint, len(members))
+        member.update(id=actor, actor=actor, controller='human' if name is not None else 'ai')
+        if name is not None:
+            member['name'] = name
+        members.append(member)
+
+    leaders = tuple(members)
+    deployed = dict.fromkeys((member['id'] for member in leaders), 0)
+    team_deployed = dict.fromkeys(starts, 0)
+    while available:
+        candidates = [member for member in leaders
+                      if deployed[member['id']] < member['loadout']['perks'].get('allies', 0)]
+        if not candidates:
+            break
+        leader = min(candidates, key=lambda member: (
+            member['controller'] != 'human' or deployed[member['id']] >= 2,
+            team_deployed[member['team']], deployed[member['id']], member['slot']))
+        team = leader['team']
+        member = _member({**battle, team: leader['loadout']}, team, 'ally',
+                         take_near(leader['waypoint']), len(members))
+        member['actor'] = leader['id']
+        members.append(member)
+        deployed[leader['id']] += 1
+        team_deployed[team] += 1
+    return members
 
 
 def _cooperative_participants(battle):
@@ -140,6 +231,7 @@ def _cooperative_participants(battle):
         leaders[player['id']] = waypoint
     enemy = _member(battle, enemy_team, 'commander', battle['starts'][1], len(members))
     members.append(enemy)
+    _append_opponents(battle, members, enemy_team, available)
     leaders[battle[enemy_team]['faction']] = battle['starts'][1]
     sources = [(human_team, entry['loadout']) for entry in battle['human_loadouts']]
     sources.append((enemy_team, battle[enemy_team]))
@@ -152,6 +244,7 @@ def _cooperative_participants(battle):
         if not eligible:
             break
         team, loadout = min(eligible, key=lambda pair: (
+            'ai_opponents' in battle and (pair[0] != human_team or coalition_counts[human_team] >= 2),
             coalition_counts[pair[0]], order.index(pair[0]), counts[pair[1]['faction']]))
         owner = loadout['faction']
         # Reuse the normal ally loadout rules with its personal sponsor.

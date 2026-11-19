@@ -53,15 +53,16 @@ class ProgressionBattlesController:
         if pool_key != 'missions':
             return entries, excluded
         entries = [entry for entry in entries if not entry['id'].startswith('SK_')]
-        entries.extend(dict(id=mission['code'], faction=mission['faction'],
-                            mission_category='campaign', shop_mission=self.shop_mode_selected(), special=False, skirmish=True)
-                       for mission in self.advanced_skirmish_missions([]) if mission.get('skirmish'))
+        entries.extend(self.advanced_mission_entry(mission)
+                       for mission in self.advanced_skirmish_missions(
+                           [entry['mission'] for entry in entries]
+                       ) if mission.get('skirmish'))
         return entries, excluded
 
-    def advanced_pool_entry_is_visible(self, entry):
+    def advanced_pool_entry_is_visible(self, entry, pool_key):
         if entry.get('skirmish'):
             return True  # Already scoped by advanced_skirmish_missions.
-        return super().advanced_pool_entry_is_visible(entry)
+        return super().advanced_pool_entry_is_visible(entry, pool_key)
 
     def _shop_mission(self, code):
         self._sync_skirmish_references()
@@ -427,12 +428,13 @@ class ProgressionBattlesController:
                        and not self.coop_mode_var.get() and not self.archipelago_run_active())
         pool = select_pool(native, catalogue, enabled=enabled, factions=factions,
                            excluded=getattr(self, 'excluded_mission_codes', ()) if apply_exclusions else ())
-        self._skirmish_pool_lookup = {mission['code']: mission for mission in pool if mission.get('skirmish')}
-        if not self.state:
-            self._skirmish_preview_codes = set(self._skirmish_pool_lookup)
-        if hasattr(self, '_mission_by_code'):
-            self._mission_by_code = {mission['code']: mission for mission in self.missions}
-            self._mission_by_code.update(self._skirmish_pool_lookup)
+        if apply_exclusions:
+            self._skirmish_pool_lookup = {mission['code']: mission for mission in pool if mission.get('skirmish')}
+            if not self.state:
+                self._skirmish_preview_codes = set(self._skirmish_pool_lookup)
+            if hasattr(self, '_mission_by_code'):
+                self._mission_by_code = {mission['code']: mission for mission in self.missions}
+                self._mission_by_code.update(self._skirmish_pool_lookup)
         return pool
 
     def filtered_missions_for_seed(self):

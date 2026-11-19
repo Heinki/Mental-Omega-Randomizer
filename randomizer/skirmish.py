@@ -426,6 +426,11 @@ def _ra2_rewards(rows, rewards, settings, country, randomized):
         providers.append('RZCREDITS')
     if actions or providers:
         _power_providers(lines, installed_types, installed, actions, providers)
+    if GAME == 'mo':
+        from randomizer.maps.nanofiber import nanofiber_clone_rules, player_can_use_nanofiber
+        power_ids = [reward['superweapon'] for reward in powers if reward.get('kind') == 'superweapon']
+        if player_can_use_nanofiber(power_ids, faction):
+            merge_ini_section_values(lines, nanofiber_clone_rules(lines, installed, handled))
     rows = all_section_value_maps_preserve(lines)
     if authored_houses is None:
         rows.pop('Houses', None)

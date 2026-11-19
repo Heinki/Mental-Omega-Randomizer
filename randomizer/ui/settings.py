@@ -158,6 +158,7 @@ def _build_advanced_tab(self, workspace_tabs):
     self.advanced_pool_frames = {}
     self.advanced_pool_column_counts = {}
     self.advanced_pool_group_vars = {}
+    self.advanced_filter_widgets = []
     self.advanced_pool_search_vars = {}
     for pool_key, pool_label in (
         ('missions', 'Missions'),
@@ -173,44 +174,27 @@ def _build_advanced_tab(self, workspace_tabs):
         if pool_key == 'missions':
             row = ttk.Frame(controls)
             row.grid(row=0, column=0, sticky='w')
-            ttk.Label(row, text='Only:').pack(side='left', padx=(0, 4))
-            for faction in CAMPAIGN_FILTERS[1:]:
-                label = 'Allied' if faction == 'Allies' else faction
-                ttk.Button(
-                    row,
-                    text=f'Only {label}',
-                    command=lambda key=pool_key, value=faction: (
-                        self.set_advanced_pool_only(key, value)
-                    ),
-                ).pack(side='left', padx=(0, 4))
-            ttk.Button(
-                row,
-                text='Only Special',
-                command=lambda key=pool_key: self.set_advanced_pool_only(
-                    key, 'special'
-                ),
-            ).pack(side='left', padx=(0, 4))
-            ttk.Separator(row, orient='vertical').pack(
-                side='left', fill='y', padx=(2, 6)
-            )
-            ttk.Label(row, text='All:').pack(side='left', padx=(0, 4))
-            ttk.Button(
-                row,
-                text='Include All',
-                command=lambda key=pool_key: self.set_advanced_pool_all(
-                    key, True
-                ),
-            ).pack(side='left', padx=(0, 4))
-            ttk.Button(
-                row,
-                text='Exclude All',
-                command=lambda key=pool_key: self.set_advanced_pool_all(
-                    key, False
-                ),
-            ).pack(side='left')
+            ttk.Label(row, text='Campaign').pack(side='left', padx=(0, 4))
+            campaign = tk.StringVar(value=CAMPAIGN_FILTERS[0])
+            self.advanced_pool_group_vars[pool_key] = {'campaign': campaign}
+            selector = ttk.Combobox(row, state='readonly', textvariable=campaign,
+                                     values=tuple(CAMPAIGN_FILTERS), width=23)
+            selector.pack(side='left', padx=(0, 4))
+            self.advanced_filter_widgets.append(selector)
+            ttk.Button(row, text='Only', command=lambda key=pool_key, target=campaign:
+                       self.set_advanced_pool_only(key, target.get())).pack(side='left', padx=(0, 4))
+            for include, label in ((True, 'Include'), (False, 'Exclude')):
+                ttk.Button(row, text=label, command=lambda key=pool_key, target=campaign, flag=include:
+                           self.set_advanced_pool_group(key, 'campaign', target.get(), flag)).pack(side='left', padx=(0, 4))
+            ttk.Button(row, text='Include visible', command=lambda key=pool_key:
+                       self.set_advanced_pool_all(key, True)).pack(side='left', padx=(0, 4))
+            ttk.Button(row, text='Exclude visible', command=lambda key=pool_key:
+                       self.set_advanced_pool_all(key, False)).pack(side='left', padx=(0, 4))
+            ttk.Button(row, text='Only special', command=lambda key=pool_key:
+                       self.set_advanced_pool_only(key, 'special')).pack(side='left')
         else:
             group_vars, _buttons = build_showcase_selectors(
-                controls, self.advanced_pool_group_choices(pool_key),
+                controls, [('faction', 'all', 'All'), *self.advanced_pool_group_choices(pool_key)],
                 selected=lambda faction, category, include, key=pool_key: (
                     self.set_advanced_pool_groups(key, faction, category, include)
                 ),
@@ -220,9 +204,16 @@ def _build_advanced_tab(self, workspace_tabs):
                 ),
             )
             self.advanced_pool_group_vars[pool_key] = group_vars
+            group_vars['category'].set('all')
+            self.advanced_filter_widgets.extend(
+                widget for frame in controls.winfo_children() if isinstance(frame, ttk.Frame)
+                for widget in frame.winfo_children() if isinstance(widget, ttk.Radiobutton)
+            )
+        for variable in self.advanced_pool_group_vars[pool_key].values():
+            variable.trace_add('write', lambda *_args, key=pool_key: self.schedule_advanced_pool_search_refresh(key))
         search_var = tk.StringVar(value='')
         self.advanced_pool_search_vars[pool_key] = search_var
-        build_showcase_search(controls, search_var)
+        self.advanced_filter_widgets.extend(build_showcase_search(controls, search_var))
         search_var.trace_add(
             'write',
             lambda *_args, key=pool_key: (
@@ -287,23 +278,7 @@ def _build_advanced_tab(self, workspace_tabs):
     ).grid(row=0, column=2, padx=(4, 0))
     unit_buff_search = tk.StringVar(value='')
     self.advanced_pool_search_vars['unit_buffs'] = unit_buff_search
-    unit_buff_search_row = ttk.Frame(buff_controls)
-    unit_buff_search_row.grid(
-        row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
-    )
-    unit_buff_search_row.columnconfigure(1, weight=1)
-    ttk.Label(unit_buff_search_row, text='Search:').grid(
-        row=0, column=0, sticky='w', padx=(0, 6)
-    )
-    ttk.Entry(unit_buff_search_row, textvariable=unit_buff_search).grid(
-        row=0, column=1, sticky='ew', padx=(0, 4)
-    )
-    ttk.Button(
-        unit_buff_search_row,
-        text='Clear',
-        width=8,
-        command=lambda: unit_buff_search.set(''),
-    ).grid(row=0, column=2)
+    self.advanced_filter_widgets.extend(build_showcase_search(buff_controls, unit_buff_search))
     unit_buff_search.trace_add(
         'write',
         lambda *_args: self.schedule_advanced_pool_search_refresh(
@@ -424,23 +399,7 @@ def _build_advanced_tab(self, workspace_tabs):
     ).grid(row=0, column=2, padx=(4, 0))
     power_buff_search = tk.StringVar(value='')
     self.advanced_pool_search_vars['power_buffs'] = power_buff_search
-    power_buff_search_row = ttk.Frame(power_buff_controls)
-    power_buff_search_row.grid(
-        row=1, column=0, columnspan=3, sticky='ew', pady=(6, 0)
-    )
-    power_buff_search_row.columnconfigure(1, weight=1)
-    ttk.Label(power_buff_search_row, text='Search:').grid(
-        row=0, column=0, sticky='w', padx=(0, 6)
-    )
-    ttk.Entry(
-        power_buff_search_row, textvariable=power_buff_search
-    ).grid(row=0, column=1, sticky='ew', padx=(0, 4))
-    ttk.Button(
-        power_buff_search_row,
-        text='Clear',
-        width=8,
-        command=lambda: power_buff_search.set(''),
-    ).grid(row=0, column=2)
+    self.advanced_filter_widgets.extend(build_showcase_search(power_buff_controls, power_buff_search))
     power_buff_search.trace_add(
         'write',
         lambda *_args: self.schedule_advanced_pool_search_refresh(

@@ -2,7 +2,7 @@
 
 import random
 
-from .players import human_ids
+from .players import actor_ids, allied, coalition
 
 
 MODES = {
@@ -30,23 +30,30 @@ def validate_settings(settings):
         raise ValueError('Choose 3–5 highlighted nodes and 3–5 turns to hold them.')
 
 
-def coalition(state, owner):
-    return 'player' if owner in human_ids(state) else owner
+def team_label(state, side):
+    if side is None:
+        return 'Nobody'
+    teams = state['settings'].get('teams')
+    return f'Team {teams[side]}' if teams else {'player': 'Your team', 'ai': 'The enemy'}[side]
 
 
 def node_counts(state):
-    return {side: sum(coalition(state, node['owner']) == side for node in state['nodes'])
-            for side in ('player', 'ai')}
+    counts = dict.fromkeys((coalition(state, actor) for actor in actor_ids(state)), 0)
+    for node in state['nodes']:
+        if node['owner'] != 'neutral':
+            counts[coalition(state, node['owner'])] += 1
+    return counts
 
 
-def ai_targets(state):
-    """Give the strategic AI the same visible objectives as human commanders."""
+def ai_targets(state, actor):
+    """Use the active AI's alliances when selecting its strategic objectives."""
     mode = state['settings'].get('victory_mode')
     if mode == 'headquarters':
-        return {node['id'] for node in state['nodes']
-                if node.get('hq') in human_ids(state) and node['owner'] != 'ai'}
+        return {node['id'] for node in state['nodes'] if node.get('hq')
+                and not allied(state, actor, node['hq']) and not allied(state, actor, node['owner'])}
     if mode == 'objectives':
-        return {index for index in state['objectives']['nodes'] if state['nodes'][index]['owner'] != 'ai'}
+        return {index for index in state['objectives']['nodes']
+                if not allied(state, actor, state['nodes'][index]['owner'])}
     return set()
 
 
@@ -67,6 +74,7 @@ def initialize(state):
         nodes = sorted(random.Random(state['settings']['seed'] + ':objectives').sample(
             candidates, state['settings']['objective_count']))
         state['objectives'] = dict(nodes=nodes, holder=None, since=None)
+        update_control(state)
 
 
 def update_control(state):
@@ -89,22 +97,19 @@ def winner(state):
     mode = state['settings']['victory_mode']
     counts = node_counts(state)
     # A side without territory cannot move or recruit, in any game mode.
-    if not counts['ai']:
-        return 'player'
-    if not counts['player']:
-        return 'ai'
+    active = [side for side, count in counts.items() if count]
+    if len(active) == 1:
+        return active[0]
     if mode == 'headquarters':
         headquarters = {node['hq']: coalition(state, node['owner'])
                         for node in state['nodes'] if node.get('hq')}
-        if headquarters.get('ai') == 'player':
-            return 'player'
-        if all(headquarters.get(actor) == 'ai' for actor in human_ids(state)):
-            return 'ai'
-    elif (mode == 'turn_limit' and state['completed_round'] == state['turn'] and
-          state['completed_round'] >= state['settings']['turn_limit']):
-        # Ties continue until a complete round ends with unequal ownership.
-        if counts['player'] != counts['ai']:
-            return max(counts, key=counts.get)
+        return next((side for side in active if all(owner == side
+            for actor, owner in headquarters.items() if coalition(state, actor) != side)), None)
+    if (mode == 'turn_limit' and state['completed_round'] == state['turn'] and
+            state['completed_round'] >= state['settings']['turn_limit']):
+        leaders = [side for side in active if counts[side] == max(counts.values())]
+        if len(leaders) == 1:
+            return leaders[0]
     elif mode == 'objectives' and held_turns(state) >= state['settings']['hold_turns']:
         return state['objectives']['holder']
     return None
@@ -122,7 +127,7 @@ def validate_progress(state):
     if (type(completed) is not int or completed not in (state['turn'] - 1, state['turn']) or
         completed == state['turn'] and not state['winner']):
         raise ValueError('Invalid completed Conquest round.')
-    if {node.get('hq') for node in state['nodes'] if node.get('hq')} != {*human_ids(state), 'ai'}:
+    if {node.get('hq') for node in state['nodes'] if node.get('hq')} != set(actor_ids(state)):
         raise ValueError('Conquest game modes require every original headquarters.')
     if settings['victory_mode'] != 'objectives':
         if 'objectives' in state:
@@ -138,7 +143,7 @@ def validate_progress(state):
         raise ValueError('Invalid highlighted Conquest nodes.')
     holder, since = progress['holder'], progress['since']
     valid_since = since is None if holder is None else type(since) is int and 1 <= since <= state['turn']
-    if holder not in (None, 'player', 'ai') or holder != objective_holder(state) or not valid_since:
+    if holder not in (None, *node_counts(state)) or holder != objective_holder(state) or not valid_since:
         raise ValueError('Invalid continuous Conquest hold.')
 
 
@@ -147,7 +152,7 @@ def description(settings):
     if mode == 'territories':
         return 'Capture every enemy-owned node. Neutral nodes are optional.'
     if mode == 'headquarters':
-        return 'Capture the enemy HQ. Your team loses if all friendly HQs are captured.'
+        return 'Capture all headquarters belonging to opposing teams.'
     if mode == 'turn_limit':
         return (f'Own the most nodes after round {settings["turn_limit"]}. '
                 'Ties continue one full round at a time until broken.')
@@ -160,7 +165,7 @@ def description(settings):
 def summary(state):
     mode = state['settings'].get('victory_mode')
     counts = node_counts(state)
-    score = f'Nodes: team {counts["player"]} / enemy {counts["ai"]}'
+    score = 'Nodes: ' + ' / '.join(f'{team_label(state, side)} {count}' for side, count in counts.items())
     if mode is None:
         return 'Legacy HQ and army elimination'
     if mode == 'turn_limit':
@@ -171,11 +176,13 @@ def summary(state):
         return f'{MODES[mode]} · {clock} · {score}'
     if mode == 'objectives':
         progress = state['objectives']
-        control = {side: sum(coalition(state, state['nodes'][index]['owner']) == side
-                             for index in progress['nodes']) for side in ('player', 'ai')}
-        holder = {'player': 'Team', 'ai': 'Enemy', None: 'Nobody'}[progress['holder']]
-        return (f'Objectives: team {control["player"]} / enemy {control["ai"]} / '
-                f'{len(progress["nodes"])} total · {holder} hold: '
+        control = dict.fromkeys(counts, 0)
+        for index in progress['nodes']:
+            side = coalition(state, state['nodes'][index]['owner'])
+            if side != 'neutral':
+                control[side] += 1
+        breakdown = ' / '.join(f'{team_label(state, side)} {count}' for side, count in control.items())
+        return (f'Objectives: {breakdown} · {team_label(state, progress["holder"])} hold: '
                 f'{held_turns(state)}/{state["settings"]["hold_turns"]} full rounds')
     return f'{MODES[mode]} · {score}'
 
@@ -183,18 +190,18 @@ def summary(state):
 def result_text(state):
     counts = node_counts(state)
     side = state['winner']
-    opponent = 'ai' if side == 'player' else 'player'
-    team = 'Your team' if side == 'player' else 'The enemy'
+    team = team_label(state, side)
     mode = state['settings'].get('victory_mode')
     if mode is None:
         return ('Enemy HQ captured; no enemy armies remain.' if side == 'player' else
                 'All friendly HQs captured; no friendly armies remain.')
-    if not counts[opponent]:
+    rivals = [count for rival, count in counts.items() if rival != side]
+    if not any(rivals):
         return f'{team} captured every opposing node.'
     if mode == 'headquarters':
         return f'{team} captured all opposing headquarters.'
     if mode == 'turn_limit':
-        return f'{team} won on territory: {counts[side]} nodes to {counts[opponent]}.'
+        return f'{team} won on territory: {counts[side]} nodes to {max(rivals)}.'
     if mode == 'objectives':
         return (f'{team} held all {len(state["objectives"]["nodes"])} highlighted nodes '
                 f'for {state["settings"]["hold_turns"]} full rounds.')

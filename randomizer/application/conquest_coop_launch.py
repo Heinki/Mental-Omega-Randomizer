@@ -15,7 +15,7 @@ from randomizer.conquest.transport_lobby import pack, unpack, installation_detai
 from randomizer.conquest.engine import render, install, verify_prepared
 from randomizer.conquest.persistence import validate, commit_attempt, mark_launched, finish_attempt
 from randomizer.conquest.players import roster, label
-from randomizer.conquest.network import validate_endpoints
+from randomizer.conquest.network import battle_players, validate_endpoints
 from randomizer.conquest.results import ResultWatch, recover, native_game_running
 from randomizer.maps.assets import claim_runtime_asset_lease
 
@@ -24,12 +24,14 @@ class ConquestCoopLaunchController:
     def _cq_endpoints(self, state):
         by_name = {p['name']: p for p in self._cq_lobby.players}
         endpoints = [dict(name=p['name'], address=by_name[p['name']]['ip'], port=by_name[p['name']]['port'])
-                     for p in roster(state)]
+                     for p in battle_players(state)]
         validate_endpoints(state, endpoints)
         return endpoints
 
     def _cq_native_slot(self):
-        return next(i for i, p in enumerate(roster(self.conquest_state)) if p['id'] == self.conquest_local_actor())
+        actor = self.conquest_local_actor()
+        return next((i for i, p in enumerate(battle_players(self.conquest_state))
+                     if p['id'] == actor), None)
 
     def _cq_prepare_files(self, state, token, speed, endpoints, slot):
         command = self.build_command()
@@ -53,9 +55,12 @@ class ConquestCoopLaunchController:
         self._cq_validate_roster(state)
         token = uuid.uuid4().hex
         endpoints = self._cq_endpoints(state)
+        local_slot = self._cq_native_slot()
+        names = {p['name'] for p in endpoints}
+        guests = {i for i, p in enumerate(lobby.players) if i and p['name'] in names}
         speed = self.get_selected_game_speed_value()
         pending = dict(token=token, lobby=lobby, deadline=time.monotonic() + 180,
-                       worker=True, cancelled=False, ready=set(), endpoints=endpoints)
+                       worker=True, cancelled=False, ready=set(), endpoints=endpoints, guests=guests)
         self._cq_pending = pending
         self._cq_reports = {}
         self._cq_reported = None
@@ -63,11 +68,20 @@ class ConquestCoopLaunchController:
         self.refresh_conquest('Preparing this encounter for every commander…')
 
         def work():
-            prepared, command, hashes = self._cq_prepare_files(state, token, speed, endpoints, 0)
+            if local_slot is None:
+                # The campaign host coordinates even when a guest hosts the native encounter.
+                prepared = render(GAME_ROOT, state, token, game_speed=speed, endpoints=endpoints)
+                runtime_hash = installation_details(GAME_ROOT)[0]
+                command = None
+                hashes = {key + '_hash': hashlib.sha256(prepared[key]).hexdigest() for key in ('map', 'spawn')}
+            else:
+                prepared, command, hashes = self._cq_prepare_files(state, token, speed, endpoints, local_slot)
+                runtime_hash = prepared['runtime_hash']
             committed, _ = self.conquest_repository.update(state['id'], state['revision'],
                 lambda s: commit_attempt(s, state['pending']['id'], token, **hashes))
-            install(GAME_ROOT, prepared)
-            return committed, command, hashes, prepared['runtime_hash']
+            if command is not None:
+                install(GAME_ROOT, prepared)
+            return committed, command, hashes, runtime_hash
 
         def done(result):
             pending['worker'] = False
@@ -75,11 +89,15 @@ class ConquestCoopLaunchController:
             if pending['cancelled'] or self._cq_lobby is not lobby or not lobby.connected:
                 return self._cq_finish_cancelled()
             self.publish_conquest()
-            lobby.send(dict(type='cq_prepare', token=token, payload=pack(json.dumps(dict(
+            message = dict(type='cq_prepare', token=token, payload=pack(json.dumps(dict(
                 state=self.conquest_state, endpoints=endpoints, speed=speed,
                 runtime_hash=pending['runtime_hash'],
-                map_hash=pending['hashes']['map_hash'])).encode())))
-            self._cq_status.set('Waiting for every player to verify the identical battle map…')
+                map_hash=pending['hashes']['map_hash'])).encode()))
+            for guest in pending['guests']:
+                lobby.send(message, guest)
+            if not pending['guests']:
+                return self._cq_start_committed_battle(pending)
+            self._cq_status.set('Waiting for the participating commanders to verify the battle map…')
             self.refresh_conquest()
 
         self.run_in_background('Preparing cooperative Conquest…', 'Freezing personal armies and the shared native map.',
@@ -103,7 +121,9 @@ class ConquestCoopLaunchController:
         self._conquest_preparing = True
         self._cq_reported = None
         slot = self._cq_native_slot()
-        self.refresh_conquest('Your teammate started this encounter. Preparing your personal army…')
+        if slot is None:
+            raise ValueError('This commander is outside the committed encounter.')
+        self.refresh_conquest('Preparing your army for the encounter…')
 
         def work():
             prepared, command, hashes = self._cq_prepare_files(state, token, payload['speed'], payload['endpoints'], slot)
@@ -121,7 +141,7 @@ class ConquestCoopLaunchController:
                 return self._cq_finish_cancelled()
             pending['ready'] = True
             lobby.send(dict(type='cq_ready', token=token, map_hash=pending['hashes']['map_hash']))
-            self._cq_status.set('Battle verified. Waiting for all players…')
+            self._cq_status.set('Battle verified. Waiting for the other participants…')
             self.refresh_conquest()
 
         self.run_in_background('Joining cooperative Conquest…', 'Validating personal loadouts and the shared map.',
@@ -129,16 +149,26 @@ class ConquestCoopLaunchController:
 
     def conquest_coop_guest_ready(self, lobby, slot, message):
         pending = self._cq_pending
-        if (not pending or pending.get('worker') or slot == 0 or message.get('token') != pending['token'] or
+        if (not pending or pending.get('worker') or slot not in pending['guests'] or message.get('token') != pending['token'] or
             message.get('map_hash') != pending['hashes']['map_hash']):
             raise ValueError('Invalid or stale Conquest readiness.')
         pending['ready'].add(slot)
-        if pending['ready'] != set(range(1, lobby.count)):
-            return
-        self._cq_verify_start(pending)
+        if pending['ready'] == pending['guests']:
+            self._cq_start_committed_battle(pending)
+
+    def _cq_start_committed_battle(self, pending):
+        self._cq_verify_start(pending, local=pending['command'] is not None)
         self._conquest_change(lambda state: mark_launched(state, pending['token']))
-        lobby.send(dict(type='cq_start', token=pending['token'], map_hash=pending['hashes']['map_hash']))
-        self._cq_start_process(pending)
+        message = dict(type='cq_start', token=pending['token'], map_hash=pending['hashes']['map_hash'])
+        for guest in pending['guests']:
+            pending['lobby'].send(message, guest)
+        if pending['command'] is not None:
+            self._cq_start_process(pending)
+        else:
+            self._cq_pending = None
+            self._conquest_preparing = False
+            self._cq_status.set('Encounter running between other commanders.')
+            self.refresh_conquest()
 
     def start_conquest_coop_guest(self, lobby, message):
         pending = self._cq_pending
@@ -149,11 +179,13 @@ class ConquestCoopLaunchController:
         self._cq_verify_start(pending)
         self._cq_start_process(pending)
 
-    def _cq_verify_start(self, pending):
+    def _cq_verify_start(self, pending, *, local=True):
         if pending['cancelled'] or self._cq_lobby is not pending['lobby'] or not pending['lobby'].connected:
             raise ValueError('Conquest lobby disconnected before launch.')
         if self._cq_endpoints(self.conquest_state) != pending['endpoints']:
             raise ValueError('Conquest peer endpoints changed during preparation.')
+        if not local:
+            return
         verify_prepared(GAME_ROOT, pending['hashes'])
         if native_game_running(GAME_ROOT, any_installation=True):
             raise ValueError('Another game started during preparation.')
@@ -239,7 +271,7 @@ class ConquestCoopLaunchController:
             self._conquest_watch = None
             self._conquest_error = ''
             self._release_conquest_runtime()
-            self._cq_status.set('Battle closed. Waiting for every player’s result; reconnect if disconnected.')
+            self._cq_status.set('Battle closed. Waiting for participating commanders’ results; reconnect if disconnected.')
             self._cq_send_result(report)
             self.refresh_conquest()
             if getattr(self, '_close_after_game', False):
@@ -257,6 +289,8 @@ class ConquestCoopLaunchController:
     def _cq_recover_local_result(self):
         state = self.conquest_state
         if not state or not state.get('coop') or not state['pending'] or not state['pending']['attempt']:
+            return
+        if self._cq_native_slot() is None:
             return
         attempt = state['pending']['attempt']
         if (self.conquest_busy() or self._cq_pending or self._cq_reported == attempt['id'] or
@@ -293,6 +327,9 @@ class ConquestCoopLaunchController:
             report.get('name') != lobby.players[slot]['name']):
             raise ValueError('Cooperative result differs from the committed battle or authenticated player.')
         name = report['name']
+        required = {p['name'] for p in battle_players(state)}
+        if name not in required:
+            raise ValueError('Result came from a commander outside the encounter.')
         previous = self._cq_reports.get(name)
         received = report['outcome']
         if previous is not None and received is not None and previous != received:
@@ -300,7 +337,6 @@ class ConquestCoopLaunchController:
         # A missing native receipt is an abstention, not a defeat. Do not let
         # a stale retransmission erase a completed, verified coalition score.
         self._cq_reports[name] = previous if previous is not None else received
-        required = {p['name'] for p in roster(state)}
         if set(self._cq_reports) != required:
             self._cq_status.set('Waiting for battle results: ' + ', '.join(sorted(required - self._cq_reports.keys())))
             return

@@ -26,8 +26,8 @@ def _build_grid_access_settings(self, tab):
     self.archipelago_mission_unlock_combo.grid(row=1, column=1, sticky='w')
     mode_help = (
         'Standard: win missions to open neighboring tiles.\n\n'
-        'Key Currency: receive Mission Key Supply from Archipelago, then spend '
-        'keys to buy access to any mission. The supply covers the whole board. '
+        'Key Currency: Archipelago shuffles one key per item. Spend keys on '
+        'missions in the generated purchase order. '
         'Prices and the number of wins needed before buying the bottom-right '
         'mission are chosen automatically for the generated board. '
         'For example, a 16-mission board normally needs 6 wins first.\n\n'
@@ -45,7 +45,7 @@ def _build_grid_access_settings(self, tab):
         descriptions = {
             'Standard': 'Win missions to open neighboring tiles, starting from the opening missions.',
             'Key Currency': (
-                'Receive Mission Key Supply, then spend keys to open any mission. '
+                'Receive one key per item, then buy missions in the generated purchase order. '
                 'Prices and the wins needed before buying the bottom-right mission '
                 'are set for your board automatically. No extra setup needed.'
             ),

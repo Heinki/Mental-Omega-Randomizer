@@ -10,13 +10,21 @@ from randomizer.ui.tooltips import WidgetTooltip
 from randomizer.ui.conquest_widgets import PurchaseCard, EscortRoster, configure_purchase_style
 from . import campaign, objectives
 from .teams import participants, team_power, deployment
-from .players import roster, human_ids, human, label as actor_label, country, bonus_owners
+from .players import (roster, human_ids, human, label as actor_label, country, bonus_owners,
+                      actor_ids, cpu_ids, ai_id, allied, coalition)
 from .network import decision_actor
 from .catalogue import (FACTIONS, DIFFICULTIES, SIZES, STATS, PERKS, MAX_STRENGTH,
                         RECRUIT_COST, RESEARCH_COST, SUPPLY_COST, LOCAL_PERKS,
                         REPAIR_KIT_COST, MAX_REPAIR_KITS, BATTLE_CREDITS_PER_RANK,
                         AIRCRAFT_BUILDING_LABELS, FACTORY_TRAINING_PERCENT, deployment_rank, perk_rank,
                         MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK, starting_structures)
+
+
+ACTOR_COLORS = {
+    'player': '#3eabe2', 'player2': '#58c987', 'player3': '#bc88ed', 'player4': '#65dad4',
+    'ai': '#e66d63', 'ai2': '#edaa4f', 'ai3': '#de83aa', 'ai4': '#a8c956',
+    'neutral': '#8b9da8',
+}
 
 
 class ConquestView(ttk.Frame):
@@ -293,13 +301,17 @@ class ConquestView(ttk.Frame):
     def _gift(self):
         if not self.state or not self.state.get('coop') or self.selected is None:
             return
+        actor = self.app.conquest_local_actor()
+        choices = {p['name']: p['id'] for p in roster(self.state)
+                   if p['id'] != actor and allied(self.state, actor, p['id'])}
+        if not choices:
+            return
         window = tk.Toplevel(self)
         window.title('Give territory')
         window.transient(self.winfo_toplevel())
         frame = ttk.Frame(window, padding=16)
         frame.pack(fill='both', expand=True)
         frame.columnconfigure(0, weight=1)
-        choices = {p['name']: p['id'] for p in roster(self.state) if p['id'] != self.app.conquest_local_actor()}
         value = tk.StringVar(value=next(iter(choices)))
         ttk.Label(frame, text=self.state['nodes'][self.selected]['map']['name'], font=('Segoe UI', 12, 'bold')).grid(row=0, column=0, sticky='w')
         ttk.Label(frame, text='Give this empty territory to a teammate. One gift per turn; keep at least one territory. Bonuses transfer now, income starts next round. No same-round regifting or capture reward.', wraplength=400).grid(row=1, column=0, sticky='ew', pady=10)
@@ -533,7 +545,7 @@ class ConquestView(ttk.Frame):
         colors = (('#79c0ff', '#7ee787', '#d2a8ff', '#56d4dd', '#ff7b72') if dark else
                   ('#0969da', '#1a7f37', '#8250df', '#0a6670', '#cf222e'))
         for actor, card in self.bonus_cards.items():
-            color = colors[('player', 'player2', 'player3', 'player4', 'ai').index(actor)]
+            color = ACTOR_COLORS[actor]
             card['frame'].configure(background=color)
             card['header'].configure(foreground=color)
             card['wallet'].configure(foreground='#f2cc60' if dark else '#7d4e00')
@@ -552,8 +564,7 @@ class ConquestView(ttk.Frame):
             ('objective_count', 'Highlighted nodes', ('3', '4', '5'), str(objectives.DEFAULT_OBJECTIVE_COUNT)),
             ('hold_turns', 'Full rounds to hold', ('3', '4', '5'), str(objectives.DEFAULT_HOLD_TURNS)),
             ('size', 'Campaign size', list(SIZES), list(SIZES)[1]),
-            ('player_country', 'Your faction', FACTIONS, FACTIONS[0]),
-            ('ai_country', 'Enemy faction', FACTIONS, FACTIONS[1]),
+            ('ai_opponents', 'AI players', ('0', '1', '2', '3', '4'), '1'),
             ('difficulty', 'Battle AI difficulty', tuple(DIFFICULTIES), 'Normal'),
             ('credits', 'Starting campaign credits', ('500', '1000', '2000', '5000', '10000'), '2000'),
             ('density', 'Territory bonuses', ('Few', 'Normal', 'Many'), 'Normal'),
@@ -561,7 +572,7 @@ class ConquestView(ttk.Frame):
         )
         for i, (key, label, options, default) in enumerate(fields, 2):
             row = ttk.Frame(parent, padding=(0, 7))
-            row.grid(row=i, column=0, sticky='ew')
+            row.grid(row=i if i < 8 else i + 1, column=0, sticky='ew')
             row.columnconfigure(1, weight=1)
             if key in ('turn_limit', 'objective_count', 'hold_turns'):
                 self.mode_rows[key] = row
@@ -571,6 +582,8 @@ class ConquestView(ttk.Frame):
                 row, textvariable=value, values=options, state='readonly', width=28)
             widget.grid(row=0, column=1, sticky='ew')
             self.setup_controls.append((widget, options is not None))
+            if key == 'ai_opponents':
+                self.ai_count_selector = widget
         self.mental_ai_boost_var = tk.BooleanVar(value=False)
         mental_ai = ttk.Checkbutton(parent, text='Mental AI Boost (enemy and allied AI; next campaign)',
                                    variable=self.mental_ai_boost_var)
@@ -581,18 +594,77 @@ class ConquestView(ttk.Frame):
             'parallel queues and native economy bonuses. Applies to the next campaign; '
             'enemy and allied AI both receive it. Existing campaigns keep their saved choice.')
         self.setup_controls.append((mental_ai, False))
-        self._label(parent, 'Recruit a new army for 1,000 credits, or reinforce a selected army for the same price. All armies stationed on a territory defend it together.', 15)
-        self._label(parent, 'Escort upgrades unlock stronger troops. Research reaches 50%. Upgrade prices rise for both you and the enemy.', 16)
+        self._label(parent, 'Each player starts with a headquarters. Matching team numbers form an alliance. Perk allies use spare battle starts.', 15)
         self.create_button = ttk.Button(parent, text='Start new campaign', style='Launch.TButton', command=self.app.new_conquest)
-        self.create_button.grid(row=17, column=0, sticky='w', pady=12)
+        self.create_button.grid(row=16, column=0, sticky='w', pady=12)
         self.map_count = tk.StringVar(value='Installed map catalogue loads when opening Conquest.')
-        ttk.Label(parent, textvariable=self.map_count, style='Muted.TLabel').grid(row=18, column=0, sticky='w')
+        ttk.Label(parent, textvariable=self.map_count, style='Muted.TLabel').grid(row=17, column=0, sticky='w')
+        self._build_roster(parent)
         self.mode_help = tk.StringVar()
-        self._label(parent, '', len(fields) + 2).configure(textvariable=self.mode_help)
+        self._label(parent, '', 13).configure(textvariable=self.mode_help)
         for key in ('victory_mode', 'turn_limit', 'objective_count', 'hold_turns'):
             self.settings[key].trace_add('write', self._update_mode_options)
         self._update_mode_options()
         self.setup_page.bind_controls()
+
+    def _build_roster(self, parent):
+        panel = ttk.LabelFrame(parent, text='Campaign players', padding=8)
+        panel.grid(row=8, column=0, sticky='ew', pady=(6, 2))
+        panel.columnconfigure(1, weight=1)
+        for col, text in enumerate(('Player', 'Faction', 'Team')):
+            ttk.Label(panel, text=text, font=('Segoe UI', 10, 'bold')).grid(
+                row=0, column=col, sticky='w', padx=(0, 12), pady=(0, 4))
+        self.roster_rows = []
+        self.roster_names = ()
+        for slot in range(8):
+            computer = slot >= 4
+            index = slot - 4 if computer else slot
+            choice = tk.StringVar(value=FACTIONS[(index + int(computer)) % len(FACTIONS)])
+            team = tk.StringVar(value=str(slot + 1 if computer else index + 1))
+            name = ttk.Label(panel, width=18)
+            faction_box = ttk.Combobox(panel, textvariable=choice, values=FACTIONS, state='readonly', width=25)
+            team_box = ttk.Combobox(panel, textvariable=team, values=tuple(map(str, range(1, 9))),
+                                    state='readonly', width=5)
+            widgets = (name, faction_box, team_box)
+            for col, widget in enumerate(widgets):
+                widget.grid(row=slot + 1, column=col, sticky='ew', padx=(0, 10), pady=2)
+            self.setup_controls.extend(((faction_box, True), (team_box, True)))
+            self.roster_rows.append((choice, team, widgets))
+        self.settings['player_country'] = self.roster_rows[0][0]
+        self.settings['ai_opponents'].trace_add('write', self._refresh_roster)
+        self._refresh_roster()
+
+    def _refresh_roster(self, *_args):
+        lobby = getattr(self.app, '_cq_lobby', None)
+        connected_host = bool(lobby and lobby.role == 'host' and lobby.connected)
+        players = tuple(p['name'] for p in lobby.players) if connected_host else ()
+        proposals = tuple((name, self.app._cq_hello.get(index, {}).get('country'))
+                          for index, name in enumerate(players))
+        for index, request in enumerate(proposals):
+            previous = self.roster_names[index] if index < len(self.roster_names) else None
+            if request != previous and request[1] in FACTIONS:
+                self.roster_rows[index][0].set(request[1])
+        self.roster_names = proposals
+        values = ('0', '1', '2', '3', '4') if len(players) > 1 else ('1', '2', '3', '4')
+        self.ai_count_selector.configure(values=values)
+        if self.settings['ai_opponents'].get() not in values:
+            self.settings['ai_opponents'].set(values[0])
+            return
+        count = int(self.settings['ai_opponents'].get())
+        for slot, (_, _, widgets) in enumerate(self.roster_rows):
+            if slot < 4:
+                visible = slot < max(1, len(players))
+                title = players[slot] if slot < len(players) else 'You'
+            else:
+                visible = slot - 4 < count
+                title = f'AI {slot - 3}'
+            widgets[0].configure(text=title)
+            for widget in widgets:
+                widget.grid() if visible else widget.grid_remove()
+
+    def human_seat(self, index):
+        country_var, team_var, _ = self.roster_rows[index]
+        return country_var.get(), int(team_var.get())
 
     def _update_mode_options(self, *_args):
         mode = next((key for key, label in objectives.MODES.items()
@@ -607,10 +679,15 @@ class ConquestView(ttk.Frame):
             help_text = objectives.description(values)
         except ValueError as exc:
             help_text = str(exc)
-        self.mode_help.set(help_text + ' Co-op teammates share victory. A side with no owned nodes loses in every mode.')
+        self.mode_help.set(help_text)
 
     def setup_values(self):
         values = {key: variable.get().strip() for key, variable in self.settings.items()}
+        count = int(values.pop('ai_opponents'))
+        values['ai_roster'] = [self.roster_rows[4 + index][0].get() for index in range(count)]
+        values['teams'] = {'player': self.human_seat(0)[1]}
+        values['teams'].update({ai_id(index): int(self.roster_rows[4 + index][1].get())
+                                for index in range(count)})
         values['victory_mode'] = next(key for key, label in objectives.MODES.items()
                                            if label == values['victory_mode'])
         for key in self.mode_rows:
@@ -650,13 +727,15 @@ class ConquestView(ttk.Frame):
         self.history.tag_configure('player2', foreground='#58c987')
         self.history.tag_configure('player3', foreground='#bc88ed')
         self.history.tag_configure('player4', foreground='#65dad4')
-        self.history.tag_configure('ai', foreground='#dd6659')
+        for actor in ('ai', 'ai2', 'ai3', 'ai4'):
+            self.history.tag_configure(actor, foreground=ACTOR_COLORS[actor])
         self._theme_bonus_cards()
         self.render_map()
 
     def refresh(self, state, *, busy=False, message=None):
         previous = self.state
         self.state, self.busy = state, busy
+        self._refresh_roster()
         actor = self.app.conquest_local_actor()
         for page in (self.map_page, self.node_page, self.research_page, self.perks_page, self.bonuses_page):
             self.book.tab(page, state='normal' if state else 'disabled')
@@ -679,11 +758,17 @@ class ConquestView(ttk.Frame):
                 self._history_signature = None
                 self.book.select(self.map_page)
                 self.after_idle(self.fit_map)
-            phase = (actor_label(state, state['phase']) + (' · Your turn' if state['phase'] == actor else ' · Their turn')
-                     if human(state, state['phase']) else {'ai': 'Enemy turn', 'battle': 'Battle pending · ' + actor_label(state, decision_actor(state)),
-                     'finished': 'Victory' if state['winner'] == 'player' else 'Campaign defeated'}[state['phase']])
+            phase = state['phase']
+            if phase == 'finished':
+                phase = 'Victory' if state['winner'] == coalition(state, actor) else 'Campaign defeated'
+            elif phase == 'battle':
+                waiting = decision_actor(state)
+                phase = 'Battle pending' + (f' · {actor_label(state, waiting)}' if waiting else '')
+            else:
+                phase = actor_label(state, phase) + (' · Your turn' if phase == actor else ' · Their turn')
             self.heading.set(f'Conquest · Round {state["turn"]} · {phase}')
-            self.summary.set(f'{actor_label(state, actor)} · {country(state, actor)} vs {state["settings"]["ai_country"]}  ·  '
+            rivals = sum(not allied(state, actor, member) for member in actor_ids(state))
+            self.summary.set(f'{actor_label(state, actor)} · {country(state, actor)} · {rivals} opponents  ·  '
                 f'Credits: {state[actor]["credits"]} (+{campaign.income(state, actor)}/turn)  ·  '
                 f'Supplies: {state[actor]["supplies"]}/3  ·  Seed: {state["settings"]["seed"]}'
                 + ('  ·  Mental AI Boost' if state['settings'].get('mental_ai_boost', False) else ''))
@@ -696,13 +781,15 @@ class ConquestView(ttk.Frame):
         army = self._selected_army()
         stationed = campaign.armies_at(state, self.selected) if node else []
         pending = state and state['pending']
-        human_battle = bool(pending and (human(state, pending['attacker']) or human(state, pending['defense']['faction'])))
+        human_battle = bool(pending and not campaign.needs_autobattle(state)
+                            and decision_actor(state) in human_ids(state))
         can_battle = human_battle and not pending['attempt'] and not busy and decision_actor(state) == actor
         statuses = dict(recruit=active and node and node['owner'] == actor and len(stationed) < MAX_ARMIES_PER_NODE and state[actor]['credits'] >= RECRUIT_COST,
                         reinforce=active and army and army['faction'] == actor and not army['acted'] and army['strength'] < MAX_STRENGTH and state[actor]['credits'] >= RECRUIT_COST,
                         end=active, battle=can_battle, auto=can_battle,
                         overview=bool(state), fortify=bool(active and node and node['owner'] == actor), details=True, gift=bool(active and state.get('coop') and node and node['owner'] == actor and not stationed
                         and state['coop']['gifts'][actor] != state['turn'] and node.get('gifted_round') != state['turn']
+                        and any(other != actor and allied(state, actor, other) for other in human_ids(state))
                         and sum(n['owner'] == actor for n in state['nodes']) > 1), **{'in': bool(state), 'out': bool(state)})
         for key, button in self.buttons.items():
             if button in self.purchase_cards:
@@ -726,12 +813,12 @@ class ConquestView(ttk.Frame):
                               f'Costs {RECRUIT_COST:,} credits and uses this army\'s action.')
         self.reinforce_tooltip.text = reinforce_help
         if human_battle:
-            chance = campaign.player_chance(pending)
+            chance = campaign.player_chance(pending, actor)
             self.battle_odds.set(f'Autobattle odds: {chance:.1%} win · {1-chance:.1%} loss · '
-                                + ('Your team attacks.' if human(state, pending['attacker']) else 'Your team defends.'))
+                                + f'{actor_label(state, pending["attacker"])} attacks {actor_label(state, pending["defense"]["faction"])}.')
             self.buttons['auto'].configure(text=f'Autobattle · {chance:.1%} win')
         else:
-            self.battle_odds.set('Enemy turn in progress…' if state and state['phase'] in ('ai', 'battle') else
+            self.battle_odds.set('Enemy turn in progress…' if state and state['phase'] in (*cpu_ids(state), 'battle') else
                                 'Select an army, then a connected territory to move or attack.')
             self.buttons['auto'].configure(text='Autobattle')
         self.fortify_button.configure(state='normal' if statuses['fortify'] else 'disabled')
@@ -786,7 +873,7 @@ class ConquestView(ttk.Frame):
         if state and state.get('coop'):
             self.legend.set(' · '.join(f'{color}: {p["name"]}' for color, p in zip(('Blue', 'Green', 'Purple', 'Cyan'), roster(state))) + ' · Red: enemy')
         else:
-            self.legend.set('Blue: you · Red: enemy · Gold: selected · Crossed out: action used')
+            self.legend.set('Color: commander · Gold: selected · Crossed out: action used')
         self._refresh_bonuses()
         self._refresh_inspector()
         self._refresh_history()
@@ -811,7 +898,7 @@ class ConquestView(ttk.Frame):
             return
         self._result_shown.add(state['id'])
         self._cancel_animation()
-        won = state['winner'] == 'player'
+        won = state['winner'] == coalition(state, self.app.conquest_local_actor())
         title = 'Campaign victory' if won else 'Campaign defeated'
         dialog = self._result_dialog = tk.Toplevel(self)
         dialog.title(title)
@@ -862,10 +949,10 @@ class ConquestView(ttk.Frame):
             return
         intro = 'Permanent campaign upgrades and the bonuses used in your battles.'
         if self.state.get('coop'):
-            intro = ('Territory stat bonuses: ' + ('shared by all commanders' if self.state['coop']['shared_nodes'] else 'personal')
+            intro = ('Territory stat bonuses: ' + ('shared within allied human teams' if self.state['coop']['shared_nodes'] else 'personal')
                      + '. Income, research, purchased perks and supplies stay personal.')
         self.bonus_intro.configure(text=intro)
-        factions = (*human_ids(self.state), 'ai')
+        factions = actor_ids(self.state)
         for faction, card in self.bonus_cards.items():
             if faction not in factions:
                 card['frame'].grid_remove()
@@ -884,7 +971,7 @@ class ConquestView(ttk.Frame):
                     label.grid(row=row, column=0, sticky='ew', pady=(0, 8) if key != 'effects' else 0)
             card = self.bonus_cards[faction]
             card['frame'].grid(row=index, column=0, sticky='ew', pady=6)
-            role = 'Enemy' if faction == 'ai' else 'Player' if faction == 'player' else f'Player {faction[-1]}'
+            role = objectives.team_label(state, coalition(state, faction))
             heading = ' · '.join(dict.fromkeys((role, actor_label(state, faction), country(state, faction))))
             money = f'{wallet["credits"]:,} campaign credits · +{campaign.income(state, faction):,} per turn'
             stats = []
@@ -954,9 +1041,9 @@ class ConquestView(ttk.Frame):
             lines += ['Select a territory to inspect it.', 'Select your ready army, then a connected node to move or attack.']
         if state and state['pending']:
             battle = state['pending']
-            chance = campaign.player_chance(battle)
+            chance = campaign.player_chance(battle, self.app.conquest_local_actor())
             lines += ['', 'PENDING BATTLE', state['nodes'][battle['target']]['map']['name'],
-                      'Your team attacks.' if human(state, battle['attacker']) else 'Your team defends.',
+                      f'{actor_label(state, battle["attacker"])} attacks {actor_label(state, battle["defense"]["faction"])}.',
                       'Encounter decision: ' + actor_label(state, decision_actor(state)),
                       f'Autobattle: {chance:.1%} win / {1-chance:.1%} loss',
                       f'Defending armies: {max(1, len(battle.get("defending_armies", ())))}']
@@ -1002,7 +1089,13 @@ class ConquestView(ttk.Frame):
         self._history_nodes = {}
         entries = self.state['history'] if self.state else []
         if choice != 'All actions':
-            actors = human_ids(self.state) if self.state and choice == 'Team actions' else (self.app.conquest_local_actor() if choice == 'Your actions' else 'ai',)
+            actor = self.app.conquest_local_actor()
+            if choice == 'Your actions':
+                actors = (actor,)
+            elif choice == 'Team actions' and self.state:
+                actors = tuple(member for member in actor_ids(self.state) if allied(self.state, actor, member))
+            else:
+                actors = cpu_ids(self.state) if self.state else ()
             entries = [e for e in entries if e['faction'] in actors]
         for entry in entries[-500:]:
             key = f'event:{entry["id"]}'
@@ -1055,10 +1148,10 @@ class ConquestView(ttk.Frame):
             return
         if previous is state or self.pace.get() == 'Instant' or not self.canvas.winfo_ismapped():
             return
-        before = {a['id']: a for a in previous['armies'] if a['faction'] == 'ai'}
+        before = {a['id']: a for a in previous['armies'] if a['faction'] in cpu_ids(previous)}
         movement = None
         battle = state['pending']
-        if battle and battle['attacker'] == 'ai' and (not previous['pending'] or previous['pending']['id'] != battle['id']):
+        if battle and battle['attacker'] in cpu_ids(state) and (not previous['pending'] or previous['pending']['id'] != battle['id']):
             movement = (battle['source'], battle['target'], before.get(battle['army']))
         else:
             for army in state['armies']:
@@ -1099,7 +1192,7 @@ class ConquestView(ttk.Frame):
         progress = progress * progress * (3 - 2 * progress)
         x, y = (a + (b - a) * progress for a, b in zip(start, end))
         direction = round(math.atan2(end[0] - start[0], start[1] - end[1]) / (math.pi / 4)) % 8
-        self._draw_army(x, y, movement['army'], country(self.state, 'ai'), '#e7c85a', ('movement',), direction)
+        self._draw_army(x, y, movement['army'], country(self.state, movement['army']['faction']), '#e7c85a', ('movement',), direction)
 
     def _animate_ai(self):
         self._animation_after = None
@@ -1144,10 +1237,9 @@ class ConquestView(ttk.Frame):
         offsets = {1: ((0, 0),), 2: ((-16, 0), (16, 0)),
                    3: ((-16, -12), (16, -12), (0, 16)),
                    4: ((-16, -16), (16, -16), (-16, 16), (16, 16))}
-        colors = {'player': '#3eabe2', 'player2': '#58c987', 'player3': '#bc88ed', 'player4': '#65dad4', 'ai': '#e66d63'}
         for node in nodes:
             x, y = self._point(node)
-            color = {'player': '#3eabe2', 'player2': '#58c987', 'player3': '#bc88ed', 'player4': '#65dad4', 'ai': '#e66d63', 'neutral': '#8b9da8'}[node['owner']]
+            color = ACTOR_COLORS[node['owner']]
             tag = 'node:' + str(node['id'])
             selected = node['id'] == self.selected
             radius = (23 if self.scale >= .55 else 15) if node['id'] in armies else max(3, min(8, round(10 * self.scale)))
@@ -1163,7 +1255,7 @@ class ConquestView(ttk.Frame):
                 if selected and current['id'] == self.selected_army_id:
                     canvas.create_oval(x+dx-18, y+dy-18, x+dx+18, y+dy+18,
                                        outline='#e7c85a', width=2, tags=tags)
-                self._draw_army(x+dx, y+dy, current, country(state, current['faction']), colors[current['faction']], tags)
+                self._draw_army(x+dx, y+dy, current, country(state, current['faction']), ACTOR_COLORS[current['faction']], tags)
             if node['id'] in state.get('objectives', {}).get('nodes', []):
                 size = radius + 12
                 canvas.create_polygon(x, y-size, x+size, y, x, y+size, x-size, y,
@@ -1173,7 +1265,7 @@ class ConquestView(ttk.Frame):
             if node.get('hq'):
                 size = radius + 5
                 canvas.create_rectangle(x-size, y-size, x+size, y+size, outline='#e7c85a', width=2, tags=(tag,))
-                canvas.create_text(x, y-size-8, text='HQ', fill='#e7c85a', font=('Segoe UI', 9, 'bold'), tags=(tag,))
+                canvas.create_text(x, y-size-8, text='HQ · ' + actor_label(state, node['hq']), fill='#e7c85a', font=('Segoe UI', 9, 'bold'), tags=(tag,))
             if state['pending'] and node['id'] == state['pending']['target']:
                 canvas.create_oval(x-30, y-30, x+30, y+30, outline='#edb04e', width=2, dash=(3, 3), tags=(tag,))
             if self.scale >= .65 or selected:

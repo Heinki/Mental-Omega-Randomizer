@@ -114,7 +114,7 @@ class RequiredVictoryMissions(NamedRange):
 
 
 class MissionUnlockMode(Choice):
-    """Archipelago Grid access. Key Supply funds every mission; mission keys unlock exact identities."""
+    """Archipelago Grid access. Currency comes one key per item. Mission keys unlock exact identities."""
 
     display_name = "Mission Unlock Mode"
     option_standard = 0

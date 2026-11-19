@@ -2,16 +2,22 @@
 
 from randomizer.conquest.transport_lobby import Lobby
 from randomizer.conquest.transport_interfaces import unicast_ipv4
-from .players import roster, human_ids, gift
+from .players import human_ids, gift
+from .teams import participants
 from . import campaign
 
 
 class ConquestLobby(Lobby):
-    mode = 'mo-conquest-2'
+    mode = 'mo-conquest-3'
+
+
+def battle_players(state):
+    return [{'id': member['actor'], 'name': member['name']}
+            for member in participants(state['pending']) if member['controller'] == 'human']
 
 
 def validate_endpoints(state, endpoints):
-    players = roster(state)
+    players = battle_players(state)
     if not state.get('coop') or not isinstance(endpoints, list) or len(endpoints) != len(players):
         raise ValueError('Network roster differs from the committed campaign.')
     seen = set()
@@ -40,7 +46,8 @@ def authorize_action(state, actor, action, values):
         raise ValueError('It is another player’s turn.')
     if action not in keys or not isinstance(values, dict) or not set(values) <= keys[action]:
         raise ValueError('Invalid cooperative campaign command.')
-    if action in ('launch', 'auto') and (not state['pending'] or state['pending']['attempt']):
+    if action in ('launch', 'auto') and (not state['pending'] or state['pending']['attempt']
+                                      or campaign.needs_autobattle(state)):
         raise ValueError('This encounter is not available for a battle decision.')
     if action not in ('launch', 'auto'):
         campaign._turn(state, actor)

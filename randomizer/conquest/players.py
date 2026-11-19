@@ -3,6 +3,48 @@
 import re
 
 
+def cpu_ids(state):
+    entries = state['settings'].get('ai_roster')
+    if entries is None:
+        return ('ai',)
+    return tuple(ai_id(index) for index in range(len(entries)))
+
+
+def ai_id(index):
+    return 'ai' if index == 0 else f'ai{index + 1}'
+
+
+def actor_ids(state):
+    return (*human_ids(state), *cpu_ids(state))
+
+
+def coalition(state, actor):
+    teams = state['settings'].get('teams')
+    if teams is None:
+        return 'player' if human(state, actor) else actor
+    if actor == 'neutral':
+        return actor
+    return next(member for member in actor_ids(state) if teams[member] == teams[actor])
+
+
+def allied(state, first, second):
+    return first == second or ('neutral' not in (first, second)
+                               and coalition(state, first) == coalition(state, second))
+
+
+def validate_seats(settings, humans):
+    from .catalogue import FACTIONS
+    computers = settings['ai_roster']
+    if not isinstance(computers, list) or len(computers) > 4 or any(c not in FACTIONS for c in computers):
+        raise ValueError('Choose factions for up to four AI players.')
+    actors = {*humans, *(ai_id(index) for index in range(len(computers)))}
+    teams = settings.get('teams')
+    if (not isinstance(teams, dict) or teams.keys() != actors or
+            any(type(team) is not int or not 1 <= team <= 8 for team in teams.values()) or
+            len(set(teams.values())) < 2):
+        raise ValueError('Assign every player to a team. Conquest requires at least two teams.')
+
+
 def roster(state):
     return state.get('coop', {}).get('players', [
         dict(id='player', name='Commander', country=state['settings']['player_country'])])
@@ -17,15 +59,22 @@ def human(state, actor):
 
 
 def country(state, actor):
+    computers = state['settings'].get('ai_roster')
+    if computers is not None and actor in cpu_ids(state):
+        return computers[cpu_ids(state).index(actor)]
     return next((p['country'] for p in roster(state) if p['id'] == actor), state['settings']['ai_country'])
 
 
 def label(state, actor):
+    if actor in cpu_ids(state) and 'ai_roster' in state['settings']:
+        return f'AI {cpu_ids(state).index(actor) + 1}'
     return next((p['name'] for p in roster(state) if p['id'] == actor), 'Enemy' if actor == 'ai' else 'Neutral')
 
 
 def bonus_owners(state, actor):
-    return human_ids(state) if human(state, actor) and state.get('coop', {}).get('shared_nodes', False) else (actor,)
+    if human(state, actor) and state.get('coop', {}).get('shared_nodes', False):
+        return tuple(member for member in human_ids(state) if allied(state, actor, member))
+    return (actor,)
 
 
 def validate_roster(players):
@@ -47,7 +96,8 @@ def gift(state, node, recipient, faction):
     from .campaign import _turn, _node, army_at, record
     _turn(state, faction)
     target = _node(state, node)
-    if not state.get('coop') or not human(state, faction) or recipient not in human_ids(state) or recipient == faction:
+    if (not state.get('coop') or not human(state, faction) or not human(state, recipient)
+            or recipient == faction or not allied(state, faction, recipient)):
         raise ValueError('Choose another human teammate.')
     if target['owner'] != faction or army_at(state, node):
         raise ValueError('You can give only your own empty territory. Move its army first.')

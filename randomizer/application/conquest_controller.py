@@ -323,8 +323,7 @@ class ConquestController(ConquestCoopController):
                 now = time.monotonic()
                 if now - self._conquest_last_ai >= interval:
                     state = self.conquest_state
-                    auto_neutral = state['pending'] and state['pending']['attacker'] == 'ai' and state['pending']['defense']['faction'] == 'neutral'
-                    if state['phase'] == 'ai' or auto_neutral:
+                    if state['phase'] in campaign.cpu_ids(state) or campaign.needs_autobattle(state):
                         def advance(current):
                             changed = False
                             for _ in range(8 if speed == 'Instant' else 1):

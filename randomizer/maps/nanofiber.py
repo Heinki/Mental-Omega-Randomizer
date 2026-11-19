@@ -70,6 +70,9 @@ def nanofiber_multi_clone_rules(lines, installed_sections, clone_sets):
         raise ValueError('Installed Nanofiber mutation definitions are missing')
 
     stages = []
+    cap_value = _value_case_insensitive(values('CombatDamage'), 'MaxDamage', '10000')
+    damage_cap = int(str(cap_value).partition(';')[0].strip())
+    required_damage_cap = damage_cap
     for stage, source_clones, target_clone in active:
         source_clone = source_clones[0]
         ids = {}
@@ -122,9 +125,11 @@ def nanofiber_multi_clone_rules(lines, installed_sections, clone_sets):
         strength = max(int(_value_case_insensitive(
             values(clone), 'Strength', 1
         )) for clone in source_clones)
+        damage = min(1_000_000_000, max(2000, strength * 16))
+        required_damage_cap = max(required_damage_cap, damage)
         weapon.update({
             'Warhead': ids['WH'], 'Projectile': ids['P'],
-            'Damage': str(min(1_000_000_000, max(2000, strength * 16))),
+            'Damage': str(damage),
         })
         rules[ids['W']] = weapon
         if target_clone not in mutation_types:
@@ -138,6 +143,9 @@ def nanofiber_multi_clone_rules(lines, installed_sections, clone_sets):
         )
         stages.append(ids)
 
+    if required_damage_cap > damage_cap:
+        # The native per-hit ceiling must allow the lethal mutation hit.
+        rules['CombatDamage'] = {'MaxDamage': str(required_damage_cap)}
     rules['General'] = {'AnimToInfantry': ','.join(mutation_types)}
     for index, ids in enumerate(stages):
         projectile = values('Nanofiber7P')

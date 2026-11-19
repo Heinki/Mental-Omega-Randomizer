@@ -8,8 +8,8 @@ import random
 import secrets
 import uuid
 from . import objectives
-from .teams import TEAM_VERSION, plan_participants, team_power
-from .players import roster, human_ids, human, country, label, bonus_owners, validate_roster
+from .teams import TEAM_VERSION, plan_participants, team_power, valid_opponent_settings
+from .players import roster, human_ids, human, country, label, bonus_owners, validate_roster, actor_ids, cpu_ids, allied, validate_seats
 
 from .catalogue import (FACTIONS, DIFFICULTIES, STATS, PERKS, MAX_STRENGTH,
                         RECRUIT_COST, RESEARCH_COST, SUPPLY_COST, RULES_VERSION,
@@ -99,6 +99,19 @@ def _layout(count, seed):
 
 def new_campaign(settings, maps):
     settings = deepcopy(settings)
+    strategic_seats = 'ai_roster' in settings
+    if strategic_seats:
+        opponents = settings['ai_roster']
+        if not isinstance(opponents, list):
+            raise ValueError('Choose AI players using the campaign roster.')
+        settings['ai_country'] = next(iter(opponents), FACTIONS[1])
+        settings.pop('ai_opponents', None)
+        settings.pop('allied_opponents', None)
+    else:
+        settings.setdefault('ai_opponents', 1)
+        settings.setdefault('allied_opponents', True)
+        if not valid_opponent_settings(settings):
+            raise ValueError('Choose one to four AI opponents and an alliance setting.')
     settings.setdefault('mental_ai_boost', False)
     if isinstance(settings.get('seed'), str):
         settings['seed'] = settings['seed'].strip() or secrets.token_hex(8)
@@ -123,10 +136,16 @@ def new_campaign(settings, maps):
             raise ValueError('Choose whether to share territory bonuses.')
         settings['player_country'] = players[0]['country']
     countries = [p['country'] for p in players] if players else [settings['player_country']]
-    pool = [deepcopy(m) for m in maps if len(m['starts']) >= (len(players) + 1 if players else 2) and
-            all(c in m['countries'] for c in (*countries, settings['ai_country']))]
+    if strategic_seats:
+        validate_seats(settings, [p['id'] for p in players] if players else ['player'])
+    opponents = settings.get('ai_roster', [settings['ai_country']])
+    seats = len(countries) + (len(opponents) if strategic_seats else settings['ai_opponents'])
+    pool = [deepcopy(m) for m in maps if len(m['starts']) >= seats and
+            all(c in m['countries'] for c in (*countries, *opponents, settings['ai_country']))]
     if not pool:
-        raise ValueError('No installed Conquest maps fit every human commander plus the enemy and support their factions.')
+        raise ValueError('No installed Conquest maps fit the selected human and AI seats and factions.')
+    helper_seats = min(8, seats + 2)
+    pool = [m for m in pool if len(m['starts']) >= helper_seats] or pool
     pool.sort(key=lambda m: m['path'])
     seed = settings['seed']
     rng = random.Random(seed + ':territories')
@@ -140,7 +159,7 @@ def new_campaign(settings, maps):
     if players:
         state['coop'] = dict(version=1, players=deepcopy(players), shared_nodes=shared_nodes,
                              gifts={p['id']: 0 for p in players})
-    for side in (*human_ids(state), 'ai'):
+    for side in actor_ids(state):
         state[side] = dict(credits=settings['credits'], research={k: 0 for k in STATS},
                            perks={}, supplies=0, upgrades_bought=0)
     rewards = [key for key, value in PERKS.items() if not value['local'] and not value.get('legacy')]
@@ -152,12 +171,19 @@ def new_campaign(settings, maps):
             perks={'garrison': 1} if rng.randrange(100) < 8 else {},
             reward=rng.choice(rewards) if rng.randrange(100) < 15 + settings['density'] * 10 else None,
             claimed=[], map=deepcopy(pool[i % len(pool)])))
-    starts = [('player', 0), ('ai', settings['size'] - 1)]
-    for player in human_ids(state)[1:]:
-        occupied = [i for _, i in starts]
+    if strategic_seats:
+        size = settings['size']
+        width = math.isqrt(size)
+        starts = list(zip(actor_ids(state), (0, size - 1, width - 1, size - width)))
+        extra = actor_ids(state)[4:]
+    else:
+        starts = [('player', 0), ('ai', settings['size'] - 1)]
+        extra = human_ids(state)[1:]
+    for actor in extra:
+        occupied = [index for _, index in starts]
         index = max((i for i in range(settings['size']) if i not in occupied),
                     key=lambda i: min(sum((points[i][d] - points[j][d])**2 for d in (0, 1)) for j in occupied))
-        starts.append((player, index))
+        starts.append((actor, index))
     state['next_army'] = len(starts) + 1
     for army_id, (side, index) in enumerate(starts, 1):
         state['nodes'][index]['owner'] = side
@@ -185,10 +211,6 @@ def army_at(state, node, faction=None, army_id=None):
     return next((a for a in armies if not a['acted']), armies[0] if armies else None)
 
 
-def allied(state, first, second):
-    return first == second or human(state, first) and human(state, second)
-
-
 def totals(state, faction):
     if faction == 'neutral':
         return {k: 0 for k in STATS}
@@ -200,7 +222,7 @@ def income(state, faction):
     amount = sum(n['income'] for n in state['nodes'] if n['owner'] == faction and n.get('income_after', 0) <= state['turn'])
     amount += state[faction]['perks'].get('income', 0) * INCOME_PER_RANK
     multiplier = {'Easy': .75, 'Normal': 1}.get(state['settings']['difficulty'], 1.25)
-    return int(amount * (multiplier if faction == 'ai' else 1))
+    return int(amount * (multiplier if faction in cpu_ids(state) else 1))
 
 
 def _turn(state, faction):
@@ -393,6 +415,31 @@ def _loadout(state, faction, strength, node, defending, *, army_count=1, defense
     return result
 
 
+def battle_assignments(state, attacker, defender, stationed):
+    '''Assign the two involved alliances, preserving actor and network seat order.'''
+    main = {'attack': attacker, 'defense': defender}
+    occupied = {node['owner'] for node in state['nodes']}
+    stationed_actors = {army['faction'] for army in stationed}
+    return [(actor, team) for actor in (*actor_ids(state), 'neutral')
+            if actor in occupied or actor in stationed_actors or actor in main.values()
+            for team, leader in main.items() if allied(state, actor, leader)]
+
+
+def battle_decider(state, assignments, attacker, defender):
+    humans = [actor for actor, _ in assignments if human(state, actor)]
+    return next((actor for actor in (attacker, defender) if actor in humans),
+                next(iter(humans), None))
+
+
+def needs_autobattle(state):
+    battle = state.get('pending')
+    if not battle or battle['attempt']:
+        return False
+    if 'formation' in battle:
+        return battle['decision_actor'] is None
+    return battle['attacker'] == 'ai' and battle['defense']['faction'] == 'neutral'
+
+
 def move(state, source, target, faction='player', *, army_id=None):
     _turn(state, faction)
     _node(state, source)
@@ -435,7 +482,25 @@ def move(state, source, target, faction='player', *, army_id=None):
         mental_ai_boost=state['settings'].get('mental_ai_boost', False),
         rules_version=RULES_VERSION, attempt=None)
     battle = state['pending']
-    if state.get('coop') and (human(state, faction) or human(state, destination['owner'])):
+    if 'ai_roster' in state['settings']:
+        players = {player['id']: player['name'] for player in roster(state)}
+        assignments = battle_assignments(state, faction, destination['owner'], defenders)
+        battle['decision_actor'] = battle_decider(state, assignments, faction, destination['owner'])
+        battle['formation'] = []
+        for actor, team in assignments:
+            main = battle[team]
+            if actor == main['faction']:
+                loadout = main
+            else:
+                stationed = [a for a in defenders if a['faction'] == actor] if team == 'defense' else []
+                strength = sum(a['strength'] for a in stationed) if stationed else max(
+                    (a['strength'] for a in state['armies'] if a['faction'] == actor), default=2)
+                loadout = _loadout(state, actor, strength, destination, False, army_count=max(1, len(stationed)))
+            battle['formation'].append(dict(team=team, loadout=deepcopy(loadout), name=players.get(actor)))
+    elif 'ai_opponents' in state['settings'] and (human(state, faction) or human(state, destination['owner'])):
+        battle.update(ai_opponents=state['settings']['ai_opponents'],
+                      allied_opponents=state['settings']['allied_opponents'])
+    if 'formation' not in battle and state.get('coop') and (human(state, faction) or human(state, destination['owner'])):
         battle['human_team'] = 'attack' if human(state, faction) else 'defense'
         battle['decision_actor'] = faction if human(state, faction) else destination['owner']
         main = battle[battle['human_team']]
@@ -454,9 +519,13 @@ def move(state, source, target, faction='player', *, army_id=None):
     record(state, f'Attack committed. {max(1, len(defenders))} defending armies.', faction, target)
 
 
-def player_chance(battle):
+def player_chance(battle, actor=None):
     attack, defense = team_power(battle, 'attack'), team_power(battle, 'defense')
-    return (attack if battle.get('human_team', 'attack' if battle['attacker'] == 'player' else 'defense') == 'attack' else defense) / (attack + defense)
+    team = battle.get('human_team', 'attack' if battle['attacker'] == 'player' else 'defense')
+    if 'formation' in battle:
+        sides = {entry['loadout']['faction']: entry['team'] for entry in battle['formation']}
+        team = sides.get(actor, sides.get(battle['decision_actor'], 'attack'))
+    return (attack if team == 'attack' else defense) / (attack + defense)
 
 
 def resolve(state, battle_id, attacker_won, *, method):
@@ -519,20 +588,33 @@ def end_turn(state, faction='player'):
     if finish_campaign(state):
         return
     record(state, f'{label(state, faction)} ended their turn.', faction)
-    remaining = human_ids(state)[human_ids(state).index(faction) + 1:]
-    for actor in remaining:
-        if any(n['owner'] == actor for n in state['nodes']):
-            _begin_turn(state, actor)
-            return
-    state['ai_purchase'], state['ai_recruits'] = False, 0
-    _begin_turn(state, 'ai')
+    _advance_turn(state, faction)
 
 
-def _front_distance(state, start, targets=None):
+def _advance_turn(state, faction):
+    actors = actor_ids(state)
+    occupied = {node['owner'] for node in state['nodes']}
+    remaining = actors[actors.index(faction) + 1:]
+    upcoming = next((actor for actor in remaining if actor in occupied), None)
+    if upcoming is None:
+        if 'victory_mode' in state['settings']:
+            state['completed_round'] = state['turn']
+            if state['settings']['victory_mode'] in ('turn_limit', 'objectives'):
+                record(state, objectives.summary(state))
+            if finish_campaign(state):
+                return
+        state['turn'] += 1
+        upcoming = next(actor for actor in actors if actor in occupied)
+    if upcoming in cpu_ids(state):
+        state['ai_purchase'], state['ai_recruits'] = False, 0
+    _begin_turn(state, upcoming)
+
+
+def _front_distance(state, start, actor, targets=None):
     queue, visited = deque([(start, 0)]), {start}
     while queue:
         node, distance = queue.popleft()
-        at_goal = node in targets if targets else state['nodes'][node]['owner'] != 'ai'
+        at_goal = node in targets if targets else not allied(state, actor, state['nodes'][node]['owner'])
         if at_goal:
             return distance
         for neighbor in neighbors(state, node):
@@ -544,70 +626,62 @@ def _front_distance(state, start, targets=None):
 
 def step_ai(state):
     if state['phase'] == 'battle':
-        battle = state['pending']
-        if battle['attacker'] == 'ai' and battle['defense']['faction'] == 'neutral':
+        if needs_autobattle(state):
             autobattle(state)
             return True
         return False
-    if state['phase'] != 'ai':
+    actor = state['phase']
+    if actor not in cpu_ids(state):
         return False
     if finish_campaign(state):
         return True
     if not state['ai_purchase']:
         state['ai_purchase'] = True
-        wallet = state['ai']
-        options = [('perk', key, purchase_cost(state, 'ai', key), None) for key, perk in PERKS.items()
+        wallet = state[actor]
+        options = [('perk', key, purchase_cost(state, actor, key), None) for key, perk in PERKS.items()
                    if not perk['local'] and not perk.get('legacy') and perk_rank(wallet['perks'], key) < perk['maximum']]
-        options += [('research', key, research_cost(state, 'ai', key), None)
+        options += [('research', key, research_cost(state, actor, key), None)
                     for key in STATS if wallet['research'][key] < MAX_RESEARCH_RANK]
-        front = [n for n in state['nodes'] if n['owner'] == 'ai' and any(
-            state['nodes'][neighbor]['owner'] != 'ai' for neighbor in neighbors(state, n['id']))]
+        front = [n for n in state['nodes'] if n['owner'] == actor and any(
+            not allied(state, actor, state['nodes'][neighbor]['owner']) for neighbor in neighbors(state, n['id']))]
         for node in front:
             for key in ('garrison', 'node_barracks', 'node_factory'):
                 if node['perks'].get(key, 0) < PERKS[key]['maximum']:
-                    options.append(('perk', key, purchase_cost(state, 'ai', key, node['id']), node['id']))
+                    options.append(('perk', key, purchase_cost(state, actor, key, node['id']), node['id']))
         if wallet['supplies'] < 3:
             options.append(('supply', '', SUPPLY_COST, None))
         options = [option for option in options if wallet['credits'] >= option[2] + RECRUIT_COST]
         if options:
             kind, key, _, node = options[random_number(state, len(options))]
-            purchase(state, kind, key, node=node, faction='ai')
+            purchase(state, kind, key, node=node, faction=actor)
             return True
-    army = next((a for a in state['armies'] if a['faction'] == 'ai' and not a['acted']), None)
+    army = next((a for a in state['armies'] if a['faction'] == actor and not a['acted']), None)
     if army:
-        targets = objectives.ai_targets(state)
+        targets = objectives.ai_targets(state, actor)
         def priority(index):
             node = state['nodes'][index]
             if targets:
-                strength = sum(a['strength'] for a in armies_at(state, index) if a['faction'] != 'ai')
-                return (_front_distance(state, index, targets), strength, index)
-            if node['owner'] == 'ai':
-                return (1, _front_distance(state, index), index)
+                strength = sum(a['strength'] for a in armies_at(state, index) if not allied(state, actor, a['faction']))
+                return (_front_distance(state, index, actor, targets), strength, index)
+            if allied(state, actor, node['owner']):
+                return (1, _front_distance(state, index, actor), index)
             strength = sum(a['strength'] for a in armies_at(state, index)) or 2
             return (0, strength - node['income'] / 100, index)
         choices = sorted(neighbors(state, army['node']), key=priority)
-        choices = [n for n in choices if state['nodes'][n]['owner'] != 'ai' or
+        choices = [n for n in choices if not allied(state, actor, state['nodes'][n]['owner']) or
                    len(armies_at(state, n)) < MAX_ARMIES_PER_NODE]
         if choices:
-            move(state, army['node'], choices[0], 'ai', army_id=army['id'])
+            move(state, army['node'], choices[0], actor, army_id=army['id'])
         else:
             army['acted'] = True
         return True
-    if state['ai_recruits'] < min(3, 1 + state['turn'] // 5) and state['ai']['credits'] >= RECRUIT_COST:
-        locations = [n['id'] for n in state['nodes'] if n['owner'] == 'ai' and len(armies_at(state, n['id'])) < MAX_ARMIES_PER_NODE]
+    if state['ai_recruits'] < min(3, 1 + state['turn'] // 5) and state[actor]['credits'] >= RECRUIT_COST:
+        locations = [n['id'] for n in state['nodes'] if n['owner'] == actor and len(armies_at(state, n['id'])) < MAX_ARMIES_PER_NODE]
         if locations:
-            location = min(locations, key=lambda n: (_front_distance(state, n), len(armies_at(state, n)), n))
-            recruit(state, location, 'ai', new_army=True)
+            location = min(locations, key=lambda n: (_front_distance(state, n, actor), len(armies_at(state, n)), n))
+            recruit(state, location, actor, new_army=True)
             state['ai_recruits'] += 1
             return True
-    record(state, 'Turn ended.', 'ai')
-    if 'victory_mode' in state['settings']:
-        state['completed_round'] = state['turn']
-        if state['settings']['victory_mode'] in ('turn_limit', 'objectives'):
-            record(state, objectives.summary(state))
-        if finish_campaign(state):
-            return True
-    state['turn'] += 1
-    first = next((actor for actor in human_ids(state) if any(n['owner'] == actor for n in state['nodes'])), 'player')
-    _begin_turn(state, first)
+    record(state, 'Turn ended.', actor)
+    _advance_turn(state, actor)
     return True

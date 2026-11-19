@@ -262,6 +262,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         """Maintain the complete set of gameplay-affecting UI controls."""
         excluded = set(self._widget_descendants(self.appearance_frame))
         excluded.add(self.appearance_frame)
+        excluded.update(self.advanced_filter_widgets)
         # Starting a Shop run is gameplay, not a mutable generation setting.
         excluded.add(getattr(self, 'shop_setup_start_button', None))
         # Opening connection setup does not change gameplay settings.

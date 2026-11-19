@@ -25,23 +25,21 @@ from ._dependencies import (
 
 from .grid_access_controller import GridAccessController
 from randomizer.progression.grid import required_goals
+from randomizer.ui.showcase import matches_search
 
 
 class ProgressionController(GridAccessController):
 
     def mission_matches_search(self, mission):
-        query = self.mission_search_var.get().strip().casefold()
-        if not query:
-            return True
-        haystack = ' '.join(str(value) for value in (
+        return matches_search(
+            self.mission_search_var.get(),
             mission.get('code', ''),
             mission.get('title', ''),
             challenge_color_group(mission) or mission.get('side', ''),
             'Yuri' if challenge_color_group(mission) == 'Epsilon' else '',
             mission.get('operation', ''),
             mission.get('scenario', ''),
-        )).casefold()
-        return all(term in haystack for term in query.split())
+        )
 
     def mission_search_codes(self):
         if not self.mission_search_var.get().strip():

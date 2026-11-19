@@ -88,8 +88,13 @@ class ConquestCoopController(ConquestCoopLaunchController):
         if not self.conquest_can_create():
             raise ValueError('Only the connected host can create a campaign after every player joins.')
         lobby = self._cq_lobby
-        settings['coop_players'] = [dict(id='player' if i == 0 else f'player{i+1}', name=p['name'],
-            country=self._cq_hello[i]['country']) for i, p in enumerate(lobby.players)]
+        players = []
+        for index, player in enumerate(lobby.players):
+            actor = 'player' if index == 0 else f'player{index + 1}'
+            country, team = self.conquest_view.human_seat(index)
+            players.append(dict(id=actor, name=player['name'], country=country))
+            settings['teams'][actor] = team
+        settings['coop_players'] = players
         settings['shared_nodes'] = self._cq_shared.get()
         return settings
 

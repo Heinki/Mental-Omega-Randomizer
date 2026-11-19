@@ -13,9 +13,10 @@ from .catalogue import (FACTIONS, DIFFICULTIES, STATS, PERKS, RULES_VERSION,
                         MAX_STRENGTH, MAX_REPAIR_KITS, combat_power, starting_force,
                         MAX_ARMIES_PER_NODE, MAX_RESEARCH_RANK)
 from . import objectives
-from .campaign import record, resolve, allied, armies_at, campaign_winner, finish_campaign
-from .teams import validate_teams, human_coalition
-from .players import human_ids, human, country, roster, validate_roster
+from .campaign import (record, resolve, allied, armies_at, campaign_winner, finish_campaign,
+                       battle_assignments, battle_decider)
+from .teams import validate_teams, human_coalition, valid_opponent_settings
+from .players import human_ids, human, country, roster, validate_roster, actor_ids, coalition, validate_seats
 
 
 class PersistenceError(RuntimeError):
@@ -73,6 +74,35 @@ def _validate_loadout(state, loadout, actor):
         raise ValueError('Invalid frozen Conquest loadout.')
 
 
+def _validate_formation(state, battle):
+    attacker, defender = battle['attacker'], battle['defense']['faction']
+    defenders = armies_at(state, battle['target'])
+    assignments = battle_assignments(state, attacker, defender, defenders)
+    formation = battle['formation']
+    if (not isinstance(formation, list) or 'human_loadouts' in battle or 'human_team' in battle
+            or battle['decision_actor'] != battle_decider(state, assignments, attacker, defender)
+            or [(entry['loadout']['faction'], entry['team']) for entry in formation] != assignments):
+        raise ValueError('Invalid committed strategic battle roster.')
+    names = {player['id']: player['name'] for player in roster(state)}
+    for (actor, team), entry in zip(assignments, formation):
+        loadout = entry['loadout']
+        if entry['name'] != names.get(actor):
+            raise ValueError('Conquest battle seat differs from its campaign commander.')
+        _validate_loadout(state, loadout, actor)
+        main = battle[team]
+        if actor == main['faction']:
+            if loadout != main:
+                raise ValueError('Primary commander differs from the committed battle.')
+            continue
+        stationed = [army for army in defenders if army['faction'] == actor] if team == 'defense' else []
+        strength = sum(army['strength'] for army in stationed) if stationed else max(
+            (army['strength'] for army in state['armies'] if army['faction'] == actor), default=2)
+        if (loadout.get('headquarters') or loadout['strength'] != strength
+                or loadout.get('army_count') != max(1, len(stationed))
+                or loadout.get('defense_multiplier') != 1):
+            raise ValueError('Supporting commander differs from its stationed armies.')
+
+
 def validate(state):
     """Reject corrupt saves before any purchase, native launch, or recovery."""
     try:
@@ -85,13 +115,22 @@ def validate(state):
                 co['players'][0]['country'] != state['settings']['player_country']):
                 raise ValueError('Invalid cooperative campaign settings.')
         humans = human_ids(state)
-        actors = (*humans, 'ai')
+        settings = state['settings']
+        strategic_seats = 'ai_roster' in settings
+        if strategic_seats:
+            validate_seats(settings, humans)
+        elif 'teams' in settings:
+            raise ValueError('Conquest teams require a strategic roster.')
+        actors = actor_ids(state)
         if (state['schema'] != 1 or state['rules_version'] != RULES_VERSION or state['game'] != 'mo' or
             not _id(state['id']) or not _integer(state['revision'], 0, 2**63 - 1) or
             not _integer(state['turn'], 1, 1000000) or not _integer(state['random'], 1, 2**32 - 1) or
             state['phase'] not in (*actors, 'battle', 'finished')):
             raise ValueError('Unsupported or invalid Conquest save.')
-        settings = state['settings']
+        if strategic_seats and settings['ai_country'] != next(iter(settings['ai_roster']), FACTIONS[1]):
+            raise ValueError('Conquest neutral faction differs from its roster.')
+        if not strategic_seats and not valid_opponent_settings(settings):
+            raise ValueError('Invalid Conquest opponent settings.')
         count = settings['size']
         if (count not in (9, 25, 64, 100) or settings['player_country'] not in FACTIONS or
             settings['ai_country'] not in FACTIONS or settings['difficulty'] not in DIFFICULTIES or
@@ -99,6 +138,8 @@ def validate(state):
             not isinstance(settings['seed'], str) or not 1 <= len(settings['seed']) <= 80 or
             not _integer(settings['density'], 0, 2) or not _integer(settings['credits'], 100, 10000)):
             raise ValueError('Invalid Conquest campaign settings.')
+        needed_countries = {country(state, actor) for actor in (*actors, 'neutral')}
+        seats = len(actors) if strategic_seats else len(humans) + settings.get('ai_opponents', 1)
         nodes, edges, armies = state['nodes'], state['edges'], state['armies']
         if len(nodes) != count or [n['id'] for n in nodes] != list(range(count)):
             raise ValueError('Invalid Conquest territories.')
@@ -110,8 +151,8 @@ def validate(state):
                 not isinstance(node['buffs'], dict) or
                 any(k not in STATS or not _integer(v, 0, 100) for k, v in node['buffs'].items()) or
                 not _inventory(node['perks'], local=True) or not _map(node['map']) or
-                any(c not in node['map']['countries'] for c in (*[p['country'] for p in roster(state)], settings['ai_country'])) or
-                len(node['map']['starts']) < len(humans) + 1 or
+                not needed_countries.issubset(node['map']['countries']) or
+                len(node['map']['starts']) < seats or
                 not _integer(node.get('gifted_round', 0), 0, state['turn']) or
                 not _integer(node.get('income_after', 0), 0, state['turn'] + 1) or
                 node['reward'] is not None and (node['reward'] not in PERKS or PERKS[node['reward']]['local']) or
@@ -156,7 +197,7 @@ def validate(state):
         if type(state['ai_purchase']) is not bool or not _integer(state['ai_recruits'], 0, 3):
             raise ValueError('Invalid Conquest AI continuation.')
         if ((state['phase'] == 'finished') != (state['winner'] is not None) or
-            state['winner'] not in (None, 'player', 'ai')):
+            state['winner'] not in (None, *(coalition(state, actor) for actor in actors))):
             raise ValueError('Invalid Conquest outcome.')
         objectives.validate_progress(state)
         if state['winner'] and state['winner'] != campaign_winner(state):
@@ -205,7 +246,11 @@ def validate(state):
                 if battle[key].get('headquarters') and (key != 'defense' or nodes[battle['target']].get('hq') != expected):
                     raise ValueError('Invalid headquarters defense bonus.')
             human_battle = human(state, battle['attacker']) or human(state, battle['defense']['faction'])
-            if state.get('coop') and human_battle:
+            if strategic_seats:
+                _validate_formation(state, battle)
+            elif 'formation' in battle:
+                raise ValueError('Unexpected strategic battle roster.')
+            elif state.get('coop') and human_battle:
                 team = 'attack' if human(state, battle['attacker']) else 'defense'
                 if (battle.get('human_team') != team or battle.get('decision_actor') != battle[team]['faction'] or
                     not isinstance(battle.get('human_loadouts'), list) or
@@ -227,6 +272,11 @@ def validate(state):
                             raise ValueError('Teammate loadout differs from its stationed armies.')
             elif 'human_loadouts' in battle or 'human_team' in battle:
                 raise ValueError('Unexpected cooperative battle roster.')
+            opponent_settings = {key: settings[key] for key in ('ai_opponents', 'allied_opponents')
+                                 if key in settings and
+                                 (human(state, battle['attacker']) or human(state, battle['defense']['faction']))}
+            if any(battle.get(key) != opponent_settings.get(key) for key in ('ai_opponents', 'allied_opponents')):
+                raise ValueError('Conquest battle opponent settings differ from the campaign.')
             validate_teams(battle)
             attempt = battle['attempt']
             if attempt is not None and (not _id(attempt['id']) or attempt['status'] not in ('prepared', 'launched') or
@@ -275,7 +325,7 @@ class Repository:
         state = validate(read_json_object(self.path))
         # Original launch saves identify starting nodes in their first history
         # entries. Preserve any already committed battle's original loadouts.
-        for actor in (*human_ids(state), 'ai'):
+        for actor in actor_ids(state):
             if not any(n.get('hq') == actor for n in state['nodes']):
                 event = next((e for e in state['history'] if e['faction'] == actor and
                               e['text'].startswith('Campaign started with ') and e['node'] is not None), None)
