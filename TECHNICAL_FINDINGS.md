@@ -1149,8 +1149,10 @@ a separate smoke check.
 Knightfall payloads resolve KNIGHT/COVE through the normal delivery clone path,
 including compact runtime IDs. Mastodon firepower buffs clone `PrometheusBlast`
 and replace both normal and elite firing slots; zero-damage charge weapons
-remain charge weapons. Proto-Gharial uses `WaterImage=GHTNK2W` in both the static
-roster and installed-rules template policy.
+remain charge weapons. Proto-Gharial uses `WaterImage=MORPGHTNKPW` in both the
+static roster and installed-rules template policy. The launcher registers the
+hidden water VehicleType alongside the prototype and sets its `Image=GHTNK2W`.
+Ares resolves `WaterImage` through `[VehicleTypes]` before loading the art.
 
 Visual and combat behavior still require confirmation in-game.
 

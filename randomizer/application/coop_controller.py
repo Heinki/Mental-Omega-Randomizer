@@ -7,6 +7,7 @@ import queue
 import secrets
 import threading
 import traceback
+from time import monotonic
 from tkinter import messagebox
 
 from .coop_connection_controller import CoopConnectionController
@@ -27,6 +28,7 @@ from randomizer.rewards.arsenal import ARSENAL_MODE
 from randomizer.shop.model import RunStatus
 from randomizer.missions.pool import MissionExclusions
 from randomizer.ui.config import GAME_SPEEDS
+from randomizer.ui.grid_victory import show_synced_grid_victory
 
 
 def normalize_network_mode(value):
@@ -247,6 +249,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
             })
         save_config(self.config)
         self._coop_lobby = lobby
+        self._coop_received_host_state = False
         self._coop_progression_mode = self.progression_mode_var.get()
         self._coop_peer_options = None
         self.ensure_challenge_player_options()
@@ -479,7 +482,9 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
                 if not isinstance(codes, list) or not codes or not all(
                         code in available for code in codes):
                     raise ValueError('Host co-op maps differ from installed catalogue.')
+                previous_state = self.state if self._coop_received_host_state else {}
                 self.state = state
+                self._coop_received_host_state = True
                 ap = state.get('archipelago') or {}
                 self._archipelago_slot_data = copy.deepcopy(ap.get('slot_data') or {})
                 self._archipelago_location_groups = {}
@@ -512,6 +517,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
                 self._refresh_coop_state_views()
                 self._record_coop_log(f'Host run synced: {len(codes)} maps, seed {state["seed"]}.')
                 self.publish_challenge_player_options()
+                show_synced_grid_victory(self, previous_state)
             elif kind == 'select':
                 code = message.get('code')
                 index = next((i for i, mission in enumerate(self.missions)
@@ -561,7 +567,11 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
                 raise ValueError('Guest challenge result differs from the launched game.')
             if not self.is_mission_complete(code):
                 self._record_coop_log(f'Guest verified native challenge team victory for {code}.')
-                self.unlock_mission_check(code, 'victory', 'Co-op guest verified team victory')
+                watch = getattr(self, '_coop_victory_watch', None) or {}
+                self.unlock_mission_check(
+                    code, 'victory', 'Co-op guest verified team victory',
+                    started_at=watch.get('started_at'),
+                )
         elif kind == 'suggest':
             code = message.get('code')
             mission = self.mission_lookup().get(code)
@@ -770,7 +780,9 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
             )
         try:
             shutdown_watch = GameShutdownWatch(DEBUG_LOG)
-            process, _ = self.spawn_game_process(self.build_command())
+            command = self.build_command()
+            started_at = monotonic()
+            process, _ = self.spawn_game_process(command)
             shutdown_watch.bind(process)
         except Exception as exc:
             self._coop_busy = False
@@ -795,6 +807,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
             self._coop_victory_watch = {
                 'code': self._coop_active_game_code, 'native': challenge_watch,
                 'run_snapshot': self._coop_challenge_launch_snapshot,
+                'started_at': started_at,
                 'detected': False,
             }
         elif self.shop_launch_active() or result['role'] == 'host':
@@ -809,6 +822,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
             self._coop_victory_watch = {
                 'code': self._coop_active_game_code,
                 'marker': victory_marker_name(self._coop_active_game_code.lower()),
+                'started_at': started_at,
                 'offset': log_stat.st_size if log_stat else 0,
                 'file_id': (log_stat.st_dev, log_stat.st_ino) if log_stat else None,
                 'anchor': log_anchor,
@@ -909,7 +923,10 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
                 watch['detected'] = True
                 if not self.is_mission_complete(code):
                     self._record_coop_log(f'Challenge native victory verified for {code}.')
-                    self.unlock_mission_check(code, 'victory', 'Challenge in-game victory')
+                    self.unlock_mission_check(
+                        code, 'victory', 'Challenge in-game victory',
+                        started_at=watch['started_at'],
+                    )
             return
         if not watch or (watch['detected'] and not self.shop_launch_active()) or not DEBUG_LOG.exists():
             return
@@ -958,4 +975,7 @@ class CoopController(CoopShopController, ChallengeLobbyController, CoopConnectio
             return
         self._record_coop_log(f'Co-op victory marker detected for {code}.')
         if not self.shop_launch_active():
-            self.unlock_mission_check(code, 'victory', 'Co-op in-game victory')
+            self.unlock_mission_check(
+                code, 'victory', 'Co-op in-game victory',
+                started_at=watch['started_at'],
+            )

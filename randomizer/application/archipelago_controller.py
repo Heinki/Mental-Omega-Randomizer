@@ -1138,7 +1138,7 @@ class ArchipelagoController(ArchipelagoYamlController):
         self.state = deepcopy(snapshot)
         for key in (
             'mission_failure_stacks', 'mission_assistance_units',
-            'enemy_reward_applications',
+            'enemy_reward_applications', 'grid_mission_times',
         ):
             if key in previous_state:
                 self.state[key] = deepcopy(previous_state[key])

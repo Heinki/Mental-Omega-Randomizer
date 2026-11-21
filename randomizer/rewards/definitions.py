@@ -21,6 +21,11 @@ from randomizer.rewards.roster import (
     randomizer_unit_ids_with_behavior,
     randomizer_unit_template_values,
 )
+from randomizer.rewards.template_policy import (
+    GHARIAL_PROTOTYPE_WATER_SOURCE,
+    GHARIAL_PROTOTYPE_WATER_TYPE,
+    gharial_prototype_water_values,
+)
 
 
 _UNIT_DATA_CONFIG = load_static_config('rewards/unit_data.json')
@@ -711,9 +716,19 @@ for unit_id, support in _UNIT_DATA_CONFIG.get(
         'spawned_missile_range_support'
     ] = dict(support)
 
+_RANDOMIZER_TEMPLATE_VALUES = randomizer_unit_template_values()
+_gharial_water = _RANDOMIZER_TEMPLATE_VALUES.get(GHARIAL_PROTOTYPE_WATER_SOURCE)
+if not _gharial_water:
+    # Editable rosters carried over from older installations lack this type.
+    _gharial_water = gharial_prototype_water_values(
+        _RANDOMIZER_TEMPLATE_VALUES['GHTNKP'],
+    )
+STANDALONE_UNIT_RULE_TEMPLATES.setdefault('GHTNKP', {}).setdefault(
+    'VehicleTypes', {},
+)[GHARIAL_PROTOTYPE_WATER_TYPE] = _gharial_water
+
 # Normal miners expose clone-local vanilla Storage. Harvest speed remains a
 # global rules setting in the installed engine, so only capacity is eligible.
-_RANDOMIZER_TEMPLATE_VALUES = randomizer_unit_template_values()
 for harvester_id in randomizer_unit_ids_with_behavior('Harvester', 'yes'):
     target = BUFF_TARGETS.get(harvester_id)
     template = _RANDOMIZER_TEMPLATE_VALUES.get(harvester_id, {})

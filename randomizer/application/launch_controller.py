@@ -866,6 +866,7 @@ class LaunchController:
                     code,
                     check_id,
                     'In-game hook',
+                    started_at=(self.active_mission_attempt or {}).get('started_at'),
                 )
                 if check_id == 'victory':
                     self.active_hook.pop('restart_detected_at', None)
@@ -1074,11 +1075,12 @@ class LaunchController:
             self.queue_busy_progress('Resolving game launcher…')
             command = self.build_command()
             self.queue_busy_progress('Starting game process…')
+            started_at = time.monotonic()
             process, command_text = self.spawn_game_process(command)
-            return hook, process, command_text
+            return hook, process, command_text, started_at
 
         def finish_launch(result):
-            hook, process, command_text = result
+            hook, process, command_text, started_at = result
             try:
                 self.start_mission_process(
                     mission,
@@ -1088,6 +1090,7 @@ class LaunchController:
                     launch_note,
                     launched_process=process,
                     command_text=command_text,
+                    started_at=started_at,
                 )
             finally:
                 if ap_snapshot_active:
@@ -1332,14 +1335,15 @@ class LaunchController:
         launch_note='',
         launched_process=None,
         command_text=None,
+        started_at=None,
     ):
         scenario = mission['scenario']
         try:
             process = launched_process
             if process is None:
-                process, command_text = self.spawn_game_process(
-                    self.build_command()
-                )
+                command = self.build_command()
+                started_at = time.monotonic()
+                process, command_text = self.spawn_game_process(command)
             if (
                 self.state
                 and not getattr(self, 'shop_launch_active', lambda: False)()
@@ -1390,6 +1394,7 @@ class LaunchController:
             self.active_mission_attempt = {
                 'mission_code': mission.get('code'),
                 'scenario': scenario,
+                'started_at': started_at,
             }
             self.after(HOOK_POLL_MS, self.poll_hook_log)
         except Exception as exc:

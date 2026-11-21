@@ -1,6 +1,9 @@
 """Deterministic seed creation and mission-check completion."""
 
+from time import monotonic
+
 from randomizer.progression.grid import required_goals
+from randomizer.ui.grid_victory import schedule_grid_victory
 
 from ._dependencies import (
     ARSENAL_MODE,
@@ -387,7 +390,7 @@ class SeedController(SeedGeneration):
         self.append_log(detail, error=True)
         messagebox.showerror('Generation Failed', 'Seed generation failed. See log for details.')
 
-    def unlock_mission_check(self, code, check_id, source):
+    def unlock_mission_check(self, code, check_id, source, *, started_at=None):
         if not self.state:
             return False
 
@@ -403,10 +406,9 @@ class SeedController(SeedGeneration):
         grid_goal_victory = (
             check_id == 'victory'
             and self.active_progression_mode() == 'Grid Mode'
-            and code in required_goals(grid)
-            and set(required_goals(grid)).issubset(
-                set(self.state.get('completed_missions', [])) | {code}
-            )
+            and set(required_goals(grid)).difference(
+                self.state.get('completed_missions', [])
+            ) == {code}
         )
         grid_unlocks = self.mission_unlocks(code) if check_id == 'victory' else []
         released_rewards = []
@@ -418,6 +420,10 @@ class SeedController(SeedGeneration):
             completed = self.state.setdefault('completed_missions', [])
             if code not in completed:
                 completed.append(code)
+                if started_at is not None and self.active_progression_mode() == 'Grid Mode':
+                    self.state.setdefault('grid_mission_times', {})[code] = int(
+                        monotonic() - started_at
+                    )
             cleared_assistance = self.state.setdefault('mission_failure_stacks', {}).pop(code, 0)
             self.state.setdefault('mission_assistance_units', {}).pop(code, None)
             for check in checks:
@@ -597,6 +603,8 @@ class SeedController(SeedGeneration):
             )
         self.redraw_mission_tree()
         self.refresh_progress_view()
+        if grid_goal_victory:
+            schedule_grid_victory(self)
         return True
 
     def on_debug_mark_complete(self):

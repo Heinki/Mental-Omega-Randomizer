@@ -2,6 +2,7 @@
 
 import copy
 import re
+from time import monotonic
 from tkinter import messagebox
 
 from randomizer.challenges.results import ChallengeResultWatch
@@ -549,12 +550,15 @@ class ChallengeController:
             # Capture the old log boundary before the engine can emit results.
             watch = self.create_challenge_result_watch(mission, name, ai_teammate=bool(ai_teammate))
             shutdown_watch = GameShutdownWatch(DEBUG_LOG)
-            process, command_text = self.spawn_game_process(self.build_command())
+            command = self.build_command()
+            started_at = monotonic()
+            process, command_text = self.spawn_game_process(command)
             shutdown_watch.bind(process)
-            return process, watch, shutdown_watch, command_text
+            return process, watch, shutdown_watch, command_text, started_at
 
         def finish(result):
-            process, watch, shutdown_watch, command_text = result
+            process, watch, shutdown_watch, command_text, started_at = result
+            self._challenge_started_at = started_at
             self.active_game_process = process
             self._challenge_preparing = False
             self._challenge_launch_snapshot = launch_snapshot
@@ -599,7 +603,10 @@ class ChallengeController:
             elif result == 'victory':
                 self.append_log(f'Challenge native victory verified for {code}.')
                 if not self.is_mission_complete(code):
-                    self.unlock_mission_check(code, 'victory', 'Challenge in-game victory')
+                    self.unlock_mission_check(
+                        code, 'victory', 'Challenge in-game victory',
+                        started_at=self._challenge_started_at,
+                    )
             else:
                 self.append_log(f'Challenge defeat detected for {code}; no victory awarded.')
         process = self.active_game_process
@@ -623,6 +630,7 @@ class ChallengeController:
         if watch is not None and watch.error:
             self.append_log('Challenge result log: ' + watch.error, error=True)
         self._challenge_result_watch = None
+        self._challenge_started_at = None
         self._challenge_launch_snapshot = None
         self.refresh_coop_controls()
         if getattr(self, '_close_after_game', False):

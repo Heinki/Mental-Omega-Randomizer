@@ -1718,9 +1718,9 @@ class ShopController(ShopPolishController):
                     key.endswith(f':{code}:victory'))
         return f'{run.run_id}:{run.stage}:{code}:victory' in run.rewarded_victories
 
-    def unlock_mission_check(self, code, check_id, source):
+    def unlock_mission_check(self, code, check_id, source, *, started_at=None):
         if not self.shop_launch_active():
-            return super().unlock_mission_check(code, check_id, source)
+            return super().unlock_mission_check(code, check_id, source, started_at=started_at)
         code = str(code or '').upper()
         if check_id == 'defeat':
             return self.record_failed_mission_attempt(code, 'Verified in-game defeat')

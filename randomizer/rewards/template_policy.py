@@ -13,6 +13,22 @@ from collections import OrderedDict
 
 NORMAL_BUILD_TIME_SENTINEL = '121'
 BUILD_TIME_MULTIPLIER_KEYS = ('buildtimemultiplier', 'buildtime.multiplefactory')
+GHARIAL_PROTOTYPE_WATER_SOURCE = 'GHTNKPW'
+GHARIAL_PROTOTYPE_WATER_TYPE = f'MORP{GHARIAL_PROTOTYPE_WATER_SOURCE}'
+
+
+def gharial_prototype_water_values(land_values):
+    """Clone the land template into a hidden Ares WaterImage VehicleType."""
+    water_values = {
+        key: value for key, value in land_values.items()
+        if key.lower() not in {'image', 'waterimage', 'name', 'techlevel',
+                               'crategoodie', 'allowedtostartinmultiplayer'}
+    }
+    water_values.update(
+        Image='GHTNK2W', Name='Gharial Prototype (Water)', TechLevel='-1',
+        CrateGoodie='no', AllowedToStartInMultiplayer='no',
+    )
+    return water_values
 
 
 IMAGE_OVERRIDES = {
@@ -194,7 +210,7 @@ TEMPLATE_VALUE_OVERRIDES = {
     'GHTNKP': {
         'Name': 'Gharial Prototype',
         'Image': 'GHTNK2',
-        'WaterImage': 'GHTNK2W',
+        'WaterImage': GHARIAL_PROTOTYPE_WATER_TYPE,
         'IFVMode': '3',
         'Primary': 'GharialBetaCannon',
         'Weapon1': 'GharialBetaCannon',

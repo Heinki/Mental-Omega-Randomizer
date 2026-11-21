@@ -28,8 +28,8 @@ ROSTER_CATEGORIES = {
     'special_buildings': 'BuildingTypes',
 }
 MANDATORY_TEMPLATE_OVERRIDES = {
-    # Preserved editable rosters must also receive the corrected water art.
-    'GHTNKP': {'WaterImage': 'GHTNK2W'},
+    # Older editable rosters point directly to art rather than a VehicleType.
+    'GHTNKP': {'WaterImage': TEMPLATE_VALUE_OVERRIDES['GHTNKP']['WaterImage']},
     'ROACH': dict(TEMPLATE_VALUE_OVERRIDES['ROACH']),
     # Keep corrected portable prototype identities on preserved editable
     # rosters as well. Combat dependencies are supplied by unit_data.json.

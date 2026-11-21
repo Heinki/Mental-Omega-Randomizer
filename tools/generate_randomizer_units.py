@@ -65,6 +65,7 @@ STABLE_APPEND_ORDER = (
     'GRND', 'CAOS', 'MAMUP', 'YAHCRE',
     'BIKE', 'TERROR', 'CYCOM', 'ARND', 'CLNT', 'STLN', 'SCAV',
     'BRUTM', 'BRUTS', 'BRUTV', 'CAPU',
+    'GHTNKPW',
 )
 STABLE_APPEND_IDS = frozenset(STABLE_APPEND_ORDER)
 EXCLUDED_REVIEWED_INFANTRY_IDS = frozenset({
@@ -75,11 +76,13 @@ EXCLUDED_REVIEWED_INFANTRY_IDS = frozenset({
 # rules registry produces the same reviewed player identities without
 # regenerating this committed roster.
 from randomizer.rewards.template_policy import (  # noqa: E402
+    GHARIAL_PROTOTYPE_WATER_SOURCE,
     IMAGE_OVERRIDES,
     SPECIAL_TEMPLATE_SOURCES,
     TEMPLATE_VALUE_OVERRIDES,
     TEMPLATE_VALUE_REMOVALS,
     build_template_values,
+    gharial_prototype_water_values,
 )
 
 
@@ -285,6 +288,11 @@ def main():
 
     if missing:
         raise ValueError('Installed rules missing target section(s): ' + ', '.join(missing))
+
+    definitions[GHARIAL_PROTOTYPE_WATER_SOURCE] = gharial_prototype_water_values(
+        definitions['GHTNKP'],
+    )
+    target_categories[GHARIAL_PROTOTYPE_WATER_SOURCE] = target_categories['GHTNKP']
 
     grouped_ids = OrderedDict((group, []) for group in OUTPUT_GROUPS)
     for source_id in definitions:
