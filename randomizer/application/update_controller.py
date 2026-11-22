@@ -161,7 +161,8 @@ class UpdateController:
             lambda: stage_update(
                 update, APP_DIR, Path(sys.executable), self.queue_busy_progress,
             ),
-            self.finish_update_download,
+            # The worker releases its busy overlay after this callback returns.
+            lambda request: self.after(0, self.finish_update_download, request),
             self.handle_update_error,
         )
 
