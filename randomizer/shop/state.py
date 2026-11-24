@@ -284,10 +284,18 @@ def _mission_offers(value):
     return tuple(offers)
 
 
-def normalize_shop_run(document, *, config=SHOP_CONFIG):
+def normalize_shop_run(
+    document, *, config=SHOP_CONFIG, copy_enemy_applications=True
+):
     if document is None:
         return None
-    document = migrate_shop_run(document)
+    # Normalization copies each retained mutable field itself. The version
+    # check only reads the document, so it does not need a second deep copy.
+    document = _object(document, 'run')
+    _version(document, SHOP_RUN_SCHEMA_VERSION, 'Shop run')
+    applications = _object(
+        document.get('enemy_reward_applications', {}), 'enemy_reward_applications'
+    )
     try:
         status = RunStatus(document.get('status', RunStatus.ACTIVE.value))
     except ValueError as exc:
@@ -503,10 +511,9 @@ def normalize_shop_run(document, *, config=SHOP_CONFIG):
         rewarded_victories=_unique_strings(
             document.get('rewarded_victories'), 'rewarded_victories'
         ),
-        enemy_reward_applications=deepcopy(_object(
-            document.get('enemy_reward_applications', {}),
-            'enemy_reward_applications',
-        )),
+        enemy_reward_applications=(
+            deepcopy(applications) if copy_enemy_applications else applications
+        ),
         modifiers=modifiers,
         coupon_used_stage=coupon_used_stage,
         stock_lock_reward_id=stock_lock_reward_id,

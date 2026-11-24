@@ -67,6 +67,14 @@ def _backup_invalid(path, backup_dir):
     return backup
 
 
+def _run_document(run):
+    """Validate the run for a synchronous write without cloning its receipts."""
+    return normalize_shop_run(
+        run.to_dict(copy_enemy_applications=False),
+        copy_enemy_applications=False,
+    ).to_dict(copy_enemy_applications=False)
+
+
 class ShopRepository:
     """Own Shop files and replay interrupted two-file commits exactly."""
 
@@ -105,14 +113,16 @@ class ShopRepository:
             return None
         try:
             raw = read_json_object(self.paths.run)
-            run = normalize_shop_run(raw)
+            # The parsed document is private to this read. Transfer ownership
+            # of its receipts instead of copying the entire mission history.
+            run = normalize_shop_run(raw, copy_enemy_applications=False)
             from .permanent import SNAPSHOT_SETTING, complete_permanent_buff_snapshot
             if (run.status is RunStatus.ACTIVE
                     and not run.reward_settings.get(SNAPSHOT_SETTING)):
                 run = complete_permanent_buff_snapshot(run, self._read_profile())
         except Exception as exc:
             self._raise_invalid('Shop run', self.paths.run, exc)
-        normalized = run.to_dict()
+        normalized = run.to_dict(copy_enemy_applications=False)
         if raw != normalized:
             atomic_write_json(self.paths.run, normalized, indent=None)
         return run
@@ -143,8 +153,7 @@ class ShopRepository:
     def save_run(self, run):
         with self._lock:
             self.recover_pending_transaction()
-            normalized = normalize_shop_run(run.to_dict())
-            atomic_write_json(self.paths.run, normalized.to_dict(), indent=None)
+            atomic_write_json(self.paths.run, _run_document(run), indent=None)
 
     def prepare_commit(self, profile, run, transaction_id):
         """Durably record exact targets before either state file changes."""
@@ -154,16 +163,11 @@ class ShopRepository:
             if not transaction_id:
                 raise ValueError('Shop transaction_id must be non-empty')
             normalized_profile = normalize_shop_profile(profile.to_dict())
-            normalized_run = (
-                None if run is None else normalize_shop_run(run.to_dict())
-            )
             document = {
                 'schema_version': SHOP_TRANSACTION_SCHEMA_VERSION,
                 'transaction_id': transaction_id,
                 'profile': normalized_profile.to_dict(),
-                'run': (
-                    None if normalized_run is None else normalized_run.to_dict()
-                ),
+                'run': None if run is None else _run_document(run),
             }
             atomic_write_json(self.paths.transaction, document, indent=None)
 
@@ -190,7 +194,7 @@ class ShopRepository:
                 run = (
                     None
                     if run_document is None
-                    else normalize_shop_run(run_document)
+                    else normalize_shop_run(run_document, copy_enemy_applications=False)
                 )
             except Exception as exc:
                 self._raise_invalid(
@@ -200,7 +204,10 @@ class ShopRepository:
             if run is None:
                 self.paths.run.unlink(missing_ok=True)
             else:
-                atomic_write_json(self.paths.run, run.to_dict(), indent=None)
+                atomic_write_json(
+                    self.paths.run, run.to_dict(copy_enemy_applications=False),
+                    indent=None,
+                )
             self.paths.transaction.unlink(missing_ok=True)
             return True
 

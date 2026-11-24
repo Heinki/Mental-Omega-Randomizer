@@ -262,10 +262,9 @@ class ShopPolishController(ShopArchipelagoController):
             return launch_run
         if not self._shop_mode_context_selected():
             return None
-        repository = self.__dict__.get('shop_repository')
-        if repository is None:
-            return self.__dict__.get('shop_run')
-        return repository.load_run()
+        # The controller reloads after transitions. View lookups share that
+        # snapshot instead of reparsing the same run for each widget.
+        return self.__dict__.get('shop_run')
 
     def _shop_ui_rewards(self):
         run = self._shop_context_run()
