@@ -119,6 +119,9 @@ class FinalFortressController(FortressCoopController):
         repository = self.final_fortress_repository
         try:
             state = repository.load() if self.final_fortress_config is not None else None
+            if state is not None:
+                # Load installed stats before Tk renders the first perk's details.
+                installed_rules_registry(synchronous=True)
             return repository, state, ''
         except (RuntimeError, ValueError, OSError) as exc:
             return repository, None, str(exc)

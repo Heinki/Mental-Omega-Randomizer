@@ -81,10 +81,15 @@ def rank_descriptions(perk, country):
                          'jumpjet movement stays aligned with Speed')
         if effect.get('lab_health_percent'):
             percent = effect['lab_health_percent']
-            base = int(rules['CALAB']['Strength'])
-            health = base * (100 + percent) // 100
-            parts.append(f"+{percent}% maximum health for Einstein's Lab ({health:,} HP from {base:,}). "
-                         'Starts at full health; emergency repair restores the upgraded maximum. '
+            try:
+                base = int(rules.get('CALAB', {}).get('Strength', '0'))
+            except ValueError:
+                base = 0
+            summary = f"+{percent}% maximum health for Einstein's Lab"
+            if base > 0:
+                health = base * (100 + percent) // 100
+                summary += f' ({health:,} HP from {base:,})'
+            parts.append(summary + '. Starts at full health; emergency repair restores the upgraded maximum. '
                          'One shared objective bonus in co-op')
         if effect.get('lab_emergency_repair'):
             parts.append("Automatically restore Einstein's Lab to full health once per run when it "
